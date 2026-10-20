@@ -1,0 +1,30 @@
+[None, 1, 'two', 3.0, [4, 5], {'six': 6}] 6
+{'six': 6} [None, 1, 'two', 3.0, [4, 5]]
+2 1 True False
+[None, 1, 'two', 3.0, [4, 5], 'via alias']
+zero via alias 1
+['zero', 'two', 3.0, [4, 5], 'via alias']
+{1: 'bool one', 'k': [1, 2], (1, 't'): 'tuple', None: 0} 4
+bool one tuple None [1, 2]
+1 -> 'bool one'
+'k' -> [1, 2]
+(1, 't') -> 'tuple'
+None -> 0
+1 bool one
+k [1, 2]
+(1, 't') tuple
+None 0
+[1, 2, 3]
+0 0 3
+[1, [...]]
+{'self': {...}}
+(1, 'a', [2]) [2] 3 (1, 'a', [2], 3) (1, 'a', [2], 1, 'a', [2])
+1 a [2]
+4
+[[1, 2], {'a': [3, {'b': 'changed'}]}]
+True True True True
+[True, 1.5, 2, 3]
+[1.5, 2, 3]
+HELLO WORLD ['hello', 'world'] hell0 w0rld 11 e True
+['hello', 'world', '!'] hello world !
+[exit 0]

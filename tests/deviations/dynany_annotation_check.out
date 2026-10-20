@@ -1,0 +1,3 @@
+42
+TypeError: expected int, got str
+[exit 1]

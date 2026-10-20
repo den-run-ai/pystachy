@@ -1,0 +1,17 @@
+F.ne
+F.ne
+E.ne
+E.ne
+E.ne
+False False True True True
+Q.ne
+Q.ne
+False False False
+H.eq
+H.eq
+H.eq
+False True True
+E.eq
+E.eq
+3 True
+[exit 0]

@@ -1,0 +1,4 @@
+14
+10
+AttributeError: property 'twice' of 'R' object has no setter
+[exit 0]

@@ -97,6 +97,11 @@ EXC_MAKERS = {"exc_line", "exc_raise", "exc_exit"}
 # pys_unwind_file the unwind action that a landing pad or an uncaught exception runs
 STORES = {"pys_eh_on": "throw_", "pys_unwind_file": "close_with"}
 USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"}
+# a dynamic value's box in a descriptor walk (A): what its DynType holds decides what the walk
+# runs, an object's helpers among them, so that the compiler gives an op whose descriptor holds
+# an A every effect, as it does for an O (Gen.opfx). The walks of other entries do not look into
+# them, as they do not into user code; the dyn.* entries are checked from their own bodies
+DYN_WALKS = {"pys_dyn_eq", "pys_dyn_cmp", "pys_dyn_hash", "dyn_eqitem"}
 # the functions that walk a value by its descriptor (its static type), reading the lists and dicts in it
 BY_DESC = {"eqv", "opv", "repr"}
 # the messages of the subset's implicit checks that fire only on a bug of runtime.py: an index out
@@ -414,13 +419,13 @@ def state(ll):
     return used
 
 
-def uses_state(fns, used, f):
-    # does f's call graph, outside the end of the program and the allocator, use state (I)?
+def uses_state(fns, used, f, skip=frozenset()):
+    # does f's call graph, outside the end of the program and the allocator (and skip), use state (I)?
     seen = set()
     todo = [f]
     while todo:
         g = todo.pop()
-        if g in seen or g in END or g in ALLOC or g in USER or g not in fns:
+        if g in seen or g in END or g in ALLOC or g in USER or g in skip or g not in fns:
             continue
         seen.add(g)
         if g not in used:
@@ -630,11 +635,11 @@ def main():
                 if x[1:] in pys.RTSYM:
                     e = rt[pys.RTSYM[x[1:]]]
                     m.update(y for y in e[e.find("|") + 1 : e.rfind("|")].split() if y in ("A", "U", "I"))
-                if reaches(fns, x[1:], {"gc_slow"}, set()):
+                if reaches(fns, x[1:], {"gc_slow"}, DYN_WALKS - {x[1:]}):
                     m.add("A")
-                if reaches(fns, x[1:], USER, set()):
+                if reaches(fns, x[1:], USER | (DYN_WALKS - {x[1:]}), set()):
                     m.add("U")
-                if uses_state(fns, used, x[1:]):
+                if uses_state(fns, used, x[1:], DYN_WALKS - {x[1:]}):
                     m.add("I")
                 via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, set())}
         letters[f] = m
@@ -722,12 +727,24 @@ def main():
     named.update(f"llvm.{op}.with.overflow.i64" for op in pys.CHECKED.values())
     # (not the pys_obj_ functions, which the program defines, nor the names of the compiler's
     # own builtins, __pys_*, of which Gen.builtin calls two by their names without __)
-    named.update(s for s in re.findall(r"(?<!_)pys_[a-z0-9_]*[a-z0-9](?![\w{])", src) if not s.startswith("pys_obj_"))
+    named.update(s for s in re.findall(r"(?<!_)pys_[a-z0-9_]*[a-z0-9](?![\w{])", src) if not s.startswith("pys_obj_") and s not in pys.RTDATA)
     named.update(["pys_repr_enter", "pys_repr_leave"])
     named.update(f"pys_file_{a}" for a in ("closed", "name", "mode"))
     named.add("llvm.frameaddress.p0")
     # (and what the compiler calls by its symbol, such as runtime mode's memchr)
     named.update(re.findall(r"""self\.rt\(\s*["']([\w.]+)["']""", src))
+    # runtime data (RTDATA): each a global of runtime.c, of the LLVM type the program declares it with
+    for s, t in sorted(pys.RTDATA.items()):
+        m = re.search(r"^@" + re.escape(s) + r" = (?:[a-z_]+ )*(?:global|constant) (%[\w.]+|\{[^}]*\}|\[[^\]]*\])", ll, re.M)
+        if m is None:
+            bad.append(f"RTDATA: runtime.c defines no global {s}")
+            continue
+        have = m.group(1)
+        if have.startswith("%"):
+            body = re.search(r"^" + re.escape(have) + r" = type (\{[^}]*\})", ll, re.M)
+            have = body.group(1) if body else have
+        if have.replace(" ", "") != t.replace(" ", ""):
+            bad.append(f"RTDATA: {s} is {t} to the compiler, {have} in runtime.c")
     for s in sorted(named):
         if s not in pys.RTSYM:
             bad.append(f"{s}: compiler source names it, but RUNTIME has no entry for it")
@@ -782,19 +799,20 @@ def main():
             if x not in pys.FX and x != "U?" and x != "R?":
                 bad.append(f"{k}: {x} is no effect letter (FX)")
         derived = []
-        if reaches(fns, sym, RAISES | pyr, COLLECTS | DEEP):
+        dw = DYN_WALKS - {sym}
+        if reaches(fns, sym, RAISES | pyr, COLLECTS | DEEP | dw):
             derived.append("R")
-        elif reaches(fns, sym, DEEP, COLLECTS) and k not in NO_USER:
+        elif reaches(fns, sym, DEEP, COLLECTS | dw) and k not in NO_USER:
             derived.append("R?")
         if fns[sym][2]:
             derived.append("N")
-        if reaches(fns, sym, COLLECTS | pya, EXC_MAKERS | RAISES):
+        if reaches(fns, sym, COLLECTS | pya, EXC_MAKERS | RAISES | dw):
             derived.append("A")
-        if reaches(fns, sym, USER | pyu, set()) and k not in NO_USER:
+        if reaches(fns, sym, USER | pyu | dw, set()) and k not in NO_USER:
             derived.append("U")
-        if "#" in pys.rtsig(k)[1:] and reaches(fns, sym, BY_DESC, set()):
+        if "#" in pys.rtsig(k)[1:] and reaches(fns, sym, BY_DESC, dw):
             derived.extend(["rL", "rD"])
-        if uses_state(fns, used, sym):
+        if uses_state(fns, used, sym, dw):
             derived.append("I")
         for i, p in enumerate(pys.rtsig(k)[1:]):
             o = OWNER.get(k[: k.find(".") + 1], "") if p == "S" else "L" if p.startswith("list[") else "D" if p.startswith("dict[") or p.startswith("set[") else "F" if p == "file" else ""

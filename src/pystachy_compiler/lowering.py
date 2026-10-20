@@ -228,9 +228,11 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  %t{i.r[0]} = icmp u{ICMP[i.s][1:]} i64 {i.a[0].v}, {i.a[1].v}")
     elif op == "ptr.cmp":
         o.append(f"  %t{i.r[0]} = icmp {ICMP[i.s]} ptr {i.a[0].v}, {i.a[1].v}")
-    elif op == "union.payload":
+    elif op == "union.payload" or op == "dyn.payload":
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 1")
         o.append(f"  %t{i.r[1]} = load i64, ptr %t{i.r[0]}")
+    elif op == "dyn.type":
+        o.append(f"  %t{i.r[0]} = load ptr, ptr {i.a[0].v}")
     elif op == "br":
         o.append(f"  br label %{i.b[0]}")
     elif op == "cbr":
@@ -262,7 +264,8 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "ret":
         o.append(f"  ret {lt(i.a[0].t)} {i.a[0].v}" if len(i.a) > 0 else "  ret void")
     elif op == "ret.none":
-        o.append("  ret void" if fn.f.ret == "None" else "  ret ptr null")
+        # (None: null, but a dynamic value's, which is its constant box: dynamic.py)
+        o.append("  ret void" if fn.f.ret == "None" else f"  ret ptr {self.rtdata('pys_dyn_none_box')}" if fn.f.ret == "dyn" else "  ret ptr null")
     elif op == "raise":
         o.append(f"  call void @pys_raise(ptr {i.a[0].v}, ptr {i.a[1].v})")
         o.append("  unreachable")

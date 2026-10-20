@@ -53,6 +53,7 @@ def gen_save(self) -> Frame:
     fr.ret = self.ret
     fr.retann = self.retann
     fr.nn = self.nn
+    fr.dynints = self.dynints
     fr.selfname = self.selfname
     fr.uflags = self.uflags
     fr.lflag = self.lflag
@@ -95,6 +96,7 @@ def gen_restore(self, fr: Frame) -> None:
     self.ret = fr.ret
     self.retann = fr.retann
     self.nn = fr.nn
+    self.dynints = fr.dynints
     self.selfname = fr.selfname
     self.uflags = fr.uflags
     self.lflag = fr.lflag
@@ -456,7 +458,9 @@ def gen_converts(self, a: str, b: str) -> bool:
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a
-    # union, also as tuple items
+    # union, also as tuple items, and a value as a dynamic one (dynamic.py)
+    if b == "dyn":
+        return a != "dyn" and self.dyn_boxable(a) == ""
     return (is_sopt(b) and a == unopt(b)) or self.uboxes(a, b) or self.reboxes(a, b)
 
 def gen_convert_in(self, v: Val, t: str, blk: Blk) -> Val:
@@ -508,7 +512,7 @@ def gen_alloca(self, t: str, name: str) -> str:
         # a variable a closure takes: its cell, which the function allocated as it began
         self.ltype[name] = t
         self.lreg[name] = self.cells[name]
-        self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t in self.classes
+        self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t == "dyn" or t in self.classes
         if name in self.uflags:
             self.n += 1
             self.lflag[name] = f"%{name}.def.{self.n}"
@@ -519,7 +523,7 @@ def gen_alloca(self, t: str, name: str) -> str:
         return self.cells[name]
     self.n += 1
     r = f"%{name or 'h'}.{self.n}"
-    self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t in self.classes
+    self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t == "dyn" or t in self.classes
     i = Ins("slot", t, name)
     i.r = [self.n]
     self.fn.slots.append(i)

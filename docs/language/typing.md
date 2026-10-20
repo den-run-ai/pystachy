@@ -79,7 +79,8 @@ which change from run to run, but are equal for equal strs and for the same obje
 Explicit closed scalar unions such as `int | str` are supported, including `None`.
 Bounded native reference unions are also supported. `typing.Any` can annotate supported
 function/method signatures, constructor parameters and initialized module/local variables,
-which use concrete [inference](#function-and-method-templates); there is no dynamic `Any` value.
+which use concrete [inference](#function-and-method-templates); there is no dynamic `Any` value,
+but in a module that opts in to the [dynamic `Any` prototype](../dynamic-any.md).
 `None` alone can annotate a return, but cannot be a container's entire element type.
 
 `List`, `Dict`, `Set`, `FrozenSet`, `Tuple`, `Optional`, `Union`, `Callable`, `TextIO`
@@ -192,7 +193,8 @@ not prescribe a fixed data depth. Runtime traversal has recursion guards, and th
 native JSON codec has its own depth/int64 limits. Unlike other aliases, a recursive
 alias is nominal: another alias with the same members is a different type. See the
 [JSON prototype](../json-prototype.md) for representation, operations and API scope.
-`Any` remains inference-only; this adds no runtime compilation.
+`Any` remains inference-only here (but in a module that opts in to
+[dynamic `Any`](../dynamic-any.md)); this adds no runtime compilation.
 
 ## Variables and empty containers
 
@@ -474,7 +476,8 @@ concrete list type.
 These ordinary unions describe finite-depth JSON-shaped data. The
 [recursive alias prototype](#recursive-value-aliases-prototype) additionally supports
 `type Value = None | int | str | list[Value] | dict[str, Value]` with data depth
-chosen at runtime. General `Any` remains unsupported. Native class/file members
+chosen at runtime. General `Any` is a [prototype](../dynamic-any.md) that a module opts in to.
+Native class/file members
 retain the separate reference-union restrictions below.
 
 Truth tests, `bool()`, `str()`, `repr()`, printing and f-strings support these mixed
@@ -551,7 +554,8 @@ An ordinary function or method with fully annotated parameters, including one wi
 arguments, uses the same inference when it has no return annotation and returns a value.
 Its recursive calls can retain the existing `None` signature; value-returning recursion
 before a result type is known requires an explicit return annotation.
-This also applies to `-> Any`: it requests inference, not a dynamic return value.
+This also applies to `-> Any`: it requests inference, not a dynamic return value (but in a
+module that opts in to [dynamic `Any`](../dynamic-any.md)).
 For example, `return 1 if n <= 1 else n * fact(n - 1)` needs `-> int`, or a
 separate base-case `return 1` before the recursive return.
 Unsupported code becomes an error when that specialization needs it; syntax errors are

@@ -1,0 +1,8 @@
+2
+8 6 106
+107
+TypeError: 'int' object is not callable
+TypeError: 'list' object is not callable
+TypeError: K.__call__() takes 2 positional arguments but 3 were given
+2 -2
+[exit 0]

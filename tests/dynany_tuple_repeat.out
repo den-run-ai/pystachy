@@ -1,0 +1,7 @@
+() () () () (1, 'two') (1, 'two', 1, 'two')
+() () 0
+ [] abab [1, 2, 1, 2]
+MemoryError
+MemoryError
+MemoryError
+[exit 0]

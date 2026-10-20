@@ -158,7 +158,9 @@ def gen_ann(self, n: Node) -> str:
         if t == "TextIO" or t == "Self" or t.startswith("!"):
             return "file" if t == "TextIO" else self.self_type() if t == "Self" else t
         if t == "Any":
-            return "!" + ANYUSE  # (where no call types what it annotates: see declare_fn)
+            # (where no call types what it annotates, see declare_fn; a dynamic value in a module
+            # that compiles Any so: dynamic.py)
+            return "dyn" if self.dyn_policy(n.line) else "!" + ANYUSE
         if s in self.unsupported:
             return "!" + self.unsupported[s]
         if s in self.typevars:
@@ -171,7 +173,7 @@ def gen_ann(self, n: Node) -> str:
     elif k == "attr" and self.typing_attr(n) == "Self":
         return self.self_type()
     elif k == "attr" and self.typing_attr(n) == "Any":
-        return "!" + ANYUSE
+        return "dyn" if self.dyn_policy(n.line) else "!" + ANYUSE
     elif k == "binop" and n.s == "|" and self.has_path(n):
         return self.path_union(self.union_members(n, []))
     elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
@@ -219,7 +221,7 @@ def gen_ann(self, n: Node) -> str:
             return self.path_union(a)
         if base == "tuple" and len(a) == 2 and a[1].kind == "ellipsis":
             t = self.ann(a[0])
-            if unopt(t) not in ["int", "float", "bool", "str"]:
+            if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
                 return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
             return self.ctype("vtuple", [t])
         ts: list[str] = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
@@ -418,7 +420,7 @@ def gen_any_variables(self, n: Node, classbody: bool) -> None:
     if n.kind == "def":
         self.any_variables(n.kids[2], False)
         return
-    if not classbody and n.kind == "annassign" and len(n.kids) == 3 and n.kids[0].kind == "name" and self.any_in([n.kids[1]]):
+    if not classbody and n.kind == "annassign" and len(n.kids) == 3 and n.kids[0].kind == "name" and self.any_in([n.kids[1]]) and not self.dyn_policy(n.line):
         n.kind = "assign"
         n.kids = [n.kids[0], n.kids[2]]
     for k in n.kids:
@@ -843,7 +845,9 @@ def gen_opt(self, t: str, x: Node) -> str:
     return r if r != "" else f"!None/Optional is only supported for {OPTTYPES}, not {typestr(t)}"
 
 def gen_optional(self, t: str) -> str:
-    # the type of a value that is a t or None, "" if there is none
+    # the type of a value that is a t or None, "" if there is none (a dynamic value may be None)
+    if t == "dyn":
+        return t
     if self.rec_type(t) != t:
         return self.rec_fold(self.optional(self.rec_type(t)))
     if t in self.classes or is_opt(t):
@@ -873,9 +877,11 @@ def gen_ann_none(self, n: Node, seen: list[str]) -> bool:
 
 def gen_join(self, a: str, b: str) -> str:
     # the type of a value that is an a or a b, where None and optional types meet (T and None
-    # make T | None), or ""
+    # make T | None), or "" (a dynamic value and one that boxes: a dynamic value)
     if a == b or self.widens(b, a):
         return a
+    if (a == "dyn" and self.boxes(b, a)) or (b == "dyn" and self.boxes(a, b)):
+        return "dyn"
     if self.widens(a, b):
         return b
     if a in self.classes and b in self.classes:
@@ -1098,7 +1104,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # types (any argument: isinstance() narrows it), where a template may be
         if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
-    if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
+    if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
         # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
         # those of each call's), the return what the function returns; no value is boxed, so
@@ -1115,7 +1121,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             if not genann:
                 d.kids[1] = mk("noann", "", d.line, [])
                 f.anys.append("")
-    if cls != "" and (d.s == "__iter__" or d.s == "__next__") and not has_kind(d.kids[2], "yield") and self.any_in([d.kids[1]]):
+    if cls != "" and (d.s == "__iter__" or d.s == "__next__") and not has_kind(d.kids[2], "yield") and self.any_in([d.kids[1]]) and not self.dyn_policy(d.line):
         # These protocols already infer an omitted return from their body. An Any return
         # (also Iterator[Any]) uses that path, without making their parameters templates.
         # Generator annotations retain their separate yield, send and return channels.
@@ -1621,6 +1627,7 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
         if "__init__" in ci.methods and ci.methods["__init__"].cls == ci.name and ci.name not in self.tmpl:
             f = ci.methods["__init__"]
             self.scan_fields(ci, f, f.node.kids[2].kids, {})
+            self.dyn_fields(ci)  # (those an Any value is assigned later: dynamic.py)
     if ci.tag > 0:
         for name in ci.ftypes:
             if name in ci.methods:
@@ -2352,6 +2359,10 @@ def gen_refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
     # here on: so does the field of the class that declares it and of each class deriving from
     # that one, whose objects begin with its fields. Its stores of None compiled so far store a
     # null pointer, which t's None is too (see optional)
+    if t == "dyn":
+        # (an Any value's None is a box: those stores, and the tests of the field by is None
+        # compiled so far, see a null pointer, dynamic.py)
+        self.err(f"field '{name}' of {shown(ci.name)} holds None until it is given an Any value here; annotate it (self.{name}: Any = None)")
     root = self.field_root(ci, name)
     for c in self.classes.values():
         if c.ftypes.get(name, "") == NONEVAR and (c is root or self.derives(c.name, root.name)):

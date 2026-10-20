@@ -108,6 +108,10 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
             nt = self.isinst_narrow(t, n.kids[2], truth)
             if nt != "":
                 out[nm] = nt
+        elif t == "dyn" or t == "dyn[int]":
+            nt = self.dyn_narrow_type(n.kids[2], truth)  # (its box's payload, read as that type: dynamic.py)
+            if nt != "":
+                out[nm] = nt
         elif truth and t in self.classes and self.classes[t].tag > 0 and n.kids[2].kind == "name" and n.kids[2].s in self.classes and self.derives(n.kids[2].s, t):
             # The runtime class check proved this pointer has the derived layout. Keep
             # the declared storage type, and refine only reads on this control-flow path.
@@ -133,7 +137,7 @@ def gen_narrowable(self, name: str) -> bool:
     # a local (or parameter) of an optional type, union, or ordinary class: a global or field
     # may change in a call, and so may a variable that a closure assigns (nonlocal)
     t = self.ltype.get(name, "")
-    return (is_opt(t) or is_union(t) or (t in self.classes and self.classes[t].tag > 0)) and not self.is_global(name) and name not in self.nlw
+    return (is_opt(t) or is_union(t) or t == "dyn" or (t in self.classes and self.classes[t].tag > 0)) and not self.is_global(name) and name not in self.nlw
 
 def gen_narrow_by(self, test: Node, truth: bool) -> dict[str, str]:
     # narrowed becomes a copy narrowed by test being truth; the state before is returned
@@ -208,13 +212,13 @@ def gen_static(self, n: Node) -> int:
         return self.static(n.kids[1])
     if x >= 0:
         t = self.static_type(n.kids[x])
-        r = -1 if t == "" or (t in self.classes and not self.knownobj(n.kids[x])) or is_opt(t) or (is_union(t) and self.optional(t) == t) else 1 if t == "None" else 0
+        r = -1 if t == "" or t == "dyn" or (t in self.classes and not self.knownobj(n.kids[x])) or is_opt(t) or (is_union(t) and self.optional(t) == t) else 1 if t == "None" else 0
         if (n.s == "==" or n.s == "!=") and (t == "exc" or (t in self.classes and ("__eq__" in self.classes[t].methods or "__ne__" in self.classes[t].methods))):
             r = -1  # (CPython calls x.__eq__ or __ne__; an exception's class may define one)
         return r if r < 0 or n.s == "is" or n.s == "==" else 1 - r
     if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "hasattr" and not self.bound("hasattr") and len(n.kids) == 3 and n.kids[2].kind == "str":
         t = self.static_type(n.kids[1], True)
-        if t in self.classes and self.classes[t].tag > 0:
+        if t == "dyn" or (t in self.classes and self.classes[t].tag > 0):
             return -1  # the concrete class may add attributes beyond the static type
         if t != "" and (self.refl_prop_in(t, n.kids[2].s) or self.reference_union(t)):
             return -1  # (a property's getter, or the union's member, decides: reflection.py)
@@ -226,7 +230,7 @@ def gen_static(self, n: Node) -> int:
         return r if r >= 0 else (1 if r == -2 else 0) if r < -1 and self.knownobj(n.kids[1]) else -1
     if k == "call" and n.kids[0].kind == "name" and n.kids[0].s == "callable" and not self.bound("callable") and len(n.kids) == 2:
         t = self.static_type(n.kids[1], True)
-        r = self.callable_type(t) if t != "" else -1
+        r = self.callable_type(t) if t != "" and t != "dyn" else -1
         return r if r >= 0 else 1 if r == -2 and self.knownobj(n.kids[1]) else -1
     return -1
 
@@ -341,7 +345,8 @@ def gen_static_type(self, n: Node, typed: bool = False) -> str:
             # loop's later passes, unless None is all that its function assigns it)
             body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
             return "None" if only_none(body, n.s) else ""
-        return self.narrowed[n.s] if n.s in self.narrowed and (is_opt(t) or is_union(t) or t in self.classes) and t != NONEVAR else t
+        nt = self.narrowed[n.s] if n.s in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR else t
+        return nt if nt != "dyn[int]" else "dyn"  # (a box proved to hold an int or a bool: dynamic.py)
     if self.is_global(n.s) and n.s in self.gtypes and n.s not in self.gflag:
         return self.gtypes[n.s]
     return ""
@@ -350,6 +355,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
     # isinstance(x, c) for x of static type t: 1, 0, -2 for "x is not None" and -3 for "x is
     # None" (an optional value, or an object), or -1 when x's value decides otherwise or c is
     # not a type Pystachy knows
+    if t == "dyn":
+        return -1  # (its box's type decides: dynamic.py)
     if c.kind == "binop" and c.s == "|":
         # (a union, where None is NoneType; None | None raises, and so does a tuple in it)
         if not self.puretype(c, False):
@@ -504,6 +511,8 @@ def gen_cond(self, n: Node) -> str:
     return self.truth(self.expr(n, ""))
 
 def gen_truth(self, v: Val) -> str:
+    if v.t == "dyn":
+        return self.dyn_truth(v)  # (dynamic.py)
     if is_union(unopt(v.t)):
         return self.uop(v, "truth").v
     t = v.t
@@ -652,6 +661,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         self.ltype[n.s] = t0 if t0 != "" else want
     if is_opt(want) and k != "ifexp" and k != "boolop":
         want = unopt(want)  # (what types an empty display is the type a value would hold)
+    if want == "dyn" and (k == "list" or (k == "listcomp" and n.s != "gen") or k == "dict" or k == "dictcomp"):
+        # a display that flows into dynamic storage holds dynamic values from the start, so that
+        # every alias of it may store any value into it (dynamic.py)
+        want = "list[dyn]" if k == "list" or k == "listcomp" else "dict[dyn,dyn]"
     if is_union(want) and (k == "list" or k == "listcomp" or k == "dict" or k == "dictcomp"):
         # A fresh display can use its one declared container member's element
         # storage. Existing mutable containers are never widened or copied.
@@ -742,6 +755,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
+        if o.t == "dyn":
+            return self.dyn_getattr(o, n.s)  # (its box's class's attribute: dynamic.py)
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):
             # (a function of a module's top level, or a builtin: its own name; a closure's
             # qualified name is outer.<locals>.name, a bound method's C.name)
@@ -836,6 +851,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "list":
         et = elem(want) if is_list(want) and "?" not in want else ""
         soft = n is self.soft  # (an operand of ==: as its items are, see compare)
+        if et == "" and not soft and self.dyn_policy(n.line) and self.dyn_mixed(n.kids):
+            et = "dyn"  # (items of no one type: dynamic values, and the displays among them hold them too)
         items: list[Val] = []
         given = et != ""
         jt = ""
@@ -855,6 +872,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     et = v.t
         if not given and (is_opt(jt) or is_tuple(jt)):
             et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and jt == "-" and self.dyn_policy(n.line):
+            et = "dyn"  # (items of no one type, in a module that compiles Any so: dynamic values)
         if given and soft:
             for v in items:
                 et = self.wider(et, v.t) or et
@@ -887,6 +906,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "dict":
         kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
         soft = n is self.soft
+        if kv[1] == "" and not soft and self.dyn_policy(n.line) and (self.dyn_mixed([n.kids[i] for i in range(0, len(n.kids), 2)]) or self.dyn_mixed([n.kids[i] for i in range(1, len(n.kids), 2)])):
+            kv = ["dyn", "dyn"]  # (keys or values of no one type: dynamic.py)
         ks: list[Val] = []
         vs: list[Val] = []
         given = kv[1] != ""
@@ -923,6 +944,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 kv[1] = vh  # (values of mixed scalar types: of their union, as if annotated)
         if not kgiven and is_tuple(kj):
             kv[0] = self.none_items(kj)
+        if self.dyn_policy(n.line) and ((not given and jt == "-") or (not kgiven and kj == "-")):
+            kv = ["dyn", "dyn"]  # (keys or values of no one type, in a module that compiles Any so: dynamic.py)
         ks = [self.store_key(x, kv[0]) for x in ks]
         if given and soft:
             for b in vs:
@@ -937,7 +960,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(ks[i]), "i64 " + self.to_slot(vs[i])], self.key_fx(kv[0]))
         return Val(r, self.ctype("dict", kv))
     if k == "tuple":
-        ws = targs(want) if is_tuple(want) else []
+        ws = targs(want) if is_tuple(want) else ["dyn"] * len(n.kids) if want == "dyn" else []  # (dynamic items: dynamic.py)
         vals: list[Val] = []
         for i in range(len(n.kids)):
             v = self.expr(n.kids[i], ws[i] if i < len(ws) else "", returnctx, resultsoft)
@@ -1725,6 +1748,11 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         return self.call_fn(self.classes[v.t].methods["__format__"], [v, sv], [])
     if empty:
         return self.to_str(v)
+    if v.t == "dyn":
+        # by its box's type (dynamic.py): runtime.c formats a number or a str, and raises for
+        # another value with a spec that is not empty
+        sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst('A')}", f"ptr {sv.v}"]), "str")
     if is_union(unopt(v.t)):
         # Both value and spec run once, before the selected native member formats
         # or raises. A nonempty spec is legal for some members and not for others.
@@ -2283,6 +2311,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     # o[i], where o is the value of n.kids[0] and n.kids[1] the index
     t = unopt(o.t)
     sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
+    if t == "dyn":
+        return self.dyn_getitem(o, self.expr(n.kids[1], "dyn"))  # (its box's type's: dynamic.py)
     if t in ["fn[b:list]", "fn[b:dict]", "fn[b:tuple]", "fn[b:set]", "fn[b:frozenset]"]:
         self.err(f"{t[5:-1]}[...] as a value is not supported (only annotations may name a type: a type alias is a module-level name = {t[5:-1]}[...] that nothing else binds)")
     if is_kw(t) and n.kids[1].kind == "str":
@@ -2657,8 +2687,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     pre = self.narrow_by(n.kids[0], True)
     self.branch += 1  # (neither arm surely rebinds a template parameter whose argument is None)
     a = self.expr(n.kids[1], want, resultsoft=resultsoft)
-    if is_vtuple(unopt(want)):
-        a = self.coerce(a, want)  # (construct the requested representation in its arm)
+    if is_vtuple(unopt(want)) or want == "dyn":
+        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py)
     if (is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want)):
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
     # an arm that ends the program (sys.exit()) has no edge to the join, and no value
@@ -2672,7 +2702,7 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
         wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
     b = self.expr(n.kids[2], wb, resultsoft=resultsoft)
     self.branch -= 1
-    if is_vtuple(unopt(want)):
+    if is_vtuple(unopt(want)) or want == "dyn":
         b = self.coerce(b, want)
     if (is_fn(b.t) and is_callable(unopt(want))) or is_union(unopt(want)):
         b = self.coerce(b, want)
@@ -2681,6 +2711,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
     if e1 != "" and e2 != "" and a.t != b.t and (want == "" or is_opt(want)) and is_opt(self.join(a.t, b.t)):
         t = self.join(a.t, b.t)  # x if c else None: T | None
+    if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == "dyn":
+        t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     ph = Ins("phi", t, "")
     if e1 != "":
         self.incoming(ph, self.convert_at(a, t, e1).v, e1)  # (an int as an int | None: its box, made there)
@@ -2745,6 +2777,8 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False)
         rt = unopt(a.t) if n.s == "or" else a.t
         if not self.term and self.join(rt, b.t) != "":
             rt = self.join(rt, b.t)
+    if not ascond and not self.term and a.t != b.t and self.join(a.t, b.t) == "dyn":
+        rt = "dyn"  # (either operand, the other boxed where it reaches the join: dynamic.py)
     ph = Ins("phi", rt, "")
     self.incoming(ph, self.convert_at(a, rt, e1).v if not ascond and self.converts(a.t, rt) else a.v, e1)
     if not self.term:
@@ -2761,6 +2795,8 @@ def gen_unary(self, n: Node) -> Val:
     if op == "-" and (e.kind == "int" or e.kind == "float"):
         return self.expr(mk(e.kind, "-" + e.s, e.line, []), "")
     v = self.expr(e, "")
+    if v.t == "dyn":
+        return self.dyn_unary(op, v)  # (dynamic.py)
     if is_union(unopt(v.t)):
         return self.unumeric(op, v, Val("", ""), "", True)
     if is_sopt(v.t):
@@ -3196,6 +3232,8 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
     return Val(self.phi(ph), "bool")
 
 def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
+    if a.t == "dyn" or b.t == "dyn":
+        return self.dyn_arith(op, a, b)  # (a dynamic value's: dynamic.py)
     if is_union(unopt(a.t)) or is_union(unopt(b.t)):
         return self.unumeric(op, a, b, shown, False)
     du = self.dunder(op, a, b, shown)
@@ -3420,6 +3458,10 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     return True
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
+    if a.t == "dyn" or b.t == "dyn":
+        dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
+        if dc.t != "":
+            return dc
     if (op == "==" or op == "!=") and (a.t == RANGEC) != (b.t == RANGEC):
         # a range and a value of a builtin type, which is never equal to a range (CPython compares
         # them by identity); None, or a value that may be None, may be the same as a range that is
