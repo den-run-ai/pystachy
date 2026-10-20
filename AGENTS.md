@@ -112,9 +112,11 @@ If a stage times out and passes alone, report both outcomes; do not relabel the 
 partial matrix as a complete pass. Do not disable gates to make a run green. A CI group
 over its job limit is cancelled even when its tests passed; groups target under ten
 minutes, so shard a slow one instead of raising the limit
-([#562](https://github.com/den-run-ai/pystachy/pull/562)). `gc-self` is a single
-GC-stressed self-compilation with its own ten-minute bound: a change that slows every
-compilation must be fixed in the compiler
+([#562](https://github.com/den-run-ai/pystachy/pull/562)). Every workflow's jobs do, within
+15-minute limits that Lint checks (`tools/test_workflow_limits.py`): a 38-minute Coverage
+job merged unnoticed ([#731](https://github.com/den-run-ai/pystachy/pull/731)).
+`gc-self` is a single GC-stressed self-compilation with its own ten-minute bound: a change
+that slows every compilation must be fixed in the compiler
 ([#581](https://github.com/den-run-ai/pystachy/pull/581)).
 
 ## Hosted agent sessions

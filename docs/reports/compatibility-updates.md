@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `5a91594740a78bb1d3bb32d8ab7d757d8b0f3ea3`.
+**Latest evaluated main:** `8990e41776e8e74f57812120f81ec3e897065eda`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -4235,6 +4235,119 @@ checks are read separately after publication. Full local `make verify`, CPython
 regrtest and a broad PyPI/NumPy census were not run. Native imports, executed
 APIs, adapted workloads and hosted compilation remain distinct. Dated baseline
 reports/JSON and concurrent edits are preserved.
+
+## 2026-10-20 — #763: tuple exits, instrumented file flushing and coverage tooling
+
+Evaluated [main `8990e417`](https://github.com/den-run-ai/pystachy/commit/8990e41776e8e74f57812120f81ec3e897065eda),
+the sole first-parent merge after `5a91594740a78bb1d3bb32d8ab7d757d8b0f3ea3`.
+[#763](https://github.com/den-run-ai/pystachy/pull/763) was re-fetched and its merge
+verified in main's ancestry. Its tree equals implementation head
+`15a4a4d18335836bb0e566cc8d377a5e292ad70d`. #635 is merged; this update reuses
+audit #743. Coordination #491/#616 and the PR discussion were read before work;
+no implementation branch was changed.
+
+[Machine-readable evidence](compatibility-2026-10-20-coverage-runtime.json) retains
+commands, full outputs, fixture/source hashes, coverage summaries, independent
+probes and replay scripts. The changed-file review selected 11 new Python fixtures
+and 16 adjacent exit/file/container/generator fixtures, then bounded tooling checks.
+Compiler/runtime sources changed, so a fresh CPython **3.13.16** / LLVM **18.1.3**
+build was required: compiler stages 2/3 agree at **677,903 IR lines**, and all three
+runtime bootstrap stages agree at **18,709 lines**. Compiler source is `8990e417`;
+binary SHA-256 is
+`6969b66e38efa0619afaaaadb634caf76a56b5488503fc08d6577f588d3b1dee`.
+The old compiler was separately built from `5a915947`, SHA-256
+`31653d9c17c2c595d0036636d8eecd53ff1b9fdc2808d19bd3afd3b5b2a673b1`.
+
+### Measured behavior and retained boundaries
+
+* **Fixed-shape tuple `sys.exit` is corrected.** Eight independent expressions
+  cover empty, None, int, string, multiple, nested-tuple, bool and list-containing
+  tuples. Seven old JIT outcomes differ from CPython; all eight now match exact
+  stdout, stderr and status in JIT/AOT with per-allocation GC and with optimizations
+  disabled (**32 new execution comparisons**). For example, `(3,)` now exits 3
+  silently instead of printing `(3,)` and exiting 1.
+* **Instrumented `open()` no longer retains a dead writer and misses its flush.**
+  With plain `-fprofile-instr-generate -fcoverage-mapping`, the unchanged
+  `rt_list_vacated.py` fixture reads empty text at six old JIT/AOT points after
+  dropping list-held writers. Both new tiers match CPython exactly. Isolated old
+  and new runtime caches prevent cross-revision reuse. This is a real output
+  correction exposed by profiling counters, not a throughput measurement.
+* **Two pre-existing boundaries remain**, independently reproduced on both
+  revisions. `t: tuple[int, ...] = tuple([]); sys.exit(t)` prints `()` and exits 1
+  rather than 0; `tuple([3])` prints `(3,)` and exits 1 rather than 3, in JIT/AOT.
+  `print(list(iter(b"ab")))` is rejected in both compile modes instead of printing
+  `[97, 98]`. These are also explicitly disclosed by #763's report. Retain them
+  under exception/bytes-iterator tracking [#10](https://github.com/den-run-ai/pystachy/issues/10)
+  and [#12](https://github.com/den-run-ai/pystachy/issues/12), not as new regressions
+  or duplicate issues. The fixed-shape result does not establish all tuple support.
+
+| Fresh evidence category | Result |
+|---|---|
+| CPython recordings | All **11** new fixtures match output, exit status and final error line. |
+| Selected differential cases | **54/54** each: native, GC-stressed, optimization-disabled and CPython-hosted JIT/AOT (**216** checks). |
+| UBSan + GC | **24/24** checks on the 11 new fixtures plus the file-lifetime regression. |
+| Configuration variants | All six rows pass **24** checks each (**144**): five pairwise IR-pass rows and CFLAGS `-O0`. |
+| IR validation and compile comparison | LLVM/IR checker accepts all **27** selected programs. Of **3,322** retained programs, **3,320** outcomes/normalized IR hashes are identical; only the two intended exit fixtures differ, with no new rejection. |
+| Adapted port smoke | **8/8** JIT/AOT checks across iniconfig, tomli_w, roman and pylev. This is not an upstream suite. |
+| Runtime contracts | **460** runtime entries, **70** exception classes and **171** functions agree. |
+| Direct file/memory probe | Normal, library and GC-stressed modes pass. For 128 dropped files / 136,314,880 allocated buffer bytes, peak outstanding is **35,971,072** bytes normally and **4,194,304** stressed, under the **41,975,808** limit; 4 versus 640 collections. No old/new performance ratio inferred. |
+| Tool tests and negative controls | **16** coverage + **4** workflow-limit unit tests pass. Both report formats reject wrong/mixed revisions and missing shards; three invalid shard specifications reject. The two valid shards are disjoint and complete, **1,627 + 1,627 = 3,254** cases. |
+
+### Coverage results and an explicit failed attempt
+
+The successful **scoped** native coverage run executes three cases / six checks:
+all **7/7 changed C lines** run, **14/18** associated branches taken. Its overall
+15.2% line / 10.4% branch figures are for this tiny selection, **not** a regression
+against #763's repository-wide historical report. Native C coverage excludes
+`runtime.py` and direct C probes; signal deaths and exec can omit profiles.
+
+The first hosted run selected two corpus cases **and the cache suite**. Its four
+corpus checks and **67 cache assertions pass**, but **report generation fails**:
+33 processes produce 33 coverage files, whereas the harness expects 32 after one
+intentional kill. `tests/cache.sh` uses `ps` to decide whether its intermediate
+`os.system` shell and Python parent both need killing. A separate read-only PID
+control records namespace PIDs different from `/proc` IDs and `ps` errors
+(`fatal library error, lookup self`); this points to this execution environment's
+PID/proc mismatch invalidating the kill/count assumption. No upstream compiler
+regression or passing cache coverage report is claimed. The failed command,
+cache log and diagnostic control are retained; no implementation workaround was
+applied and no issue was filed for an environment-dependent diagnosis.
+
+A separate **corpus-only rerun succeeds**, with all **5/5 compiler processes**
+captured, four checks passing, and **3/3 changed compiler statements / 2/2 changed
+branches** covered. Its scoped totals are 32.2% statements / 23.2% branches, not
+whole-repository percentages. Both runs use the existing CPython 3.13.16 virtual
+environment with pinned **coverage.py 7.16.2**; the base interpreter lacks coverage.
+
+### Imports, reproduction and limits
+
+Fresh isolated `--metadata` sweeps remain **148/464 native** and **150/464
+stub-assisted**, with **58 exclusions**, the identical **522-source CPython hash
+inventory**, zero timeouts and unchanged first errors after checkout-prefix
+normalization. Throwing stubs remain diagnostics, not C-module implementations.
+No adaptation was removed or reclassified; existing minor/major assessments and
+first-error limits remain. Other unrelated known gaps retain dated results rather
+than being asserted re-tested here. No general NumPy/PyPI support or full CPython
+regrtest claim follows from these measurements.
+
+Replay embedded `audit-763.py` modes `build`, `references`, `tool-tests`, `checks`,
+`sanitize`, `variants`, `runtime`, `fileprobe`, `ir`, `oracle`, `extras`, `imports`,
+`stubs`, `consumer-smoke`, `runtime-coverage`, `hosted-coverage`, `pid-control`,
+`hosted-corpus`; `audit-763-probes.py` modes `exit-matrix`, `writer-control`, `gaps`,
+`report-controls`; then the assembler. The full hosted-cache attempt is expected
+to be environment-sensitive as documented above, not silently treated as passed.
+Scripts include `audit-737.py`/`audit-725.py` dependencies. Correctness groups ran
+concurrently on a shared host; wall times do not establish performance changes.
+
+Historical implementation-head **CI, Coverage, Variants, Packages, Installation
+and Lint all succeed** ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39372380481),
+[Coverage](https://github.com/den-run-ai/pystachy/actions/runs/39372380620)); these
+are separately attributed to its tree-identical implementation head, not local
+full-suite reruns. Audit-head checks are read after publication. Full local
+`make verify`, broad benchmarks and actual upstream package suites were not
+repeated. Only report/evidence changes are added beyond current main; dated files
+and concurrent edits are preserved. The inherited sort recording's two trailing
+spaces are exact CPython output, not altered to satisfy a whitespace-only check.
 
 ## 2026-10-20 — #732: syntax rejection and continuation correctness
 

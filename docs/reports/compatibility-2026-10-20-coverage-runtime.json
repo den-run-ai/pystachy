@@ -1,0 +1,2754 @@
+{
+  "status": "completed",
+  "date": "2026-10-20",
+  "source_revision": "8990e41776e8e74f57812120f81ec3e897065eda",
+  "previous_evaluated_main": "5a91594740a78bb1d3bb32d8ab7d757d8b0f3ea3",
+  "merged_prs": [
+    763
+  ],
+  "compiler_build_source": "8990e41776e8e74f57812120f81ec3e897065eda",
+  "compiler_sha256": "6969b66e38efa0619afaaaadb634caf76a56b5488503fc08d6577f588d3b1dee",
+  "previous_compiler_build_source": "5a91594740a78bb1d3bb32d8ab7d757d8b0f3ea3",
+  "previous_compiler_sha256": "31653d9c17c2c595d0036636d8eecd53ff1b9fdc2808d19bd3afd3b5b2a673b1",
+  "environment": {
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "executable": "/root/.local/bin/python3.13",
+    "llvm": "18.1.3",
+    "coverage_python": "/workspace/scratch/3ba735e28fa7/audit-coverage-env/bin/python",
+    "coverage_version": "7.16.2",
+    "workers_per_group": 2,
+    "concurrency": "Correctness groups overlap on a shared host. Wall times are descriptive, not speedup/regression evidence."
+  },
+  "stdlib": {
+    "path": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+    "modules": 522,
+    "inventory_sha256": "a0d5b7bc965af0a8cc1e27ff71911aa8bbdb03ca472c1cc11c24009b9e07d0c5",
+    "inventory_source": "compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256"
+  },
+  "changed_file_sha256": {
+    ".coveragerc": "6a0796da170cfd7a741ae0aefb40b26f642d4a5605d1ef54991666c2c83f9932",
+    ".github/workflows/coverage.yml": "8ef8134d30ab71225c8bbb675b818c2c05540eed0aefd174c0cd5988f99bf313",
+    ".github/workflows/install.yml": "f24397bed472c27f464a85fb390f2c9193d9fc18e8ea1e45626f86979a2bb9a2",
+    ".github/workflows/lint.yml": "45f4865d14e786c9c3c586a6fd79a64f63eb9b159cd2d95a0cd8483230aca27c",
+    ".github/workflows/variants.yml": "abfc27e79b88a6f491e4fc3dbbe6c45405757708f7fd975fd9ac599c1bfbb434",
+    "AGENTS.md": "c2e75a630a2659813e1ca35bc89b42ca7804235b57f46a7a5828dfeafd872af9",
+    "Makefile": "02b04d04eaf99f9c673046d612eeec080cb04774c5884e4851cc0bbe46028c46",
+    "README.md": "00aea7a780673ec0f180dcbbddd9303447b06295f92c4e5f5538457ab36604db",
+    "docs/reports/coverage-2026-10-20.md": "3193f173a46fbc08f3a9f4f95029b17ce99e71efa6cf194abb73e68801b90a77",
+    "docs/testing.md": "f464069904136c50992c4a3a97c6fa547266dbc032dee59b6955006a4e7e209f",
+    "runtime.c": "c5aca168117950ba9833dea284fbfccfdabf05b87f2bbb0c63dc0b8973f9e5a2",
+    "src/pystachy_compiler/builtins.py": "b03200e4ca3f7c0989aceca2f1b3caf231843f53644271697b525cf6c75abcda",
+    "tests/bytes_int_items.out": "24acceea88f21ae5e25bcd9f2b77d23a176e18b5b32b0d2963de1759077f941c",
+    "tests/bytes_int_items.py": "e3d4025f90df136f90c64b8be9d34f692c6a564490af7f02b5898cbb715efcd6",
+    "tests/cache.sh": "96c137cd76a8e3aba52cd72a632055a1ff62c5ea2c446c906255ab571556cf06",
+    "tests/exit_optional_code.out": "3f65a04fcdfb4ef0952d061882f170ebde065608d9eba23c872967907d171ac9",
+    "tests/exit_optional_code.py": "bcb0bbef5e470acba28dc1b11985d616a546cd418fdcbeee11394cfcc9d12b3c",
+    "tests/exit_tuple_status.out": "a96860f55243aa956da10dc7e40e8754699d2f629dc4b34d7a162c992ee76d2e",
+    "tests/exit_tuple_status.py": "f89de7fa5aa52c8eda272758cefbd350f651e14a720dfd573fbc92b94d2505bf",
+    "tests/gen_stopiteration_uncaught.err": "c6aa5c67fcb17378e9debb7470569e5c3b5d2167300b08a9b9006a4111d9af39",
+    "tests/gen_stopiteration_uncaught.out": "f002f445c405489e8d3074b3853b7aa9bb9797cbd4e39202a703bdf2a084af00",
+    "tests/gen_stopiteration_uncaught.py": "0c5d346eb47232e93d5fc2ecc7569fed06bdf8f60bce8822722a608e7e69ae26",
+    "tests/int_float_compare_edges.out": "20e9c4d42b8a152150827d60a4b8ff2b5cf1a474baead1736260b7993ab2514e",
+    "tests/int_float_compare_edges.py": "2d5cb1eb4e612be489f97631ed06c9c8dc20e5ccb9d39d655c939ab4860ed4b4",
+    "tests/list_bound_extremes.out": "5e7b3ab8601459562d30de1133f63f8527eaa30f90622358ad17d4967b9625ab",
+    "tests/list_bound_extremes.py": "64286e2e5082513b0e7c880ed95931a02abf6e2add3755fc298bfa711eb1f417",
+    "tests/memory_error_uncaught.err": "f714d27c23636bcab37b337294ebb90fb2dbe809be2df2d4d60069aabcf50524",
+    "tests/memory_error_uncaught.out": "1632b90e34a5a4658ca3684f269fdfb759079093ab98da088baf9c6b11edf0a8",
+    "tests/memory_error_uncaught.py": "843e02489042200f1a53dfe7b6dd96e92a519d7fb0407fa4ba09f74003f752d9",
+    "tests/none_operand_errors.out": "4095188e123d58b58652ed0f4d0c703b5e357d30ddad1d749bd97fefa93a74a2",
+    "tests/none_operand_errors.py": "d3d35344a90ba2db86e3aeb85020dada74a696bc90c39e532be00f76a8d94a5b",
+    "tests/set_discard_optional.out": "5742ec2673f54790830cf3c26dddbbf35ce927a22563dd370cad0ff0fbe09e91",
+    "tests/set_discard_optional.py": "2514c7c9b462f5f62357637b483b79cd22f05221edfa117b507b65b225c7aad2",
+    "tests/set_table_paths.out": "c47b2e726ec3eef7b6f7c59f8055d36ed68c8dfe7f41ccf7f5f2df2a6d1963d6",
+    "tests/set_table_paths.py": "9d762f43ab8813d94114200960455e3dfb090ea4c0335611d92ff7bb98c20f2d",
+    "tests/sort_numbers_merge.out": "5f813ee187dba3ea9eecf2587e586675c78fcf1276c497e4b71c196d63b1444f",
+    "tests/sort_numbers_merge.py": "6c388826f79a8759c445386a3f5eeeb8126c4b3bd496f07a7ba912f1b9b7943c",
+    "tools/coverage.sh": "50ecb16f439934260fe1148ee939f8c5d48899fd108a81f2420807f37efd90ba",
+    "tools/coverage_report.py": "8b1afc1a8365447583f60a71d9e65b85a9b06cb0088e86630c7eb0aaea6fef42",
+    "tools/runtime_coverage.sh": "9a521d9c7290aab28c63cf90a205d01961b7e701831aed67bb3c9b0d418dfa98",
+    "tools/shard_cases.sh": "a19e7d95be8bcd1b64e99cf7e234fd7f46d4d549989ce01b2f500177e3f85368",
+    "tools/test_coverage_report.py": "189bc9abdbf359261fda3e3bc8dd160516a9da947ab95b54b99bd8703d10ce0c",
+    "tools/test_workflow_limits.py": "a62591eb8db999ddb412356ad44e44436b5735d6082cd289564610bb55ed59f3",
+    "tools/variants.sh": "cc7d3bc5a2d7d8f225f2e419b483f5a3928526061cde72d5fa3eb0c9544e807e"
+  },
+  "fixture_sha256": {
+    "tests/bytes_int_items.py": "e3d4025f90df136f90c64b8be9d34f692c6a564490af7f02b5898cbb715efcd6",
+    "tests/bytes_int_items.out": "24acceea88f21ae5e25bcd9f2b77d23a176e18b5b32b0d2963de1759077f941c",
+    "tests/exit_optional_code.py": "bcb0bbef5e470acba28dc1b11985d616a546cd418fdcbeee11394cfcc9d12b3c",
+    "tests/exit_optional_code.out": "3f65a04fcdfb4ef0952d061882f170ebde065608d9eba23c872967907d171ac9",
+    "tests/exit_tuple_status.py": "f89de7fa5aa52c8eda272758cefbd350f651e14a720dfd573fbc92b94d2505bf",
+    "tests/exit_tuple_status.out": "a96860f55243aa956da10dc7e40e8754699d2f629dc4b34d7a162c992ee76d2e",
+    "tests/gen_stopiteration_uncaught.py": "0c5d346eb47232e93d5fc2ecc7569fed06bdf8f60bce8822722a608e7e69ae26",
+    "tests/gen_stopiteration_uncaught.out": "f002f445c405489e8d3074b3853b7aa9bb9797cbd4e39202a703bdf2a084af00",
+    "tests/gen_stopiteration_uncaught.err": "c6aa5c67fcb17378e9debb7470569e5c3b5d2167300b08a9b9006a4111d9af39",
+    "tests/int_float_compare_edges.py": "2d5cb1eb4e612be489f97631ed06c9c8dc20e5ccb9d39d655c939ab4860ed4b4",
+    "tests/int_float_compare_edges.out": "20e9c4d42b8a152150827d60a4b8ff2b5cf1a474baead1736260b7993ab2514e",
+    "tests/list_bound_extremes.py": "64286e2e5082513b0e7c880ed95931a02abf6e2add3755fc298bfa711eb1f417",
+    "tests/list_bound_extremes.out": "5e7b3ab8601459562d30de1133f63f8527eaa30f90622358ad17d4967b9625ab",
+    "tests/memory_error_uncaught.py": "843e02489042200f1a53dfe7b6dd96e92a519d7fb0407fa4ba09f74003f752d9",
+    "tests/memory_error_uncaught.out": "1632b90e34a5a4658ca3684f269fdfb759079093ab98da088baf9c6b11edf0a8",
+    "tests/memory_error_uncaught.err": "f714d27c23636bcab37b337294ebb90fb2dbe809be2df2d4d60069aabcf50524",
+    "tests/none_operand_errors.py": "d3d35344a90ba2db86e3aeb85020dada74a696bc90c39e532be00f76a8d94a5b",
+    "tests/none_operand_errors.out": "4095188e123d58b58652ed0f4d0c703b5e357d30ddad1d749bd97fefa93a74a2",
+    "tests/set_discard_optional.py": "2514c7c9b462f5f62357637b483b79cd22f05221edfa117b507b65b225c7aad2",
+    "tests/set_discard_optional.out": "5742ec2673f54790830cf3c26dddbbf35ce927a22563dd370cad0ff0fbe09e91",
+    "tests/set_table_paths.py": "9d762f43ab8813d94114200960455e3dfb090ea4c0335611d92ff7bb98c20f2d",
+    "tests/set_table_paths.out": "c47b2e726ec3eef7b6f7c59f8055d36ed68c8dfe7f41ccf7f5f2df2a6d1963d6",
+    "tests/sort_numbers_merge.py": "6c388826f79a8759c445386a3f5eeeb8126c4b3bd496f07a7ba912f1b9b7943c",
+    "tests/sort_numbers_merge.out": "5f813ee187dba3ea9eecf2587e586675c78fcf1276c497e4b71c196d63b1444f",
+    "tests/exit_bool.py": "24c03e67fdb96968804ed256f903b17d6bc4fc5784833a4c0713383ab9845924",
+    "tests/exit_bool.out": "a8b0bb0c2e06412cf3124efd8c48579fac31a88aebbaaaa3187d1752aa714f84",
+    "tests/exit_builtin.py": "3da7c7c1ed9bfe5d650a872672ec3c9a2ab26669bc6ac078cda57e344032c24c",
+    "tests/exit_builtin.out": "3c27f0675cc4717acc80c0143d05dc3a8ea2d0788dc2ea18800e39709ff4aee4",
+    "tests/exit_message.py": "9775d4c1e45042275e4af6741631b229586b326e07bc152e8e420642e5958981",
+    "tests/exit_message.out": "f890253e70d6a4870eb2c6454a550b7411304e0579e81e3d429c29e31e32ace9",
+    "tests/exit_message.err": "d5aaec959be7381d586f93ca3eac7757e1b8ec066f404538d8dae476b6097d17",
+    "tests/exit_none.py": "f7f2ee45ff7388e860ff9d303abe2f088b04a8aff702ea6d9c06aaab2018aa09",
+    "tests/exit_none.out": "f6fe81a2720f400e8ad3c2ec99c3798b42f4289dd541c4a1974fe83f4a708b2b",
+    "tests/exit_none_object.py": "cd5a9524776ee032b0d7ddbfce7632ec7c37205fba14beb70f8e5d011359e678",
+    "tests/exit_none_object.out": "93a96b9b4743dca15ee24c8aa0fbcab58863fa48d2df3753ee45c60767efe1cd",
+    "tests/exit_systemexit.py": "e53a9e706c298c22b62ef77480aa3e4358d5e9fefac125fb4cef0bee727b629e",
+    "tests/exit_systemexit.out": "0ba9253153f37ca908f2d2faee6e7b8ba1376fd851d735f6e5abc6fe71c82d5a",
+    "tests/gen_stopiteration.py": "028cf16e707cc97472e3d5f4eb768008adb7e8ff559327f5273672a7f8736207",
+    "tests/gen_stopiteration.out": "43b60dcd92ea0452a010ea2b6fabbab4aef6fe96869114527f34f9d552a81b5d",
+    "tests/gen_stopiteration.err": "c6aa5c67fcb17378e9debb7470569e5c3b5d2167300b08a9b9006a4111d9af39",
+    "tests/io_dropped_buffers.py": "4e1de436b6ccbc29b5bbaef3a9bf72ef335a072f3dcd66d23bf498644cd56ae3",
+    "tests/io_dropped_buffers.out": "9ab828e95c5387cdbc65df00e726e8501901344ed69177ed4901e011f8c1c5f2",
+    "tests/io_open_newline_first.py": "89ad1994ac3fbdb1ac12e46e911c1073e9a070060a36ff451c00a3fcb5e92ffa",
+    "tests/io_open_newline_first.out": "cb3a6b5bb21915d99c74065235efba94a401b2f293c7be3102f3a032819b0645",
+    "tests/io_open_newline_first.err": "5900cd1d606d314af7d67a0a829ebb1c10768107fea221a08f990c680ef91e33",
+    "tests/io_open_nul_encoding.py": "b69cdd861bede58edc54d116f61550f35a92ebc2ec62567960dd3feb7ebfcd8a",
+    "tests/io_open_nul_encoding.out": "cb3a6b5bb21915d99c74065235efba94a401b2f293c7be3102f3a032819b0645",
+    "tests/io_open_nul_encoding.err": "594fe0ae223818160ab864ea4e73aa1996ba36e845cc0c6d0366b8ebdd5b75bb",
+    "tests/rt_list_empty.py": "770dfd6270f6383641a5c368d8394182db2ca268a1edb0735754a011d9df7100",
+    "tests/rt_list_empty.out": "18dfb55a73085279e8937c34a3b807aed4dadd42649a9cc744be349d73135dee",
+    "tests/rt_list_index.py": "ed9893381ecb0bb459372f092c6708512a5ba4a0df470cf4c0da535cea76ae95",
+    "tests/rt_list_index.out": "a8b0bb0c2e06412cf3124efd8c48579fac31a88aebbaaaa3187d1752aa714f84",
+    "tests/rt_list_index.err": "ab7870a079d9bb68001b24315aa6a961b6f19061e7f39f2c65ecc88e4fe9a031",
+    "tests/rt_list_index_number.py": "b10bf69301bb18624fd9ccf14a52508178f4e9332e7c525cd8d553edf018ba0b",
+    "tests/rt_list_index_number.out": "f4db443d302a5e2d0adc4514000d450b9a38bd0758bb3b5895eca70a50f678c4",
+    "tests/rt_list_index_number.err": "d30bf4da0588e768e159ecd704cabda3dddfff49564bcf851b38704b8e10991f",
+    "tests/rt_list_remove.py": "5377d8d13f9fe866fc7b19525ea83d4dc4f76823fbd46ef6b00c5564e5f92bad",
+    "tests/rt_list_remove.out": "a8b0bb0c2e06412cf3124efd8c48579fac31a88aebbaaaa3187d1752aa714f84",
+    "tests/rt_list_remove.err": "8c2d24f7e29b5b5736fbfac69a9b06f73fba8d8c378283d3fe977bf2ddb1e402",
+    "tests/rt_list_remove_number.py": "154df3cfb1a19e31314a6afc02adbf7d79c1f00ae8380c6306c9035b7dd06b1b",
+    "tests/rt_list_remove_number.out": "aa00e92e182012c2c514e0b0e9a7a017e7f474749e1756d0ec615052624b12ab",
+    "tests/rt_list_remove_number.err": "8c2d24f7e29b5b5736fbfac69a9b06f73fba8d8c378283d3fe977bf2ddb1e402",
+    "tests/rt_list_vacated.py": "a2b143979f01dc979c34e1802b802729b3fd8512de309efb7ef936d3ba6bfb71",
+    "tests/rt_list_vacated.out": "c365862d4a02bc2f348adda100c47d57b64b2a865dfebf67bcae7e30c4eeb6af",
+    "tests/port_iniconfig_parse.py": "8e7bae864bb9245838d276ba96103092960101706af5fadec789b3b1ba1920e7",
+    "tests/port_iniconfig_parse.out": "5b61442c41d10779377565a73cc2aa430ad76788c1bac1e9c54ed96ce1d70a4a",
+    "tests/port_iniconfig_parse.err": "8e216ada6c9734887816d4b915d169d3411a6a3864f1f4c1c89b60270bb7bef8",
+    "tests/port_iniconfig_parse.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a",
+    "tests/port_tomli_w_tables.py": "2ac38cab4b96318fd37a2a4e6c6c5a5a9784fbf1a27901951279cc1528407864",
+    "tests/port_tomli_w_tables.out": "dc24ec2679ec761bc5b227d4a883cb22b9b872b8eedb5f7b9d6ec679520a6a4a",
+    "tests/port_tomli_w_tables.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a",
+    "tests/port_roman_convert.py": "bab26b99ae00f8856691761a5757c8f445a5f94d8b6ad6eb7a6a866f36b7ffcf",
+    "tests/port_roman_convert.out": "4d1861d9ddf84d87f7e43aa7bb57f4c70da6e64e01bd285544c97ec721af1b77",
+    "tests/port_roman_convert.err": "cd30c2cdc735c4f991ea09b0f627cc4dd56be70ee7720620018315288686353e",
+    "tests/port_roman_convert.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a",
+    "tests/port_pylev_imports.py": "c52196ea20c3f833a69997055d77369d4be69e698dda98158c305cf3697250e7",
+    "tests/port_pylev_imports.out": "6a356d9f2a0ef4e149f62e6adcf1585b0cbabf0d3364ad97b310a6e13ba3ffc4",
+    "tests/port_pylev_imports.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a"
+  },
+  "records": {
+    "imports-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/imports-metadata.json",
+        "./pystachy",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/imports.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "148 of 464 modules import: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl._threading_handler _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins abc argparse base64 concurrent dataclasses email email._parseaddr email.base64mime email.charset email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri reprlib stringprep tempfile traceback typing wave wsgiref wsgiref.headers wsgiref.validate xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n58 left out, as lib/ has _markupbase, _opcode_metadata, _weakrefset, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, gettext, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib, warnings, weakref: _markupbase _opcode_metadata _weakrefset bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt gettext heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser warnings weakref\n\n   56  imports the missing module _warnings\n   44  imports the missing module _socket\n   27  imports the missing module _signal\n   15  class 'email.charset.Charset' cannot be used as a value (classes are not values: call it, or read an\n   11  imports the missing module _ctypes\n   10  imports the missing module pyexpat\n    9  class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribut\n    9  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n    8  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    7  imports the missing module _contextvars\n    7  imports the missing module _bz2\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    5  imports the missing module termios\n    5  imports the missing module _dbm\n    4  unsupported module attribute os.O_RDONLY\n    4  inheritance with generic class templates is not supported: annotate __init__ parameters with concret\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  imports the missing module _tokenize\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    3  imports the missing module _elementtree\n    2  imports the missing module msvcrt\n    2  unsupported module attribute __future__.all_feature_names\n    2  imports the missing module zlib\n",
+      "stderr": "",
+      "wall_seconds": 55.764032524995855,
+      "expected_exit": 0
+    },
+    "shard-invalid-2-2": {
+      "command": [
+        "tools/shard_cases.sh",
+        "2/2"
+      ],
+      "environment": {},
+      "exit": 2,
+      "stdout": "",
+      "stderr": "tools/shard_cases.sh: no shard 2 of 2\n",
+      "wall_seconds": 0.0020793139992747456
+    },
+    "references": {
+      "tests/bytes_int_items.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 0,
+        "stdout": "(80, 121, 115) () [80, 121, 115] (80, 121, 115, 0) [0, 1, 2, 3]\n[1, 2] True True [1, 2, 9]\n{97: None, 98: None} {80: 0, 121: 0, 115: 0} {}\n[1, 65, 66, 3]\n[120, 65, 121, 3]\nValueError: attempt to assign sequence of size 1 to extended slice of size 2\n80 [121, 115]\n[0] 255\n97 [] 122\nValueError: not enough values to unpack (expected at least 2, got 1)\n[0] [122, 1]\n",
+        "stderr_last": "",
+        "recording_equal": true
+      },
+      "tests/exit_optional_code.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 4,
+        "stdout": "sys.exit: SystemExit() ''\nSystemExit: SystemExit(None) 'None'\nsys.exit((code,)): SystemExit(None) 'None'\nmade: SystemExit(None) 'None'\nraised: SystemExit(None)\nsys.exit: SystemExit(3) '3'\nSystemExit: SystemExit(3) '3'\nsys.exit((code,)): SystemExit(3) '3'\nmade: SystemExit(3) '3'\nraised: SystemExit(3)\nsys.exit(()): SystemExit() ''\nsys.exit((1, 'x')): SystemExit(1, 'x') \"(1, 'x')\"\nSystemExit((1, 'x')): SystemExit((1, 'x')) \"(1, 'x')\"\nexiting\n",
+        "stderr_last": "",
+        "recording_equal": true
+      },
+      "tests/exit_tuple_status.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 3,
+        "stdout": "bye\n",
+        "stderr_last": "",
+        "recording_equal": true
+      },
+      "tests/gen_stopiteration_uncaught.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 1,
+        "stdout": "0\n1\n",
+        "stderr_last": "RuntimeError: generator raised StopIteration\n",
+        "recording_equal": true
+      },
+      "tests/int_float_compare_edges.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 0,
+        "stdout": "-1e+19 False False True False False True False True\n-9.223372036854778e+18 False False True False False True False True\n-9.223372036854776e+18 False True False False False True False True\n-3.5 True False False False False True False True\n-2.5 True False False True False False False True\n-3.0 True False False False True False False True\n9.223372036854776e+18 True False False True False False True False\n1e+19 True False False True False False True False\nTrue False True\n2 1 9\n3 -1 -27\n4 1 81\n30 1 205891132094649\n-401 0.0 0.0 -0.0 -0.0 0.0\n-1000 0.0 0.0 -0.0 -0.0 0.0\n-308 0.0 1e+308 -1e+308 -0.0 0.0\n-309 0.0 0.0 -0.0 -0.0 0.0\n",
+        "stderr_last": "",
+        "recording_equal": true
+      },
+      "tests/list_bound_extremes.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 0,
+        "stdout": "-300 [99, 10, 20, 30, 20]\n-5 [99, 10, 20, 30, 20]\n-4 [99, 10, 20, 30, 20]\n-1 [10, 20, 30, 99, 20]\n0 [99, 10, 20, 30, 20]\n4 [10, 20, 30, 20, 99]\n300 [10, 20, 30, 20, 99]\n-9223372036854775808 [99, 10, 20, 30, 20]\n9223372036854775807 [10, 20, 30, 20, 99]\n-100 4 1\n-5 -1 1\n0 -1 1\n-4 -2 1\n1 3 1\n2 100 3\n-9223372036854775808 9223372036854775807 1\n0 1 ValueError: 20 is not in list\n2 3 ValueError: 20 is not in list\n0 -3 ValueError: 20 is not in list\n-1 -1 ValueError: 20 is not in list\n3 -100 ValueError: 20 is not in list\n0 2 2\nValueError: 'b' is not in list\n",
+        "stderr_last": "",
+        "recording_equal": true
+      },
+      "tests/memory_error_uncaught.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 1,
+        "stdout": "kept in a buffer 4\n",
+        "stderr_last": "MemoryError\n",
+        "recording_equal": true
+      },
+      "tests/none_operand_errors.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 0,
+        "stdout": "+= 3\n*= 6\nstr += tt!\nreversed [1, 0]\niter 0\nTypeError: unsupported operand type(s) for +=: 'NoneType' and 'int'\nTypeError: unsupported operand type(s) for *=: 'NoneType' and 'int'\nTypeError: unsupported operand type(s) for +=: 'NoneType' and 'str'\nTypeError: 'NoneType' object is not reversible\nTypeError: 'NoneType' object is not iterable\n",
+        "stderr_last": "",
+        "recording_equal": true
+      },
+      "tests/set_discard_optional.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 0,
+        "stdout": "2 [1, 3] ['k1']\n-1 [1, 3] ['k1']\n7 [1, 3] ['k1']\nremoved 1 [3]\nremoved 1 []\nKeyError: None\nKeyError: None\nKeyError: 9\nKeyError: 'k9'\n",
+        "stderr_last": "",
+        "recording_equal": true
+      },
+      "tests/set_table_paths.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 0,
+        "stdout": "[17, 9]\n[17, 33, 25]\n['aa', 'bb', 'c'] 3\n5 6\n1 3 set()\n[3, 97] [97, 3]\n[0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35, 36, 37, 38, 39]\n[0, 5, 6, 7]\n[2, 8, 14, 17, 20] [8, 17, 20, 14]\n",
+        "stderr_last": "",
+        "recording_equal": true
+      },
+      "tests/sort_numbers_merge.py": {
+        "interpreter": "/root/.local/bin/python3.13",
+        "exit": 0,
+        "stdout": "random 1000 True [1571, 3159, 3376, 3422] [995460, 996048, 998896] 242548 [998896, 996048, 995460] True\nfew values 700 True [0, 0, 0, 0] [4, 4, 4] 681402 [4, 4, 4] True\ntwo runs 1150 True [0, 1, 2, 3] [1994, 1996, 1998] 911043 [1998, 1996, 1994] True\nblocks 400 True [0, 1, 2, 3] [597, 598, 599] 595613 [599, 598, 597] True\ndescending runs 300 True [1, 2, 3, 4] [298, 299, 300] 45023 [300, 299, 298] True\nextremes 250 True [-9223372036854775808, -9223372036854775808, -9223372036854775808, -9223372036854775808] [9223372036854775807, 9223372036854775807, 9223372036854775807] 599107 [9223372036854775807, 9223372036854775807, 9223372036854775807] True\nfloats 600 True [-49.857142857142854, -49.857142857142854, -49.714285714285715] [91.71428571428572, 92.57142857142858] 1565.7142857142858  \nzeros 260 True [-2.0, -2.0, -2.0] [2.0, 2.0] 0.0 -+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++- -+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-++-+++-+++-++-+++-\ninfinities 170 True [-inf, -inf, -inf] [inf, inf] nan  \nnans 20 3 [1, 3, 6, 11, 14, 17, 19] [0, 1, 5, 7, 10, 13, 18] 7 122969\nnans 63 17 [1, 46, 61, 62] [0, 1, 4, 17] 4 895422\nnans 65 3 [1, 12, 19, 23, 25, 26, 27, 29, 30, 31] [0, 1, 2, 7, 9, 11, 14, 17, 24, 27] 22 354127\nnans 200 17 [1, 46, 47, 52, 97, 99, 101, 142, 146, 156] [0, 1, 2, 50, 51, 56, 100, 101, 102, 150] 12 667405\nnans 1000 3 [1, 3, 18, 21, 22, 34, 37, 39, 40, 41] [0, 3, 4, 5, 6, 7, 8, 12, 13, 14] 334 399661\nnans 1000 101 [102, 305, 429, 432, 496, 558, 622, 744, 808, 870] [0, 75, 137, 261, 370, 496, 564, 629, 697, 762] 10 783755\nnan runs two 7 [3, 10, 17, 24, 31, 38, 45, 52] [1, 8, 15, 22, 29, 36, 43, 50] 164 27326\nnan runs blocks 7 [4, 11, 18, 25, 32, 39, 46, 53] [5, 12, 19, 26, 33, 40, 47, 54] 57 217829\nnan runs two 23 [11, 34, 57, 80, 103, 126, 149, 172] [11, 34, 57, 80, 103, 126, 149, 172] 50 835333\nnan runs blocks 23 [14, 37, 60, 83, 103, 126, 149, 172] [19, 42, 65, 88, 111, 134, 157, 180] 17 476464\nnan runs two 37 [18, 55, 92, 129, 166, 203, 240, 258] [18, 55, 92, 129, 166, 203, 240, 277] 31 223130\nnan runs blocks 37 [29, 66, 103, 118, 155, 192, 240, 277] [7, 44, 81, 122, 159, 196, 211, 248] 11 853935\n",
+        "stderr_last": "",
+        "recording_equal": true
+      }
+    },
+    "control-native-missing-shard": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/coverage_report.py",
+        "--runtime",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/native-missing-shard",
+        "8990e41776e8e74f57812120f81ec3e897065eda",
+        "false"
+      ],
+      "environment": {},
+      "exit": 1,
+      "stdout": "",
+      "stderr": "tools/coverage_report.py: corpus: shards 0/2, not all 2 of them\n",
+      "wall_seconds": 0.03546319700399181
+    },
+    "pid-control": {
+      "command": [
+        "/bin/sh",
+        "-c",
+        "printf \"shell_pid=%s parent_pid=%s\\n\" \"$$\" \"$PPID\"; ps -o pid=,ppid=,comm= -p \"$$\"; ps -o comm= -p \"$PPID\"; readlink /proc/self; sed -n \"/^NSpid:/p\" /proc/self/status"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "shell_pid=7 parent_pid=5\n640351\nNSpid:\t640352\t11\n",
+      "stderr": "fatal library error, lookup self\nfatal library error, lookup self\n",
+      "wall_seconds": 0.008284935996925924,
+      "expected_exit": 0
+    },
+    "checks-native": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/bytes_int_items.py",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py",
+        "tests/gen_stopiteration_uncaught.py",
+        "tests/int_float_compare_edges.py",
+        "tests/list_bound_extremes.py",
+        "tests/memory_error_uncaught.py",
+        "tests/none_operand_errors.py",
+        "tests/set_discard_optional.py",
+        "tests/set_table_paths.py",
+        "tests/sort_numbers_merge.py",
+        "tests/exit_bool.py",
+        "tests/exit_builtin.py",
+        "tests/exit_message.py",
+        "tests/exit_none.py",
+        "tests/exit_none_object.py",
+        "tests/exit_systemexit.py",
+        "tests/gen_stopiteration.py",
+        "tests/io_dropped_buffers.py",
+        "tests/io_open_newline_first.py",
+        "tests/io_open_nul_encoding.py",
+        "tests/rt_list_empty.py",
+        "tests/rt_list_index.py",
+        "tests/rt_list_index_number.py",
+        "tests/rt_list_remove.py",
+        "tests/rt_list_remove_number.py",
+        "tests/rt_list_vacated.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 27 cases\n54 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 25.177085590003117,
+      "expected_exit": 0
+    },
+    "oracle": {
+      "programs": 3322,
+      "identical": 3320,
+      "changed": [
+        {
+          "source": "tests/exit_optional_code.py",
+          "old": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "02df13dc04a61347585eac8fbbe313eebdb899b81f4e4b9520abc31d5f8e9d9d"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "155b56d873cc17755bd68e6c88e05813596f542fd65681a4ffccf80c5599a342"
+          }
+        },
+        {
+          "source": "tests/exit_tuple_status.py",
+          "old": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "7c09bc93cf9886ce1b332205e5d5fc653133bcca37ee507cfbf43d0c28c9b3c8"
+          },
+          "new": {
+            "exit": 0,
+            "message": "",
+            "ir_sha256": "b7785c52e2dd19a6fe29a49e01473e18bcaff0f4c85e64418ad771a2fe896d32"
+          }
+        }
+      ],
+      "input_inventory_sha256": "a77f8dd15edc576695983af649c5ea323bae3a0b4754a7bd9649273f4336602d"
+    },
+    "hosted-coverage": {
+      "command": [
+        "tools/coverage.sh",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py"
+      ],
+      "environment": {
+        "PY": "/workspace/scratch/3ba735e28fa7/audit-coverage-env/bin/python",
+        "COVERAGE_BASE": "5a915947",
+        "COVERAGE_SUITES": "corpus cache"
+      },
+      "returncode": 1,
+      "stdout": "selected 2 cases\n4 passed, 0 failed\ncorpus: 4 passed, 0 failed; 5 processes, 5 with data, 19 s\n-- the compiler: /tmp/pystachy-coverage.RFj4tS/cache.run -m pystachy\n67 passed, 0 failed\ntools/coverage.sh: cache: 33 coverage data files, for 33 processes\n",
+      "stderr": "tools/coverage.sh: failed: cache (build/coverage/parts/)\n",
+      "wall_seconds": 227.8158482430008,
+      "expected_exit": 0
+    },
+    "build": {
+      "command": [
+        "make",
+        "PY=/root/.local/bin/python3.13"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "mkdir -p build\n/root/.local/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1\nbuild/pystachy1 build pystachy.py -o build/pystachy2\n/root/.local/bin/python3.13 pystachy.py ir pystachy.py -o build/stage1.ll\nbuild/pystachy1 ir pystachy.py -o build/stage2.ll\nbuild/pystachy2 ir pystachy.py -o build/stage3.ll\ncmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll\nfixed point: stage1 == stage2 == stage3 (677903 lines of IR)\n/root/.local/bin/python3.13 pystachy.py rt runtime.py -o build/rt1.ll\nbuild/pystachy1 rt runtime.py -o build/rt2.ll\nbuild/pystachy2 rt runtime.py -o build/rt3.ll\ncmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll\nfixed point: runtime.py's IR, rt1 == rt2 == rt3 (18709 lines)\ncp build/pystachy2 pystachy\n",
+      "stderr": "",
+      "wall_seconds": 159.09303584499867,
+      "expected_exit": 0
+    },
+    "stubs-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/stubs-metadata.json",
+        "--stubs",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/stubs.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "stubs for 20 modules built into CPython: _operator _posixsubprocess _signal _socket _symtable _sysconfig _tokenize _tracemalloc _typing _warnings array fcntl gc grp marshal posix pwd pyexpat select zlib\n\n150 of 464 modules import with the stubs: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl._threading_handler _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins abc argparse base64 concurrent dataclasses email email._parseaddr email.base64mime email.charset email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec encodings.zlib_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri reprlib stringprep tempfile timeit traceback typing wave wsgiref wsgiref.headers wsgiref.validate xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n58 left out, as lib/ has _markupbase, _opcode_metadata, _weakrefset, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, gettext, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib, warnings, weakref: _markupbase _opcode_metadata _weakrefset bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt gettext heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser warnings weakref\n\n147 of them need no stub. The stubs the others need (modules needing it; needing only it):\n    1     1  _operator\n    1     1  gc\n    1     1  zlib\n\n   68  'socketpair' is bound both as a variable and by an import (not supported)\n   42  namedtuple() is only supported with field names that are a string literal or a list or tuple of stri\n   15  class 'email.charset.Charset' cannot be used as a value (classes are not values: call it, or read an\n   14  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n   11  imports the missing module _ctypes\n   10  class '_thread.lock' cannot be used as a value (classes are not values: call it, or read an attribut\n   10  imports the missing module _bz2\n    9  unsupported decorator @_requires_builtin: CPython applies it when module 'importlib._bootstrap' is i\n    9  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    8  imports the missing module urllib.request\n    7  imports the missing module _contextvars\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    6  imports the missing module termios\n    5  imports the missing module _dbm\n    4  unsupported module attribute os.O_RDONLY\n    4  inheritance with generic class templates is not supported: annotate __init__ parameters with concret\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    3  imports the missing module _elementtree\n    2  class _compression.BaseStream is not supported: unsupported base class: single inheritance requires \n    2  imports the missing module msvcrt\n    2  unsupported module attribute __future__.all_feature_names\n    2  types.MethodType is not supported: of the types module, Pystachy has only GenericAlias, for a class \n",
+      "stderr": "",
+      "wall_seconds": 228.93480499499856,
+      "expected_exit": 0
+    },
+    "shard-partition": {
+      "first_count": 1627,
+      "second_count": 1627,
+      "total": 3254,
+      "disjoint": true,
+      "complete": true
+    },
+    "extra-selection": [],
+    "hosted-corpus": {
+      "command": [
+        "tools/coverage.sh",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py"
+      ],
+      "environment": {
+        "PY": "/workspace/scratch/3ba735e28fa7/audit-coverage-env/bin/python",
+        "COVERAGE_BASE": "5a915947",
+        "COVERAGE_SUITES": "corpus"
+      },
+      "returncode": 0,
+      "stdout": "selected 2 cases\n4 passed, 0 failed\ncorpus: 4 passed, 0 failed; 5 processes, 5 with data, 11 s\nCommit `8990e41776e8e74f57812120f81ec3e897065eda`: statements **32.2%** (10735 of 33312) and branches **23.2%** (4234 of 18240); 29.0% together, coverage.py's total. 1 suites, 5 processes measured.\nThe statements and branches of `src/pystachy_compiler/`, run by CPython; not `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as native code ([native runtime coverage](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)).\n\n| Suite | Runs | Checks | Processes | Time | Statements | Branches |\n|---|---|---|---:|---:|---:|---:|\n| corpus | `tests/run.sh`, JIT and AOT, 2 cases selected | 4 passed, 0 failed | 5 | 11 s | 32.2% | 23.2% |\n| **all** | | | **5** | | **32.2%** | **23.2%** |\n\n### Changed since 5a915947 (merge base `5a91594740a7`)\n\nChanged statements: 3 of 3 run (100.0%); their branches: 2 of 2 taken (100.0%).\nhosted compiler coverage: statements 32.2%, branches 23.2% (build/coverage/html/index.html, build/coverage/summary.md)\n",
+      "stderr": "",
+      "wall_seconds": 26.336581452000246,
+      "expected_exit": 0
+    },
+    "control-hosted-commit": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/audit-coverage-env/bin/python",
+        "tools/coverage_report.py",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/hosted-commit"
+      ],
+      "environment": {},
+      "exit": 1,
+      "stdout": "",
+      "stderr": "tools/coverage_report.py: the parts measured different commits: 0000000000000000000000000000000000000000, 8990e41776e8e74f57812120f81ec3e897065eda\n",
+      "wall_seconds": 0.09590620199742261
+    },
+    "checks-gc": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/bytes_int_items.py",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py",
+        "tests/gen_stopiteration_uncaught.py",
+        "tests/int_float_compare_edges.py",
+        "tests/list_bound_extremes.py",
+        "tests/memory_error_uncaught.py",
+        "tests/none_operand_errors.py",
+        "tests/set_discard_optional.py",
+        "tests/set_table_paths.py",
+        "tests/sort_numbers_merge.py",
+        "tests/exit_bool.py",
+        "tests/exit_builtin.py",
+        "tests/exit_message.py",
+        "tests/exit_none.py",
+        "tests/exit_none_object.py",
+        "tests/exit_systemexit.py",
+        "tests/gen_stopiteration.py",
+        "tests/io_dropped_buffers.py",
+        "tests/io_open_newline_first.py",
+        "tests/io_open_nul_encoding.py",
+        "tests/rt_list_empty.py",
+        "tests/rt_list_index.py",
+        "tests/rt_list_index_number.py",
+        "tests/rt_list_remove.py",
+        "tests/rt_list_remove_number.py",
+        "tests/rt_list_vacated.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "selected 27 cases\n54 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 13.483655379000993,
+      "expected_exit": 0
+    },
+    "consumer-smoke": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/port_iniconfig_parse.py",
+        "tests/port_tomli_w_tables.py",
+        "tests/port_roman_convert.py",
+        "tests/port_pylev_imports.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 4 cases\n8 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 17.154604135997943,
+      "expected_exit": 0
+    },
+    "fileprobe": {
+      "command": [
+        "make",
+        "fileprobe",
+        "PY=/root/.local/bin/python3.13"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "mkdir -p build\n./pystachy rt runtime.py -o build/fileprobe-rt.ll\n\"/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/\"clang -O2 -S -emit-llvm tools/fileprobe.c -o build/fileprobe.ll\n\"/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/\"llvm-link build/fileprobe-rt.ll build/fileprobe.ll -o build/fileprobe.bc\n\"/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/\"clang -O2 build/fileprobe.bc -o build/fileprobe -lm\nbuild/fileprobe\nfileprobe: 128 files dropped with 136314880 bytes of buffers ran 4 collections, 35971072 bytes at most outstanding (limit 41975808); opens, closes, collections and the exit balance; standard streams aside\nbuild/fileprobe --lib\nfileprobe: 128 files dropped with 136314880 bytes of buffers ran 4 collections, 35971072 bytes at most outstanding (limit 41975808); opens, closes, collections and the exit balance; standard streams aside\nPYSTACHY_GC_STRESS=1 build/fileprobe\nfileprobe: 128 files dropped with 136314880 bytes of buffers ran 640 collections, 4194304 bytes at most outstanding (limit 41975808); opens, closes, collections and the exit balance; standard streams aside\n",
+      "stderr": "",
+      "wall_seconds": 12.24711333400046,
+      "expected_exit": 0
+    },
+    "failed-cache-artifacts": {
+      "log": "-- the compiler: /tmp/pystachy-coverage.RFj4tS/cache.run -m pystachy\nok   a first run builds the runtime\nok   one entry: a .bc and its .o\nok   no partial or temporary file is left\nok   the shared library is cached beside the .o\nok   and lli loads it\nok   a run that finds no shared library makes it from the .o, and builds no runtime\nok   and caches it\nok   a run that may not execute the cached library builds no runtime\nok   and lli links the .o instead\nok   nothing changed: the cache is used\nok   the same entry, not written again\nok   the hashes of settled files are kept\nok   the AOT tier uses the cache\nok   the AOT tier writes no entry\nok   the same tools through another path (a symbolic link): the cache is used\nok   the same entry\nok   an edit of runtime.py of the same size, its mtime set back: built again\nok   the new entry replaces the old\nok   and its shared library the old one's\nok   an edit of runtime.c: built again\nok   an edit of ryu/common.h, which runtime.c includes: built again, from the home's ryu/\nok   and used then\nok   runtime.py and runtime.c edited while the runtime is built: it holds what was read\nok   the next run builds the edited sources\nok   and the run after it uses them\nok   a failed llvm-link fails the run\nok   a failed build leaves no entry\nok   nor a partial or temporary file\nok   the same flags then build the runtime\nok   PYSTACHY_CFLAGS: an entry of their own\nok   PYSTACHY_OPT=-all: built\nok   PYSTACHY_OPT: an entry of its own\nok   the same passes turned off by name: the same entry\nok   without them, the first entry is used\nok   opt changed: built again\nok   the new entry replaces the one of the old opt\nok   and used then\nok   the compiler changed: built again\nok   the compiler edited, the same size, its mtime set back: built again\nok   the new entry replaces the old compiler's\nok   a compiler component changed: built again\nok   a component edited, the same size, its mtime set back: built again\nok   the new entry replaces the old component's\nok   python3 pystachy.py opens ./pystachy.py, not the one on PATH: the cache is used\nok   the same entries\nok   the tools found through PATH, past a directory named clang: built with them\nok   an entry of their own\nok   and used then\nok   the same entries\nok   no partial or temporary file is left\nok   pystachy ext builds pyembed.c and pyext.c once, beside the cached runtime\nok   and /workspace/scratch/3ba735e28fa7/audit-coverage-env/bin/python loads the module\nok   and uses them then\nok   the runtime's entries are the same\nok   no partial or temporary file is left\nok   a tool not settled: a run builds a runtime of its own\nok   and publishes nothing\nok   and leaves nothing\nok   pystachy ext builds a runtime and glue of its own\nok   and /workspace/scratch/3ba735e28fa7/audit-coverage-env/bin/python loads the module\nok   and publishes no runtime\nok   nor glue\nok   and leaves nothing\nok   a build killed after opt ends the run\nok   and writes no entry\nok   the next run builds the runtime\nok   and its entry replaces the old\n67 passed, 0 failed\n",
+      "corpus_part": {
+        "part": "corpus",
+        "suite": "corpus",
+        "shard": null,
+        "selected": true,
+        "cases": 2,
+        "report": "4 passed, 0 failed",
+        "processes": 5,
+        "data_files": 5,
+        "seconds": 19,
+        "commit": "8990e41776e8e74f57812120f81ec3e897065eda",
+        "dirty": false
+      }
+    },
+    "writer-control": {
+      "cpython": {
+        "command": [
+          "/root/.local/bin/python3.13",
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/tests/rt_list_vacated.py"
+        ],
+        "environment": {},
+        "exit": 0,
+        "stdout": "0 131474\npop 'OLD pop'\n0 131474\npop0 'OLD pop0'\npop1 'OLD pop1'\n0 131474\ndel0 'OLD del0'\ndel1 'OLD del1'\n0 131474\nremove0 'OLD remove0'\nremove1 'OLD remove1'\n0 131474\nclear0 'OLD clear0'\nclear1 'OLD clear1'\nclear2 'OLD clear2'\n0 131474\nimul0 'OLD imul0'\nimul1 'OLD imul1'\n",
+        "stderr": "",
+        "wall_seconds": 0.04345031199773075
+      },
+      "old-jit": {
+        "command": [
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+          "run",
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/tests/rt_list_vacated.py"
+        ],
+        "environment": {
+          "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732",
+          "PYSTACHY_CFLAGS": "-fprofile-instr-generate -fcoverage-mapping",
+          "PYSTACHY_CACHE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/old-cache",
+          "LLVM_PROFILE_FILE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/old-%m.profraw"
+        },
+        "exit": 0,
+        "stdout": "0 131474\npop ''\n0 131474\npop0 ''\npop1 'OLD pop1'\n0 131474\ndel0 ''\ndel1 'OLD del1'\n0 131474\nremove0 ''\nremove1 'OLD remove1'\n0 131474\nclear0 ''\nclear1 'OLD clear1'\nclear2 'OLD clear2'\n0 131474\nimul0 ''\nimul1 'OLD imul1'\n",
+        "stderr": "",
+        "wall_seconds": 14.169299218003289
+      },
+      "old-build": {
+        "command": [
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+          "build",
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/tests/rt_list_vacated.py",
+          "-o",
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/old-aot"
+        ],
+        "environment": {
+          "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732",
+          "PYSTACHY_CFLAGS": "-fprofile-instr-generate -fcoverage-mapping",
+          "PYSTACHY_CACHE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/old-cache",
+          "LLVM_PROFILE_FILE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/old-%m.profraw"
+        },
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "wall_seconds": 2.693538034996891
+      },
+      "old-aot": {
+        "command": [
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/old-aot"
+        ],
+        "environment": {
+          "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732",
+          "PYSTACHY_CFLAGS": "-fprofile-instr-generate -fcoverage-mapping",
+          "PYSTACHY_CACHE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/old-cache",
+          "LLVM_PROFILE_FILE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/old-%m.profraw"
+        },
+        "exit": 0,
+        "stdout": "0 131474\npop ''\n0 131474\npop0 ''\npop1 'OLD pop1'\n0 131474\ndel0 ''\ndel1 'OLD del1'\n0 131474\nremove0 ''\nremove1 'OLD remove1'\n0 131474\nclear0 ''\nclear1 'OLD clear1'\nclear2 'OLD clear2'\n0 131474\nimul0 ''\nimul1 'OLD imul1'\n",
+        "stderr": "",
+        "wall_seconds": 0.004583360001561232
+      },
+      "new-jit": {
+        "command": [
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+          "run",
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/tests/rt_list_vacated.py"
+        ],
+        "environment": {
+          "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763",
+          "PYSTACHY_CFLAGS": "-fprofile-instr-generate -fcoverage-mapping",
+          "PYSTACHY_CACHE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/new-cache",
+          "LLVM_PROFILE_FILE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/new-%m.profraw"
+        },
+        "exit": 0,
+        "stdout": "0 131474\npop 'OLD pop'\n0 131474\npop0 'OLD pop0'\npop1 'OLD pop1'\n0 131474\ndel0 'OLD del0'\ndel1 'OLD del1'\n0 131474\nremove0 'OLD remove0'\nremove1 'OLD remove1'\n0 131474\nclear0 'OLD clear0'\nclear1 'OLD clear1'\nclear2 'OLD clear2'\n0 131474\nimul0 'OLD imul0'\nimul1 'OLD imul1'\n",
+        "stderr": "",
+        "wall_seconds": 13.90437048599415
+      },
+      "new-build": {
+        "command": [
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+          "build",
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/tests/rt_list_vacated.py",
+          "-o",
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/new-aot"
+        ],
+        "environment": {
+          "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763",
+          "PYSTACHY_CFLAGS": "-fprofile-instr-generate -fcoverage-mapping",
+          "PYSTACHY_CACHE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/new-cache",
+          "LLVM_PROFILE_FILE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/new-%m.profraw"
+        },
+        "exit": 0,
+        "stdout": "",
+        "stderr": "",
+        "wall_seconds": 1.4684129740053322
+      },
+      "new-aot": {
+        "command": [
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/new-aot"
+        ],
+        "environment": {
+          "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763",
+          "PYSTACHY_CFLAGS": "-fprofile-instr-generate -fcoverage-mapping",
+          "PYSTACHY_CACHE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/new-cache",
+          "LLVM_PROFILE_FILE": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/writer-control/new-%m.profraw"
+        },
+        "exit": 0,
+        "stdout": "0 131474\npop 'OLD pop'\n0 131474\npop0 'OLD pop0'\npop1 'OLD pop1'\n0 131474\ndel0 'OLD del0'\ndel1 'OLD del1'\n0 131474\nremove0 'OLD remove0'\nremove1 'OLD remove1'\n0 131474\nclear0 'OLD clear0'\nclear1 'OLD clear1'\nclear2 'OLD clear2'\n0 131474\nimul0 'OLD imul0'\nimul1 'OLD imul1'\n",
+        "stderr": "",
+        "wall_seconds": 0.015973679997841828
+      }
+    },
+    "control-hosted-missing-shard": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/audit-coverage-env/bin/python",
+        "tools/coverage_report.py",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/hosted-missing-shard"
+      ],
+      "environment": {},
+      "exit": 1,
+      "stdout": "",
+      "stderr": "tools/coverage_report.py: corpus: shards 0/2, not all 2 of them\n",
+      "wall_seconds": 0.11207793399807997
+    },
+    "checks-hosted": {
+      "command": [
+        "tests/run.sh",
+        "/root/.local/bin/python3.13 -m pystachy",
+        "jit aot",
+        "tests/bytes_int_items.py",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py",
+        "tests/gen_stopiteration_uncaught.py",
+        "tests/int_float_compare_edges.py",
+        "tests/list_bound_extremes.py",
+        "tests/memory_error_uncaught.py",
+        "tests/none_operand_errors.py",
+        "tests/set_discard_optional.py",
+        "tests/set_table_paths.py",
+        "tests/sort_numbers_merge.py",
+        "tests/exit_bool.py",
+        "tests/exit_builtin.py",
+        "tests/exit_message.py",
+        "tests/exit_none.py",
+        "tests/exit_none_object.py",
+        "tests/exit_systemexit.py",
+        "tests/gen_stopiteration.py",
+        "tests/io_dropped_buffers.py",
+        "tests/io_open_newline_first.py",
+        "tests/io_open_nul_encoding.py",
+        "tests/rt_list_empty.py",
+        "tests/rt_list_index.py",
+        "tests/rt_list_index_number.py",
+        "tests/rt_list_remove.py",
+        "tests/rt_list_remove_number.py",
+        "tests/rt_list_vacated.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 27 cases\n54 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 24.90855272799672,
+      "expected_exit": 0
+    },
+    "gaps": [
+      {
+        "name": "variable-empty",
+        "program": "import sys\nt: tuple[int, ...] = tuple([])\nsys.exit(t)\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-empty.py"
+          ],
+          "environment": {},
+          "exit": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.015256067999871448
+        },
+        "old-jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-empty.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "",
+          "stderr": "()\n",
+          "wall_seconds": 0.08049911000125576
+        },
+        "old-build": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "build",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-empty.py",
+            "-o",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-empty-old"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.5350650139953359
+        },
+        "old-aot": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-empty-old"
+          ],
+          "environment": {},
+          "exit": 1,
+          "stdout": "",
+          "stderr": "()\n",
+          "wall_seconds": 0.0030345549967023544
+        },
+        "new-jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-empty.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763"
+          },
+          "exit": 1,
+          "stdout": "",
+          "stderr": "()\n",
+          "wall_seconds": 0.060116863998700865
+        },
+        "new-build": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+            "build",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-empty.py",
+            "-o",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-empty-new"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763"
+          },
+          "exit": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.7210829789983109
+        },
+        "new-aot": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-empty-new"
+          ],
+          "environment": {},
+          "exit": 1,
+          "stdout": "",
+          "stderr": "()\n",
+          "wall_seconds": 0.002389752997260075
+        }
+      },
+      {
+        "name": "variable-one",
+        "program": "import sys\nt: tuple[int, ...] = tuple([3])\nsys.exit(t)\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-one.py"
+          ],
+          "environment": {},
+          "exit": 3,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.02125145500031067
+        },
+        "old-jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-one.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "",
+          "stderr": "(3,)\n",
+          "wall_seconds": 0.06007849600428017
+        },
+        "old-build": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "build",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-one.py",
+            "-o",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-one-old"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.6976880119982525
+        },
+        "old-aot": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-one-old"
+          ],
+          "environment": {},
+          "exit": 1,
+          "stdout": "",
+          "stderr": "(3,)\n",
+          "wall_seconds": 0.0031811560038477182
+        },
+        "new-jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-one.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763"
+          },
+          "exit": 1,
+          "stdout": "",
+          "stderr": "(3,)\n",
+          "wall_seconds": 0.06962788200326031
+        },
+        "new-build": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+            "build",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-one.py",
+            "-o",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-one-new"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763"
+          },
+          "exit": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.5121637759948499
+        },
+        "new-aot": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/variable-one-new"
+          ],
+          "environment": {},
+          "exit": 1,
+          "stdout": "",
+          "stderr": "(3,)\n",
+          "wall_seconds": 0.0017556959937792271
+        }
+      },
+      {
+        "name": "bytes-iterator",
+        "program": "print(list(iter(b\"ab\")))\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator.py"
+          ],
+          "environment": {},
+          "exit": 0,
+          "stdout": "[97, 98]\n",
+          "stderr": "",
+          "wall_seconds": 0.014268648999859579
+        },
+        "old-jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "",
+          "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator.py:1: error: 'bytes' object is not iterable\n",
+          "wall_seconds": 0.011681926000164822
+        },
+        "old-build": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "build",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator.py",
+            "-o",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator-old"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "",
+          "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator.py:1: error: 'bytes' object is not iterable\n",
+          "wall_seconds": 0.012206751001940574
+        },
+        "new-jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763"
+          },
+          "exit": 1,
+          "stdout": "",
+          "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator.py:1: error: 'bytes' object is not iterable\n",
+          "wall_seconds": 0.009015449999424163
+        },
+        "new-build": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+            "build",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator.py",
+            "-o",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator-new"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763"
+          },
+          "exit": 1,
+          "stdout": "",
+          "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/bytes-iterator.py:1: error: 'bytes' object is not iterable\n",
+          "wall_seconds": 0.009210604999680072
+        }
+      }
+    ],
+    "runtime-coverage": {
+      "command": [
+        "tools/runtime_coverage.sh",
+        "tests/rt_list_vacated.py",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py"
+      ],
+      "environment": {
+        "COVERAGE_BASE": "5a915947"
+      },
+      "returncode": 0,
+      "stdout": "selected 3 cases\n6 passed, 0 failed\nCommit `8990e41776e8e74f57812120f81ec3e897065eda`: lines **15.2%** (685 of 4503) and branches **10.4%** (524 of 5056) of `runtime.c` (with the `ryu/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 17.5%, regions 12.5%. `pys_init` ran 7 times: the program runs whose profiles were written.\nPrograms built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).\n\n| Suite | Runs | Checks | Time |\n|---|---|---|---:|\n| corpus | `tests/run.sh`, JIT and AOT, 3 cases selected | 6 passed, 0 failed | 18 s |\n\n### Changed since 5a915947 (merge base `5a91594740a7`)\n\nChanged lines of code: 7 of 7 run (100.0%); their branches: 14 of 18 taken (77.8%).\n\n| File | Lines not run | Branches not taken |\n|---|---|---|\n| `runtime.c` | - | 3837 (3 of 8), 3856 (1 of 8) |\nnative runtime coverage: lines 15.2%, branches 10.4% (build/runtime-coverage/html/index.html, build/runtime-coverage/summary.md)\n",
+      "stderr": "",
+      "wall_seconds": 25.650044784000784,
+      "expected_exit": 0
+    },
+    "checks-noopt": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/bytes_int_items.py",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py",
+        "tests/gen_stopiteration_uncaught.py",
+        "tests/int_float_compare_edges.py",
+        "tests/list_bound_extremes.py",
+        "tests/memory_error_uncaught.py",
+        "tests/none_operand_errors.py",
+        "tests/set_discard_optional.py",
+        "tests/set_table_paths.py",
+        "tests/sort_numbers_merge.py",
+        "tests/exit_bool.py",
+        "tests/exit_builtin.py",
+        "tests/exit_message.py",
+        "tests/exit_none.py",
+        "tests/exit_none_object.py",
+        "tests/exit_systemexit.py",
+        "tests/gen_stopiteration.py",
+        "tests/io_dropped_buffers.py",
+        "tests/io_open_newline_first.py",
+        "tests/io_open_nul_encoding.py",
+        "tests/rt_list_empty.py",
+        "tests/rt_list_index.py",
+        "tests/rt_list_index_number.py",
+        "tests/rt_list_remove.py",
+        "tests/rt_list_remove_number.py",
+        "tests/rt_list_vacated.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "selected 27 cases\n54 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 10.865313304995652,
+      "expected_exit": 0
+    },
+    "exit-matrix": [
+      {
+        "expression": "()",
+        "program": "import sys\nprint(\"before\", flush=True)\nsys.exit(())\nprint(\"unreachable\")\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0.py"
+          ],
+          "environment": {},
+          "exit": 0,
+          "stdout": "before\n",
+          "stderr": "",
+          "wall_seconds": 0.01121042999875499
+        },
+        "old_jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "()\n",
+          "wall_seconds": 0.047417431997018866
+        },
+        "new": {
+          "gc": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0.py"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 11.200620308998623
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.449915962999512
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS": "1"
+              },
+              "exit": 0,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.0025726879975991324
+            }
+          },
+          "noopt": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0.py"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 12.655497886000376
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0-noopt"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.35470763600460486
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-0-noopt"
+              ],
+              "environment": {},
+              "exit": 0,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.002956126998469699
+            }
+          }
+        }
+      },
+      {
+        "expression": "(None,)",
+        "program": "import sys\nprint(\"before\", flush=True)\nsys.exit((None,))\nprint(\"unreachable\")\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1.py"
+          ],
+          "environment": {},
+          "exit": 0,
+          "stdout": "before\n",
+          "stderr": "",
+          "wall_seconds": 0.016033781997975893
+        },
+        "old_jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "(None,)\n",
+          "wall_seconds": 0.07948490600392688
+        },
+        "new": {
+          "gc": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1.py"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.08812580200174125
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.30032252399541903
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS": "1"
+              },
+              "exit": 0,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.00222434399620397
+            }
+          },
+          "noopt": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1.py"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.10344297900155652
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1-noopt"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.3459713109987206
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-1-noopt"
+              ],
+              "environment": {},
+              "exit": 0,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.0030252409997046925
+            }
+          }
+        }
+      },
+      {
+        "expression": "(3,)",
+        "program": "import sys\nprint(\"before\", flush=True)\nsys.exit((3,))\nprint(\"unreachable\")\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2.py"
+          ],
+          "environment": {},
+          "exit": 3,
+          "stdout": "before\n",
+          "stderr": "",
+          "wall_seconds": 0.03296422399580479
+        },
+        "old_jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "(3,)\n",
+          "wall_seconds": 0.11774497300211806
+        },
+        "new": {
+          "gc": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2.py"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 3,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.08994607599743176
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.33833162399969297
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS": "1"
+              },
+              "exit": 3,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.007540176993643399
+            }
+          },
+          "noopt": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2.py"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 3,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.09259764399757842
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2-noopt"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.3324862620065687
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-2-noopt"
+              ],
+              "environment": {},
+              "exit": 3,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.00127002400404308
+            }
+          }
+        }
+      },
+      {
+        "expression": "(\"bye\",)",
+        "program": "import sys\nprint(\"before\", flush=True)\nsys.exit((\"bye\",))\nprint(\"unreachable\")\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3.py"
+          ],
+          "environment": {},
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "bye\n",
+          "wall_seconds": 0.025344617999508046
+        },
+        "old_jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "('bye',)\n",
+          "wall_seconds": 0.1118093749973923
+        },
+        "new": {
+          "gc": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3.py"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "bye\n",
+              "wall_seconds": 0.08817231200373499
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.3525721969999722
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "bye\n",
+              "wall_seconds": 0.0024457569961668923
+            }
+          },
+          "noopt": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3.py"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "bye\n",
+              "wall_seconds": 0.1498585860026651
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3-noopt"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.6120087689996581
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-3-noopt"
+              ],
+              "environment": {},
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "bye\n",
+              "wall_seconds": 0.006718399003148079
+            }
+          }
+        }
+      },
+      {
+        "expression": "(3,\"x\")",
+        "program": "import sys\nprint(\"before\", flush=True)\nsys.exit((3,\"x\"))\nprint(\"unreachable\")\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4.py"
+          ],
+          "environment": {},
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "(3, 'x')\n",
+          "wall_seconds": 0.03288013800192857
+        },
+        "old_jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "(3, 'x')\n",
+          "wall_seconds": 0.08431417099927785
+        },
+        "new": {
+          "gc": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4.py"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "(3, 'x')\n",
+              "wall_seconds": 0.11059080799896037
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 1.0212826400020276
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "(3, 'x')\n",
+              "wall_seconds": 0.0025426630018046126
+            }
+          },
+          "noopt": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4.py"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "(3, 'x')\n",
+              "wall_seconds": 0.12360849400283769
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4-noopt"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.8370691730015096
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-4-noopt"
+              ],
+              "environment": {},
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "(3, 'x')\n",
+              "wall_seconds": 0.004109866000362672
+            }
+          }
+        }
+      },
+      {
+        "expression": "((3,),)",
+        "program": "import sys\nprint(\"before\", flush=True)\nsys.exit(((3,),))\nprint(\"unreachable\")\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5.py"
+          ],
+          "environment": {},
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "(3,)\n",
+          "wall_seconds": 0.022802795996540226
+        },
+        "old_jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "((3,),)\n",
+          "wall_seconds": 0.17489463800302474
+        },
+        "new": {
+          "gc": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5.py"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "(3,)\n",
+              "wall_seconds": 0.11424452700157417
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.9492196630017133
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "(3,)\n",
+              "wall_seconds": 0.006569723998836707
+            }
+          },
+          "noopt": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5.py"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "(3,)\n",
+              "wall_seconds": 0.11591766399942571
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5-noopt"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.6379347499969299
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-5-noopt"
+              ],
+              "environment": {},
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "(3,)\n",
+              "wall_seconds": 0.005739831998653244
+            }
+          }
+        }
+      },
+      {
+        "expression": "(True,)",
+        "program": "import sys\nprint(\"before\", flush=True)\nsys.exit((True,))\nprint(\"unreachable\")\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6.py"
+          ],
+          "environment": {},
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "",
+          "wall_seconds": 0.04416249499627156
+        },
+        "old_jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "(True,)\n",
+          "wall_seconds": 0.10035331099788891
+        },
+        "new": {
+          "gc": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6.py"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.0965286249993369
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.3513620580051793
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.010124423002707772
+            }
+          },
+          "noopt": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6.py"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.07457635200262303
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6-noopt"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.3048734420008259
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-6-noopt"
+              ],
+              "environment": {},
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "",
+              "wall_seconds": 0.0012739099984173663
+            }
+          }
+        }
+      },
+      {
+        "expression": "([1,2],)",
+        "program": "import sys\nprint(\"before\", flush=True)\nsys.exit(([1,2],))\nprint(\"unreachable\")\n",
+        "cpython": {
+          "command": [
+            "/root/.local/bin/python3.13",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7.py"
+          ],
+          "environment": {},
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "[1, 2]\n",
+          "wall_seconds": 0.01153071299631847
+        },
+        "old_jit": {
+          "command": [
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-732/pystachy",
+            "run",
+            "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7.py"
+          ],
+          "environment": {
+            "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-732"
+          },
+          "exit": 1,
+          "stdout": "before\n",
+          "stderr": "([1, 2],)\n",
+          "wall_seconds": 0.06733914199867286
+        },
+        "new": {
+          "gc": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7.py"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "[1, 2]\n",
+              "wall_seconds": 0.09936828599893488
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS_PROGRAM": "1"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.6025854030012852
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7-gc"
+              ],
+              "environment": {
+                "PYSTACHY_GC_STRESS": "1"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "[1, 2]\n",
+              "wall_seconds": 0.006179055002576206
+            }
+          },
+          "noopt": {
+            "jit": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "run",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7.py"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "[1, 2]\n",
+              "wall_seconds": 0.10613996400206815
+            },
+            "build": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+                "build",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7.py",
+                "-o",
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7-noopt"
+              ],
+              "environment": {
+                "PYSTACHY_OPT": "-all"
+              },
+              "exit": 0,
+              "stdout": "",
+              "stderr": "",
+              "wall_seconds": 0.8335934889983037
+            },
+            "aot": {
+              "command": [
+                "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/exit-7-noopt"
+              ],
+              "environment": {},
+              "exit": 1,
+              "stdout": "before\n",
+              "stderr": "[1, 2]\n",
+              "wall_seconds": 0.014205203995516058
+            }
+          }
+        }
+      }
+    ],
+    "test_workflow_limits.py": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_workflow_limits.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "....\n----------------------------------------------------------------------\nRan 4 tests in 0.005s\n\nOK\n",
+      "wall_seconds": 0.17317360999732045,
+      "expected_exit": 0
+    },
+    "selection": {
+      "changed": [
+        "tests/bytes_int_items.py",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py",
+        "tests/gen_stopiteration_uncaught.py",
+        "tests/int_float_compare_edges.py",
+        "tests/list_bound_extremes.py",
+        "tests/memory_error_uncaught.py",
+        "tests/none_operand_errors.py",
+        "tests/set_discard_optional.py",
+        "tests/set_table_paths.py",
+        "tests/sort_numbers_merge.py"
+      ],
+      "adjacent": [
+        "tests/exit_bool.py",
+        "tests/exit_builtin.py",
+        "tests/exit_message.py",
+        "tests/exit_none.py",
+        "tests/exit_none_object.py",
+        "tests/exit_systemexit.py",
+        "tests/gen_stopiteration.py",
+        "tests/io_dropped_buffers.py",
+        "tests/io_open_newline_first.py",
+        "tests/io_open_nul_encoding.py",
+        "tests/rt_list_empty.py",
+        "tests/rt_list_index.py",
+        "tests/rt_list_index_number.py",
+        "tests/rt_list_remove.py",
+        "tests/rt_list_remove_number.py",
+        "tests/rt_list_vacated.py"
+      ]
+    },
+    "shard-invalid--1-2": {
+      "command": [
+        "tools/shard_cases.sh",
+        "-1/2"
+      ],
+      "environment": {},
+      "exit": 2,
+      "stdout": "",
+      "stderr": "tools/shard_cases.sh: '-1/2' is not I/N\n",
+      "wall_seconds": 0.002625542998430319
+    },
+    "control-native-commit": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/coverage_report.py",
+        "--runtime",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/native-commit",
+        "8990e41776e8e74f57812120f81ec3e897065eda",
+        "false"
+      ],
+      "environment": {},
+      "exit": 1,
+      "stdout": "",
+      "stderr": "tools/coverage_report.py: corpus measured 0000000000000000000000000000000000000000, but llvm-cov read the profiles through objects of 8990e41776e8e74f57812120f81ec3e897065eda\n",
+      "wall_seconds": 0.03805597199971089
+    },
+    "shard-invalid-0-0": {
+      "command": [
+        "tools/shard_cases.sh",
+        "0/0"
+      ],
+      "environment": {},
+      "exit": 2,
+      "stdout": "",
+      "stderr": "tools/shard_cases.sh: no shard 0 of 0\n",
+      "wall_seconds": 0.002030951996857766
+    },
+    "variants": {
+      "command": [
+        "tools/variants.sh",
+        "tests/bytes_int_items.py",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py",
+        "tests/gen_stopiteration_uncaught.py",
+        "tests/int_float_compare_edges.py",
+        "tests/list_bound_extremes.py",
+        "tests/memory_error_uncaught.py",
+        "tests/none_operand_errors.py",
+        "tests/set_discard_optional.py",
+        "tests/set_table_paths.py",
+        "tests/sort_numbers_merge.py",
+        "tests/rt_list_vacated.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "opt-1 (PYSTACHY_OPT=-moduleints,-fieldtbaa,-tupleret,-unionslots; jit aot): 24 passed, 0 failed in 21 s\nopt-2 (PYSTACHY_OPT=-dictfuse,-tupleiter,-listfast,-unionslots; jit aot): 24 passed, 0 failed in 12 s\nopt-3 (PYSTACHY_OPT=-listget,-tupleiter,-listfast,-fieldtbaa,-tupleret; jit aot): 24 passed, 0 failed in 13 s\nopt-4 (PYSTACHY_OPT=-listget,-dictfuse,-listfast,-moduleints,-tupleret; jit aot): 24 passed, 0 failed in 12 s\nopt-5 (PYSTACHY_OPT=-listget,-dictfuse,-tupleiter,-moduleints,-fieldtbaa,-unionslots; jit aot): 24 passed, 0 failed in 11 s\ncflags-O0 (PYSTACHY_CFLAGS=-O0; jit aot): 24 passed, 0 failed in 4 s\n",
+      "stderr": "",
+      "wall_seconds": 72.74391216899676,
+      "expected_exit": 0
+    },
+    "test_coverage*.py": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_coverage*.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "................\n----------------------------------------------------------------------\nRan 16 tests in 0.011s\n\nOK\n",
+      "wall_seconds": 0.15166190300078597,
+      "expected_exit": 0
+    },
+    "ir": {
+      "command": [
+        "tools/check_ir.sh",
+        "./pystachy",
+        "tests/bytes_int_items.py",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py",
+        "tests/gen_stopiteration_uncaught.py",
+        "tests/int_float_compare_edges.py",
+        "tests/list_bound_extremes.py",
+        "tests/memory_error_uncaught.py",
+        "tests/none_operand_errors.py",
+        "tests/set_discard_optional.py",
+        "tests/set_table_paths.py",
+        "tests/sort_numbers_merge.py",
+        "tests/exit_bool.py",
+        "tests/exit_builtin.py",
+        "tests/exit_message.py",
+        "tests/exit_none.py",
+        "tests/exit_none_object.py",
+        "tests/exit_systemexit.py",
+        "tests/gen_stopiteration.py",
+        "tests/io_dropped_buffers.py",
+        "tests/io_open_newline_first.py",
+        "tests/io_open_nul_encoding.py",
+        "tests/rt_list_empty.py",
+        "tests/rt_list_index.py",
+        "tests/rt_list_index_number.py",
+        "tests/rt_list_remove.py",
+        "tests/rt_list_remove_number.py",
+        "tests/rt_list_vacated.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "the IR check and llvm-as accept the IR of 27 programs\n",
+      "stderr": "",
+      "wall_seconds": 0.9008373030010262,
+      "expected_exit": 0
+    },
+    "runtime": {
+      "command": [
+        "make",
+        "check-runtime",
+        "PY=/root/.local/bin/python3.13"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "/root/.local/bin/python3.13 tools/check_runtime.py\n460 RUNTIME entries, 70 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (171 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python\n",
+      "stderr": "",
+      "wall_seconds": 17.630115810999996,
+      "expected_exit": 0
+    },
+    "sanitize": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/bytes_int_items.py",
+        "tests/exit_optional_code.py",
+        "tests/exit_tuple_status.py",
+        "tests/gen_stopiteration_uncaught.py",
+        "tests/int_float_compare_edges.py",
+        "tests/list_bound_extremes.py",
+        "tests/memory_error_uncaught.py",
+        "tests/none_operand_errors.py",
+        "tests/set_discard_optional.py",
+        "tests/set_table_paths.py",
+        "tests/sort_numbers_merge.py",
+        "tests/rt_list_vacated.py"
+      ],
+      "environment": {
+        "PYSTACHY_CFLAGS": "-fsanitize=undefined -fno-sanitize-recover=all",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1",
+        "LD_PRELOAD": "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.ubsan_standalone-x86_64.so"
+      },
+      "returncode": 0,
+      "stdout": "selected 12 cases\n24 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 28.15909734700108,
+      "expected_exit": 0
+    }
+  },
+  "imports": {
+    "imports": {
+      "metadata": {
+        "compiler": {
+          "kind": "executable",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy",
+          "sha256": "6969b66e38efa0619afaaaadb634caf76a56b5488503fc08d6577f588d3b1dee"
+        },
+        "counts": {
+          "error": 316,
+          "excluded": 58,
+          "included": 464,
+          "ok": 148,
+          "ok_without_stubs": 148,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 55.669367536997015,
+        "mode": "import",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_weakrefset",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "gettext",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser",
+            "warnings",
+            "weakref"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy__io",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_object",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_re_specialized",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "_weakrefset",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "gettext",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "warnings",
+            "weakref"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/imports.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "8990e41776e8e74f57812120f81ec3e897065eda",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [],
+        "timeout_s": 120,
+        "workers": 2
+      },
+      "sha256": "43952026f43a36c28b4d2611547b06cf76cf25623efd8ac70225ef0522daa799",
+      "previous_sha256": "e5e7612083e5e73aeda360c4e3941660569d5838382ce8625592eb39d73186b6",
+      "deltas": {},
+      "path_normalization": "Only old/new checkout prefixes replaced with CHECKOUT."
+    },
+    "stubs": {
+      "metadata": {
+        "compiler": {
+          "kind": "hosted_entrypoint",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/pystachy.py",
+          "sha256": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917"
+        },
+        "counts": {
+          "error": 314,
+          "excluded": 58,
+          "included": 464,
+          "ok": 150,
+          "ok_without_stubs": 147,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 228.8867681019983,
+        "mode": "stubs",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_weakrefset",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "gettext",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser",
+            "warnings",
+            "weakref"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy__io",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_object",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_re_specialized",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "_weakrefset",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "gettext",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "warnings",
+            "weakref"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763/build/audit-763/stubs.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "8990e41776e8e74f57812120f81ec3e897065eda",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-763"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [
+          "_operator",
+          "_posixsubprocess",
+          "_signal",
+          "_socket",
+          "_symtable",
+          "_sysconfig",
+          "_tokenize",
+          "_tracemalloc",
+          "_typing",
+          "_warnings",
+          "array",
+          "fcntl",
+          "gc",
+          "grp",
+          "marshal",
+          "posix",
+          "pwd",
+          "pyexpat",
+          "select",
+          "zlib"
+        ],
+        "timeout_s": 600,
+        "workers": 2
+      },
+      "sha256": "cf01afbb94306bffc6aaa14dc334bf30b7ba3703a7650376b48ad6f0bb883e2b",
+      "previous_sha256": "c9f1b5d027fffa8486b70b86dd7b240d7821aed7dc1ab9426760b5512ba5cb40",
+      "deltas": {},
+      "path_normalization": "Only old/new checkout prefixes replaced with CHECKOUT."
+    }
+  },
+  "coverage": {
+    "native": {
+      "summary": "## Native runtime coverage\n\nCommit `8990e41776e8e74f57812120f81ec3e897065eda`: lines **15.2%** (685 of 4503) and branches **10.4%** (524 of 5056) of `runtime.c` (with the `ryu/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 17.5%, regions 12.5%. `pys_init` ran 7 times: the program runs whose profiles were written.\nPrograms built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).\n\n| Suite | Runs | Checks | Time |\n|---|---|---|---:|\n| corpus | `tests/run.sh`, JIT and AOT, 3 cases selected | 6 passed, 0 failed | 18 s |\n\n### Changed since 5a915947 (merge base `5a91594740a7`)\n\nChanged lines of code: 7 of 7 run (100.0%); their branches: 14 of 18 taken (77.8%).\n\n| File | Lines not run | Branches not taken |\n|---|---|---|\n| `runtime.c` | - | 3837 (3 of 8), 3856 (1 of 8) |\n\n| File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |\n|---|---:|---:|---:|---:|---:|---:|---:|---:|\n| `pyembed.c` | 236 | 236 | 0.0% | 264 | 264 | 0.0% | 0.0% | 0.0% |\n| `pyext.c` | 128 | 128 | 0.0% | 142 | 142 | 0.0% | 0.0% | 0.0% |\n| `runtime.c` | 3667 | 2982 | 18.7% | 4520 | 3996 | 11.6% | 19.3% | 14.0% |\n| `ryu/common.h` | 66 | 66 | 0.0% | 6 | 6 | 0.0% | 0.0% | 0.0% |\n| `ryu/d2s.c` | 284 | 284 | 0.0% | 118 | 118 | 0.0% | 0.0% | 0.0% |\n| `ryu/d2s_intrinsics.h` | 84 | 84 | 0.0% | 2 | 2 | 0.0% | 0.0% | 0.0% |\n| `ryu/d2s_small_table.h` | 38 | 38 | 0.0% | 4 | 4 | 0.0% | 0.0% | 0.0% |\n| **Total** | 4503 | 3818 | **15.2%** | 5056 | 4532 | **10.4%** | 17.5% | 12.5% |\n\n`runtime.c` by section (the comments that start them):\n\n| Section | From line | Lines | Lines % | Branches | Branches % | Functions | Functions % |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| (declarations) | 1 | 3 | 33.3% | 0 | - | 0 | - |\n| memory: conservative mark-and-sweep garbage collector | 76 | 311 | 63.7% | 260 | 49.2% | 31 | 58.1% |\n| strings | 553 | 447 | 13.2% | 650 | 6.5% | 69 | 20.3% |\n| arithmetic with Python semantics | 1115 | 376 | 1.3% | 318 | 1.3% | 76 | 1.3% |\n| generic repr / equality / ordering driven by a type descriptor | 1685 | 415 | 10.8% | 706 | 9.9% | 48 | 18.8% |\n| lists | 2189 | 465 | 9.5% | 620 | 4.2% | 72 | 20.8% |\n| dicts: CPython's compact ordered layout | 2737 | 238 | 0.0% | 286 | 0.0% | 66 | 0.0% |\n| sets: CPython's setobject.c | 3078 | 280 | 0.0% | 342 | 0.0% | 58 | 0.0% |\n| formatting: f\"{x:spec}\" | 3422 | 60 | 0.0% | 138 | 0.0% | 5 | 0.0% |\n| I/O and process | 3495 | 541 | 39.0% | 678 | 24.6% | 86 | 34.9% |\n| exceptions: table-driven unwinding (the Itanium C++ ABI's) | 4151 | 307 | 42.3% | 350 | 24.3% | 60 | 40.0% |\n| the time module: clocks and sleep | 4600 | 17 | 0.0% | 16 | 0.0% | 10 | 0.0% |\n| select: a POSIX integer-descriptor subset | 4619 | 67 | 0.0% | 52 | 0.0% | 2 | 0.0% |\n| the errno module: the platform's error numbers | 4693 | 4 | 0.0% | 4 | 0.0% | 1 | 0.0% |\n| temporary directories: tempfile.mkdtemp, os.remove, os.rmdir | 4968 | 96 | 1.0% | 130 | 1.5% | 8 | 12.5% |\n| tables | 5067 | 65 | 0.0% | 82 | 0.0% | 13 | 0.0% |\n",
+      "parts": {
+        "corpus.json": {
+          "part": "corpus",
+          "suite": "corpus",
+          "shard": null,
+          "selected": true,
+          "cases": 3,
+          "report": "6 passed, 0 failed",
+          "profiles": 2,
+          "seconds": 18,
+          "commit": "8990e41776e8e74f57812120f81ec3e897065eda",
+          "dirty": false
+        }
+      },
+      "coverage_json_sha256": "d2ee10b3102844e9fc945b18e8bffc28294320e54a224d4bd40fde1f035123ae",
+      "scope": "Selected cases only. Hosted cache attempt failed reporting despite 67 assertions passing and is excluded. Not repository-wide coverage or library support percentage."
+    },
+    "hosted": {
+      "summary": "## Hosted compiler coverage\n\nCommit `8990e41776e8e74f57812120f81ec3e897065eda`: statements **32.2%** (10735 of 33312) and branches **23.2%** (4234 of 18240); 29.0% together, coverage.py's total. 1 suites, 5 processes measured.\nThe statements and branches of `src/pystachy_compiler/`, run by CPython; not `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as native code ([native runtime coverage](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)).\n\n| Suite | Runs | Checks | Processes | Time | Statements | Branches |\n|---|---|---|---:|---:|---:|---:|\n| corpus | `tests/run.sh`, JIT and AOT, 2 cases selected | 4 passed, 0 failed | 5 | 11 s | 32.2% | 23.2% |\n| **all** | | | **5** | | **32.2%** | **23.2%** |\n\n### Changed since 5a915947 (merge base `5a91594740a7`)\n\nChanged statements: 3 of 3 run (100.0%); their branches: 2 of 2 taken (100.0%).\n\n| Module | Statements | Missed | Statements % | Branches | Missed | Branches % | Total |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| `src/pystachy_compiler/analysis.py` | 1399 | 820 | 41.4% | 1200 | 812 | 32.3% | 37.2% |\n| `src/pystachy_compiler/builtins.py` | 2160 | 1748 | 19.1% | 1276 | 1011 | 20.8% | 19.7% |\n| `src/pystachy_compiler/calls.py` | 1114 | 906 | 18.7% | 690 | 592 | 14.2% | 17.0% |\n| `src/pystachy_compiler/containers.py` | 751 | 673 | 10.4% | 410 | 386 | 5.9% | 8.8% |\n| `src/pystachy_compiler/conversions.py` | 251 | 143 | 43.0% | 150 | 104 | 30.7% | 38.4% |\n| `src/pystachy_compiler/declarations.py` | 2251 | 1868 | 17.0% | 1512 | 1321 | 12.6% | 15.3% |\n| `src/pystachy_compiler/diagnostics.py` | 31 | 15 | 51.6% | 8 | 8 | 0.0% | 41.0% |\n| `src/pystachy_compiler/driver.py` | 553 | 174 | 68.5% | 224 | 106 | 52.7% | 64.0% |\n| `src/pystachy_compiler/emission.py` | 437 | 166 | 62.0% | 138 | 51 | 63.0% | 62.3% |\n| `src/pystachy_compiler/exceptions.py` | 1146 | 775 | 32.4% | 542 | 406 | 25.1% | 30.0% |\n| `src/pystachy_compiler/expressions.py` | 3204 | 2481 | 22.6% | 1898 | 1556 | 18.0% | 20.9% |\n| `src/pystachy_compiler/flow.py` | 766 | 351 | 54.2% | 534 | 298 | 44.2% | 50.1% |\n| `src/pystachy_compiler/functions.py` | 280 | 155 | 44.6% | 160 | 108 | 32.5% | 40.2% |\n| `src/pystachy_compiler/gen.py` | 1998 | 595 | 70.2% | 2 | 0 | 100.0% | 70.2% |\n| `src/pystachy_compiler/generators.py` | 920 | 841 | 8.6% | 370 | 355 | 4.1% | 7.3% |\n| `src/pystachy_compiler/ir.py` | 318 | 146 | 54.1% | 16 | 16 | 0.0% | 51.5% |\n| `src/pystachy_compiler/ircheck.py` | 340 | 104 | 69.4% | 282 | 100 | 64.5% | 67.2% |\n| `src/pystachy_compiler/lexer.py` | 637 | 282 | 55.7% | 356 | 182 | 48.9% | 53.3% |\n| `src/pystachy_compiler/llvm_abi.py` | 12 | 0 | 100.0% | 4 | 0 | 100.0% | 100.0% |\n| `src/pystachy_compiler/loader.py` | 2388 | 1571 | 34.2% | 1472 | 1077 | 26.8% | 31.4% |\n| `src/pystachy_compiler/local_versions.py` | 35 | 8 | 77.1% | 24 | 8 | 66.7% | 72.9% |\n| `src/pystachy_compiler/lower_module.py` | 321 | 235 | 26.8% | 162 | 129 | 20.4% | 24.6% |\n| `src/pystachy_compiler/lowering.py` | 390 | 117 | 70.0% | 234 | 58 | 75.2% | 72.0% |\n| `src/pystachy_compiler/memory_ir.py` | 17 | 0 | 100.0% | 0 | 0 | - | 100.0% |\n| `src/pystachy_compiler/module.py` | 29 | 0 | 100.0% | 0 | 0 | - | 100.0% |\n| `src/pystachy_compiler/names.py` | 27 | 16 | 40.7% | 12 | 10 | 16.7% | 33.3% |\n| `src/pystachy_compiler/optimizations.py` | 544 | 444 | 18.4% | 334 | 283 | 15.3% | 17.2% |\n| `src/pystachy_compiler/parser.py` | 1999 | 1197 | 40.1% | 1110 | 790 | 28.8% | 36.1% |\n| `src/pystachy_compiler/program.py` | 924 | 633 | 31.5% | 676 | 500 | 26.0% | 29.2% |\n| `src/pystachy_compiler/reflection.py` | 1889 | 1689 | 10.6% | 1002 | 946 | 5.6% | 8.9% |\n| `src/pystachy_compiler/scalar_ir.py` | 47 | 9 | 80.9% | 22 | 9 | 59.1% | 73.9% |\n| `src/pystachy_compiler/scope.py` | 534 | 240 | 55.1% | 294 | 175 | 40.5% | 49.9% |\n| `src/pystachy_compiler/specs.py` | 234 | 1 | 99.6% | 80 | 1 | 98.8% | 99.4% |\n| `src/pystachy_compiler/statements.py` | 1576 | 1110 | 29.6% | 856 | 637 | 25.6% | 28.2% |\n| `src/pystachy_compiler/structs.py` | 224 | 206 | 8.0% | 128 | 128 | 0.0% | 5.1% |\n| `src/pystachy_compiler/syntax.py` | 145 | 73 | 49.7% | 98 | 68 | 30.6% | 42.0% |\n| `src/pystachy_compiler/templates.py` | 715 | 678 | 5.2% | 432 | 431 | 0.2% | 3.3% |\n| `src/pystachy_compiler/union_arithmetic.py` | 115 | 106 | 7.8% | 50 | 50 | 0.0% | 5.5% |\n| `src/pystachy_compiler/unions.py` | 412 | 357 | 13.3% | 216 | 211 | 2.3% | 9.6% |\n| `src/pystachy_compiler/utils.py` | 567 | 296 | 47.8% | 280 | 201 | 28.2% | 41.3% |\n| `src/pystachy_compiler/variables.py` | 1612 | 1348 | 16.4% | 986 | 882 | 10.5% | 14.2% |\n",
+      "parts": {
+        "corpus.json": {
+          "part": "corpus",
+          "suite": "corpus",
+          "shard": null,
+          "selected": true,
+          "cases": 2,
+          "report": "4 passed, 0 failed",
+          "processes": 5,
+          "data_files": 5,
+          "seconds": 11,
+          "commit": "8990e41776e8e74f57812120f81ec3e897065eda",
+          "dirty": false
+        }
+      },
+      "coverage_json_sha256": "54452f100127053e436b1cf66217abfc35d6364409b34a4bd6e6579f57ff395f",
+      "scope": "Selected cases only. Hosted cache attempt failed reporting despite 67 assertions passing and is excluded. Not repository-wide coverage or library support percentage."
+    }
+  },
+  "check_counts": {
+    "checks-native": [
+      [
+        "54",
+        "0"
+      ]
+    ],
+    "hosted-coverage": [
+      [
+        "4",
+        "0"
+      ],
+      [
+        "4",
+        "0"
+      ],
+      [
+        "67",
+        "0"
+      ]
+    ],
+    "hosted-corpus": [
+      [
+        "4",
+        "0"
+      ],
+      [
+        "4",
+        "0"
+      ],
+      [
+        "4",
+        "0"
+      ]
+    ],
+    "checks-gc": [
+      [
+        "54",
+        "0"
+      ]
+    ],
+    "consumer-smoke": [
+      [
+        "8",
+        "0"
+      ]
+    ],
+    "checks-hosted": [
+      [
+        "54",
+        "0"
+      ]
+    ],
+    "runtime-coverage": [
+      [
+        "6",
+        "0"
+      ],
+      [
+        "6",
+        "0"
+      ]
+    ],
+    "checks-noopt": [
+      [
+        "54",
+        "0"
+      ]
+    ],
+    "variants": [
+      [
+        "24",
+        "0"
+      ],
+      [
+        "24",
+        "0"
+      ],
+      [
+        "24",
+        "0"
+      ],
+      [
+        "24",
+        "0"
+      ],
+      [
+        "24",
+        "0"
+      ],
+      [
+        "24",
+        "0"
+      ]
+    ],
+    "sanitize": [
+      [
+        "24",
+        "0"
+      ]
+    ]
+  },
+  "reproduction_scripts": {
+    "audit-725.py": "import concurrent.futures\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport sys\nimport sysconfig\nimport tempfile\nimport time\n\nBASE = Path('/workspace/scratch/3ba735e28fa7')\nROOT = BASE / 'pystachy-audit-725'\nOLD = BASE / 'pystachy-audit-694'\nOUT = ROOT / 'build/audit-725'\nOUT.mkdir(parents=True, exist_ok=True)\nPY = '/root/.local/bin/python3.13'\nLLVM = str(BASE / 'llvm18-recovered/usr/lib/llvm-18/bin')\nENV = {k: v for k, v in os.environ.items() if not k.startswith(('PYSTACHY_', 'COVERAGE_'))}\nENV.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_LLVM=LLVM, PYSTACHY_JOBS='2', PY=PY, PATH=LLVM+':'+ENV['PATH'])\ndef save(n, v):\n    (OUT/(n+'.json')).write_text(json.dumps(v, indent=2)+'\\n')\ndef run(n, args, extra=None, expected=0):\n    start = time.monotonic()\n    p = subprocess.run(args, cwd=ROOT, env=ENV | (extra or {}), text=True, capture_output=True, timeout=1800)\n    r = dict(command=args, environment=extra or {}, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr, wall_seconds=time.monotonic()-start, expected_exit=expected)\n    save(n, r)\n    print(n, p.returncode, p.stdout[-350:], p.stderr[-250:], flush=True)\n    assert p.returncode == expected\n    return r\nfiles = sorted(str(p.relative_to(ROOT)) for pattern in ['tests/lib_warnings*.py', 'tests/deviations/lib_warnings*.py', 'tests/errors/lib_warnings*.py'] for p in ROOT.glob(pattern))\nadjacent = ['tests/errors/lib_datetime_utcnow.py', 'tests/errors/lib_urllib_parse_deprecated.py', 'tests/upstream_bool.py', 'tests/upstream_fnmatch.py', 'tests/sys_warnoptions.py', 'tests/exc_class_misc.py']\nsave('selection', dict(warnings=files, adjacent=adjacent))\nmode = sys.argv[1]\nif mode == 'checks':\n    for label, compiler, extra in [('native', './pystachy', {}), ('gc', './pystachy', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', './pystachy', {'PYSTACHY_OPT':'-all'}), ('hosted', PY+' -m pystachy', {})]:\n        run('checks-'+label, ['tests/run.sh', compiler, 'jit aot', *files, *adjacent], extra)\nelif mode == 'references':\n    results = {}\n    for f in files + adjacent:\n        if '/errors/' in f or '/deviations/' in f:\n            continue\n        p = subprocess.run([PY, f, 'a1', 'a2'], cwd=ROOT, env=ENV, text=True, capture_output=True, timeout=120)\n        err = (ROOT/f).with_suffix('.err')\n        expected_err = err.read_text() if err.exists() else ''\n        stderr_last = p.stderr.splitlines()[-1]+'\\n' if p.stderr else ''\n        ok = p.stdout+f'[exit {p.returncode}]\\n' == (ROOT/f).with_suffix('.out').read_text() and stderr_last == expected_err\n        results[f] = dict(exit=p.returncode, stdout=p.stdout, stderr_last=stderr_last, stderr_sha256=hashlib.sha256(p.stderr.encode()).hexdigest(), recording_equal=ok)\n    save('references', results)\n    assert all(r['recording_equal'] for r in results.values())\n    print('references', len(results), flush=True)\nelif mode == 'sweeps':\n    for n, opts in [('imports', ['./pystachy']), ('stubs', ['--stubs'])]:\n        run(n+'-command', [PY, 'tools/import_sweep.py', '-j', '2', '--metadata', str(OUT/(n+'-metadata.json')), *opts, sysconfig.get_path('stdlib'), str(OUT/(n+'.json'))])\nelif mode == 'ir':\n    run('ir', ['tools/check_ir.sh', './pystachy', *[f for f in files+adjacent if '/errors/' not in f]])\nelif mode == 'negative':\n    original = (ROOT/'lib/warnings.py').read_text()\n    changes = {\n        'unanchored-main': ('module=\"__main__\\\\\\\\Z\", append=1)', 'module=\"__main__\", append=1)', 'tests/lib_warnings_main_filter.py'),\n        'unchecked-prefixes': ('    for prefix in skip_file_prefixes:\\n        if not isinstance(prefix, str):\\n            raise TypeError(\"Found non-str \\'\" + type(prefix).__name__ + \"\\' in skip_file_prefixes.\")\\n', '', 'tests/lib_warnings_skip_prefixes.py'),\n    }\n    results = {}\n    for name, (before, after, test) in changes.items():\n        assert original.count(before)==1\n        overlay = OUT/name\n        overlay.mkdir(exist_ok=True)\n        (overlay/'warnings.py').write_text(original.replace(before, after))\n        r=run('negative-'+name, ['./pystachy','run',test], {'PYSTACHY_PATH':str(overlay)})\n        recording=(ROOT/test).with_suffix('.out').read_text()\n        assert r['stdout']+'[exit 0]\\n' != recording\n        results[name]=dict(before=before,after=after,test=test,expected_recording=recording,mutant_output=r['stdout'],detected=True)\n    save('negative-controls',results)\nelif mode == 'matrix':\n    program = '''import warnings\n\nclass Child(UserWarning):\n    pass\n\nfor action in [\"default\", \"always\", \"ignore\", \"error\", \"module\", \"once\"]:\n    for category in [UserWarning, Child, RuntimeWarning]:\n        reg: dict[tuple[str, type[Warning], int], int] = {}\n        with warnings.catch_warnings(record=True) as log:\n            warnings.simplefilter(action)\n            for line in [1, 1, 2, 2]:\n                try:\n                    warnings.warn_explicit(\"matrix\", category, \"matrix.py\", line, \"pkg\", reg)\n                except Warning as e:\n                    print(\"error\", action, category.__name__, line, str(e))\n            print(action, category.__name__, [(m.filename, m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as log:\n    warnings.simplefilter(\"always\")\n    warnings.filterwarnings(\"ignore\", \"^quiet$\", UserWarning, \"^pkg$\", 3)\n    for module in [\"pkg\", \"pkg.child\", \"other\"]:\n        for line in [2, 3]:\n            for message in [\"quiet\", \"QUIET\", \"quietly\"]:\n                warnings.warn_explicit(message, Child, \"matrix.py\", line, module)\n    print(\"filter\", [(m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as outer:\n    warnings.simplefilter(\"always\")\n    warnings.warn(\"outer before\")\n    try:\n        with warnings.catch_warnings(record=True) as inner:\n            warnings.warn(\"inner\")\n            raise ValueError(\"restore\")\n    except ValueError:\n        pass\n    warnings.warn(\"outer after\")\n    print(\"nested\", [str(m.message) for m in outer], [str(m.message) for m in inner])\n'''\n    f=OUT/'matrix.py'; f.write_text(program)\n    save('matrix-program',dict(program=program,sha256=hashlib.sha256(program.encode()).hexdigest()))\n    ref=run('matrix-cpython',[PY,str(f)])\n    for label, extra in [('gc', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', {'PYSTACHY_OPT':'-all'})]:\n        r=run('matrix-jit-'+label,['./pystachy','run',str(f)],extra)\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\n        exe=OUT/('matrix-'+label)\n        run('matrix-build-'+label,['./pystachy','build',str(f),'-o',str(exe)],extra)\n        r=run('matrix-aot-'+label,[str(exe)],{'PYSTACHY_GC_STRESS':'1'} if label=='gc' else {})\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\nelif mode == 'oracle':\n    # All retained programs are cheap compile-only checks; changed executables\n    # beyond the selected warning consumers must be executed before completion.\n    sources = ['pystachy.py', 'runtime.py'] + sorted({str(p.relative_to(ROOT)) for base in ['tests', 'tests/errors', 'tests/deviations', 'tests/ir', 'bench', 'bench/pyperformance'] for p in (ROOT/base).glob('*.py')})\n    def compare(f):\n        rs = []\n        with tempfile.TemporaryDirectory(prefix='warnings-oracle-') as tmp:\n            for label, home in [('old', OLD), ('new', ROOT)]:\n                target = Path(tmp)/(label+'.ll')\n                extra = {'PYSTACHY_HOME':str(home)}\n                path = (ROOT/f).with_suffix('.path')\n                if path.exists(): extra['PYSTACHY_PATH'] = path.read_text().strip()\n                how = 'rt' if f == 'runtime.py' or Path(f).name.startswith('rtmode_') else 'ir'\n                p = subprocess.run([str(ROOT/'pystachy'), how, f, '-o', str(target)], cwd=ROOT, env=ENV | extra, text=True, capture_output=True, timeout=180)\n                ir = target.read_text() if target.exists() else ''\n                msg = p.stdout+p.stderr\n                for root in [ROOT, OLD]:\n                    ir = ir.replace(str(root), 'CHECKOUT'); msg = msg.replace(str(root), 'CHECKOUT')\n                rs.append(dict(exit=p.returncode, message=msg, ir_sha256=hashlib.sha256(ir.encode()).hexdigest()))\n        return dict(source=f, old=rs[0], new=rs[1])\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n        rs = list(pool.map(compare, sources))\n    changed = [r for r in rs if r['old'] != r['new']]\n    save('oracle', dict(programs=len(rs), identical=len(rs)-len(changed), changed=changed, input_inventory_sha256=hashlib.sha256(json.dumps({f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in sources},sort_keys=True).encode()).hexdigest()))\n    assert not any(r['old']['exit'] == 0 and r['new']['exit'] != 0 for r in rs)\n    print('oracle', len(rs), len(changed), flush=True)\n",
+    "audit-737.py": "from pathlib import Path\nimport sys\ndriver=Path('/workspace/scratch/3ba735e28fa7/audit-725.py').read_text().replace(\"'pystachy-audit-725'\",\"'pystachy-audit-737'\").replace(\"'pystachy-audit-694'\",\"'pystachy-audit-696'\").replace(\"'build/audit-725'\",\"'build/audit-737'\")\nexec(driver.split('files = sorted')[0])\nchanged=subprocess.check_output(['git','diff','--name-only','--diff-filter=ACMR','88013afb','HEAD'],cwd=ROOT,text=True).splitlines()\nfiles=sorted({f for f in changed if f.startswith('tests/') and f.endswith('.py')})\npatterns=['tests/scalar_union*.py','tests/union_none*.py','tests/any*.py','tests/errors/any*.py','tests/errors/scalar_union*.py','tests/template_return*.py','tests/errors/template_return*.py','tests/lib_statistics*.py','tests/lib_itertools_zip*.py','tests/lib_string_formatter*.py','tests/upstream_textwrap*.py','tests/opt_union_slots*.py','tests/lib_weakref_module.py','tests/lib_gettext.py','tests/sys_prefix.py','tests/percent_conversion_order.py']\nadjacent=sorted({str(p.relative_to(ROOT)) for pattern in patterns for p in ROOT.glob(pattern)}-set(files))\nsave('selection',dict(changed=files,adjacent=adjacent))\nmode=sys.argv[1]\nif mode=='build':\n    run('build',['make','PY='+PY])\nelif mode in ['checks','sweeps','ir']:\n    exec('mode = sys.argv[1]\\n'+driver.split('mode = sys.argv[1]\\n',1)[1])\nelif mode=='oracle':\n    driver=driver.replace(\"[str(ROOT/'pystachy'), how, f\", \"[str(home/'pystachy'), how, f\")\n    exec('mode = sys.argv[1]\\n'+driver.split('mode = sys.argv[1]\\n',1)[1])\nelif mode=='runtime':\n    run('runtime',['make','check-runtime','PY='+PY])\nelif mode=='references':\n    results={}\n    refpy=PY\n    for f in files+adjacent:\n        if '/errors/' in f or '/deviations/' in f:continue\n        pth=ROOT/f;inp=pth.with_suffix('.in');path=pth.with_suffix('.path')\n        extra={'PYTHONIOENCODING':'utf-8:surrogateescape','PYTHONPATH':str(OUT/'reference-deps')}\n        if path.exists():extra['PYTHONPATH']+=os.pathsep+path.read_text().strip()\n        p=subprocess.run([refpy,f,'a1','a2'],cwd=ROOT,env=ENV|extra,input=inp.read_bytes() if inp.exists() else b'',capture_output=True,timeout=120)\n        err=pth.with_suffix('.err');last=p.stderr.splitlines()[-1]+b'\\n' if p.stderr else b''\n        ok=p.stdout+f'[exit {p.returncode}]\\n'.encode()==pth.with_suffix('.out').read_bytes() and last==(err.read_bytes() if err.exists() else b'')\n        results[f]=dict(interpreter=refpy,exit=p.returncode,stdout=p.stdout.decode('utf8','backslashreplace'),stderr_last=last.decode('utf8','backslashreplace'),recording_equal=ok)\n    save('references',results)\n    print('references',len(results),'failures',[f for f,r in results.items() if not r['recording_equal']],flush=True)\n    assert all(r['recording_equal'] for r in results.values())\nelif mode=='extras':\n    oracle=json.loads((OUT/'oracle.json').read_text())\n    extra=sorted({r['source'] for r in oracle['changed'] if r['source'].startswith('tests/')}-set(files)-set(adjacent))\n    save('extra-selection',extra)\n    if extra:run('checks-extra',['tests/run.sh','./pystachy','jit aot',*extra])\nelif mode=='ports':\n    run('upstream-ports',['make','port-check','PY='+PY])\n    run('subset',['make','test-cpython-subset','PY='+PY])\n    ports=sorted(str(p.relative_to(ROOT)) for p in ROOT.glob('tests/port_*.py'))\n    save('ports-selection',ports)\n    run('ports-native',['tests/run.sh','./pystachy','jit aot',*ports])\n",
+    "audit-763.py": "from pathlib import Path\nimport sys\nwrapper=Path('/workspace/scratch/3ba735e28fa7/audit-737.py').read_text().replace(\"'pystachy-audit-737'\",\"'pystachy-audit-763'\").replace(\"'pystachy-audit-696'\",\"'pystachy-audit-732'\").replace(\"'build/audit-737'\",\"'build/audit-763'\")\nexec(wrapper.split('changed=subprocess')[0])\nchanged=subprocess.check_output(['git','diff','--name-only','5a915947','HEAD'],cwd=ROOT,text=True).splitlines()\nfiles=sorted(f for f in changed if f.startswith('tests/') and f.endswith('.py'))\npatterns=['tests/exit*.py','tests/errors/exit*.py','tests/rt_list*.py','tests/io_dropped*.py','tests/io_open*.py','tests/set_discard*.py','tests/gen_stopiteration*.py','tests/exception_exit*.py']\nadjacent=sorted({str(p.relative_to(ROOT)) for pat in patterns for p in ROOT.glob(pat)}-set(files))\nsave('selection',dict(changed=files,adjacent=adjacent))\nmode=sys.argv[1]\nif mode in ['imports','stubs']:\n    opts=['./pystachy'] if mode=='imports' else ['--stubs']\n    run(mode+'-command',[PY,'tools/import_sweep.py','-j','2','--metadata',str(OUT/(mode+'-metadata.json')),*opts,sysconfig.get_path('stdlib'),str(OUT/(mode+'.json'))])\nelif mode=='references':\n    adjacent=[]\n    exec('mode=sys.argv[1]\\n'+wrapper.split('mode=sys.argv[1]\\n',1)[1])\nelif mode=='tool-tests':\n    for pat in ['test_coverage*.py','test_workflow_limits.py']:\n        run(pat,[PY,'-m','unittest','discover','-s','tools','-p',pat])\nelif mode=='runtime-coverage':\n    run(mode,['tools/runtime_coverage.sh','tests/rt_list_vacated.py','tests/exit_optional_code.py','tests/exit_tuple_status.py'],{'COVERAGE_BASE':'5a915947'})\nelif mode=='hosted-coverage':\n    run(mode,['tools/coverage.sh','tests/exit_optional_code.py','tests/exit_tuple_status.py'],{'PY':str(BASE/'audit-coverage-env/bin/python'),'COVERAGE_BASE':'5a915947','COVERAGE_SUITES':'corpus cache'})\nelif mode=='hosted-corpus':\n    save('failed-cache-artifacts',{'log':(ROOT/'build/coverage/parts/cache.log').read_text(),'corpus_part':json.loads((ROOT/'build/coverage/parts/corpus.json').read_text())})\n    run(mode,['tools/coverage.sh','tests/exit_optional_code.py','tests/exit_tuple_status.py'],{'PY':str(BASE/'audit-coverage-env/bin/python'),'COVERAGE_BASE':'5a915947','COVERAGE_SUITES':'corpus'})\nelif mode=='pid-control':\n    run(mode,['/bin/sh','-c','printf \"shell_pid=%s parent_pid=%s\\\\n\" \"$$\" \"$PPID\"; ps -o pid=,ppid=,comm= -p \"$$\"; ps -o comm= -p \"$PPID\"; readlink /proc/self; sed -n \"/^NSpid:/p\" /proc/self/status'])\nelif mode=='sanitize':\n    run(mode,['tests/run.sh','./pystachy','jit aot',*files,'tests/rt_list_vacated.py'],{'PYSTACHY_CFLAGS':'-fsanitize=undefined -fno-sanitize-recover=all','PYSTACHY_GC_STRESS_PROGRAM':'1','LD_PRELOAD':str(BASE/'llvm18-recovered/usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.ubsan_standalone-x86_64.so')})\nelif mode=='variants':\n    run(mode,['tools/variants.sh',*files,'tests/rt_list_vacated.py'])\nelif mode=='fileprobe':\n    run(mode,['make','fileprobe','PY='+PY])\nelif mode=='consumer-smoke':\n    run(mode,['tests/run.sh','./pystachy','jit aot','tests/port_iniconfig_parse.py','tests/port_tomli_w_tables.py','tests/port_roman_convert.py','tests/port_pylev_imports.py'])\nelse:\n    exec('mode=sys.argv[1]\\n'+wrapper.split('mode=sys.argv[1]\\n',1)[1])\n",
+    "audit-763-probes.py": "from pathlib import Path\nimport sys\nexec(Path('/workspace/scratch/3ba735e28fa7/audit-763.py').read_text().split('mode=sys.argv[1]')[0])\n\ndef capture(args, env, cwd):\n    t=time.monotonic()\n    p=subprocess.run(args,cwd=cwd,env=ENV|env,capture_output=True,text=True,timeout=180)\n    return dict(command=args,environment=env,exit=p.returncode,stdout=p.stdout,stderr=p.stderr,wall_seconds=time.monotonic()-t)\ndef outcome(r):return r['exit'],r['stdout'],r['stderr']\nmode=sys.argv[1]\nif mode=='gaps':\n    rows=[]\n    for name,code in [('variable-empty','import sys\\nt: tuple[int, ...] = tuple([])\\nsys.exit(t)\\n'),('variable-one','import sys\\nt: tuple[int, ...] = tuple([3])\\nsys.exit(t)\\n'),('bytes-iterator','print(list(iter(b\"ab\")))\\n')]:\n        f=OUT/(name+'.py');f.write_text(code)\n        row=dict(name=name,program=code,cpython=capture([PY,str(f)],{},OUT))\n        for label,home in [('old',OLD),('new',ROOT)]:\n            env={'PYSTACHY_HOME':str(home)}\n            row[label+'-jit']=capture([str(home/'pystachy'),'run',str(f)],env,OUT)\n            exe=OUT/(name+'-'+label)\n            row[label+'-build']=capture([str(home/'pystachy'),'build',str(f),'-o',str(exe)],env,OUT)\n            if row[label+'-build']['exit']==0:row[label+'-aot']=capture([str(exe)],{},OUT)\n        rows.append(row)\n    save('gaps',rows)\n    print([(r['name'],r['cpython']['exit'],r['new-jit']['exit'],r['new-jit']['stderr']) for r in rows],flush=True)\nelif mode=='exit-matrix':\n    rows=[]\n    for i,expr in enumerate(['()','(None,)','(3,)','(\"bye\",)','(3,\"x\")','((3,),)','(True,)','([1,2],)']):\n        code='import sys\\nprint(\"before\", flush=True)\\nsys.exit('+expr+')\\nprint(\"unreachable\")\\n'\n        f=OUT/('exit-'+str(i)+'.py');f.write_text(code)\n        ref=capture([PY,str(f)],{},OUT)\n        old=capture([str(OLD/'pystachy'),'run',str(f)],{'PYSTACHY_HOME':str(OLD)},OUT)\n        row=dict(expression=expr,program=code,cpython=ref,old_jit=old,new={})\n        for label,env in [('gc',{'PYSTACHY_GC_STRESS_PROGRAM':'1'}),('noopt',{'PYSTACHY_OPT':'-all'})]:\n            jit=capture([str(ROOT/'pystachy'),'run',str(f)],env,OUT)\n            exe=OUT/('exit-'+str(i)+'-'+label)\n            built=capture([str(ROOT/'pystachy'),'build',str(f),'-o',str(exe)],env,OUT)\n            assert built['exit']==0,built\n            aot=capture([str(exe)],{'PYSTACHY_GC_STRESS':'1'} if label=='gc' else {},OUT)\n            row['new'][label]=dict(jit=jit,build=built,aot=aot)\n        rows.append(row)\n    save('exit-matrix',rows)\n    differences=[(r['expression'],label,mode) for r in rows for label,rs in r['new'].items() for mode in ['jit','aot'] if outcome(rs[mode])!=outcome(r['cpython'])]\n    print('matrix',len(rows),'old differences',sum(outcome(r['old_jit'])!=outcome(r['cpython']) for r in rows),'new',differences,flush=True)\n    assert not differences,differences\nelif mode=='writer-control':\n    work=OUT/'writer-control';work.mkdir(exist_ok=True)\n    source=ROOT/'tests/rt_list_vacated.py'\n    rows={}\n    rows['cpython']=capture([PY,str(source)],{},work)\n    for label,home in [('old',OLD),('new',ROOT)]:\n        env={'PYSTACHY_HOME':str(home),'PYSTACHY_CFLAGS':'-fprofile-instr-generate -fcoverage-mapping','PYSTACHY_CACHE':str(work/(label+'-cache')),'LLVM_PROFILE_FILE':str(work/(label+'-%m.profraw'))}\n        rows[label+'-jit']=capture([str(home/'pystachy'),'run',str(source)],env,work)\n        exe=work/(label+'-aot')\n        rows[label+'-build']=capture([str(home/'pystachy'),'build',str(source),'-o',str(exe)],env,work)\n        assert rows[label+'-build']['exit']==0\n        rows[label+'-aot']=capture([str(exe)],env,work)\n    save('writer-control',rows)\n    assert all(outcome(rows['new-'+m])==outcome(rows['cpython']) for m in ['jit','aot'])\n    print('writer old differs',{m:outcome(rows['old-'+m])!=outcome(rows['cpython']) for m in ['jit','aot']},flush=True)\nelif mode=='report-controls':\n    import shutil\n    for label,base,fn in [('native',ROOT/'build/runtime-coverage','corpus.json'),('hosted',ROOT/'build/coverage','corpus.json')]:\n        for mutation in ['commit','missing-shard']:\n            d=OUT/(label+'-'+mutation)\n            shutil.copytree(base/'parts',d/'parts',dirs_exist_ok=True)\n            part=d/'parts'/fn;r=json.loads(part.read_text())\n            if mutation=='commit':r['commit']='0000000000000000000000000000000000000000'\n            else:r['shard']=[0,2]\n            part.write_text(json.dumps(r)+'\\n')\n            cmd=[PY,'tools/coverage_report.py','--runtime',str(d),'8990e41776e8e74f57812120f81ec3e897065eda','false'] if label=='native' else [str(BASE/'audit-coverage-env/bin/python'),'tools/coverage_report.py',str(d)]\n            # Hosted reports reject mixed commits, not a single commit different from checkout.\n            if label=='hosted' and mutation=='commit':\n                r2=r|{'part':'extra','suite':'ffi','commit':'8990e41776e8e74f57812120f81ec3e897065eda'}\n                (d/'parts/extra.json').write_text(json.dumps(r2)+'\\n')\n                shutil.copyfile(d/'parts/data.corpus',d/'parts/data.extra')\n            result=capture(cmd,{},ROOT);save('control-'+label+'-'+mutation,result)\n            assert result['exit']==1,result\n    for shard in ['-1/2','2/2','0/0']:\n        result=capture(['tools/shard_cases.sh',shard],{},ROOT)\n        save('shard-invalid-'+shard.replace('/','-'),result)\n        assert result['exit']==2,result\n    result=capture(['tools/shard_cases.sh','0/2'],{},ROOT);other=capture(['tools/shard_cases.sh','1/2'],{},ROOT)\n    a=result['stdout'].splitlines();b=other['stdout'].splitlines()\n    expected={str(p.relative_to(ROOT)) for pattern in ['tests/*.py','tests/errors/*.py','tests/deviations/*.py'] for p in ROOT.glob(pattern)}\n    assert not(set(a)&set(b)) and set(a+b)==expected\n    save('shard-partition',dict(first_count=len(a),second_count=len(b),total=len(expected),disjoint=True,complete=True))\n",
+    "audit-763-assemble.py": "import hashlib,json,re,subprocess,sys\nfrom pathlib import Path\nBASE=Path('/workspace/scratch/3ba735e28fa7');ROOT=BASE/'pystachy-audit-763';OLD=BASE/'pystachy-audit-732';OUT=ROOT/'build/audit-763';DEST=BASE/'pystachy-audit-followup-729/docs/reports'\ndef read(n):return json.loads((OUT/(n+'.json')).read_text())\ndef sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()\ndef outcome(r):return r['exit'],r['stdout'],r['stderr']\nrequired=['build','references','runtime','fileprobe','checks-native','checks-gc','checks-noopt','checks-hosted','sanitize','variants','ir','oracle','extra-selection','imports','imports-metadata','stubs','stubs-metadata','consumer-smoke','exit-matrix','writer-control','gaps','hosted-coverage','hosted-corpus','pid-control','failed-cache-artifacts','runtime-coverage','test_coverage*.py','test_workflow_limits.py','control-native-commit','control-native-missing-shard','control-hosted-commit','control-hosted-missing-shard','shard-partition']\nfor n in required:read(n)\nrecords={p.stem:json.loads(p.read_text()) for p in OUT.glob('*.json') if p.stem not in ['imports','stubs','imports-metadata','stubs-metadata']}\nassert all(r['returncode']==r['expected_exit'] for n,r in records.items() if n!='hosted-coverage' and isinstance(r,dict) and 'returncode' in r)\nassert read('hosted-coverage')['returncode']==1\nassert '67 passed, 0 failed' in read('hosted-coverage')['stdout'] and '33 coverage data files, for 33 processes' in read('hosted-coverage')['stdout']\nassert all(r['recording_equal'] for r in read('references').values())\nmatrix=read('exit-matrix');assert all(outcome(r['cpython'])==outcome(rs[m]) for r in matrix for rs in r['new'].values() for m in ['jit','aot'])\nwriter=read('writer-control');assert all(outcome(writer['cpython'])==outcome(writer['new-'+m]) and outcome(writer['cpython'])!=outcome(writer['old-'+m]) for m in ['jit','aot'])\nfor label in ['native','hosted']:\n    for mode in ['commit','missing-shard']:assert read('control-'+label+'-'+mode)['exit']==1\nsource=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip();assert source=='8990e41776e8e74f57812120f81ec3e897065eda'\nassert not subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],cwd=ROOT,text=True)\nbaseline=json.loads((DEST/'compatibility-2026-10-19-exception-diagnostics.json').read_text());stdlib=Path(baseline['stdlib']['path']);inventory={}\nfor m in baseline['stdlib']['module_sha256']:\n    p=stdlib/Path(*m.split('.'));p=p/'__init__.py' if p.is_dir() else p.with_suffix('.py');inventory[m]=sha(p)\nassert inventory==baseline['stdlib']['module_sha256']\ndef norm(s):return s.replace(str(ROOT),'CHECKOUT').replace(str(OLD),'CHECKOUT')\nimports={}\nfor n in ['imports','stubs']:\n    previous=OLD/'build/audit-732'/(n+'.json');before=json.loads(previous.read_text());after=read(n)\n    delta={k:dict(before=before.get(k),after=after.get(k)) for k in sorted(set(before)|set(after)) if norm(before.get(k,''))!=norm(after.get(k,''))}\n    imports[n]=dict(metadata=read(n+'-metadata'),sha256=sha(OUT/(n+'.json')),previous_sha256=sha(previous),deltas=delta,path_normalization='Only old/new checkout prefixes replaced with CHECKOUT.');assert not delta\nextra=read('extra-selection');assert not extra or read('checks-extra')['returncode']==0\nfixtures={}\nfor f in [f for group in read('selection').values() for f in group]+extra+read('consumer-smoke')['command'][3:]:\n    for ext in ['.py','.out','.err','.in','.path','.full']:\n        p=Path(f).with_suffix(ext)\n        if (ROOT/p).exists():fixtures[str(p)]=sha(ROOT/p)\ncounts={n:re.findall(r'(\\d+) passed, (\\d+) failed',r['stdout']) for n,r in records.items() if isinstance(r,dict) and 'stdout' in r};counts={n:v for n,v in counts.items() if v}\ncoverage={}\nfor label,folder in [('native','runtime-coverage'),('hosted','coverage')]:\n    d=ROOT/'build'/folder\n    coverage[label]=dict(summary=(d/'summary.md').read_text(),parts={p.name:json.loads(p.read_text()) for p in (d/'parts').glob('*.json')},coverage_json_sha256=sha(d/'coverage.json'),scope='Selected cases only. Hosted cache attempt failed reporting despite 67 assertions passing and is excluded. Not repository-wide coverage or library support percentage.')\nchanged=subprocess.check_output(['git','diff','--name-only','5a915947','HEAD'],cwd=ROOT,text=True).splitlines()\ndata=dict(status='completed',date='2026-10-20',source_revision=source,previous_evaluated_main='5a91594740a78bb1d3bb32d8ab7d757d8b0f3ea3',merged_prs=[763],compiler_build_source=source,compiler_sha256=sha(ROOT/'pystachy'),previous_compiler_build_source='5a91594740a78bb1d3bb32d8ab7d757d8b0f3ea3',previous_compiler_sha256=sha(OLD/'pystachy'),environment=dict(python=sys.version,executable=sys.executable,llvm='18.1.3',coverage_python=str(BASE/'audit-coverage-env/bin/python'),coverage_version='7.16.2',workers_per_group=2,concurrency='Correctness groups overlap on a shared host. Wall times are descriptive, not speedup/regression evidence.'),stdlib=dict(path=str(stdlib),modules=len(inventory),inventory_sha256=hashlib.sha256(json.dumps(inventory,sort_keys=True).encode()).hexdigest(),inventory_source='compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256'),changed_file_sha256={f:sha(ROOT/f) for f in changed if (ROOT/f).is_file()},fixture_sha256=fixtures,records=records,imports=imports,coverage=coverage,check_counts=counts,reproduction_scripts={n:(BASE/n).read_text() for n in ['audit-725.py','audit-737.py','audit-763.py','audit-763-probes.py','audit-763-assemble.py']},historical_implementation_ci=dict(head='15a4a4d18335836bb0e566cc8d377a5e292ad70d',tree_equal_evaluated_main=True,successful_runs=[39372380638,39372380666,39372380574,39372380627,39372380481,39372380620]),remaining_gaps=dict(variable_tuple_exit='Empty/one-element variable-length tuples still print repr and exit 1 in both tiers, present before #763; retain under exception compatibility #10.',bytes_iterator='iter(bytes) rejected in both compiler modes, present before #763; retain under bytes/iterator compatibility #12.'),incomplete_attempts=[],setup_notes=['Base CPython had no coverage.py; used existing coverage virtual environment with the same CPython 3.13.16, coverage.py 7.16.2. No installation needed.'],limits=['Native imports, executed API programs, adapted port smoke tests, hosted compiler coverage, native C runtime coverage, and compiled upstream suites are distinct categories.','No full CPython regrtest, broad upstream package suite, NumPy compatibility, benchmark speed ratio or all-platform coverage claim.','Scoped percentages must not be compared to the repository-wide historical coverage-2026-10-20.md percentages. runtime.py and direct C probes are excluded from native coverage; signal-death/exec profiles can be missing by design.','Full local make verify was not repeated; six successful implementation CI workflows at a tree identical to evaluated main are separately attributed. Unrelated known gaps were not all rerun.'])\ndata['incomplete_attempts']=[dict(record='hosted-coverage',status='failed report generation; test assertions passed',detail='Cache expected 32 data files (33 processes minus one intentionally killed) but got 33. tests/cache.sh uses ps to decide whether to kill the intermediate os.system shell and its Python parent; this PID-namespace environment exposes host /proc, so ps cannot reliably resolve its own or parent namespace PID (pid-control records fatal library error, lookup self). No cache coverage summary is claimed. Corpus-only rerun completes separately; no implementation workaround applied.')]\n(DEST/'compatibility-2026-10-20-coverage-runtime.json').write_text(json.dumps(data,indent=2)+'\\n')\nprint(json.dumps(dict(check_counts=counts,compiler=data['compiler_sha256'],imports={n:r['metadata']['counts'] for n,r in imports.items()},oracle=read('oracle'),coverage={n:v['parts'] for n,v in coverage.items()}),indent=2))\n"
+  },
+  "historical_implementation_ci": {
+    "head": "15a4a4d18335836bb0e566cc8d377a5e292ad70d",
+    "tree_equal_evaluated_main": true,
+    "successful_runs": [
+      39372380638,
+      39372380666,
+      39372380574,
+      39372380627,
+      39372380481,
+      39372380620
+    ]
+  },
+  "remaining_gaps": {
+    "variable_tuple_exit": "Empty/one-element variable-length tuples still print repr and exit 1 in both tiers, present before #763; retain under exception compatibility #10.",
+    "bytes_iterator": "iter(bytes) rejected in both compiler modes, present before #763; retain under bytes/iterator compatibility #12."
+  },
+  "incomplete_attempts": [
+    {
+      "record": "hosted-coverage",
+      "status": "failed report generation; test assertions passed",
+      "detail": "Cache expected 32 data files (33 processes minus one intentionally killed) but got 33. tests/cache.sh uses ps to decide whether to kill the intermediate os.system shell and its Python parent; this PID-namespace environment exposes host /proc, so ps cannot reliably resolve its own or parent namespace PID (pid-control records fatal library error, lookup self). No cache coverage summary is claimed. Corpus-only rerun completes separately; no implementation workaround applied."
+    }
+  ],
+  "setup_notes": [
+    "Base CPython had no coverage.py; used existing coverage virtual environment with the same CPython 3.13.16, coverage.py 7.16.2. No installation needed."
+  ],
+  "limits": [
+    "Native imports, executed API programs, adapted port smoke tests, hosted compiler coverage, native C runtime coverage, and compiled upstream suites are distinct categories.",
+    "No full CPython regrtest, broad upstream package suite, NumPy compatibility, benchmark speed ratio or all-platform coverage claim.",
+    "Scoped percentages must not be compared to the repository-wide historical coverage-2026-10-20.md percentages. runtime.py and direct C probes are excluded from native coverage; signal-death/exec profiles can be missing by design.",
+    "Full local make verify was not repeated; six successful implementation CI workflows at a tree identical to evaluated main are separately attributed. Unrelated known gaps were not all rerun."
+  ]
+}
