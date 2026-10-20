@@ -3379,9 +3379,14 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         # and whose __eq__ declines it: CPython compares them by identity (None, which an object of
         # a class type may be, is compared below; an object of a class, also an exception, may
         # have its own __eq__)
-        o = unopt(b.t if a.t == OBJECTC else a.t)
+        w = b.t if a.t == OBJECTC else a.t
+        o = unopt(w)
         if all(m in ["int", "float", "bool", "str", "bytes", "exctype", RANGEC] or m.startswith(ITERS + "$") or is_list(m) or is_dict(m) or is_tuple(m) or is_vtuple(m) or is_set(m) or is_gen(m) or is_fn(m) or is_callable(m) for m in (umembers(o) if is_union(o) else [o])):
-            return Val("false" if op == "==" else "true", "bool")
+            if not is_opt(w) and w not in self.classes:
+                return Val("false" if op == "==" else "true", "bool")
+            # (an object of a class type may be None, and so may the other: equal where both are)
+            bothnone = Val(self.scalar('and', [self.ptr_cmp('==', a, Val('null', 'None')), self.ptr_cmp('==', b, Val('null', 'None'))]), "bool")
+            return bothnone if op == "==" else Val(self.scalar('xor', [bothnone, Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and b.t == RANGEC:
         # x in a range object: arithmetic, as x in range(...) (an int | None that is None equals
         # no item)
