@@ -922,6 +922,17 @@ def range_values(n: Node, fine: int) -> bool:
     return False
 
 
+def object_values(n: Node) -> bool:
+    # may code n call the builtin object(), which makes an object of lib's class (Loader.program)?
+    # Any call of the name may (a false True only loads the module); only reading the tree
+    if n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "object":
+        return True
+    for k in n.kids:
+        if object_values(k):
+            return True
+    return False
+
+
 def builtins_names(n: Node, out: dict[str, bool]) -> None:
     # the names that an import of the builtins module in n binds (import builtins as b)
     for a in n.kids if n.kind == "import" and n.s == "" else n.kids[:0]:

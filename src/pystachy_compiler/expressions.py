@@ -16,8 +16,10 @@ from src.pystachy_compiler.specs import (
     ICMP,
     IOPS,
     IRT,
+    ITERS,
     MODATTRS,
     NONEVAR,
+    OBJECTC,
     OPAQUE,
     ORDOP,
     PYBUILTINS,
@@ -3469,6 +3471,20 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 self.err(f"comparing a range with {typestr(o)} is not supported")
         else:
             return Val("false" if op == "==" else "true", "bool")
+    if (op == "==" or op == "!=") and (a.t == OBJECTC) != (b.t == OBJECTC):
+        # object()'s object and a value of builtin types (numbers, str, bytes, containers, files,
+        # generators, functions, exception classes, range objects and iterators), which is never
+        # that object and whose __eq__ declines it: CPython compares them by identity. None, which
+        # an object of a class type may be, is compared below; an object of a class but range's
+        # and the iterators', also an exception, may have its own __eq__, which CPython would call
+        w = b.t if a.t == OBJECTC else a.t
+        o = unopt(w)
+        if o != "None" and all(m != "" and m != "exc" and not m.startswith("rec[") and (m not in self.classes or m == RANGEC or m.startswith(ITERS + "$")) for m in (umembers(o) if is_union(o) else [o])):
+            if not is_opt(w) and w not in self.classes:
+                return Val("false" if op == "==" else "true", "bool")
+            # (an object of a class type may be None, and so may the other: equal where both are)
+            bothnone = Val(self.scalar('and', [self.ptr_cmp('==', a, Val('null', 'None')), self.ptr_cmp('==', b, Val('null', 'None'))]), "bool")
+            return bothnone if op == "==" else Val(self.scalar('xor', [bothnone, Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and b.t == RANGEC:
         # x in a range object: arithmetic, as x in range(...) (an int | None that is None equals
         # no item)
@@ -3594,6 +3610,15 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         if a.t == "bool" and b.t == "bool":
             # (x is True: a bool is one of CPython's two objects True and False)
             return Val(self.scalar_cmp('eq' if op == 'is' else 'ne', Val(a.v, 'bool'), Val(b.v, 'bool')), "bool")
+        if (a.t in self.classes and b.t != "None" and not self.isref(b.t)) or (b.t in self.classes and a.t != "None" and not self.isref(a.t)):
+            # a number or bool (or one that may be None) is never an object of a class: x is
+            # _MISSING, a sentinel default's test, where x was given an int
+            return Val("false" if op == "is" else "true", "bool")
+        if (a.t in self.classes and is_sopt(b.t)) or (b.t in self.classes and is_sopt(a.t)):
+            # nor is one that may be None, but where both are None (an object of a class may be):
+            # x is _MISSING, of an x: int | None
+            bothnone = Val(self.scalar('and', [self.ptr_cmp('==', a, Val('null', 'None')), self.ptr_cmp('==', b, Val('null', 'None'))]), "bool")
+            return bothnone if op == "is" else Val(self.scalar('xor', [bothnone, Val('true', 'bool')]), "bool")
         if not self.isref(a.t) or not self.isref(b.t) or (is_sopt(a.t) and b.t != "None") or (is_sopt(b.t) and a.t != "None"):
             self.err("'is' is only supported for objects and None")
         return self.ptr_cmp('==' if op == 'is' else '!=', a, b)
@@ -3753,8 +3778,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
         r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
-    x = "an exception" if a.t == "exc" else a.t
-    y = "an exception" if b.t == "exc" else b.t
+    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else a.t
+    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else b.t
     self.err(f"cannot compare {x} {op} {y}")
     return a
 

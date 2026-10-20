@@ -674,6 +674,9 @@ Direct forwarding wrappers (`return empty(n)`) retain that result context, inclu
 multiple wrappers. When a forwarded empty result joins `None`, its caller context or the
 same fallback supplies the optional container's layout. A recursive call may consume an
 empty result before later inference only when that inference preserves the consumed layout.
+A function in the cycle that returns such a call's result unchanged (`b` with `return a(n)`)
+keeps it open: a use of what `b` returns consumes `a`'s layout in the same way, and once `a`
+has its type, `b` returns that type.
 A caller can also type fresh returned list, dict, set and tuple displays,
 including homogeneous or nested displays and calls inside their items:
 

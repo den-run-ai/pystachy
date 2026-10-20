@@ -1,0 +1,21 @@
+mods: init mods
+mods.shapes: init mods.shapes
+1 0
+KeyError 'b'
+True False True True False True
+True True True True
+<object object at 0x > True
+True True True True
+object object builtins object
+True True True
+False False True
+1 True False 1
+True True True
+missing other False 2
+2 True False
+True
+True nothing given something given nothing given
+something given something given something given something given
+False True False True
+False no x
+[exit 0]

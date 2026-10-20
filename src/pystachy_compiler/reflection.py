@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, NONEVAR, OPAQUE, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, OPAQUE, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     targs,
@@ -160,7 +160,7 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
     if c in self.classes and self.classes[c].exc == "":
         ci = self.classes[c]
         q = shown(ci.origin if ci.origin != "" else c)
-        if c.startswith("_pystachy_iterators$") or c == RANGEC:
+        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC:
             return "builtins" if what == "__module__" else short(c)
         mod = q[: q.rfind(".")] if "." in q else "__main__"
         mod = TYPEMODS.get(mod, mod)  # (_weakref's ReferenceType is CPython's weakref.ReferenceType)
@@ -285,6 +285,8 @@ def gen_refl_type_operand(self, n: Node) -> str:
         return n.s
     if n.kind == "name" and n.s == "range" and RANGEC in self.classes and not self.bound(n.s):
         return RANGEC  # (lib/_pystachy_range.py's class)
+    if n.kind == "name" and n.s == "object" and OBJECTC in self.classes and not self.bound(n.s):
+        return OBJECTC  # (lib/_pystachy_object.py's class, object()'s)
     if n.kind == "name" and n.s in ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset"] and not self.bound(n.s):
         # (a container type's record is its name's: any element types)
         return "list[int]" if n.s == "list" else "dict[int,int]" if n.s == "dict" else "tuple[int]" if n.s == "tuple" else "set[int]" if n.s == "set" else "frozenset[int]" if n.s == "frozenset" else n.s
