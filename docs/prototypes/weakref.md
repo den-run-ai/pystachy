@@ -29,9 +29,8 @@ With CPython 3.13.16 sources in the import overlay, this prototype rebased on
 | Probe | Result |
 |---|---|
 | Direct `_weakref.ref(obj)` for the supported class subset | Works in the focused JIT/AOT tests below |
-| `import weakref` | Rejected: cannot import `getweakrefcount` from `_weakref` |
-| The same, with throwaway definitions of the missing `_weakref` names | Rejected next at `ProxyTypes = (ProxyType, CallableProxyType)`: classes are not values ([#7](https://github.com/den-run-ai/pystachy/issues/7)) |
-| `from _weakrefset import WeakSet; WeakSet()` | Rejected: cannot infer the type of `WeakSet.__sub__` |
+| `import weakref` | Compiles: `lib/weakref.py` adapts CPython's module, without the names `_weakref` lacks, `ProxyTypes` and `finalize` ([limits](../../lib/compatibility.md#_weakref-prototype)) |
+| `weakref.WeakSet()`, `WeakValueDictionary()`, `WeakKeyDictionary()`, `WeakMethod(m)` | Rejected: `WeakSet.__sub__` cannot be typed, and the others' base classes are not supported |
 
 Importing a module is not evidence that its APIs work. Callbacks, equality and
 hashing are implemented (below); proxies and the registry helpers are not, and

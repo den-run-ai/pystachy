@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `d87a215df913828337e522e367a7c2e1d38bbf5f`.
+**Latest evaluated main:** `611af05e4c21ab736d59501a2d7db12cbfb70d22`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -3752,3 +3752,182 @@ for this library-only change. No full local verify, regrtest or performance/memo
 claim. Historical implementation-head CI/Lint/Packages/Installation succeeded
 ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39350427632)); audit-head
 checks are read separately after publication. Dated baseline files are unchanged.
+
+## 2026-10-20 — #696 public weakref module
+
+Evaluated main
+[`88013afb321048ef1edb92638f3dbc438b9e3c8d`](https://github.com/den-run-ai/pystachy/commit/88013afb321048ef1edb92638f3dbc438b9e3c8d),
+the sole merge after `d87a215d`: [#696](https://github.com/den-run-ai/pystachy/pull/696).
+The 22-file diff adds the weakref overlay, documentation and fixtures, with no
+compiler/runtime/port/benchmark implementation changes. The verified compiler
+built from `9392fddf` is reused (SHA-256
+`6f20c9a0d69f458beeb895a1160a7ed9a4caf26f93224cbada29ad394c7bccaf`),
+separately from the evaluated source revision. CPython **3.13.16**, LLVM **18.1.3**.
+
+[Evidence, exact commands, hashes and replay scripts](compatibility-2026-10-20-weakref-module.json)
+record **39 retained cases / 55 checks** in each of normal JIT/AOT, GC-stress,
+optimization-off and hosted compiler configurations: **220 passing checks**.
+These include positive APIs, 23 rejection cases and one documented `__all__`
+deviation. All **15 CPython recordings** and **16 IR/LLVM checks** pass.
+
+Three additional programs use the public import: a six-value live-reference
+equality/hash/identity matrix, the retained nested-callback ordering probe, and
+the adapted upstream weakref tests with only their import changed. All match
+CPython in **12 native JIT/AOT runs**, under GC stress and optimization-off; the
+previous source rejects all three at `import weakref`. The upstream-derived
+program is still adapted, including conservative-GC cohort handling; it is not
+CPython's full upstream suite. Reclamation timing, callback dispatch timing and
+reference-cache identity retain their documented differences.
+
+The **3,227-program oracle** leaves **3,217 identical**: only the ten new weakref
+fixtures differ (three now compile, including the deviation; seven reach explicit
+API rejections). No accepted-to-rejected transition, existing-program IR change,
+or benchmark change. No affected retained port imports weakref; unrelated port
+and benchmark execution was not repeated.
+
+Fresh isolated `--metadata` sweeps use the same **522 source hashes**:
+
+| Metric | Before | After |
+|---|---:|---:|
+| Native upstream imports | 146/466 | 145/464 |
+| Stub-assisted upstream imports | 148/466 | 147/464 |
+| Overlay exclusions | 56 | 58 |
+| Timeouts | 0 | 0 |
+
+`weakref` and `_weakrefset` move into the overlay. `_weakrefset` previously counted
+as an upstream success, so the one-count decrease is **not a regression**. No
+remaining included module loses success, and none newly completes import.
+After normalizing only checkout path prefixes, native results change for the two
+exclusions and **53 dependent modules**; stub-assisted results change for the two
+exclusions and **98 dependent modules**. First errors advance, not full packages:
+
+| Native next stop | Modules |
+|---|---:|
+| Missing `_socket` | 36 |
+| `copyreg.py:15` class/function-valued dict keys | 4 |
+| Generic base class in `concurrent.futures` | 3 |
+| Missing `_elementtree` | 3 |
+| `traceback.py:133` unsupported `object()` (`hashlib`, `logging`) | 2 |
+| `_thread.lock` as a class value; `_signal`, `zlib`, `urllib.request`, `pyexpat` | 5 |
+
+With stubs, the largest next stops are computed namedtuple fields in
+`inspect.py:1725` (42) and conditional definitions in `socket.py:53` (37).
+All exact per-module deltas are retained; the author's older sweep is not reused.
+
+Pristine history is verified against installed pinned CPython: `b48358b` holds
+both original files; `_weakrefset.py` remains byte-identical (SHA-256
+`91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac`).
+The weakref adaptation restricts imports/exports, omits `finalize`, disables ABC
+registration, and adds a Python deletion helper. These are localized source edits
+for the narrow reference workload, not implementation of the major missing weak
+container/proxy/finalizer APIs. `WeakSet`, both weak dictionaries, `WeakMethod`,
+`finalize`, `proxy` and `getweakrefcount` remain checked rejections; existing #491
+owns the gaps. No duplicate issue or implementation change.
+
+Replay `audit-696.py` modes `provenance`, `references`, `checks`, `api`, `sweeps`,
+`oracle`, `ir`, then the assembler, after copying the hash-verified #750 binary.
+Read-only inspection/coordination setup mistakes are recorded explicitly. No full
+local `make verify`, regrtest, performance or memory comparison. Historical
+implementation-head [CI](https://github.com/den-run-ai/pystachy/actions/runs/39354020237),
+Lint, Packages and Installation succeeded; its tree equals this evaluated main,
+but those are not audit-head checks. Baseline reports and JSON are preserved.
+
+## 2026-10-20 — #737 inferred scalar unions and builtin splitting
+
+Evaluated main
+[`611af05e4c21ab736d59501a2d7db12cbfb70d22`](https://github.com/den-run-ai/pystachy/commit/611af05e4c21ab736d59501a2d7db12cbfb70d22),
+the sole merge after `88013afb`: [#737](https://github.com/den-run-ai/pystachy/pull/737).
+All merges since the previous published checkpoint `d87a215d` are covered by this
+and the #696 entry above. Compiler changes require a fresh build: **CPython
+3.13.16 / LLVM 18.1.3** reaches three-stage compiler/runtime IR fixed points of
+**669,783 / 18,709 lines**. Source and compiler-build revision both equal
+`611af05e`; compiler SHA-256 is
+`9d6cacbb6b785ad767bc77b0ca15b3f6af364764b246815fbbf9f50ed63a4b4d`.
+
+[Evidence, complete commands, input hashes and replay drivers](compatibility-2026-10-20-inferred-unions.json)
+retain the old compiler identity separately. The selected **145 cases** contain
+86 positive and 59 expected-rejection programs. Each normal native JIT/AOT,
+GC-stress, optimization-off and hosted-compiler configuration passes **231
+checks**, totaling **924**. All **86 CPython recordings**, **86 IR/LLVM checks**
+and runtime signature/effect checks pass. The extra changed `accumulate` rejection
+outside the initial selection also passes its diagnostic check.
+
+The **3,238-program old/new compiler comparison** has **3,191 identical results**,
+**38 rejected-to-accepted programs** and **nine changed rejection diagnostics**.
+No accepted-to-rejected transition or changed IR among previously accepted
+programs. All newly accepted retained tests were executed; the compared corpus
+uses current source fixtures, including positive successors to removed errors.
+The old and new compiler/home pair are separate, not the new binary with two
+library paths. Existing benchmark IR stays identical.
+
+Measured behavior gains include inferred mixed locals/globals/fields and returns,
+compatible fresh-container results across function and eligible method chains,
+mixed `Any` returns/iterator results, `statistics.median()` on integers,
+`random.triangular()` with integer bounds, heterogeneous `zip_longest` fill values,
+mixed `string.Formatter` arguments and textwrap's bool-to-int field reassignment.
+These are finite inferred unions, **not arbitrary runtime Any storage/dispatch**.
+
+An independent **98-line matrix** verifies scalar result types, pairwise numeric
+ordering, builtin splitting, once-only operand evaluation/order and isolated
+constructor specializations in **six native JIT/AOT configurations** (GC stress,
+all optimizations off, union slots off). A separate **144-pair edge matrix**
+matches CPython in four native runs, including integers above 2**53 and at the
+signed-64-bit boundary, bools, signed zero, infinities and NaN. The old compiler
+rejects the inferred-return matrix.
+
+### Upstream sources and adapted workloads
+
+The pinned **pyperformance 1.14.0** archive and 52 source hashes are verified.
+Rerunning both compilers with the same census tool changes **6/52 to 7/52**
+runner-replaced upstream sources accepted as IR: `spectral_norm` newly compiles,
+with its integer-zero accumulators and integer-one initial vector unchanged.
+`barnes_hut` advances from an int/float assignment rejection to unresolved
+`QuadTree.particles` field inference; it remains blocked. The other 50 statuses
+and first errors are identical. This is not seven complete upstream test suites.
+
+The upstream spectral program itself only returns elapsed time and has no numeric
+assertion. A **separate checksum-instrumented probe**, preserving its algorithm
+and N=130, prints **1.274222209743**, matching CPython in six native JIT/AOT runs
+(normal, GC stress, union slots off); the prior compiler rejects it. Runner
+replacement and checksum instrumentation are explicitly retained as adaptations.
+The existing adapted spectral benchmark also passes CPython/JIT/AOT smoke checks.
+No timing or memory ratio is inferred from overlapping correctness workloads.
+
+All **31 adapted port workloads / 62 native checks** pass, as do the **seven
+mapped CPython-subset programs / 14 native checks**. Separately, the hosted
+upstream tests pass **17 fnmatch + 66 textwrap** cases, and the mapping tool's
+15 unit tests pass. Textwrap's manifest deliberately retains one partial method
+because its primary compiled fixture still adapts setup, even though the original
+field-rebinding shape now passes separately. Hosted test counts are not native
+upstream-suite counts.
+
+### Remaining boundaries and import results
+
+Fresh isolated `--metadata` sweeps retain exactly **145/464 native** and
+**147/464 stub-assisted** successes, **58 overlay exclusions**, zero timeouts,
+and the identical 522-source inventory. After checkout-prefix normalization,
+**no import result or first error changes** from #696. Working additional APIs
+do not imply additional importable packages or general NumPy/PyPI support.
+
+Independent small programs reconfirm #596's remaining union `hash`, power and
+`divmod` rejections and heterogeneous numeric list/tuple ordering rejections;
+`divmod` now explains the incompatible tuple result types. Existing mixed-list
+`sum`/`min`/`max`/sort behavior still matches CPython. Forwarding recursion #595
+and unannotated cache inference #620 still reject. The retained quantiles probe
+advances to `list[float | int]` versus `list[int]` return conversion. Annotated
+storage contracts, existing mutable aliases and non-leaf method-return inference
+remain constrained. The reviewed chained-target and method-inheritance regression
+fixtures pass. Existing #596/#595/#620/#616 and the library tracker own these
+known limits; no new issue or implementation change was made.
+
+Replay `audit-737.py` modes `build`, `references`, `checks`, `sweeps`, `oracle`,
+`extras`, `ir`, `runtime`, `ports`, and `audit-737-probes.py` modes `matrix`, `edges`,
+`boundaries`, `census`, `benchmark`, then the assembler. Reference execution needs
+the recorded pure-Python **typing_extensions 4.16.0** module on its isolated
+`PYTHONPATH`. Its hash is retained. Missing-dependency, disappeared historical
+interpreter and scratch tool-import setup failures are explicit; corrected reruns
+pass. No full local `make verify`, CPython regrtest or performance/memory study.
+Historical implementation-head CI/Lint/Packages/Installation succeeded
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39352237792)); that head
+is not this merged main or the publication head. Audit checks are read separately.
+Dated baseline reports and JSON remain unchanged.
