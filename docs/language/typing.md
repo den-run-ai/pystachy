@@ -131,8 +131,11 @@ those classes. Generic class subscriptions such as `Box[int]` are supported
 when they use the standard `typing.Generic` hook. Calls, other operators, custom class
 subscripting, and expressions that could execute user code are rejected. CPython's idiom for a
 generic class, `__class_getitem__ = classmethod(types.GenericAlias)` in its body, defines
-nothing: the class's subscripts at run time, generic aliases in CPython, are rejected. `os.PathLike` and the supported
-`collections.abc` names are exceptions to the restriction on builtin module attributes.
+nothing: the class's subscripts at run time, generic aliases in CPython, are rejected, and its
+subscripts in annotations, evaluated or not, name the class whatever their arguments, as CPython
+does not check them. `re.Pattern[str]` and `re.Match[str]` are such annotations. `os.PathLike`
+and the supported `collections.abc` names are exceptions to the restriction on builtin module
+attributes.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
 value's type; a class-body value must be a constant. `x: Final` alone binds nothing.

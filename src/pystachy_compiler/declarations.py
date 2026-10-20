@@ -194,6 +194,15 @@ def gen_ann(self, n: Node) -> str:
         return self.alias_ann(n)
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.tparams:
         return self.generic_ann(n.kids[0].s, n.kids[1])
+    elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr") and self.ann(n.kids[0]) in self.galias:
+        # C[...] of a class whose body binds __class_getitem__ = classmethod(GenericAlias), CPython's
+        # idiom for a generic class (generic_aliases), which re.Pattern and re.Match follow too: the
+        # class, whose fields have one type each whatever the subscript names
+        for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
+            t = self.ann(x)
+            if t.startswith("!"):
+                return t
+        return self.ann(n.kids[0])
     elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
         base = self.ann_base(n.kids[0])
         if base.startswith("!"):

@@ -520,7 +520,9 @@ atomic groups, scoped flags, escapes and Unicode character classes/case folding.
 The module and `Pattern` expose matching, searching, splitting, substitution,
 escaping and cache purging. `Match` supports group queries (up to five groups
 per `group` call), runtime-length `groups(default=None)` tuples, indexing,
-dictionaries, positions, spans and expansion.
+dictionaries, positions, spans and expansion. `re.Pattern[str]` and `re.Match[str]` annotate
+patterns and matches, as CPython's generic `_sre` types do
+([test](../tests/programs/library/lib_re_annotations.py)).
 
 - Matches, bounds (`pos`, `endpos`), group spans and pattern-error positions count
   Unicode code points. Invalid UTF-8 input retains the runtime's permissive behavior;
@@ -1011,9 +1013,12 @@ the class of the object a `with` statement passes to `__exit__()` (see [Contextl
 `MappingProxyType` and `GenericAlias`. `GenericAlias` is for CPython's idiom for a generic class:
 `__class_getitem__ = classmethod(GenericAlias)` (or `classmethod(types.GenericAlias)`) in a class
 body defines nothing in Pystachy, so the class compiles as it does without it
-([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in annotations are what
-they are for any class, and at run time, where CPython makes them `types.GenericAlias` objects,
-they are a compile-time error ([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
+([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in annotations, evaluated or
+not, name the class, whatever their arguments, as CPython does not check them
+([test](../tests/programs/reflection/types_generic_alias_subscripts.py)); `re.Pattern` and `re.Match` follow
+the idiom, as CPython's `_sre` types are generic. At run time, where CPython makes them
+`types.GenericAlias` objects, they are a compile-time error
+([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
 
 `MappingProxyType(d)` is a read-only view of dict `d`, CPython's `mappingproxy`
 (`lib/_pystachy_mappingproxy.py`): indexing, `in`, `len()`, iteration (which fails as the dict's
