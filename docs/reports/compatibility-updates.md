@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `11f4681adfc19404a0b4f97fdd015d3a01b301e6`.
+**Latest evaluated main:** `727b88ce5e12dc5d7b569aba0c0c1e2b34360df5`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -4134,3 +4134,104 @@ Packages and Installation succeeded
 ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39359741663)); audit-head
 checks are read separately after publishing. Full local `make verify` was not
 run. Dated baseline reports/JSON and other sessions' work are preserved.
+
+## 2026-10-20 — #760: UTF-8 file-write counts and dropped-result lowering
+
+Evaluated [main `727b88ce`](https://github.com/den-run-ai/pystachy/commit/727b88ce5e12dc5d7b569aba0c0c1e2b34360df5),
+the sole merge after `11f4681a`: [#760](https://github.com/den-run-ai/pystachy/pull/760).
+Verified the merge is in main's history. It changes `runtime.c`, two compiler
+modules, four regression programs/recordings and the compatibility reference.
+The combined merged source includes #718, unlike the implementation head
+`3413c3068b63a9f055ee567cf8bbbacd893f39b5`; historical implementation CI is not
+represented as verification of this combined tree.
+
+A fresh **CPython 3.13.16 / LLVM 18.1.3** three-stage bootstrap reaches compiler
+and runtime fixed points of **672,348 / 18,709 IR lines**. Compiler-build and
+evaluated-source revisions both equal `727b88ce`; compiler SHA-256 is
+`2462b648e77bf8fee31c8bea153d2125feca53809523f30a13e35f8f9614920b`.
+[Evidence and replay scripts](compatibility-2026-10-20-text-write-counts.json)
+retain the previous compiler identity, exact commands, environments, outputs,
+fixture hashes and explicit incomplete attempts.
+
+### Correctness and mechanism
+
+- **572 retained configuration checks pass:** 58 selected IO/consumer cases
+  yield **114 checks** in each native, GC-stressed, optimization-off and hosted
+  compiler configuration (**456 total**); seven focused cases pass **14
+  UBSan/GC checks**; 51 additional changed-IR cases pass **102 JIT/AOT checks**.
+  These include expected rejections and documented deviations, not 572 unique
+  unmodified upstream tests. All four new CPython recordings match; the IR
+  checker and LLVM assembler accept 56 selected positive/deviation programs.
+- **An independent 57-row differential** covers UTF-8 and Latin-1, four newline
+  modes, empty/ASCII/non-ASCII/NUL/dynamically constructed strings, append mode,
+  direct writes, nested method-value calls, saved return values, lists of counts,
+  writelines and print-to-file. It compares both return values and actual encoded
+  byte sequences, plus a supplementary-plane/combining-character case. All
+  **six native runs** (GC, UBSan plus GC and optimization-off, JIT/AOT) match
+  CPython exactly. The previous compiler differs on **17 of 57 rows**.
+  For the wide-character case, the old result is `15 5 11`; both CPython and
+  merged main give `5 5 4` for write count, length and sliced-string write count.
+- An independent Latin-1 error/partial-write probe matches CPython in the same
+  six configurations: encoding errors in direct dropped/used/aliased calls,
+  writelines preserving earlier successful writes, newline-adjusted error text,
+  and closed-file failure. Its **first attempt was rejected** because it read
+  `e.start`, `e.end` and `e.reason`; exception attributes are unsupported. The
+  original program/reference/diagnostic are retained. Changing only the
+  observation to `str(e)` is a **minor probe adaptation**, not newly working
+  exception-attribute APIs.
+- Runtime contracts pass: **460 RUNTIME entries, 70 exception classes, 171
+  functions**. The existing native file-buffer accounting probe passes ordinary,
+  extension-style initialization and stressed modes. Across 128 dropped files
+  and 136,314,880 cumulative buffer bytes, outstanding tracked buffer bytes stay
+  below the 41,975,808-byte bound; open/close/collection/exit accounting balances.
+  This deterministic allocation bound is **not process RSS or a memory speedup**.
+
+Five independent IR probes verify direct discarded `f.write(s)` and
+`print(s, file=f)` call void `pys_file_put`, while used results and a discarded
+method-value call still call counting `pys_file_write`. The writelines probe calls
+`pys_file_writelines`; source inspection confirms its loop now uses `pys_file_put`.
+The retained nested/after-statement/template regressions guard against discarding
+a return value merely because stale compiler call context remains. Correctness
+does not imply all aliased/indirect discarded calls avoid counting.
+
+### Compatibility scope and retained limits
+
+The **3,267-program old/new comparison** has **3,184 identical results** and
+**83 changed IR results**, with **no exit-status or rejection-message changes**.
+The changed compiler is covered by the bootstrap; every changed executable test
+is covered by the focused or additional run. The evidence preserves hashes and
+the complete changed-file list, not an exhaustive semantic proof of IR equality.
+Existing benchmark IR is unchanged. Five adapted iniconfig/tomli-w workloads
+are included in the four focused configurations; an affected qrcode workload is
+in the additional run. All **18 adapted benchmark smoke programs** also match
+CPython in JIT/AOT. Their overlapping correctness-run timing samples do not
+establish performance regressions or gains. The author's callgrind cost table
+was not independently replicated; consumed counts may require an extra text scan.
+
+Fresh isolated sweeps with `--metadata` remain **148/464 native** and
+**150/464 stub-assisted**, with the same **522 source hashes**, **58 overlay
+exclusions**, zero timeouts and identical first errors after checkout-path
+normalization. This is an executed file/stream API correction, not another
+importable library or an increase in complete upstream-suite support.
+
+[#120](https://github.com/den-run-ai/pystachy/issues/120) remains open for non-ASCII
+case mapping and character predicates. A fresh old/new execution of
+`print("é".upper(), "É".lower(), "ß".casefold(), "é".isalpha())` gives
+`é É ß False` in both native compilers versus CPython's `É é ss True`.
+Other unrelated gaps retain their dated evidence and were not all rerun. No new
+uncovered bug or duplicate issue was filed, and no implementation branch changed.
+
+Replay `audit-760.py` modes `build`, `references`, `runtime`, `checks`, `sanitize`,
+`ir`, `fileprobe`, `oracle`, `extras`, `imports`, `stubs`, `benchmark`; then
+`audit-760-probes.py` modes `matrix`, `errors`, `unicode-gap`, `mechanism`, and
+the assembler. The scripts embed their shared `audit-737.py`/`audit-725.py`
+dependencies. The original exception-attribute attempt is retained separately
+from the successful adapted replay. Initial #491/#616 PR-endpoint lookups
+returned 404; correct issue-comment lookups succeeded before work proceeded.
+
+Historical implementation-head CI, Lint, Packages and Installation passed
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39361584023)); audit-head
+checks are read separately after publication. Full local `make verify`, CPython
+regrtest and a broad PyPI/NumPy census were not run. Native imports, executed
+APIs, adapted workloads and hosted compilation remain distinct. Dated baseline
+reports/JSON and concurrent edits are preserved.
