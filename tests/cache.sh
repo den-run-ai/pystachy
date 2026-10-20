@@ -24,14 +24,15 @@
 #     not executable, and through a symbolic link; a script run by CPython is opened as named, in the
 #     current directory, not looked for in PATH.
 # usage: tests/cache.sh [COMPILER]   (default ./pystachy; "python3 -m pystachy" tests the CPython-hosted
-#        compiler, from a copy of pystachy.py and src/). $PY (default python3) loads the extension modules,
-#        or the CPython that runs the hosted compiler does
+#        compiler, from a copy of pystachy.py and src/). $PY (default python3) loads the extension modules;
+#        for the hosted compiler, the CPython that runs it does unless $PY is set (tools/coverage.sh runs
+#        it through a launcher, which only runs scripts)
 cd "$(dirname "$0")/.." || exit 1
 PYS=${1:-./pystachy}
-CPY=${PY:-python3}
+CPY=${PY:-}
 case $PYS in
-  *" -m pystachy") PY=${PYS% -m pystachy}; CPY=$PY; me=pystachy.py; from=pystachy.py ;;
-  *) PY=; me=pystachy; from=$PYS ;;
+  *" -m pystachy") PY=${PYS% -m pystachy}; CPY=${CPY:-$PY}; me=pystachy.py; from=pystachy.py ;;
+  *) PY=; CPY=${CPY:-python3}; me=pystachy; from=$PYS ;;
 esac
 unset PYSTACHY_CFLAGS PYSTACHY_OPT PYSTACHY_PATH PYSTACHY_GC PYSTACHY_GC_STRESS PYSTACHY_IRFX PYSTACHY_CACHE
 T=${TMPDIR:-/tmp}/pystachy-cache.$$

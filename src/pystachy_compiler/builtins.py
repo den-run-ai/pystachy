@@ -717,6 +717,12 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if len(vals) == 1 and vals[0].t in self.classes and self.derives(vals[0].t, "SystemExit"):
             self.throw(self.exc_of(vals[0]))  # (a SystemExit itself is raised as it is)
             return Val("null", "None")
+        if len(vals) == 1 and is_tuple(vals[0].t):
+            # sys.exit(t) of a tuple t raises SystemExit(*t), as CPython's PyErr_SetObject does:
+            # sys.exit(()) is sys.exit(), sys.exit((3,)) is sys.exit(3) and sys.exit((None,)) is
+            # SystemExit(None)
+            self.exit_([self.tget(vals[0], i) for i in range(len(targs(vals[0].t)))], False)
+            return Val("null", "None")
         self.exit_(vals if len(vals) == 0 or vals[0].t != "None" else [], True)
         return Val("null", "None")
     if (name == "os.fspath" or name == "os.path.normcase") and len(vals) == 1 and vals[0].t == "str":

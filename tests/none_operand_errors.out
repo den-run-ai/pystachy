@@ -1,0 +1,11 @@
++= 3
+*= 6
+str += tt!
+reversed [1, 0]
+iter 0
+TypeError: unsupported operand type(s) for +=: 'NoneType' and 'int'
+TypeError: unsupported operand type(s) for *=: 'NoneType' and 'int'
+TypeError: unsupported operand type(s) for +=: 'NoneType' and 'str'
+TypeError: 'NoneType' object is not reversible
+TypeError: 'NoneType' object is not iterable
+[exit 0]
