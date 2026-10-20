@@ -62,6 +62,105 @@ def none_sites(body: list[Node], out: dict[str, list[Node]]) -> None:
                 none_sites(kid.kids[1].kids, out)
 
 
+def attr_targets(t: Node, out: list[Node]) -> None:
+    # the attribute targets (o.name) of assignment target t: t itself, or items of a tuple or
+    # list target (also starred)
+    if t.kind == "attr":
+        out.append(t)
+    elif t.kind == "tuple" or t.kind == "list":
+        for x in t.kids:
+            attr_targets(x, out)
+    elif t.kind == "starred":
+        attr_targets(t.kids[0], out)
+
+
+def attr_values(n: Node, cls: Node, me: str, out: dict[str, list[Node]], owners: dict[str, list[Node]], none: Node) -> None:
+    # the values that code n (everywhere in it: its blocks, functions, classes and lambdas)
+    # stores to each attribute name (o.name = v, setattr(o, "name", v)): v where it is the whole
+    # value, else (unpacking, +=, a for, with or comprehension target) an "omit" node; and into
+    # owners, for each, the class statement cls whose method stores it to its first parameter me
+    # (self.name = v), else none
+    k = n.kind
+    pairs: list[Node] = []  # (each target, then its value)
+    if k == "assign":
+        for t in n.kids[:-1]:
+            xs: list[Node] = []
+            attr_targets(t, xs)
+            for x in xs:
+                pairs.append(x)
+                pairs.append(n.kids[-1] if x is t else mk("omit", "", n.line, []))
+    elif k == "annassign" and n.kids[0].kind == "attr" and len(n.kids) == 3:
+        pairs = [n.kids[0], n.kids[2]]
+    elif k == "augassign" or k == "for" or k == "compfor" or (k == "withitem" and len(n.kids) == 2):
+        ts: list[Node] = []
+        attr_targets(n.kids[-1] if k == "withitem" else n.kids[0], ts)
+        for x in ts:
+            pairs.append(x)
+            pairs.append(mk("omit", "", n.line, []))
+    elif k == "call" and len(n.kids) == 4 and n.kids[2].kind == "str" and ((n.kids[0].kind == "name" and n.kids[0].s == "setattr") or (n.kids[0].kind == "attr" and n.kids[0].s == "__setattr__")):
+        pairs = [mk("attr", n.kids[2].s, n.line, [n.kids[1]]), n.kids[3]]
+    for i in range(0, len(pairs), 2):
+        x = pairs[i]
+        if x.s not in out:
+            out[x.s] = []
+            owners[x.s] = []
+        out[x.s].append(pairs[i + 1])
+        owners[x.s].append(cls if me != "" and x.kids[0].kind == "name" and x.kids[0].s == me else none)
+    if k == "class":
+        for st in n.kids[0].kids:
+            if st.kind == "def" and len(st.kids[0].kids) > 0:
+                for kid in st.kids:
+                    attr_values(kid, n, st.kids[0].kids[0].s, out, owners, none)  # (a method: its self)
+            else:
+                attr_values(st, none, "", out, owners, none)
+        return
+    if k == "def" and me != "" and len([p for p in n.kids[0].kids if p.s == me]) > 0:
+        cls = none  # (a function in a method whose parameter hides the method's self)
+        me = ""
+    for kid in n.kids:
+        attr_values(kid, cls, me, out, owners, none)
+
+
+def attr_fills(body: list[Node], name: str, out: list[Node]) -> None:
+    # the assignments to attribute name in body (into blocks, in order, not into the functions
+    # and classes it defines): the object and the value of each, in pairs; for an item of a,
+    # o.name = e, the item of a display e, else an index node of e (as Gen.none_values has it)
+    for st in body:
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        e = st.kids[-1] if st.kind == "assign" else st
+        for t in st.kids[:-1] if st.kind == "assign" else st.kids[:0]:
+            if t.kind == "attr" and t.s == name:
+                out.append(t.kids[0])
+                out.append(e)
+            elif (t.kind == "tuple" or t.kind == "list") and len([x for x in t.kids if x.kind == "starred"]) == 0:
+                disp = (e.kind == "tuple" or e.kind == "list") and len(e.kids) == len(t.kids) and len([x for x in e.kids if x.kind == "starred"]) == 0
+                for i in range(len(t.kids)):
+                    if t.kids[i].kind == "attr" and t.kids[i].s == name:
+                        out.append(t.kids[i].kids[0])
+                        out.append(e.kids[i] if disp else mk("index", "", e.line, [e, mk("int", str(i), e.line, [])]))
+        for kid in st.kids:
+            if kid.kind == "block":
+                attr_fills(kid.kids, name, out)
+            elif kid.kind == "except":
+                attr_fills(kid.kids[1].kids, name, out)
+
+
+def none_display(e: Node) -> str:
+    # "list" for a display of None items ([None, None], [None] * n, n * [None]) and "dict" for a
+    # dict display whose values are all None ({k: None}), which hold only None so far (see
+    # Gen.none_container); else ""
+    if e.kind == "binop" and e.s == "*":
+        a = none_display(e.kids[0])
+        b = none_display(e.kids[1])
+        return "list" if (a == "list") != (b == "list") and e.kids[0].kind != "dict" and e.kids[1].kind != "dict" else ""
+    if e.kind == "list" and len(e.kids) > 0 and len([x for x in e.kids if x.kind != "None"]) == 0:
+        return "list"
+    if e.kind == "dict" and len(e.kids) > 0 and len([i for i in range(1, len(e.kids), 2) if e.kids[i].kind != "None"]) == 0:
+        return "dict"
+    return ""
+
+
 def stmt_walrus(st: Node, out: dict[str, bool]) -> None:
     # the names that the := in statement st's own expressions bind (not in its blocks, nor in the
     # body of the class or function it defines)

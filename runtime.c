@@ -171,6 +171,8 @@ static I msp, mcap;
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 static List *args;
 static List *warnopts;                 /* sys.warnoptions, made by its first read (pys_warnoptions) */
+static void **wr_fired;                /* the fire functions of weak references whose referents died, */
+static I wr_head, wr_nfired, wr_cap;   /* [wr_head, wr_nfired) to run: roots (see weak references) */
 static struct { Exc *cur, *handled, *shown, *pend, *closed; } xr;   /* the exception raised last, the one being
                                      handled, the uncaught one whose str() is being shown, the one a with-file's
                                      close raised while unwinding (see exceptions), the one a generator raised
@@ -232,6 +234,7 @@ __attribute__((noinline, no_sanitize("address"))) static void mark_roots(void) {
   scan((const W *)&args, (const W *)(&args + 1));
   scan((const W *)&warnopts, (const W *)(&warnopts + 1));
   if (nprotos) scan((const W *)protos, (const W *)(protos + nprotos));
+  if (wr_nfired > wr_head) scan((const W *)(wr_fired + wr_head), (const W *)(wr_fired + wr_nfired));   /* (NULL before the first) */
   if (xthrow) {                        /* exceptions are on, or one is being reported (NULL: none to scan) */
     scan((const W *)&xr, (const W *)(&xr + 1));
     if (nunw) scan((const W *)unw, (const W *)(unw + nunw));   /* unw is NULL before the first */
@@ -399,25 +402,49 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
-/* Experimental no-callback weak references. Both pointers live in atomic memory: neither
-   the target nor the next registry entry is a strong edge. The registry itself is NOT a
-   collector root. Prune dead handles before sweeping their storage, and clear surviving
-   handles whose targets were not marked before the target's address can be reused. */
+/* Experimental weak references. A handle's pointers live in atomic memory: neither the target,
+   nor the next registry entry, nor the fire function is a strong edge. The registry itself is
+   NOT a collector root. Prune dead handles before sweeping their storage, and clear surviving
+   handles whose targets were not marked before the target's address can be reused.
+   The fire function of a reference with a callback (_weakref's, a Callable[[], None] that calls
+   the callback with the reference, and that the reference object keeps alive) goes to wr_fired
+   where a collection clears its target while it is itself marked, so while the reference is:
+   once, newest handle first, as CPython calls a referent's callbacks, a newest reference first.
+   wr_fired is a root until _weakref takes the function to call it (pys_weakref_fired): a
+   collection runs no code, and a dead reference's callback is not called, as in CPython. A
+   handle can outlive its reference object (a stale word keeps it marked): the collection that
+   frees its fire function forgets it, before the function's slot can be reused. */
 typedef struct WeakRef WeakRef;
-struct WeakRef { WeakRef *next; void *target; };
+struct WeakRef { WeakRef *next; void *target; void *fire; };
 static WeakRef *weakrefs;
-void *pys_weakref_new(void *target) {
+void *pys_weakref_new(void *target, void *fire) {
   WeakRef *ref = pys_alloc_atomic(sizeof *ref);
   ref->target = target;
+  ref->fire = fire;
   ref->next = weakrefs;
   weakrefs = ref;
   return ref;
 }
 void *pys_weakref_get(WeakRef *ref) { return ref->target; }
+void *pys_weakref_fired(void) {        /* the next fire function to call, once; NULL: none */
+  if (wr_head == wr_nfired) return NULL;
+  void *f = wr_fired[wr_head];
+  wr_fired[wr_head++] = NULL;
+  if (wr_head == wr_nfired) wr_head = wr_nfired = 0;
+  return f;
+}
 __attribute__((noinline)) static void weakrefs_sweep(void) {
   for (WeakRef **link = &weakrefs, *ref; (ref = *link);) {
     if (!gc_marked(ref)) { *link = ref->next; continue; }
-    if (ref->target && !gc_marked(ref->target)) ref->target = NULL;
+    if (ref->fire && !gc_marked(ref->fire)) ref->fire = NULL;
+    if (ref->target && !gc_marked(ref->target)) {
+      ref->target = NULL;
+      if (ref->fire) {
+        if (wr_nfired == wr_cap && !(wr_fired = realloc(wr_fired, (wr_cap = 2 * wr_cap + 16) * sizeof *wr_fired))) oom();
+        wr_fired[wr_nfired++] = ref->fire;
+      }
+      ref->fire = NULL;
+    }
     link = &ref->next;
   }
 }
@@ -2050,6 +2077,7 @@ I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
    lengths; objects go through the program's rich comparison (reflection, TypeError) */
 static int cmpop(I c, I op) { return op == 0 ? c < 0 : op == 1 ? c <= 0 : op == 2 ? c > 0 : c >= 0; }
 static const char *tyname(char d);
+static const char *vtyname(I v, const char *d) { return tyname(*d == 'U' ? *eqresolve(v, d).desc : *d); }   /* v's (a union's: its member's) */
 static int opv(I a, I b, const char *d, I op) {
   switch (*d) {
   case 'f': { double x = dbl(a), y = dbl(b); return op == 0 ? x < y : op == 1 ? x <= y : op == 2 ? x > y : x >= y; }
@@ -2075,11 +2103,19 @@ static int opv(I a, I b, const char *d, I op) {
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, op) != 0;   /* subsets */
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
   case 'K': return opv(((I *)a)[0], ((I *)b)[0], d + 1, op);   /* key='s records {key, value}: their keys */
+  case 'U': {   /* numbers of a union (the compiler orders no other): an int and a float exactly, as CPython */
+    EqValue x = eqresolve(a, d), y = eqresolve(b, d);
+    int nx = *x.desc != 'f', ny = *y.desc != 'f';
+    if (nx && ny) return cmpop((x.value > y.value) - (x.value < y.value), op);
+    if (!nx && !ny) return opv(x.value, y.value, "f", op);
+    I c = nx ? pys_cmp_if(x.value, dbl(y.value)) : pys_cmp_if(y.value, dbl(x.value));
+    return c != 2 && cmpop(nx ? c : -c, op);   /* (2: a NaN, for which no ordering holds) */
+  }
   case 'D': failf("TypeError: '%s' not supported between instances of 'dict' and 'dict'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case '?':
     if (a && b) return opv(unbox(a, d + 1), unbox(b, d + 1), d + 1, op);
     failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=",
-          a ? tyname(d[1]) : "NoneType", b ? tyname(d[1]) : "NoneType");
+          a ? vtyname(a, d + 1) : "NoneType", b ? vtyname(b, d + 1) : "NoneType");
   case 'C': failf("TypeError: '%s' not supported between instances of 'type' and 'type'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=");
   case 'E': {
     int m, n; const char *x = exc_name((Exc *)a, &m), *y = exc_name((Exc *)b, &n);
@@ -2175,6 +2211,16 @@ static List *list_new(I cap, int atomic) {
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
 List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+List *pys_m_ufloats(List *l, Str *d) {   /* math.fsum()'s floats of a list of a union's numbers (d the union's) */
+  List *r = pys_list_new_atomic(l->len);
+  for (I i = 0; i < l->len; i++) {
+    EqValue x = eqresolve(l->a[i], d->s);
+    double f = *x.desc == 'f' ? dbl(x.value) : (double)x.value;
+    memcpy(&r->a[i], &f, 8);
+  }
+  r->len = l->len;
+  return r;
+}
 List *pys_vtuple_list(VTuple *t) {
   if (!t) pys_fail("TypeError: 'NoneType' object is not iterable");
   List *l = pys_list_new(t->len);

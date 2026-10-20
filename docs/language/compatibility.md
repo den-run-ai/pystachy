@@ -263,6 +263,12 @@ above apply to well-formed text (with the surrogate exception described above).
   environment sets `PYTHONWARNINGS` or `PYTHONDEVMODE`: CPython adds their options to it, and
   Pystachy does not read them.
 
+- `sys.prefix`, `sys.base_prefix`, `sys.exec_prefix` and `sys.base_exec_prefix` are one
+  absolute directory, the Pystachy home that compiled the program (whose `lib/` it loads), where
+  CPython's are the installation whose `Lib` it loads (and a virtual environment's). An executable
+  keeps the directory it was built with. `gettext` makes its default locale directory of
+  `sys.base_prefix`, which holds no catalog of Pystachy's.
+
 - `sys.version_info` is a tuple of its items, CPython 3.13.16's: comparisons, indexing,
   slicing and unpacking work as on CPython's, and its attributes are read as
   `sys.version_info.major` and the like, but `str()` and `repr()` show `(3, 13, 16, 'final', 0)`.
@@ -656,12 +662,16 @@ supported alternatives.
 - a read that needs the type of a local that only `None` has been assigned so far, where no other
   value assigned to it can be typed yet and the context expects none (annotate it:
   `x: T | None = None`)
-- an empty `[]` or `{}` assigned to a local first assigned `None`, a list display of only `None`
-  items (`[None] * n`, `print([None])`) or a dict display of only `None` values that no annotation
-  or other operand gives a type, and an empty list that `append(None)` fills first (annotate them)
-- a module global first assigned `None` whose other values in module code cannot be typed where it
-  is first assigned (`for w in ws: last = w`), or that only functions or other modules give another
-  value (annotate it at module level: `last: str | None = None`)
+- an empty `[]` or `{}` assigned to a local first assigned `None`; a list display of only `None`
+  items (`print([None])`) or a dict display of only `None` values that is no variable's value and
+  that no annotation or other operand gives a type; a variable's such display that nothing fills
+  where it is read, or that `extend()` or `+=` gives `int`, `float` or `bool` items; and an empty
+  list that `append(None)` fills first (annotate them)
+- a read that needs the type of a module global or a field that only `None` has been given so
+  far, where the value of another type that it is given cannot be typed there yet: only a
+  template's function or method (a parameter without an annotation) gives it one, or module-level
+  code does so after the read is compiled to an object made after it too (annotate it:
+  `last: str | None = None`, `self.next: Node | None = None`)
 
 ### Dict keys, set elements and `bool` values
 

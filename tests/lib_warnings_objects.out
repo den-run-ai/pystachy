@@ -1,0 +1,4 @@
+True 7 AppWarning('x')
+True UserWarning('b')
+[('AppWarning', 'x', False), ('UserWarning', 'b', True)]
+[exit 0]

@@ -1,9 +1,10 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.analysis import none_display
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import ITERS, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
+from src.pystachy_compiler.specs import ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     atomic_list,
@@ -43,6 +44,39 @@ def repr_name(c: str) -> str:
     m = q[: q.rfind(".")]
     return TYPEMODS[m] + q[q.rfind(".") :] if m in TYPEMODS else q
 
+
+def gen_none_container(self, e: Node) -> Val:
+    # a display of None items (none_display) assigned to a variable without a type: a list (a
+    # dict of the keys' type) of NONE_ITEM, T | None for the T its first fill gives it, as an
+    # empty one's gives it its type (see refine); its slots hold null pointers, None of any T | None
+    if e.kind == "binop":
+        left = none_display(e.kids[0]) == "list"  # (the operand that is the list: [None] * n, n * [None], [None] * 2 * 3)
+        first = self.none_container(e.kids[0]) if left else self.expr(e.kids[0], "")
+        second = self.expr(e.kids[1], "") if left else self.none_container(e.kids[1])
+        xs = first if left else second
+        n = self.as_int(second if left else first)
+        if n.t != "int":
+            self.err(f"can't multiply sequence by non-int of type '{tname(n.t)}'")
+        return Val(self.rt("pys_list_mul", "ptr", [f"ptr {xs.v}", f"i64 {n.v}"]), xs.t)
+    if e.kind == "list":
+        r = self.rt("pys_list_new", "ptr", [f"i64 {len(e.kids)}"])
+        for _ in e.kids:
+            self.rt("pys_list_append", "void", [f"ptr {r}", "i64 0"])
+        return Val(r, self.ctype("list", [NONE_ITEM]))
+    ks: list[Val] = []
+    kt = ""
+    for i in range(0, len(e.kids), 2):
+        k = self.expr(e.kids[i], kt)
+        if kt != "" and k.t != kt and not self.widens(k.t, kt):
+            self.err(f"expected {typestr(kt)} keys, got {typestr(k.t)}; this dict of None values needs an annotation (d: dict[K, V | None] = ...)")
+        kt = k.t if kt == "" else kt
+        ks.append(k)
+    if self.key_problem(kt) != "":
+        self.err(self.key_problem(kt))
+    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt)}", f"i64 {len(ks)}"])
+    for k in ks:
+        self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(k, kt)), "i64 0"], self.key_fx(kt))
+    return Val(r, self.ctype("dict", [kt, NONE_ITEM]))
 
 def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = False, resultsoft: bool = False) -> Val:
     # {a, b, ...}: the items, evaluated in order, inserted into a new set (BUILD_SET). One of
