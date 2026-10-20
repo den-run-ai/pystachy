@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `a1f3b6a7379510d7ece2d168e576313d5fa8c6cf`.
+**Latest evaluated main:** `c71d4ca5413645c8094f306d727a8f18059bb722`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -3196,3 +3196,117 @@ CI. No full local `make verify`, full recording rerun, unmodified CPython regrte
 broad PyPI/NumPy census or dedicated performance/memory experiment was run. No new
 uncovered bug was confirmed and no issue filed. Dated baselines, upstream-suite
 distinctions and minor/major adaptation assessments remain unchanged.
+
+## 2026-10-19 — collector-backed weakref callbacks (#694)
+
+Evaluated main **`c71d4ca5413645c8094f306d727a8f18059bb722`**, after
+**`a1f3b6a7379510d7ece2d168e576313d5fa8c6cf`**. Fresh GitHub metadata and local
+ancestry verify that [#694](https://github.com/den-run-ai/pystachy/pull/694)
+merged at **2026-10-20 00:16:51 UTC** (2026-10-19 locally); it is the only
+first-parent merge since the previous checkpoint. Main was fetched again before
+publication and still identifies this revision. The audit continues in
+[#743](https://github.com/den-run-ai/pystachy/pull/743); #635 is already merged.
+
+The 25 changed files add the callback queue and roots to `runtime.c`, update the
+private weakref ABI/compiler effects and wrapper, and add callback tests and C
+probe guards. No port or benchmark source changed. Read #491/#616 and #694's
+current discussion before testing; no implementation branch was modified.
+[Evidence, exact commands and replay scripts](compatibility-2026-10-19-weakref-callbacks.json)
+retain source and compiler identities separately, including the previous compiler.
+
+### Measured API and collector results
+
+Rebuilt from clean tracked sources with **CPython 3.13.16 / LLVM 18.1.3** on Linux
+x86-64, two workers per test group. Compiler and runtime fixed points pass:
+**650,777 / 18,851 IR lines**, all three stages byte-identical. The compiler SHA-256
+is **`8f9e8d02d7a9311ef396f4e32b684afa98fe235bafb51575304be2468b0c3ef7`**.
+The old compiler is the verified #742 build from `a1f3b6a7`, SHA-256
+`114c2495ec213cd94dbf1494df7f2e05fd6557888281ab58fc1e1f0a91f90f15`.
+
+| Check | Measured result |
+|---|---|
+| Retained weakref cohort | **27 cases / 38 checks** in each of native JIT/AOT, program GC stress, all optimizations off and CPython-hosted compilation: **152/152 pass**. Eleven positive programs and sixteen expected rejections remain distinct. |
+| CPython references | **11/11 recordings match** full stdout and exit status, plus the last stderr line where present. Callback traceback text is deliberately not claimed identical. |
+| Sanitized runtime executions | All eleven positive programs pass JIT and AOT with UBSan-instrumented `runtime.c`: **22/22**, with JIT's sanitizer runtime explicitly preloaded. This does not claim a sanitized compiler bootstrap or full verification matrix. |
+| Adjacent collector controls | Four GC/container fixtures, `sys.warnoptions`, exception-class behavior, and two adapted ordered-set/sortedcontainers workloads pass stressed JIT/AOT: **16/16**. Total focused checks above: **190/190**. |
+| IR and ABI | **13 programs** pass IR checks and LLVM assembly; **458 runtime entries / 70 exception classes / 171 functions** agree in signatures, coverage and effects. |
+| Collector C probe | Passes normally and under GC stress, then both again with UBSan. Covers live/dead targets, cycles, large objects, address reuse, registry pruning, tracked owners, callback queue rooting and orphaned handles. |
+
+The five new callback programs now compile where the old compiler rejects them.
+They execute the supported behaviors: `None` means no callback, a live reference
+is notified once after its referent dies, newest references run first, nested
+reference operations do not recursively drain the queue, dead references do not
+call back, and a raising callback does not stop later callbacks or the program.
+Tests use cohorts rather than assuming that conservative GC must free a particular
+object immediately. Reclamation and callback timing remain different from CPython:
+callbacks drain when the program next makes or calls a reference after collection.
+
+**3,166-program old/new compilation comparison:** **3,149 identical** in IR,
+messages and exit status; all **17 differences are weakref fixtures**. Five new
+callback programs move from rejection to acceptance, six existing positive
+programs change IR without output changes, and six rejection diagnostics change
+for the new argument contract or wrapper locations. **No accepted-to-rejected
+transition** occurs. No retained adapted-port or benchmark IR changes. The obsolete
+callback-rejection fixture removed by the merge is not counted as a lost positive
+program. Exact changed results and inventory hash are in the evidence.
+
+### Safety guards and failed audit attempt
+
+The reviewed stale-pointer finding is linked in
+[#694's thread](https://github.com/den-run-ai/pystachy/pull/694#discussion_r4319331351),
+with the [fix response](https://github.com/den-run-ai/pystachy/pull/694#discussion_r4319690142).
+Independent scratch-only negative controls remove one guard at a time:
+
+- Without clearing an unmarked fire pointer, the isolated orphaned-handle probe
+  exits **1** with `dead fire function kept by a live handle`, normally and under
+  GC stress.
+- Without scanning the pending callback queue as roots, the probe exits **1**
+  because the queued fire function is not retained, normally and under GC stress.
+
+The first orphan-control attempt exited 1 as intended, but failed the audit
+driver's diagnostic assertion: the earlier `fired()` test caught the same removed
+guard as `dead reference's fire function queued` before `orphaned()` ran. That
+result is retained under `incomplete_attempts`. The corrected scratch probe omits
+the earlier `fired()` invocation to isolate the intended guard; tracked runtime
+and fixtures remain unchanged. This was an audit expectation mismatch, not a
+failure of the unmodified merged runtime. No new uncovered bug or issue was filed.
+
+### Imports, adapted workloads and remaining limits
+
+Fresh isolated sweeps with `--metadata` remain **143/468 native** and
+**145/468 stub-assisted**, **zero timeouts**, identical per-module results and
+first errors to #742. The same **522 CPython source hashes / 54 overlay exclusions**
+are verified. `import weakref` still stops at missing `_weakref.getweakrefcount`;
+the callback addition alone does not unblock full weakref, logging or unittest.
+Proxies, registry helpers, weak containers and `__callback__` remain outside this
+prototype. Callback arguments must be functions or `None`, not arbitrary callable
+objects; keyword callback arguments are rejected at compile time.
+
+Two retained **adapted** pyperformance workloads also pass stressed native JIT/AOT
+against CPython: `richards` (one loop, **9297 / 23246**) and `raytrace` (one loop,
+20×20, checksum **46535**). These are four successful native smoke executions,
+not new unmodified upstream-suite support. Shared-host single-sample durations
+are preserved as diagnostics only: **no timing regression, speedup or peak-memory
+claim**. The adapted `upstream_weakref.py` case program is not CPython's full test
+suite. Historical adaptation assessments and dated reports/JSON are unchanged.
+
+Replay from the clean source revision: rebuild with the pinned environment, then
+run the embedded `audit-694.py` modes `references`, `checks`, `contracts`,
+`sanitized`, `negative`, `adjacent`, `oracle`, `sweeps`, and the assembler. Preserve
+the historical negative-control attempt when replaying the assembler; it is not
+recreated by the corrected driver. The two sweep commands are:
+
+```sh
+/root/.local/bin/python3.13 tools/import_sweep.py -j 2 --metadata build/audit-694/imports-metadata.json ./pystachy "$STDLIB" build/audit-694/imports.json
+/root/.local/bin/python3.13 tools/import_sweep.py -j 2 --metadata build/audit-694/stubs-metadata.json --stubs "$STDLIB" build/audit-694/stubs.json
+```
+
+`STDLIB` is the exact pinned interpreter path recorded in JSON. Freshly fetched
+implementation-head `a03d394348587c54486ac33a2729de8cd3e1bdf6` workflow summaries
+show CI, Lint, Packages and Installation successful
+([CI run](https://github.com/den-run-ai/pystachy/actions/runs/39341839705)). Those
+are historical implementation-head results, **not combined-main or audit-head
+CI**. No full local `make verify`, full recording rerun, unmodified CPython
+regrtest, general NumPy/PyPI census or dedicated performance/memory experiment was
+run. Optional broader testing stopped after the concrete callback/collector risks
+and adjacent controls above were resolved.

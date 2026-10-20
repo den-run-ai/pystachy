@@ -2170,9 +2170,11 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         return "str"  # (a str path is its own file system path, and its own posixpath normcase())
     if k == "call" and e.kids[0].kind == "name":
         c = e.kids[0].s
-        if c == "__pys_weakref_new" and f.mod == "_weakref" and len(e.kids) == 2:
+        if c == "__pys_weakref_new" and f.mod == "_weakref" and (len(e.kids) == 2 or len(e.kids) == 3):
             t = self.guess(e.kids[1], f)
             return "weakhandle[" + t + "]" if t != "" and not t.startswith("!") else t
+        if c == "__pys_weakref_fired" and f.mod == "_weakref" and len(e.kids) == 1:
+            return "opt[callable[None]]"
         if c in self.tmpl:
             # a class template's object: of the specialization its arguments' types pick, once
             # code is being compiled (a specialization compiles its special methods)

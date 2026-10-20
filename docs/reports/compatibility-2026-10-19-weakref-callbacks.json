@@ -1,0 +1,1622 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-19",
+  "status": "completed",
+  "source_revision": "c71d4ca5413645c8094f306d727a8f18059bb722",
+  "previous_evaluated_main": "a1f3b6a7379510d7ece2d168e576313d5fa8c6cf",
+  "compiler_build_source": "c71d4ca5413645c8094f306d727a8f18059bb722",
+  "compiler_sha256": "8f9e8d02d7a9311ef396f4e32b684afa98fe235bafb51575304be2468b0c3ef7",
+  "history": [
+    "c71d4ca5413645c8094f306d727a8f18059bb722 Merge pull request #694 from den-run-ai/claude/weakref-callbacks"
+  ],
+  "changed_files": [
+    "docs/language/modules.md",
+    "docs/prototypes/weakref.md",
+    "lib/README.md",
+    "lib/_pystachy_weakref.py",
+    "lib/compatibility.md",
+    "runtime.c",
+    "src/pystachy_compiler/builtins.py",
+    "src/pystachy_compiler/declarations.py",
+    "src/pystachy_compiler/specs.py",
+    "tests/errors/weakref_callback.py",
+    "tests/errors/weakref_callback_keyword.py",
+    "tests/errors/weakref_callback_value.py",
+    "tests/errors/weakref_ref_arity.py",
+    "tests/lib_weakref_callback.out",
+    "tests/lib_weakref_callback.py",
+    "tests/lib_weakref_callback_dead_ref.out",
+    "tests/lib_weakref_callback_dead_ref.py",
+    "tests/lib_weakref_callback_nested.out",
+    "tests/lib_weakref_callback_nested.py",
+    "tests/lib_weakref_callback_order.out",
+    "tests/lib_weakref_callback_order.py",
+    "tests/lib_weakref_callback_raise.err",
+    "tests/lib_weakref_callback_raise.out",
+    "tests/lib_weakref_callback_raise.py",
+    "tools/weakrefprobe.c"
+  ],
+  "merged_prs": [
+    694
+  ],
+  "old_compiler": {
+    "source_revision": "a1f3b6a7379510d7ece2d168e576313d5fa8c6cf",
+    "sha256": "114c2495ec213cd94dbf1494df7f2e05fd6557888281ab58fc1e1f0a91f90f15"
+  },
+  "environment": {
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "python_executable": "/root/.local/bin/python3.13",
+    "llvm": "18.1.3",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "workers_per_group": 2,
+    "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-694",
+    "inherited_options": "Driver removes PYSTACHY_/COVERAGE_ options; exact overrides recorded. Shared host, concurrent validation, no performance inference."
+  },
+  "bootstrap": {
+    "command": [
+      "make",
+      "PY=/root/.local/bin/python3.13"
+    ],
+    "returncode": 0,
+    "compiler_ir_lines": 650777,
+    "runtime_ir_lines": 18851,
+    "ir_sha256": {
+      "stage1.ll": "0edacc82080da7bac14d952e9e186a37c6cea67d5b3ac6381b1f9e12928e6f10",
+      "stage2.ll": "0edacc82080da7bac14d952e9e186a37c6cea67d5b3ac6381b1f9e12928e6f10",
+      "stage3.ll": "0edacc82080da7bac14d952e9e186a37c6cea67d5b3ac6381b1f9e12928e6f10",
+      "rt1.ll": "a5c6c22ac843e25b17d5e0f85f0f89263cd626c16ffc5755dd78393f011c870d",
+      "rt2.ll": "a5c6c22ac843e25b17d5e0f85f0f89263cd626c16ffc5755dd78393f011c870d",
+      "rt3.ll": "a5c6c22ac843e25b17d5e0f85f0f89263cd626c16ffc5755dd78393f011c870d"
+    }
+  },
+  "selection": [
+    "tests/errors/weakref_addr_private.py",
+    "tests/errors/weakref_builtin.py",
+    "tests/errors/weakref_callback_keyword.py",
+    "tests/errors/weakref_callback_value.py",
+    "tests/errors/weakref_compare_other.py",
+    "tests/errors/weakref_getattr_name.py",
+    "tests/errors/weakref_init_arity.py",
+    "tests/errors/weakref_init_keyword.py",
+    "tests/errors/weakref_nested.py",
+    "tests/errors/weakref_private.py",
+    "tests/errors/weakref_private_field.py",
+    "tests/errors/weakref_private_hash.py",
+    "tests/errors/weakref_private_store.py",
+    "tests/errors/weakref_ref_arity.py",
+    "tests/errors/weakref_slots.py",
+    "tests/errors/weakref_vars.py",
+    "tests/lib_weakref.py",
+    "tests/lib_weakref_callback.py",
+    "tests/lib_weakref_callback_dead_ref.py",
+    "tests/lib_weakref_callback_nested.py",
+    "tests/lib_weakref_callback_order.py",
+    "tests/lib_weakref_callback_raise.py",
+    "tests/lib_weakref_dead.py",
+    "tests/lib_weakref_dead_eq.py",
+    "tests/lib_weakref_eq.py",
+    "tests/lib_weakref_transition.py",
+    "tests/upstream_weakref.py"
+  ],
+  "adjacent_selection": [
+    "tests/gc_churn.py",
+    "tests/gc_dict_values.py",
+    "tests/gc_list_kinds.py",
+    "tests/gc_template_empty_kind.py",
+    "tests/sys_warnoptions.py",
+    "tests/exc_class_misc.py",
+    "tests/port_ordered_set_edges.py",
+    "tests/port_sortedcontainers_index.py"
+  ],
+  "fixture_sha256": {
+    "tests/errors/weakref_addr_private.py": "cd51c16e356d23c752beb1721d41d964a50d3f327f49717cef35ab6945bfb786",
+    "tests/errors/weakref_builtin.py": "e11077b2538904d69e5f7efcf7729f9af83fe51d105af5fe0c5baca7f499ca94",
+    "tests/errors/weakref_callback_keyword.py": "7ef23ea56a688bc2f36f3a1babc8d522b6acca28aef15c24a4617cfd908525d1",
+    "tests/errors/weakref_callback_value.py": "75bb96bac4f3f541b0baca5db2cf5685e0e7867ef0ec630d06b372b800b40735",
+    "tests/errors/weakref_compare_other.py": "7edecd5781da9d3dcd06608f21bc91ff405aed0c18712490b9104362cf327942",
+    "tests/errors/weakref_getattr_name.py": "322dc1965532423abefd495dbe7c0f9efc3e94ba4adf6b32cb3f877897ff3aa7",
+    "tests/errors/weakref_init_arity.py": "cfcab7870ffde6c659f4171f1faa9ec3eed9d0eb03c75ec6190713118af5f9c8",
+    "tests/errors/weakref_init_keyword.py": "bb3156078b28fcc7e9b4a78309f5e64966d4027edfec0fa5757ac319070661aa",
+    "tests/errors/weakref_nested.py": "23594723050d4ca5e7e12b722a716986f0a43e71c911ab9c3f2e61a770eae0b9",
+    "tests/errors/weakref_private.py": "7bd24c3792046a93f986cbd145f45ff90420591c62284527ca37a7b4f3b83546",
+    "tests/errors/weakref_private_field.py": "108229e71573ec67e260f716b377f13871b604c94018c73d5888a8e785a64806",
+    "tests/errors/weakref_private_hash.py": "f00713440c3f626e3b3a5a7fe240802f95ce57175418248bf6a3c0cfb9030bcb",
+    "tests/errors/weakref_private_store.py": "0fe96371b8b4a6afe8ebbf96635c802ece3df91e212594fdec8ec9e1df92515c",
+    "tests/errors/weakref_ref_arity.py": "33692c347f5bbbe93bc26efd51378c3c8892f55004683de16301ed80ecb4cb6e",
+    "tests/errors/weakref_slots.py": "d409a92b55055472fd01826d768aae981be1e326869d13ce07ed269c9e9d20ad",
+    "tests/errors/weakref_vars.py": "34c300525629bd40e9702bcea3fd6b004972e1e3d44d898bd5ff0c47a1ef063f",
+    "tests/lib_weakref.py": "ed79ae6bb8becae650acd41477b964efbff435a85e5ec46b0f8a11a5c0cdb00f",
+    "tests/lib_weakref.out": "c3467a483dc7653bed15056d2983cacf431aa12bbff92bdeaa6431bad4d808bf",
+    "tests/lib_weakref_callback.py": "41993fcbe782ffcb698d88ed744dfcfa681aa05b6b47019c63e9c362a071deb0",
+    "tests/lib_weakref_callback.out": "12dac7d2a821ea792a1a6838fa7e8f90675cfe574eee6c660f84acce4bb93e93",
+    "tests/lib_weakref_callback_dead_ref.py": "bec61a27d80b2e910b8f254f75445b8b5545a362b299fcf6d5f652d4ac016f9b",
+    "tests/lib_weakref_callback_dead_ref.out": "7c134b6362a917acfd0f500e1a1247be78785c9bc7a52f54dcac0a420e1538bd",
+    "tests/lib_weakref_callback_nested.py": "6b93245a44c1b77191a236af8c68d4b7543ef9aa8cdd4864ca8d0614087a2973",
+    "tests/lib_weakref_callback_nested.out": "7c134b6362a917acfd0f500e1a1247be78785c9bc7a52f54dcac0a420e1538bd",
+    "tests/lib_weakref_callback_order.py": "a08db048d4e0496770d0a2c4def48f1419c97bba767fd9041acc5ee2111c5281",
+    "tests/lib_weakref_callback_order.out": "f02fd7ed56105d696714a42c0d73fba1ca26881dd92f2d23fb8c775e2d1c9ce2",
+    "tests/lib_weakref_callback_raise.py": "3307ecace7e39841d175104533f6b64c5e547cd33ee3020f7f44dc809091369e",
+    "tests/lib_weakref_callback_raise.out": "f02fd7ed56105d696714a42c0d73fba1ca26881dd92f2d23fb8c775e2d1c9ce2",
+    "tests/lib_weakref_callback_raise.err": "cdf9ec2f77250bf3162d1b2c02c8ab035aabdf22bcfd754a40757893afb34981",
+    "tests/lib_weakref_dead.py": "bc69fa0baed2cf7955967b96555ed423735d0bd110c88799ab3fb6951490ca25",
+    "tests/lib_weakref_dead.out": "7c134b6362a917acfd0f500e1a1247be78785c9bc7a52f54dcac0a420e1538bd",
+    "tests/lib_weakref_dead_eq.py": "fdde597d1c81d3d32b14f4dab1e4a00fae82f8ff3277a55d23f8540479205c88",
+    "tests/lib_weakref_dead_eq.out": "fd6e7f70ef78e17109427ba19c5e3e6bf4a952b1bf406b12686dd31b2f3af78e",
+    "tests/lib_weakref_eq.py": "5e05df16afbdb31e8c6b8d5cfe4ea5a96b073ef8cc2a7470b70c84b27a4e49ec",
+    "tests/lib_weakref_eq.out": "0e82551fd274abbbcba2e70e0e6cb1cd223deb7ba002e0e887c10096b83cee57",
+    "tests/lib_weakref_transition.py": "e8063466064091218320b4480fff338ac9d34b423b1f3c4e56884708a4a9ee03",
+    "tests/lib_weakref_transition.out": "20971efea71a4de83341e418152199d53e7398b45aa96f09c016fcf44331e693",
+    "tests/upstream_weakref.py": "75255d91424930fb97a5ec6b49d46e90cdbc6e17fb9af7cd65c19a3188816ca9",
+    "tests/upstream_weakref.out": "68714e37c9ed522f1875332adaea2b1848f25d6c587745476c5fca8f873e64b0",
+    "tests/gc_churn.py": "2beedc4d6a0a2d5222d91a591c6c6ff60a9a221517718cabc5bf8c50ed4d7c70",
+    "tests/gc_churn.out": "1a93de37c59d9103dcbc8dade427f484d2f25eb77e5ceb77879eaef86ed82c7c",
+    "tests/gc_dict_values.py": "ce6d94e11703dd752a4ef302ba29026e505e5cff39ce047c1d70cbfdf9d9de5b",
+    "tests/gc_dict_values.out": "85c4e122a4764d40df7ddcb41d398bfcd5459dfd4d409b448954366f88ebcefb",
+    "tests/gc_list_kinds.py": "5923abb2742a81e45d774d748804ccb57fe2841c12b479b8ac737af2168865af",
+    "tests/gc_list_kinds.out": "fda22f64843856042ac2d04ddf6187c80151cd1bb61c3916d97f41ef255e92f1",
+    "tests/gc_template_empty_kind.py": "bdc4dbce963514277d27cc74b264463aa897143fe515fc36c019dc9d844bfb3e",
+    "tests/gc_template_empty_kind.out": "57b7e9637e917afd5b838709a182fe4c9975d104f7918fbb943d8144a774b32c",
+    "tests/sys_warnoptions.py": "dca767efc5da1973fb74550cf7e60d271e396e577c6e8e1e638485d61333f931",
+    "tests/sys_warnoptions.out": "ec36bc729d6bffe5c529daaddde5d8e711e6723750557a8f6204ee75b00ec64c",
+    "tests/exc_class_misc.py": "0fd485254b7593186e5b4a8ed217cd9da010faae030f71301c7b4485b19646d1",
+    "tests/exc_class_misc.out": "d97c97755b176215aa78589d9037e12a2862b6d9d286b5a20b4f9deeb71db0a6",
+    "tests/exc_class_misc.err": "1a4dfb08920930e82a8f98a8a805dd43cb5e28ab431c799c266853d12e98e92d",
+    "tests/port_ordered_set_edges.py": "00e592ab03a427fdbaa0291049df048a6b68569c2e63c37683b27247e8148db9",
+    "tests/port_ordered_set_edges.out": "b63d9c59e940c2d3ab6488e3f5bfb6fac481a1af00a3749f53fb33c93676ecf6",
+    "tests/port_ordered_set_edges.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a",
+    "tests/port_sortedcontainers_index.py": "26d7ef003acbc4ecb4490ef226117dbc70f1f7a0f5a9dbecb95067fcedf3f569",
+    "tests/port_sortedcontainers_index.out": "87917693921edcb418cf79caeb6683ab4fa4b45ec308a6b906e98207d9b7ae05",
+    "tests/port_sortedcontainers_index.path": "43e4328ad2de7e39c241b428d22471097b95e8adddd7d1754e49befc7018d16a",
+    "bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+    "bench/pyperformance/raytrace.py": "e5f71075698d02ac3e91fe99bf43799905c03651be4a41ff574c99790f5d2213"
+  },
+  "tools_sha256": {
+    "tests/run.sh": "f808375aac9ca707ca794cd398bf939163728366ef6c380f6568cb0e531fef8e",
+    "tools/check_ir.sh": "7f339c6cb018031e0d88097180cd7074d48ce04c92c439f05e804c745b49f2f0",
+    "tools/import_sweep.py": "c610fa1ecc9effc949939810131b268000131a8da499efebddf10fcc80a1a370",
+    "tools/weakrefprobe.c": "f21ac4809d4c0bea70ef2fbd2107b1898e250c8b7f0c5e066fb4bc5973c9543e"
+  },
+  "commands": {
+    "adjacent-gc": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/gc_churn.py",
+        "tests/gc_dict_values.py",
+        "tests/gc_list_kinds.py",
+        "tests/gc_template_empty_kind.py",
+        "tests/sys_warnoptions.py",
+        "tests/exc_class_misc.py",
+        "tests/port_ordered_set_edges.py",
+        "tests/port_sortedcontainers_index.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "selected 8 cases\n16 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 21.645354308002425,
+      "expected_exit": 0
+    },
+    "checks-gc": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/errors/weakref_addr_private.py",
+        "tests/errors/weakref_builtin.py",
+        "tests/errors/weakref_callback_keyword.py",
+        "tests/errors/weakref_callback_value.py",
+        "tests/errors/weakref_compare_other.py",
+        "tests/errors/weakref_getattr_name.py",
+        "tests/errors/weakref_init_arity.py",
+        "tests/errors/weakref_init_keyword.py",
+        "tests/errors/weakref_nested.py",
+        "tests/errors/weakref_private.py",
+        "tests/errors/weakref_private_field.py",
+        "tests/errors/weakref_private_hash.py",
+        "tests/errors/weakref_private_store.py",
+        "tests/errors/weakref_ref_arity.py",
+        "tests/errors/weakref_slots.py",
+        "tests/errors/weakref_vars.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "selected 27 cases\n38 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 15.476937923998776,
+      "expected_exit": 0
+    },
+    "checks-hosted": {
+      "command": [
+        "tests/run.sh",
+        "/root/.local/bin/python3.13 -m pystachy",
+        "jit aot",
+        "tests/errors/weakref_addr_private.py",
+        "tests/errors/weakref_builtin.py",
+        "tests/errors/weakref_callback_keyword.py",
+        "tests/errors/weakref_callback_value.py",
+        "tests/errors/weakref_compare_other.py",
+        "tests/errors/weakref_getattr_name.py",
+        "tests/errors/weakref_init_arity.py",
+        "tests/errors/weakref_init_keyword.py",
+        "tests/errors/weakref_nested.py",
+        "tests/errors/weakref_private.py",
+        "tests/errors/weakref_private_field.py",
+        "tests/errors/weakref_private_hash.py",
+        "tests/errors/weakref_private_store.py",
+        "tests/errors/weakref_ref_arity.py",
+        "tests/errors/weakref_slots.py",
+        "tests/errors/weakref_vars.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 27 cases\n38 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 23.09297601599974,
+      "expected_exit": 0
+    },
+    "checks-native": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/errors/weakref_addr_private.py",
+        "tests/errors/weakref_builtin.py",
+        "tests/errors/weakref_callback_keyword.py",
+        "tests/errors/weakref_callback_value.py",
+        "tests/errors/weakref_compare_other.py",
+        "tests/errors/weakref_getattr_name.py",
+        "tests/errors/weakref_init_arity.py",
+        "tests/errors/weakref_init_keyword.py",
+        "tests/errors/weakref_nested.py",
+        "tests/errors/weakref_private.py",
+        "tests/errors/weakref_private_field.py",
+        "tests/errors/weakref_private_hash.py",
+        "tests/errors/weakref_private_store.py",
+        "tests/errors/weakref_ref_arity.py",
+        "tests/errors/weakref_slots.py",
+        "tests/errors/weakref_vars.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 27 cases\n38 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 24.952299614000367,
+      "expected_exit": 0
+    },
+    "checks-noopt": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/errors/weakref_addr_private.py",
+        "tests/errors/weakref_builtin.py",
+        "tests/errors/weakref_callback_keyword.py",
+        "tests/errors/weakref_callback_value.py",
+        "tests/errors/weakref_compare_other.py",
+        "tests/errors/weakref_getattr_name.py",
+        "tests/errors/weakref_init_arity.py",
+        "tests/errors/weakref_init_keyword.py",
+        "tests/errors/weakref_nested.py",
+        "tests/errors/weakref_private.py",
+        "tests/errors/weakref_private_field.py",
+        "tests/errors/weakref_private_hash.py",
+        "tests/errors/weakref_private_store.py",
+        "tests/errors/weakref_ref_arity.py",
+        "tests/errors/weakref_slots.py",
+        "tests/errors/weakref_vars.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "selected 27 cases\n38 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 27.214247706000606,
+      "expected_exit": 0
+    },
+    "imports-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/imports-metadata.json",
+        "./pystachy",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/imports.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "143 of 468 modules import: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins _weakrefset abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri stringprep tempfile typing wave wsgiref wsgiref.headers xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n54 left out, as lib/ has _markupbase, _opcode_metadata, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib: _markupbase _opcode_metadata bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser\n\n   56  imports the missing module _io\n   54  cannot import name 'getweakrefcount' from '_weakref'\n   26  imports the missing module _signal\n   16  cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dic\n   13  'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(st\n   11  imports the missing module _ctypes\n    9  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n    9  imports the missing module pyexpat\n    8  imports the missing module _socket\n    7  imports the missing module _contextvars\n    7  imports the missing module _bz2\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    5  imports the missing module termios\n    5  imports the missing module _dbm\n    4  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    4  unsupported module attribute os.O_RDONLY\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str]\n    3  imports the missing module _tokenize\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    2  imports the missing module msvcrt\n    2  imports the missing module _operator\n    2  unsupported type annotation\n",
+      "stderr": "",
+      "wall_seconds": 30.48056885999904,
+      "expected_exit": 0
+    },
+    "ir": {
+      "command": [
+        "tools/check_ir.sh",
+        "./pystachy",
+        "pystachy.py",
+        "runtime.py",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "the IR check and llvm-as accept the IR of 13 programs\n",
+      "stderr": "",
+      "wall_seconds": 10.102956352002366,
+      "expected_exit": 0
+    },
+    "orphan-build": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/orphan.bc",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/orphan",
+        "-lm"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 3.5085035609990882,
+      "expected_exit": 0
+    },
+    "orphan-gc": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/orphan"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "weakrefprobe: dead fire function kept by a live handle\n",
+      "wall_seconds": 0.002044491997367004,
+      "expected_exit": 1
+    },
+    "orphan-ir": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/clang",
+        "-I",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/orphan.c",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/orphan.ll"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 1.7372516120012733,
+      "expected_exit": 0
+    },
+    "orphan-link": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/llvm-link",
+        "build/weakrefprobe-rt.ll",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/orphan.ll",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/orphan.bc"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.16844560900062788,
+      "expected_exit": 0
+    },
+    "orphan-normal": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/orphan"
+      ],
+      "environment": {},
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "weakrefprobe: dead fire function kept by a live handle\n",
+      "wall_seconds": 0.0037105439987499267,
+      "expected_exit": 1
+    },
+    "queue-root-build": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/queue-root.bc",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/queue-root",
+        "-lm"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 3.1727225510003336,
+      "expected_exit": 0
+    },
+    "queue-root-gc": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/queue-root"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "weakrefprobe: dead target's fire function not queued once, or not kept by the queue\n",
+      "wall_seconds": 0.0033770219997677486,
+      "expected_exit": 1
+    },
+    "queue-root-ir": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/clang",
+        "-I",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694",
+        "-O2",
+        "-S",
+        "-emit-llvm",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/queue-root.c",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/queue-root.ll"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 1.564998606001609,
+      "expected_exit": 0
+    },
+    "queue-root-link": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/llvm-link",
+        "build/weakrefprobe-rt.ll",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/queue-root.ll",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/queue-root.bc"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.1233016480000515,
+      "expected_exit": 0
+    },
+    "queue-root-normal": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/queue-root"
+      ],
+      "environment": {},
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "weakrefprobe: dead target's fire function not queued once, or not kept by the queue\n",
+      "wall_seconds": 0.001644690000830451,
+      "expected_exit": 1
+    },
+    "raytrace-aot": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/raytrace",
+        "1",
+        "20",
+        "20"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "stdout": "raytrace 1 20 20 46535\n",
+      "stderr": "seconds 0.06377866100228857\n",
+      "wall_seconds": 0.06547304500054452,
+      "expected_exit": 0
+    },
+    "raytrace-build": {
+      "command": [
+        "./pystachy",
+        "build",
+        "bench/pyperformance/raytrace.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/raytrace"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.9559254909981973,
+      "expected_exit": 0
+    },
+    "raytrace-cpython": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "bench/pyperformance/raytrace.py",
+        "1",
+        "20",
+        "20"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "raytrace 1 20 20 46535\n",
+      "stderr": "seconds 0.010655985999619588\n",
+      "wall_seconds": 0.031070646000443958,
+      "expected_exit": 0
+    },
+    "raytrace-jit": {
+      "command": [
+        "./pystachy",
+        "run",
+        "bench/pyperformance/raytrace.py",
+        "1",
+        "20",
+        "20"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "raytrace 1 20 20 46535\n",
+      "stderr": "seconds 0.04533749700203771\n",
+      "wall_seconds": 0.19439964200137183,
+      "expected_exit": 0
+    },
+    "richards-aot": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/richards",
+        "1"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "stdout": "richards 1 9297 23246\n",
+      "stderr": "seconds 0.0005647819998557679\n",
+      "wall_seconds": 0.0017694479975034483,
+      "expected_exit": 0
+    },
+    "richards-build": {
+      "command": [
+        "./pystachy",
+        "build",
+        "bench/pyperformance/richards.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/richards"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 1.2342091829996207,
+      "expected_exit": 0
+    },
+    "richards-cpython": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "bench/pyperformance/richards.py",
+        "1"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "richards 1 9297 23246\n",
+      "stderr": "seconds 0.04368319300192525\n",
+      "wall_seconds": 0.05869669900130248,
+      "expected_exit": 0
+    },
+    "richards-jit": {
+      "command": [
+        "./pystachy",
+        "run",
+        "bench/pyperformance/richards.py",
+        "1"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "richards 1 9297 23246\n",
+      "stderr": "seconds 0.00080317099855165\n",
+      "wall_seconds": 0.24130915899877436,
+      "expected_exit": 0
+    },
+    "runtime": {
+      "command": [
+        "make",
+        "check-runtime",
+        "PY=/root/.local/bin/python3.13"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "/root/.local/bin/python3.13 tools/check_runtime.py\n458 RUNTIME entries, 70 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (171 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python\n",
+      "stderr": "",
+      "wall_seconds": 10.0800491709997,
+      "expected_exit": 0
+    },
+    "sanitized-aot": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "aot",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py"
+      ],
+      "environment": {
+        "PYSTACHY_CFLAGS": "-fsanitize=undefined -fno-sanitize-recover=all"
+      },
+      "returncode": 0,
+      "stdout": "selected 11 cases\n11 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 26.482807796000998,
+      "expected_exit": 0
+    },
+    "sanitized-jit": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit",
+        "tests/lib_weakref.py",
+        "tests/lib_weakref_callback.py",
+        "tests/lib_weakref_callback_dead_ref.py",
+        "tests/lib_weakref_callback_nested.py",
+        "tests/lib_weakref_callback_order.py",
+        "tests/lib_weakref_callback_raise.py",
+        "tests/lib_weakref_dead.py",
+        "tests/lib_weakref_dead_eq.py",
+        "tests/lib_weakref_eq.py",
+        "tests/lib_weakref_transition.py",
+        "tests/upstream_weakref.py"
+      ],
+      "environment": {
+        "PYSTACHY_CFLAGS": "-fsanitize=undefined -fno-sanitize-recover=all",
+        "LD_PRELOAD": "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.ubsan_standalone-x86_64.so",
+        "UBSAN_OPTIONS": "handle_segv=0"
+      },
+      "returncode": 0,
+      "stdout": "selected 11 cases\n11 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 3.70114413400006,
+      "expected_exit": 0
+    },
+    "stubs-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/stubs-metadata.json",
+        "--stubs",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/stubs.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "stubs for 21 modules built into CPython: _io _operator _posixsubprocess _signal _socket _symtable _sysconfig _tokenize _tracemalloc _typing _warnings array fcntl gc grp marshal posix pwd pyexpat select zlib\n\n145 of 468 modules import with the stubs: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins _weakrefset abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec encodings.zlib_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri stringprep tempfile timeit typing wave wsgiref wsgiref.headers xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n54 left out, as lib/ has _markupbase, _opcode_metadata, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib: _markupbase _opcode_metadata bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser\n\n143 of them need no stub. The stubs the others need (modules needing it; needing only it):\n    1     1  gc\n    1     1  zlib\n\n   99  cannot import name 'getweakrefcount' from '_weakref'\n   31  'socketpair' is bound both as a variable and by an import (not supported)\n   16  cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dic\n   13  'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(st\n   13  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n   11  imports the missing module _ctypes\n   10  imports the missing module _bz2\n    9  cannot infer the type of 'importlib._bootstrap._bootstrap_external' from None; annotate it (importli\n    7  imports the missing module _contextvars\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    7  imports the missing module urllib.request\n    6  imports the missing module termios\n    5  imports the missing module _dbm\n    4  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    4  unsupported module attribute os.O_RDONLY\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str]\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    2  imports the missing module msvcrt\n    2  types.MethodType is not supported: of the types module, Pystachy has only GenericAlias, for a class \n    2  only 'del list[i]' and 'del dict[key]' are supported\n    2  unsupported type annotation\n    2  imports the missing module _codecs_tw\n",
+      "stderr": "",
+      "wall_seconds": 177.74334435900164,
+      "expected_exit": 0
+    },
+    "ubsan-probe-build": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/probe.bc",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/probe",
+        "-lm"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 5.054985372000374,
+      "expected_exit": 0
+    },
+    "ubsan-probe-gc": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/probe"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "stdout": "weakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning, tracked owners, callbacks and orphaned handles passed\n",
+      "stderr": "",
+      "wall_seconds": 0.004684072999225464,
+      "expected_exit": 0
+    },
+    "ubsan-probe-ir": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/clang",
+        "-O2",
+        "-fsanitize=undefined",
+        "-fno-sanitize-recover=all",
+        "-S",
+        "-emit-llvm",
+        "tools/weakrefprobe.c",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/probe.ll"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 3.035636909000459,
+      "expected_exit": 0
+    },
+    "ubsan-probe-link": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/llvm-link",
+        "build/weakrefprobe-rt.ll",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/probe.ll",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/probe.bc"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.22568334199968376,
+      "expected_exit": 0
+    },
+    "ubsan-probe": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/probe"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "weakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning, tracked owners, callbacks and orphaned handles passed\n",
+      "stderr": "",
+      "wall_seconds": 0.0019426699982432183,
+      "expected_exit": 0
+    },
+    "weakrefprobe": {
+      "command": [
+        "make",
+        "weakrefprobe",
+        "PY=/root/.local/bin/python3.13"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "mkdir -p build\n./pystachy rt runtime.py -o build/weakrefprobe-rt.ll\n\"/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/\"clang -O2 -S -emit-llvm tools/weakrefprobe.c -o build/weakrefprobe.ll\n\"/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/\"llvm-link build/weakrefprobe-rt.ll build/weakrefprobe.ll -o build/weakrefprobe.bc\n\"/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin/\"clang -O2 build/weakrefprobe.bc -o build/weakrefprobe -lm\nbuild/weakrefprobe\nweakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning, tracked owners, callbacks and orphaned handles passed\nPYSTACHY_GC_STRESS=1 build/weakrefprobe\nweakrefprobe: live targets, dead cycles, large objects, reuse, registry pruning, tracked owners, callbacks and orphaned handles passed\n",
+      "stderr": "",
+      "wall_seconds": 5.432583834997786,
+      "expected_exit": 0
+    }
+  },
+  "references": {
+    "tests/lib_weakref.py": {
+      "exit": 0,
+      "stdout": "True True\n7\n42\nlive referent survives\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    },
+    "tests/lib_weakref_callback.py": {
+      "exit": 0,
+      "stdout": "0 True True\nTrue\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    },
+    "tests/lib_weakref_callback_dead_ref.py": {
+      "exit": 0,
+      "stdout": "True\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    },
+    "tests/lib_weakref_callback_nested.py": {
+      "exit": 0,
+      "stdout": "True\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    },
+    "tests/lib_weakref_callback_order.py": {
+      "exit": 0,
+      "stdout": "True True\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    },
+    "tests/lib_weakref_callback_raise.py": {
+      "exit": 0,
+      "stdout": "True True\n",
+      "stderr_last": "ValueError: boom\n",
+      "stderr_sha256": "0fc5efb4b1826a450dd790b99b6a7bfd4d86350908a15c8cbc457582d46cfdba",
+      "recording_equal": true
+    },
+    "tests/lib_weakref_dead.py": {
+      "exit": 0,
+      "stdout": "True\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    },
+    "tests/lib_weakref_dead_eq.py": {
+      "exit": 0,
+      "stdout": "True\nTrue\nTrue\nTrue True\nTrue\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    },
+    "tests/lib_weakref_eq.py": {
+      "exit": 0,
+      "stdout": "ReferenceType ReferenceType weakref\nReferenceType ReferenceType True True\nFalse False False False\nTrue True True\nTrue False\nTrue False False True True False\nTrue True True\n2 True True\n3 1\nFalse True True False False True\nkept 2\nTrue False False True\nTrue True True\np s 2\nTrue False False\nTrue\nTypeError unhashable type: 'Unhashable'\nkept 9\n<weakref at ADDR; to 'Item' at ADDR> True\n2 True True\n<weakref at ADDR; to 'Sub' at ADDR>\n<weakref at ADDR; to 'ast.Constant' at ADDR>\n<ast.Constant object at ADDR> ast\nkept 3 1\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    },
+    "tests/lib_weakref_transition.py": {
+      "exit": 0,
+      "stdout": "True\nTrue\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    },
+    "tests/upstream_weakref.py": {
+      "exit": 0,
+      "stdout": "test_basic_ref True\ntest_ref_repr True\ntest_equality True\ntest_hashing True\nModuleTestCase_test_names ReferenceType ReferenceType 0\nTrue\nTrue\n",
+      "stderr_last": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "recording_equal": true
+    }
+  },
+  "negative_mutations": {
+    "orphan": {
+      "before": "    if (ref->fire && !gc_marked(ref->fire)) ref->fire = NULL;\n",
+      "after": ""
+    },
+    "queue-root": {
+      "before": "  if (wr_nfired > wr_head) scan((const W *)(wr_fired + wr_head), (const W *)(wr_fired + wr_nfired));   /* (NULL before the first) */\n",
+      "after": ""
+    }
+  },
+  "oracle": {
+    "programs": 3166,
+    "identical": 3149,
+    "changed": [
+      {
+        "source": "tests/errors/weakref_builtin.py",
+        "old": {
+          "exit": 1,
+          "message": "CHECKOUT/lib/_pystachy_weakref.py:32: error: _weakref.ref() prototype requires an ordinary class instance (specializing _weakref.ReferenceType(list[int]) for the call at tests/errors/weakref_builtin.py:4)\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 1,
+          "message": "CHECKOUT/lib/_pystachy_weakref.py:78: error: _weakref.ref() prototype requires an ordinary class instance (specializing _weakref.ReferenceType(list[int], None) for the call at tests/errors/weakref_builtin.py:4)\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "source": "tests/errors/weakref_callback_keyword.py",
+        "old": {
+          "exit": 1,
+          "message": "tests/errors/weakref_callback_keyword.py:15: error: ReferenceType.__init__() got an unexpected keyword argument 'callback'\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 1,
+          "message": "tests/errors/weakref_callback_keyword.py:15: error: ReferenceType.__init__() got some positional-only arguments passed as keyword arguments: 'callback'\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "source": "tests/errors/weakref_callback_value.py",
+        "old": {
+          "exit": 1,
+          "message": "tests/errors/weakref_callback_value.py:12: error: ReferenceType.__init__() takes 2 positional arguments but 3 were given\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 1,
+          "message": "tests/errors/weakref_callback_value.py:12: error: ReferenceType() cannot bind its type variables from the argument for 'callback', a int: a int is no def, lambda or Callable, whose signature Callable[[...], R] matches (specializing _weakref.ReferenceType(Item, int) for the call at tests/errors/weakref_callback_value.py:12)\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "source": "tests/errors/weakref_nested.py",
+        "old": {
+          "exit": 1,
+          "message": "CHECKOUT/lib/_pystachy_weakref.py:18: error: cannot create weak reference to a weakref.ReferenceType object (compiling _weakref.ReferenceType.__init__(_weakref.ReferenceType-1) for the call at tests/errors/weakref_nested.py:11, where obj may be None: only a new object or self is known not to be None, which decides isinstance(), hasattr() and 'is None' at compile time)\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 1,
+          "message": "CHECKOUT/lib/_pystachy_weakref.py:46: error: cannot create weak reference to a weakref.ReferenceType object (compiling _weakref.ReferenceType.__init__(_weakref.ReferenceType-1, None) for the call at tests/errors/weakref_nested.py:11, where obj may be None: only a new object or self is known not to be None, which decides isinstance(), hasattr() and 'is None' at compile time)\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "source": "tests/errors/weakref_ref_arity.py",
+        "old": {
+          "exit": 1,
+          "message": "tests/errors/weakref_ref_arity.py:15: error: ReferenceType.__init__() takes 2 positional arguments but 4 were given\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 1,
+          "message": "tests/errors/weakref_ref_arity.py:15: error: ReferenceType.__init__() takes from 2 to 3 positional arguments but 4 were given\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "source": "tests/errors/weakref_slots.py",
+        "old": {
+          "exit": 1,
+          "message": "CHECKOUT/lib/_pystachy_weakref.py:18: error: _weakref.ref() prototype does not support exception or slotted instances (compiling _weakref.ReferenceType.__init__(Slotted) for the call at tests/errors/weakref_slots.py:12)\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 1,
+          "message": "CHECKOUT/lib/_pystachy_weakref.py:46: error: _weakref.ref() prototype does not support exception or slotted instances (compiling _weakref.ReferenceType.__init__(Slotted, None) for the call at tests/errors/weakref_slots.py:12)\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "source": "tests/lib_weakref.py",
+        "old": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "71f27368faeb363d1ef95e10d9e756f0141c9c782d71179385c416c579e815a1"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "92b1b62bf79edb2177536c73f3b9ef216ed1d7438c00fde90b07fe26cd9be79f"
+        }
+      },
+      {
+        "source": "tests/lib_weakref_callback.py",
+        "old": {
+          "exit": 1,
+          "message": "tests/lib_weakref_callback.py:42: error: ReferenceType.__init__() takes 2 positional arguments but 3 were given\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "459951792131200f0ed98c5f76e01e053b2034c556aef110f66507ceea8a6e8f"
+        }
+      },
+      {
+        "source": "tests/lib_weakref_callback_dead_ref.py",
+        "old": {
+          "exit": 1,
+          "message": "tests/lib_weakref_callback_dead_ref.py:17: error: ReferenceType.__init__() takes 2 positional arguments but 3 were given\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "c1ccc9feab5de2d46e5e038371440eaa6e5ef67da317f371594564d24207a6d3"
+        }
+      },
+      {
+        "source": "tests/lib_weakref_callback_nested.py",
+        "old": {
+          "exit": 1,
+          "message": "tests/lib_weakref_callback_nested.py:29: error: ReferenceType.__init__() takes 2 positional arguments but 3 were given\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "5f6848db5ddd668e5b3f9c4b5895125344c12a6219af292be89fcc16f45c902c"
+        }
+      },
+      {
+        "source": "tests/lib_weakref_callback_order.py",
+        "old": {
+          "exit": 1,
+          "message": "tests/lib_weakref_callback_order.py:30: error: ReferenceType.__init__() takes 2 positional arguments but 3 were given\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "1875b2f1a84fa284599c787003c61e44b6590c0222243a34100d3c010fcfec36"
+        }
+      },
+      {
+        "source": "tests/lib_weakref_callback_raise.py",
+        "old": {
+          "exit": 1,
+          "message": "tests/lib_weakref_callback_raise.py:21: error: ReferenceType.__init__() takes 2 positional arguments but 3 were given\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "2910ced4063d3a8f775f8da0e1a4ce80b46db68563b394a4bd83f50db10c902b"
+        }
+      },
+      {
+        "source": "tests/lib_weakref_dead.py",
+        "old": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "563d35ffdcf964b1447fcadb311f42f251f827a757ecf05562533f6f9f8c5c4d"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "ceb956d1c9ad6b1d0c1cf77c4e974cd1c6edbc23275f03e460727daaa9a9df1d"
+        }
+      },
+      {
+        "source": "tests/lib_weakref_dead_eq.py",
+        "old": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "6bf043a367ed1b25d37b26703fdb16b45978ebc306a06242650f2957a7c0abda"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "1cf101379db94dae4f2f5f66d60d812ecfa37e1eaa8cd299380e6de76abf6753"
+        }
+      },
+      {
+        "source": "tests/lib_weakref_eq.py",
+        "old": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "69c4bd60869955dc5c1e5cb7f3e9e27880f0a88b290886149259aee0dae21dc9"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "afab61d0ccd983e9a40564b19eff64b8892449474e817e92e29818b2ff40b980"
+        }
+      },
+      {
+        "source": "tests/lib_weakref_transition.py",
+        "old": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "6a2414348056b8984ecd5644371277e0bdf216c7a13e7e626185ddfe74333092"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "61d09bedd94387c2d6d5a47db3ab6e4c1303571d4bbde42d90107fadf6852696"
+        }
+      },
+      {
+        "source": "tests/upstream_weakref.py",
+        "old": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "15b055847fb6310ae2db8ce8889b41b4370127c0958a3070afab67a5321c46a2"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "8f9bb21c38b56d377564fb27d5d015a5d340eea2213e8188067a46c75b528881"
+        }
+      }
+    ],
+    "input_inventory_sha256": "08eb28eac8a5c6fb8d8799196b7cc865dc9e70366a42f5e8acbc26699bf13b25"
+  },
+  "incomplete_attempts": {
+    "orphan-normal-attempt": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/orphan"
+      ],
+      "environment": {},
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "weakrefprobe: dead reference's fire function queued\n",
+      "wall_seconds": 0.003663332998257829,
+      "expected_exit": 1
+    }
+  },
+  "stdlib": {
+    "path": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+    "inventory_sha256": "a0d5b7bc965af0a8cc1e27ff71911aa8bbdb03ca472c1cc11c24009b9e07d0c5",
+    "modules": 522,
+    "inventory_source": "compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256"
+  },
+  "imports": {
+    "imports": {
+      "metadata": {
+        "compiler": {
+          "kind": "executable",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/pystachy",
+          "sha256": "8f9e8d02d7a9311ef396f4e32b684afa98fe235bafb51575304be2468b0c3ef7"
+        },
+        "counts": {
+          "error": 325,
+          "excluded": 54,
+          "included": 468,
+          "ok": 143,
+          "ok_without_stubs": 143,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 30.426404590001766,
+        "mode": "import",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-694",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/imports.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "c71d4ca5413645c8094f306d727a8f18059bb722",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-694"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [],
+        "timeout_s": 120,
+        "workers": 2
+      },
+      "result_sha256": "9fd2e4331e23a4f5413b3cb2812b392d1b383094edd639536a982d1d2794b442",
+      "previous_result_sha256": "9fd2e4331e23a4f5413b3cb2812b392d1b383094edd639536a982d1d2794b442",
+      "previous_map_source": "Reconstruct through compatibility-2026-10-19-union-slots.json.",
+      "deltas": {}
+    },
+    "stubs": {
+      "metadata": {
+        "compiler": {
+          "kind": "hosted_entrypoint",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/pystachy.py",
+          "sha256": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917"
+        },
+        "counts": {
+          "error": 323,
+          "excluded": 54,
+          "included": 468,
+          "ok": 145,
+          "ok_without_stubs": 143,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 177.69600026800254,
+        "mode": "stubs",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-694",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-694/build/audit-694/stubs.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "c71d4ca5413645c8094f306d727a8f18059bb722",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-694"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [
+          "_io",
+          "_operator",
+          "_posixsubprocess",
+          "_signal",
+          "_socket",
+          "_symtable",
+          "_sysconfig",
+          "_tokenize",
+          "_tracemalloc",
+          "_typing",
+          "_warnings",
+          "array",
+          "fcntl",
+          "gc",
+          "grp",
+          "marshal",
+          "posix",
+          "pwd",
+          "pyexpat",
+          "select",
+          "zlib"
+        ],
+        "timeout_s": 600,
+        "workers": 2
+      },
+      "result_sha256": "aa6a2fea1447b776cff8a132cbefab8a702b7db6f032d4cd92be4e55710e5743",
+      "previous_result_sha256": "aa6a2fea1447b776cff8a132cbefab8a702b7db6f032d4cd92be4e55710e5743",
+      "previous_map_source": "Reconstruct through compatibility-2026-10-19-union-slots.json.",
+      "deltas": {}
+    }
+  },
+  "limits": [
+    "Collector-timed callbacks drain when a reference is made/called, not CPython immediate reference-count timing.",
+    "Reference recordings compare full stdout/status but only the last stderr line, matching the retained harness contract; callback traceback text differs.",
+    "Weak containers, proxies, registry helpers and callback introspection remain unsupported; no general weakref, logging, unittest, NumPy or PyPI compatibility claim.",
+    "Adapted port and benchmark checks are not unmodified upstream suites. No full local make verify, full recording rerun, unmodified CPython regrtest or dedicated timing/peak-memory experiment."
+  ],
+  "reproduction_scripts": {
+    "audit-694.py": "import concurrent.futures\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport sys\nimport sysconfig\nimport tempfile\nimport time\n\nBASE = Path('/workspace/scratch/3ba735e28fa7')\nROOT = BASE / 'pystachy-audit-694'\nOLD = BASE / 'pystachy-audit-742'\nOUT = ROOT / 'build/audit-694'\nOUT.mkdir(parents=True, exist_ok=True)\nPY = '/root/.local/bin/python3.13'\nLLVM = str(BASE / 'llvm18-recovered/usr/lib/llvm-18/bin')\nENV = {k: v for k, v in os.environ.items() if not k.startswith(('PYSTACHY_', 'COVERAGE_'))}\nENV.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_LLVM=LLVM, PYSTACHY_JOBS='2', PY=PY, PATH=LLVM+':'+ENV['PATH'])\ndef save(n, v):\n    (OUT/(n+'.json')).write_text(json.dumps(v, indent=2)+'\\n')\ndef run(n, args, extra=None, expected=0):\n    start = time.monotonic()\n    p = subprocess.run(args, cwd=ROOT, env=ENV | (extra or {}), text=True, capture_output=True, timeout=1800)\n    r = dict(command=args, environment=extra or {}, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr, wall_seconds=time.monotonic()-start, expected_exit=expected)\n    save(n, r)\n    print(n, p.returncode, p.stdout[-350:], p.stderr[-250:], flush=True)\n    assert p.returncode == expected\n    return r\nfiles = sorted(str(p.relative_to(ROOT)) for pattern in ['tests/lib_weakref*.py', 'tests/upstream_weakref.py', 'tests/errors/weakref_*.py'] for p in ROOT.glob(pattern))\nsave('selection', files)\nmode = sys.argv[1]\nif mode == 'checks':\n    for label, compiler, extra in [('native', './pystachy', {}), ('gc', './pystachy', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', './pystachy', {'PYSTACHY_OPT':'-all'}), ('hosted', PY+' -m pystachy', {})]:\n        run('checks-'+label, ['tests/run.sh', compiler, 'jit aot', *files], extra)\nelif mode == 'references':\n    results = {}\n    for f in files:\n        if '/errors/' in f:\n            continue\n        p = subprocess.run([PY, f, 'a1', 'a2'], cwd=ROOT, env=ENV, text=True, capture_output=True, timeout=120)\n        err = (ROOT/f).with_suffix('.err')\n        expected_err = err.read_text() if err.exists() else ''\n        # Repository harness compares only the last stderr line (tracebacks vary).\n        stderr_last = p.stderr.splitlines()[-1]+'\\n' if p.stderr else ''\n        ok = p.stdout+f'[exit {p.returncode}]\\n' == (ROOT/f).with_suffix('.out').read_text() and stderr_last == expected_err\n        results[f] = dict(exit=p.returncode, stdout=p.stdout, stderr_last=stderr_last, stderr_sha256=hashlib.sha256(p.stderr.encode()).hexdigest(), recording_equal=ok)\n    save('references', results)\n    assert all(r['recording_equal'] for r in results.values())\n    print('references', len(results), flush=True)\nelif mode == 'contracts':\n    run('runtime', ['make', 'check-runtime', 'PY='+PY])\n    run('ir', ['tools/check_ir.sh', './pystachy', 'pystachy.py', 'runtime.py', *[f for f in files if '/errors/' not in f]])\n    run('weakrefprobe', ['make', 'weakrefprobe', 'PY='+PY])\n    flags = ['-O2', '-fsanitize=undefined', '-fno-sanitize-recover=all']\n    run('ubsan-probe-ir', [LLVM+'/clang', *flags, '-S', '-emit-llvm', 'tools/weakrefprobe.c', '-o', str(OUT/'probe.ll')])\n    run('ubsan-probe-link', [LLVM+'/llvm-link', 'build/weakrefprobe-rt.ll', str(OUT/'probe.ll'), '-o', str(OUT/'probe.bc')])\n    run('ubsan-probe-build', [LLVM+'/clang', *flags, str(OUT/'probe.bc'), '-o', str(OUT/'probe'), '-lm'])\n    run('ubsan-probe', [str(OUT/'probe')])\n    run('ubsan-probe-gc', [str(OUT/'probe')], {'PYSTACHY_GC_STRESS':'1'})\nelif mode == 'sweeps':\n    for n, opts in [('imports', ['./pystachy']), ('stubs', ['--stubs'])]:\n        run(n+'-command', [PY, 'tools/import_sweep.py', '-j', '2', '--metadata', str(OUT/(n+'-metadata.json')), *opts, sysconfig.get_path('stdlib'), str(OUT/(n+'.json'))])\nelif mode == 'sanitized':\n    flags = '-fsanitize=undefined -fno-sanitize-recover=all'\n    lib = subprocess.check_output([LLVM+'/clang', '-print-file-name=libclang_rt.ubsan_standalone-x86_64.so'], text=True).strip()\n    assert Path(lib).exists()\n    selected = [f for f in files if '/errors/' not in f]\n    run('sanitized-aot', ['tests/run.sh', './pystachy', 'aot', *selected], {'PYSTACHY_CFLAGS':flags})\n    run('sanitized-jit', ['tests/run.sh', './pystachy', 'jit', *selected], {'PYSTACHY_CFLAGS':flags, 'LD_PRELOAD':lib, 'UBSAN_OPTIONS':'handle_segv=0'})\nelif mode == 'adjacent':\n    selected = ['tests/gc_churn.py','tests/gc_dict_values.py','tests/gc_list_kinds.py','tests/gc_template_empty_kind.py','tests/sys_warnoptions.py','tests/exc_class_misc.py','tests/port_ordered_set_edges.py','tests/port_sortedcontainers_index.py']\n    save('adjacent-selection', selected)\n    run('adjacent-gc',['tests/run.sh','./pystachy','jit aot',*selected],{'PYSTACHY_GC_STRESS_PROGRAM':'1'})\n    for name, args in [('richards',['1']),('raytrace',['1','20','20'])]:\n        f='bench/pyperformance/'+name+'.py'\n        ref=run(name+'-cpython',[PY,f,*args])['stdout']\n        assert run(name+'-jit',['./pystachy','run',f,*args],{'PYSTACHY_GC_STRESS_PROGRAM':'1'})['stdout']==ref\n        exe=OUT/name\n        run(name+'-build',['./pystachy','build',f,'-o',str(exe)])\n        assert run(name+'-aot',[str(exe),*args],{'PYSTACHY_GC_STRESS':'1'})['stdout']==ref\nelif mode == 'negative':\n    original = (ROOT/'runtime.c').read_text()\n    changes = {\n        'orphan': ('    if (ref->fire && !gc_marked(ref->fire)) ref->fire = NULL;\\n', ''),\n        'queue-root': ('  if (wr_nfired > wr_head) scan((const W *)(wr_fired + wr_head), (const W *)(wr_fired + wr_nfired));   /* (NULL before the first) */\\n', ''),\n    }\n    for name, (before, after) in changes.items():\n        assert original.count(before)==1\n        runtime = OUT/(name+'-runtime.c')\n        runtime.write_text(original.replace(before, after))\n        source = (ROOT/'tools/weakrefprobe.c').read_text().replace('#include \"../runtime.c\"', '#include \"'+str(runtime)+'\"')\n        if name == 'orphan':\n            # Isolate the orphaned-handle guard: the broader fired() test may catch\n            # the same missing guard earlier, before orphaned() is reached.\n            source = source.replace('  fired();\\n', '')\n        probe = OUT/(name+'.c'); probe.write_text(source)\n        run(name+'-ir', [LLVM+'/clang','-I',str(ROOT),'-O2','-S','-emit-llvm',str(probe),'-o',str(OUT/(name+'.ll'))])\n        run(name+'-link',[LLVM+'/llvm-link','build/weakrefprobe-rt.ll',str(OUT/(name+'.ll')),'-o',str(OUT/(name+'.bc'))])\n        run(name+'-build',[LLVM+'/clang','-O2',str(OUT/(name+'.bc')),'-o',str(OUT/name),'-lm'])\n        for label, extra in [('normal',{}),('gc',{'PYSTACHY_GC_STRESS':'1'})]:\n            r=run(name+'-'+label,[str(OUT/name)],extra,expected=1)\n            expected='dead fire function kept by a live handle' if name=='orphan' else 'dead target\\'s fire function not queued once, or not kept by the queue'\n            assert expected in r['stderr']\n    save('negative-mutations', {name:dict(before=b,after=a) for name,(b,a) in changes.items()})\nelif mode == 'oracle':\n    sources = ['pystachy.py', 'runtime.py'] + sorted({str(p.relative_to(ROOT)) for base in ['tests', 'tests/errors', 'tests/deviations', 'tests/ir', 'bench', 'bench/pyperformance'] for p in (ROOT/base).glob('*.py')})\n    def compare(f):\n        rs = []\n        with tempfile.TemporaryDirectory(prefix='weakref-oracle-') as tmp:\n            for label, home in [('old', OLD), ('new', ROOT)]:\n                target = Path(tmp)/(label+'.ll')\n                extra = {'PYSTACHY_HOME':str(home)}\n                path = (ROOT/f).with_suffix('.path')\n                if path.exists():\n                    extra['PYSTACHY_PATH'] = path.read_text().strip()\n                how = 'rt' if f == 'runtime.py' or Path(f).name.startswith('rtmode_') else 'ir'\n                p = subprocess.run([str(home/'pystachy'), how, f, '-o', str(target)], cwd=ROOT, env=ENV | extra, text=True, capture_output=True, timeout=180)\n                ir = target.read_text() if target.exists() else ''\n                msg = p.stdout+p.stderr\n                for root in [ROOT, OLD]:\n                    ir = ir.replace(str(root), 'CHECKOUT'); msg = msg.replace(str(root), 'CHECKOUT')\n                rs.append(dict(exit=p.returncode, message=msg, ir_sha256=hashlib.sha256(ir.encode()).hexdigest()))\n        return dict(source=f, old=rs[0], new=rs[1])\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n        rs = list(pool.map(compare, sources))\n    changed = [r for r in rs if r['old'] != r['new']]\n    save('oracle', dict(programs=len(rs), identical=len(rs)-len(changed), changed=changed, input_inventory_sha256=hashlib.sha256(json.dumps({f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in sources},sort_keys=True).encode()).hexdigest()))\n    assert not any(r['old']['exit'] == 0 and r['new']['exit'] != 0 for r in rs)\n    print('oracle', len(rs), len(changed), flush=True)\n",
+    "audit-694-assemble.py": "import hashlib\nimport json\nimport platform\nfrom pathlib import Path\nimport subprocess\nimport sys\n\nBASE=Path('/workspace/scratch/3ba735e28fa7')\nROOT=BASE/'pystachy-audit-694'\nOLD=BASE/'pystachy-audit-742'\nOUT=ROOT/'build/audit-694'\nDEST=BASE/'pystachy-audit-followup-729/docs/reports'\ndef read(n):return json.loads((OUT/(n+'.json')).read_text())\ndef sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()\ndef git(*a):return subprocess.check_output(['git','-C',str(ROOT),*a],text=True).strip()\nbaseline=json.loads((DEST/'compatibility-2026-10-19-exception-diagnostics.json').read_text())\nstdlib=Path(baseline['stdlib']['path']); inventory={}\nfor m in baseline['stdlib']['module_sha256']:\n    p=stdlib/Path(*m.split('.'));p=p/'__init__.py' if p.is_dir() else p.with_suffix('.py');inventory[m]=sha(p)\nassert inventory==baseline['stdlib']['module_sha256']\nimports={}\nfor n in ['imports','stubs']:\n    prior=OLD/'build/audit-742'/(n+'.json')\n    before=json.loads(prior.read_text());after=read(n)\n    deltas={k:dict(before=before.get(k),after=after.get(k)) for k in sorted(set(before)|set(after)) if before.get(k)!=after.get(k)}\n    assert not any(v['before']=='OK' and v['after']!='OK' for v in deltas.values())\n    imports[n]=dict(metadata=read(n+'-metadata'),result_sha256=sha(OUT/(n+'.json')),previous_result_sha256=sha(prior),previous_map_source='Reconstruct through compatibility-2026-10-19-union-slots.json.',deltas=deltas)\nexcluded=['selection','adjacent-selection','oracle','references','imports','stubs','imports-metadata','stubs-metadata','negative-mutations']\ncommands={p.stem:json.loads(p.read_text()) for p in sorted(OUT.glob('*.json')) if p.stem not in excluded and 'attempt' not in p.stem}\nassert all(c['returncode']==c['expected_exit'] for c in commands.values())\nassert not git('status','--porcelain','--untracked-files=no')\noracle=read('oracle')\nassert not any(r['old']['exit']==0 and r['new']['exit']!=0 for r in oracle['changed'])\nassert all(r['recording_equal'] for r in read('references').values())\nfixtures={}\nfor f in read('selection')+read('adjacent-selection')+['bench/pyperformance/richards.py','bench/pyperformance/raytrace.py']:\n    for ext in ['.py','.out','.err','.path']:\n        p=Path(f).with_suffix(ext)\n        if (ROOT/p).exists():fixtures[str(p)]=sha(ROOT/p)\nbootstrap={n:sha(ROOT/'build'/n) for n in ['stage1.ll','stage2.ll','stage3.ll','rt1.ll','rt2.ll','rt3.ll']}\nassert len({bootstrap[n] for n in ['stage1.ll','stage2.ll','stage3.ll']})==1\nassert len({bootstrap[n] for n in ['rt1.ll','rt2.ll','rt3.ll']})==1\ndata=dict(schema_version=1,date='2026-10-19',status='completed',source_revision=git('rev-parse','HEAD'),previous_evaluated_main='a1f3b6a7379510d7ece2d168e576313d5fa8c6cf',compiler_build_source=git('rev-parse','HEAD'),compiler_sha256=sha(ROOT/'pystachy'),\n    history=git('log','--first-parent','--format=%H %s','a1f3b6a7..HEAD').splitlines(),changed_files=git('diff','--name-only','a1f3b6a7','HEAD').splitlines(),merged_prs=[694],\n    old_compiler=dict(source_revision='a1f3b6a7379510d7ece2d168e576313d5fa8c6cf',sha256=sha(OLD/'pystachy')),\n    environment=dict(python=sys.version,python_executable=sys.executable,llvm=subprocess.check_output([str(BASE/'llvm18-recovered/usr/lib/llvm-18/bin/llvm-config'),'--version'],text=True).strip(),platform=platform.platform(),workers_per_group=2,PYSTACHY_HOME=str(ROOT),inherited_options='Driver removes PYSTACHY_/COVERAGE_ options; exact overrides recorded. Shared host, concurrent validation, no performance inference.'),\n    bootstrap=dict(command=['make','PY=/root/.local/bin/python3.13'],returncode=0,compiler_ir_lines=sum(1 for _ in (ROOT/'build/stage1.ll').open()),runtime_ir_lines=sum(1 for _ in (ROOT/'build/rt1.ll').open()),ir_sha256=bootstrap),\n    selection=read('selection'),adjacent_selection=read('adjacent-selection'),fixture_sha256=fixtures,tools_sha256={f:sha(ROOT/f) for f in ['tests/run.sh','tools/check_ir.sh','tools/import_sweep.py','tools/weakrefprobe.c']},commands=commands,references=read('references'),negative_mutations=read('negative-mutations'),oracle=oracle,\n    incomplete_attempts={p.stem:json.loads(p.read_text()) for p in OUT.glob('*attempt*.json')},\n    stdlib=dict(path=str(stdlib),inventory_sha256=hashlib.sha256(json.dumps(inventory,sort_keys=True).encode()).hexdigest(),modules=len(inventory),inventory_source='compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256'),imports=imports,\n    limits=['Collector-timed callbacks drain when a reference is made/called, not CPython immediate reference-count timing.', 'Reference recordings compare full stdout/status but only the last stderr line, matching the retained harness contract; callback traceback text differs.', 'Weak containers, proxies, registry helpers and callback introspection remain unsupported; no general weakref, logging, unittest, NumPy or PyPI compatibility claim.', 'Adapted port and benchmark checks are not unmodified upstream suites. No full local make verify, full recording rerun, unmodified CPython regrtest or dedicated timing/peak-memory experiment.'],\n    reproduction_scripts={n:(BASE/n).read_text() for n in ['audit-694.py','audit-694-assemble.py']})\ndata['review_context'] = dict(issues_read=[491,616],pr=694,reviewed_implementation_head='a03d394348587c54486ac33a2729de8cd3e1bdf6',review_url='https://github.com/den-run-ai/pystachy/pull/694#issuecomment-6279669187',stale_fire_finding='https://github.com/den-run-ai/pystachy/pull/694#discussion_r4319331351',fix_response='https://github.com/den-run-ai/pystachy/pull/694#discussion_r4319690142',scope='Read current discussion; did not modify implementation branches, merge PRs or certify an independent full review.')\ndata['incomplete_attempt_explanation'] = 'Initial orphan-guard negative control exited 1 as desired but failed the audit driver message assertion: fired() caught the missing guard earlier as a dead-reference callback being queued. Retained as orphan-normal-attempt. Corrected scratch probe omits fired() to isolate orphaned(); no tracked source or fixture changed.'\ndata['historical_implementation_ci'] = dict(head='a03d394348587c54486ac33a2729de8cd3e1bdf6',runs=[dict(name=n,id=i,status='completed',conclusion='success',url='https://github.com/den-run-ai/pystachy/actions/runs/'+str(i)) for n,i in [('Lint',39341839392),('Packages',39341839277),('Installation',39341839467),('CI',39341839705)]],limits='Freshly fetched workflow summaries at implementation head, not combined-main or audit-head CI; individual jobs were not independently enumerated.')\n(DEST/'compatibility-2026-10-19-weakref-callbacks.json').write_text(json.dumps(data,indent=2)+'\\n')\nprint(json.dumps(dict(compiler=data['compiler_sha256'],bootstrap=data['bootstrap'],oracle=oracle,imports={k:dict(counts=v['metadata']['counts'],deltas=v['deltas']) for k,v in imports.items()})))\n"
+  },
+  "review_context": {
+    "issues_read": [
+      491,
+      616
+    ],
+    "pr": 694,
+    "reviewed_implementation_head": "a03d394348587c54486ac33a2729de8cd3e1bdf6",
+    "review_url": "https://github.com/den-run-ai/pystachy/pull/694#issuecomment-6279669187",
+    "stale_fire_finding": "https://github.com/den-run-ai/pystachy/pull/694#discussion_r4319331351",
+    "fix_response": "https://github.com/den-run-ai/pystachy/pull/694#discussion_r4319690142",
+    "scope": "Read current discussion; did not modify implementation branches, merge PRs or certify an independent full review."
+  },
+  "incomplete_attempt_explanation": "Initial orphan-guard negative control exited 1 as desired but failed the audit driver message assertion: fired() caught the missing guard earlier as a dead-reference callback being queued. Retained as orphan-normal-attempt. Corrected scratch probe omits fired() to isolate orphaned(); no tracked source or fixture changed.",
+  "historical_implementation_ci": {
+    "head": "a03d394348587c54486ac33a2729de8cd3e1bdf6",
+    "runs": [
+      {
+        "name": "Lint",
+        "id": 39341839392,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/39341839392"
+      },
+      {
+        "name": "Packages",
+        "id": 39341839277,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/39341839277"
+      },
+      {
+        "name": "Installation",
+        "id": 39341839467,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/39341839467"
+      },
+      {
+        "name": "CI",
+        "id": 39341839705,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/39341839705"
+      }
+    ],
+    "limits": "Freshly fetched workflow summaries at implementation head, not combined-main or audit-head CI; individual jobs were not independently enumerated."
+  }
+}
