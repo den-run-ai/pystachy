@@ -1052,8 +1052,11 @@ the class of the object a `with` statement passes to `__exit__()` (see [Contextl
 `__class_getitem__ = classmethod(GenericAlias)` (or `classmethod(types.GenericAlias)`) in a class
 body defines nothing in Pystachy, so the class compiles as it does without it
 ([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in annotations, evaluated or
-not, name the class, whatever their arguments, as CPython does not check them
-([test](../tests/programs/reflection/types_generic_alias_subscripts.py)); `re.Pattern` and `re.Match` follow
+not, name the class, as CPython does not check their arguments: types, or number, `None`,
+`True`, `False` and `...` constants (`C[1]`, `C[int, ...]`). A string argument is a forward
+reference, as elsewhere in an annotation, and any other argument must still be an annotation
+([test](../tests/programs/reflection/types_generic_alias_subscripts.py),
+[constants](../tests/programs/reflection/types_generic_alias_constants.py)); `re.Pattern` and `re.Match` follow
 the idiom, as CPython's `_sre` types are generic. At run time, where CPython makes them
 `types.GenericAlias` objects, they are a compile-time error
 ([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
@@ -1067,14 +1070,21 @@ CPython's `TypeError` ([test](../tests/programs/library/lib_types_mappingproxy.p
 deletion are compile-time errors, where CPython raises `TypeError`
 ([error test](../tests/errors/library/lib_types_mappingproxy_setitem.py)). A view has no
 attributes of its own, as CPython's has none, so code given only the view cannot reach its dict:
-`hasattr()` of its fields or of `__dict__` is false, and `__init__` leaves it viewing its dict
-([test](../tests/programs/library/lib_types_mappingproxy_opaque.py)); reading or assigning a field
-is a compile-time error, where CPython raises `AttributeError`
+`hasattr()` of its fields or of `__dict__` is false, `__init__` leaves it viewing its dict, and
+`type(view).__module__` is `builtins` ([test](../tests/programs/library/lib_types_mappingproxy_opaque.py));
+reading or assigning a field is a compile-time error, where CPython raises `AttributeError`
 ([error test](../tests/errors/library/lib_types_mappingproxy_field.py)).
 
 - It takes a dict, whose key and value types are the view's (`MappingProxyType[str, int]`);
   CPython's takes any mapping. `keys()`, `values()` and `items()` give lists, as a dict's do, and
   `dict(view)` and `dict | view` are compile-time errors, as for other mapping objects.
+- A view is equal only to a dict or a view of an equal dict: compared with an object of another
+  class it is unequal, where CPython compares its dict with the object, whose own `__eq__`, given
+  the dict, may decide ([deviation](../tests/deviations/lib_types_mappingproxy_eq_other.py)).
+  Comparing a dict with such an object is a compile-time error.
+- Through a dynamic `Any` value, a view is an object like others: it is not iterable, and its
+  `keys()`, `values()` and `items()`, typed lists, are compile-time errors (dynamic `Any`'s
+  [deviations](../docs/dynamic-any.md#deviations)).
 
 - Any other use of `GenericAlias`, such as calling it, is a compile-time error
   ([error test](../tests/errors/reflection/types_generic_alias_call.py)).

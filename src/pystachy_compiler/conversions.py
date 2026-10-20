@@ -249,6 +249,7 @@ def gen_plain_desc(self, t: str, use: str) -> str:
             m = DUNDER[REFL[op]] if m not in ms and op in REFL else m
             f = ms[m] if m in ms else None
             takes = f is None or op == "repr" or f.ptypes[1] == t or f.ptypes[1] == "" or (f.ptypes[1] in self.classes and self.derives(t, f.ptypes[1]))
+            takes = takes or (f is not None and f.ptypes[1] == "dyn" and self.dyn_boxable(t) == "")  # (an Any parameter: the object boxed)
             if f is not None and (f.bad != "" or not takes):
                 self.err(f.bad if f.bad != "" else f"comparing {shown(t)} objects (in a list, tuple, in, count, index, sort, min or max) calls {m}() with a {shown(t)}, but it takes a {typestr(f.ptypes[1])}")
             # (and between the subclasses' objects a t-typed value may hold, compared by their

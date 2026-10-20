@@ -66,6 +66,23 @@ its class's methods gives an `Any` value (`self.v: Any = None`), and a display o
 that an `Any` value fills (`xs: list[Any] = [None] * n`, `d: dict[str, Any] = {...}`;
 `tests/errors/inference/dynany_none_*.py`).
 
+An annotation that mentions `Any` where no `Any` value can stand requests inference, as in a
+module that does not opt in, so that the comment rejects no program that compiles without it:
+`Callable[..., Any]`, whose parameters no `Callable` type names, a type argument of a class of the
+program (`box: Box[Any] = Box(3)`: a specialization is its constructor call's), `*args: Any` and
+`**kwargs: Any` of an `__init__` (its class is a class template), the parameters of `__exit__`,
+which a `with` statement gives an exception class and an exception (no `Any` value holds one yet),
+and the return of `__iter__` and of a generator, whose objects no `Any` value holds yet either
+(`tests/programs/inference/dynany_inferred_annotations.py`, `tests/programs/inference/dynany_exit.py`,
+`tests/programs/inference/dynany_init_varargs.py`, `tests/programs/inference/dynany_iter_any.py`). `Annotated[Any, ...]` is `Any`
+(`tests/programs/inference/dynany_annotated.py`). The items of a display that hold an empty display (or
+`list()`, `dict()`, `set()`) that nothing in them types (`([], 3)`) take their type from the items
+before them, as elsewhere (`tests/programs/inference/dynany_display_empty.py`); one whose own items
+type it, by an item before it of the same kind (`({"a": [1], "b": []}, 1)`, `[list([1]), []]`),
+decides with the others whether the items have one type
+(`tests/programs/inference/dynany_display_empty_nested.py`). Functions after a `Callable` item are
+`Callable`s of its type (`tests/programs/inference/dynany_callables.py`).
+
 [Inferred unions](language/typing.md#inferred-unions) work as in modules that do not opt in: a
 variable or result given an `int` and a `float` is an `int | float`. One that is given an `Any`
 value too is `Any` instead, and a union's value becomes an `Any` value by the member its tag
@@ -81,7 +98,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   `type(x).__name__`, the payload's physical layout as runtime.c's descriptor walks read it
   (`desc`), and, for an object, its class's `O<id>` (which the program's `pys_obj_eq`,
   `pys_obj_cmp` and `pys_obj_repr` dispatch on), its base class's DynType and whether the
-  class compares, orders or hashes through its own methods. runtime.c defines the builtin
+  class compares, orders or hashes through its own methods, also with values of other types
+  (`DF_X`). runtime.c defines the builtin
   DynTypes (`None`, `bool`, `int`, `float`, `str`, `list`, `dict`, `tuple`); the program
   defines one for each class whose objects it boxes, and one for each function value type.
 - **The payload** is an `int`'s, `float`'s or `bool`'s bits, or the original pointer of a
@@ -140,10 +158,17 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
 
 ## Operations
 
-Arithmetic, comparisons, truth, `is`, `in`, indexing, item assignment and deletion, `len()`,
-`str()`, `repr()`, `int()`, `float()`, `bool()`, `hash()`, `id()`, `sum()`, `sorted()`,
-`min()`, `max()`, `list()`, `str.join()`, f-strings and `format()`, iteration,
-unpacking, augmented assignment and `type(x).__name__` work on `Any` values with CPython's
+Arithmetic, comparisons, truth, `is`, `in`, indexing, slicing (of a `str`, list or tuple, with
+`Any` bounds too, which convert as CPython converts them: once every bound is evaluated and the
+receiver tested, the step first; a dict's slice hashes the slice, then raises its `KeyError`),
+item assignment and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `hash()`,
+`id()`, `sum()` (also of a generator), `sorted()`, `min()`, `max()`, `list()`, `str.join()`,
+`dict.update()` (of a dict or of pairs, each an iterable of two), f-strings and `format()`,
+iteration, unpacking, augmented assignment, `type(x).__name__`,
+`__qualname__` and `__module__`, and `type(x) is C` and `type(x) == type(y)` (exact types: a
+bool's is no int's, and every function's is `function`; a typed `y`'s by the value it holds,
+`NoneType` for a `list[int] | None` that is `None`: `tests/programs/inference/dynany_type_is_value.py`,
+`tests/programs/inference/dynany_type_is_function.py`) work on `Any` values with CPython's
 results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a bool, mixed
 `int`/`float` comparisons are exact, and the error messages are CPython's
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
@@ -160,6 +185,8 @@ or CPython's `AttributeError`/`TypeError`:
 |---|---|
 | `op<k>`, `iop<k>`, `un<k>` | binary, in-place and unary arithmetic in CPython's order: the class's in-place dunder; else the reflected dunder of a right operand of a strict subclass that has its own, then the class's dunder; else the reflected dunder of a right operand of another type (not for `str % x`, which formats `x`); then the builtin types' |
 | `truth`, `str`, `len` | `__bool__`/`__len__`, `__str__`/`__repr__`, `__len__` |
+| `format` | `__format__`, also with an empty spec; else `str()` for an empty spec, and the TypeError that names the class for another |
+| `slice`, `module` | a slice, of its bounds and step as `Any` values (an object's `__getitem__` would take a slice object, which Pystachy does not have: `TypeError`), `type(x).__module__` |
 | `getitem`, `setitem`, `delitem`, `contains` | the container protocol |
 | `get.<a>`, `set.<a>` | attribute `a`: a field or property of the class, or a method, which reads as its bound method |
 | `has.<m>.<n>`, `call.<m>.<n>` | method `m` with `n` positional arguments: found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, or CPython's `TypeError` where the arguments do not fit its parameters; a field's value, read before the arguments as `LOAD_ATTR` reads it (`has.<m>.<n>` gives it) and called as `callv.<n>` calls it; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` that take `n` arguments |
@@ -174,8 +201,29 @@ or reflected ordering method first, also where the base class has none, and `x =
 `__eq__` too, while a container's search and a dict's lookup find an object as itself first.
 `!=` runs `__ne__` the same way where the class or a subclass defines it (`pys_dyn_ne`), and
 otherwise inverts `==` (`tests/programs/inference/dynany_subclass_eq.py`, `tests/programs/inference/dynany_subclass_cmp.py`,
-`tests/programs/inference/dynany_ne.py`). Objects of unrelated classes compare by identity. Arithmetic runs
-reflected methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
+`tests/programs/inference/dynany_ne.py`). An object and a value of another type, an object of an
+unrelated class among them, compare as CPython's rich comparison runs them: the left operand's
+method, else the right operand's reflected one (a builtin type's own method declines an object),
+else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `__ne__` is not
+`__eq__`. The program's `@o.x.<class>` helper runs the class's method with the other value as an
+`Any` argument (`tests/programs/inference/dynany_eq_other.py`). A comparison method whose parameter is
+`Any` takes any operand, also between typed objects of its class
+(`tests/programs/inference/dynany_eq_any_param.py`). One whose parameter has no annotation, or
+`object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
+list compared with an `Any` value's field), the program is compiled again without that call
+(`Gen.xnot`), and the method runs only with objects of its class, as in a module that does not opt
+in (`tests/programs/inference/dynany_eq_template.py`). One whose parameter is annotated with a class (or
+another concrete type) runs where the other value has that type (an object of the class or of a
+subclass, or `None`, as such a parameter takes an `Any` value; for a tuple's shape, a tuple of its
+length whose items have its item types); its body is compiled for that type, so it does not run
+with another value (`pys_dyn_isa`), nor with any where no `Any` value has the type (`list[int]`),
+and the comparison is identity's, or `TypeError` for an ordering, without the other operand's
+reflected method: what CPython gives where the method declines the value, as `lib/datetime.py`'s
+methods decline a `str` (`tests/programs/inference/dynany_eq_annotated.py`,
+`tests/programs/inference/dynany_eq_annotated_tuple.py`,
+`tests/programs/inference/dynany_eq_annotated_container.py`, `tests/programs/inference/dynany_eq_datetime.py`).
+A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
+methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
 rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
 
 ## Policy and programs that do not opt in
@@ -214,11 +262,18 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
   [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
+- A comparison method does not run with a value of another type that an `Any` value brings it
+  where its parameter is annotated with a class (or another concrete type) that the value does
+  not have, or with a type that no `Any` value has (`list[int]`), or where its body does not
+  compile for an `Any` value: the comparison is identity's, or `TypeError` for an ordering, where
+  CPython runs the method, whose body may give another result or raise another error
+  (`tests/deviations/dynany_eq_annotated_body.py`).
+- An object is not iterable through an `Any` value yet (iteration of objects is under
+  [next steps](#next-steps)): a `for` loop over one, and a pair of `dict.update()` that is one,
+  raise `TypeError` where CPython calls its `__iter__` (`tests/deviations/dynany_iter_object.py`).
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
-- An object's `__format__` is not called through an `Any` value; a format spec raises
-  `TypeError` for it.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional arguments only; keywords and
@@ -230,9 +285,12 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
   evaluates them and raises `TypeError`. A class's method raises CPython's `TypeError`.
 - `%` of an `Any` str raises `TypeError`: printf-style formatting is implemented for a str that
   is known as such, which formats `Any` values (`tests/deviations/dynany_str_mod.py`).
-- Objects of unrelated classes compare by identity even where `__eq__` would accept the other
-  object (CPython calls it), and their ordering raises `TypeError` even where `__lt__` would
-  accept it; `__eq__` and `__ne__` between an object and a builtin value are not called.
+- A slice of an object through an `Any` value raises `TypeError`: its `__getitem__` would take a
+  slice object, which Pystachy does not have (typed code rejects the slice at compile time).
+- A NamedTuple's object compares and hashes as the tuple of its fields through `Any` values
+  (`tests/programs/inference/dynany_namedtuple.py`), but it is no sequence there: `len()`, indexing and
+  iteration raise `TypeError`, and an object of another NamedTuple class compares with it by
+  identity (an ordering raises `TypeError`), where CPython compares their fields.
 - An object is not iterable through an `Any` value yet: `for`, `list()` and `in` (where its
   class has no `__contains__`) raise `TypeError` instead of calling `__iter__`. `int()` and
   `float()` of an object raise `TypeError` instead of calling `__int__`, `__index__` or

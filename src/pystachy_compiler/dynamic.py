@@ -34,6 +34,10 @@ DF_CMP = 2
 DF_HASH = 4
 DF_BOXID = 8
 DF_NE = 16
+DF_X = 32
+# the comparisons the program's @o.x.<class> runs with any value, by their op codes (+ 1: dyn_xhelper)
+XCMP: list[str] = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
+XOPS: list[str] = ["==", "!=", "<", "<=", ">", ">="]
 # the operator codes of pys_dyn_binop and pys_dyn_unary
 BINOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "/": 3, "//": 4, "%": 5, "**": 6, "<<": 7, ">>": 8, "&": 9, "|": 10, "^": 11}
 UNOPS: dict[str, int] = {"-": 0, "+": 1, "~": 2}
@@ -125,7 +129,15 @@ def gen_dyn_class_type(self, c: str) -> str:
         flags |= DF_CMP  # (also where a subclass defines one, whose reflected method the class's helper runs first)
     if flags != 0:
         self.ocmp[c] = True  # (@o.eq and @o.cmp, compiled leniently: what the class cannot compare raises when it runs)
-    if self.hash_kind(c) != "id" or len([x for x in self.classes.values() if x.tag > 0 and self.derives(x.name, c) and self.hash_kind(x.name) != "id"]) > 0:
+    if c in self.nts:
+        flags |= DF_EQ | DF_CMP | DF_NE  # (a NamedTuple's objects compare as tuples of their fields: ntop)
+        self.ocmp[c] = True
+        self.one[c] = True  # (its != is tuple's, also where its class defines __eq__ but no __ne__)
+    if len([m for m in XCMP if self.dyn_xmethod(c, m)]) > 0 or c in self.nts:
+        flags |= DF_X  # (its comparisons with values of other types run its methods: @o.x.<class>, pys_dyn_eq)
+        self.xobj[c] = True
+    if self.hash_kind(c) != "id" or len([x for x in self.classes.values() if x.tag > 0 and self.derives(x.name, c) and self.hash_kind(x.name) != "id"]) > 0 or c in self.nts:
+        # (a NamedTuple's: tuple's hash of its fields or its own __hash__, as hash_value gives it)
         if c not in self.hcls:
             self.hcls[c] = True
         flags |= DF_HASH
@@ -135,6 +147,88 @@ def gen_dyn_class_type(self, c: str) -> str:
     self.consts.append(dt)
     self.dynclasses.append(c)
     return name
+
+
+def gen_dyn_xmethod(self, c: str, m: str) -> bool:
+    # does class c have comparison method m (its own or a base's) for a value of another type: not
+    # one that @dataclass wrote, which declines an object of another class, nor one whose
+    # declaration failed, which the lenient helpers leave out (see desc)
+    ms = self.classes[c].methods
+    return m in ms and ms[m].bad == "" and not (ms[m].synthetic and self.is_dc(ms[m].cls))
+
+
+def gen_dyn_xhelper(self, c: str) -> None:
+    # @o.x.<class>(op, a, b): comparison op (1 ==, 2 !=, 3 <, 4 <=, 5 >, 6 >=, XCMP) of the object a
+    # of class c with b, an Any value that is no object of c's hierarchy (pys_dyn_eq, through
+    # pys_obj_cmp(-1 - id, op, a, b): gen_dispatch): 0 or 1, its result, 2 where c has no method
+    # for op, as object's own methods decline, or 3 where its method does not take b (dyn_xbody)
+    f = FnInfo("x", f"@o.x.{c}", self.classes[c].node, "")
+    f.params = ["op", "a", "b"]
+    f.ptypes = ["int", c, DYN]
+    f.ret = "int"
+    self.lenient = True
+    self.function(f, [mk("dynx", c, self.classes[c].node.line, [])])
+    self.lenient = False
+
+
+def gen_dyn_xbody(self, c: str) -> None:
+    # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
+    # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
+    # method annotated with a type that b's value does not have (dyn_isa), or that no Any value has
+    # (list[int]), cannot run with it: 3, and the comparison is identity's, or TypeError for an
+    # ordering, without b's reflected method, as a method that returns no NotImplemented (#499)
+    # decides in CPython. A NamedTuple without the method (!= also where it defines __eq__:
+    # tuple's __ne__) compares its fields with a tuple, as tuple's methods do, which decline any
+    # other value
+    line = self.line
+    op = self.read(mk("name", "op", line, []))
+    a = self.read(mk("name", "a", line, []))
+    b = self.read(mk("name", "b", line, []))
+    nt = c in self.nts
+    for k in range(len(XCMP)):
+        m = XCMP[k]
+        inv = False
+        if not self.dyn_xmethod(c, m) and k == 1 and self.dyn_xmethod(c, "__eq__") and not nt:
+            m = "__eq__"
+            inv = True
+        if not self.dyn_xmethod(c, m) and not nt:
+            continue
+        hit = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp("==", op, Val(str(k + 1), "int")).v, hit, nxt)
+        self.place(hit)
+        ps = self.classes[c].methods[m].ptypes if self.dyn_xmethod(c, m) else []
+        takes = self.dyn_isa(b, ps[1]) if len(ps) >= 2 else ""
+        if takes == "false" or f"{c}.{m}" in self.xnot:
+            self.ret_(Val("3", "int"))
+            self.place(nxt)
+            continue
+        if takes != "":
+            run = self.label()
+            decline = self.label()
+            self.cbr(takes, run, decline)
+            self.place(decline)
+            self.ret_(Val("3", "int"))
+            self.place(run)
+        if self.dyn_xmethod(c, m):
+            self.xtry = f"{c}.{m}"
+            r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
+            self.xtry = ""
+            if inv:
+                r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
+            if not self.term:
+                self.ret_(Val(self.select(r, Val("1", "int"), Val("0", "int")), "int"))
+        else:
+            tup = self.label()
+            other = self.label()
+            self.cbr(self.dyn_test(b, ["vtuple[dyn]"]), tup, other)
+            self.place(tup)
+            same = self.cmp2(XOPS[k], self.ntup(a, True), b)
+            self.ret_(Val(self.select(same.v, Val("1", "int"), Val("0", "int")), "int"))
+            self.place(other)
+            self.ret_(Val("2", "int"))
+        self.place(nxt)
+    self.ret_(Val("2", "int"))
 
 
 def gen_dyn_box(self, v: Val) -> Val:
@@ -212,6 +306,45 @@ def gen_dyn_union_box(self, v: Val) -> Val:
             self.place(miss)
     self.place(end)
     return Val(self.phi(ph), DYN)
+
+
+def gen_dyn_value_type(self, v: Val) -> str:
+    # the DynType of typed value v's exact type, as type(v) compares with an Any value's
+    # (refl_dyn_type_cmp): its box's; else a list's, a dict's or a tuple's for one whose items no
+    # box holds, null where no box holds a value of its type (bytes, a set), and for an optional
+    # or a union whose value may be one of these, the one of the value it holds: None's for None,
+    # a member's by its tag, as dyn_union_box selects the member's box
+    t = self.rec_type(v.t)
+    if self.dyn_boxable(t) == "":
+        return self.dyn_typeof(self.dyn_box(v))
+    if is_list(t) or is_dict(t) or is_tuple(t) or is_vtuple(t):
+        return self.dyn_type("list[dyn]" if is_list(t) else "dict[dyn,dyn]" if is_dict(t) else "vtuple[dyn]")
+    if not is_union(unopt(t)) and not (is_opt(t) and t != NONEVAR):
+        return "null"
+    u = Val(v.v, unopt(t))
+    ms = umembers(u.t) if is_union(u.t) else [u.t]
+    end = self.label()
+    ph = Ins("phi", "dyntype", "")
+    if is_opt(t) or len([m for m in ms if m in self.classes]) > 0:
+        some = self.label()
+        self.incoming(ph, self.dyn_type("None"), self.cur)
+        self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, some)
+        self.place(some)
+    for j in range(len(ms)):
+        hit = self.label()
+        miss = self.label() if j + 1 < len(ms) else ""
+        if miss == "":
+            self.br(hit)
+        else:
+            self.cbr(self.utest(u, [ms[j]], False), hit, miss)
+        self.place(hit)
+        r = self.dyn_value_type(self.uget(u, ms[j]) if is_union(u.t) else u)
+        self.incoming(ph, r, self.cur)
+        self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.place(end)
+    return self.phi(ph)
 
 
 def gen_dyn_tagged_type(self, v: Val) -> str:
@@ -310,6 +443,67 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
 def gen_dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
     # TypeError unless box v holds a value of one of static types ts
     self.guard(self.scalar("xor", [Val(self.dyn_test(v, ts), "bool"), Val("true", "bool")]), f"TypeError: expected {shown}")
+
+
+def gen_dyn_unboxable(self, t: str) -> bool:
+    # can an Any value have static type t: does dyn_unbox compile for it (not for a list[int],
+    # whose items an Any list does not type, nor for a function)
+    if t == DYN or t == "None" or t in BUILTIN:
+        return True
+    if is_opt(t) and t != NONEVAR:
+        return self.dyn_unboxable(unopt(t))
+    if t in self.classes:
+        return t not in self.tmpl and self.classes[t].exc == ""
+    if is_union(unopt(t)):
+        return True
+    return is_tuple(t) and len([x for x in targs(t) if not self.dyn_unboxable(x)]) == 0
+
+
+def gen_dyn_isa(self, v: Val, t: str) -> str:
+    # i1: does dyn_unbox take box v as a value of static type t without an error: "" where it
+    # takes any value (t is dyn, or a template's ""), "false" where no Any value has t
+    # (dyn_unboxable: dyn_xbody's comparison method annotated t never runs)
+    if t == "" or t == DYN:
+        return ""
+    if not self.dyn_unboxable(t):
+        return "false"
+    if t == "None":
+        return self.dyn_test(v, ["None"])
+    if is_opt(t) and t != NONEVAR:
+        r = self.dyn_isa(v, unopt(t))
+        return "" if r == "" else self.scalar("or", [Val(self.dyn_test(v, ["None"]), "bool"), Val(r, "bool")])
+    if t in BUILTIN:
+        return self.dyn_test(v, [t])
+    if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
+        # (an object of t or a subclass, or None, as pys_dyn_unbox walks the box's bases: also of
+        # a subclass that the program boxes after this test is compiled)
+        r = self.rt("pys_dyn_isa", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
+        return self.num_cmp("!=", Val(r, "int"), Val("0", "int")).v
+    if is_union(unopt(t)):
+        return self.dyn_test(v, umembers(unopt(t)) + (["None"] if is_opt(t) or self.optional(unopt(t)) == unopt(t) else []))
+    # a tuple of t's length whose items each have t's item type (dyn_unbox checks them in turn)
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    tup = self.label()
+    self.incoming(ph, "false", self.cur)
+    self.cbr(self.dyn_test(v, ["vtuple[dyn]"]), tup, end)
+    self.place(tup)
+    tv = self.dyn_payload(v, "vtuple[dyn]")
+    sized = self.label()
+    self.incoming(ph, "false", self.cur)
+    self.cbr(self.num_cmp("==", Val(self.mload("int", tv.v), "int"), Val(str(len(targs(t))), "int")).v, sized, end)
+    self.place(sized)
+    for j in range(len(targs(t))):
+        r = self.dyn_isa(self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {tv.v}", f"i64 {j}"]), DYN), targs(t)[j])
+        if r != "":
+            nx = self.label()
+            self.incoming(ph, "false", self.cur)
+            self.cbr(r, nx, end)
+            self.place(nx)
+    self.incoming(ph, "true", self.cur)
+    self.br(end)
+    self.place(end)
+    return self.phi(ph)
 
 
 def gen_dyn_select(self, v: Val, ts: list[str], t: str) -> Val:
@@ -780,6 +974,13 @@ def gen_dyn_len(self, v: Val) -> Val:
     return self.dyn_call(f, [v])
 
 
+def gen_dyn_format(self, v: Val, spec: Val) -> Val:
+    # format(v, spec) for a dyn v: its class's __format__, else what CPython's object.__format__ and
+    # the builtin types' do (dyn_fallback)
+    f = self.dyn_dispatcher("format", [DYN, "str"], "str", "__format__")
+    return self.dyn_call(f, [v, spec])
+
+
 def gen_dyn_hash(self, v: Val) -> Val:
     return Val(self.rt("pys_dyn_hash", "i64", [f"ptr {v.v}"]), "int")
 
@@ -811,6 +1012,36 @@ def gen_dyn_int(self, v: Val) -> Val:
 
 def gen_dyn_float(self, v: Val) -> Val:
     return Val(self.rt("pys_dyn_float_of", "double", [f"ptr {v.v}"]), "float")
+
+
+def gen_dyn_type_module(self, v: Val) -> Val:
+    # type(v).__module__: its class's module (module), "builtins" for the builtin types'
+    return self.dyn_call(self.dyn_dispatcher("module", [DYN], "str", "__module__"), [v])
+
+
+def gen_dyn_bound(self, v: Val, bound: bool) -> str:
+    # a typed sequence's slice's bound (or, not bound, its step) that is an Any value (slice_dyn):
+    # an int's or a bool's value, None as an omitted one, else CPython's TypeError; a given bound of
+    # -2**63 is -2**63 + 1, as slice_bound clamps it (runtime.c's dbound for an Any value's slice)
+    none = self.dyn_test(v, ["None"])
+    ok = self.scalar("or", [Val(none, "bool"), Val(self.dyn_test(v, ["int", "bool"]), "bool")])
+    self.guard(self.scalar("xor", [Val(ok, "bool"), Val("true", "bool")]), "TypeError: slice indices must be integers or None or have an __index__ method")
+    x = Val(self.to_slot(self.dyn_payload(v, "int")), "int")
+    if bound:
+        x = Val(self.select(self.num_cmp("==", x, Val("-9223372036854775808", "int")).v, Val("-9223372036854775807", "int"), x), "int")
+    return self.select(none, Val("-9223372036854775808" if bound else "1", "int"), x)
+
+
+def gen_dyn_slice(self, o: Val, bs: list[Node]) -> Val:
+    # o[lo:hi:st] for a dyn o, bs its bounds and step (omit nodes where omitted, no step where no
+    # second colon): their values, evaluated in turn, as Any values (None where omitted), which
+    # runtime.c's pys_dyn_slice converts once it has tested o, as CPython's sequences do (an
+    # object's __getitem__ would take a slice object, which Pystachy does not have)
+    vs = [o]
+    for i in range(3):
+        vs.append(self.expr(bs[i], "") if i < len(bs) and bs[i].kind != "omit" else Val("null", "None"))
+    f = self.dyn_dispatcher("slice", [DYN, DYN, DYN, DYN], DYN, "__getitem__")
+    return self.dyn_call(f, vs)
 
 
 def gen_dyn_type_name(self, v: Val) -> Val:
@@ -950,6 +1181,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         return ci.methods[m].bad == "" and len(ci.methods[m].defaults) >= len(ci.methods[m].params)  # (has.: CPython's lookup finds it)
     if key.startswith("callv."):
         return "__call__" in ci.methods and ci.methods["__call__"].bad == ""
+    if key == "module":
+        return True
     if key == "truth":
         return "__bool__" in ci.methods or "__len__" in ci.methods
     if key == "str":
@@ -1029,6 +1262,11 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
             self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, len(args))))
             return
         r = self.expr(mk("call", "", line, [mk("attr", key[5 : key.rfind(".")], line, [xn])] + an), "")
+    elif key == "module":
+        r = Val(self.sconst(self.refl_type_name(x.t, "__module__")), "str")
+    elif key == "slice":
+        self.raise_("TypeError", self.sconst(f"slicing an object is not supported: {short(x.t)}.__getitem__ would take a slice object, which Pystachy does not have"))
+        return
     elif key.startswith("callv.") and not self.dyn_takes(self.classes[x.t].methods["__call__"], 1, len(args)):
         # (arguments that do not fit __call__'s parameters: CPython's TypeError)
         self.raise_("TypeError", self.sconst(self.dyn_arity(self.classes[x.t].methods["__call__"], 1, len(args))))
@@ -1128,6 +1366,20 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(Val(self.rt("pys_dyn_str", "ptr", [f"ptr {o.v}"]), "str"))
     elif key == "len":
         self.ret_(Val(self.rt("pys_dyn_len", "i64", [f"ptr {o.v}"]), "int"))
+    elif key == "module":
+        self.ret_(Val(self.sconst("builtins"), "str"))
+    elif key == "slice":
+        self.ret_(Val(self.rt("pys_dyn_slice", "ptr", [f"ptr {o.v}", f"ptr {ps[1].v}", f"ptr {ps[2].v}", f"ptr {ps[3].v}"]), DYN))
+    elif key == "format":
+        # str() for an empty spec, as object.__format__ and the builtin types' give; else a number's
+        # or a str's own formatting, or the TypeError that names the value's type
+        empty = self.label()
+        some = self.label()
+        self.cbr(self.num_cmp("==", Val(self.mload("int", ps[1].v), "int"), Val("0", "int")).v, empty, some)
+        self.place(empty)
+        self.ret_(self.dyn_str(o))
+        self.place(some)
+        self.ret_(Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(o), f"ptr {self.sconst('A')}", f"ptr {ps[1].v}"]), "str"))
     elif key == "getitem":
         self.ret_(Val(self.rt("pys_dyn_getitem", "ptr", [f"ptr {o.v}", f"ptr {ps[1].v}"]), DYN))
     elif key == "setitem":
@@ -1233,17 +1485,88 @@ def gen_dyn_mixed(self, es: list[Node]) -> bool:
     # types of those that are not empty displays, which a dry run gives
     ts: list[str] = []
     for e in es:
-        if (e.kind == "list" or e.kind == "dict" or e.kind == "set") and len(e.kids) == 0:
-            continue
+        if self.dyn_untyped_empty(e):
+            continue  # (its type comes of the items before it, #782; a dry run alone would reject it)
         if e.kind == "starred" or e.kind == "dstar":
             return False
-        ts.append(self.dry(e, ""))
+        ts.append(self.dyn_dry(e))
     if len(ts) < 2:
         return DYN in ts
+    if self.dyn_callables(ts):
+        return False
     j = ts[0]
     for t in ts[1:]:
         j = self.join(j, t) if j != "" else ""
     return j == "" or j == DYN
+
+
+def gen_dyn_callables(self, ts: list[str]) -> bool:
+    # are ts, the types of a display's items, a Callable's and functions' after it: Callables of
+    # its type, as the display compiles them in modules that do not opt in, rather than Any
+    # values, which no builtin function is yet (#782)
+    return len(ts) > 0 and is_callable(unopt(ts[0])) and len([t for t in ts[1:] if t != ts[0] and not is_fn(t)]) == 0
+
+
+def gen_dyn_untyped_empty(self, e: Node) -> bool:
+    # does e hold an empty list or dict display that nothing in e types, which only the display
+    # around e can (a dry run of e alone would reject it): one on its own or in a tuple display,
+    # whose items each have their own type, or one in a display that no item before it types
+    # (dyn_untyped_items); list(), dict() and set() are such displays too. An item that holds one
+    # that its own items type, ([1], []), decides with the others whether a display's items have
+    # one type (#782)
+    if e.kind == "tuple":
+        return len([k for k in e.kids if self.dyn_untyped_empty(k)]) > 0
+    if e.kind == "call":
+        return len(e.kids) == 1 and self.empty_ctor(e) != ""
+    if e.kind != "list" and e.kind != "dict" and e.kind != "set":
+        return False
+    if len(e.kids) == 0:
+        return True
+    if e.kind == "dict":
+        return self.dyn_untyped_items([e.kids[i] for i in range(0, len(e.kids), 2)]) or self.dyn_untyped_items([e.kids[i] for i in range(1, len(e.kids), 2)])
+    return self.dyn_untyped_items(e.kids)
+
+
+def gen_empty_ctor(self, e: Node) -> str:
+    # "list", "dict" or "set" where call e is list(), dict() or set() of the builtin, else ""
+    f = e.kids[0]
+    return f.s if len(e.kids) == 1 and f.kind == "name" and f.s in ["list", "dict", "set"] and not self.bound(f.s) else ""
+
+
+def gen_dyn_untyped_items(self, ks: list[Node]) -> bool:
+    # do the items ks of a display (a dict's keys, or its values) hold an empty display that no
+    # item before it types: typed code types an empty item by the items before it, so where one of
+    # them is a container of the same kind that holds none ([[1], []], [list([1]), []], not
+    # [1.5, []]): a display by its kind, another expression by the type a dry run gives it (dyn_dry
+    # remembers it, and compiling the display compiles the item anyway)
+    typed: dict[str, bool] = {}  # (the kinds of the containers before the item that hold none)
+    for k in ks:
+        if self.dyn_untyped_empty(k):
+            if (self.empty_ctor(k) if k.kind == "call" else k.kind) not in typed:
+                return True
+        elif k.kind == "list" or k.kind == "dict" or k.kind == "set" or k.kind == "tuple":
+            typed[k.kind] = True
+        elif k.kind != "starred" and k.kind != "dstar":
+            t = unopt(self.dyn_dry(k))
+            typed["list" if is_list(t) else "dict" if is_dict(t) else "set" if is_set(t) else "tuple" if is_tuple(t) or is_vtuple(t) else ""] = True
+    return False
+
+
+def gen_dyn_dry(self, e: Node) -> str:
+    # dry(e) of an item of a display that dyn_mixed decides, remembered for the statement being
+    # compiled (gen_stmt forgets them): compiling the display compiles its items again, and each
+    # item that holds a display decides it again, so that without this the work doubled with each
+    # level of nesting (#781). A literal or a name costs no more to compile again
+    if e.kind in ["int", "float", "str", "bytes", "True", "False", "None", "name"]:
+        return self.dry(e, "")
+    j = e.memo - 1
+    if j >= 0 and j < len(self.dmemo) and self.dmemo[j] is e:
+        return self.dmemot[j]
+    t = self.dry(e, "")
+    e.memo = len(self.dmemo) + 1
+    self.dmemo.append(e)
+    self.dmemot.append(t)
+    return t
 
 
 

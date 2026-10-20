@@ -1,0 +1,10 @@
+True False True True False True False
+False False True True False False
+True 0 1 False
+True False True False
+True False True False
+True True
+TypeError: '<' not supported between instances of 'Point' and 'int'
+TypeError: '<' not supported between instances of 'Point' and 'str'
+True True False False False False False True
+[exit 0]

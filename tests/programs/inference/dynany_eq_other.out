@@ -1,0 +1,42 @@
+E.eq int
+E.eq int
+E.ne int
+E.ne int
+True True False False
+E.eq str
+E.eq str
+E.eq float
+E.eq NoneType
+E.eq NoneType
+E.eq list
+True True True True True True
+E.eq int
+E.eq int
+E.eq int
+E.eq int
+E.eq int
+E.eq int
+True 1 1 0 True True
+E.eq int
+E.eq int
+E.eq int
+True one one
+E.eq int
+E.eq int
+True e
+True True False False False True 1
+E.eq A
+E.eq A
+E.ne A
+E.ne A
+True True False False
+True True False False
+TypeError: '<' not supported between instances of 'B' and 'A'
+TypeError: '>' not supported between instances of 'A' and 'B'
+TypeError: '<=' not supported between instances of 'A' and 'B'
+TypeError: '>=' not supported between instances of 'B' and 'A'
+False True True False True False 0
+TypeError: '<' not supported between instances of 'P' and 'int'
+TypeError: '<' not supported between instances of 'int' and 'A'
+AttributeError: 'str' object has no attribute 'v'
+[exit 0]

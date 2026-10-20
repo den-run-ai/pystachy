@@ -19,6 +19,11 @@ from src.pystachy_compiler.utils import (
 
 
 def gen_err(self, msg: str) -> None:
+    if self.xtry != "":
+        # (the call of a comparison method with an Any value, which only @o.x.<class> compiles:
+        # the next pass declines it there, see Gen.xnot)
+        self.newx[self.xtry] = True
+        raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
     if len(self.making) > 0:

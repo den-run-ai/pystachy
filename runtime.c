@@ -3216,8 +3216,9 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    variable's; True, False and the ints from -5 to 256 are constant boxes too, and the other
    numbers' boxes atomic, so that boxing a number allocates nothing the collector scans. */
 enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC };
-enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16 };   /* a class's ==, ordering, hash and != run the program's
-                                                                     helpers; a box of this type is its own identity (a bound method's) */
+enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32 };   /* a class's ==, ordering, hash and != run the program's
+                                                                     helpers; a box of this type is its own identity (a bound method's);
+                                                                     the class's comparison methods take a value of any type (dobj) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
 DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
 DSTR(dd_list, "LA"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
@@ -3253,19 +3254,26 @@ Dyn *pys_dyn_ref(const DynType *t, void *p) {
 static Dyn *dlist(List *l) { return pys_dyn_ref(&pys_dyntype_list, l); }
 static Dyn *dstr(Str *s) { return pys_dyn_ref(&pys_dyntype_str, s); }
 static Dyn *dtuple(VTuple *t) { return pys_dyn_ref(&pys_dyntype_tuple, t); }
-/* x as a value of type t, which the compiler expects (a typed variable, argument or field): its
-   payload, where x has that type; an object also where its class derives from t's, and None
-   where t is a class's (whose values may be None); else TypeError, where CPython would not check
-   the annotation (docs/dynamic-any.md) */
+static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
+/* does x have type t as a typed variable, argument or field of type t takes it (pys_dyn_unbox):
+   x's type is t; or t is a class's, and x an object of a class that derives from it, or None (a
+   class's values may be None). A comparison method annotated with t declines another value (the
+   program's @o.x.<class>) */
+I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
+/* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
+   type): the same DynType, or both a function's or both a bound method's, as each def's boxes
+   have a DynType of their own, but CPython's type of each is function (or method) */
+I pys_dyn_same_type(const DynType *a, const DynType *b) {
+  if (a == b) return 1;
+  return a && b && a->kind == DK_FUNC && b->kind == DK_FUNC && strcmp(a->name->s, b->name->s) == 0;
+}
+/* x as a value of type t, which the compiler expects: its payload (None's is 0) where x has that
+   type (pys_dyn_isa), else TypeError, where CPython would not check the annotation
+   (docs/dynamic-any.md) */
 I pys_dyn_unbox(Dyn *x, const DynType *t) {
-  if (x->t == t) return x->v;
-  if (t->kind == DK_OBJ) {
-    if (DKIND(x) == DK_NONE) return 0;
-    for (const DynType *b = x->t; b; b = b->base) if (b == t) return x->v;
-  }
+  if (pys_dyn_isa(x, t)) return x->v;
   failf("TypeError: expected %s, got %s", t->name->s, DNAME(x));
 }
-static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
 
 /* repr(), str(), truth, format() */
 Str *pys_dyn_repr(Dyn *x) { return pys_repr(x->v, x->t->desc); }
@@ -3283,20 +3291,37 @@ I pys_dyn_truth(Dyn *x) {
   return 1;   /* an object of a class without __bool__ and __len__ (the program tests those first) */
 }
 
-/* ==, ordering and hash, also of a box in a container (descriptor A) */
+/* ==, ordering and hash, also of a box in a container (descriptor A). Objects of one class, or of a
+   class and its subclass, compare as typed code compares them, through the program's helpers of the
+   class both are objects of (dhier); an object and another value, an object of an unrelated class
+   among them, as CPython's do_richcompare: the left operand's method, else the right one's reflected
+   method (dobj), else identity for == and != and TypeError for an ordering. There is no
+   NotImplemented (#499): the first method that runs gives the result, and one annotated with a type
+   that the other value does not have, which cannot run with it, gives identity's (or TypeError) */
+static const DynType *dhier(Dyn *a, Dyn *b) {
+  if (DKIND(a) != DK_OBJ || DKIND(b) != DK_OBJ) return 0;
+  return derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
+}
+/* comparison k (0 ==, 1 !=, 2 <, 3 <=, 4 >, 5 >=) of the object a with b by a's class's own method,
+   which the program's helper calls with b as an Any value (pys_obj_cmp(-1 - id, 1 + k, a, b)): 0 or 1,
+   its result, 2 where a is no object or its class has no such method, as object's methods decline,
+   or 3 where its method's parameter is annotated with a type that b does not have (pys_dyn_isa) */
+static I dobj(Dyn *a, Dyn *b, I k) { return DKIND(a) == DK_OBJ && (a->t->flags & DF_X) ? pys_obj_cmp(-1 - a->t->cls, 1 + k, a->v, (I)b) : 2; }
 I pys_dyn_eq(Dyn *a, Dyn *b) {
   int ka = DKIND(a), kb = DKIND(b);
+  if (ka == DK_OBJ || kb == DK_OBJ) {
+    const DynType *t = dhier(a, b);
+    if (t) return t->flags & DF_EQ ? pys_obj_eq(t->cls, a->v, b->v) : a->v == b->v;   /* (x == x runs __eq__ too; a container's search tries identity first) */
+    I r = dobj(a, b, 0);
+    if (r == 2) r = dobj(b, a, 0);
+    return r >= 2 ? 0 : r;   /* (no method that runs: identity, and these are not one object) */
+  }
   if (dnum(a) && dnum(b)) return a->v == b->v;
   if (ka == DK_FLOAT || kb == DK_FLOAT) {
     if (ka == DK_FLOAT && kb == DK_FLOAT) return dbl(a->v) == dbl(b->v);
     if (ka == DK_FLOAT && dnum(b)) return pys_cmp_if(b->v, dbl(a->v)) == 0;
     if (kb == DK_FLOAT && dnum(a)) return pys_cmp_if(a->v, dbl(b->v)) == 0;
     return 0;
-  }
-  if (ka == DK_OBJ && kb == DK_OBJ) {   /* by the class both are objects of, as the program compares them */
-    const DynType *t = derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
-    if (!t || !(t->flags & DF_EQ)) return a->v == b->v;
-    return pys_obj_eq(t->cls, a->v, b->v);   /* (x == x runs __eq__ too; a container's search tries identity first) */
   }
   if (ka != kb) return 0;
   if (ka == DK_NONE) return 1;
@@ -3305,11 +3330,14 @@ I pys_dyn_eq(Dyn *a, Dyn *b) {
 }
 /* a != b: where the class both objects are of (as for ==) or a subclass defines __ne__ (DF_NE),
    the program's helper, pys_obj_cmp(-1 - id, 0, a, b), runs it as typed code does; else not ==,
-   as object.__ne__ inverts __eq__ */
+   as object.__ne__ inverts __eq__. An object and another value: as for ==, by __ne__ */
 I pys_dyn_ne(Dyn *a, Dyn *b) {
-  if (DKIND(a) == DK_OBJ && DKIND(b) == DK_OBJ) {
-    const DynType *t = derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
-    if (t && (t->flags & DF_NE)) return pys_obj_cmp(-1 - t->cls, 0, a->v, b->v) != 0;
+  if (DKIND(a) == DK_OBJ || DKIND(b) == DK_OBJ) {
+    const DynType *t = dhier(a, b);
+    if (t) return t->flags & DF_NE ? pys_obj_cmp(-1 - t->cls, 0, a->v, b->v) != 0 : !pys_dyn_eq(a, b);
+    I r = dobj(a, b, 1);   /* (a's __ne__, else not its __eq__, as object.__ne__ inverts it) */
+    if (r == 2) r = dobj(b, a, 1);
+    return r >= 2 ? 1 : r;
   }
   return !pys_dyn_eq(a, b);
 }
@@ -3321,16 +3349,21 @@ static _Noreturn void dyn_noorder(Dyn *a, Dyn *b, I op) {
 }
 I pys_dyn_cmp(Dyn *a, Dyn *b, I op) {   /* a OP b, op 0..3: < <= > >= */
   int ka = DKIND(a), kb = DKIND(b);
+  if (ka == DK_OBJ || kb == DK_OBJ) {
+    const DynType *t = dhier(a, b);
+    if (t && (t->flags & DF_CMP)) return pys_obj_cmp(t->cls, op, a->v, b->v) != 0;
+    if (!t) {
+      I r = dobj(a, b, 2 + op);
+      if (r == 2) r = dobj(b, a, 2 + (op ^ 2));   /* (the reflected method: < and >, <= and >= swap) */
+      if (r < 2) return r;
+    }
+    dyn_noorder(a, b, op);
+  }
   if (dnum(a) && dnum(b)) return cmpop((a->v > b->v) - (a->v < b->v), op);
   if ((ka == DK_FLOAT || dnum(a)) && (kb == DK_FLOAT || dnum(b))) {
     if (ka == DK_FLOAT && kb == DK_FLOAT) return opv(a->v, b->v, "f", op);
     I c = ka == DK_FLOAT ? -pys_cmp_if(b->v, dbl(a->v)) : pys_cmp_if(a->v, dbl(b->v));
     return c == 2 || c == -2 ? 0 : cmpop(c, op);   /* (a NaN: unordered, every comparison false) */
-  }
-  if (ka == DK_OBJ && kb == DK_OBJ) {
-    const DynType *t = derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
-    if (t && (t->flags & DF_CMP)) return pys_obj_cmp(t->cls, op, a->v, b->v) != 0;
-    dyn_noorder(a, b, op);
   }
   if (ka != kb || (ka != DK_STR && ka != DK_LIST && ka != DK_TUPLE)) dyn_noorder(a, b, op);
   return opv(a->v, b->v, a->t->desc->s, op);
@@ -3545,6 +3578,51 @@ List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, 
   List *l = pys_list_new(src->len);
   for (I i = 0; i < src->len; i++) pys_list_append(l, (I)dyn_of(src->a[i], d->s));
   return l;
+}
+/* a slice's bound (or, not bound, its step) that is an Any value: None is an omitted one (NONE, a
+   step's 1), an int or a bool its value (a bound of -2**63 is -2**63 + 1, as the compiler clamps a
+   typed one's), else CPython's TypeError (no object here has __index__) */
+static I dbound(Dyn *x, int bound) {
+  if (DKIND(x) == DK_NONE) return bound ? NONE : 1;
+  if (DKIND(x) != DK_INT && DKIND(x) != DK_BOOL) pys_fail("TypeError: slice indices must be integers or None or have an __index__ method");
+  return bound && x->v == NONE ? NONE + 1 : x->v;
+}
+/* o[lo:hi:st] of an Any value, with its bounds and step as Any values (None where omitted), as
+   CPython's sequences take the slice: a str's, list's or tuple's items, a new value of its type (all
+   of a str or tuple is itself), the step converted first, as PySlice_Unpack does; a dict's KeyError
+   is the slice's, which no dict holds as a key, once the slice is hashed as CPython 3.12's are (its
+   start, stop and step in turn: an unhashable one's TypeError, an object's __hash__) */
+Dyn *pys_dyn_slice(Dyn *o, Dyn *lo, Dyn *hi, Dyn *st) {
+  int k = DKIND(o);
+  if (k == DK_DICT) {
+    pys_dyn_hash(lo); pys_dyn_hash(hi); pys_dyn_hash(st);
+    Buf b = {0}; put(&b, "KeyError: slice(", 16); repr(&b, (I)lo, "A"); put(&b, ", ", 2); repr(&b, (I)hi, "A");
+    put(&b, ", ", 2); repr(&b, (I)st, "A"); put(&b, ")", 2); pys_fail(b.p);
+  }
+  if (k != DK_STR && k != DK_LIST && k != DK_TUPLE) failf("TypeError: '%s' object is not subscriptable", DNAME(o));
+  I s = dbound(st, 0);
+  if (!s) pys_fail("ValueError: slice step cannot be zero");
+  I a = dbound(lo, 1), z = dbound(hi, 1);
+  if (k == DK_STR) return dstr(s == 1 ? pys_text_slice((Str *)o->v, a, z) : pys_text_slice_step((Str *)o->v, a, z, s));
+  if (k == DK_LIST) return dlist(s == 1 ? pys_list_slice((List *)o->v, a, z) : pys_list_slice_step((List *)o->v, a, z, s));
+  return dtuple(pys_vtuple_slice((VTuple *)o->v, a, z, s));
+}
+/* d.update(x) of a dict of Any values: another dict's items, else x's items, each an iterable of
+   two, whose items it takes as CPython's dict.update does (a dict's are its keys), with its
+   messages for one of another length, or no iterable */
+List *pys_dyn_list(Dyn *o);
+void pys_dyn_update(Dict *d, Dyn *x) {
+  if (DKIND(x) == DK_DICT) { pys_dict_update(d, (Dict *)x->v); return; }
+  if (DKIND(x) != DK_LIST && DKIND(x) != DK_TUPLE && DKIND(x) != DK_STR) failf("TypeError: '%s' object is not iterable", DNAME(x));
+  DynIter *it = pys_dyn_iter(x);
+  I n = 0;
+  for (Dyn *e; (e = pys_dyn_next(it)); n++) {
+    int k = DKIND(e);
+    if (k != DK_LIST && k != DK_TUPLE && k != DK_STR && k != DK_DICT) failf("TypeError: cannot convert dictionary update sequence element #%lld to a sequence", (long long)n);
+    List *kv = pys_dyn_list(e);
+    if (kv->len != 2) failf("ValueError: dictionary update sequence element #%lld has length %lld; 2 is required", (long long)n, (long long)kv->len);
+    pys_dict_set(d, kv->a[0], kv->a[1]);
+  }
 }
 /* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
 List *pys_dyn_list(Dyn *o) {
@@ -3870,7 +3948,11 @@ Str *pys_format_int(I v, I isbool, Str *spec);
 Str *pys_format_float(double x, Str *spec);
 Str *pys_format(I v, Str *desc, Str *spec) {
   const char *ds = desc->s;
-  if (*ds == 'A') { Dyn *x = (Dyn *)v; v = x->v; ds = x->t->desc->s; }   /* (a dynamic value: its own) */
+  if (*ds == 'A') {   /* (a dynamic value: its own; an object's or a function's with a spec: object.__format__'s error) */
+    Dyn *x = (Dyn *)v;
+    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
+    v = x->v; ds = x->t->desc->s;
+  }
   if (*ds == '?') {                            /* None or a value */
     if (!v && spec->len) failf("TypeError: unsupported format string passed to NoneType.__format__");
     if (!v) return cstr("None");

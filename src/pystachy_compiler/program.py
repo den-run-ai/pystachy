@@ -230,8 +230,8 @@ def gen_init_template(self, st: Node) -> bool:
             ps = d.kids[0].kids
             for i in range(1, len(ps)):
                 a = ps[i].kids[0]
-                if a.kind == "noann" or (self.any_in([a]) and not self.dyn_policy(d.line)) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
-                    return True  # (also *args or **kwargs without an annotation)
+                if a.kind == "noann" or (self.any_in([a]) and (not self.dyn_policy(d.line) or ps[i].kind != "param")) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
+                    return True  # (also *args or **kwargs without an annotation, or with Any, which only a template takes)
                 if st.s in self.tparams and self.names_tv(ps[i].kids[0], self.tparams[st.s]):
                     return True  # (a generic class whose objects bind its type variables, see bind)
             if self.makes_tmpl(d.kids[2]):
@@ -1078,8 +1078,9 @@ def gen_program(self, mods: list[Mod]) -> str:
     hashed: dict[str, bool] = {}
     xmade: dict[str, bool] = {}
     ned: dict[str, bool] = {}
+    xed: dict[str, bool] = {}
     while True:
-        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(self.xctors)
+        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors)
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
@@ -1096,6 +1097,10 @@ def gen_program(self, mods: list[Mod]) -> str:
             if c not in ned:
                 ned[c] = True
                 self.obj_helpers(c, [3])
+        for c in [x for x in self.xobj]:
+            if c not in xed:
+                xed[c] = True
+                self.dyn_xhelper(c)  # (its comparisons with dynamic values of other types: dynamic.py)
         for c in [x for x in self.hcls]:
             if c not in hashed:
                 hashed[c] = True
@@ -1119,7 +1124,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         for i in later:
             hpush(self.wake, i)
         # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(self.xctors) == before and not self.dyn_dispatchers():
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) == before and not self.dyn_dispatchers():
             break
     self.exc_tables()
     for nm in self.flagged:

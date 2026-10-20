@@ -56,9 +56,9 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 # over, and a call of __init__ on an object cannot initialize it again
 OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
-# not the module's own: weakref.ReferenceType, ast.Constant, and _io.StringIO (every class that
-# lib's io defines is the C module _io's in CPython)
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast", "io": "_io"}
+# not the module's own: weakref.ReferenceType, ast.Constant, _io.StringIO (every class that lib's
+# io defines is the C module _io's in CPython), and mappingproxy, a builtin type
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast", "io": "_io", "_pystachy_mappingproxy": "builtins"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
@@ -638,7 +638,7 @@ GENTHROWC = 3
 # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
 # functions return by value to the calls that only read their slots (Gen.tuple_rets), which
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots"]
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)
@@ -650,6 +650,12 @@ CANON_DEPTH = 1000
 JIT_INLINE = 20000
 REACH = 256
 LOOKUPS = 32
+# the ops whose values Values places, by the number each defines (its block and position there),
+# as how: 1, the value of one that defines one; 2, the payload of union.payload and dyn.payload,
+# their second; 3, each value of tuple.load and tuple.store
+VALUE_AT: dict[str, int] = {"select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
+                            "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
+                            "ptr.cmp": 1, "dyn.type": 1, "union.payload": 2, "dyn.payload": 2, "tuple.load": 3, "tuple.store": 3}
 # Types are serialized strings. Bound their size before joining children, and the active
 # template signatures before making keys or call contexts; a depth limit alone misses
 # exponential width growth such as f((x, x)). These are compiler resource limits.
@@ -701,7 +707,7 @@ RUNTIME: dict[str, str] = {
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
     # -5..256 are constants
     "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A|",
-    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.truth": "bool:%ptr|rL rD|",
+    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
     "dyn.binop": "%ptr:%ptr,%ptr,int|R A rL|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I rL wL rD|", "dyn.unary": "%ptr:%ptr,int|R A|",
@@ -709,6 +715,7 @@ RUNTIME: dict[str, str] = {
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
     "dyn.iter": "%ptr:%ptr|R A rD|", "dyn.next": "%ptr:%ptr|R A I rL rD|",
     "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I rL rD|",
+    "dyn.slice": "%ptr:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
     "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I rL rD|", "dyn.strs": "list[str]:%ptr|R A I rL rD|", "dyn.id": "int:%ptr||",
     # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE), as does
     # the queue of the fire functions of references whose referents a collection found dead
