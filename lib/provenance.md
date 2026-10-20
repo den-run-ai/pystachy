@@ -21,6 +21,7 @@ observable contract.
 | `_markupbase` | `Lib/_markupbase.py` | `cb14dd6f2e2439eb70b806cd49d19911363d424c2b6b9f4b73c9c08022d47030` |
 | `difflib` | `Lib/difflib.py` | `1593ae08143632f4f81fea3beeeb279d803f8a9be922b12fe79664d78bba879d` |
 | `getopt` | `Lib/getopt.py` | `0ce875700c8798193b8e2748f7a27fc542cc4d525a1e6fc403767450ec92be99` |
+| `gettext` | `Lib/gettext.py` | `7178d6ebdd0647b003da0ccdffb9431bc5fcf5c3822a247b578fdb745162865d` |
 | `heapq` | `Lib/heapq.py` | `6d43277e5c76fc0f073cd388fcff852d14d068f6bb6d4886c340f8b75a1229a9` |
 | `fnmatch` | `Lib/fnmatch.py` | `95391dac2ce9f60084d65eba2f4b9d9735e28136d55b684e1fde7d6342555963` |
 | `textwrap` | `Lib/textwrap.py` | `30f3d833950d53e168cc021961574b553f56aed84458712b2eb29c6495843d46` |
@@ -37,6 +38,7 @@ observable contract.
 | `random` | `Lib/random.py` | `fb2625eb54412c880e8f1af449785a74e125556159fc7997814e51dd054cc5da` |
 | `datetime` | `Lib/_pydatetime.py` | `9a6652ecbdc8bcb9774136febc36b13f99aa926c7b42c19ac77e6c84128560a4` |
 | `codecs` | `Lib/codecs.py` | `2f278497548b8313580b247a1097a0a304e5087a355ebb11a92ec685fa9e63ff` |
+| `weakref` | `Lib/weakref.py` | `56f8d313fb74019e53eb9287400702fbce788b7fe30e097b0b6e06296f3f080c` |
 | `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
 | `opcode` | `Lib/opcode.py` | `aaf8e6e0291b6ff439c27ad1657d5b1d2fc738f961bee3fa4863a51e494dc843` |
 

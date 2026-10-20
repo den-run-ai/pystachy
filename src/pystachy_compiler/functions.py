@@ -97,6 +97,9 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     sel = self.selfcls
     self.selfcls = ""  # (its annotations name its class's types: f.cls's, see tvar)
     self.enter(f, body)
+    if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
+        f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
+        self.ret = f.ret
     if takes_self(f):
         # callers check the receiver, so self is never None inside a method
         self.nn["%a0"] = True
