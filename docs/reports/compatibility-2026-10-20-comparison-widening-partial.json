@@ -1,0 +1,860 @@
+{
+  "status": "partial-hosted-only",
+  "audit_context": {
+    "pull_request": 792,
+    "pull_request_url": "https://github.com/den-run-ai/pystachy/pull/792",
+    "merged_at_utc": "2026-10-20T20:18:11Z",
+    "implementation_head": "570eb4e5259d4dac7ae86c7ceb333f3e2a663c60",
+    "merge_commit": "452a0864986b632980f1a23783bdd5b4e4001e5c",
+    "implementation_tree_equals_merge_tree": true,
+    "changed_paths": [
+      "docs/internals.md",
+      "src/pystachy_compiler/expressions.py",
+      "src/pystachy_compiler/gen.py",
+      "tests/programs/classes/inheritance_compare_object.out",
+      "tests/programs/classes/inheritance_compare_object.py",
+      "tools/inheritprobe.py"
+    ],
+    "historical_workflows": {
+      "CI": "https://github.com/den-run-ai/pystachy/actions/runs/39483737387",
+      "Lint": "https://github.com/den-run-ai/pystachy/actions/runs/39483737523",
+      "Packages": "https://github.com/den-run-ai/pystachy/actions/runs/39483737509",
+      "Installation": "https://github.com/den-run-ai/pystachy/actions/runs/39483737540",
+      "conclusion": "success"
+    },
+    "previous_audit_lint": {
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39474255499",
+      "conclusion": "success"
+    }
+  },
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+  "environment_overrides": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "LC_ALL": "C",
+    "PYSTACHY_JOBS": "2",
+    "PYSTACHY_IRCHECK": "1"
+  },
+  "source": {
+    "sha": "452a0864986b632980f1a23783bdd5b4e4001e5c",
+    "tree": "4e19388d3fe959c45b34ebefaffab33fdc41a34f",
+    "tracked_and_untracked": "",
+    "ignored": "!! build/"
+  },
+  "comparison_source": {
+    "sha": "554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab",
+    "tree": "0edfdeca7819e8e401bdd5d9ec1c4c7481adba99",
+    "tracked_and_untracked": "",
+    "ignored": "!! build/"
+  },
+  "records": [
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_typed*.py",
+        "-v"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-792",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 3.9938385509994987,
+      "stdout": "",
+      "stderr": "test_canonical_comparisons_retain_signedness_and_predicate (test_typed_comparisons.TypedComparisonTests.test_canonical_comparisons_retain_signedness_and_predicate) ... ok\ntest_reference_comparisons_reject_nonreferences_ordering_and_metadata (test_typed_comparisons.TypedComparisonTests.test_reference_comparisons_reject_nonreferences_ordering_and_metadata) ... ok\ntest_reference_identity_and_null_comparisons_are_typed_and_pure (test_typed_comparisons.TypedComparisonTests.test_reference_identity_and_null_comparisons_are_typed_and_pure) ... ok\ntest_repeated_reference_comparisons_keep_operand_and_predicate_identity (test_typed_comparisons.TypedComparisonTests.test_repeated_reference_comparisons_keep_operand_and_predicate_identity) ... ok\ntest_source_class_tag_dispatch_switches_on_the_tag (test_typed_comparisons.TypedComparisonTests.test_source_class_tag_dispatch_switches_on_the_tag) ... ok\ntest_source_loops_tag_checks_and_mixed_nan_comparisons_are_typed (test_typed_comparisons.TypedComparisonTests.test_source_loops_tag_checks_and_mixed_nan_comparisons_are_typed) ... ok\ntest_switch_is_a_pure_terminator_and_lowers_to_one_llvm_switch (test_typed_comparisons.TypedComparisonTests.test_switch_is_a_pure_terminator_and_lowers_to_one_llvm_switch) ... ok\ntest_switch_reaches_a_phi_by_one_edge_at_most (test_typed_comparisons.TypedComparisonTests.test_switch_reaches_a_phi_by_one_edge_at_most) ... ok\ntest_switch_verifier_rejects_other_operands_cases_and_labels (test_typed_comparisons.TypedComparisonTests.test_switch_verifier_rejects_other_operands_cases_and_labels) ... ok\ntest_typed_membership_conditions_preserve_dictfuse_and_mutation_barriers (test_typed_comparisons.TypedComparisonTests.test_typed_membership_conditions_preserve_dictfuse_and_mutation_barriers) ... ok\ntest_unsigned_predicates_are_pure_and_lower_without_changing_bits (test_typed_comparisons.TypedComparisonTests.test_unsigned_predicates_are_pure_and_lower_without_changing_bits) ... ok\ntest_unsigned_verifier_rejects_other_types_shapes_and_predicates (test_typed_comparisons.TypedComparisonTests.test_unsigned_verifier_rejects_other_types_shapes_and_predicates) ... ok\ntest_frontend_has_no_instruction_text_api (test_typed_complete.NoRawIRTests.test_frontend_has_no_instruction_text_api) ... ok\ntest_lowering_receives_only_registered_typed_operations (test_typed_complete.NoRawIRTests.test_lowering_receives_only_registered_typed_operations) ... ok\ntest_raw_operation_is_rejected (test_typed_complete.NoRawIRTests.test_raw_operation_is_rejected) ... ok\ntest_field_addresses_keep_memory_effects (test_typed_fields.TypedFieldTests.test_field_addresses_keep_memory_effects) ... ok\ntest_fields_flags_and_exact_lowering (test_typed_fields.TypedFieldTests.test_fields_flags_and_exact_lowering) ... ok\ntest_invalid_layout_index_type_shape_and_metadata (test_typed_fields.TypedFieldTests.test_invalid_layout_index_type_shape_and_metadata) ... ok\ntest_native_and_machine_accesses_share_field_alias_barriers (test_typed_fields.TypedFieldTests.test_native_and_machine_accesses_share_field_alias_barriers) ... ok\ntest_repeated_field_addresses_are_canonical (test_typed_fields.TypedFieldTests.test_repeated_field_addresses_are_canonical) ... ok\ntest_semantic_field_keys_retain_inheritance_aliases (test_typed_fields.TypedFieldTests.test_semantic_field_keys_retain_inheritance_aliases) ... ok\ntest_source_uses_typed_declared_layouts (test_typed_fields.TypedFieldTests.test_source_uses_typed_declared_layouts) ... ok\ntest_imported_closure_diagnostic_resolves_original_path (test_typed_ir.ClosurePathTests.test_imported_closure_diagnostic_resolves_original_path) ... ok\ntest_paths_do_not_change_tuple_layouts_or_closure_types (test_typed_ir.ClosurePathTests.test_paths_do_not_change_tuple_layouts_or_closure_types) ... ok\ntest_tuple_round_trip_check_is_always_on (test_typed_ir.ClosurePathTests.test_tuple_round_trip_check_is_always_on) ... ok\ntest_empty_result_layout_keeps_heap_write_effect (test_typed_ir.TypedIRTests.test_empty_result_layout_keeps_heap_write_effect) ... ok\ntest_empty_result_layout_rejects_bad_operands_and_holes (test_typed_ir.TypedIRTests.test_empty_result_layout_rejects_bad_operands_and_holes) ... ok\ntest_empty_result_layout_rejects_invalid_resolved_holes (test_typed_ir.TypedIRTests.test_empty_result_layout_rejects_invalid_resolved_holes) ... ok\ntest_fixed_allocation_rejects_non_layout_types_and_extra_metadata (test_typed_ir.TypedIRTests.test_fixed_allocation_rejects_non_layout_types_and_extra_metadata) ... ok\ntest_fixed_allocation_retains_runtime_self_recursion_guard (test_typed_ir.TypedIRTests.test_fixed_allocation_retains_runtime_self_recursion_guard) ... ok\ntest_fixed_allocations_retain_layout_type_and_allocation_effect (test_typed_ir.TypedIRTests.test_fixed_allocations_retain_layout_type_and_allocation_effect) ... ok\ntest_fixed_tuple_slots_lower_to_existing_llvm (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_lower_to_existing_llvm) ... ok\ntest_fixed_tuple_slots_preserve_reaching_values_and_alias_barriers (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_preserve_reaching_values_and_alias_barriers) ... ok\ntest_fixed_tuple_slots_reject_invalid_layout_index_and_member (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_reject_invalid_layout_index_and_member) ... ok\ntest_fixed_tuple_slots_reject_wrong_operands_results_and_metadata (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_reject_wrong_operands_results_and_metadata) ... ok\ntest_fixed_tuple_slots_retain_native_members_and_memory_effects (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_retain_native_members_and_memory_effects) ... ok\ntest_integer_slot_conversions_keep_the_same_value (test_typed_ir.TypedIRTests.test_integer_slot_conversions_keep_the_same_value) ... ok\ntest_merged_union_operations_keep_typed_payload_operands (test_typed_ir.TypedIRTests.test_merged_union_operations_keep_typed_payload_operands) ... ok\ntest_numeric_casts_reject_other_type_pairs (test_typed_ir.TypedIRTests.test_numeric_casts_reject_other_type_pairs) ... ok\ntest_numeric_comparisons_reject_wrong_types_and_predicates (test_typed_ir.TypedIRTests.test_numeric_comparisons_reject_wrong_types_and_predicates) ... ok\ntest_numeric_operation_shapes_and_metadata (test_typed_ir.TypedIRTests.test_numeric_operation_shapes_and_metadata) ... ok\ntest_numeric_operations_are_typed_and_pure (test_typed_ir.TypedIRTests.test_numeric_operations_are_typed_and_pure) ... ok\ntest_optional_union_tag_stays_after_its_null_guard (test_typed_ir.TypedIRTests.test_optional_union_tag_stays_after_its_null_guard) ... ok\ntest_pack_result_and_unpack_operand_must_be_slots (test_typed_ir.TypedIRTests.test_pack_result_and_unpack_operand_must_be_slots) ... ok\ntest_rejects_empty_and_runtime_pseudo_types (test_typed_ir.TypedIRTests.test_rejects_empty_and_runtime_pseudo_types) ... ok\ntest_rejects_unused_metadata (test_typed_ir.TypedIRTests.test_rejects_unused_metadata) ... ok\ntest_requires_one_operand_and_one_result (test_typed_ir.TypedIRTests.test_requires_one_operand_and_one_result) ... ok\ntest_source_builds_declared_union_reads (test_typed_ir.TypedIRTests.test_source_builds_declared_union_reads) ... ok\ntest_source_builds_numeric_ops_and_retains_exact_mixed_comparison (test_typed_ir.TypedIRTests.test_source_builds_numeric_ops_and_retains_exact_mixed_comparison) ... ok\ntest_source_builds_typed_conversions_before_lowering (test_typed_ir.TypedIRTests.test_source_builds_typed_conversions_before_lowering) ... ok\ntest_sources_build_typed_class_exception_and_tuple_allocations (test_typed_ir.TypedIRTests.test_sources_build_typed_class_exception_and_tuple_allocations) ... ok\ntest_sources_build_typed_tuple_reads_and_heap_and_stack_stores (test_typed_ir.TypedIRTests.test_sources_build_typed_tuple_reads_and_heap_and_stack_stores) ... ok\ntest_union_read_shapes_and_metadata (test_typed_ir.TypedIRTests.test_union_read_shapes_and_metadata) ... ok\ntest_union_reads_keep_conservative_load_effects (test_typed_ir.TypedIRTests.test_union_reads_keep_conservative_load_effects) ... ok\ntest_union_reads_require_closed_nonoptional_operands (test_typed_ir.TypedIRTests.test_union_reads_require_closed_nonoptional_operands) ... ok\ntest_valid_native_types_and_pure_effects (test_typed_ir.TypedIRTests.test_valid_native_types_and_pure_effects) ... ok\ntest_weak_reference_reads_are_distinct_across_allocations (test_typed_ir.TypedIRTests.test_weak_reference_reads_are_distinct_across_allocations) ... ok\ntest_finite_metadata_preserves_tbaa_and_range (test_typed_machine_memory.TypedMachineMemoryTests.test_finite_metadata_preserves_tbaa_and_range) ... ok\ntest_indexed_address_has_explicit_element_index_and_inbounds (test_typed_machine_memory.TypedMachineMemoryTests.test_indexed_address_has_explicit_element_index_and_inbounds) ... ok\ntest_indexed_addresses_interoperate_with_tuple_slots (test_typed_machine_memory.TypedMachineMemoryTests.test_indexed_addresses_interoperate_with_tuple_slots) ... ok\ntest_source_memory_producers_are_structured (test_typed_machine_memory.TypedMachineMemoryTests.test_source_memory_producers_are_structured) ... ok\ntest_storage_rejects_malformed_operands_types_results_and_metadata (test_typed_machine_memory.TypedMachineMemoryTests.test_storage_rejects_malformed_operands_types_results_and_metadata) ... ok\ntest_storage_types_numbers_effects_and_exact_lowering (test_typed_machine_memory.TypedMachineMemoryTests.test_storage_types_numbers_effects_and_exact_lowering) ... ok\ntest_frontend_has_no_module_or_abi_llvm_templates (test_typed_module_lowering.ModuleLoweringTests.test_frontend_has_no_module_or_abi_llvm_templates) ... ok\ntest_frontend_records_native_globals_and_structured_constants (test_typed_module_lowering.ModuleLoweringTests.test_frontend_records_native_globals_and_structured_constants) ... ok\ntest_string_literal_header_matches_runtime_caches (test_typed_module_lowering.ModuleLoweringTests.test_string_literal_header_matches_runtime_caches) ... ok\ntest_arithmetic_bitwise_and_overflow_flags_lower_exactly (test_typed_scalars.TypedScalarTests.test_arithmetic_bitwise_and_overflow_flags_lower_exactly) ... ok\ntest_canonical_values_keep_types_flags_predicates_and_operand_order (test_typed_scalars.TypedScalarTests.test_canonical_values_keep_types_flags_predicates_and_operand_order) ... ok\ntest_cast_and_comparison_lowering_is_finite_and_typed (test_typed_scalars.TypedScalarTests.test_cast_and_comparison_lowering_is_finite_and_typed) ... ok\ntest_producers_do_not_encode_scalar_llvm_in_raw_instructions (test_typed_scalars.TypedScalarTests.test_producers_do_not_encode_scalar_llvm_in_raw_instructions) ... ok\ntest_select_verifier_checks_condition_values_and_metadata (test_typed_scalars.TypedScalarTests.test_select_verifier_checks_condition_values_and_metadata) ... ok\ntest_verifier_rejects_mismatches_unknown_operators_and_extra_metadata (test_typed_scalars.TypedScalarTests.test_verifier_rejects_mismatches_unknown_operators_and_extra_metadata) ... ok\ntest_calls_invalidate_global_and_heap_reads_but_preserve_local_values (test_typed_storage.TypedStorageTests.test_calls_invalidate_global_and_heap_reads_but_preserve_local_values) ... ok\ntest_effects_distinguish_local_global_field_and_unknown_memory (test_typed_storage.TypedStorageTests.test_effects_distinguish_local_global_field_and_unknown_memory) ... ok\ntest_frontend_keeps_variable_and_parameter_storage_typed (test_typed_storage.TypedStorageTests.test_frontend_keeps_variable_and_parameter_storage_typed) ... ok\ntest_heap_store_aliases_barrier_but_other_locals_and_globals_do_not (test_typed_storage.TypedStorageTests.test_heap_store_aliases_barrier_but_other_locals_and_globals_do_not) ... ok\ntest_lowering_retains_native_layouts_and_numbers (test_typed_storage.TypedStorageTests.test_lowering_retains_native_layouts_and_numbers) ... ok\ntest_native_address_and_value_contracts (test_typed_storage.TypedStorageTests.test_native_address_and_value_contracts) ... ok\ntest_reaching_preserves_native_and_machine_load_store_combinations (test_typed_storage.TypedStorageTests.test_reaching_preserves_native_and_machine_load_store_combinations) ... ok\ntest_rejects_mismatched_native_types (test_typed_storage.TypedStorageTests.test_rejects_mismatched_native_types) ... ok\ntest_rejects_operand_result_and_metadata_mutations (test_typed_storage.TypedStorageTests.test_rejects_operand_result_and_metadata_mutations) ... ok\ntest_rejects_untyped_addresses_and_runtime_pseudo_types (test_typed_storage.TypedStorageTests.test_rejects_untyped_addresses_and_runtime_pseudo_types) ... ok\n\n----------------------------------------------------------------------\nRan 82 tests in 3.514s\n\nOK\n"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_*verif*.py",
+        "-v"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-792",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 37.823350858001504,
+      "stdout": "",
+      "stderr": "test_gc_reports_require_original_stress_mode_ir_and_complete_counts (test_merge_verification.ContractTests.test_gc_reports_require_original_stress_mode_ir_and_complete_counts) ... ok\ntest_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate (test_merge_verification.ContractTests.test_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate) ... ok\ntest_real_plan_requires_native_suites_and_every_gc_job (test_merge_verification.ContractTests.test_real_plan_requires_native_suites_and_every_gc_job) ... ok\ntest_reports_require_the_corpus_check_counts (test_merge_verification.ContractTests.test_reports_require_the_corpus_check_counts) ... ok\ntest_all_reports_from_a_previous_commit_are_rejected (test_merge_verification.ReportTests.test_all_reports_from_a_previous_commit_are_rejected) ... ok\ntest_commit_source_toolchain_and_bootstrap_drift_are_rejected (test_merge_verification.ReportTests.test_commit_source_toolchain_and_bootstrap_drift_are_rejected) ... ok\ntest_failed_cli_overwrites_a_stale_success_report_and_exits_nonzero (test_merge_verification.ReportTests.test_failed_cli_overwrites_a_stale_success_report_and_exits_nonzero) ... ok\ntest_failed_skipped_missing_reordered_and_unexpected_steps_are_rejected (test_merge_verification.ReportTests.test_failed_skipped_missing_reordered_and_unexpected_steps_are_rejected) ... ok\ntest_missing_group_cannot_report_success (test_merge_verification.ReportTests.test_missing_group_cannot_report_success) ... ok\ntest_unexpected_and_duplicate_groups_are_rejected (test_merge_verification.ReportTests.test_unexpected_and_duplicate_groups_are_rejected) ... ok\ntest_valid_reports_preserve_checks_and_distinguish_parallel_from_runner_time (test_merge_verification.ReportTests.test_valid_reports_preserve_checks_and_distinguish_parallel_from_runner_time) ... ok\ntest_missing_changed_or_malformed_bundle_identity_is_rejected (test_merge_verification.SharedBootstrapTests.test_missing_changed_or_malformed_bundle_identity_is_rejected) ... ok\ntest_missing_producer_is_rejected (test_merge_verification.SharedBootstrapTests.test_missing_producer_is_rejected) ... ok\ntest_producer_cannot_claim_other_stages (test_merge_verification.SharedBootstrapTests.test_producer_cannot_claim_other_stages) ... ok\ntest_producer_cannot_reuse_and_consumers_must_reuse (test_merge_verification.SharedBootstrapTests.test_producer_cannot_reuse_and_consumers_must_reuse) ... ok\ntest_producer_commit_and_failed_fixed_point_are_rejected (test_merge_verification.SharedBootstrapTests.test_producer_commit_and_failed_fixed_point_are_rejected) ... ok\ntest_shared_bootstrap_preserves_producer_and_counts_serial_work_once (test_merge_verification.SharedBootstrapTests.test_shared_bootstrap_preserves_producer_and_counts_serial_work_once) ... ok\ntest_both_actual_fixed_points_are_required_at_export (test_verification_bootstrap.BootstrapBundleTests.test_both_actual_fixed_points_are_required_at_export) ... ok\ntest_commit_change_is_rejected_even_when_sources_match (test_verification_bootstrap.BootstrapBundleTests.test_commit_change_is_rejected_even_when_sources_match) ... ok\ntest_destination_symlink_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_destination_symlink_is_rejected) ... ok\ntest_duplicate_json_keys_are_rejected (test_verification_bootstrap.BootstrapBundleTests.test_duplicate_json_keys_are_rejected) ... ok\ntest_existing_destination_executable_unchanged_on_rejection (test_verification_bootstrap.BootstrapBundleTests.test_existing_destination_executable_unchanged_on_rejection) ... ok\ntest_failed_incomplete_or_reused_producer_cannot_be_exported (test_verification_bootstrap.BootstrapBundleTests.test_failed_incomplete_or_reused_producer_cannot_be_exported) ... ok\ntest_failed_report_rejected_even_if_manifest_hash_matches (test_verification_bootstrap.BootstrapBundleTests.test_failed_report_rejected_even_if_manifest_hash_matches) ... ok\ntest_missing_or_corrupt_payload_never_restores_compiler (test_verification_bootstrap.BootstrapBundleTests.test_missing_or_corrupt_payload_never_restores_compiler) ... ok\ntest_other_workflow_run_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_other_workflow_run_is_rejected) ... ok\ntest_payload_symlink_and_traversal_name_are_rejected (test_verification_bootstrap.BootstrapBundleTests.test_payload_symlink_and_traversal_name_are_rejected) ... ok\ntest_platform_and_python_identity_changes_are_rejected (test_verification_bootstrap.BootstrapBundleTests.test_platform_and_python_identity_changes_are_rejected) ... ok\ntest_relocated_checkout_and_failed_job_rerun_are_allowed (test_verification_bootstrap.BootstrapBundleTests.test_relocated_checkout_and_failed_job_rerun_are_allowed) ... ok\ntest_report_cannot_claim_different_payload_evidence (test_verification_bootstrap.BootstrapBundleTests.test_report_cannot_claim_different_payload_evidence) ... ok\ntest_round_trip_has_proof_timings_and_no_runtime_cache (test_verification_bootstrap.BootstrapBundleTests.test_round_trip_has_proof_timings_and_no_runtime_cache) ... ok\ntest_same_size_same_timestamp_source_change_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_same_size_same_timestamp_source_change_is_rejected) ... ok\ntest_toolchain_change_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_toolchain_change_is_rejected) ... ok\ntest_tracked_executable_bit_changes_identity (test_verification_bootstrap.BootstrapBundleTests.test_tracked_executable_bit_changes_identity) ... ok\ntest_tracked_noncompiler_source_change_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_tracked_noncompiler_source_change_is_rejected) ... ok\ntest_tracked_symlinks_dangling_links_and_loops_are_bound_without_following (test_verification_bootstrap.BootstrapBundleTests.test_tracked_symlinks_dangling_links_and_loops_are_bound_without_following) ... ok\ntest_cancellation_terminates_the_background_compiler (test_verify_gc.GCVerificationTests.test_cancellation_terminates_the_background_compiler) ... ok\ntest_each_suite_runs_its_complete_selection_at_original_stress (test_verify_gc.GCVerificationTests.test_each_suite_runs_its_complete_selection_at_original_stress) ... ok\ntest_failed_and_incomplete_suites_cannot_pass (test_verify_gc.GCVerificationTests.test_failed_and_incomplete_suites_cannot_pass) ... ok\ntest_failure_timeout_and_mismatched_ir_cannot_pass (test_verify_gc.GCVerificationTests.test_failure_timeout_and_mismatched_ir_cannot_pass) ... ok\ntest_local_alias_reports_failure_and_still_runs_remaining_modes (test_verify_gc.GCVerificationTests.test_local_alias_reports_failure_and_still_runs_remaining_modes) ... ok\ntest_local_aliases_run_all_selected_gc_checks (test_verify_gc.GCVerificationTests.test_local_aliases_run_all_selected_gc_checks) ... ok\ntest_self_compile_preserves_ir_stress_and_gc_diagnostics (test_verify_gc.GCVerificationTests.test_self_compile_preserves_ir_stress_and_gc_diagnostics) ... ok\ntest_a_test_outside_the_areas_is_a_stray (test_verify_layout.LayoutTests.test_a_test_outside_the_areas_is_a_stray) ... ok\ntest_cases_are_the_areas_programs_the_deviations_and_the_areas_rejections (test_verify_layout.LayoutTests.test_cases_are_the_areas_programs_the_deviations_and_the_areas_rejections) ... ok\ntest_check_recordings_fails_on_a_stray_and_on_two_cases_of_one_name (test_verify_layout.LayoutTests.test_check_recordings_fails_on_a_stray_and_on_two_cases_of_one_name) ... ok\ntest_record_finds_a_program_by_its_name_or_its_path (test_verify_layout.LayoutTests.test_record_finds_a_program_by_its_name_or_its_path) ... ok\ntest_run_refuses_a_stray_and_a_test_named_in_the_old_layout (test_verify_layout.LayoutTests.test_run_refuses_a_stray_and_a_test_named_in_the_old_layout) ... ok\ntest_verify_refuses_a_stray (test_verify_layout.LayoutTests.test_verify_refuses_a_stray) ... ok\ntest_each_shard_runs_its_share_of_the_corpus (test_verify_shards.ShardVerificationTests.test_each_shard_runs_its_share_of_the_corpus) ... ok\ntest_failed_and_incomplete_shards_cannot_pass (test_verify_shards.ShardVerificationTests.test_failed_and_incomplete_shards_cannot_pass) ... ok\ntest_local_aliases_run_all_their_shards (test_verify_shards.ShardVerificationTests.test_local_aliases_run_all_their_shards) ... ok\ntest_ubsan_shards_need_an_instrumented_runtime (test_verify_shards.ShardVerificationTests.test_ubsan_shards_need_an_instrumented_runtime) ... ok\n\n----------------------------------------------------------------------\nRan 53 tests in 37.724s\n\nOK\n"
+    },
+    {
+      "command": [
+        "sh",
+        "tests/run.sh",
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -m pystachy",
+        "jit aot",
+        "tests/errors/classes/dataclass_inheritance_frozen.py",
+        "tests/errors/classes/dataclass_inheritance_order.py",
+        "tests/errors/classes/dataclass_inheritance_plain_base.py",
+        "tests/errors/classes/dataclass_inheritance_redeclared.py",
+        "tests/errors/classes/dataclass_inheritance_repr.py",
+        "tests/errors/classes/dataclass_inheritance_type.py",
+        "tests/errors/classes/dataclass_inheritance_unfrozen.py",
+        "tests/errors/classes/inheritance.py",
+        "tests/errors/classes/inheritance_callable_unannotated.py",
+        "tests/errors/classes/inheritance_classmethod_override_object.py",
+        "tests/errors/classes/inheritance_dataclass.py",
+        "tests/errors/classes/inheritance_generic.py",
+        "tests/errors/classes/inheritance_namedtuple.py",
+        "tests/errors/classes/inheritance_narrow_field.py",
+        "tests/errors/classes/inheritance_narrow_global.py",
+        "tests/errors/classes/inheritance_narrow_join.py",
+        "tests/errors/classes/inheritance_narrow_negative.py",
+        "tests/errors/classes/inheritance_narrow_nonlocal.py",
+        "tests/errors/classes/inheritance_narrow_reassigned.py",
+        "tests/errors/classes/inheritance_override_kind.py",
+        "tests/errors/classes/inheritance_redefined.py",
+        "tests/errors/classes/inheritance_reflected.py",
+        "tests/errors/classes/inheritance_reflected_override.py",
+        "tests/errors/classes/inheritance_shadow.py",
+        "tests/errors/classes/inheritance_shadow_method.py",
+        "tests/errors/exceptions/exc_compare_int.py",
+        "tests/errors/exceptions/exc_eq_dunder.py",
+        "tests/errors/exceptions/exc_eq_subclass_narrow.py",
+        "tests/errors/exceptions/exc_record_eq_narrow.py",
+        "tests/errors/generators/iterator_template_inheritance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-792",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 7.063841508999758,
+      "stdout": "selected 30 cases\n30 passed, 0 failed\n",
+      "stderr": ""
+    }
+  ],
+  "recordings": [
+    {
+      "path": "tests/programs/classes/inheritance_compare_object.py",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/classes/inheritance_compare_object.py",
+        "a1",
+        "a2"
+      ],
+      "exit": 0,
+      "stderr": "",
+      "matches_checked_in": true,
+      "stdout_sha256": "1e0c4e54111f364af671b6339eaaabf5f683875f972b19e0fbb80ced73d62c6d",
+      "expected_sha256": "d310422352c5eb5de62c839e9d4a29c898c3917e0c49e5977058cd8c651cfe9c"
+    },
+    {
+      "path": "tests/programs/classes/inheritance_compare_pairs.py",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/classes/inheritance_compare_pairs.py",
+        "a1",
+        "a2"
+      ],
+      "exit": 0,
+      "stderr": "",
+      "matches_checked_in": true,
+      "stdout_sha256": "20f243b8ad99c7c3967e19a0fa96b08386b17e506d58f73216ec3da58d18c2ac",
+      "expected_sha256": "d1dd1ba88e441fa7704a71dd5952ed969e13383f38ba1e4961368e6e40a9fbe6"
+    },
+    {
+      "path": "tests/programs/classes/inheritance_comparisons.py",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/classes/inheritance_comparisons.py",
+        "a1",
+        "a2"
+      ],
+      "exit": 0,
+      "stderr": "",
+      "matches_checked_in": true,
+      "stdout_sha256": "5885b483b1eaed499721b3292ad4898087521acc8244de7a50bdddcac179ddad",
+      "expected_sha256": "1ce42194c98d45bb10a6d577877db8a9b4538fc0a39604db4441369b29d6c276"
+    },
+    {
+      "path": "tests/programs/exceptions/exc_compare_base.py",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/exceptions/exc_compare_base.py",
+        "a1",
+        "a2"
+      ],
+      "exit": 0,
+      "stderr": "",
+      "matches_checked_in": true,
+      "stdout_sha256": "c6c263a4ef8c078db1fe1e371f9f90a781efdadf5d1e3ca2d59c7f07b5c95ac3",
+      "expected_sha256": "7b3f595301a4f4ab4a8873d29d32f9521347427d38125644d935fef6073cd04a"
+    }
+  ],
+  "probes": [
+    {
+      "path": "tests/programs/classes/dataclass_inheritance.py",
+      "source_sha256": "5bbf3bca6e293346ca6da35a8b40412d3e727c7c3073157bc1f85b1ac32af209",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 6165,
+        "stdout_sha256": "9e151687d5ef6182e345da9d6bdd9b5b2613c8299d5ea79078af90306f79fbdd"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 6165,
+        "stdout_sha256": "9e151687d5ef6182e345da9d6bdd9b5b2613c8299d5ea79078af90306f79fbdd"
+      }
+    },
+    {
+      "path": "tests/programs/classes/dataclass_inheritance_compare.py",
+      "source_sha256": "5940f7391ec6115e7c1817c47692d9905dca2ea1052fbe6fbd147f7452ab8013",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1632,
+        "stdout_sha256": "a773affbb20401cdb8e4b08e508923947da9dc585d7dd5c0abfca136a6d4622a"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1632,
+        "stdout_sha256": "a773affbb20401cdb8e4b08e508923947da9dc585d7dd5c0abfca136a6d4622a"
+      }
+    },
+    {
+      "path": "tests/programs/classes/dataclass_inheritance_import.py",
+      "source_sha256": "356cae22f3dd8e2c34b4ed86ac6d21ed22cf2d2d38a933f24d2b1882c6ea6458",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 2343,
+        "stdout_sha256": "8abfdbdb4856b1a334eba4308d419685c17118cd20c1bc7e106ad45bfe599155"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 2343,
+        "stdout_sha256": "8abfdbdb4856b1a334eba4308d419685c17118cd20c1bc7e106ad45bfe599155"
+      }
+    },
+    {
+      "path": "tests/programs/classes/dataclass_inheritance_mod.py",
+      "source_sha256": "008746abef85b1b4e14a55ce53212a11feb610547217a263af2d1aab1209c557",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 69,
+        "stdout_sha256": "52229b1409ca7bd953f5b5fbebe4328e805fbdad964e6e1f199de97b6a9065da"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 69,
+        "stdout_sha256": "52229b1409ca7bd953f5b5fbebe4328e805fbdad964e6e1f199de97b6a9065da"
+      }
+    },
+    {
+      "path": "tests/programs/classes/dataclass_inheritance_property.py",
+      "source_sha256": "1e759e3d72f28d2a656a5a945dc8cc732b357ea44d9399e3d98d81685b932257",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1037,
+        "stdout_sha256": "0bf1c50ea19af2cbeb53fd53655c7ee01f28e1e4ed661f19ce2f6f7d7542fd08"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1037,
+        "stdout_sha256": "0bf1c50ea19af2cbeb53fd53655c7ee01f28e1e4ed661f19ce2f6f7d7542fd08"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_bound_identity.py",
+      "source_sha256": "4719b06cd465a2f7b0ffcc932bd4a149ebc2099a0bc585760403652b18f93252",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 421,
+        "stdout_sha256": "45c977b2d6e0aed6460d7402bacb859e8b5c026c739e5c63c255ddd53106aaaf"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 421,
+        "stdout_sha256": "45c977b2d6e0aed6460d7402bacb859e8b5c026c739e5c63c255ddd53106aaaf"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_call_order.py",
+      "source_sha256": "9b9eab3c013f7a123447b2dd18584409ba73fe83e8db8838e4ef53208d420d83",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 408,
+        "stdout_sha256": "113b4a247425738241c850a3d746b1d8fdda3c045ce97119aa6d09225bd59c2c"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 408,
+        "stdout_sha256": "113b4a247425738241c850a3d746b1d8fdda3c045ce97119aa6d09225bd59c2c"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_classattrs.py",
+      "source_sha256": "a62874ec91dbaea3b5f91d46800b5b476a7af81caed4a44d5f7921790576b23c",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 803,
+        "stdout_sha256": "0c23df6841b424d5d251a4aee8e59cea256bd458677162a7c4fe26b5b41c059d"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 803,
+        "stdout_sha256": "0c23df6841b424d5d251a4aee8e59cea256bd458677162a7c4fe26b5b41c059d"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_classmethod_override.py",
+      "source_sha256": "d2b00691ee3ffaebd4b5e77f71dd772489f6a5829b6921d0f15fb5013b8809f1",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 755,
+        "stdout_sha256": "1bb1b03bc201eb7189831f3e594c396977fa939a1b76ba8f1fb59ff7f15d4b1b"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 755,
+        "stdout_sha256": "1bb1b03bc201eb7189831f3e594c396977fa939a1b76ba8f1fb59ff7f15d4b1b"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_compare_pairs.py",
+      "source_sha256": "00dc54bc4bdc367d77f188e9cd63afd5f94536cb198b22483d5897ccfb574f35",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 2698,
+        "stdout_sha256": "7343648a534d2eaab74bafae667ccb81d0db8e8cb4a009fb9acbedf4bb769c11"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 2431,
+        "stdout_sha256": "4ee4194aacf3e32df13f2a2ebd1e1c41099bed76e58f04f085456122bd18bd84"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_comparisons.py",
+      "source_sha256": "54aebba9ad0bcee3409a552418a918b6a7e0e654d198f8709ca27569d320add6",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1979,
+        "stdout_sha256": "69ded84711c160175f5dc5bb87ade4bf1d18a3e8283feb6ea904576ad5df2d92"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1979,
+        "stdout_sha256": "69ded84711c160175f5dc5bb87ade4bf1d18a3e8283feb6ea904576ad5df2d92"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_container_compare_base.py",
+      "source_sha256": "838cdad060f9ce017807254ed6b169927e5ce5916e410f2c32570d12e6414a3b",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1222,
+        "stdout_sha256": "8a8aadb818a38fcdbf644c66fcd0718b6aab61dc0ba8878a3d55f90ec6efcb85"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1222,
+        "stdout_sha256": "8a8aadb818a38fcdbf644c66fcd0718b6aab61dc0ba8878a3d55f90ec6efcb85"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_dispatch.py",
+      "source_sha256": "01a57db695e51f9bfbe1416f1e00afd828cee6953711389b69aff0af0f53cee6",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 899,
+        "stdout_sha256": "e24771039d9bde95be58d204f9395939848930102201d059c9a9b794aafacc5d"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 899,
+        "stdout_sha256": "e24771039d9bde95be58d204f9395939848930102201d059c9a9b794aafacc5d"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_fields.py",
+      "source_sha256": "958a54b1c4f0a0be955492966d4de26624290b3103d46d5cf7ec68c116b0cc5b",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 934,
+        "stdout_sha256": "e74a5ef6e97b16cd223226a338dd61f84162525546dcb9e7f9a8533623ae7679"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 934,
+        "stdout_sha256": "e74a5ef6e97b16cd223226a338dd61f84162525546dcb9e7f9a8533623ae7679"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_hasattr.py",
+      "source_sha256": "141d76a1821463dd97972f3649fbb42154653f4ce927d9f8564849e8161f87a9",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 330,
+        "stdout_sha256": "4efe5451e095b22397a95d6098d925169a9f25d1497c8724afe5ef6234ca9e4b"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 330,
+        "stdout_sha256": "4efe5451e095b22397a95d6098d925169a9f25d1497c8724afe5ef6234ca9e4b"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_import.py",
+      "source_sha256": "8af78af37e1047116eabafef14a77e93e87f06fb8090c1537a76e96c75f1cb5b",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 670,
+        "stdout_sha256": "bcd4ca0e526b16714bdff7d493c3c22550205275a292bec4adfcff8145d84924"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 670,
+        "stdout_sha256": "bcd4ca0e526b16714bdff7d493c3c22550205275a292bec4adfcff8145d84924"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_isinstance.py",
+      "source_sha256": "58f95612b88cf42a58ab4824bc23c4ac92f8911e20ea00caf48f517769409331",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 293,
+        "stdout_sha256": "bf86526174a21a6a5467e2bb79561b2d2a3693c0a7b638f628fecf13159c0fb8"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 293,
+        "stdout_sha256": "bf86526174a21a6a5467e2bb79561b2d2a3693c0a7b638f628fecf13159c0fb8"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_narrowing.py",
+      "source_sha256": "9679bdd3b84b33ff71d215b53e30ffe695714a698f53d1cbc43611c23555a14c",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1102,
+        "stdout_sha256": "93f61282e5d4698161fde74acaf9a03673e35a7c277ec0abd7e4a482b08d4d55"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1102,
+        "stdout_sha256": "93f61282e5d4698161fde74acaf9a03673e35a7c277ec0abd7e4a482b08d4d55"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_protocols.py",
+      "source_sha256": "b5a92852f49a03c0a6b071a8e59a919351da1a4b38337d5fb4c891195f890d79",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1337,
+        "stdout_sha256": "e099ca0833518d712e51c114b02b4cc8e218f5d2313703a348b517847990927f"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1337,
+        "stdout_sha256": "e099ca0833518d712e51c114b02b4cc8e218f5d2313703a348b517847990927f"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_protocols_added.py",
+      "source_sha256": "e8be0f95b4b08880be99702f88465925302a64a6a419223b9a0ebd145eb443bc",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 736,
+        "stdout_sha256": "ae3874f077cc31ab2dce3f3e64709896d0e2768887917c0ed2a6911db1515986"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 736,
+        "stdout_sha256": "ae3874f077cc31ab2dce3f3e64709896d0e2768887917c0ed2a6911db1515986"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_super.py",
+      "source_sha256": "181969de1aa18eca7291a94c1d0048a5aee03bc052482ab0f81249168a7db2c8",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 942,
+        "stdout_sha256": "478fa70dda8b0c14bec6e430a0f5b3b22da7d58ba4a6007d6dea3a198b90ea2a"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 942,
+        "stdout_sha256": "478fa70dda8b0c14bec6e430a0f5b3b22da7d58ba4a6007d6dea3a198b90ea2a"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_unary_fallbacks.py",
+      "source_sha256": "1d607481aa084f29235eb50947c6ebbb27c4c64314672b8b96d8bf6c1ed9c980",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1599,
+        "stdout_sha256": "ff4dfa3b473e414e66e23e7e15cccbb17826ae328ce982b74f53c1bbd2e3493f"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1599,
+        "stdout_sha256": "ff4dfa3b473e414e66e23e7e15cccbb17826ae328ce982b74f53c1bbd2e3493f"
+      }
+    },
+    {
+      "path": "tests/programs/classes/property_inheritance.py",
+      "source_sha256": "fdcef426ee6bf2e196d6e9e7aec0c3706e2c9e8ea49dacc101171359605fc2fc",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 489,
+        "stdout_sha256": "a0df835e3e0e79b84c8f6bc0314ba93ec92633a99c060adaf56b2ac6b1829d58"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 489,
+        "stdout_sha256": "a0df835e3e0e79b84c8f6bc0314ba93ec92633a99c060adaf56b2ac6b1829d58"
+      }
+    },
+    {
+      "path": "tests/programs/classes/property_setter_inheritance.py",
+      "source_sha256": "471d16c3dff992854ac163d73dd7084ce43e3ecc66c45b7fd21f545e35dc7f60",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1287,
+        "stdout_sha256": "af239f58c4fbf3d043360b9b5be0ec0ce4b61a8975f3e6b555f47ee8693a9cf2"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1287,
+        "stdout_sha256": "af239f58c4fbf3d043360b9b5be0ec0ce4b61a8975f3e6b555f47ee8693a9cf2"
+      }
+    },
+    {
+      "path": "tests/programs/exceptions/exc_compare_base.py",
+      "source_sha256": "4b505565712179ef1205639cf6221d7501eafffdba15726a407b9ff61befeb60",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 417,
+        "stdout_sha256": "b82e6370bcbbe2b87f25857c9bdf36bc6d8e408d7ba361aca50b51c729bbdbca"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 417,
+        "stdout_sha256": "b82e6370bcbbe2b87f25857c9bdf36bc6d8e408d7ba361aca50b51c729bbdbca"
+      }
+    },
+    {
+      "path": "tests/programs/exceptions/exc_eq_subclass.py",
+      "source_sha256": "4467c7a38baf686bf235f0d2ab3e68affd01d4a331d21131d17de5b133a98a53",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 7401,
+        "stdout_sha256": "1aaa7c41e9f699f7b2680b7558a7b4dac5ac4707aa05f9450cfa2c2c29646760"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 5174,
+        "stdout_sha256": "2a3e08a88769d3d9a9ac5280428e8bc19184d72fef03e0788b75f3867b8930cd"
+      }
+    },
+    {
+      "path": "tests/programs/inference/dynany_subclass_cmp.py",
+      "source_sha256": "b8a7c96ff8f707e06f6dc6fe81a37a145ce73ab5652a9971811a2dc0fc2910c8",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1065,
+        "stdout_sha256": "d38100b2249e11ea57fb5269a2e57ad6d2f3ed1e90cc807d37f80566c2542d6b"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1065,
+        "stdout_sha256": "d38100b2249e11ea57fb5269a2e57ad6d2f3ed1e90cc807d37f80566c2542d6b"
+      }
+    },
+    {
+      "path": "tests/programs/inference/dynany_subclass_eq.py",
+      "source_sha256": "d63244e3bbc83d25fce802df8f8eac39499f818b3f9309288750b2a14de86535",
+      "prior": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1200,
+        "stdout_sha256": "7645e8cb43981853fa25fc9305af396ce35aeb87512e46c05013cc91a55598cd"
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 1194,
+        "stdout_sha256": "629dddbf8cccbd1c4deb61b21077185a0cbf71e153908846c9b0c07326818c15"
+      }
+    },
+    {
+      "path": "tests/programs/classes/inheritance_compare_object.py",
+      "source_sha256": "8140914801352ae6f4f7abf5adbda64048d3fc2c9af5978dd741fb1529f4de52",
+      "prior": {
+        "present": false
+      },
+      "current": {
+        "present": true,
+        "exit": 0,
+        "stderr": "",
+        "ir_lines": 3640,
+        "stdout_sha256": "adea0508163c8827a8d3ee273ff3ea14c80a5bea5d1bc700ee9d9c9ec0d269a9"
+      }
+    }
+  ],
+  "scaling": [
+    {
+      "kind": "exception",
+      "subclasses": 40,
+      "sites": 8,
+      "source_sha256": "b179ea1e85f36117dfc2b5e99c224f690aebb5167e7c0a9ce2dd1cf2978860f9",
+      "prior": {
+        "exit": 0,
+        "seconds_advisory": 0.4810530889990332,
+        "stderr": "",
+        "ir_lines": 4957,
+        "stdout_sha256": "63a547c02422733f706df961f92bc75651f581f7a7a3fce5aaed964657ed798f"
+      },
+      "current": {
+        "exit": 0,
+        "seconds_advisory": 0.5111476999991282,
+        "stderr": "",
+        "ir_lines": 1549,
+        "stdout_sha256": "5adbce3a4f00fb9494a1365666a8dbc7bcf9d9cec0a27c6425beb1a9323a03a4"
+      }
+    },
+    {
+      "kind": "exception",
+      "subclasses": 80,
+      "sites": 8,
+      "source_sha256": "cab7b37dadafa89c8c5973e067e132a6f28850b2f1e16996c9c0830217c7a6dc",
+      "prior": {
+        "exit": 0,
+        "seconds_advisory": 0.6235805689975678,
+        "stderr": "",
+        "ir_lines": 9317,
+        "stdout_sha256": "e3d1c1305ec8cdb527362103ae3608dcbfd796e94a53edff7074a5dacd97721f"
+      },
+      "current": {
+        "exit": 0,
+        "seconds_advisory": 0.7820501440000953,
+        "stderr": "",
+        "ir_lines": 2509,
+        "stdout_sha256": "d7c25bd824cc33b1ea815431375ce32f9d7552cbdcb3b8c1a82c38e7156519ec"
+      }
+    },
+    {
+      "kind": "declared",
+      "subclasses": 40,
+      "sites": 8,
+      "source_sha256": "a8a03d36c98298baf297def500c4d4f7235c5674e37f5de201d46cbb2c972c9f",
+      "prior": {
+        "exit": 0,
+        "seconds_advisory": 0.4640630469984899,
+        "stderr": "",
+        "ir_lines": 3263,
+        "stdout_sha256": "c60da21f4543874f765759f257c1e990bdfc9ad4e84e9d9ad006398118f48c6b"
+      },
+      "current": {
+        "exit": 0,
+        "seconds_advisory": 0.4998530929988192,
+        "stderr": "",
+        "ir_lines": 3263,
+        "stdout_sha256": "c60da21f4543874f765759f257c1e990bdfc9ad4e84e9d9ad006398118f48c6b"
+      }
+    },
+    {
+      "kind": "declared",
+      "subclasses": 80,
+      "sites": 8,
+      "source_sha256": "6b735f54508958a4346697a1cc9b876dfd37841ca2618b1065dfacde9ae85668",
+      "prior": {
+        "exit": 0,
+        "seconds_advisory": 0.603839978997712,
+        "stderr": "",
+        "ir_lines": 6063,
+        "stdout_sha256": "8b8ae11b99186af91cda29c9a8222ad49b79a0300dd4be0f2efa11fa070d4881"
+      },
+      "current": {
+        "exit": 0,
+        "seconds_advisory": 0.7073326829995494,
+        "stderr": "",
+        "ir_lines": 6063,
+        "stdout_sha256": "8b8ae11b99186af91cda29c9a8222ad49b79a0300dd4be0f2efa11fa070d4881"
+      }
+    },
+    {
+      "kind": "object",
+      "subclasses": 40,
+      "sites": 8,
+      "source_sha256": "6ff57a570b36cb660cd553f1ac273494a7c313785c2be09fd436cb8c0e8147cf",
+      "prior": {
+        "exit": 0,
+        "seconds_advisory": 1.0521784730008221,
+        "stderr": "",
+        "ir_lines": 73420,
+        "stdout_sha256": "30e63b462e74b8eca957baa61645300c97b4e2a528c52999a47fd7b9fe84c8ae"
+      },
+      "current": {
+        "exit": 0,
+        "seconds_advisory": 0.5178936789998261,
+        "stderr": "",
+        "ir_lines": 6860,
+        "stdout_sha256": "48fb603780879220c4ec1614cea37a0966da785291a3169c4ef04e7215744a02"
+      }
+    },
+    {
+      "kind": "object",
+      "subclasses": 80,
+      "sites": 8,
+      "source_sha256": "786961f8f35ea69c51ff0bc0396c3f0f3ad61a5315bb7706de002b52172c9fc0",
+      "prior": {
+        "exit": 1,
+        "seconds_advisory": 0.8816197529995407,
+        "stderr": "/tmp/audit-792-scaling-273fycn6/object_80.py:168: error: compilation needs more than 4096 template specializations; annotate template parameters or reduce type combinations\n",
+        "ir_lines": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "current": {
+        "exit": 0,
+        "seconds_advisory": 0.8052956120009185,
+        "stderr": "",
+        "ir_lines": 13220,
+        "stdout_sha256": "98a71e99b92cfb68b25e2b9505c17017a8da880751df03c40ed260aae9978001"
+      }
+    }
+  ],
+  "toolchain": {
+    "pinned_cpython_3_13_16": false,
+    "llvm18_bin": false,
+    "local_native_execution": false,
+    "reason": "Pinned CPython 3.13.16 and LLVM 18 are unavailable in this run; hosted compiler paths only."
+  },
+  "after": {
+    "source": {
+      "sha": "452a0864986b632980f1a23783bdd5b4e4001e5c",
+      "tree": "4e19388d3fe959c45b34ebefaffab33fdc41a34f",
+      "tracked_and_untracked": "",
+      "ignored": "!! build/"
+    },
+    "comparison_source": {
+      "sha": "554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab",
+      "tree": "0edfdeca7819e8e401bdd5d9ec1c4c7481adba99",
+      "tracked_and_untracked": "",
+      "ignored": "!! build/"
+    }
+  }
+}

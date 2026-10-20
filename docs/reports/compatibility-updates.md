@@ -76,6 +76,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 release validation (#762), **incomplete** | `afb59cd3`; fully evaluated marker remains `3c63613b` | Hosted checks and historical CI verified; local LLVM/native execution unavailable. [Evidence](compatibility-2026-10-20-release-partial.json). |
 | 2026-10-20 test-area layout (#771), bounded tooling evaluation complete | `ad19255e`; #762 native work still incomplete, full marker remains `3c63613b` | 3,301 cases preserved; 180 tooling tests, 158 path-sensitive expected rejections and six CPython recordings/hosted IR programs pass. [Evidence](compatibility-2026-10-20-test-layout.json). |
 | 2026-10-20 hierarchy comparison dispatch (#785), **partial** | `554f3d13`; docs-only #776/#788 also inspected | Hosted raw IR at 80 subclasses: exception 357,105 → 9,317 lines, ordinary 353,611 → 6,063. 135 tooling tests, 56 positive compilations and 30 rejections pass; native evaluation remains incomplete. [Evidence](compatibility-2026-10-20-hierarchy-partial.json). |
+| 2026-10-20 comparison-operand widening (#792), **partial** | `452a0864`; follows #785 | The retained 80-subclass `other: object` probe moves from #785's 4,096-specialization rejection to 13,220 raw IR lines; 40 subclasses shrink 73,420 → 6,860. Declared-`Base` controls are byte-identical. 135 tooling tests, 57 before/after hosted compilations, 30 rejections and four CPython 3.12 recordings pass; native evaluation remains incomplete. [Evidence](compatibility-2026-10-20-comparison-widening-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5028,3 +5029,70 @@ work also remains pending. No replacement 3.12 inventory was used to manufacture
 an import delta. Latest fully evaluated main stays
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**. Full CPython regrtest and compiled
 upstream suites were not run; unrelated known gaps were not freshly checked.
+
+## 2026-10-20 — #792: comparison operand widening; hosted evidence, native gap
+
+Inspected [main `452a0864986b632980f1a23783bdd5b4e4001e5c`](https://github.com/den-run-ai/pystachy/commit/452a0864986b632980f1a23783bdd5b4e4001e5c)
+after [#792](https://github.com/den-run-ai/pystachy/pull/792) merged at
+2026-10-20 20:18:11 UTC. Fresh metadata and ancestry verify the merge; main and
+implementation head `570eb4e5259d4dac7ae86c7ceb333f3e2a663c60` share tree
+`4e19388d3fe959c45b34ebefaffab33fdc41a34f`. This is the sole first-parent
+merge after the #785 checkpoint. No implementation branch was edited.
+
+The compiler now widens the comparison method's other operand to the method's
+declared static type when dispatch analysis proves that the same method, side,
+inversion and coercion are selected. This extends #785's shared hierarchy arms
+to `other: object` and unannotated comparison parameters. Runtime, libraries and
+ports are unchanged, but compiler code generation changed and requires a native
+rebuild before native compatibility claims.
+
+[Machine-readable evidence](compatibility-2026-10-20-comparison-widening-partial.json)
+retains exact commands, selected source hashes, stdout/IR hashes and line counts,
+the prior/current source identities, recordings, rejection output, environment
+and pre/post snapshots. Both trees had empty tracked/untracked status before and
+after; prior hosted runs had already generated ignored `build/` contents, which
+are explicitly recorded rather than called pristine. CPython **3.12.14** hosted
+the compiler. Pinned CPython **3.13.16**, LLVM 18 and native execution remain
+unavailable, so the latest fully evaluated main stays
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+| Fresh hosted measurement | #785 `554f3d13` | #792 `452a0864` |
+|---|---:|---:|
+| Exception base, 40 subclasses / eight sites | 4,957 IR lines | 1,549 |
+| Exception base, 80 subclasses / eight sites | 9,317 | 2,509 |
+| Ordinary `other: Base`, 40 / 80 subclasses | 3,263 / 6,063 | **byte-identical** 3,263 / 6,063 |
+| Ordinary `other: object`, 40 subclasses | 73,420 | 6,860 |
+| Ordinary `other: object`, 80 subclasses | rejects above 4,096 specializations | 13,220 |
+
+The 80-subclass result independently confirms that this retained shape now
+compiles instead of failing at the specialization limit. Its new 40→80 growth is
+1.93x. Raw emitted LLVM line counts are not optimized IR, binary size, compile
+time, run time or peak-memory measurements. The declared-`Base` controls'
+byte-identical hashes isolate the widening to the intended parameter shape.
+
+| Additional check | Result and boundary |
+|---|---|
+| Typed/verifier unit discovery | `test_typed*.py` **82/82** and `test_*verif*.py` **53/53** pass; **135** hosted tests total. These do not assemble LLVM. |
+| Selected affected sources | All **29** current inputs compile to hosted IR; all **28** that exist at #785 also compile there (**57** successful compilations). Three retained outputs shrink: `inheritance_compare_pairs` 2,698→2,431, `exc_eq_subclass` 7,401→5,174 and `dynany_subclass_eq` 1,200→1,194 lines. The new differential emits 3,640 lines. |
+| Expected rejections | **30/30** selected hierarchy/dataclass/exception/generator cases pass through `tests/run.sh`. The `jit aot` label does not turn expected compile-time rejections into native execution. |
+| Reference recordings | Four affected programs, including the new 354-line comparison matrix, match checked-in stdout/exit recordings under CPython **3.12.14**. This is not a pinned-3.13 regeneration or native parity. |
+
+Historical workflows on the identical implementation tree all succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39483737387),
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39483737523),
+[Packages](https://github.com/den-run-ai/pystachy/actions/runs/39483737509) and
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39483737540).
+The preceding audit-head [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39474255499)
+also completed successfully. These are separately labeled historical CI results,
+not local native execution.
+
+No fresh import sweep, native JIT/AOT or GC-stress comparison, affected native
+port/benchmark execution, full `make verify`, full upstream suite or CPython
+regrtest was run. Existing import totals and unrelated gaps remain historical.
+The implementation PR's timing tables are not adopted as audit measurements;
+no speed or memory claim is made from shared-host elapsed fields. #625 remains
+the relevant optimization tracker, and no new uncovered correctness bug was
+confirmed, so no new issue was filed. Complete this checkpoint only after an
+authorized pinned CPython 3.13.16 / LLVM 18 rebuild, selected native parity and
+the pinned metadata-enabled import sweep; #762's release validation remains
+independently incomplete.
