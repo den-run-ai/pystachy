@@ -31,6 +31,8 @@ Each shape is a family of programs whose size grows with N:
            variables, each read further on where a test that is false guards it
   nones    N globals assigned None, then an int, then each tested in an if: Gen.none_type types
            each from the values the module's statements assign it
+  nulls    one function of N if statements, each reading a field of the parameter its first
+           statement read (nullcheck's walk down the dominator tree drops their checks)
 Each cell is the median of RUNS runs of "COMMAND ir main.py -o /dev/null" in seconds, startup
 included; "x" is its growth from the previous N (2.0 is linear when N doubles, 4.0 quadratic).
 --ops adds, for each COMMAND that runs a .py file (the CPython-hosted compiler), the number of
@@ -223,10 +225,19 @@ def nones(n):
     return {"main.py": src}
 
 
+def nulls(n):
+    src = ["class Box:", "    def __init__(self, v: int) -> None:", "        self.v = v",
+           "def big(b: Box | None, c: int) -> int:", "    t = b.v"]
+    for i in range(n):
+        src += [f"    if c > {i}:", f"        t += b.v * {i % 5}"]
+    src += ["    return t", "print(big(Box(2), 3))"]
+    return {"main.py": src}
+
+
 SHAPES = {"funcs": funcs, "globals": globals_, "both": both, "long": long, "top": top, "classes": classes, "modules": modules,
           "fields": fields, "calls": calls, "imports": imports, "stdlib": stdlib, "breaks": breaks, "exits": exits, "elifs": elifs,
           "topelifs": topelifs, "comps": comps, "chain": chain,
-          "lookups": lookups, "gdicts": gdicts, "dropped": dropped, "nones": nones}
+          "lookups": lookups, "gdicts": gdicts, "dropped": dropped, "nones": nones, "nulls": nulls}
 
 
 def write(d, files):

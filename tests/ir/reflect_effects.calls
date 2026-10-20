@@ -6,7 +6,7 @@
 @f.same:
 @f.has: pys_refl_find pys_refl_find pys_refl_find
 @f.text: pys_refl_vars pys_raise
-@f.read: pys_raise pys_raise
+@f.read: pys_raise
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
