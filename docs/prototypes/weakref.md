@@ -178,29 +178,29 @@ module CPython's types report, `weakref`.
 
 ## Verification
 
-`tests/lib_weakref.py` compares live identity, mutation and typed references
-with CPython in JIT and AOT. `tests/lib_weakref_dead.py` creates a cohort of
+`tests/programs/library/lib_weakref.py` compares live identity, mutation and typed references
+with CPython in JIT and AOT. `tests/programs/library/lib_weakref_dead.py` creates a cohort of
 targets in a returned helper and applies allocation pressure without
 dereferencing them, then checks that `None` propagates through typed wrappers.
-`tests/lib_weakref_transition.py` first observes every reference live, drops
+`tests/programs/library/lib_weakref_transition.py` first observes every reference live, drops
 its strong owners, and checks that allocation pressure clears at least one
 reference while any remaining referents stay valid. These cohort assertions
 allow a few stale conservative roots; retaining every target strongly still
 fails them. `tools/test_typed_ir.py` independently checks that
 weak reads on either side of an allocating operation have distinct canonical
-values. `tests/lib_weakref_eq.py` compares names, `hasattr()`, reinitialization,
+values. `tests/programs/library/lib_weakref_eq.py` compares names, `hasattr()`, reinitialization,
 equality, hashing, dict and set membership and the `repr()` format with CPython
-while every referent is owned; `tests/lib_weakref_dead_eq.py` checks a dead
+while every referent is owned; `tests/programs/library/lib_weakref_dead_eq.py` checks a dead
 reference's identity equality, kept hash and failing first hash on cohorts, as
-the transition test does. `tests/lib_weakref_callback.py` checks on a cohort
+the transition test does. `tests/programs/library/lib_weakref_callback.py` checks on a cohort
 that no callback runs while the owners live and that, once they are dropped,
 each reference that reads `None` has called back exactly once and each live one
 not; its callbacks allocate nothing, so no collection runs between the queue and
-the reads. `tests/lib_weakref_callback_order.py` checks newest-first order for a
+the reads. `tests/programs/library/lib_weakref_callback_order.py` checks newest-first order for a
 referent's two references, with callbacks that make and call references;
-`tests/lib_weakref_callback_nested.py` that such a callback ends before the next
-starts; `tests/lib_weakref_callback_dead_ref.py` that references dropped before
-their referents do not call back; `tests/lib_weakref_callback_raise.py` the
+`tests/programs/library/lib_weakref_callback_nested.py` that such a callback ends before the next
+starts; `tests/programs/library/lib_weakref_callback_dead_ref.py` that references dropped before
+their referents do not call back; `tests/programs/library/lib_weakref_callback_raise.py` the
 report of an exception a callback raises. Those that allocate in callbacks hold the live
 referents while they read, so a collection a callback starts cannot clear one
 that was read live. Error cases cover unsupported target kinds, a callback that

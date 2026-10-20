@@ -67,7 +67,7 @@ prototypes and the existing issue boundaries.
 
 ## Evidence and next step
 
-`tests/imp_lock.py` differentially exercises recursive locking around statically
+`tests/programs/imports/imp_lock.py` differentially exercises recursive locking around statically
 imported `math.sqrt`, alias-shared state, error unwinding, release-underflow,
 and missing frozen-module queries against CPython 3.13.16.
 `tests/deviations/imp_capabilities.py` contains a small source-file discovery

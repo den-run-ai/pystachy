@@ -94,7 +94,7 @@ These are substantial subset ports, rather than unchanged Python files.
 
 ## What the checks establish
 
-`tests/lib_*.py` compares supported compiled paths with CPython through JIT and
+`tests/programs/library/lib_*.py` compares supported compiled paths with CPython through JIT and
 AOT. `tests/errors/` checks unsupported inputs; `tests/deviations/` checks
 intentional differences. Running an adapted module under CPython separately
 checks that it remains compatible Python, including paths Pystachy does not use.
@@ -132,10 +132,10 @@ The deque and defaultdict reference at the same pinned CPython commit,
 `f1bcb4869aeb72253315fcf04646eb3a87e7140afec65bda6500aa609fc2f641`, and
 `Objects/odictobject.c` has
 `bc7d7009221eed5d7be4124bfd5f9ff9cd05650a543fdc56e0a1da3bc330714a`.
-`tests/lib_collections.py` and `tests/lib_collections_mutation.py` exercise compiled
+`tests/programs/library/lib_collections.py` and `tests/programs/library/lib_collections_mutation.py` exercise compiled
 queue operations, callback mutation and bounded repetition;
-`tests/lib_collections_counter.py`, `_defaultdict.py`, `_ordereddict.py` and
-`_reversed.py` the mappings and `reversed()`; `tests/lib_collections_namedtuple.py`,
+`tests/programs/library/lib_collections_counter.py`, `_defaultdict.py`, `_ordereddict.py` and
+`_reversed.py` the mappings and `reversed()`; `tests/programs/library/lib_collections_namedtuple.py`,
 `_methods.py` and `_mod.py` the namedtuple classes. Shlex's differential
 upstream selection retains its three split/join table methods; HTML retains both
 upstream methods, and keyword retains nine methods while excluding dynamic `exec`.
@@ -186,7 +186,7 @@ its twenty functions, over inputs that log their reads: the errors of the calls,
 errors as they are taken one at a time (interleaving `tee()`'s iterators and `groupby()`'s
 groups), and the order in which the inputs are read, but for the reads that CPython's iterators
 make after their inputs' end (`tests/deviations/lib_itertools_ended.py`).
-`tests/upstream_itertools.py` adapts `Lib/test/test_itertools.py` (SHA-256
+`tests/programs/upstream/upstream_itertools.py` adapts `Lib/test/test_itertools.py` (SHA-256
 `b356e71312eaac265c7104c32176c5150ab06433754bcb25d6e0013f321ca1c9`); its header lists the
 adopted and excluded cases.
 `tools/thread_check.py` runs `lib/_pystachy_thread.py` on CPython and compares it with the C
@@ -245,14 +245,14 @@ the predicates of every number from -1,100 to 1,100 and at the edges of a C int,
 every opcode below 600 for each `jump` over opargs at the edges of a C int and a C long, 200,000 random
 calls, the lists of operators and intrinsics, `get_executor()` of objects that are not code objects,
 and the functions' signatures, docstrings and names: 1,431,973 checks.
-`tests/upstream_opcode.py` adapts every test of `Lib/test/test__opcode.py` (SHA-256
+`tests/programs/upstream/upstream_opcode.py` adapts every test of `Lib/test/test__opcode.py` (SHA-256
 `26d8f889040bbd9416970111df4e784a7f1047901428f9e1758bfa6b96c23a60`); its header lists the
 adaptations and the excluded checks.
 
-Regex validation also includes `tests/upstream_re_*.py`, deterministic
+Regex validation also includes `tests/programs/upstream/upstream_re_*.py`, deterministic
 `tools/re_fuzz.py` comparisons against CPython, and `tools/re_probe.py` checks of
 matcher-entry/context counts. Cache, Unicode-range, whitespace and character-class
-regressions have dedicated `tests/lib_*` cases. Time measurements are advisory;
+regressions have dedicated `tests/programs/library/lib_*` cases. Time measurements are advisory;
 see [caching measurements](../docs/caching.md).
 
 CPython-derived code and docstrings are used under the PSF License Version 2.
@@ -260,8 +260,8 @@ See [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES).
 
 
 The HTML parser probe pins CPython commit `cbc944f4bc59639a444dd971c737788ba2283a91`.
-`tests/upstream_html_parser.py` retains complete assertion sets from 45 upstream
+`tests/programs/upstream/upstream_html_parser.py` retains complete assertion sets from 45 upstream
 methods, with helper/type adaptations and excluded methods disclosed in its header.
-`tests/lib_html_parser.py` adds RAWTEXT/RCDATA, buffering, lifecycle and inheritance
+`tests/programs/library/lib_html_parser.py` adds RAWTEXT/RCDATA, buffering, lifecycle and inheritance
 checks. Native results must be reported separately from CPython-hosted checks;
 see [the probe record](../docs/html-parser-probe.md).

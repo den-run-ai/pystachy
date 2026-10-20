@@ -36,13 +36,13 @@ print(islamic.from_jd(jd))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_convertdate_calendars.py
-./tests/run.sh ./pystachy "jit aot" tests/port_convertdate_calendars.py tests/port_convertdate_holidays.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_convertdate_calendars.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_convertdate_calendars.py tests/programs/apps/port_convertdate_holidays.py
 ```
 
 The differential tests cover calendar round trips, epochs, leap years, holiday variants and error paths against CPython.
 
-Cases: [port_convertdate_calendars.py](../../tests/port_convertdate_calendars.py), [port_convertdate_holidays.py](../../tests/port_convertdate_holidays.py).
+Cases: [port_convertdate_calendars.py](../../tests/programs/apps/port_convertdate_calendars.py), [port_convertdate_holidays.py](../../tests/programs/apps/port_convertdate_holidays.py).
 
 <a id="speed"></a>
 

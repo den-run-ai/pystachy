@@ -30,15 +30,15 @@ Archive SHA-256: `9e77e941042ad3a4cc305dcdf2b2dec1aec2fbe3dd9015d2698ad02b173006
 
 ## Validation snapshot
 
-`tests/port_pylev_strings.py` runs the cases of pylev's own test suite (`tests.py` in its
+`tests/programs/apps/port_pylev_strings.py` runs the cases of pylev's own test suite (`tests.py` in its
 repository, at the tag of 1.4.0) as a program, every pair in both orders, then edge cases on
 every variant and alias: empty strings, the longer string first, adjacent transpositions, NUL
 and control characters, `classic_levenshtein` on the short pairs, and the two non-ASCII pairs
-where the byte and character distances agree. `tests/port_pylev_sequences.py` runs the
+where the byte and character distances agree. `tests/programs/apps/port_pylev_sequences.py` runs the
 variants on lists of words and of 64-bit ints, and `recursive_levenshtein` with explicit
 lengths and offsets (positional and keyword) and with a memo shared between calls, whose keys
 do not name the strings (a second call with other strings reads the first one's results, as
-upstream does). `tests/port_pylev_imports.py` imports pylev as its users do: a function that
+upstream does). `tests/programs/apps/port_pylev_imports.py` imports pylev as its users do: a function that
 suggests the commands closest to a mistyped name, as clikit's and cleo's do, through
 `from pylev import levenshtein`; then the misspelled aliases, `from pylev import *` and the
 submodules. `tests/run.sh` compares what they print with CPython's, JIT and AOT. Run under

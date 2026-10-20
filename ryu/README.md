@@ -52,5 +52,5 @@ Copy the six files from upstream's `ryu/` directory at the new commit, make thei
 (`sed -i 's|^#include "ryu/\([a-z0-9_]*\.h\)"|#include "\1"|' ryu/*.c ryu/*.h`), and name the
 commit here, in THIRD_PARTY_NOTICES and in the comment above runtime.c's `#include "ryu/d2s.c"`.
 A file that the new `d2s.c` includes and these do not has to join them in `RTPARTS`, or the
-driver's build of the runtime will not find it. `tests/float_repr.py` checks the digits against
+driver's build of the runtime will not find it. `tests/programs/numbers/float_repr.py` checks the digits against
 CPython's.

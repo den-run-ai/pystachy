@@ -33,13 +33,13 @@ ASCII English inputs follow upstream. Non-ASCII words can stem differently becau
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_snowballstemmer_stem.py
-./tests/run.sh ./pystachy "jit aot" tests/port_snowballstemmer_stem.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_snowballstemmer_stem.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_snowballstemmer_stem.py
 ```
 
 The differential program checks 384 selected words against recorded Porter2/Porter stems, suffix-rule edges, cursor APIs, long words and pseudo-random ASCII inputs.
 
-Cases: [port_snowballstemmer_stem.py](../../tests/port_snowballstemmer_stem.py).
+Cases: [port_snowballstemmer_stem.py](../../tests/programs/apps/port_snowballstemmer_stem.py).
 
 <a id="speed"></a>
 

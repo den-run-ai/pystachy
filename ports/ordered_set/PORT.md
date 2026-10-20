@@ -35,13 +35,13 @@ print(list(items), items.index("blue"))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_ordered_set_api.py
-./tests/run.sh ./pystachy "jit aot" tests/port_ordered_set_api.py tests/port_ordered_set_edges.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_ordered_set_api.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_ordered_set_api.py tests/programs/apps/port_ordered_set_edges.py
 ```
 
 The differential tests cover ordering, API forms, algebra, Unicode string items, mutation, duplicates and the preserved upstream pop bug.
 
-Cases: [port_ordered_set_api.py](../../tests/port_ordered_set_api.py), [port_ordered_set_edges.py](../../tests/port_ordered_set_edges.py).
+Cases: [port_ordered_set_api.py](../../tests/programs/apps/port_ordered_set_api.py), [port_ordered_set_edges.py](../../tests/programs/apps/port_ordered_set_edges.py).
 
 <a id="speed"></a>
 

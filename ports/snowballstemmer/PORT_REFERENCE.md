@@ -54,7 +54,7 @@ is needed.
 
 ## Validation snapshot
 
-`tests/port_snowballstemmer_stem.py` stems 384 English words, chosen for the suffixes each step
+`tests/programs/apps/port_snowballstemmer_stem.py` stems 384 English words, chosen for the suffixes each step
 of the two algorithms removes or rewrites, and holds each one's Porter2 and Porter stems (as the
 upstream package stems them under CPython): it prints any word that stems otherwise, and then
 the stems of the edge cases the evaluation and its verifier tried: the empty word and short

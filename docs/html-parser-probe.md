@@ -55,12 +55,12 @@ as recorded in [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES).
 
 ## Validation and reproduction
 
-`tests/upstream_html_parser.py` preserves complete assertion sets from **45**
+`tests/programs/upstream/upstream_html_parser.py` preserves complete assertion sets from **45**
 upstream test methods. It replaces unittest machinery and heterogeneous event
 records with standalone assertions and fixed-shape typed records; adjacent data
 normalization matches the upstream collector. Each string input is fed whole and
 one indexing unit at a time; explicit fragment lists preserve their boundaries.
-Its header lists exclusions. `tests/lib_html_parser.py` covers the omitted parser
+Its header lists exclusions. `tests/programs/library/lib_html_parser.py` covers the omitted parser
 modes, lifecycle, default conversion and inheritance dispatch.
 
 Local validation uses CPython 3.12.14 with the pinned parser/base sources as the
@@ -74,11 +74,11 @@ separate from hosted source/IR results. No performance claim is made.
 The tests live in the normal corpus, so the existing CI matrix exercises them:
 
 ```sh
-PYSTACHY_IRCHECK=1 python3 pystachy.py ir tests/upstream_html_parser.py -o build/html-parser.ll
-PYTHONPATH=lib python3 tests/upstream_html_parser.py
-PYTHONPATH=lib python3 tests/lib_html_parser.py
-make test FILES="tests/upstream_html_parser.py tests/lib_html_parser.py tests/lib_html_parser_positions.py tests/deviations/lib_html_parser_names.py tests/deviations/lib_markupbase_constructor.py"
-PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy "jit aot" tests/upstream_html_parser.py tests/lib_html_parser.py
+PYSTACHY_IRCHECK=1 python3 pystachy.py ir tests/programs/upstream/upstream_html_parser.py -o build/html-parser.ll
+PYTHONPATH=lib python3 tests/programs/upstream/upstream_html_parser.py
+PYTHONPATH=lib python3 tests/programs/library/lib_html_parser.py
+make test FILES="tests/programs/upstream/upstream_html_parser.py tests/programs/library/lib_html_parser.py tests/programs/library/lib_html_parser_positions.py tests/deviations/lib_html_parser_names.py tests/deviations/lib_markupbase_constructor.py"
+PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy "jit aot" tests/programs/upstream/upstream_html_parser.py tests/programs/library/lib_html_parser.py
 ```
 
 The local probe began from main `c9d1e5964a40972faebac580ca41d0bd59d4f2a2`.

@@ -45,14 +45,14 @@ Archive SHA-256: `ae0ef90b90f6af38b54f1fe6d58662ec33b3cb4b8391958a62416d65423172
 
 ## Validation snapshot
 
-`tests/port_wcwidth_core.py` runs the cases of wcwidth's own test suite for the two functions
+`tests/programs/apps/port_wcwidth_core.py` runs the cases of wcwidth's own test suite for the two functions
 (`tests/test_core.py`, `test_emojis.py`, `test_ambiguous.py` and `test_ucslevel.py` of the sdist,
 run under pytest there) as a program: for each phrase, the width of each character and of the
 phrase. They cover CJK and Katakana, NUL and ESC, combining marks, Balinese, Devanagari, Tamil,
 Kannada, Bengali, Javanese, Burmese and Khmer conjuncts, Hangul jamo, ZWJ emoji sequences, flags
 of 1 to 4 regional indicators, skin tones, VS16, the prepended concatenation marks, ambiguous
 characters at both widths, `ambiguous_width` clamped, `n=` and the ignored `unicode_version`.
-`tests/port_wcwidth_edges.py` takes the edge cases the port met: `wcwidth()` at both ends of every
+`tests/programs/apps/port_wcwidth_edges.py` takes the edge cases the port met: `wcwidth()` at both ends of every
 range of the zero-width, wide and ambiguous tables and one past them (2,587 code points), and at
 every 37th code point up to 0x10FFFF, surrogates included, at both ambiguous widths (histograms
 and a checksum); every C0 and C1 control, alone, and some in text; text whose UTF-8 has the bytes
@@ -103,7 +103,7 @@ compare the C extension, which would mean running a downloaded binary wheel or t
 
 **Build time.** `pystachy build` of a program that imports `wcwidth` and calls `wcwidth()` once
 takes 3.2 s of CPU (3.2 s of wall clock, at load 5 to 6), against 0.15 s for `print(1)`;
-`tests/port_wcwidth_core.py` takes 3.6 s and `tests/port_wcwidth_edges.py` 3.7 s (medians of 3,
+`tests/programs/apps/port_wcwidth_core.py` takes 3.6 s and `tests/programs/apps/port_wcwidth_edges.py` 3.7 s (medians of 3,
 wall clock about the same; 4.0 and 4.2 s of CPU with the compiler collecting every 1,000
 allocations). Of the 20,000 lines of LLVM IR of a test, 10,200 build the port's tables (1,245
 ranges) at import, and 5,700 are `_constants.py`'s import, where `list()` of a tuple and a `for`

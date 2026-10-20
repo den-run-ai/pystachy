@@ -26,7 +26,7 @@ Archive SHA-256: `472872e096eb8df219c23f2689fc336668bdb43d194094b5cc1707e1640acf
 
 ## Validation snapshot
 
-`tests/port_jdcal_convert.py` runs the cases of jdcal's own test suite (`test_jdcal.py` in the
+`tests/programs/apps/port_jdcal_convert.py` runs the cases of jdcal's own test suite (`test_jdcal.py` in the
 sdist, run under pytest there) and the examples of its docstrings as a program: `ipart` (and
 its `-0.0`), `is_leap` tested for truth, 14 dates from the year -4699 (4700 BC) to 9999 in
 both calendars and back through both inverse functions, 11 out-of-range months and days that
@@ -35,7 +35,7 @@ carry over (day 0, month 13, negative months and days), round trips, the fractio
 openpyxl computed them, and the suite's random round trip, 1,000 dates drawn by a linear
 congruential generator instead of `random`. It leaves out the comparison with ERFA's `cal2jd`,
 which needs astropy and numpy, and passes `int(3.5)` where the suite passes 3.5.
-`tests/port_jdcal_extremes.py` runs the edge cases an independent check of the port added:
+`tests/programs/apps/port_jdcal_extremes.py` runs the edge cases an independent check of the port added:
 Julian dates up to 1e18 days and down to -1e15, `-0.0`, fractions next to 0.5 and of 1e-300,
 years of ±10**9, 10**12, ±2**52 and 2.5e16 in both calendars, the last values each function
 takes before a 64-bit int overflows, int arguments to `jd2gcal` and `jd2jcal`, NaN and

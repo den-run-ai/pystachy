@@ -30,7 +30,7 @@ Archive SHA-256: `02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d
 
 ## Validation snapshot
 
-`tests/port_pyaes_cipher.py` runs the known answers of the standards both ways: FIPS-197's
+`tests/programs/apps/port_pyaes_cipher.py` runs the known answers of the standards both ways: FIPS-197's
 Appendix C (the key 00 01 02 ... and the block 00 11 22 ... ff, for each key size, with its
 number of rounds), and the twelve ECB blocks of NIST SP 800-38A F.1, whose three keys are
 FIPS-197's Appendix A examples, with the last round key of each expansion as Appendix A lists
@@ -54,7 +54,7 @@ CPython-hosted compiler and with `PYSTACHY_OPT=-all`.
 
 It is one program rather than two because of its AOT build: building any program that uses
 `pyaes.aes` takes 8.2 to 9.1 s of CPU time, where `print("hello")` takes 0.14 s and
-`tests/port_iniconfig_api.py` 1.0 s. The time is clang's `-O2` over the module's code that
+`tests/programs/apps/port_iniconfig_api.py` 1.0 s. The time is clang's `-O2` over the module's code that
 makes the 15 tables, one function of 3,614 list appends: `pystachy ir` takes 0.02 s, and a
 class of the tables alone takes 7.5 to 8.2 s to build. The JIT run takes 0.26 to 0.28 s of CPU
 time, and the executable 0.002 s. Under `make verify`'s gc-stress stage (the compiler collecting

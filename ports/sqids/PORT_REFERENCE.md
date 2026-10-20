@@ -33,7 +33,7 @@ Archive SHA-256: `5ac08f0c5c9b6814bc2e7c79ee5931e0849d25d95c50e415771b022a44f58a
 
 ## Validation snapshot
 
-`tests/port_sqids_encode.py` runs the cases of sqids's own `tests/test_encoding.py`,
+`tests/programs/apps/port_sqids_encode.py` runs the cases of sqids's own `tests/test_encoding.py`,
 `test_minlength.py` and `test_alphabet.py` as a program:
 
 - the 29 distinct incremental vectors, and `86Rf07` for `[1, 2, 3]`;
@@ -50,7 +50,7 @@ Archive SHA-256: `5ac08f0c5c9b6814bc2e7c79ee5931e0849d25d95c50e415771b022a44f58a
   characters; and all 128 ASCII characters, the longest alphabet. Seven alphabets raise
   errors, two of them the 128 characters with one character twice (the repeated-character alphabet check).
 
-`tests/port_sqids_blocklist.py` runs `tests/test_blocklist.py`, with lists where it passes sets:
+`tests/programs/apps/port_sqids_blocklist.py` runs `tests/test_blocklist.py`, with lists where it passes sets:
 
 - the default, empty and custom blocklists;
 - words that block a whole id, part of an id, or either end of one;
