@@ -53,8 +53,10 @@ and ordering. Bounds errors raise `IndexError` at runtime.
 Optional scalar elements use boxes when needed; widening an immutable tuple to
 optional elements copies its slots rather than reinterpreting numeric bits as pointers.
 
-Runtime-length tuples currently do not support concatenation, repetition,
-membership, dictionary keys, or set elements. Their annotation is distinct
+Runtime-length tuples concatenate (`a + b`, `a += b`) with each other and with fixed tuples
+into a new tuple of one item type, or return the other operand itself where one is empty, as
+CPython does; items of a type and of that type or `None` make a tuple of the latter. They do not
+support repetition, membership, dictionary keys, or set elements yet. Their annotation is distinct
 from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
 `bool`, `str` or optional versions of those types, the objects of iterator classes and

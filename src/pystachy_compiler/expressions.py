@@ -3274,6 +3274,18 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         return Val(self.rt("pys_str_mul" if a.t == "str" else "pys_bytes_mul" if a.t == "bytes" else "pys_list_mul", "ptr", [f"ptr {a.v}", f"i64 {b.v}"]), a.t)
     if op == "+" and is_tuple(a.t) and is_tuple(b.t):
         return self.tuple_([self.tget(a, i) for i in range(len(targs(a.t)))] + [self.tget(b, i) for i in range(len(targs(b.t)))])
+    if op == "+" and (is_vtuple(a.t) or is_vtuple(b.t)) and (is_vtuple(a.t) or is_tuple(a.t)) and (is_vtuple(b.t) or is_tuple(b.t)):
+        # a + b of runtime-length tuples, or of one and a fixed tuple, whose items it takes: a new
+        # tuple of the items of both (pys_vtuple_concat), of one item type
+        t = a.t if is_vtuple(a.t) else b.t
+        if is_vtuple(a.t) and is_vtuple(b.t) and a.t != b.t:
+            # (items of a type and of that type or None: of the latter)
+            ia = targs(a.t)[0]
+            ib = targs(b.t)[0]
+            t = a.t if is_opt(ia) and unopt(ia) == ib else b.t if is_opt(ib) and unopt(ib) == ia else ""
+            if t == "":
+                self.err(f"unsupported operand types for +: {typestr(a.t)} and {typestr(b.t)} (a runtime-length tuple holds items of one type)")
+        return Val(self.rt("pys_vtuple_concat", "ptr", [f"ptr {self.coerce(a, t).v}", f"ptr {self.coerce(b, t).v}"]), t)
     if op == "*" and is_tuple(a.t) and b.t == "int":
         if b.v.startswith("%"):
             self.err(f"{typestr(a.t)} * n needs a constant n (its length is part of its type)")

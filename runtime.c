@@ -2186,6 +2186,18 @@ I pys_vtuple_get(VTuple *t, I index) {
   if (!t) pys_fail("TypeError: 'NoneType' object is not subscriptable");
   return t->a[idx(index, t->len, "IndexError: tuple index out of range")];
 }
+/* a + b: a new tuple of the items of both, or the other operand itself where one is empty, as
+   CPython's tupleconcat gives it */
+VTuple *pys_vtuple_concat(VTuple *a, VTuple *b) {
+  if (!a->len) return b;
+  if (!b->len) return a;
+  if (a->len > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I) - b->len) pys_fail("MemoryError");
+  VTuple *t = pys_alloc(sizeof(VTuple) + (a->len + b->len) * sizeof(I));
+  t->len = a->len + b->len;
+  memcpy(t->a, a->a, a->len * sizeof(I));
+  memcpy(t->a + a->len, b->a, b->len * sizeof(I));
+  return t;
+}
 VTuple *pys_vtuple_slice(VTuple *t, I lo, I hi, I st) {   /* t[lo:hi:st]; all of t is t itself, as in CPython */
   I n = sspan(&lo, hi, &st, t->len);
   if (st == 1 && n == t->len) return t;
