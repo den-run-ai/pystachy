@@ -307,7 +307,11 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
                 self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
             ts.append("null")
     neg = n.s == "is not" or n.s == "!="
-    return self.ptr_cmp("!=" if neg else "==", Val(ts[0], "dyntype"), Val(ts[1], "dyntype"))
+    if not ts[0].startswith("%") or not ts[1].startswith("%"):
+        # (a type named, or one no box holds, is no function's: its DynType is the only one)
+        return self.ptr_cmp("!=" if neg else "==", Val(ts[0], "dyntype"), Val(ts[1], "dyntype"))
+    r = self.rt("pys_dyn_same_type", "i64", [f"ptr {ts[0]}", f"ptr {ts[1]}"])
+    return self.num_cmp("==" if neg else "!=", Val(r, "int"), Val("0", "int"))
 
 
 def gen_refl_type_operand(self, n: Node) -> str:

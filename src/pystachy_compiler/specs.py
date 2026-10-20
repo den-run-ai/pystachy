@@ -699,7 +699,7 @@ RUNTIME: dict[str, str] = {
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
     # -5..256 are constants
     "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A|",
-    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
+    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||","dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
     "dyn.binop": "%ptr:%ptr,%ptr,int|R A rL|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I rL wL rD|", "dyn.unary": "%ptr:%ptr,int|R A|",

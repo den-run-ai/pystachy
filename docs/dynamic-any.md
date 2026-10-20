@@ -161,8 +161,9 @@ and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `hash()`
 (also of a generator), `sorted()`, `min()`, `max()`, `list()`, `str.join()`, `dict.update()`,
 f-strings and `format()`, iteration, unpacking, augmented assignment, `type(x).__name__`,
 `__qualname__` and `__module__`, and `type(x) is C` and `type(x) == type(y)` (exact types: a
-bool's is no int's; a typed `y`'s by the value it holds, `NoneType` for a `list[int] | None` that
-is `None`: `tests/programs/inference/dynany_type_is_value.py`) work on `Any` values with CPython's
+bool's is no int's, and every function's is `function`; a typed `y`'s by the value it holds,
+`NoneType` for a `list[int] | None` that is `None`: `tests/programs/inference/dynany_type_is_value.py`,
+`tests/programs/inference/dynany_type_is_function.py`) work on `Any` values with CPython's
 results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a bool, mixed
 `int`/`float` comparisons are exact, and the error messages are CPython's
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,

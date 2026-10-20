@@ -3248,6 +3248,13 @@ static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) 
    class's values may be None). A comparison method annotated with t declines another value (the
    program's @o.x.<class>) */
 I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
+/* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
+   type): the same DynType, or both a function's or both a bound method's, as each def's boxes
+   have a DynType of their own, but CPython's type of each is function (or method) */
+I pys_dyn_same_type(const DynType *a, const DynType *b) {
+  if (a == b) return 1;
+  return a && b && a->kind == DK_FUNC && b->kind == DK_FUNC && strcmp(a->name->s, b->name->s) == 0;
+}
 /* x as a value of type t, which the compiler expects: its payload (None's is 0) where x has that
    type (pys_dyn_isa), else TypeError, where CPython would not check the annotation
    (docs/dynamic-any.md) */
