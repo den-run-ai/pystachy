@@ -200,8 +200,8 @@ untranslated. Error messages and parsing otherwise follow the upstream code.
 
 CPython's `gettext`, with marked edits. Its table of the plural forms' operators is the dict that
 CPython makes of a tuple bound to the same name first, as a module global has one type here. The
-module imports, so `argparse`, which imports it at its start, can. Its default locale
-directory is made of `sys.base_prefix` (the Pystachy home, see
+module imports, as `argparse` needs at its start (`argparse` has other blockers after it). Its
+default locale directory is made of `sys.base_prefix` (the Pystachy home, see
 [sys](../docs/language/compatibility.md#modules-and-libraries)). `NullTranslations` and its
 methods `gettext()`, `pgettext()`, `add_fallback()`, `info()` and `charset()`, `textdomain()` and
 `bindtextdomain()` work. `optparse` still stops here, as it calls `gettext()` while it is imported.
@@ -218,6 +218,10 @@ Not supported, as compile-time errors:
   which `lib/operator.py` does not apply to an `int`, and for a count of another type find the
   frame to warn from with `sys._getframe()`, which is not supported.
 - `GNUTranslations` of a catalog with a plural form, which calls `c2py()`: it needs `exec()`.
+- A subclass of `NullTranslations`, such as a translation class to add as a fallback.
+  `__init__`'s `fp`, a catalog file, has no concrete type here, so `NullTranslations` is a
+  template class, which a class cannot derive from. `add_fallback()` takes another
+  `NullTranslations`, which answers as the identity.
 
 ## Heapq
 
