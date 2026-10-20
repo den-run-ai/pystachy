@@ -1,3 +1,4 @@
+# a class whose field holds the None a function returns (none_field_import)
 def setup() -> None:
     pass
 

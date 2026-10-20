@@ -794,7 +794,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t in self.classes:
             self.fn_attr_read(o, n.s)
         self.glue_field(o, n.s)
-        return self.getfield(o, self.field(o, n.s), n.s)
+        self.fieldcmp = n is self.cmpnode  # (o.f is None: see none_field)
+        fv = self.getfield(o, self.field(o, n.s), n.s)
+        self.fieldcmp = False
+        return fv
     if k == "index":
         return self.index(n, want)
     if k == "slice":
@@ -3290,6 +3293,7 @@ def gen_compare(self, n: Node) -> Val:
         return self.cmp2(ops[0], self.expr(n.kids[0], w, resultsoft=True), b)
     # (x is None reads a local that only None was assigned to so far, see none_type)
     self.nonecmp = len(ops) == 1 and n.kids[1].kind == "None" and n.kids[0].kind == "name" and (ops[0] == "is" or ops[0] == "is not" or ops[0] == "==" or ops[0] == "!=")
+    self.cmpnode = n.kids[0] if len(ops) == 1 and n.kids[1].kind == "None" and (ops[0] == "is" or ops[0] == "is not") else self.nokey
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.lookup_key(n.kids[0]):
         t = unopt(self.probe_type(n.kids[1]))
         if is_dict(t) or is_set(t):
@@ -3297,6 +3301,7 @@ def gen_compare(self, n: Node) -> Val:
     a = self.expr(n.kids[0], "")
     self.stkkey = self.nokey
     self.nonecmp = False
+    self.cmpnode = self.nokey
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
         # x in range(...): arithmetic, as CPython's range.__contains__ does for ints; an int |
         # None that is None equals no item

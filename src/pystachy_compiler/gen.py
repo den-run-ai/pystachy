@@ -21,6 +21,7 @@ from src.pystachy_compiler.memory_ir import (
 from src.pystachy_compiler.unions import (
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
+    gen_num_union as unions_num_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_uequal as unions_uequal,
@@ -156,6 +157,10 @@ from src.pystachy_compiler.builtins import (
     gen_pwrite as builtins_pwrite,
     gen_reduce as builtins_reduce,
     gen_reduce_item as builtins_reduce_item,
+    gen_comp_end as builtins_comp_end,
+    gen_neumaier as builtins_neumaier,
+    gen_sum_union_item as builtins_sum_union_item,
+    gen_sum_union_end as builtins_sum_union_end,
     gen_reverse_arg as builtins_reverse_arg,
     gen_bytes_ as builtins_bytes_,
     gen_bytes_method as builtins_bytes_method,
@@ -213,6 +218,7 @@ from src.pystachy_compiler.calls import (
     gen_virtual_call as calls_virtual_call,
 )
 from src.pystachy_compiler.containers import (
+    gen_none_container as containers_none_container,
     gen_affix_any as containers_affix_any,
     gen_bool_find as containers_bool_find,
     gen_dkey as containers_dkey,
@@ -265,6 +271,7 @@ from src.pystachy_compiler.conversions import (
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
     gen_floats as conversions_floats,
+    gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
     gen_is_dc as conversions_is_dc,
     gen_isnum as conversions_isnum,
@@ -309,6 +316,16 @@ from src.pystachy_compiler.declarations import (
     gen_fn_attr_read as declarations_fn_attr_read,
     gen_glue_field as declarations_glue_field,
     gen_field as declarations_field,
+    gen_field_early as declarations_field_early,
+    gen_field_fill as declarations_field_fill,
+    gen_field_modfill as declarations_field_modfill,
+    gen_field_guess as declarations_field_guess,
+    gen_field_root as declarations_field_root,
+    gen_field_type as declarations_field_type,
+    gen_none_field as declarations_none_field,
+    gen_none_field_store as declarations_none_field_store,
+    gen_refine_field as declarations_refine_field,
+    gen_set_elsewhere as declarations_set_elsewhere,
     gen_frozen as declarations_frozen,
     gen_frozen_store as declarations_frozen_store,
     gen_dc_field as declarations_dc_field,
@@ -707,6 +724,13 @@ from src.pystachy_compiler.optimizations import (
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
     gen_same as optimizations_same,
+    gen_tag_read as optimizations_tag_read,
+    gen_ufresh as optimizations_ufresh,
+    gen_uleaves as optimizations_uleaves,
+    gen_unionslots as optimizations_unionslots,
+    gen_upaid as optimizations_upaid,
+    gen_uparts as optimizations_uparts,
+    gen_usplits as optimizations_usplits,
 )
 from src.pystachy_compiler.program import (
     gen_body_effect as program_body_effect,
@@ -828,6 +852,11 @@ from src.pystachy_compiler.templates import (
 )
 from src.pystachy_compiler.utils import RtFn, fxmask
 from src.pystachy_compiler.variables import (
+    gen_none_extend as variables_none_extend,
+    gen_global_setters as variables_global_setters,
+    gen_none_arms as variables_none_arms,
+    gen_none_global as variables_none_global,
+    gen_none_global_store as variables_none_global_store,
     gen_adopt as variables_adopt,
     gen_ahead as variables_ahead,
     gen_applies as variables_applies,
@@ -1021,6 +1050,12 @@ class Gen:
         self.soft = Node("", "", 0)  # a display compared with a value: what it holds widens the type expected of it (see wider)
         self.nokey = Node("", "", 0)
         self.stkkey = self.nokey  # a tuple display that a lookup takes as its key (lookup_key): made in the frame
+        self.cmpnode = self.nokey  # the operand of x is None (is not None) being compiled (see none_field)
+        self.fieldcmp = False  # the field read being compiled is that operand
+        self.nonereads: dict[str, str] = {}  # Class.field -> where it was read as None, the only value it gets (none_field)
+        self.fieldbusy: dict[str, bool] = {}  # Class.field whose type none_field is looking for
+        self.attrvals: dict[str, list[Node]] = {}  # attribute name -> the values the program's code stores to it (attr_values)
+        self.attrown: dict[str, list[Node]] = {}  # and the class statement whose method stores each to its self (or nokey)
         self.retseen: dict[str, bool] = {}  # templates' functions a call used the return type of while they were compiled
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
@@ -1574,6 +1609,9 @@ class Gen:
     def floats(self, v: Val) -> Val:
         return conversions_floats(self, v)
 
+    def ufloats(self, v: Val) -> Val:
+        return conversions_ufloats(self, v)
+
     def is_dc(self, t: str) -> bool:
         return conversions_is_dc(self, t)
 
@@ -1841,6 +1879,36 @@ class Gen:
     def field(self, o: Val, name: str, store: bool=False) -> Val:
         return declarations_field(self, o, name, store)
 
+    def field_root(self, ci: ClassInfo, name: str) -> ClassInfo:
+        return declarations_field_root(self, ci, name)
+
+    def refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
+        return declarations_refine_field(self, ci, name, t)
+
+    def none_field(self, cls: str, name: str, cmp: bool) -> str:
+        return declarations_none_field(self, cls, name, cmp)
+
+    def field_fill(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_fill(self, root, name)
+
+    def field_guess(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_guess(self, root, name)
+
+    def field_modfill(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_modfill(self, root, name)
+
+    def field_early(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_early(self, root, name)
+
+    def field_type(self, c: str, name: str) -> str:
+        return declarations_field_type(self, c, name)
+
+    def set_elsewhere(self, root: ClassInfo, name: str) -> bool:
+        return declarations_set_elsewhere(self, root, name)
+
+    def none_field_store(self, o: Val, name: str, v: Val) -> None:
+        return declarations_none_field_store(self, o, name, v)
+
     def fgep(self, o: Val, i: int) -> str:
         return declarations_fgep(self, o, i)
 
@@ -1915,6 +1983,24 @@ class Gen:
 
     def none_read(self, name: str) -> str:
         return variables_none_read(self, name)
+
+    def none_extend(self, name: str) -> None:
+        return variables_none_extend(self, name)
+
+    def none_container(self, e: Node) -> Val:
+        return containers_none_container(self, e)
+
+    def none_global(self, name: str) -> str:
+        return variables_none_global(self, name)
+
+    def none_arms(self, name: str) -> str:
+        return variables_none_arms(self, name)
+
+    def global_setters(self, name: str) -> list[FnInfo]:
+        return variables_global_setters(self, name)
+
+    def none_global_store(self, name: str, v: Val) -> str:
+        return variables_none_global_store(self, name, v)
 
     def none_type(self, name: str) -> str:
         return variables_none_type(self, name)
@@ -2301,6 +2387,27 @@ class Gen:
 
     def dictfuse(self, fn: IFn) -> int:
         return optimizations_dictfuse(self, fn)
+
+    def unionslots(self, fn: IFn) -> int:
+        return optimizations_unionslots(self, fn)
+
+    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_usplits(self, fn, defs, v, seen)
+
+    def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
+        return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
+
+    def uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
+        return optimizations_uleaves(self, fn, uses, i, split)
+
+    def ufresh(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_ufresh(self, fn, defs, uses, v, seen)
+
+    def upaid(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], addr: str, split: dict[str, Ins]) -> bool:
+        return optimizations_upaid(self, fn, defs, uses, addr, split)
+
+    def tag_read(self, i: Ins) -> bool:
+        return optimizations_tag_read(self, i)
 
     def canon(self, vs: Values, v: str) -> str:
         return optimizations_canon(self, vs, v)
@@ -3379,6 +3486,18 @@ class Gen:
     def reduce(self, name: str, args: list[Node], stt: str) -> Val:
         return builtins_reduce(self, name, args, stt)
 
+    def comp_end(self, acc: str, comp: str) -> str:
+        return builtins_comp_end(self, acc, comp)
+
+    def neumaier(self, acc: str, comp: str, x: str) -> None:
+        return builtins_neumaier(self, acc, comp, x)
+
+    def sum_union_item(self, r: Reduce, v: Val) -> None:
+        return builtins_sum_union_item(self, r, v)
+
+    def sum_union_end(self, r: Reduce) -> Val:
+        return builtins_sum_union_end(self, r)
+
     def reduce_item(self, r: Reduce, e: Node) -> None:
         return builtins_reduce_item(self, r, e)
 
@@ -3600,6 +3719,9 @@ class Gen:
 
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)
+
+    def num_union(self, t: str) -> bool:
+        return unions_num_union(self, t)
 
     def value_union(self, t: str) -> bool:
         return unions_value_union(self, t)
