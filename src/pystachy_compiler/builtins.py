@@ -1982,12 +1982,17 @@ def gen_pwrite(self, fd: str, fv: str, s: str, fo: Val) -> None:
         # file.write(s): what it returns is not used
         self.call(mk("call", "", self.line, [mk("attr", "write", self.line, [self.vnode(fo)]), self.vnode(Val(s, "str"))]), "")
     elif fv != "":
-        self.rt("pys_file_write", "i64", [f"ptr {fv}", f"ptr {s}"])
+        self.rt("pys_file_put", "void", [f"ptr {fv}", f"ptr {s}"])
     else:
         self.rt("pys_write", "void", [f"ptr {s}", f"i64 {fd}"])
 
 def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> Val:
     # (first: s.split(...)[0], which index() asks for: only the first part, a str)
+    # o.m(x) as a statement, whose value is dropped: the call that statements.py compiles as the
+    # statement's expression, with its argument (mcall stays as it was for a call within x, or
+    # after the statement, of a method value w = o.m)
+    mc = self.mcall
+    dropped = mc is not None and mc is self.stmtexpr and len(args) == 1 and len(mc.kids) == 2 and args[0] is mc.kids[1]
     if is_set(o.t):
         return self.smethod(o, m, args)
     if is_list(o.t) and m == "sort":
@@ -2239,6 +2244,10 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     if bk.t != "":
         self.bool_find(o.v, bk, av[1][4:])
     x = self.key_fx(K) if base == "dict" else ""  # (Ins.x of a lookup: U? where the keys are objects)
+    if key == "file.write" and dropped:
+        # f.write(s) as a statement: what it returns, the number of s's characters, is not counted
+        self.rt("pys_file_put", "void", av)
+        return Val("null", "None")
     if kx.t != "":
         res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x)
     else:
