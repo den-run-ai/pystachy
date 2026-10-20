@@ -3000,10 +3000,11 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
     # Compare concrete runtime types, including None. Both operands matter: Python gives
     # the right operand's reflected comparison priority when its class is a strict subtype.
     # Each pair of the operands' alternatives (cmp_alts) is compiled as concrete_cmp compiles
-    # it, but pairs whose code is the same (cmp_key) share one arm, and alternatives of a whose
-    # pairs share arms throughout share their tests of b: subclasses that inherit one method
-    # compile to an arm for each call it makes, not one for each pair of classes (#625). The
-    # arms are compiled in the order of the first pair of each, a's alternatives outermost.
+    # it (cmp_widen: a template's parameter takes the operand as its static type), but pairs
+    # whose code is the same (cmp_key) share one arm, and alternatives of a whose pairs share
+    # arms throughout share their tests of b: subclasses that inherit one method compile to an
+    # arm for each call it makes, not one for each pair of classes (#625). The arms are
+    # compiled in the order of the first pair of each, a's alternatives outermost.
     xs = self.cmp_alts(a)
     ys = self.cmp_alts(b)
     for side in range(2):
@@ -3022,15 +3023,16 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
     for x in xs:
         row: list[int] = []
         for y in ys:
-            k = self.cmp_key(op, x, y)
+            w = self.cmp_widen(op, x, y, a.t, b.t)
+            k = self.cmp_key(op, w[0], w[1])
             if k not in arm_of:
                 arm_of[k] = len(keys)
                 keys.append(k)
-                pairs.append([x, y])
+                pairs.append(w)
             elif x.t != "None" and y.t != "None" and (pairs[arm_of[k]][0].t == "None" or pairs[arm_of[k]][1].t == "None"):
                 # (the arm passes the operand, which is None where a None alternative's pair
                 # goes there, rather than None, which it would pass to all of them)
-                pairs[arm_of[k]] = [x, y]
+                pairs[arm_of[k]] = w
             row.append(arm_of[k])
         s = ",".join([str(i) for i in row])
         if s not in row_of:
@@ -3100,6 +3102,30 @@ def gen_cmp_alts(self, v: Val) -> list[Val]:
     for c in cs:
         alts.append(Val(v.v, c))
     return alts
+
+def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
+    # pair x, y of inherit_cmp's alternatives of operands of static types at and bt, as
+    # concrete_cmp is to compile it: where the method it calls takes the other operand as a
+    # template's parameter (other: object, or no annotation), that operand as its static type
+    # rather than its class, if the pair of the receiver's class and that type (one of the
+    # operand's alternatives) calls the same method. That pair compiles that instance anyway,
+    # and it takes an object of any of the type's classes, so that the method is compiled once
+    # for each receiver class, not once for each pair of classes (#625). Else x, y
+    p = self.cmp_pick(op, x.t, y.t)
+    if len(p) == 0:
+        return [x, y]
+    lhs = x if p[0] == "a" else y
+    rhs = y if p[0] == "a" else x
+    st = bt if p[0] == "a" else at
+    if rhs.t == st or rhs.t not in self.classes or st not in self.classes or not self.derives(rhs.t, st) or self.cmp_method(lhs.t, p[1], st) == "":
+        return [x, y]
+    f = self.classes[lhs.t].methods[p[1]]
+    if len(f.ptypes) != 2 or f.ptypes[1] != "" or f.bad != "":
+        return [x, y]
+    q = self.cmp_pick(op, x.t, st) if p[0] == "a" else self.cmp_pick(op, st, y.t)
+    if len(q) != 3 or q[0] != p[0] or q[1] != p[1] or q[2] != p[2]:
+        return [x, y]
+    return [x, Val(rhs.v, st)] if p[0] == "a" else [Val(rhs.v, st), y]
 
 def gen_cmp_key(self, op: str, a: Val, b: Val) -> str:
     # what concrete_cmp(op, a, b) compiles, for alternatives a and b of inherit_cmp's operands:

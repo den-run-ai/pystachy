@@ -74,7 +74,9 @@ Ordinary single-inheritance hierarchies carry a class tag. Base-typed instance-m
 select a concrete implementation, then reuse method specialization for that receiver.
 A comparison tests both operands' classes (a `switch` on an ordinary tag), but compiles
 each distinct call once: pairs of classes that call one method instance, on the same
-operand, share its code.
+operand, share its code. A method that takes the other operand as a template's parameter
+(`other: object`) takes it as the type the comparison declares, so that it is compiled
+once for each receiver's class.
 Inherited fields keep the base layout; unrelated classes retain their existing layout.
 Explicit base calls and `super()` select a body directly while preserving the receiver.
 
