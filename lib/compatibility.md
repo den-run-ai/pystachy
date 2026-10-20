@@ -395,6 +395,36 @@ CPython.
 - Where a buffer class has `read1()`, its `read()` must take a size. A subclass's `read1()`,
   `write()` or `tell()` must also be its base class's.
 
+`IncrementalNewlineDecoder` is the C type's universal-newline decoder (`Modules/_io/textio.c`),
+for `decoder=None`: `decode()` takes `str` input, holds a final `\r` back until the next call or a
+final one, records the kinds of newline it decodes and, with `translate` true, makes `\r\n` and
+`\r` `\n`. `getstate()`, `setstate()`, `reset()`, `newlines` and the truth tests of `translate`
+and `final` are CPython's ([test](../tests/lib_io_newline_decoder.py)). `text_encoding()` gives its
+argument, or for `None` `"utf-8"` in UTF-8 mode, which the runtime's rule above turns on in the C
+and POSIX locales, and `"locale"` otherwise; Pystachy reads no `PYTHONWARNDEFAULTENCODING`, so it
+never warns. `open` and `BlockingIOError` are the builtins, and `DEFAULT_BUFFER_SIZE` is 8192.
+
+- A decoder object, which CPython's decodes `bytes` input with first, raises
+  `NotImplementedError` ([deviation](../tests/deviations/lib_io_newline_decoder_object.py)), and
+  `bytes` input, for which CPython raises `TypeError`, is a compile-time error
+  ([error test](../tests/errors/lib_io_newline_decoder_bytes.py)).
+- `newlines` raises `NotImplementedError` once more than one kind of newline has been decoded,
+  where CPython's is a tuple of them, as `TextIOWrapper`'s does
+  ([deviation](../tests/deviations/lib_io_newline_decoder_tuple.py)).
+
+`_io` is `_pystachy__io`, which Pystachy loads for `import _io`, where CPython imports the C module
+that its `io` is a layer over. It has CPython's docstring and `io`'s `StringIO`, `BytesIO`,
+`TextIOWrapper`, `IncrementalNewlineDecoder`, `text_encoding()`, `open`, `BlockingIOError` and
+`DEFAULT_BUFFER_SIZE` ([test](../tests/lib_io_cmodule.py)). Its classes are `io`'s, and their module
+is `_io`, as CPython's are, through either module: `type(x).__module__` and an object's default
+`repr()` name `_io` ([test](../tests/lib_io_type_module.py)). `FileIO`, the `Buffered*` classes and
+`open_code()` need binary files, which `open()` does not make
+([#493](https://github.com/den-run-ai/pystachy/issues/493)); the `_IOBase` classes, from which
+`io`'s do not derive, and `UnsupportedOperation` are not there either. A use of any is a
+compile-time error ([error test](../tests/errors/lib_io_open_code.py),
+[another](../tests/errors/lib_io_fileio.py)). With `_io`, `importlib` stops next at the missing
+`_warnings`, and then needs `marshal` and CPython's runtime import machinery.
+
 ## Csv
 
 The module provides `reader`, `writer`, `DictReader`, `DictWriter`, `Dialect`,
@@ -1097,6 +1127,58 @@ functions are templates: each call's argument types make its code
   function cannot take one ([error test](../tests/errors/lib_itertools_zip_argument.py)); it can
   take a generator expression over them. Ints are 64-bit: `count()` past `2**63 - 1` raises
   `OverflowError`, where CPython's ints grow.
+
+## Warnings
+
+CPython's `warnings.py`, with marked edits, which decide as CPython's C module `_warnings` does
+(`Python/_warnings.c`), as CPython runs that one: the registries, `warn()`'s checks of its
+arguments and the types of `warn_explicit()`'s file and line. `warn()` and `warn_explicit()` of a
+`str` or of a warning (also of a class of the program), the filters (`simplefilter()`,
+`filterwarnings()` by message, category, module and line, `resetwarnings()` and
+`sys.warnoptions`, read as the module is imported) and their actions, `catch_warnings()` (also
+`record=True` and `action=...`), `formatwarning()`, `showwarning()` to a file and `_deprecated()`
+work. The module imports `re`, which its default filters need, and `string`'s `Formatter`, which
+formats `_deprecated()`'s message.
+
+- `warn()` shows a warning at `<sys>`, line 0, as Pystachy has no frames (`sys._getframe()`):
+  CPython gives that location where the stack is shallower than `stacklevel`, and otherwise the
+  file and line of the code that warns, with its source line. Every warning is the main
+  program's: its module is `__main__`, so that the default filters show a `DeprecationWarning`
+  as CPython shows one that the main program's code causes, and its registry is the main
+  program's, so that the `default` action shows a text and category once in the program, where
+  CPython shows it once per location
+  ([deviation](../tests/deviations/lib_warnings_location.py)).
+- No warning shows a source line, as there is no `linecache`: CPython shows the line of a file
+  that `warn_explicit()` names where the file exists. `module_globals` is not read.
+- A registry's keys are `(text, category, lineno)` tuples, as a dict's keys have one type:
+  CPython's `(text, category)` key has a line number that no C int is, and so has the key of the
+  filters version, `version` in CPython; a value is 1 for `True`. The default filter's module is
+  the pattern `re.compile('__main__\\Z')`, which matches the module name `__main__` alone, as the
+  str `'__main__'` that CPython's C module keeps does
+  ([test](../tests/lib_warnings_main_filter.py)); `warnings.filters` shows the pattern (same
+  deviation test).
+- A message that is neither a `str` nor a warning raises `TypeError`, where CPython takes the
+  object itself as the warning's text; `showwarning()` and `formatwarning()` given a `str` make a
+  warning of its category of it, which a recorded message holds, where CPython keeps the `str`
+  ([deviation](../tests/deviations/lib_warnings_message_type.py)).
+- `sys.warnoptions` names the builtin warning categories (also as `builtins.NAME`): another name
+  is an unknown category, and a dotted one names a module, which is not imported by name, so it
+  is an invalid module name.
+
+Not supported, as compile-time errors:
+- Replacing `showwarning()` or `formatwarning()`, as a module's function is bound once
+  ([error test](../tests/errors/lib_warnings_showwarning.py)), and `catch_warnings(module=...)`,
+  as a module is not a value.
+- A recorded message's `file` and `source`
+  ([error test](../tests/errors/lib_warnings_message_file.py)).
+- A filter of a tuple of categories, which CPython's `issubclass()` takes
+  ([error test](../tests/errors/lib_warnings_category_tuple.py)).
+- A `skip_file_prefixes` tuple of a `str` and an item of another type, as `warn()` checks its
+  items one by one ([error test](../tests/errors/lib_warnings_skip_prefixes_mixed.py)): CPython
+  raises `TypeError` for it where the call runs, as for a tuple of other items alone
+  ([test](../tests/lib_warnings_skip_prefixes.py)).
+- `deprecated`, which sets the attribute `__deprecated__` of the function it decorates and wraps
+  it with `functools.wraps()` ([error test](../tests/errors/lib_warnings_deprecated.py)).
 
 ## Opcode
 

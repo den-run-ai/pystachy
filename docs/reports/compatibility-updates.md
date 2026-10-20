@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `c71d4ca5413645c8094f306d727a8f18059bb722`.
+**Latest evaluated main:** `be822311f751a32cb75660ac41b914ea1a52bf6a`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -3310,3 +3310,283 @@ CI**. No full local `make verify`, full recording rerun, unmodified CPython
 regrtest, general NumPy/PyPI census or dedicated performance/memory experiment was
 run. Optional broader testing stopped after the concrete callback/collector risks
 and adjacent controls above were resolved.
+
+## 2026-10-19 — #725 warnings and #740 regex specialization
+
+Evaluated consecutive main revisions
+[`d24710304245efa101bb8d44010174c7aa99ee90`](https://github.com/den-run-ai/pystachy/commit/d24710304245efa101bb8d44010174c7aa99ee90)
+([#725](https://github.com/den-run-ai/pystachy/pull/725)) and
+[`c8439d40b749817077d6565d0735a87ee6c90c0c`](https://github.com/den-run-ai/pystachy/commit/c8439d40b749817077d6565d0735a87ee6c90c0c)
+([#740](https://github.com/den-run-ai/pystachy/pull/740)), following `c71d4ca5`.
+Both are verified ancestors of current main. Compiler/runtime sources are unchanged
+at both checkpoints: the verified #694 compiler is reused, with build source
+`c71d4ca5413645c8094f306d727a8f18059bb722` and SHA-256
+`8f9e8d02d7a9311ef396f4e32b684afa98fe235bafb51575304be2468b0c3ef7`.
+CPython **3.13.16**, LLVM **18.1.3**, and the same **522 upstream source hashes**
+are retained. Read #491/#616 and both PRs' review discussions before testing.
+
+### Warnings: new execution surface and first-error progress
+
+[Warnings evidence](compatibility-2026-10-19-warnings.json) retains exact commands,
+fixtures, independent programs, negative controls and old/new compilation results.
+
+- **18 cases / 29 checks** in each of native JIT/AOT, program GC stress,
+  optimizations off and CPython-hosted compilation: **116/116 pass**. Nine
+  CPython reference recordings match stdout/status and the last stderr line.
+  Eleven programs also pass IR checks and LLVM assembly.
+- An independent matrix covers six filter actions, three categories, repeated
+  locations, message/module/line matching and nested recording-context restoration.
+  Stressed and unoptimized JIT/AOT match CPython's complete stdout/stderr.
+- Scratch-only controls removing the reviewed `__main__` filter anchor and
+  skip-prefix element validation are both detected by retained fixtures. See
+  [filter review](https://github.com/den-run-ai/pystachy/pull/725#discussion_r4319721910)
+  and [prefix review](https://github.com/den-run-ai/pystachy/pull/725#discussion_r4319721921).
+- **3,178-program** compile comparison: **3,166 identical**, seven warning
+  fixtures become accepted (five positives, two explicit deviations), and five
+  rejection diagnostics advance. No accepted-to-rejected transition; no retained
+  port or benchmark IR changes.
+- Fresh isolated `--metadata` sweeps improve **143/468 → 144/467 native** and
+  **145/468 → 146/467 stub-assisted**, zero timeouts. The denominator decreases
+  because `warnings` moves into the overlay: **54 → 55 exclusions**. Newly
+  successful import compilation is **`wsgiref.validate`**. Eleven other first
+  errors advance, including `code`, `codeop`, `queue`, `sched`, `threading`,
+  `traceback` and `sysconfig`; their remaining blockers are preserved in JSON.
+
+This is a **major semantic/structural port**, not an annotation-only adaptation.
+`warn()` has no Python stack frames and uses `<sys>:0` with a shared main registry;
+`warn_explicit()` accepts explicit location. Warning records/registries are typed,
+and recording contexts swap a static log. Replacement hooks, arbitrary messages,
+category tuples, the deprecated decorator, recorded file/source and arbitrary
+category imports remain outside this port. Intrinsic bool/regex warning emission
+is still absent; the retained datetime/urllib warning-consumer rejections remain.
+
+### Regex specialization: dispatch proven, not inferred from output
+
+[Regex evidence](compatibility-2026-10-19-regex-specialization.json) separates
+hosted generator checks, native executions and adapted benchmarks.
+
+| Layer | Measured result |
+|---|---|
+| Hosted tooling | **14/14 unit tests**; seed 19, 1,000 candidates: 988 valid patterns, 987 specialized, **313,910 matcher comparisons**, zero declines/failures. These are CPython-hosted, not native executions. |
+| Native recordings | **129/129** selected checks; **92/92** additional changed-IR checks. Six focused cases pass 12 checks each under GC stress, optimizations off and hosted compilation. Total retained checks: **257/257**. |
+| CPython references | **45/45** selected positive recordings match. |
+| Instrumented dispatch | JIT and AOT each make **2,815 calls**, use **28 generated matchers**, and exercise **107 fallback declines**. Removing trace lines reproduces the 616-line recording. Disabling lookup preserves ordinary output but removes all dispatch markers: output parity alone would not prove specialization. |
+| Adapted benchmark correctness | `regex_effbot` (1 loop, checksum 636833), `regex_dna` (1 loop, 1,000 FASTA units; complete checksum tuple retained), and `regex_v8` (1 loop, checksum 369067584475) match CPython in default and specialized JIT/AOT. Generated modules contain 17, 21 and 231 matchers respectively. |
+| Compile/import controls | **3,179 programs: 3,072 identical, 107 IR differences, no exit-status transitions**. All affected retained executable cases and the three benchmarks above pass. Native/stub sweeps remain **144/467 / 146/467**, 55 exclusions, zero timeouts, identical per-module first errors to #725. |
+
+This is opt-in profile-guided **AOT pattern-value specialization**, not online JIT
+tiering or general runtime `Any`. Decoded multibyte subjects, missing/mismatched
+patterns, conditional group references and deep repeats retain interpreter
+fallback. One generated fixture pattern is exercised only by CPython's fnmatch,
+not by the native port; it is not counted among the 28 observed native matchers.
+The already-documented recorder traceback gap is independently reproduced with
+`GeneratorExit`: profile collection succeeds, but tool/runpy frames remain in
+stderr. Reuse the [existing review thread](https://github.com/den-run-ai/pystachy/pull/740#discussion_r4320067995);
+no duplicate issue is filed.
+
+Replay scripts are embedded in the JSON. Run `audit-725.py` modes `references`,
+`checks`, `ir`, `matrix`, `negative`, `oracle`, `sweeps`; run `audit-740.py` modes
+as recorded by each command, including `extras` after `oracle`, then the shared
+assembler. Both sweeps use `tools/import_sweep.py -j 2 --metadata ...` with the
+same pinned CPython stdlib path; `--stubs` remains diagnostic, not native support.
+Fresh historical implementation-head workflow summaries show CI, Lint, Packages
+and Installation successful ([#725 CI](https://github.com/den-run-ai/pystachy/actions/runs/39341833933),
+[#740 CI](https://github.com/den-run-ai/pystachy/actions/runs/39344132702)); these
+are not combined-main or audit-head CI. Shared-host concurrent durations are
+operational logs only: **no speedup, regression or peak-memory inference**.
+No full local verify, CPython regrtest or general NumPy/PyPI census was run.
+Historical adaptation assessments and baseline reports/JSON are unchanged.
+
+## 2026-10-19 — #738 numeric-union reductions and #736 None inference
+
+Evaluated combined main
+[`f9eaba8f4d1ff9aef96b3351d74db4c2a0df19f3`](https://github.com/den-run-ai/pystachy/commit/f9eaba8f4d1ff9aef96b3351d74db4c2a0df19f3):
+[#738](https://github.com/den-run-ai/pystachy/pull/738) at
+`9503bffbaa8e95c30690e03413421a622f7f3be3`, then
+[#736](https://github.com/den-run-ai/pystachy/pull/736), after the completed #740
+checkpoint. [Evidence and replay drivers](compatibility-2026-10-19-union-none.json)
+retain both merge SHAs, the changed-file selection and each build identity.
+
+Rebuilt compiler/runtime with **CPython 3.13.16 / LLVM 18.1.3**. The intermediate
+#738 build passes its fixed points (**652,744 / 18,851 IR lines**) and runtime/IR/C
+contracts. The final #736 build passes all three byte-identical compiler stages
+(**663,506 IR lines**) and runtime stages (**18,851 lines**). Final binary SHA-256:
+`cc299a6f18dd3ba2e71094f1e05c802c03515c9c1dcd651cda39a44a56b8de89`.
+Executions and sweeps below measure the final combined tree, not two independent
+complete audits. Previous binary build source remains `c71d4ca5`.
+
+### Measured improvements and boundaries
+
+- The exact dated `mixed_numeric_sum` probe now prints **6.5** in JIT and AOT,
+  matching CPython; the old compiler rejects it. Retained fixtures exercise
+  numeric-union sum/generator sum, min/max, sort, exact int/float comparisons in
+  containers, `math.fsum()` and `math.dist()`.
+- **201 selected cases / 394 checks per mode**, with native JIT/AOT, GC stress,
+  all optimizations off and hosted compilation; **1,576/1,576 pass**. Two extra
+  changed-IR cases pass another **4/4** checks. **193/193 CPython references**
+  agree with recordings. Four retained ordered-set/sortedcontainers workloads are
+  included as adapted ports, not unmodified upstream suites.
+- Independent numeric matrix: **196 ordered pairs** around ±2**53, signed zero,
+  infinities and NaN, plus **16 sum/distance rows**. In each stressed/unoptimized
+  JIT/AOT execution, **211 rows match exactly** and **one matches the documented
+  NaN-identity deviation**: shared NaN payloads do not gain identity through a
+  union box, unlike CPython's identity shortcut in container comparisons.
+  No tolerance or broad output normalization hides other differences.
+- **27 None fixtures plus two reduction programs** pass IR checks and LLVM
+  assembly. Runtime contracts agree for **459 entries, 70 exception classes and
+  171 functions**; `runtime.c` passes clang `-Wall -Wextra -Werror` syntax checks.
+- **3,203-program compile comparison: 3,172 identical**, 24 newly accepted
+  fixtures (22 None-related plus two reduction programs), four rejection
+  diagnostics advance, and three already-accepted cases change IR. **No
+  accepted-to-rejected transition**. All changed executable fixtures are covered.
+
+None inference now handles tested module globals, fields across inheritance,
+later typed setters, and first fills of None-valued lists/dicts, including the
+reviewed `+=` and chained-multiplication fixes. This does not establish arbitrary
+dynamic storage: numeric bulk extension of a None list still needs annotations,
+and templates or reads before a useful type can be found retain diagnostics.
+The independently reproduced **typed non-self unrelated receiver** limitation is
+already documented in [#736's review](https://github.com/den-run-ai/pystachy/pull/736#discussion_r4319956547):
+an unrelated `set_b(b: B)` can still prevent reading `A.value` as None. The
+explicit optional annotation remains the workaround; no duplicate issue filed.
+
+[#596](https://github.com/den-run-ai/pystachy/issues/596) remains open: the tested
+list reductions improve, but direct scalar union ordering still requires
+narrowing, and the tracker includes other consumers. The matrix's initial scalar
+comparison rejection is preserved, not reclassified as supported behavior.
+
+### Imports versus APIs and upstream workloads
+
+Fresh sweeps over the unchanged **522-source inventory / 55 exclusions** improve
+**144/467 → 146/467 native**, **146/467 → 148/467 stub-assisted**, zero timeouts,
+no successful imports lost. **`email.charset` and `reprlib`** newly compile as
+isolated imports. Fifteen other email modules advance from the None-dictionary
+blocker to using `Charset` as a class value.
+
+The newly accepted imports do **not** establish their general APIs. With the same
+CPython overlay, CPython executes both independent API programs, but native JIT
+and AOT compilation still reject:
+
+| API | Next observed blocker |
+|---|---|
+| `reprlib.repr([1, 2, 3])` | `type(x)` as a class value in `Repr.repr1()` (#7/#486) |
+| `email.charset.Charset("utf-8")` | Cannot infer `input_charset` field type |
+
+Three existing **adapted** benchmarks match CPython in JIT/AOT: `float` (one loop,
+1,000 points), `go` (one loop, checksum **0 / 21121**) and `spectral_norm` (one loop,
+**1.6236422398020804**, tool's existing numeric comparison policy). The pinned
+pyperformance **1.14.0** sdist has SHA-256
+`91f74393997b604375ad5b79bf569a24076d70181c076a53abad5383a238a8aa`.
+An affected-source census of its unadapted `float` and `go` sources, with runner
+replacement, still rejects both: `Point.x` inference and `pos_child` inference,
+respectively. This is **0/2 compiled upstream sources**, not a fresh full 52-source
+census or executed upstream suite. All timings are concurrent shared-host
+correctness diagnostics; no performance or memory claim.
+
+### Audit attempts, replay and CI
+
+Preserved incomplete attempts include missing CPython fixture import paths, a
+scratch `reprlib.py` shadowing mistake and omitted stdlib overlay, bool members
+in an explicit int/float matrix, scalar union ordering, and an exact assertion
+that exposed the already-documented NaN deviation. Corrected references and API
+setup were rerun; the unsupported shapes and deviation remain explicit. A wrapper
+replacement also briefly supplied multiple arguments to `Path.glob()` after the
+extra execution checks; corrected invocation reran the four checks and 27 IR
+programs. These are not concealed merged-source regressions.
+
+Replay the embedded `audit-736.py` modes `build`, `references`, `checks`,
+`contracts`, `oracle`, `extras`, `sweeps`; `audit-736-probes.py` modes `matrix`,
+`api`, `census`, `bench`; then the assembler. The imported helper drivers are
+included. Historical failed attempts are preserved by the assembler but not
+recreated by the corrected scripts. Fresh implementation-head workflow summaries
+show CI/Lint/Packages/Installation successful for
+[#738](https://github.com/den-run-ai/pystachy/actions/runs/39340512005) and
+[#736](https://github.com/den-run-ai/pystachy/actions/runs/39342529887), not combined
+main/audit-head CI. No full local verify, CPython regrtest, general NumPy/PyPI
+census or dedicated performance/memory experiment was run.
+
+## 2026-10-19 — #689 native `_io` stand-in
+
+Evaluated main
+[`b85f0f3c00f7c6a65892b3a90ebe391b606a1b9b`](https://github.com/den-run-ai/pystachy/commit/b85f0f3c00f7c6a65892b3a90ebe391b606a1b9b),
+merging [#689](https://github.com/den-run-ai/pystachy/pull/689) after #736.
+[Evidence and replay drivers](compatibility-2026-10-19-io-standin.json) retain
+the exact commands, input hashes, compiler identity, outputs and first-error deltas.
+
+Rebuilt with **CPython 3.13.16 / LLVM 18.1.3** because the compiler's stand-in
+table changed. All three compiler stages agree (**663,515 IR lines**); runtime
+stages agree (**18,851 lines**). Compiler binary SHA-256:
+`f2f64dd2eab1fa930551f5ab7dc3265eac64c337400f3a8b2afab7445682cd37`.
+Compiler build source and evaluated source are both `b85f0f3c`; the old binary's
+build source is `f9eaba8f`.
+
+- **32 selected cases / 50 checks per configuration** pass under native JIT/AOT,
+  GC stress, optimizations off and hosted compilation. Six additional changed-IR
+  cases pass **12/12** native checks: **212/212 retained checks** in total.
+  **14/14 CPython references**, **18 IR programs** and runtime contracts pass.
+- The independent decoder matrix covers two translation settings, two final
+  settings and all ordered pairs of seven chunks, including split CR/LF and
+  multibyte text, plus reset/setstate: **392 output rows** match in each of four
+  stressed/unoptimized JIT/AOT runs. This is **normalized** parity: CPython's
+  multiple-newline tuple and the native port's documented `NotImplementedError`
+  both render `multiple`. Retained deviation fixtures separately verify the
+  actual API difference; it is not counted as exact tuple support.
+- `tools/io_check.py` passes **200,769 CPython-hosted comparisons**, zero
+  differences. Those execute the port under CPython, not the native compiler,
+  and are kept separate from the native matrix above.
+- **3,211-program comparison: 3,186 identical**, five newly accepted fixtures
+  (including two explicit deviations), three rejection diagnostics advance and
+  17 accepted programs change IR. No acceptance regression. All affected retained
+  executables are covered. The sole affected benchmark, adapted `hexiom`, matches
+  CPython's complete solved board in JIT/AOT (one loop, default level 25).
+  Its single shared-host sample is correctness evidence, **not a speedup claim**.
+
+Fresh isolated `--metadata` sweeps retain **146/467 native / 148/467
+stub-assisted**, 55 exclusions, zero timeouts and all 522 input hashes. No import
+success is lost. **56 native first errors** advance from missing `_io` to missing
+`_warnings` through importlib, including the unittest family. `_compression`
+advances from absent `DEFAULT_BUFFER_SIZE` to absent `BufferedIOBase`; that is
+also the only stub-assisted first-error change. These are next-blocker advances,
+not 57 newly supported libraries or a working upstream unittest/regrtest harness.
+
+This is a **major native reimplementation/stand-in**, not an annotation-only
+adaptation or loading CPython's C extension. It adds the selected `_io` names,
+buffer-size constant, `text_encoding()` and a text-only newline decoder, and
+corrects reflected type module names. Decoder objects and multiple-newline tuples
+remain explicit runtime `NotImplementedError` deviations; bytes decoder input
+is rejected at compile time. Binary files, buffered/base classes, `open_code`
+and `UnsupportedOperation` remain absent, and `text_encoding()` does not emit
+`EncodingWarning`. None of this establishes general C-extension/NumPy/PyPI support.
+
+Replay `audit-689.py` modes `build`, `references`, `checks`, `hosted`, `ir`,
+`matrix`, `oracle`, `extras`, `bench`, `sweeps`, then its assembler; helper scripts
+are embedded. The `extras` and benchmark selection follow the compile comparison.
+Historical implementation-head CI/Lint/Packages/Installation all succeeded
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39342072767)); this is
+not combined-main/audit-head CI. No full local verify, CPython regrtest or broad
+upstream-suite census was run.
+
+## 2026-10-19 — #749 virtual-environment recording portability
+
+Evaluated main
+[`be822311f751a32cb75660ac41b914ea1a52bf6a`](https://github.com/den-run-ai/pystachy/commit/be822311f751a32cb75660ac41b914ea1a52bf6a),
+merging [#749](https://github.com/den-run-ai/pystachy/pull/749) after #689. Only
+`tests/sys_prefix.py` and its recording change. Compiler/runtime/library/tools/
+ports/benchmark source equality was checked; the verified #689 binary is reused.
+Its build source remains `b85f0f3c`, distinct from evaluated source `be822311`.
+
+[Evidence and driver](compatibility-2026-10-19-prefix-venv.json) confirm the
+corrected recording under both base and venv **CPython 3.13.16**. The old fixture
+prints `False` on its first line under that same venv, while the corrected test
+prints `True True` under both interpreters. This resolves the previously recorded
+#719 venv test failure, not a compiler semantics bug. Native, GC-stress,
+optimization-off and hosted configurations each pass two JIT/AOT checks:
+**8/8**, plus one IR/LLVM-assembly check. The raw path probes from #719 still
+describe Pystachy's compile-time home behavior; no CPython venv path parity claimed.
+
+Imports carry forward **146/467 native / 148/467 stub-assisted**, 55 exclusions,
+by unchanged implementation identity, not a fresh sweep at this test-only SHA.
+No full recording suite or runtime suite was repeated for #749. Historical head
+CI/Lint/Packages/Installation succeeded
+([CI](https://github.com/den-run-ai/pystachy/actions/runs/39345045649)); audit-head
+checks are reported separately after publication. Dated baselines remain intact.

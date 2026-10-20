@@ -5,7 +5,7 @@
 # unittest scaffolding becomes tables and ordinary assertions. No input sizes or
 # Unicode results are normalized. Platform expectations still use os.path.normcase.
 # Two additional methods are partial: test_filter omits its bytes assertion, and
-# test_warnings retains matches but cannot test the unsupported warnings machinery.
+# test_warnings retains matches; lib/re issues no warning for its error filter to catch.
 # Three bytes/mixed-type methods are unsupported. No partial method counts as fully
 # compiled. The .out is recorded with CPython's stdlib; JIT/AOT use lib/fnmatch.
 from fnmatch import fnmatch, fnmatchcase, translate, filter
@@ -235,8 +235,8 @@ def test_filter_sep() -> None:
 
 
 # test_fnmatch.FnmatchTestCase.test_warnings
-# PARTIAL: warning capture is unsupported.
-# All six matches are retained; warnings.catch_warnings/simplefilter are unsupported.
+# PARTIAL: lib/re issues no warning to capture.
+# All six matches are retained; lib/re issues no warning for the error filter to catch.
 def test_warnings_partial() -> None:
     check('[', '[[]')
     check('&', '[a&&b]')

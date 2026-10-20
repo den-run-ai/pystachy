@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-19",
+  "status": "completed",
+  "source_revision": "be822311f751a32cb75660ac41b914ea1a52bf6a",
+  "previous_evaluated_main": "b85f0f3c00f7c6a65892b3a90ebe391b606a1b9b",
+  "merged_prs": [
+    749
+  ],
+  "compiler_build_source": "b85f0f3c00f7c6a65892b3a90ebe391b606a1b9b",
+  "compiler_sha256": "f2f64dd2eab1fa930551f5ab7dc3265eac64c337400f3a8b2afab7445682cd37",
+  "changed_files": [
+    "tests/sys_prefix.out",
+    "tests/sys_prefix.py"
+  ],
+  "fixture_sha256": {
+    "tests/sys_prefix.out": "22d661852cd3cc06aa03c4d0c75f8074356790bbb579d3a2581f428c28078d2e",
+    "tests/sys_prefix.py": "00f5d146f11f7e0519ebf32ec7a396a825334c9c0580dc5c1d37af9f1da64da7"
+  },
+  "environment": {
+    "python": "/root/.local/bin/python3.13",
+    "venv": "/workspace/scratch/cca24c0adfdd/devtools/bin/python",
+    "llvm": "/workspace/scratch/3ba735e28fa7/llvm18-recovered/usr/lib/llvm-18/bin"
+  },
+  "records": {
+    "base-identity": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "-I",
+        "-c",
+        "import sys;print(sys.version);print(sys.prefix);print(sys.base_prefix)"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]\n/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu\n/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu\n",
+      "stderr": "",
+      "wall_seconds": 0.013678528997843387,
+      "expected_exit": 0
+    },
+    "reference-base": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "True True\nTrue True str\nTrue True True\n",
+      "stderr": "",
+      "wall_seconds": 0.010075512000184972,
+      "expected_exit": 0
+    },
+    "old-reference-base": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-689/tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "True\nTrue True str\nTrue True True\n",
+      "stderr": "",
+      "wall_seconds": 0.010589282999717398,
+      "expected_exit": 0
+    },
+    "venv-identity": {
+      "command": [
+        "/workspace/scratch/cca24c0adfdd/devtools/bin/python",
+        "-I",
+        "-c",
+        "import sys;print(sys.version);print(sys.prefix);print(sys.base_prefix)"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]\n/workspace/scratch/cca24c0adfdd/devtools\n/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu\n",
+      "stderr": "",
+      "wall_seconds": 0.012926281000545714,
+      "expected_exit": 0
+    },
+    "reference-venv": {
+      "command": [
+        "/workspace/scratch/cca24c0adfdd/devtools/bin/python",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "True True\nTrue True str\nTrue True True\n",
+      "stderr": "",
+      "wall_seconds": 0.00967046599907917,
+      "expected_exit": 0
+    },
+    "old-reference-venv": {
+      "command": [
+        "/workspace/scratch/cca24c0adfdd/devtools/bin/python",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-689/tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "False\nTrue True str\nTrue True True\n",
+      "stderr": "",
+      "wall_seconds": 0.009663195996836293,
+      "expected_exit": 0
+    },
+    "native": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 1 cases\n2 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 6.966068949001055,
+      "expected_exit": 0
+    },
+    "gc": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "selected 1 cases\n2 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 0.4849182199977804,
+      "expected_exit": 0
+    },
+    "noopt": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "selected 1 cases\n2 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 6.826511496001331,
+      "expected_exit": 0
+    },
+    "hosted": {
+      "command": [
+        "tests/run.sh",
+        "/root/.local/bin/python3.13 -m pystachy",
+        "jit aot",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 1 cases\n2 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 8.507068623999658,
+      "expected_exit": 0
+    },
+    "ir": {
+      "command": [
+        "tools/check_ir.sh",
+        "./pystachy",
+        "tests/sys_prefix.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "the IR check and llvm-as accept the IR of 1 programs\n",
+      "stderr": "",
+      "wall_seconds": 0.02130859599856194,
+      "expected_exit": 0
+    }
+  },
+  "negative_control": "The preceding fixture prints False under the same venv; the merged fixture prints True True under base and venv CPython 3.13.16.",
+  "imports": {
+    "native": "146/467",
+    "stub_assisted": "148/467",
+    "exclusions": 55,
+    "inventory": 522,
+    "status": "carried forward by unchanged implementation/source identity, not rerun"
+  },
+  "limits": [
+    "Test-only recording portability improvement, not new prefix semantics or library support.",
+    "No full recording suite, make verify or performance run for this checkpoint. The focused recording and native checks are independent of historical implementation CI."
+  ],
+  "reproduction_scripts": {
+    "audit-725.py": "import concurrent.futures\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport sys\nimport sysconfig\nimport tempfile\nimport time\n\nBASE = Path('/workspace/scratch/3ba735e28fa7')\nROOT = BASE / 'pystachy-audit-725'\nOLD = BASE / 'pystachy-audit-694'\nOUT = ROOT / 'build/audit-725'\nOUT.mkdir(parents=True, exist_ok=True)\nPY = '/root/.local/bin/python3.13'\nLLVM = str(BASE / 'llvm18-recovered/usr/lib/llvm-18/bin')\nENV = {k: v for k, v in os.environ.items() if not k.startswith(('PYSTACHY_', 'COVERAGE_'))}\nENV.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_LLVM=LLVM, PYSTACHY_JOBS='2', PY=PY, PATH=LLVM+':'+ENV['PATH'])\ndef save(n, v):\n    (OUT/(n+'.json')).write_text(json.dumps(v, indent=2)+'\\n')\ndef run(n, args, extra=None, expected=0):\n    start = time.monotonic()\n    p = subprocess.run(args, cwd=ROOT, env=ENV | (extra or {}), text=True, capture_output=True, timeout=1800)\n    r = dict(command=args, environment=extra or {}, returncode=p.returncode, stdout=p.stdout, stderr=p.stderr, wall_seconds=time.monotonic()-start, expected_exit=expected)\n    save(n, r)\n    print(n, p.returncode, p.stdout[-350:], p.stderr[-250:], flush=True)\n    assert p.returncode == expected\n    return r\nfiles = sorted(str(p.relative_to(ROOT)) for pattern in ['tests/lib_warnings*.py', 'tests/deviations/lib_warnings*.py', 'tests/errors/lib_warnings*.py'] for p in ROOT.glob(pattern))\nadjacent = ['tests/errors/lib_datetime_utcnow.py', 'tests/errors/lib_urllib_parse_deprecated.py', 'tests/upstream_bool.py', 'tests/upstream_fnmatch.py', 'tests/sys_warnoptions.py', 'tests/exc_class_misc.py']\nsave('selection', dict(warnings=files, adjacent=adjacent))\nmode = sys.argv[1]\nif mode == 'checks':\n    for label, compiler, extra in [('native', './pystachy', {}), ('gc', './pystachy', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', './pystachy', {'PYSTACHY_OPT':'-all'}), ('hosted', PY+' -m pystachy', {})]:\n        run('checks-'+label, ['tests/run.sh', compiler, 'jit aot', *files, *adjacent], extra)\nelif mode == 'references':\n    results = {}\n    for f in files + adjacent:\n        if '/errors/' in f or '/deviations/' in f:\n            continue\n        p = subprocess.run([PY, f, 'a1', 'a2'], cwd=ROOT, env=ENV, text=True, capture_output=True, timeout=120)\n        err = (ROOT/f).with_suffix('.err')\n        expected_err = err.read_text() if err.exists() else ''\n        stderr_last = p.stderr.splitlines()[-1]+'\\n' if p.stderr else ''\n        ok = p.stdout+f'[exit {p.returncode}]\\n' == (ROOT/f).with_suffix('.out').read_text() and stderr_last == expected_err\n        results[f] = dict(exit=p.returncode, stdout=p.stdout, stderr_last=stderr_last, stderr_sha256=hashlib.sha256(p.stderr.encode()).hexdigest(), recording_equal=ok)\n    save('references', results)\n    assert all(r['recording_equal'] for r in results.values())\n    print('references', len(results), flush=True)\nelif mode == 'sweeps':\n    for n, opts in [('imports', ['./pystachy']), ('stubs', ['--stubs'])]:\n        run(n+'-command', [PY, 'tools/import_sweep.py', '-j', '2', '--metadata', str(OUT/(n+'-metadata.json')), *opts, sysconfig.get_path('stdlib'), str(OUT/(n+'.json'))])\nelif mode == 'ir':\n    run('ir', ['tools/check_ir.sh', './pystachy', *[f for f in files+adjacent if '/errors/' not in f]])\nelif mode == 'negative':\n    original = (ROOT/'lib/warnings.py').read_text()\n    changes = {\n        'unanchored-main': ('module=\"__main__\\\\\\\\Z\", append=1)', 'module=\"__main__\", append=1)', 'tests/lib_warnings_main_filter.py'),\n        'unchecked-prefixes': ('    for prefix in skip_file_prefixes:\\n        if not isinstance(prefix, str):\\n            raise TypeError(\"Found non-str \\'\" + type(prefix).__name__ + \"\\' in skip_file_prefixes.\")\\n', '', 'tests/lib_warnings_skip_prefixes.py'),\n    }\n    results = {}\n    for name, (before, after, test) in changes.items():\n        assert original.count(before)==1\n        overlay = OUT/name\n        overlay.mkdir(exist_ok=True)\n        (overlay/'warnings.py').write_text(original.replace(before, after))\n        r=run('negative-'+name, ['./pystachy','run',test], {'PYSTACHY_PATH':str(overlay)})\n        recording=(ROOT/test).with_suffix('.out').read_text()\n        assert r['stdout']+'[exit 0]\\n' != recording\n        results[name]=dict(before=before,after=after,test=test,expected_recording=recording,mutant_output=r['stdout'],detected=True)\n    save('negative-controls',results)\nelif mode == 'matrix':\n    program = '''import warnings\n\nclass Child(UserWarning):\n    pass\n\nfor action in [\"default\", \"always\", \"ignore\", \"error\", \"module\", \"once\"]:\n    for category in [UserWarning, Child, RuntimeWarning]:\n        reg: dict[tuple[str, type[Warning], int], int] = {}\n        with warnings.catch_warnings(record=True) as log:\n            warnings.simplefilter(action)\n            for line in [1, 1, 2, 2]:\n                try:\n                    warnings.warn_explicit(\"matrix\", category, \"matrix.py\", line, \"pkg\", reg)\n                except Warning as e:\n                    print(\"error\", action, category.__name__, line, str(e))\n            print(action, category.__name__, [(m.filename, m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as log:\n    warnings.simplefilter(\"always\")\n    warnings.filterwarnings(\"ignore\", \"^quiet$\", UserWarning, \"^pkg$\", 3)\n    for module in [\"pkg\", \"pkg.child\", \"other\"]:\n        for line in [2, 3]:\n            for message in [\"quiet\", \"QUIET\", \"quietly\"]:\n                warnings.warn_explicit(message, Child, \"matrix.py\", line, module)\n    print(\"filter\", [(m.lineno, str(m.message)) for m in log])\n\nwith warnings.catch_warnings(record=True) as outer:\n    warnings.simplefilter(\"always\")\n    warnings.warn(\"outer before\")\n    try:\n        with warnings.catch_warnings(record=True) as inner:\n            warnings.warn(\"inner\")\n            raise ValueError(\"restore\")\n    except ValueError:\n        pass\n    warnings.warn(\"outer after\")\n    print(\"nested\", [str(m.message) for m in outer], [str(m.message) for m in inner])\n'''\n    f=OUT/'matrix.py'; f.write_text(program)\n    save('matrix-program',dict(program=program,sha256=hashlib.sha256(program.encode()).hexdigest()))\n    ref=run('matrix-cpython',[PY,str(f)])\n    for label, extra in [('gc', {'PYSTACHY_GC_STRESS_PROGRAM':'1'}), ('noopt', {'PYSTACHY_OPT':'-all'})]:\n        r=run('matrix-jit-'+label,['./pystachy','run',str(f)],extra)\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\n        exe=OUT/('matrix-'+label)\n        run('matrix-build-'+label,['./pystachy','build',str(f),'-o',str(exe)],extra)\n        r=run('matrix-aot-'+label,[str(exe)],{'PYSTACHY_GC_STRESS':'1'} if label=='gc' else {})\n        assert (r['stdout'],r['stderr'])==(ref['stdout'],ref['stderr'])\nelif mode == 'oracle':\n    # All retained programs are cheap compile-only checks; changed executables\n    # beyond the selected warning consumers must be executed before completion.\n    sources = ['pystachy.py', 'runtime.py'] + sorted({str(p.relative_to(ROOT)) for base in ['tests', 'tests/errors', 'tests/deviations', 'tests/ir', 'bench', 'bench/pyperformance'] for p in (ROOT/base).glob('*.py')})\n    def compare(f):\n        rs = []\n        with tempfile.TemporaryDirectory(prefix='warnings-oracle-') as tmp:\n            for label, home in [('old', OLD), ('new', ROOT)]:\n                target = Path(tmp)/(label+'.ll')\n                extra = {'PYSTACHY_HOME':str(home)}\n                path = (ROOT/f).with_suffix('.path')\n                if path.exists(): extra['PYSTACHY_PATH'] = path.read_text().strip()\n                how = 'rt' if f == 'runtime.py' or Path(f).name.startswith('rtmode_') else 'ir'\n                p = subprocess.run([str(ROOT/'pystachy'), how, f, '-o', str(target)], cwd=ROOT, env=ENV | extra, text=True, capture_output=True, timeout=180)\n                ir = target.read_text() if target.exists() else ''\n                msg = p.stdout+p.stderr\n                for root in [ROOT, OLD]:\n                    ir = ir.replace(str(root), 'CHECKOUT'); msg = msg.replace(str(root), 'CHECKOUT')\n                rs.append(dict(exit=p.returncode, message=msg, ir_sha256=hashlib.sha256(ir.encode()).hexdigest()))\n        return dict(source=f, old=rs[0], new=rs[1])\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n        rs = list(pool.map(compare, sources))\n    changed = [r for r in rs if r['old'] != r['new']]\n    save('oracle', dict(programs=len(rs), identical=len(rs)-len(changed), changed=changed, input_inventory_sha256=hashlib.sha256(json.dumps({f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in sources},sort_keys=True).encode()).hexdigest()))\n    assert not any(r['old']['exit'] == 0 and r['new']['exit'] != 0 for r in rs)\n    print('oracle', len(rs), len(changed), flush=True)\n",
+    "audit-749.py": "from pathlib import Path\nimport sys\ndriver=Path('/workspace/scratch/3ba735e28fa7/audit-725.py').read_text().replace(\"'pystachy-audit-725'\",\"'pystachy-audit-749'\").replace(\"'build/audit-725'\",\"'build/audit-749'\")\nexec(driver.split('files = sorted')[0])\nVENV='/workspace/scratch/cca24c0adfdd/devtools/bin/python'\nrecords={}\nfor label,python in [('base',PY),('venv',VENV)]:\n    records[label+'-identity']=run(label+'-identity',[python,'-I','-c','import sys;print(sys.version);print(sys.prefix);print(sys.base_prefix)'])\n    r=run('reference-'+label,[python,'tests/sys_prefix.py'])\n    assert r['stdout']+'[exit 0]\\n'==(ROOT/'tests/sys_prefix.out').read_text()\n    records['reference-'+label]=r\n    records['old-reference-'+label]=run('old-reference-'+label,[python,str(BASE/'pystachy-audit-689/tests/sys_prefix.py')])\nassert records['old-reference-base']['stdout'].splitlines()[0]=='True'\nassert records['old-reference-venv']['stdout'].splitlines()[0]=='False'\nfor label,compiler,extra in [('native','./pystachy',{}),('gc','./pystachy',{'PYSTACHY_GC_STRESS_PROGRAM':'1'}),('noopt','./pystachy',{'PYSTACHY_OPT':'-all'}),('hosted',PY+' -m pystachy',{})]:\n    records[label]=run('checks-'+label,['tests/run.sh',compiler,'jit aot','tests/sys_prefix.py'],extra)\nrecords['ir']=run('ir',['tools/check_ir.sh','./pystachy','tests/sys_prefix.py'])\nold_sha='b85f0f3c00f7c6a65892b3a90ebe391b606a1b9b'\nnew_sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()\nchanges=subprocess.check_output(['git','diff','--name-only',old_sha,new_sha],cwd=ROOT,text=True).splitlines()\nassert changes==['tests/sys_prefix.out','tests/sys_prefix.py']\ncompiler_hash=hashlib.sha256((ROOT/'pystachy').read_bytes()).hexdigest()\nassert compiler_hash==hashlib.sha256((BASE/'pystachy-audit-689/pystachy').read_bytes()).hexdigest()\nassert not subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],cwd=ROOT,text=True).strip()\ndata=dict(schema_version=1,date='2026-10-19',status='completed',source_revision=new_sha,previous_evaluated_main=old_sha,merged_prs=[749],compiler_build_source=old_sha,compiler_sha256=compiler_hash,changed_files=changes,fixture_sha256={f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in changes},environment=dict(python=PY,venv=VENV,llvm=LLVM),records=records,negative_control='The preceding fixture prints False under the same venv; the merged fixture prints True True under base and venv CPython 3.13.16.',imports=dict(native='146/467',stub_assisted='148/467',exclusions=55,inventory=522,status='carried forward by unchanged implementation/source identity, not rerun'),limits=['Test-only recording portability improvement, not new prefix semantics or library support.','No full recording suite, make verify or performance run for this checkpoint. The focused recording and native checks are independent of historical implementation CI.'],reproduction_scripts={'audit-725.py':(BASE/'audit-725.py').read_text(),'audit-749.py':Path(__file__).read_text()})\ndest=BASE/'pystachy-audit-followup-729/docs/reports/compatibility-2026-10-19-prefix-venv.json'\ndest.write_text(json.dumps(data,indent=2)+'\\n')\nprint('completed',new_sha,compiler_hash)\n"
+  }
+}
