@@ -310,10 +310,11 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   ([#659](https://github.com/den-run-ai/pystachy/pull/659),
   [#665](https://github.com/den-run-ai/pystachy/pull/665)).
 - Codex review triggers on opening/readying a PR or `@codex review`, not later pushes.
-  Open drafts until validated and check the reviewed SHA. Failed/quota-limited reviews
-  are not completed reviews or code findings. Reproduce each finding; fix it with a
-  regression and name the commit, or explain why it does not apply, then resolve the
-  thread. Arrange fresh review through authorized means.
+  Open drafts; mark them ready once validated and check the reviewed SHA.
+  Failed/quota-limited reviews are not completed reviews or code findings. Reproduce
+  each finding; fix real, proportionate ones with a regression and name the commit,
+  or decline with reasons, then resolve the thread. Arrange fresh review through
+  authorized means.
 - Follow CONTRIBUTING.md for DCO. An agent cannot certify for someone: add a signer
   line or `Signed-off-by` only at that person's request, never anyone else's. Disclose
   missing certification ([#673](https://github.com/den-run-ai/pystachy/pull/673)).
@@ -336,9 +337,9 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   and raw evaluations on a separate research branch.
 - Answer direct questions first with a short TL;DR; apply mid-task feedback and implement
   approved plans. Respect token budgets, ask before fanning out agents, and have them
-  save findings. On wrap-up, finish on CI evidence and file follow-ups. Add GitHub
-  comments only for new information and authorized outward actions; never name private
-  correspondents publicly.
+  save findings. On wrap-up, finish on CI evidence and file follow-ups. Comment on GitHub
+  only to add information, take only the outward actions you were asked to and never
+  name private correspondents publicly.
 - Hand off branch/worktree, commit/PR, changed behavior, tests passed/failed/not run,
   owned live jobs, risks and next action. Preserve authorized work in commits/pushed
   branches or a draft PR; report local-only artifacts, watches and scheduled check-ins.
