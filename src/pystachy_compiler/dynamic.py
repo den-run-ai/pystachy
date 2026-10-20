@@ -1403,7 +1403,7 @@ def gen_dyn_mixed(self, es: list[Node]) -> bool:
     # types of those that are not empty displays, which a dry run gives
     ts: list[str] = []
     for e in es:
-        if holds_untyped_empty(e):
+        if self.dyn_untyped_empty(e):
             continue  # (its type comes of the items before it, #782; a dry run alone would reject it)
         if e.kind == "starred" or e.kind == "dstar":
             return False
@@ -1425,33 +1425,48 @@ def gen_dyn_callables(self, ts: list[str]) -> bool:
     return len(ts) > 0 and is_callable(unopt(ts[0])) and len([t for t in ts[1:] if t != ts[0] and not is_fn(t)]) == 0
 
 
-def holds_untyped_empty(e: Node) -> bool:
+def gen_dyn_untyped_empty(self, e: Node) -> bool:
     # does e hold an empty list or dict display that nothing in e types, which only the display
     # around e can (a dry run of e alone would reject it): one on its own or in a tuple display,
     # whose items each have their own type, or one in a display that no item before it types
-    # (untyped_items). An item that holds one that its own items type, ([1], []), decides with
-    # the others whether a display's items have one type (#782)
+    # (dyn_untyped_items); list(), dict() and set() are such displays too. An item that holds one
+    # that its own items type, ([1], []), decides with the others whether a display's items have
+    # one type (#782)
     if e.kind == "tuple":
-        return len([k for k in e.kids if holds_untyped_empty(k)]) > 0
+        return len([k for k in e.kids if self.dyn_untyped_empty(k)]) > 0
+    if e.kind == "call":
+        return len(e.kids) == 1 and self.empty_ctor(e) != ""
     if e.kind != "list" and e.kind != "dict" and e.kind != "set":
         return False
     if len(e.kids) == 0:
         return True
     if e.kind == "dict":
-        return untyped_items([e.kids[i] for i in range(0, len(e.kids), 2)]) or untyped_items([e.kids[i] for i in range(1, len(e.kids), 2)])
-    return untyped_items(e.kids)
+        return self.dyn_untyped_items([e.kids[i] for i in range(0, len(e.kids), 2)]) or self.dyn_untyped_items([e.kids[i] for i in range(1, len(e.kids), 2)])
+    return self.dyn_untyped_items(e.kids)
 
 
-def untyped_items(ks: list[Node]) -> bool:
+def gen_empty_ctor(self, e: Node) -> str:
+    # "list", "dict" or "set" where call e is list(), dict() or set() of the builtin, else ""
+    f = e.kids[0]
+    return f.s if len(e.kids) == 1 and f.kind == "name" and f.s in ["list", "dict", "set"] and not self.bound(f.s) else ""
+
+
+def gen_dyn_untyped_items(self, ks: list[Node]) -> bool:
     # do the items ks of a display (a dict's keys, or its values) hold an empty display that no
     # item before it types: typed code types an empty item by the items before it, so where one of
-    # them is a display of the same kind that holds none ([[1], []], not [1.5, []])
-    typed: dict[str, bool] = {}  # (the kinds of the displays before the item that hold none)
+    # them is a container of the same kind that holds none ([[1], []], [list([1]), []], not
+    # [1.5, []]): a display by its kind, another expression by the type a dry run gives it (dyn_dry
+    # remembers it, and compiling the display compiles the item anyway)
+    typed: dict[str, bool] = {}  # (the kinds of the containers before the item that hold none)
     for k in ks:
-        if not holds_untyped_empty(k):
+        if self.dyn_untyped_empty(k):
+            if (self.empty_ctor(k) if k.kind == "call" else k.kind) not in typed:
+                return True
+        elif k.kind == "list" or k.kind == "dict" or k.kind == "set" or k.kind == "tuple":
             typed[k.kind] = True
-        elif k.kind not in typed:
-            return True
+        elif k.kind != "starred" and k.kind != "dstar":
+            t = unopt(self.dyn_dry(k))
+            typed["list" if is_list(t) else "dict" if is_dict(t) else "set" if is_set(t) else "tuple" if is_tuple(t) or is_vtuple(t) else ""] = True
     return False
 
 

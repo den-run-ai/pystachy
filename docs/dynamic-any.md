@@ -75,10 +75,11 @@ which a `with` statement gives an exception class and an exception (no `Any` val
 and the return of `__iter__` and of a generator, whose objects no `Any` value holds yet either
 (`tests/programs/inference/dynany_inferred_annotations.py`, `tests/programs/inference/dynany_exit.py`,
 `tests/programs/inference/dynany_init_varargs.py`, `tests/programs/inference/dynany_iter_any.py`). `Annotated[Any, ...]` is `Any`
-(`tests/programs/inference/dynany_annotated.py`). The items of a display that hold an empty display that
-nothing in them types (`([], 3)`) take their type from the items before them, as elsewhere
-(`tests/programs/inference/dynany_display_empty.py`); one whose own items type it
-(`({"a": [1], "b": []}, 1)`) decides with the others whether the items have one type
+(`tests/programs/inference/dynany_annotated.py`). The items of a display that hold an empty display (or
+`list()`, `dict()`, `set()`) that nothing in them types (`([], 3)`) take their type from the items
+before them, as elsewhere (`tests/programs/inference/dynany_display_empty.py`); one whose own items
+type it, by an item before it of the same kind (`({"a": [1], "b": []}, 1)`, `[list([1]), []]`),
+decides with the others whether the items have one type
 (`tests/programs/inference/dynany_display_empty_nested.py`). Functions after a `Callable` item are
 `Callable`s of its type (`tests/programs/inference/dynany_callables.py`).
 
