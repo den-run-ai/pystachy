@@ -77,6 +77,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 test-area layout (#771), bounded tooling evaluation complete | `ad19255e`; #762 native work still incomplete, full marker remains `3c63613b` | 3,301 cases preserved; 180 tooling tests, 158 path-sensitive expected rejections and six CPython recordings/hosted IR programs pass. [Evidence](compatibility-2026-10-20-test-layout.json). |
 | 2026-10-20 hierarchy comparison dispatch (#785), **partial** | `554f3d13`; docs-only #776/#788 also inspected | Hosted raw IR at 80 subclasses: exception 357,105 → 9,317 lines, ordinary 353,611 → 6,063. 135 tooling tests, 56 positive compilations and 30 rejections pass; native evaluation remains incomplete. [Evidence](compatibility-2026-10-20-hierarchy-partial.json). |
 | 2026-10-20 comparison-operand widening (#792), **partial** | `452a0864`; follows #785 | The retained 80-subclass `other: object` probe moves from #785's 4,096-specialization rejection to 13,220 raw IR lines; 40 subclasses shrink 73,420 → 6,860. Declared-`Base` controls are byte-identical. 135 tooling tests, 57 before/after hosted compilations, 30 rejections and four CPython 3.12 recordings pass; native evaluation remains incomplete. [Evidence](compatibility-2026-10-20-comparison-widening-partial.json). |
+| 2026-10-20 concurrency contract (#789), bounded tooling evaluation complete | `870bfa15`; no compiler/runtime/library implementation paths | Five registration checks and both 25-line source-twin clients pass; exact-tree native CI and FFI coverage jobs succeeded. This records contracts and probes, not a new native concurrency or import-compatibility claim. [Evidence](compatibility-2026-10-20-concurrency-contract.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5096,3 +5097,57 @@ confirmed, so no new issue was filed. Complete this checkpoint only after an
 authorized pinned CPython 3.13.16 / LLVM 18 rebuild, selected native parity and
 the pinned metadata-enabled import sweep; #762's release validation remains
 independently incomplete.
+
+## 2026-10-20 — #789: concurrency contract and process-pool probes
+
+Inspected [main `870bfa154f940026a7135f5c285fb0df7148ee88`](https://github.com/den-run-ai/pystachy/commit/870bfa154f940026a7135f5c285fb0df7148ee88)
+after [#789](https://github.com/den-run-ai/pystachy/pull/789) merged at
+2026-10-20 21:40:51 UTC. Fresh ancestry checks confirm implementation head
+`208be867a4bebfc6a64e6e726d575ad8e755e2ee` is in main; the implementation and
+merge commits share tree `caab22cbf374eac3babc73df0a3c6db477e39d0f`.
+It is the only first-parent merge after the #792 checkpoint.
+
+This merge changes documentation, the FFI test runner and clients, a registration
+checker, and Lint workflow wiring. It does **not** change compiler, runtime,
+library or port implementation sources. Therefore no compiler rebuild, retained
+metadata import sweep, API sweep or port/benchmark rerun was warranted for this
+bounded tooling checkpoint. Historical import totals and first errors are not
+presented as fresh measurements.
+
+[Machine-readable evidence](compatibility-2026-10-20-concurrency-contract.json)
+retains the exact source and tree identities, changed-path hashes, commands,
+outputs and hashes, environment and clean pre/post snapshots. The fresh checkout
+had no tracked, untracked or ignored files before or after the checks.
+
+| Fresh check | Result and boundary |
+|---|---|
+| Contract registration | `python3 -B -m unittest discover -s tools -p test_concurrency_contract.py -v`: **5/5 pass** under CPython **3.12.14**. This proves the documented capability rows name registered probes on this tree. |
+| FFI runner syntax | `sh -n tests/ffi/run.sh`: pass. |
+| Process-pool client | With `PYTHONPATH=tools/rt_cpython`, `pwclient.py a b`: exit 0, **25 output lines**. It checks owner-thread refusal before argument conversion, per-process call accounting, maps, exception propagation, continued service after ordinary exceptions, clean shutdown, abrupt-worker `BrokenProcessPool`, and explicit process exit codes. |
+| Async bridge client | With the same source twin, `aioclient.py a b`: exit 0, **25 output lines**. It checks thread/default-executor refusal, event-loop progress, await/gather/errors, timeout behavior, and the cancellation boundary between started, dispatched and pending calls. |
+
+The client runs above use Pystachy's CPython source twin, not the compiled native
+extension and not JIT/AOT. Native evidence is separately historical: exact-tree
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39495106554) completed
+successfully, including `verify (contracts)`, and exact-tree
+[Coverage](https://github.com/den-run-ai/pystachy/actions/runs/39495106610) completed
+successfully, including `native runtime coverage (ffi)` and
+`hosted compiler coverage (ffi, ir)`. Lint, Packages and Installation workflows
+on that tree also succeeded. The preceding audit-head
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39492325867) succeeded.
+These workflow results are not relabeled as fresh local native execution.
+
+The result makes the supported source/extension/process behavior and its probes
+more explicit; it does not add native threads, parallel loops, or compiled async
+execution. No speed, memory, import, package or broad library-compatibility gain
+is inferred. The implementation PR's documented `multiprocessing.Pool` limits
+were not independently rerun as a negative probe here. No new uncovered
+correctness bug was confirmed, so no issue was filed.
+
+Pinned CPython **3.13.16** and local LLVM 18/native extension execution remain
+unavailable. That does not make the bounded test-tooling checkpoint incomplete,
+because implementation sources did not change and the native contract jobs ran
+successfully on the identical tree. It also does not complete #762 or #792's
+outstanding native/release work. Latest fully evaluated main therefore remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**; full CPython regrtest and compiled
+upstream suites were not run, and unrelated known gaps were not rechecked.
