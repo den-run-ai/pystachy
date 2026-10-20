@@ -103,6 +103,8 @@ def gen_union_type(self, ts: list[str]) -> str:
     # union[...] of them, nested unions and optionals flattened, in sorted order; "!" and why not
     ms: list[str] = []
     none = False
+    if "dyn" in ts:
+        return "dyn"  # (Any | T: a dynamic value holds any of them)
     for t in ts:
         t = self.rec_type(t)
         if t == "None" or t == NONEVAR:
@@ -224,6 +226,8 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
     # or an ordinary class pointer whose runtime class test proved a derived layout
     if nt == v.t:
         return v
+    if v.t == "dyn":
+        return self.dyn_narrowed(v, nt)  # (a dynamic value's box, which a test proved holds an nt)
     if v.t in self.classes and nt in self.classes and self.derives(nt, v.t):
         return Val(v.v, nt)
     if not is_union(unopt(v.t)):

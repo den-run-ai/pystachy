@@ -1,0 +1,41 @@
+add 9 int
+sub 5 int
+mul 14 int
+div 3.5 float
+floordiv 3 int
+mod 1 int
+pow 49 int
+negpow 0.5 float
+shl 28 int
+and 2 int
+or 7 int
+xor 5 int
+fadd 8.5 float
+fmul 3.0 float
+fdiv 3.0 float
+bool+bool 2 int
+bool&bool True bool
+bool|int 5 int
+neg -7 int
+negf -1.5 float
+inv -8 int
+pos 1 int
+cat 'abcd' str
+rep 'ababab' str
+rep2 'abab' str
+eq True bool
+eqf True bool
+ne True bool
+lt False bool
+le True bool
+strlt True bool
+truth True False
+none None NoneType
+True False False
+iadd 15 int
+imul 30.0 float
+istr 'st' str
+1 7.0 7! 2
+7 1.5 ab None True
+    7|1.500|'ab'
+[exit 0]

@@ -230,7 +230,7 @@ def gen_init_template(self, st: Node) -> bool:
             ps = d.kids[0].kids
             for i in range(1, len(ps)):
                 a = ps[i].kids[0]
-                if a.kind == "noann" or self.any_in([a]) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
+                if a.kind == "noann" or (self.any_in([a]) and not self.dyn_policy(d.line)) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
                     return True  # (also *args or **kwargs without an annotation)
                 if st.s in self.tparams and self.names_tv(ps[i].kids[0], self.tparams[st.s]):
                     return True  # (a generic class whose objects bind its type variables, see bind)
@@ -1077,8 +1077,9 @@ def gen_program(self, mods: list[Mod]) -> str:
     cmped: dict[str, bool] = {}
     hashed: dict[str, bool] = {}
     xmade: dict[str, bool] = {}
+    ned: dict[str, bool] = {}
     while True:
-        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors)
+        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(self.xctors)
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
@@ -1091,6 +1092,10 @@ def gen_program(self, mods: list[Mod]) -> str:
             if c not in cmped:
                 cmped[c] = True
                 self.obj_helpers(c, [0, 1])
+        for c in [x for x in self.one]:
+            if c not in ned:
+                ned[c] = True
+                self.obj_helpers(c, [3])
         for c in [x for x in self.hcls]:
             if c not in hashed:
                 hashed[c] = True
@@ -1113,7 +1118,8 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.function(lz[i], lz[i].node.kids[2].kids)
         for i in later:
             hpush(self.wake, i)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(self.xctors) == before:
+        # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(self.xctors) == before and not self.dyn_dispatchers():
             break
     self.exc_tables()
     for nm in self.flagged:

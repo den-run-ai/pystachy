@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `3ab11f03a9b1deedd90141cdf5d7e6345b0af5f0`.
+**Latest evaluated main:** `3c63613b9ad4748dfc030fc923f7704e26b21ba9`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -4640,3 +4640,113 @@ identical to evaluated main. Full local `make verify`, full `gc-self`, broad
 benchmark execution and CPython regrtest were not repeated. Audit-head checks are
 read after publication. Only reviewed report/evidence changes are published
 beyond evaluated main; dated baseline files and concurrent edits are preserved.
+
+## 2026-10-20 — #761: opt-in dynamic Any, not general library compatibility
+
+Evaluated [main `3c63613b`](https://github.com/den-run-ai/pystachy/commit/3c63613b9ad4748dfc030fc923f7704e26b21ba9),
+the sole first-parent merge after evaluated `3ab11f03`:
+[#761](https://github.com/den-run-ai/pystachy/pull/761). Re-fetched the PR, verified
+its merge is in main's history and its tree equals implementation head
+`b57c93d9ad8f1dd380b4b45f2c170dcbf8b3f469`. Read the latest rolling record,
+#491/#616 coordination and the PR's review/fix discussion. #743 remains the
+destination; implementation branches were not edited.
+
+The 101-file delta adds a per-module `# pystachy: dynamic-any` pragma, runtime
+boxes/dispatch and 37 retained programs: 26 positive, nine rejection and two
+documented-deviation cases. Ordinary modules retain inference-only `Any`.
+Selected adjacent coverage is 77 existing Any, retyping and scalar-union cases.
+The allocation changes already evaluated in #765 are not counted again.
+
+Fresh **CPython 3.13.16 / LLVM 18.1.3** bootstrap reaches **707,289 compiler /
+18,709 runtime IR lines** at both fixed points. Compiler build source and
+evaluated source are `3c63613b`; executable SHA-256:
+`f4d0362a9abd39e18a5457e9ba2beb3f202bc643269288bd050249bd51bf3f31`.
+The reference compiler was built from `3ab11f03`, SHA-256
+`8bda6dead36bf97d9208cbd2773f5fd3df224cd71b32e444da1ab87f5a230e87`.
+[Evidence, programs, fixture hashes and replay scripts](compatibility-2026-10-20-dynamic-any.json)
+retain source identity separately from compiler identity.
+
+### Measured behavior
+
+| Check | Fresh result |
+|---|---|
+| Native / program-GC-stress / optimization-off / hosted | **176/176 each, 704 total**, across 114 programs. Each configuration has 120 positive JIT/AOT checks, four documented-deviation checks and 52 expected rejections. |
+| CPython references | **60/60** positive recordings match, including all 26 new positive programs. |
+| UBSan plus per-allocation program GC | **56/56** JIT/AOT checks over the 28 new positive/deviation programs. |
+| Typed IR / LLVM validation | **26/26** new positive programs accepted by the internal checker and LLVM assembler. |
+| Runtime contracts | **488** entries, **70** exception classes and **171** runtime functions agree. |
+| Consumer smoke | **12/12** JIT/AOT checks: four adapted iniconfig/tomli_w/roman/pylev workloads plus textwrap and regex consumers. |
+| Compile-only corpus comparison | **3,332/3,368 identical** IR, diagnostics and exit statuses; all 36 differences are opt-in fixtures. Every non-opt-in program is identical after checkout-prefix normalization. |
+| Benchmark correctness, not timing | All five modes of `tools/dynany_bench.py` agree under CPython, JIT, AOT and GC-stressed AOT: four numeric modes at N=1,000 give checksum **499500**, and the custom graph mode at N=3 gives **729753**. |
+
+Of the 36 changed corpus results, **23** previously rejected sources now emit IR,
+**six** previously accepted sources reject in opt-in mode, **five** remain accepted
+with changed IR and **two** keep rejecting with changed diagnostics. The six
+rejections cover keyword method calls, mutual-return widening, None-first field/
+global/list storage and dynamic-to-typed-list conversion. Each was executed under
+CPython, the old compiler, and the new compiler with only the pragma removed:
+all three produce identical successful outputs. These are explicit opt-in
+boundaries, not newly rejected ordinary programs. The unchanged no-pragma-field
+rejection is included in the 3,332 identical results.
+
+Two independent programs now match CPython in JIT/AOT, with GC stress and
+optimizations disabled, where the reference compiler rejected them: shared list/
+dict aliases preserve identity and cycles; an Any closure retains changing values,
+and a callable field is captured before a side-effecting argument replaces it.
+Eight independent pragma-removal controls retain the old compiler's exit/output.
+
+The six-class cyclic graph copier in `tests/dynany_graph.py` passes, but is a
+**purpose-built, major adaptation**, not unchanged `copy.deepcopy`. With the
+same stdlib overlay as the sweep, an actual `copy.deepcopy` consumer still fails
+JIT/AOT compilation in `copyreg.py:15` on unsupported dispatch-dictionary key
+types, identically before and after. This is the first error, not a complete
+inventory of that library's blockers. Without an upstream module path, `copy`
+is simply unavailable.
+
+### Confirmed boundaries and unchanged import coverage
+
+Independent opt-in probes reproduce the documented limits in native, GC-stressed
+and optimization-off JIT/AOT:
+
+- An existing `list[int]` cannot become an Any container; start with
+  `list[Any]`. Dynamic keyword calls are rejected.
+- A user object boxed as Any is not iterable through its `__iter__` protocol:
+  CPython yields `1`; the native probe catches `TypeError`.
+- Object-versus-builtin equality skips the object's `__eq__`: CPython prints
+  two calls and `True True`; native execution prints `False False`.
+- `%` formatting of an Any string raises `TypeError` where CPython prints
+  `hello`. The retained annotation-check deviation also continues to pass its
+  documented native expectation, not CPython equivalence.
+
+These are already documented prototype boundaries, not newly filed duplicate
+bugs. Refs #108/#487/#488/#489; no tracker is treated as complete solely because
+#761 merged.
+
+Fresh isolated `--metadata` sweeps stay **148/464 native** and **150/464 with
+throwing C-module stubs**, with **58 overlay exclusions**, zero timeouts and
+unchanged first errors. All **522** pinned CPython input hashes match the retained
+inventory. Stub-assisted import compilation is dependency diagnosis; it is not
+execution or an implemented C module. Existing minor/major adaptation assessments
+remain scoped to their measured workloads. No general PyPI/NumPy, full upstream
+suite or CPython regrtest claim follows.
+
+Replay `audit-761.py` modes `build`, `references`, `checks`, `sanitize`,
+`ir`, `runtime`, `consumer-smoke`, `oracle`, `imports`, `stubs`, then
+`audit-761-probes.py`, `audit-761-controls.py` and `audit-761-assemble.py`.
+Embedded wrappers include their `audit-737.py` and `audit-725.py` dependencies.
+Place the retained `typing_extensions` 4.16.0 module on the isolated reference
+PYTHONPATH; its hash is recorded. Initial missing-dependency results (three
+failures) are preserved; all 60 references passed after correction. A first copy
+control incorrectly put raw stdlib ahead of the native overlay, reaching a
+different weakref error; that attempt is retained separately, and the corrected
+overlay control agrees with the sweep.
+
+Correctness jobs overlapped on a shared host. Benchmark timing fields are retained
+but not interpreted; no fresh performance, peak-memory or universal speedup claim
+is made. Unrelated gaps were not all rerun. Historical implementation-head CI,
+Lint, Packages and Installation all pass; the [CI run](https://github.com/den-run-ai/pystachy/actions/runs/39379732167)
+includes successful gc-self and combined verification-report gates on a tree
+equal to evaluated main. This is separate from local focused testing, not a local
+full `make verify`. Audit-head checks are read after publication. Only reviewed
+report/evidence changes are added beyond evaluated main; dated baselines and
+concurrent edits are preserved.

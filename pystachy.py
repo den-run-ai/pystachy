@@ -25,6 +25,7 @@ from src.pystachy_compiler.specs import (
     IRT as IRT,
     METHODS as METHODS,
     MODULES as MODULES,
+    RTDATA as RTDATA,
     RTSYM as RTSYM,
     RUNTIME as RUNTIME,
 )

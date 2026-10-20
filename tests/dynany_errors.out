@@ -1,0 +1,42 @@
+int+str raised TypeError: unsupported operand type(s) for +: 'int' and 'str'
+str+int raised TypeError: can only concatenate str (not "int") to str
+list+str raised TypeError: can only concatenate list (not "str") to list
+tuple+list raised TypeError: can only concatenate tuple (not "list") to tuple
+str-str raised TypeError: unsupported operand type(s) for -: 'str' and 'str'
+str*str raised TypeError: can't multiply sequence by non-int of type 'str'
+list*float raised TypeError: can't multiply sequence by non-int of type 'float'
+div0 raised ZeroDivisionError: division by zero
+fdiv0 raised ZeroDivisionError: float division by zero
+floordiv0 raised ZeroDivisionError: integer division or modulo by zero
+mod0 raised ZeroDivisionError: integer modulo by zero
+int<str raised TypeError: '<' not supported between instances of 'int' and 'str'
+list<tuple raised TypeError: '<' not supported between instances of 'list' and 'tuple'
+None<None raised TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
+idx raised IndexError: list index out of range
+negidx -> 2
+stridx -> 'b'
+strstridx raised TypeError: string indices must be integers, not 'str'
+listkey raised TypeError: list indices must be integers or slices, not str
+dictkey raised KeyError: 'b'
+tupleidx raised IndexError: tuple index out of range
+intidx raised TypeError: 'int' object is not subscriptable
+in int raised TypeError: argument of type 'int' is not iterable
+in str int raised TypeError: 'in <string>' requires string as left operand, not int
+in str -> True
+hash list raised TypeError: unhashable type: 'list'
+hash tuple -> 691707236985453663
+len int raised TypeError: object of type 'int' has no len()
+attr raised AttributeError: 'int' object has no attribute 'missing'
+method raised AttributeError: 'str' object has no attribute 'nomethod'
+int str -> 12
+int bad raised ValueError: invalid literal for int() with base 10: 'x1'
+int list raised TypeError: int() argument must be a string, a bytes-like object or a real number, not 'list'
+neg str raised TypeError: bad operand type for unary -: 'str'
+TypeError unhashable type: 'list'
+ValueError too many values to unpack (expected 2)
+ValueError not enough values to unpack (expected 4, got 3)
+TypeError 'int' object is not iterable
+TypeError 'int' object does not support item assignment
+TypeError 'tuple' object does not support item assignment
+TypeError 'tuple' object doesn't support item deletion
+[exit 0]

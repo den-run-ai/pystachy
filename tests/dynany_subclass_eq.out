@@ -1,0 +1,10 @@
+S.__eq__
+S.__eq__
+S.__eq__
+True True False True
+N.__eq__
+N.__eq__
+False True
+True 1 0
+found True
+[exit 0]

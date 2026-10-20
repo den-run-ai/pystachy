@@ -209,6 +209,7 @@ def gen_gen_ann_ret(self, n: Node, infer: bool = False) -> list[str]:
         return [f"{base}[...] takes one type: {base}[T]"]
     if base == "Generator" and len(a) != 1 and len(a) != 3:
         return ["Generator[...] takes three types: Generator[Y, S, R]"]
+    infer = infer and not self.dyn_policy(n.line)  # (a module that compiles Any as dynamic values: a dyn channel)
     yi = infer and self.any_in([a[0]])
     why = self.ann_problem(a[0], False) if a[0].kind != "None" and not yi else ""
     if why != "":

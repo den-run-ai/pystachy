@@ -580,10 +580,12 @@ def gen_canon(self, vs: Values, v: str) -> str:
             r = self.same(vs, v, f"field {i.a[0].t} {i.k} {self.canon(vs, i.a[0].v)}")
             vs.fieldtype[r] = i.a[0].t
             vs.fieldindex[r] = i.k
-        elif i.op == "union.payload":
+        elif i.op == "union.payload" or i.op == "dyn.payload":
             # A union box's tag and payload are immutable. Retain the equivalence of
             # repeated narrowed reads expose to dictionary lookup fusion.
-            r = self.same(vs, v, f"union.payload {i.s} {self.canon(vs, i.a[0].v)}")
+            r = self.same(vs, v, f"{i.op} {i.s} {self.canon(vs, i.a[0].v)}")
+        elif i.op == "dyn.type":
+            r = self.same(vs, v, f"dyn.type {self.canon(vs, i.a[0].v)}")
         elif i.op == "tuple.load" or i.op == "tuple.store":
             if v == f"%t{i.r[0]}":
                 # Fixed and traversed tuple slots share one semantic address key.
