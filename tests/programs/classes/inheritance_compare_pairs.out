@@ -1,0 +1,326 @@
+None None
+ == True
+ != False
+ < TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
+ > TypeError: '>' not supported between instances of 'NoneType' and 'NoneType'
+None b
+  Base.__eq__ b None
+ == False
+  Base.__eq__ b None
+ != True
+ < TypeError: '<' not supported between instances of 'NoneType' and 'Base'
+  Base.__lt__ b None
+ > False
+None l
+  Base.__eq__ l None
+ == False
+  Base.__eq__ l None
+ != True
+ < TypeError: '<' not supported between instances of 'NoneType' and 'Left'
+  Base.__lt__ l None
+ > False
+None r
+  Right.__eq__ r None
+ == False
+  Right.__eq__ r None
+ != True
+  Right.__gt__ r None
+ < False
+  Base.__lt__ r None
+ > False
+None d
+  Base.__eq__ d None
+ == False
+  Base.__eq__ d None
+ != True
+ < TypeError: '<' not supported between instances of 'NoneType' and 'Deep'
+  Base.__lt__ d None
+ > False
+b None
+  Base.__eq__ b None
+ == False
+  Base.__eq__ b None
+ != True
+  Base.__lt__ b None
+ < False
+ > TypeError: '>' not supported between instances of 'Base' and 'NoneType'
+b b
+  Base.__eq__ b b
+ == True
+  Base.__eq__ b b
+ != False
+  Base.__lt__ b b
+ < False
+  Base.__lt__ b b
+ > False
+b l
+  Base.__eq__ l b
+ == False
+  Base.__eq__ l b
+ != True
+  Base.__lt__ b l
+ < True
+  Base.__lt__ l b
+ > False
+b r
+  Right.__eq__ r b
+ == True
+  Right.__eq__ r b
+ != False
+  Right.__gt__ r b
+ < True
+  Base.__lt__ r b
+ > False
+b d
+  Base.__eq__ d b
+ == True
+  Base.__eq__ d b
+ != False
+  Base.__lt__ b d
+ < False
+  Base.__lt__ d b
+ > False
+l None
+  Base.__eq__ l None
+ == False
+  Base.__eq__ l None
+ != True
+  Base.__lt__ l None
+ < False
+ > TypeError: '>' not supported between instances of 'Left' and 'NoneType'
+l b
+  Base.__eq__ l b
+ == False
+  Base.__eq__ l b
+ != True
+  Base.__lt__ l b
+ < False
+  Base.__lt__ b l
+ > True
+l l
+  Base.__eq__ l l
+ == True
+  Base.__eq__ l l
+ != False
+  Base.__lt__ l l
+ < False
+  Base.__lt__ l l
+ > False
+l r
+  Base.__eq__ l r
+ == False
+  Base.__eq__ l r
+ != True
+  Base.__lt__ l r
+ < True
+  Base.__lt__ r l
+ > False
+l d
+  Base.__eq__ d l
+ == False
+  Base.__eq__ d l
+ != True
+  Base.__lt__ l d
+ < False
+  Base.__lt__ d l
+ > True
+r None
+  Right.__eq__ r None
+ == False
+  Right.__eq__ r None
+ != True
+  Base.__lt__ r None
+ < False
+  Right.__gt__ r None
+ > False
+r b
+  Right.__eq__ r b
+ == True
+  Right.__eq__ r b
+ != False
+  Base.__lt__ r b
+ < False
+  Right.__gt__ r b
+ > True
+r l
+  Right.__eq__ r l
+ == True
+  Right.__eq__ r l
+ != False
+  Base.__lt__ r l
+ < False
+  Right.__gt__ r l
+ > True
+r r
+  Right.__eq__ r r
+ == True
+  Right.__eq__ r r
+ != False
+  Base.__lt__ r r
+ < False
+  Right.__gt__ r r
+ > False
+r d
+  Right.__eq__ r d
+ == True
+  Right.__eq__ r d
+ != False
+  Base.__lt__ r d
+ < False
+  Right.__gt__ r d
+ > True
+d None
+  Base.__eq__ d None
+ == False
+  Base.__eq__ d None
+ != True
+  Base.__lt__ d None
+ < False
+ > TypeError: '>' not supported between instances of 'Deep' and 'NoneType'
+d b
+  Base.__eq__ d b
+ == True
+  Base.__eq__ d b
+ != False
+  Base.__lt__ d b
+ < False
+  Base.__lt__ b d
+ > False
+d l
+  Base.__eq__ d l
+ == False
+  Base.__eq__ d l
+ != True
+  Base.__lt__ d l
+ < True
+  Base.__lt__ l d
+ > False
+d r
+  Base.__eq__ d r
+ == False
+  Base.__eq__ d r
+ != True
+  Base.__lt__ d r
+ < True
+  Base.__lt__ r d
+ > False
+d d
+  Base.__eq__ d d
+ == True
+  Base.__eq__ d d
+ != False
+  Base.__lt__ d d
+ < False
+  Base.__lt__ d d
+ > False
+[True, False, False, False] [False, True, True, True]
+[False, True, False, False] [True, False, True, True]
+[False, False, True, False] [True, True, False, True]
+[False, False, False, True] [True, True, True, False]
+None None True False
+  Problem.__eq__ p1 None
+  Problem.__eq__ p1 None
+None p1 False True
+  Problem.__eq__ m1 None
+  Problem.__eq__ m1 None
+None m1 False True
+  Problem.__eq__ M1 None
+  Problem.__eq__ M1 None
+None M1 False True
+  Problem.__eq__ f1 None
+  Problem.__eq__ f1 None
+None f1 False True
+  Problem.__eq__ p2 None
+  Problem.__eq__ p2 None
+None p2 False True
+  Problem.__eq__ p1 None
+  Problem.__eq__ p1 None
+p1 None False True
+  Problem.__eq__ p1 p1
+  Problem.__eq__ p1 p1
+p1 p1 True False
+  Problem.__eq__ m1 p1
+  Problem.__eq__ m1 p1
+p1 m1 False True
+  Problem.__eq__ M1 p1
+  Problem.__eq__ M1 p1
+p1 M1 False True
+  Problem.__eq__ f1 p1
+  Problem.__eq__ f1 p1
+p1 f1 False True
+  Problem.__eq__ p2 p1
+  Problem.__eq__ p2 p1
+p1 p2 True False
+  Problem.__eq__ m1 None
+  Problem.__eq__ m1 None
+m1 None False True
+  Problem.__eq__ m1 p1
+  Problem.__eq__ m1 p1
+m1 p1 False True
+  Problem.__eq__ m1 m1
+  Problem.__eq__ m1 m1
+m1 m1 True False
+  Problem.__eq__ m1 M1
+  Problem.__eq__ m1 M1
+m1 M1 False True
+  Problem.__eq__ m1 f1
+  Problem.__eq__ m1 f1
+m1 f1 False True
+  Problem.__eq__ m1 p2
+  Problem.__eq__ m1 p2
+m1 p2 False True
+  Problem.__eq__ M1 None
+  Problem.__eq__ M1 None
+M1 None False True
+  Problem.__eq__ M1 p1
+  Problem.__eq__ M1 p1
+M1 p1 False True
+  Problem.__eq__ M1 m1
+  Problem.__eq__ M1 m1
+M1 m1 False True
+  Problem.__eq__ M1 M1
+  Problem.__eq__ M1 M1
+M1 M1 True False
+  Problem.__eq__ f1 M1
+  Problem.__eq__ f1 M1
+M1 f1 False True
+  Problem.__eq__ M1 p2
+  Problem.__eq__ M1 p2
+M1 p2 False True
+  Problem.__eq__ f1 None
+  Problem.__eq__ f1 None
+f1 None False True
+  Problem.__eq__ f1 p1
+  Problem.__eq__ f1 p1
+f1 p1 False True
+  Problem.__eq__ f1 m1
+  Problem.__eq__ f1 m1
+f1 m1 False True
+  Problem.__eq__ f1 M1
+  Problem.__eq__ f1 M1
+f1 M1 False True
+  Problem.__eq__ f1 f1
+  Problem.__eq__ f1 f1
+f1 f1 True False
+  Problem.__eq__ f1 p2
+  Problem.__eq__ f1 p2
+f1 p2 False True
+  Problem.__eq__ p2 None
+  Problem.__eq__ p2 None
+p2 None False True
+  Problem.__eq__ p2 p1
+  Problem.__eq__ p2 p1
+p2 p1 True False
+  Problem.__eq__ p2 m1
+  Problem.__eq__ p2 m1
+p2 m1 False True
+  Problem.__eq__ p2 M1
+  Problem.__eq__ p2 M1
+p2 M1 False True
+  Problem.__eq__ p2 f1
+  Problem.__eq__ p2 f1
+p2 f1 False True
+  Problem.__eq__ p2 p2
+  Problem.__eq__ p2 p2
+p2 p2 True False
+[exit 0]

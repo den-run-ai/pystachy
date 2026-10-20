@@ -2988,54 +2988,152 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 return [sides[i], m, inv]
     return []
 
-def gen_inherit_cmp(self, op: str, a: Val, b: Val, phase: int = 0) -> Val:
+def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
     # Compare concrete runtime types, including None. Both operands matter: Python gives
     # the right operand's reflected comparison priority when its class is a strict subtype.
-    if phase == 2:
-        return self.concrete_cmp(op, a, b)
-    v = a if phase == 0 else b
-    if v.t not in self.classes:
-        return self.inherit_cmp(op, a, b, phase + 1)
-    cs = self.cmp_kinds(v.t)
-    if len(cs) == 1 and v.v in self.nn:
-        return self.inherit_cmp(op, a, b, phase + 1)
+    # Each pair of the operands' alternatives (cmp_alts) is compiled as concrete_cmp compiles
+    # it, but pairs whose code is the same (cmp_key) share one arm, and alternatives of a whose
+    # pairs share arms throughout share their tests of b: subclasses that inherit one method
+    # compile to an arm for each call it makes, not one for each pair of classes (#625). The
+    # arms are compiled in the order of the first pair of each, a's alternatives outermost.
+    xs = self.cmp_alts(a)
+    ys = self.cmp_alts(b)
+    keys: list[str] = []
+    pairs: list[list[Val]] = []
+    arm_of: dict[str, int] = {}
+    rows: list[list[int]] = []  # (each distinct row of arms, whose tests of b a group of a's alternatives shares)
+    row_of: dict[str, int] = {}
+    group: list[int] = []  # (the row of each of a's alternatives)
+    for x in xs:
+        row: list[int] = []
+        for y in ys:
+            k = self.cmp_key(op, x, y)
+            if k not in arm_of:
+                arm_of[k] = len(keys)
+                keys.append(k)
+                pairs.append([x, y])
+            elif x.t != "None" and y.t != "None" and (pairs[arm_of[k]][0].t == "None" or pairs[arm_of[k]][1].t == "None"):
+                # (the arm passes the operand, which is None where a None alternative's pair
+                # goes there, rather than None, which it would pass to all of them)
+                pairs[arm_of[k]] = [x, y]
+            row.append(arm_of[k])
+        s = ",".join([str(i) for i in row])
+        if s not in row_of:
+            row_of[s] = len(rows)
+            rows.append(row)
+        group.append(row_of[s])
+    if len(keys) == 1:
+        return self.ptr_cmp('==' if op == '==' else '!=', a, b) if keys[0] == "is" else self.concrete_cmp(op, pairs[0][0], pairs[0][1])
+    arms = [self.label() for k in keys]
+    tos = [[arms[i] for i in rw] for rw in rows]
+    # (where each row's tests of b start: none for a row of one arm, nor where a's alternatives
+    # all share one row, which needs no test of a)
+    starts = [to[0] if uniform(to) else self.label() for to in tos] if len(rows) > 1 else [""]
     end = self.label()
     ph = Ins("phi", "bool", "")
-    if v.v not in self.nn:
-        null = self.label()
-        some = self.label()
-        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, null, some)
-        self.place(null)
-        r = self.inherit_cmp(op, Val("null", "None") if phase == 0 else a, b if phase == 0 else Val("null", "None"), phase + 1)
+    if len(rows) > 1:
+        self.cmp_branch(a, xs, [starts[g] for g in group])
+    for g in range(len(rows)):
+        if not uniform(tos[g]):
+            if len(rows) > 1:
+                self.place(starts[g])
+            self.cmp_branch(b, ys, tos[g])
+    for i in range(len(keys)):
+        self.place(arms[i])
+        # ("is": the identity of the operands, which each alternative pointer is)
+        r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if keys[i] == "is" else self.concrete_cmp(op, pairs[i][0], pairs[i][1])
         if not self.term:
             self.incoming(ph, r.v, self.cur)
             self.br(end)
-        self.place(some)
-    xc = self.classes[v.t].exc != ""
-    tag = self.mload('%ptr' if xc else 'int', v.v) if len(cs) > 1 else ""
-    for i in range(len(cs)):
-        nxt = self.label() if i + 1 < len(cs) else ""
-        if nxt != "":
-            arm = self.label()
-            if xc:
-                # (an exception object's first field is its class's ExcClass, made for the test)
-                self.xcls[cs[i]] = True
-                hit = self.scalar_cmp('eq', Val(tag, '%ptr'), Val(f"@x.{cs[i]}", '%ptr'))
-            else:
-                hit = self.num_cmp('==', Val(tag, "int"), Val(str(self.classes[cs[i]].tag), "int")).v
-            self.cbr(hit, arm, nxt)
-            self.place(arm)
-        r = self.inherit_cmp(op, Val(v.v, cs[i]) if phase == 0 else a, b if phase == 0 else Val(v.v, cs[i]), phase + 1)
-        if not self.term:
-            self.incoming(ph, r.v, self.cur)
-            self.br(end)
-        if nxt != "":
-            self.place(nxt)
     self.place(end)
     if len(ph.a) == 0:
         self.unreachable()
         return Val("false", "bool")
     return Val(self.phi(ph), "bool")
+
+def gen_cmp_alts(self, v: Val) -> list[Val]:
+    # what inherit_cmp tells operand v apart as: None where v may be None, then an object of each
+    # class it may be of (cmp_kinds); v alone where it is no class's object, or one class's and
+    # known not to be None
+    if v.t not in self.classes:
+        return [v]
+    cs = self.cmp_kinds(v.t)
+    if len(cs) == 1 and v.v in self.nn:
+        return [v]
+    alts = [Val("null", "None")] if v.v not in self.nn else []
+    for c in cs:
+        alts.append(Val(v.v, c))
+    return alts
+
+def gen_cmp_key(self, op: str, a: Val, b: Val) -> str:
+    # what concrete_cmp(op, a, b) compiles, for alternatives a and b of inherit_cmp's operands:
+    # pairs of one key compile to the same code, where a None alternative is the operand
+    # itself. A call is told apart by its method, which operand it is called on, its
+    # inversion and the types call_fn passes its arguments as: an object or None for a
+    # parameter of a class it derives from as that class (coerce: the same pointer, or null),
+    # else its own type, which a template's instance is compiled for. Identity ("is") is
+    # that of the operands, whichever alternative each is.
+    p = self.cmp_pick(op, a.t, b.t)
+    if len(p) == 0:
+        if op != "==" and op != "!=":
+            return f"raise {tname(a.t)} {tname(b.t)}"  # (the TypeError names both classes)
+        return "is" if (a.t in self.classes or a.t == "None") and (b.t in self.classes or b.t == "None") else "not"
+    lhs = a if p[0] == "a" else b
+    rhs = b if p[0] == "a" else a
+    if self.cmp_method(lhs.t, p[1], rhs.t) == "":
+        return f"bad {p[0]} {p[1]} {lhs.t} {rhs.t}"  # (the error names both classes)
+    f = self.classes[lhs.t].methods[p[1]]
+    ts: list[str] = []
+    for v in [lhs, rhs]:
+        t = f.ptypes[len(ts)] if len(ts) < len(f.ptypes) else ""
+        ts.append(t if t in self.classes and (v.t == "None" or (v.t in self.classes and self.derives(v.t, t))) else v.t)
+    return f"call {p[0]}{p[2]} {f.ll} {ts[0]} {ts[1]}"
+
+def uniform(to: list[str]) -> bool:
+    # do all of inherit_cmp's alternatives go to one label
+    for t in to:
+        if t != to[0]:
+            return False
+    return True
+
+def gen_cmp_branch(self, v: Val, alts: list[Val], to: list[str]) -> None:
+    # go to to[i] where operand v is alternative i of alts (cmp_alts): None by a test of the
+    # pointer, an object by its class's tag (an exception object by its ExcClass). The
+    # target that the most classes share is where none of the tests matches (where targets
+    # tie, the last class's, as before #625)
+    if uniform(to):
+        self.br(to[0])
+        return
+    first = 0
+    if alts[0].t == "None":
+        some = self.label()
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, to[0], some)
+        self.place(some)
+        first = 1
+    n: dict[str, int] = {}
+    for j in range(first, len(to)):
+        n[to[j]] = n[to[j]] + 1 if to[j] in n else 1
+    rest = to[len(to) - 1]
+    for j in range(first, len(to)):
+        if n[to[j]] > n[rest]:
+            rest = to[j]
+    tested = [j for j in range(first, len(to)) if to[j] != rest]
+    xc = self.classes[v.t].exc != ""
+    tag = self.mload('%ptr' if xc else 'int', v.v) if len(tested) > 0 else ""
+    for i in range(len(tested)):
+        c = alts[tested[i]].t
+        if xc:
+            # (an exception object's first field is its class's ExcClass, made for the test)
+            self.xcls[c] = True
+            hit = self.scalar_cmp('eq', Val(tag, '%ptr'), Val(f"@x.{c}", '%ptr'))
+        else:
+            hit = self.num_cmp('==', Val(tag, "int"), Val(str(self.classes[c].tag), "int")).v
+        nxt = self.label() if i + 1 < len(tested) else rest
+        self.cbr(hit, to[tested[i]], nxt)
+        if i + 1 < len(tested):
+            self.place(nxt)
+    if len(tested) == 0:
+        self.br(rest)
 
 def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
     # Both objects now have known, non-null concrete classes. NotImplemented is outside

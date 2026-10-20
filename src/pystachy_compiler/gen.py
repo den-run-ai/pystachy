@@ -591,6 +591,9 @@ from src.pystachy_compiler.expressions import (
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
     gen_inherit_cmp as expressions_inherit_cmp,
+    gen_cmp_alts as expressions_cmp_alts,
+    gen_cmp_key as expressions_cmp_key,
+    gen_cmp_branch as expressions_cmp_branch,
     gen_inherit_contains as expressions_inherit_contains,
     gen_member_item as expressions_member_item,
     gen_iter_in as expressions_iter_in,
@@ -3564,8 +3567,17 @@ class Gen:
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
 
-    def inherit_cmp(self, op: str, a: Val, b: Val, phase: int=0) -> Val:
-        return expressions_inherit_cmp(self, op, a, b, phase)
+    def inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_inherit_cmp(self, op, a, b)
+
+    def cmp_alts(self, v: Val) -> list[Val]:
+        return expressions_cmp_alts(self, v)
+
+    def cmp_key(self, op: str, a: Val, b: Val) -> str:
+        return expressions_cmp_key(self, op, a, b)
+
+    def cmp_branch(self, v: Val, alts: list[Val], to: list[str]) -> None:
+        return expressions_cmp_branch(self, v, alts, to)
 
     def inherit_contains(self, op: str, a: Val, b: Val) -> Val:
         return expressions_inherit_contains(self, op, a, b)
