@@ -707,6 +707,13 @@ from src.pystachy_compiler.optimizations import (
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
     gen_same as optimizations_same,
+    gen_tag_read as optimizations_tag_read,
+    gen_ufresh as optimizations_ufresh,
+    gen_uleaves as optimizations_uleaves,
+    gen_unionslots as optimizations_unionslots,
+    gen_upaid as optimizations_upaid,
+    gen_uparts as optimizations_uparts,
+    gen_usplits as optimizations_usplits,
 )
 from src.pystachy_compiler.program import (
     gen_body_effect as program_body_effect,
@@ -2301,6 +2308,27 @@ class Gen:
 
     def dictfuse(self, fn: IFn) -> int:
         return optimizations_dictfuse(self, fn)
+
+    def unionslots(self, fn: IFn) -> int:
+        return optimizations_unionslots(self, fn)
+
+    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_usplits(self, fn, defs, v, seen)
+
+    def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
+        return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
+
+    def uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
+        return optimizations_uleaves(self, fn, uses, i, split)
+
+    def ufresh(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_ufresh(self, fn, defs, uses, v, seen)
+
+    def upaid(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], addr: str, split: dict[str, Ins]) -> bool:
+        return optimizations_upaid(self, fn, defs, uses, addr, split)
+
+    def tag_read(self, i: Ins) -> bool:
+        return optimizations_tag_read(self, i)
 
     def canon(self, vs: Values, v: str) -> str:
         return optimizations_canon(self, vs, v)

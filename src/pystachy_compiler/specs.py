@@ -631,7 +631,7 @@ GENTHROWC = 3
 # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
 # functions return by value to the calls that only read their slots (Gen.tuple_rets), which
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret"]
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)

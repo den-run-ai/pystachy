@@ -5,7 +5,7 @@ Keep the original measurements as a historical baseline. Append new measurements
 with the exact main SHA, merged PRs, commands, inputs and observed outcomes.
 Do not replace a result merely because a PR description predicts an improvement.
 
-**Latest evaluated main:** `633cdf1aeceae65cb9fa94d420ae50562e6c1b7a`.
+**Latest evaluated main:** `a1f3b6a7379510d7ece2d168e576313d5fa8c6cf`.
 **Baseline audit PR:** [#635](https://github.com/den-run-ai/pystachy/pull/635).
 
 **Historical replay prerequisite (corrected 2026-10-19):** before running any
@@ -3073,3 +3073,126 @@ No full local `make verify`, unmodified CPython regrtest, broad PyPI/NumPy censu
 performance/memory experiment was run. Shared-host timings are command durations,
 not speedup/regression evidence. Dated baseline reports/JSON and adaptation
 assessments are preserved unchanged.
+
+## 2026-10-19: numeric-union local slots (#742)
+
+Evaluated [main `a1f3b6a7379510d7ece2d168e576313d5fa8c6cf`](https://github.com/den-run-ai/pystachy/commit/a1f3b6a7379510d7ece2d168e576313d5fa8c6cf),
+the only first-parent merge after `633cdf1a`. Fresh metadata and ancestry confirm
+[#742](https://github.com/den-run-ai/pystachy/pull/742) merged. Its ten changed paths
+add the `unionslots` IR pass, dispatch/configuration, a cache-key test update, two
+positive/IR fixtures and their contracts, and documentation. Runtime, library,
+port and benchmark sources are unchanged. Read #491/#616 and the PR discussion;
+the completed no-findings review covers implementation head `4aa2297c`, not this
+audit's later combined tree. No implementation branch was edited.
+
+This optimizes the representation of already-supported **closed numeric unions**:
+eligible locals keep a numeric tag and payload in separate slots, and values that
+escape are boxed subject to the pass's allocation-budget rule. It does **not** add
+general runtime `Any`, new inference, arbitrary union consumers or generator-frame
+slot splitting. Existing rejection/deviation fixtures retain their meaning.
+
+### Build, execution and regression evidence
+
+Fresh **CPython 3.13.16 / LLVM 18.1.3** bootstrap reaches compiler/runtime fixed
+points of **650,584 / 18,851 IR lines**, with all three stages byte-identical.
+Compiler SHA-256:
+`114c2495ec213cd94dbf1494df7f2e05fd6557888281ab58fc1e1f0a91f90f15`.
+The old comparison compiler was built from **633cdf1a**, hash
+`18382171c96a1ce0ee6048d868439b4a823b9abfa36138d941c1e890d07e2154`;
+compiler build identity and evaluated source identity are retained separately.
+
+- **3,159-program three-way compilation comparison:** **3,136 identical** old/new
+  IR/message/status results, **23 with changed IR**, and **no changed acceptance or
+  rejection diagnostics**. Every result is identical to the old compiler with
+  `PYSTACHY_OPT=-unionslots`. This isolates the new pass rather than attributing
+  unrelated frontend changes to it.
+- **470/470 focused checks pass:** 34 union fixtures give **56 checks per mode**;
+  the changed-IR selector adds 19 previously unselected fixtures, **38 per mode**.
+  Each selection runs native JIT/AOT, GC stress, pass-disabled, all-optimizations-off
+  and CPython-hosted compiler configurations. The additional programs cover
+  datetime, random, string formatting, mixed-list/template/type-alias cases and
+  Unicode library consumers. All 22 changed-IR executable test programs are covered;
+  the remaining changed program is the IR contract probe.
+- **38/38 CPython reference recordings** match (21 initial and 17 additional
+  positive programs). Expected-rejection and documented-deviation checks are
+  separate and are not mislabeled CPython parity. Repository `upstream_*` fixtures
+  are adapted case programs, not unmodified upstream suites.
+- An independent **eight-input matrix** exercises mixed accumulations, repeated
+  saved snapshots, exception recovery and generator suspension, including empty
+  input, signed-zero inputs, infinity and NaN. Its output exactly matches CPython
+  in **ten JIT/AOT executions**: old compiler, new pass on, pass off, GC stress and
+  all optimizations off. No source adaptation was needed for this probe.
+- IR checking and LLVM assembly pass for **44 programs** (25 initial, 19 additional).
+  Runtime checks pass for **457 RUNTIME entries, 70 exception classes, 171 functions**.
+  Native runtime-cache tests pass **65/65**, including equivalence of `-all` to the
+  complete named-pass list containing `-unionslots`. Hosted-only source-component
+  cache checks were not run by this native invocation.
+
+### Allocation mechanism, not a timing claim
+
+The retained `tests/ir/unionslots.py` contract passes. Independent counts of
+`pys_ubox` call sites in its emitted LLVM IR show:
+
+| Function | Old / pass disabled | Pass enabled |
+|---|---:|---:|
+| `acc` (float-list accumulator returning a union) | 2 | 1 |
+| `mixed` (numeric-union-list accumulator) | 4 | 1 |
+| `paid` (one escaping read between updates) | 4 | 1 |
+| `shown` (print the narrowed float accumulator) | 2 | 0 |
+| `twice` (multiple escaping reads) | 4 | 4 |
+| `passed`, `param`, `item` (already-boxed inputs) | 0 each | 0 each |
+
+No function in that probe gains a box call site. For `acc`, the sole remaining
+box call is after the loop at the return; the loop body contains none. Selected
+function bodies, complete IR hashes and all per-function counts are preserved in
+the [machine-readable evidence](compatibility-2026-10-19-union-slots.json).
+These are **static IR observations**, not dynamic allocation totals, peak memory
+measurements or a reproduced wall-time speedup. A scratch contract omitting the
+required return box correctly fails with `OTHER CALLS`, exit 1.
+
+The initial negative-control attempt incorrectly expected `check_ir.sh` to honor
+`PYSTACHY_OPT=-unionslots` for a `.calls` fixture. That harness deliberately clears
+the option for contracts and passed with optimizations on. The failed audit
+assertion is retained explicitly; the corrected scratch-contract control above
+does not edit any tracked fixture. Pass-disabled compilation is independently
+verified directly by the three-way oracle and the box-count comparison.
+
+### Library counts, workload and limits
+
+Both isolated import sweeps were rerun with `--metadata`: **143/468 native** and
+**145/468 stub-assisted**, **zero timeouts**, identical per-module outcomes and
+first errors. All **522 CPython source hashes**, **54 exclusions** and overlay
+policy match the preceding checkpoint. There is no newly importable library.
+
+No retained adapted-port or benchmark source changes IR in the oracle. The
+existing **adapted float `spectral_norm`** workload was nevertheless smoke-tested:
+one loop, `N=130`, CPython reference plus JIT/AOT with the pass on and off. All four
+native results are exactly `1.6236422398020804`, matching CPython (the driver permits
+relative tolerance `1e-12`). This does not test the author's separately annotated
+numeric-union timing variant or establish unmodified upstream compatibility.
+Concurrent shared-host command/benchmark durations are retained only as diagnostics;
+no performance ratio is inferred from these single samples.
+
+Exact commands, inputs, fixture/tool hashes and replay scripts are in the JSON.
+Long stdout is preserved as gzip+base64 in `stdout_blobs`, keyed by SHA-256 of its
+decoded UTF-8 bytes; each `stdout_blob_sha256` refers to that map.
+From the clean evaluated checkout, set the explicit environment from the driver,
+then run `audit-742.py` modes `build`, `references`, `checks`, `oracle`,
+`changed-checks`, `changed-references`, `verify`, `changed-ir`, `probes`,
+`negative-contract`, `cache`, `benchmark`, `sweeps`, followed by the assembler.
+The historical failed negative-control invocation and implementation-CI snapshot
+are separate inputs to preserve when replaying the assembler. The sweeps are:
+
+```sh
+/root/.local/bin/python3.13 tools/import_sweep.py -j 2 --metadata build/audit-742/imports-metadata.json ./pystachy "$STDLIB" build/audit-742/imports.json
+/root/.local/bin/python3.13 tools/import_sweep.py -j 2 --metadata build/audit-742/stubs-metadata.json --stubs "$STDLIB" build/audit-742/stubs.json
+```
+
+`STDLIB` is the pinned interpreter's stdlib directory, retained in the evidence.
+Freshly read implementation head `4aa2297cb0d4809e4c775c509e2969a68d5e390a` has four
+successful workflows ([CI](https://github.com/den-run-ai/pystachy/actions/runs/39338453023),
+Lint, Packages and Installation); this is historical, not combined-main/audit-head
+CI. No full local `make verify`, full recording rerun, unmodified CPython regrtest,
+broad PyPI/NumPy census or dedicated performance/memory experiment was run. No new
+uncovered bug was confirmed and no issue filed. Dated baselines, upstream-suite
+distinctions and minor/major adaptation assessments remain unchanged.
