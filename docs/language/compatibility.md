@@ -58,8 +58,8 @@ In these cases a program can compile but behave differently from CPython.
   that begins no character is one character, in `len()` and in widths, padding, precision
   and `expandtabs()` alike, as CPython counts a byte that `surrogateescape` decodes. `read(n)`
   of such a file still counts each byte that does not continue a sequence as a character, so it
-  can return text that `len()` counts as longer than `n`. A native
-  UTF-8 file's `write()` result still counts bytes; a Latin-1 file's counts characters.
+  can return text that `len()` counts as longer than `n`. `write()` returns the number of
+  characters it writes, as `len()` counts them, in a UTF-8 file as in a Latin-1 one.
   A Latin-1 file's bytes are its characters, as in CPython: the str read holds each as
   UTF-8, and a write gives each character as its byte and returns
   the number of characters, or raises CPython's `UnicodeEncodeError` for one above U+00FF
