@@ -39,6 +39,8 @@ unmodified or with minimal annotations.
 | Language/type contract | [language](docs/language.md), [typing](docs/language/typing.md), [deviations](docs/language/compatibility.md) |
 | IR/runtime/FFI | [typed IR](docs/typed-ir.md), [subset runtime](docs/runtime-in-subset.md), [FFI](docs/ffi.md) |
 | Tests and CI | [testing](docs/testing.md), `tests/verify.sh --list`, `.github/workflows/` |
+| Dynamic storage and dispatch | [dynamic `Any`](docs/dynamic-any.md), including typed/dynamic boundaries and deviations |
+| Packaging/release | [releasing](docs/releasing.md), `.github/workflows/packages.yml`, `.github/workflows/release.yml` |
 | Library gaps and ports | [stdlib](docs/stdlib.md), [lib](lib/README.md), [ports](ports/README.md), [audit updates](docs/reports/compatibility-updates.md) |
 
 Use `rg` and the source map to find the responsible layer. Use the available GitHub
@@ -61,6 +63,12 @@ session's tools exist. When access is missing, report the specific limitation.
   `build/ref/` or `build/verify/` executable is not proof of which sources it contains.
   If reusing a verified binary, record its source identity separately from the checkout.
   Do not edit the tree while `make` or a verify group runs: later stages read it again.
+- CI shares one verified bootstrap from the **same workflow run**; local verify groups
+  still bootstrap afresh. Preserve `tools/verification_bootstrap.py`'s source, commit,
+  toolchain/ABI, run and payload checks before executing a restored compiler. Runtime
+  caches stay private; sanitizer/Python-free rebuilds, GC stress and cache tests still
+  run independently. Reuse is not permission to skip a group or its aggregate evidence
+  ([#741](https://github.com/den-run-ai/pystachy/pull/741)).
 - When ad hoc probes disagree, inspect inherited `PYSTACHY_HOME`, `PYSTACHY_PATH`,
   cache, optimization and GC settings; full verification sanitizes coverage-changing
   options, but direct invocations may not. Keep probe inputs and environments explicit.
@@ -104,6 +112,14 @@ make lint check-recordings
 | Ports/performance | `make port-check` or affected port checks; relevant benchmark correctness target before timings. Commit the unmodified upstream file before the marked edits; `ports/THIRD_PARTY_NOTICES` must equal the root file |
 | Docs only | Check links, commands and `git diff --check`; disclose that runtime suites were not rerun. A PR that changes only Markdown or `docs/` runs Lint and DCO, not the CI matrix |
 
+Coverage is a map of executed code, not proof of correctness. Keep hosted compiler
+statements/branches separate from native C runtime coverage; neither measures
+`runtime.py` or every native compiler configuration. Review changed-code and per-suite
+gaps (`COVERAGE_BASE=<base-ref>`) before chasing a headline percentage. Use relevant
+[configuration variants](docs/testing.md#configuration-variants) for GC/optimizer risks;
+instrumentation can itself change register allocation and collector retention
+([coverage scope](docs/testing.md#reading-coverage)). Coverage remains advisory.
+
 Start with the focused reproducer, then broaden for the affected risk and required gates.
 `make test` covers JIT/AOT but is not the full `make verify` matrix. A hosted parse or
 IR check without LLVM is not a native execution or bootstrap result. The authoritative
@@ -135,9 +151,8 @@ were checked in a 4-vCPU Claude Code container on 2026-10-18 (`44316e7`); confir
   from `tools/requirements-dev.txt`. `tools/package_smoke.py` needs the uv and setuptools
   pins in `packages.yml`. `/usr/bin/time` and `perf` were absent: read `VmHWM` in
   `/proc/PID/status` for peak memory and profile with callgrind.
-- `make` took 3 minutes and `make test` 8 (4,456 checks); `make check-recordings` and
-  Lint's `tools/` tests took about a minute each. Each verify group bootstraps first, so
-  use CI for the full matrix.
+- Measure build/test cost in this checkout; old session timings and counts are only
+  planning hints. Use CI's shared-bootstrap matrix for full verification when available.
 - Tool calls time out (Claude Code's Bash: 2 minutes by default, 10 at most) and `sleep`
   may be blocked. Run long commands in the harness's background mode with a log file and
   act on the completion notice. Do not start `tests/run.sh` or `make verify` with a shell
@@ -178,7 +193,18 @@ were checked in a 4-vCPU Claude Code container on 2026-10-18 (`44316e7`); confir
 - Assume user code runs mid-operation: `__iter__`, `__eq__`, `__hash__` and similar
   methods can mutate the container a fast path is reading. Keep CPython's evaluation
   order and first error ([#554](https://github.com/den-run-ai/pystachy/pull/554),
-  [#473](https://github.com/den-run-ai/pystachy/pull/473)).
+  [#473](https://github.com/den-run-ai/pystachy/pull/473)). Resolve and capture the callable
+  before evaluating arguments: those arguments can replace a callable field, and even
+  a name read can raise. Test missing attributes and arity errors with side effects
+  ([#761](https://github.com/den-run-ai/pystachy/pull/761)).
+- For dynamic dispatch, test typed and `Any` paths, both operand orders, base/subclass
+  priority, reflected methods, property setters and container searches. Equality and
+  identity are separate contracts, including for functions and bound methods. At the
+  [typed/dynamic boundary](docs/dynamic-any.md#the-typeddynamic-contract), preserve
+  mutable aliases and GC scanning; do not copy or reinterpret aliased typed storage.
+  Follow the documented conversions for fresh results. Boxed `None` is distinct from
+  a null/unbound slot. Check non-opt-in programs as well as opt-in ones when extending
+  dynamic `Any`.
 - A compile-time rejection replaced by a runtime error that CPython never raises is a
   new deviation; update `tests/errors/` and the
   [compatibility reference](docs/language/compatibility.md) with it
@@ -190,6 +216,14 @@ were checked in a 4-vCPU Claude Code container on 2026-10-18 (`44316e7`); confir
   ([#227](https://github.com/den-run-ai/pystachy/pull/227)). Reviews also keep finding
   values past `INT64_MAX`, modules read during their circular import and enclosing locals
   that shadow type parameters.
+- Adding `Gen` state requires auditing `Frame`, save/restore, `dry()` and restart paths
+  such as `Rejoin`: state explicitly what speculative compilation may retain. Test
+  increasing nesting depth; dry and real traversal can multiply each other's work
+  ([#767](https://github.com/den-run-ai/pystachy/issues/767),
+  [#781](https://github.com/den-run-ai/pystachy/issues/781)). Valid IR shape alone does
+  not prove a payload read is guarded by the matching tag; inspect control-flow proof
+  and invalidation after mutations/calls when changing narrowing
+  ([#768](https://github.com/den-run-ai/pystachy/issues/768)).
 - Every test also runs with a collection at every allocation, under UBSan, without
   Python and unoptimized. Keep tests small and deterministic: no quadratic depth,
   busy-wait timers, core-dump-dependent signal text or CPython's "Did you mean" hints.
@@ -221,6 +255,7 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
 | A lazily created global needed an explicit collector root ([#602](https://github.com/den-run-ai/pystachy/pull/602)) | Test survival after caller references disappear, including aliases and extension initialization. |
 | A C `float` declared as `double` compiled but returned zeros ([#609](https://github.com/den-run-ai/pystachy/pull/609)) | Verify ABI widths, mutation, aliasing and pointer lifetime with real C calls; twin parity alone cannot establish ABI correctness. |
 | A malformed view could make BLAS write past its buffer, under green CI ([#647](https://github.com/den-run-ai/pystachy/pull/647)) | Validate strides, offset, reachable storage and output length before a native write; reproduce suspected overruns with a spy, not a real write. |
+| Tuple repetition first divided by zero, then missed byte-size overflow ([#761](https://github.com/den-run-ai/pystachy/pull/761)) | Handle empty/zero/negative cases before division; check element width and header overhead before multiplication/allocation, not just the element count. |
 | AOT `-O2` rewrote constant-exponent `pow` and changed last digits ([#656](https://github.com/den-run-ai/pystachy/issues/656)) | Read floating-point inputs at run time (`NAME.in`, `sys.argv`) and compare exact output in both modes. |
 | Import counts barely changed after real feature fixes ([#635](https://github.com/den-run-ai/pystachy/pull/635)) | Record the next blocker and functional API delta; one removed blocker does not establish whole-package support. |
 | Cancelled runs retained queued final jobs ([#643](https://github.com/den-run-ai/pystachy/pull/643)) | Inspect run/job state and concurrency; a skipped summary is not successful verification. |
@@ -242,6 +277,16 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   census. Pin compiler/source/input versions and overlay exclusions; changing the
   denominator is not necessarily lost coverage. Retain exact repros and first
   errors. Preserve dated reports; add a measured checkpoint to the rolling log.
+- A revision identifies evidence only if all consumed inputs are accounted for.
+  Capture source cleanliness before generating outputs; include untracked/ignored
+  importable inputs, or record their hashes and deviations explicitly. Tracked-only
+  `git status --untracked-files=no` cannot certify a clean audit. Do not advance the
+  fully evaluated checkpoint for an incomplete replay
+  ([#743](https://github.com/den-run-ai/pystachy/pull/743)). Count runnable cases with
+  `tests/corpus.sh`, not broad globs that include helper modules; move sidecars with
+  cases and recheck recordings after layout changes
+  ([#762](https://github.com/den-run-ai/pystachy/pull/762),
+  [#771](https://github.com/den-run-ai/pystachy/pull/771)).
 - Keep upstream provenance, licenses, hashes and `# Pystachy port:` explanations.
   A small adaptation should remain runnable under CPython when that is its contract.
   Try unchanged upstream first, then minimal adaptations; avoid library-name special
@@ -265,6 +310,16 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   provider in comparisons. Check GC threshold changes on several workloads, and remove
   avoidable allocations before tuning the collector. Land a benchmark driver with
   deterministic count guards (as `make re-probe` does) before optimizing.
+- Profile an end-to-end consumer before adding specialization: separate parsing,
+  hashing/lookups, boxing/GC and dispatch costs. Exercise skewed, mixed and changing
+  types, including misses/fallbacks; a guard microbenchmark or one newly compiling
+  import does not establish an application win
+  ([#784](https://github.com/den-run-ai/pystachy/pull/784)). For compiler cost, separate
+  raw IR size, optimized IR, binary size, frontend/backend time and allocations; test
+  increasing depth/hierarchy sizes. Less IR can still run slower
+  ([#785](https://github.com/den-run-ai/pystachy/pull/785)). In `irsame` comparisons,
+  normalize only demonstrated checkout-path differences; sharing a home is valid
+  only when its library/runtime inputs are identical, or it can hide a real change.
 
 ## Coordinate, publish and hand off
 
@@ -295,8 +350,9 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   [#658](https://github.com/den-run-ai/pystachy/pull/658)), and the authoring session's
   own review is not independent. A mergeable state is not CI evidence: branch protection
   did not require the verification gate (on 2026-10-18 only a DCO check), and admins
-  bypass it. Page check runs with `per_page=100`; the default page of 30 is shorter than
-  one push's list.
+  bypass it. Request `per_page=100` and follow further pages for checks/jobs; the default
+  page of 30 is shorter than one push's list. Classify expected conditional skips
+  separately from missing or cancelled required evidence.
 - `main` contains only merge commits: bring main into a branch by merging, not rebasing,
   and land stacks so each merge publishes a CI-tested tree. GitHub can refuse, or call
   dirty, a merge that is clean locally (criss-cross merge bases); merge main into the
@@ -307,13 +363,16 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   merge you report was a local trial or happened on GitHub.
 - CI runs on pull requests (except Markdown- or `docs/`-only ones), pushes to main and
   manual dispatch, so a branch without a PR gets none, and no `pull_request` workflow
-  runs while a PR has conflicts. Each push queues about 30 jobs (about ten minutes) and
-  cancels the PR's previous run: batch commits, and do not push or rerun only to restart
-  checks.
+  runs while a PR has conflicts. A push can cancel that PR's previous run: batch commits,
+  and do not push or rerun only to restart checks. Measure worker time, critical-path
+  execution, setup/artifact transfer and queue delay separately; a faster job need not
+  mean a faster merge. Inspect live workflow concurrency rather than hard-coding an
+  account/job limit, and preserve per-commit main runs needed by the release gate.
 - Distinguish queued/running, failed, cancelled/skipped and `action_required` runs.
   No jobs created can mean fork workflow approval is pending. Inspect the cause;
   do not bypass approvals or cancel other sessions' useful runs. To validate or extend
-  a fork PR, cherry-pick it onto current main in your own branch and PR
+  a fork PR, use an authorized integration branch with its provenance intact; this
+  does not waive the contribution's DCO or the review required before executing it
   ([#659](https://github.com/den-run-ai/pystachy/pull/659),
   [#665](https://github.com/den-run-ai/pystachy/pull/665)).
 - Codex reviews a PR when it is opened, marked ready for review or given an
@@ -337,8 +396,15 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   limits, linked issues and exact validation revision/commands/results. Separate
   local evidence from CI; update stale status after revisions. Keep old measurements
   labeled with their revision. Use a structured body or `--body-file` for multiline
-  text. Verify that the published tree contains the files you reviewed. Link code at
-  a commit SHA, not a branch.
+  text. Link code at a commit SHA, not a branch.
+- Read back published file bytes and compare the complete remote tree/diff to the
+  intended base, especially after connector writes or conflict recovery. A successful
+  API response alone does not prove content, modes or unrelated files were preserved.
+  For [releases](docs/releasing.md), require the gate on the exact release commit and
+  verify downloaded archives/images, checksums and reported version/commit. Smoke tests
+  must prove the intended path ran: shared-runtime caching/reuse can silently fall back
+  to object linking while program output still passes
+  ([#762](https://github.com/den-run-ai/pystachy/pull/762)).
 - Close an issue only when its acceptance scope is met on merged main. Use `Refs`
   for partial work, narrow the residual scope and link existing follow-ups before
   creating duplicates. A merged PR or better diagnostic alone may not close a tracker.
