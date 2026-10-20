@@ -233,13 +233,14 @@ IMPLEMENTATION = "pystachy"
 MODATTRS["sys.implementation.name"] = True
 # Pystachy's own builtin module, which only lib/types.py imports (Loader.import_stmt): CPython
 # 3.13's names of types, which lib/types.py binds, but TracebackType (lib/_pystachy_types.py's
-# class, which a with statement passes to __exit__). GenericAlias is supported only as a class body's
+# class, which a with statement passes to __exit__) and MappingProxyType (lib/_pystachy_mappingproxy.py's
+# mappingproxy, a read-only view of a dict). GenericAlias is supported only as a class body's
 # __class_getitem__ = classmethod(GenericAlias), CPython's idiom for a generic class, which defines
 # nothing in Pystachy (Gen.generic_aliases()); any other use of these names is an error
 TYPESMOD = "_pystachy_typenames"
 for _k in ("AsyncGeneratorType BuiltinFunctionType BuiltinMethodType CapsuleType CellType ClassMethodDescriptorType CodeType "
            "CoroutineType DynamicClassAttribute EllipsisType FrameType FunctionType GeneratorType GenericAlias "
-           "GetSetDescriptorType LambdaType MappingProxyType MemberDescriptorType MethodDescriptorType MethodType "
+           "GetSetDescriptorType LambdaType MemberDescriptorType MethodDescriptorType MethodType "
            "MethodWrapperType ModuleType NoneType NotImplementedType SimpleNamespace UnionType "
            "WrapperDescriptorType _GeneratorWrapper _calculate_meta coroutine get_original_bases new_class prepare_class "
            "resolve_bases").split():
@@ -248,7 +249,7 @@ MODULES[TYPESMOD] = True
 MODULES[IOMOD] = True
 GALIAS = TYPESMOD + ".GenericAlias"
 GALIASUSE = "types.GenericAlias is supported only as a class body's __class_getitem__ = classmethod(GenericAlias), CPython's idiom for a generic class: Pystachy has no generic aliases"
-TYPESUSE = "types.NAME is not supported: of the types module, Pystachy has only GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)"
+TYPESUSE = "types.NAME is not supported: of the types module's names, Pystachy has MappingProxyType, TracebackType and GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)"
 GALIASSUB = "subscripting class 'NAME' at run time is not supported: CPython makes NAME[...] a types.GenericAlias (its __class_getitem__ = classmethod(GenericAlias)), and Pystachy has no generic aliases"
 for _k in FLOATINFO:
     MODATTRS[_k] = True

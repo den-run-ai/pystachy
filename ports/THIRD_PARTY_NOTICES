@@ -83,6 +83,10 @@ lib/getopt.py is CPython 3.13.16's Lib/getopt.py with the edits lib/README.md li
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
 
+lib/_pystachy_mappingproxy.py is Pystachy's own mappingproxy (types.MappingProxyType), written
+after CPython 3.13.16's Objects/descrobject.c, whose behaviour, messages and docstrings it follows;
+it is derived from Python and is used under the same license and copyright notice.
+
 lib/io.py is Pystachy's own StringIO, written after CPython 3.13.16's Modules/_io/stringio.c,
 whose behaviour and messages it follows and whose docstrings it keeps; it is derived from Python
 and is used under the same license and copyright notice.

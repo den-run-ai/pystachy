@@ -1008,16 +1008,29 @@ class whose subclasses' `__init__` binds their fields.
 
 `types` is Pystachy's own module for CPython's `Lib/types.py`, of which it has `TracebackType`,
 the class of the object a `with` statement passes to `__exit__()` (see [Contextlib](#contextlib)),
-and `GenericAlias` for CPython's idiom for a generic class: `__class_getitem__ = classmethod(GenericAlias)` (or
-`classmethod(types.GenericAlias)`) in a class body defines nothing in Pystachy, so the class
-compiles as it does without it ([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in
-annotations are what they are for any class, and at run time, where CPython makes them
-`types.GenericAlias` objects, they are a compile-time error
-([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
+`MappingProxyType` and `GenericAlias`. `GenericAlias` is for CPython's idiom for a generic class:
+`__class_getitem__ = classmethod(GenericAlias)` (or `classmethod(types.GenericAlias)`) in a class
+body defines nothing in Pystachy, so the class compiles as it does without it
+([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in annotations are what
+they are for any class, and at run time, where CPython makes them `types.GenericAlias` objects,
+they are a compile-time error ([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
+
+`MappingProxyType(d)` is a read-only view of dict `d`, CPython's `mappingproxy`
+(`lib/_pystachy_mappingproxy.py`): indexing, `in`, `len()`, iteration (which fails as the dict's
+iterator does where the dict changes size), `reversed()`, `get()`, `keys()`, `values()`, `items()`,
+`copy()`, `==` and `!=` with a dict or another view, `|` (a new dict), `str()` and `repr()` give
+CPython's results, from the dict's items as they are when the view is read; `|=` and `hash()` raise
+CPython's `TypeError` ([test](../tests/programs/library/lib_types_mappingproxy.py)). Item assignment and
+deletion are compile-time errors, where CPython raises `TypeError`
+([error test](../tests/errors/library/lib_types_mappingproxy_setitem.py)).
+
+- It takes a dict, whose key and value types are the view's (`MappingProxyType[str, int]`);
+  CPython's takes any mapping. `keys()`, `values()` and `items()` give lists, as a dict's do, and
+  `dict(view)` and `dict | view` are compile-time errors, as for other mapping objects.
 
 - Any other use of `GenericAlias`, such as calling it, is a compile-time error
   ([error test](../tests/errors/reflection/types_generic_alias_call.py)).
-- The module's other names, CPython's (`MappingProxyType`, `SimpleNamespace`, `FunctionType`,
+- The module's other names, CPython's (`SimpleNamespace`, `FunctionType`,
   `MethodType`, `ModuleType`, `NoneType`, `new_class()`, `coroutine()`, ...), import as in
   CPython, also in an optional import, but any use of one is a compile-time error
   ([error test](../tests/errors/reflection/types_unsupported_name.py)): Pystachy has no such objects, or
