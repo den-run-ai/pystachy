@@ -260,6 +260,9 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
   compile for an `Any` value: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
   (`tests/deviations/dynany_eq_annotated_body.py`).
+- An object is not iterable through an `Any` value yet (iteration of objects is under
+  [next steps](#next-steps)): a `for` loop over one, and a pair of `dict.update()` that is one,
+  raise `TypeError` where CPython calls its `__iter__` (`tests/deviations/dynany_iter_object.py`).
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
