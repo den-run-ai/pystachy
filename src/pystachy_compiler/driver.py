@@ -279,10 +279,14 @@ def main() -> None:
         codegen = os.getenv("PYSTACHY_JIT_CODEGEN", "2")
         if codegen != "0" and codegen != "2":
             fail(f"PYSTACHY_JIT_CODEGEN: {codegen} is not 0 (MCJIT) or 2 (default ORC)", 0)
+        # cold functions (a function that only raises: cold noinline) stay in .text: where some
+        # went to .text.unlikely, lli's ORC in LLVM 18 lost the landing pads that the inliner had
+        # moved into main, and a try statement there missed what it should have caught
+        jitflags = " -profile-guided-section-prefix=false"
         if codegen == "0":
             # lli's default ORC path ignores -O0 in LLVM 18. MCJIT honors it; keep this
             # startup/execution tradeoff opt-in, independently of the IR inlining budget.
-            jitflags = " -jit-kind=mcjit -O0"
+            jitflags += " -jit-kind=mcjit -O0"
     if cmd == "check":
         f = open(diagnostics.SRC, "r", encoding=RAW)
         Parser(Lexer(f.read(), 1).file()).module()
