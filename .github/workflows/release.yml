@@ -59,13 +59,20 @@ jobs:
           import subprocess
           commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
           publish = os.environ['EVENT'] != 'pull_request'
+          semver = r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?'
+          declared = Path('VERSION').read_text().strip()
+          if not re.fullmatch(semver, declared):
+              raise SystemExit('VERSION must be a v-prefixed semantic version')
+          # A version bump carries its curated notes, which publication uses; pull requests check them too.
+          if not Path('docs/releases', declared + '.md').is_file():
+              raise SystemExit(f'Add release notes for {declared} as docs/releases/{declared}.md')
           if publish:
               if os.environ['EVENT'] == 'workflow_dispatch' and os.environ['REF'] != 'refs/heads/main':
                   raise SystemExit('Dispatch releases from main only')
               version = os.environ['INPUT_VERSION'] if os.environ['EVENT'] == 'workflow_dispatch' else os.environ['REF_NAME']
-              if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?', version):
+              if not re.fullmatch(semver, version):
                   raise SystemExit('Version must be a v-prefixed semantic version')
-              if Path('VERSION').read_text().strip() != version:
+              if declared != version:
                   raise SystemExit('Release tag must match VERSION; bump VERSION on main before releasing')
               subprocess.run(['git', 'merge-base', '--is-ancestor', commit, 'origin/main'], check=True)
           else:
@@ -307,7 +314,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          printf 'Native compiler packages for Linux x86-64 and macOS arm64/x86-64.\n\n' > release-notes.md
+          cp "docs/releases/$RELEASE_VERSION.md" release-notes.md
+          printf '\n## Release assets\n\nNative compiler packages for Linux x86-64 and macOS arm64/x86-64.\n\n' >> release-notes.md
           printf 'Docker image: `%s:%s` (linux/amd64, LLVM 18 included).\n\n' "$DOCKER_IMAGE" "$RELEASE_VERSION" >> release-notes.md
           printf 'Binary packages require LLVM 18 on Linux or LLVM 20 on macOS. See [installation instructions](https://github.com/%s/blob/%s/docs/install.md).\n\nSource commit: `%s`.\n' \
             "$GITHUB_REPOSITORY" "$RELEASE_COMMIT" "$RELEASE_COMMIT" >> release-notes.md

@@ -20,9 +20,11 @@ cover [typing](language/typing.md), [imports and builtins](language/modules.md),
 | Optional values | `T \| None`, `Optional[T]`, `Union[T, None]` |
 | Functions | Typed `Callable[[A, B], R]`, functions, lambdas, closures and bound methods |
 | Generics | Function templates and `Generic` or PEP 695 (`class Box[T]`) classes with inferred or explicit type arguments; module-level type aliases |
+| Recursive values (prototype) | `type JSONValue = None \| bool \| int \| float \| str \| list[JSONValue] \| dict[str, JSONValue]` and smaller closed recursive unions, narrowed with `isinstance()`; see [recursive value aliases](language/typing.md#recursive-value-aliases-prototype) |
 
-Integers are checked 64-bit values. Strings hold UTF-8 bytes; a `bytes` holds its bytes, and its
-items are ints. Dictionary keys and set elements
+Integers are checked 64-bit values. Strings are stored as UTF-8, and their lengths, indexing,
+slicing, iteration and search positions count code points, as CPython's do; a `bytes` holds its
+bytes, and its items are ints. Dictionary keys and set elements
 have a restricted set of types: integers, strings, `bytes`, objects (hashed by identity, or by their
 class's `__hash__` and `__eq__`) and supported tuples (whose items may include booleans).
 Fixed-shape tuples have at most nine items; a variable index gives an item of their union
@@ -34,7 +36,8 @@ Explicit closed scalar unions such as `int | str`, bounded native reference unio
 and optional unions are supported. A variable, field or return given values of several
 scalar types holds their union. `Any` in supported function/method signatures,
 constructor parameters and initialized module/local variables uses concrete inference;
-dynamic `Any` values are not supported.
+a module that opts in to the [dynamic `Any` prototype](dynamic-any.md) gets runtime-typed
+`Any` values instead.
 Generic classes can infer type arguments from construction or name them explicitly with
 `Box[int]` annotations and constructor subscriptions; variadic generic classes remain inferred.
 Module-level type aliases (`Row = list[str]`, `type Pair[T] = tuple[T, T]`) name types in
@@ -234,7 +237,8 @@ An imported module name does not imply every CPython API is available.
 The shipped libraries include unchanged upstream modules, localized ports such as
 `fnmatch`, `textwrap`, `difflib`, `random` and `datetime`, and implementations such as
 `functools.cache` / `lru_cache`, `collections` (`deque`, `defaultdict`, `OrderedDict`,
-`Counter`), `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper` and `csv`. Each has its own supported operations and deviations.
+`Counter`), `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper`, `csv` and a bounded native `json`.
+Each has its own supported operations and deviations.
 
 Use the [builtin API reference](language/modules.md#builtins) and
 [library port notes](../lib/README.md) for current coverage. C calls, calls into an
@@ -245,10 +249,11 @@ separately in [FFI](ffi.md).
 
 ## Unsupported features
 
-The main gaps are multiple inheritance, general object unions and dynamic `Any` values, `async`,
-`bytearray`, `memoryview` and binary files, complex and arbitrary-precision numbers, `match`,
-attribute values looked up by names only the run time knows (their text and `hasattr()` are
-supported), slice objects and unrestricted argument expansion.
+The main gaps are multiple inheritance, general object unions, dynamic `Any` values outside the
+opt-in [prototype](dynamic-any.md), `async`, `bytearray`, `memoryview` and binary files, complex
+and arbitrary-precision numbers, `match`, attribute values looked up by names only the run time
+knows (their text and `hasattr()` are supported), slice objects and unrestricted argument
+expansion.
 
 Supported templates can avoid compiling unused branches containing some of these features.
 An unsupported feature that the program needs produces a compile-time error.

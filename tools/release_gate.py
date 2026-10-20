@@ -10,7 +10,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-REQUIRED_WORKFLOWS = ("CI", "Installation", "Lint")
+REQUIRED_WORKFLOWS = ("CI", "Installation", "Lint", "Packages")
 
 
 def should_promote(version: str, latest: str | None) -> bool:
@@ -110,7 +110,8 @@ def main() -> int:
                 return 0
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise RuntimeError("Release commit is missing successful CI, Installation, or Lint")
+                missing = ", ".join(name for name, state in states.items() if state != "success")
+                raise RuntimeError(f"Release commit is missing successful {missing}")
             time.sleep(min(20, remaining))
     except (OSError, RuntimeError, ValueError, KeyError) as error:
         print(f"release gate: {error}", file=sys.stderr)

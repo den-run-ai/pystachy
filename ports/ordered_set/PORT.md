@@ -25,7 +25,7 @@ print(list(items), items.index("blue"))
 ## Compatibility
 
 - The port preserves upstream 4.1.0’s bug: `pop(i)` before the last position leaves later entries’ stored indices stale. Prefer `discard(value)` when removing an interior item.
-- Whole non-ASCII string items hash and compare correctly. Constructing items with `list(text)` splits UTF-8 bytes, so it is not a Unicode-character set.
+- Non-ASCII string items hash and compare correctly, and `list(text)` gives one item per character, as in CPython.
 - Some upstream algebra edge cases with duplicate input lists are retained; see the reference and edge tests.
 
 <a id="tests"></a>

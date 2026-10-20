@@ -26,7 +26,7 @@ print(cipher.decrypt(encrypted))
 ## Compatibility
 
 - The adapted constructor does not check that each integer is in 0..255. Values outside that range can produce upstream-style unusual results or overflow.
-- ASCII text can be converted with `ord()`; iterating non-ASCII text produces UTF-8 bytes rather than CPython characters.
+- Text converts with `ord()` one character at a time, as in CPython; only characters up to U+00FF give values a key or block can hold.
 
 <a id="tests"></a>
 
