@@ -102,7 +102,7 @@ every program allocation. It also runs the contract checks below.
 
 | Area | Checks |
 |---|---|
-| Compiler and IR | Valid typed/LLVM IR, runtime ABI and effects, bounded specialization failures, linear compilation and inherited-AST storage, JIT dead-code removal and inlining. |
+| Compiler and IR | Valid typed/LLVM IR, runtime ABI and effects, bounded specialization failures, linear compilation, inherited-AST storage and hierarchy comparison code, JIT dead-code removal and inlining. |
 | Runtime | CPython comparisons for subset runtime functions; dictionary probes and string-hash caching; list storage, shared-container comparisons, file-buffer accounting and streaming consumers. |
 | Libraries and interoperability | Regex differential fuzzing and deterministic matcher budgets; FFI calls, embedded CPython and extension modules; runtime build-cache rules. |
 | Benchmarks | CPython-equivalent output plus advisory timings. |
