@@ -11,8 +11,12 @@ features. [#754](https://github.com/den-run-ai/pystachy/issues/754) records the 
 this contract and tracks its plan.
 
 The ground rule is [#409](https://github.com/den-run-ai/pystachy/issues/409)'s: a concurrency
-feature never changes what a correctly compiled program does. Where a parallel or asynchronous
-execution cannot be shown to give the sequential result, the sequential code runs.
+feature never changes what a correctly compiled program does. Sequential equivalence is the rule
+for transparent parallelization: a parallel loop, whose CPython twin is a sequential loop, gives
+that loop's result, or the sequential loop runs. Explicit concurrency keeps the semantics that
+CPython gives it instead. Coroutines and tasks suspend and resume as under CPython's `asyncio`,
+in interleavings that no sequential order need reproduce (a producer and a consumer may finish
+only by alternating), and process pools behave as CPython's do.
 
 ## Capabilities
 
@@ -20,7 +24,8 @@ execution cannot be shown to give the sequential result, the sequential code run
 compiled exports or embedded through [`pyobj`](ffi.md#calling-cpython). **Refused** means an
 error, raised before the runtime's state changes. Each row names the registered tests that check
 it, which `tools/test_concurrency_contract.py` (run by Lint) requires to exist and to be run by
-their suite. The baseline is the CPython of [`.python-version`](../.python-version), 3.13.16.
+code that their suite executes, not only named by a comment. The baseline is the CPython of
+[`.python-version`](../.python-version), 3.13.16.
 
 | Capability | Status | Probes |
 |---|---|---|
@@ -29,7 +34,7 @@ their suite. The baseline is the CPython of [`.python-version`](../.python-versi
 | `multiprocessing.Pool` (spawn) mapping an export | hosted | `tests/ffi/ext/pk3.py` |
 | `ProcessPoolExecutor` (spawn): two workers at once, each with its own runtime; results, exceptions and `SystemExit`; shutdown; a worker killed in a compiled call | hosted | `tests/ffi/ext/pwclient.py` |
 | `multiprocessing.Process` with an export as its target: `SystemExit`'s code is the exit status | hosted | `tests/ffi/ext/pwclient.py` |
-| `asyncio` awaiting exports in a process pool: the loop runs meanwhile; a timeout or a cancelled task stops the waiting, not started work; unstarted work is cancelled | hosted | `tests/ffi/ext/aioclient.py` |
+| `asyncio` awaiting exports in a process pool: the loop runs meanwhile; a timeout or a cancelled task stops the waiting, not a call that a worker has started or that the executor has dispatched to its call queue; a call still pending in the executor is cancelled | hosted | `tests/ffi/ext/aioclient.py` |
 | A compiled program running `subprocess` and `multiprocessing.Pool` through embedded CPython | hosted | `tests/ffi/py_exe.py` |
 | Generators as LLVM coroutines, whose suspended frames the collector scans | native | `tests/programs/generators/`, run under GC stress |
 | `select.select()` readiness on integer descriptors | native | `tests/programs/library/lib_select.py`, `tools/selectprobe.c` |
@@ -105,6 +110,10 @@ Proposed capabilities, each to add a row above with the probes listed here:
 
 ### Asynchronous execution (proposed)
 
+- Coroutines and tasks keep CPython's semantics: a coroutine runs only when it is awaited or
+  scheduled as a task, it suspends only at an `await` (those of `async for` and `async with`
+  included), and tasks interleave at those suspensions. Nothing requires the result of some
+  sequential order, and nothing falls back to one.
 - A coroutine resumes only on its owner thread, never while a parallel region runs, and its
   suspended frame stays a collector root, as a generator's does today.
 - Each task keeps its own exception state and context.
@@ -137,9 +146,11 @@ Proposed capabilities, each to add a row above with the probes listed here:
   arrives as the builtin class that the export raised (a class of the module's own as its nearest
   builtin base), `SystemExit` as itself, and a lost worker as `BrokenProcessPool` for its call and
   for each pending one. `multiprocessing.Pool` reports neither of the last two (above).
-- A timeout means that the caller stopped waiting. Work that a worker has started runs to
-  completion (`Future.cancel()` returns `False`), and its result can still be collected; only
-  work that no worker has started can be cancelled.
+- A timeout means that the caller stopped waiting. A call that a worker has started runs to
+  completion, and so does one that the executor has dispatched to its call queue, which holds
+  `max_workers + EXTRA_QUEUED_CALLS` calls: `Future.running()` is true for it before any worker
+  enters it, and `Future.cancel()` returns `False`. Only a call still pending in the executor can
+  be cancelled. The result of a call that was not cancelled can still be collected.
 - A lost worker leaves its call's completion unknown: a retry needs an explicit policy and an
   idempotent call. Bounding outstanding work, identifying tasks, placement and recovery belong
   to the orchestrating framework.
@@ -208,8 +219,14 @@ every worker, hence the `__main__` guard. The loop's thread imported `work`, so 
 
 ## Writing concurrency tests
 
-- Control interleavings with barriers, events and semaphores, not with sleeps, and bound every
-  wait (60 seconds in the probes) so that a broken handshake fails rather than hangs.
+- Control interleavings with barriers, events and semaphores, not with sleeps. Where nothing
+  signals a state (an executor dispatching a call), poll that state, with a bound.
+- Bound every wait (30 seconds in the probes), so that a broken handshake fails rather than
+  hangs, and bound the whole client too: past a deadline, `tests/ffi/ext/pwdeadline.py` kills and
+  reaps the client's children and exits nonzero. A future's timeout alone does not suffice, since
+  `ProcessPoolExecutor.__exit__()` then waits for the hung call. Hold a call that ends its worker
+  until everything it must fail with has been submitted: a worker that dies first breaks the pool
+  under the next `submit()`.
 - Check what the contract permits, not an incidental schedule: which worker ran a call, or how
   many calls each took, is not part of it.
 - A client checks its own lines and exits nonzero when one is wrong: `tests/ffi/run.sh` requires

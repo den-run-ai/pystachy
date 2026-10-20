@@ -4,11 +4,15 @@
 # whose target is an export; and the owner rule: only the thread that imported the module may call
 # it, and a call refused to another thread runs none of its code. Each line is checked against the
 # contract (tests/ffi/run.sh requires exit status 0) as well as compared with the source's run.
+# Every wait is bounded (WAIT), and so is the whole client (pwdeadline).
 import concurrent.futures as cf
 import multiprocessing as mp
 import os
 import threading
 import pw
+import pwdeadline
+
+WAIT = 30  # (seconds: a handshake that fails ends the wait with an error)
 
 
 def expect(label, got, want):
@@ -17,8 +21,8 @@ def expect(label, got, want):
         raise SystemExit(f"{label} {got!r}, expected {want!r}")
 
 
-def outcome(f):  # a future's result, or its exception as type and args (60 s at most)
-    e = f.exception(60)
+def outcome(f):  # a future's result, or its exception as type and args
+    e = f.exception(WAIT)
     return f.result() if e is None else (type(e).__name__, e.args)
 
 
@@ -37,8 +41,20 @@ def _init(barrier):  # (each worker, as it starts) where _meet's calls meet
 
 def _meet(_):  # (in a worker) a call, a wait for the other worker's call, a call
     first = pw.count()
-    _barrier.wait(60)  # (a worker alone would raise BrokenBarrierError after 60 s)
+    _barrier.wait(WAIT)  # (a worker alone raises BrokenBarrierError)
     return pw.pid(), first, pw.count()
+
+
+def _init_kill(go):  # (the worker, as it starts) what _killed waits for
+    global _go
+    _go = go
+
+
+def _killed():  # (in the worker) once the parent has submitted the call behind this one, a
+    # compiled call that never returns: the worker is killed in it
+    if not _go.wait(WAIT):
+        raise TimeoutError("never released")
+    return pw.killed()
 
 
 def refused(name):
@@ -57,7 +73,7 @@ def main():
 
     t = threading.Thread(target=other)
     t.start()
-    t.join()
+    t.join(WAIT)
     expect("thread:", errs, [refused("count")])
     with cf.ThreadPoolExecutor(1) as tp:
         expect("thread pool:", outcome(tp.submit(pw.count)), ("RuntimeError", (refused("count"),)))
@@ -67,11 +83,11 @@ def main():
 
     ctx = mp.get_context("spawn")
     with cf.ProcessPoolExecutor(2, mp_context=ctx, initializer=_init, initargs=(ctx.Barrier(2),)) as ex:
-        met = [f.result(60) for f in [ex.submit(_meet, i) for i in range(2)]]
+        met = [f.result(WAIT) for f in [ex.submit(_meet, i) for i in range(2)]]
         expect("two workers at once:", len({p for p, _, _ in met} - {os.getpid()}), 2)
         expect("each counts its own calls:", [c for _, *c in met], [[1, 2], [1, 2]])
-        expect("map:", list(ex.map(pw.fib, [10, 50, 90], timeout=60)), [55, 12586269025, 2880067194370816120])
-        expect("map:", list(ex.map(pw.squares, [4, 0], timeout=60)), ["0,1,4,9", ""])
+        expect("map:", list(ex.map(pw.fib, [10, 50, 90], timeout=WAIT)), [55, 12586269025, 2880067194370816120])
+        expect("map:", list(ex.map(pw.squares, [4, 0], timeout=WAIT)), ["0,1,4,9", ""])
         expect("raises:", outcome(ex.submit(pw.check, -5)), ("ValueError", ("negative: -5",)))
         expect("raises:", outcome(ex.submit(pw.lookup, "key")), ("LookupError", ("no key",)))
         expect("exits:", outcome(ex.submit(pw.bye, 3)), ("SystemExit", (3,)))
@@ -84,10 +100,13 @@ def main():
     expect("the parent's own count:", pw.count(), 3)
 
     # a worker killed in a compiled call: that call and the one queued behind it fail, and the pool
-    # takes no more work
+    # takes no more work. The worker waits for both to be submitted: dying sooner, it would break
+    # the pool before the second submit()
     broken = "A process in the process pool was terminated abruptly while the future was running or pending."
-    with cf.ProcessPoolExecutor(1, mp_context=ctx) as ex:
-        killed, queued = ex.submit(pw.killed), ex.submit(pw.fib, 10)
+    go = ctx.Event()
+    with cf.ProcessPoolExecutor(1, mp_context=ctx, initializer=_init_kill, initargs=(go,)) as ex:
+        killed, queued = ex.submit(_killed), ex.submit(pw.fib, 10)
+        go.set()
         expect("killed:", outcome(killed), ("BrokenProcessPool", (broken,)))
         expect("queued:", outcome(queued), ("BrokenProcessPool", (broken,)))
         expect("then:", caught(ex.submit, pw.fib, 1), ("BrokenProcessPool", ("A child process terminated abruptly, the process pool is not usable anymore",)))
@@ -97,9 +116,10 @@ def main():
     for f, args, code in [(pw.bye, (3,), 3), (pw.count, (), 0)]:
         p = ctx.Process(target=f, args=args)
         p.start()
-        p.join(60)
+        p.join(WAIT)
         expect(f"Process({f.__name__}) exit code:", p.exitcode, code)
 
 
 if __name__ == "__main__":
+    pwdeadline.start(90)
     main()
