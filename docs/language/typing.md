@@ -352,11 +352,24 @@ scalar-union values support printing and equality; lists also support membership
 find an integer `1`. Numeric equality uses the existing exact int/float comparison,
 including integers above the exact range of a float. `None` equals only `None`.
 
+Lists of numeric unions (`int`, `float` and `bool` members) also order. Two such lists
+compare, and `min()`, `max()`, `sorted()` and `sort()` work, with the same exact int/float
+comparison; a NaN orders with nothing. With `None` too, comparing a `None` raises CPython's
+`TypeError`. Without `None`, `sum()` adds the items as CPython does: ints exactly until the
+first float, then floats with CPython's compensated sum, and later ints as floats. The result
+is an `int`, a `float`, or an `int | float` where both are possible. `math.fsum()` and
+`math.dist()` take each item's float. A union with `str` still needs narrowing for these.
+
 These operations select the existing native operation by the tag. A concrete value
 keeps its native representation until it enters a union; widening a union reuses
 its box. A concrete equality/search operand may allocate a temporary box. The boxes
 do not create Python numeric object identity: the existing [NaN identity
 deviation](compatibility.md#deviations-from-cpython) also applies to union payloads.
+A local of a union of numbers keeps its tag and payload in two slots instead of a box
+where that makes no more boxes (the `unionslots` [IR pass](../typed-ir.md#optimizations)):
+a loop that updates such a total allocates nothing, and the box is made where the value
+leaves, at a call or a return. A local whose values all come boxed, from a call, a parameter or
+a list, keeps those boxes.
 
 Numeric unions of `int`, `float` and `bool`, optionally including `None`, support
 `+`, `-`, `*`, `/`, `//`, `%` and unary `+` or `-` without narrowing. Tag dispatch
@@ -376,8 +389,8 @@ Ordering comparisons (`<`, `<=`, `>`, `>=`) of numeric unions, and calls of buil
 functions with a scalar-union argument (`abs()`, `round()`, `int()`, `float()`, `min()` and
 `max()` of values, `math` functions and others), use each member's native operation, chosen by
 the tag. Each operand and argument is evaluated once, in CPython's order. Narrow before other
-arithmetic, ordering and member methods. `sum()`, `sorted()`, `min()` and `max()` of a container
-of union items are unsupported. Recursive JSON-shaped types use the
+arithmetic, ordering and member methods; lists of numeric union items also order and sum, as
+described above. Recursive JSON-shaped types use the
 [bounded recursive alias form](#recursive-value-aliases-prototype). Arbitrary `Any`,
 runtime compilation and speculative type assumptions are out of scope.
 Boxing may allocate; this feature expands supported programs and makes no performance

@@ -45,6 +45,10 @@ class Reduce:
         self.comp = ""  # a float sum's compensation, as runtime.c's fsum keeps it (Neumaier's)
         self.first = ""  # no item yet: min and max, and a float sum from an int start
         self.collect = False  # min() or max() of items runtime.c compares (pys_list_minmax)
+        # a sum of a union's numbers (Gen.sum_union_item): acc the int sum, facc the float sum,
+        # isf whether a float came (CPython's float phase, which comp compensates)
+        self.facc = ""
+        self.isf = ""
 
 
 class SetArg:

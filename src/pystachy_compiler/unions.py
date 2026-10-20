@@ -23,6 +23,11 @@ def gen_reference_union(self, t: str) -> bool:
 def gen_scalar_union(self, t: str) -> bool:
     return is_union(unopt(t)) and all([m in ["int", "float", "bool", "str"] for m in umembers(unopt(t))])
 
+def gen_num_union(self, t: str) -> bool:
+    # a union of numbers (int, float, bool), not None: sum() adds its values and orderings compare
+    # them, an int with a float exactly (runtime.c's opv)
+    return is_union(t) and all([m == "int" or m == "float" or m == "bool" for m in umembers(t)])
+
 def gen_value_union(self, t: str) -> bool:
     return is_union(unopt(t)) and all([m in ["int", "float", "bool", "str"] or is_list(m) or is_dict(m) for m in umembers(unopt(t))])
 

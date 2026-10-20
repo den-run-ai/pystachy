@@ -1,5 +1,6 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.analysis import none_display
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
@@ -49,10 +50,11 @@ def gen_none_container(self, e: Node) -> Val:
     # dict of the keys' type) of NONE_ITEM, T | None for the T its first fill gives it, as an
     # empty one's gives it its type (see refine); its slots hold null pointers, None of any T | None
     if e.kind == "binop":
-        first = self.none_container(e.kids[0]) if e.kids[0].kind == "list" else self.expr(e.kids[0], "")
-        second = self.none_container(e.kids[1]) if e.kids[0].kind != "list" else self.expr(e.kids[1], "")
-        xs = first if e.kids[0].kind == "list" else second
-        n = self.as_int(second if e.kids[0].kind == "list" else first)
+        left = none_display(e.kids[0]) == "list"  # (the operand that is the list: [None] * n, n * [None], [None] * 2 * 3)
+        first = self.none_container(e.kids[0]) if left else self.expr(e.kids[0], "")
+        second = self.expr(e.kids[1], "") if left else self.none_container(e.kids[1])
+        xs = first if left else second
+        n = self.as_int(second if left else first)
         if n.t != "int":
             self.err(f"can't multiply sequence by non-int of type '{tname(n.t)}'")
         return Val(self.rt("pys_list_mul", "ptr", [f"ptr {xs.v}", f"i64 {n.v}"]), xs.t)

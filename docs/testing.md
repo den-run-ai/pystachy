@@ -94,7 +94,8 @@ every program allocation. It also runs the contract checks below.
 | Benchmarks | CPython-equivalent output plus advisory timings. |
 
 The implementation and exact budgets live in `tests/verify.sh` and its named `tools/` probes.
-Useful individual checks include `make re-fuzz`, `make re-probe`, `make dictprobe`,
+Useful individual checks include `make re-fuzz`, `make re-probe`, `make re-specialize-check`
+(matchers generated for random patterns, against CPython's `re`), `make dictprobe`,
 `make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe` and `make jitprobe`.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
@@ -182,8 +183,13 @@ A pull request that changes only Markdown files or `docs/` skips the CI, Install
 Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
-Twenty-three groups run in parallel, each with its own fixed-point bootstrap. The target is under
-ten minutes of work per group; the 15-minute job limit leaves room for runner variation:
+A bootstrap job checks compiler and runtime IR fixed points once, then twenty-three groups
+run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
+complete tracked source identity, commit and toolchain before using it. No runtime cache is
+shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
+independent. Local `make verify` and group runs still build their own bootstrap.
+The target is under ten minutes of work per group; the 15-minute job limit leaves room for
+runner variation:
 
 | Group | Work after bootstrap |
 |---|---|
@@ -203,9 +209,11 @@ ten minutes of work per group; the 15-minute job limit leaves room for runner va
 A failed group leaves the others running. The required check remains
 `make verify (Linux x86-64, LLVM 18, Python 3.13)`. Its report gate requires every group to
 succeed and rejects missing/unexpected stages, inconsistent source revisions/hashes or
-toolchains, and different bootstrap IR. Reports and logs are uploaded as workflow artifacts.
+toolchains, different bootstrap IR, and missing or inconsistent bootstrap provenance.
+Reports and logs are uploaded as workflow artifacts. A failed producer blocks its consumers
+and fails the final gate; there is no fallback to an older compiler.
 
-The combined report's duration is the longest group's verification work;
+The combined report's duration is bootstrap work plus the longest consumer group's verification work;
 `ci.runner_seconds` measures aggregate work. Queueing, setup and other steps add to elapsed
 workflow time. The 15-minute limit applies to each verification job.
 

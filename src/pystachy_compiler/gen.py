@@ -32,6 +32,7 @@ from src.pystachy_compiler.unions import (
     gen_stable as unions_stable,
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
+    gen_num_union as unions_num_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_uequal as unions_uequal,
@@ -167,6 +168,10 @@ from src.pystachy_compiler.builtins import (
     gen_pwrite as builtins_pwrite,
     gen_reduce as builtins_reduce,
     gen_reduce_item as builtins_reduce_item,
+    gen_comp_end as builtins_comp_end,
+    gen_neumaier as builtins_neumaier,
+    gen_sum_union_item as builtins_sum_union_item,
+    gen_sum_union_end as builtins_sum_union_end,
     gen_reverse_arg as builtins_reverse_arg,
     gen_bytes_ as builtins_bytes_,
     gen_bytes_method as builtins_bytes_method,
@@ -277,6 +282,7 @@ from src.pystachy_compiler.conversions import (
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
     gen_floats as conversions_floats,
+    gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
     gen_is_dc as conversions_is_dc,
     gen_isnum as conversions_isnum,
@@ -729,6 +735,13 @@ from src.pystachy_compiler.optimizations import (
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
     gen_same as optimizations_same,
+    gen_tag_read as optimizations_tag_read,
+    gen_ufresh as optimizations_ufresh,
+    gen_uleaves as optimizations_uleaves,
+    gen_unionslots as optimizations_unionslots,
+    gen_upaid as optimizations_upaid,
+    gen_uparts as optimizations_uparts,
+    gen_usplits as optimizations_usplits,
 )
 from src.pystachy_compiler.program import (
     gen_body_effect as program_body_effect,
@@ -1096,6 +1109,7 @@ class Gen:
         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
         self.ext = ""  # pystachy ext: the name of the CPython extension module the program becomes
         self.libdir = ""  # the lib/ beside the compiler, the last directory of the module path (lib_fn)
+        self.prefix = ""  # the directory that holds it, absolute: sys.prefix (gen_modattr)
         self.csyms: dict[str, str] = {}  # @ffi.extern: each C symbol's declare (one signature per program)
         self.csymline: dict[str, int] = {}  # and the line that declared it
         self.cdirect: dict[str, bool] = {}  # the C symbols a GLUE module (lib/pyobj.py) calls directly, declared once
@@ -1616,6 +1630,9 @@ class Gen:
 
     def floats(self, v: Val) -> Val:
         return conversions_floats(self, v)
+
+    def ufloats(self, v: Val) -> Val:
+        return conversions_ufloats(self, v)
 
     def is_dc(self, t: str) -> bool:
         return conversions_is_dc(self, t)
@@ -2425,6 +2442,27 @@ class Gen:
 
     def dictfuse(self, fn: IFn) -> int:
         return optimizations_dictfuse(self, fn)
+
+    def unionslots(self, fn: IFn) -> int:
+        return optimizations_unionslots(self, fn)
+
+    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_usplits(self, fn, defs, v, seen)
+
+    def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
+        return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
+
+    def uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
+        return optimizations_uleaves(self, fn, uses, i, split)
+
+    def ufresh(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_ufresh(self, fn, defs, uses, v, seen)
+
+    def upaid(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], addr: str, split: dict[str, Ins]) -> bool:
+        return optimizations_upaid(self, fn, defs, uses, addr, split)
+
+    def tag_read(self, i: Ins) -> bool:
+        return optimizations_tag_read(self, i)
 
     def canon(self, vs: Values, v: str) -> str:
         return optimizations_canon(self, vs, v)
@@ -3503,6 +3541,18 @@ class Gen:
     def reduce(self, name: str, args: list[Node], stt: str) -> Val:
         return builtins_reduce(self, name, args, stt)
 
+    def comp_end(self, acc: str, comp: str) -> str:
+        return builtins_comp_end(self, acc, comp)
+
+    def neumaier(self, acc: str, comp: str, x: str) -> None:
+        return builtins_neumaier(self, acc, comp, x)
+
+    def sum_union_item(self, r: Reduce, v: Val) -> None:
+        return builtins_sum_union_item(self, r, v)
+
+    def sum_union_end(self, r: Reduce) -> Val:
+        return builtins_sum_union_end(self, r)
+
     def reduce_item(self, r: Reduce, e: Node) -> None:
         return builtins_reduce_item(self, r, e)
 
@@ -3724,6 +3774,9 @@ class Gen:
 
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)
+
+    def num_union(self, t: str) -> bool:
+        return unions_num_union(self, t)
 
     def value_union(self, t: str) -> bool:
         return unions_value_union(self, t)

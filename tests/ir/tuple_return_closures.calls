@@ -1,0 +1,22 @@
+@f.make_stepper.1: pys_alloc pys_alloc
+@v.c.0.1: pys_mod pys_raise
+@c.0.1: pys_alloc
+@v.c.1.1:
+@c.1.1: pys_alloc
+@f.counter.1: pys_alloc pys_alloc
+@v.c.2.1: pys_raise
+@c.2.1: pys_alloc
+@f.walk.1: pys_alloc pys_text_len pys_raise
+@main.init: pys_alloc pys_list_new_atomic pys_list_append pys_list_copy pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_repr pys_write pys_write pys_raise
+@v.c.3.1: pys_raise
+@c.3.1: pys_alloc
+@f.outer: pys_alloc pys_raise
+@v.f.three: pys_raise
+@f.three: pys_alloc
+@f.starred: pys_list_new_atomic pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_list_append pys_raise
+@v.f.strs: pys_str_mul
+@f.strs: pys_alloc
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish
