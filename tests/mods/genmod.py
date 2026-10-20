@@ -1,4 +1,4 @@
-"""Generators in an imported module (tests/gen_module.py): a class whose __iter__ yields, an
+"""Generators in an imported module (tests/programs/generators/gen_module.py): a class whose __iter__ yields, an
 unannotated generator, and generators the program never calls, which compile only where called."""
 from collections.abc import Iterator
 

@@ -1,4 +1,4 @@
-# The same with a conversion that raises (tests/deftime_class_raises.py)
+# The same with a conversion that raises (tests/programs/imports/deftime_class_raises.py)
 from typing import Iterable
 
 

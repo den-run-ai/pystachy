@@ -34,13 +34,13 @@ print(dumps({"project": {"name": "demo", "version": "1.0"}}))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_tomli_w_values.py
-./tests/run.sh ./pystachy "jit aot" tests/port_tomli_w_values.py tests/port_tomli_w_tables.py tests/port_tomli_w_ini2toml.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_tomli_w_values.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_tomli_w_values.py tests/programs/apps/port_tomli_w_tables.py tests/programs/apps/port_tomli_w_ini2toml.py
 ```
 
 The differential tests cover scalar escapes, numeric edges, nested/inline tables and an INI-to-TOML example using the iniconfig port.
 
-Cases: [port_tomli_w_values.py](../../tests/port_tomli_w_values.py), [port_tomli_w_tables.py](../../tests/port_tomli_w_tables.py), [port_tomli_w_ini2toml.py](../../tests/port_tomli_w_ini2toml.py).
+Cases: [port_tomli_w_values.py](../../tests/programs/apps/port_tomli_w_values.py), [port_tomli_w_tables.py](../../tests/programs/apps/port_tomli_w_tables.py), [port_tomli_w_ini2toml.py](../../tests/programs/apps/port_tomli_w_ini2toml.py).
 
 <a id="speed"></a>
 

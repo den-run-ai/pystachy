@@ -34,13 +34,13 @@ print(jdcal.jd2gcal(jd[0], jd[1]))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_jdcal_convert.py
-./tests/run.sh ./pystachy "jit aot" tests/port_jdcal_convert.py tests/port_jdcal_extremes.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_jdcal_convert.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_jdcal_convert.py tests/programs/apps/port_jdcal_extremes.py
 ```
 
 The tests cover both calendars, round trips, normalized out-of-range dates, day fractions, Excel serial dates and numeric extremes.
 
-Cases: [port_jdcal_convert.py](../../tests/port_jdcal_convert.py), [port_jdcal_extremes.py](../../tests/port_jdcal_extremes.py).
+Cases: [port_jdcal_convert.py](../../tests/programs/apps/port_jdcal_convert.py), [port_jdcal_extremes.py](../../tests/programs/apps/port_jdcal_extremes.py).
 
 <a id="speed"></a>
 

@@ -31,8 +31,8 @@ Run from the repository root after setup; replace the example selector with affe
 ```sh
 tools/setup.sh --check
 make
-make test FILES="tests/lists.py"
-make test-py FILES="tests/lists.py"
+make test FILES="tests/programs/containers/lists.py"
+make test-py FILES="tests/programs/containers/lists.py"
 make lint check-recordings
 ```
 

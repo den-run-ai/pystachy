@@ -1,5 +1,5 @@
 # TYPE_CHECKING = False that a function's global statement rebinds is no constant: its test runs
-# (tests/fold_false.py).
+# (tests/programs/optimizations/fold_false.py).
 TYPE_CHECKING = False
 
 

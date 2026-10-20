@@ -35,13 +35,13 @@ print(cipher.decrypt(encrypted))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_pyaes_cipher.py
-./tests/run.sh ./pystachy "jit aot" tests/port_pyaes_cipher.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_pyaes_cipher.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_pyaes_cipher.py
 ```
 
 The differential program checks FIPS-197, NIST SP 800-38A and OpenSSL IGE vectors, all key sizes, round keys, repeated round trips and invalid sizes.
 
-Cases: [port_pyaes_cipher.py](../../tests/port_pyaes_cipher.py).
+Cases: [port_pyaes_cipher.py](../../tests/programs/apps/port_pyaes_cipher.py).
 
 <a id="speed"></a>
 

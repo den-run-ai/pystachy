@@ -74,6 +74,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 — #765: less compiler allocation, unchanged compatibility | `3ab11f03` | [Evidence](compatibility-2026-10-20-compiler-allocations.json). Completed checkpoint; detailed findings and limits below. |
 | 2026-10-20 — #761: opt-in dynamic Any, not general library compatibility | `3c63613b` | [Evidence](compatibility-2026-10-20-dynamic-any.json). Completed checkpoint; detailed findings and limits below. |
 | 2026-10-20 release validation (#762), **incomplete** | `afb59cd3`; fully evaluated marker remains `3c63613b` | Hosted checks and historical CI verified; local LLVM/native execution unavailable. [Evidence](compatibility-2026-10-20-release-partial.json). |
+| 2026-10-20 test-area layout (#771), bounded tooling evaluation complete | `ad19255e`; #762 native work still incomplete, full marker remains `3c63613b` | 3,301 cases preserved; 180 tooling tests, 158 path-sensitive expected rejections and six CPython recordings/hosted IR programs pass. [Evidence](compatibility-2026-10-20-test-layout.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -4857,3 +4858,81 @@ The checkpoint index now includes every completed section after `53c17bad`,
 including `e33c560e` and latest `3c63613b`, plus this explicitly incomplete attempt.
 The dated evidence is unchanged. Audit-head checks are read after publication;
 no PR merge or release action is part of this update.
+
+## 2026-10-20 — #771: test-area layout and retained-probe discovery
+
+Evaluated [main `ad19255e448be45ac098443936798755053139d7`](https://github.com/den-run-ai/pystachy/commit/ad19255e448be45ac098443936798755053139d7)
+after [#771](https://github.com/den-run-ai/pystachy/pull/771) merged at
+2026-10-20 11:38:47 UTC. Fresh PR metadata, git ancestry and tree comparison
+confirm implementation head `fdc903f561d64655690f0c1de06ce7335431f9a3` and main
+share tree `c9a749176053e0b0cbe67c7dad677e32c0f11523`. First-parent history since
+the last fully evaluated main contains #762 and #771 only. #762's preceding
+partial evaluation remains explicit above; this bounded tooling evaluation does
+not complete its native/release-archive work or advance **latest evaluated main
+`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**. Read #491/#616 coordination and
+#771 review comments, including the fixed orphan-sidecar finding and final clean
+review. No implementation branches were edited.
+
+The 5,671-file merge reorganizes test programs/rejections, moves helper packages,
+and updates runners, corpus discovery, shard/coverage/IR/port tools and citations.
+The sole changed compiler source, `specs.py`, has an identical parsed AST; its
+changes are comment citations. Runtime and library implementations are unchanged.
+This is test-tool compatibility, not a new library/API-support claim.
+
+[Machine-readable evidence](compatibility-2026-10-20-test-layout.json) retains
+commands, outputs, selected paths/blob hashes, before/after source snapshots and
+the exact executed replay driver. Both old `afb59cd3` and new `ad19255e` checkouts
+were pristine before generation, including untracked and ignored files. After
+hosted checks, tracked/untracked status was empty but ignored
+`build/runtime-py.hashes` had been generated; the post-run snapshot is **not**
+claimed pristine. CPython was **3.13.16**; there was no local native compiler or
+complete LLVM 18 toolchain. Compiler build/hash fields remain null, separate from
+the evaluated source SHA. The previously recorded permission blocker was not
+bypassed or retried with privileges.
+
+| Fresh local measurement | Result and boundary |
+|---|---|
+| Old/new suite-and-basename census | **3,301** cases each: **1,458** programs + **1,753** rejections + **90** deviations, identical sets with no duplicates or missing retained sidecars. **265** changed/new sidecars comprise 262 `.path` and three `.out` files. Not all test files are byte-identical; changed-source hashes are retained. |
+| Unit tests via `python3.13 -B -m unittest discover -s tools -p PATTERN -v` | **180/180**: `test_*verif*.py` 53 (including six layout controls), `test_typed*.py` 78, `test_port_check.py` 15, `test_re_specialize.py` 14, `test_coverage_report.py` 16, `test_workflow_limits.py` 4. These are tooling tests, not 180 native programs. |
+| Corpus and shard contracts | `corpus` selects exactly 3,301; `corpus_strays` is empty. Two shards contain **1,651/1,650** and three **1,101/1,100/1,100**, with exact union and no duplicates. Nine changed shell scripts pass `sh -n`; `tests/verify.sh --list` passes. |
+| Planned verification counts | Actual old/new `checks()` functions both yield **5,093** dual-mode and **3,545** single-mode checks. These are calculated planned counts, **not executed JIT/AOT checks**. |
+| Moved rejection helper paths | Actual `tests/run.sh` with the CPython-hosted compiler selects **158** `.path` rejection cases: **158 passed, 0 failed**. The `jit aot` argument does not make expected compile-time rejections native executions. |
+| Affected recordings and hosted IR | `lib_difflib`, `lib_difflib_grouped`, `lib_difflib_unified`, `os_path_stat`, `realpath`, `module_doc`: all **six** CPython recordings match, including the two expected nonzero exits/final error lines, and all **six** generate hosted IR. No LLVM assembly or native execution follows from IR emission. |
+
+The two program AST changes are the moved-path fixtures `os_path_stat` and
+`realpath`; `module_doc`'s helper docstring/recording changes with the new citation.
+Other changed program sources have identical ASTs. Sidecar and source hashes in
+the evidence retain the exact input differences rather than treating moves as
+automatically content-preserving. Shared-host wall times are advisory, not a
+performance or memory comparison.
+
+Future retained-probe selection must resolve old `tests/NAME.py` to the unique
+`tests/programs/AREA/NAME.py`, and old `tests/errors/NAME.py` to the unique
+`tests/errors/AREA/NAME.py`, by **suite plus basename**, failing on zero or multiple
+matches. Prefer `tests/corpus.sh` for full selection. Keep adjacent sidecars and
+honor `.path` for both programs and rejections; helpers now live under `tests/`.
+Historical reports and embedded dated paths remain unchanged: replay them at
+their exact evaluated checkout, or explicitly record any relocation. In particular,
+#762's three difflib cases now live in `tests/programs/library/`; its outstanding
+release validation should retain its own source/version identity.
+
+Replay by extracting `replay_source` from the JSON to `audit-771.py` outside the
+clean checkouts, with the retained #762 preflight driver at the relative path
+specified in `audit_context.replay` (or explicitly relocate that dependency):
+`python3.13 -B audit-771.py NEW_AD19255E OLD_AFB59CD3 OUTPUT.json`.
+The driver strips inherited `PYSTACHY_*`, `PYTHONPATH` and `PYTHONHOME`, sets
+`PYTHONDONTWRITEBYTECODE=1`, `LC_ALL=C`, `PYSTACHY_JOBS=2`, and verifies preflight
+before generating anything. Use fresh trees for replay, not a post-build tree
+with the generated hash cache.
+
+Historical implementation-head CI was separately re-fetched: **CI, Lint,
+Coverage, Variants, Packages and Installation succeeded** on the identical tree.
+The [CI run](https://github.com/den-run-ai/pystachy/actions/runs/39413973802)
+has all 27 jobs successful, including gc-self and the final complete-report /
+every-required-group gate. This corroboration is not local native validation.
+The prior audit-head [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39414015290)
+also completed successfully; new audit-head checks are read after publication.
+No fresh full `make verify`, import sweep, native port/benchmark execution, full
+upstream suite or CPython regrtest was run. Existing import totals and unrelated
+gap assessments remain historical, not assumed freshly verified. No duplicate
+issue or release action is needed for the measured layout change.

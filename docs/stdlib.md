@@ -103,7 +103,7 @@ These tools answer different questions:
 | `tools/census.py` | Historical source-feature heuristic; inspect candidates, then verify with the current compiler. |
 | `tools/import_sweep.py` | A module's import program compiles; this does not verify its functions. |
 | `tools/import_sweep.py --stubs` | A module's import compiles once the modules built into CPython that it needs exist; this ranks those modules. |
-| `tests/lib_*.py` | Selected compiled APIs match CPython in the differential suite. |
+| `tests/programs/library/lib_*.py` | Selected compiled APIs match CPython in the differential suite. |
 | Upstream tests on an adapted file under CPython | The adaptations preserve the tested Python behavior. |
 
 With CPython's standard-library sources available, run from the repository root:
@@ -114,7 +114,7 @@ python3 tools/import_sweep.py ./pystachy /usr/lib/python3.13 build/import-sweep.
 python3 tools/import_sweep.py --overlay ./pystachy /usr/lib/python3.13 build/cpython-lib
 python3 tools/import_sweep.py --stubs /usr/lib/python3.13 build/import-sweep-stubs.json
 PYSTACHY_PATH=build/cpython-lib ./pystachy run prog.py
-make test FILES="tests/lib_*.py"
+make test FILES="tests/programs/library/lib_*.py"
 ```
 
 Adjust the CPython source path for your installation. The overlay excludes names provided by

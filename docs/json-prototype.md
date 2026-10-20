@@ -189,7 +189,7 @@ From the repository root:
 
 ```sh
 PYTHON=python3.13 tests/record.sh json_roundtrip json_unicode json_errors json_mutation json_scanner
-PYSTACHY_GC_STRESS_PROGRAM=1 make test-py PY=python3.13 FILES="tests/json_*.py tests/recursive_alias_*.py tests/deviations/json_*.py tests/deviations/recursive_alias_limits.py"
+PYSTACHY_GC_STRESS_PROGRAM=1 make test-py PY=python3.13 FILES="tests/programs/library/json_*.py tests/programs/inference/recursive_alias_*.py tests/deviations/json_*.py tests/deviations/recursive_alias_limits.py"
 python3.13 tools/json_check.py --native --gc-stress
 python3.13 tools/bench_json.py --compiler "python3.13 -m pystachy" --smoke
 ```
@@ -198,7 +198,7 @@ The regular fixtures compare against CPython's standard `json`; the separate
 [JSON limit fixture](../tests/deviations/json_limits.py) records deliberate integer
 and codec depth differences. The [runtime limit fixture](../tests/deviations/recursive_alias_limits.py)
 checks deep values, cycles and reuse after exception unwinding.
-[`tests/json_scanner.py`](../tests/json_scanner.py) covers the byte scanner's
+[`tests/programs/library/json_scanner.py`](../tests/programs/library/json_scanner.py) covers the byte scanner's
 boundaries: positions after multibyte text, documents holding lone surrogates,
 repeated and colliding object keys, and integers around 18 digits.
 [`tools/json_check.py`](../tools/json_check.py) generates

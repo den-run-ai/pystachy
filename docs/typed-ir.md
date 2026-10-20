@@ -299,7 +299,7 @@ local effects or dependencies invalidate their caller closure; resetting that cl
 removes obsolete effects from cycles. Unaffected summaries are reused. These are compiler
 analysis facts for already compiled functions, not runtime type profiles or new language
 support. `tools/test_function_summaries.py` compares incremental updates against a full
-fixed-point oracle; `tests/summary_worklist.py` also executes the solver natively.
+fixed-point oracle; `tests/programs/language/summary_worklist.py` also executes the solver natively.
 
 | Letter | Meaning |
 |---|---|
@@ -360,7 +360,7 @@ tuple, which CPython makes too and no code could hold. A call of it whose result
 returns `{i64, ...}`; the function's own symbol becomes a wrapper that makes the tuple from them,
 for every other call and use. A function that returns another tuple on some path (`return t`),
 a generator, and a function no such call reaches are lowered as before, which keeps the identity
-of a tuple a function returns again. `tests/tuple_return_values.py` checks behavior, and
+of a tuple a function returns again. `tests/programs/containers/tuple_return_values.py` checks behavior, and
 `tests/ir/tuple_return.calls` pins which calls allocate.
 A field's TBAA tag names the class whose struct lays the field out. A derived class's struct
 begins with its base's, flags included, so an inherited field has its base's tag whichever class
@@ -368,7 +368,7 @@ a reference names, and two references to one object agree (the rule of `Gen.disj
 tags hang from a root of their own, so LLVM never sets them apart from the accesses of
 `runtime.c` (clang's root) or of `runtime.py` (its own): only the program's field accesses are
 told apart from each other. Tuple slots, union payloads, container slots and runtime calls carry
-no tag. `tests/field_alias.py` checks the orders that a wrong tag would change, and
+no tag. `tests/programs/classes/field_alias.py` checks the orders that a wrong tag would change, and
 `tests/ir/field_tbaa.tbaa` pins the tags (`tools/check_ir.sh`).
 Dictionary fusion is deliberately bounded; it does not promise to combine every equivalent
 lookup. Calls that may mutate containers, joins and exception handlers limit reuse.

@@ -49,7 +49,7 @@ Archive SHA-256: `8ade438cced7eae579e622f3f54354e52609840f597f7b09a16d7789a15d4e
 
 ## Validation snapshot
 
-`tests/port_convertdate_calendars.py` calls `hebrew.year_days()` before any other function of
+`tests/programs/apps/port_convertdate_calendars.py` calls `hebrew.year_days()` before any other function of
 `hebrew` (the mutually recursive return-type case), then takes 21 Gregorian dates to Julian days and to each
 calendar and back: the Gregorian reform (1582-10-04 and 10-15), leap days and century years
 (1900, 2000, 2100), the years 1, 0 and -500, Julian day 0 (-4713-11-24), 9999-12-31, the
@@ -65,7 +65,7 @@ an int stays an int), int Julian days through `julian`, `hebrew`, `islamic` and 
 (the `jd` they rebind to a float) and `julianday.to_julian()`, and 14 error paths, among them a bad month
 caught by `except IndexError` and `except LookupError` (the verifier's `IllegalMonthError` case).
 
-`tests/port_convertdate_holidays.py` prints every holiday function for 10 years (1939 to 1941,
+`tests/programs/apps/port_convertdate_holidays.py` prints every holiday function for 10 years (1939 to 1941,
 when US Thanksgiving moved, and 7 years from 1999 to 2100), with `observed=True`, `eve=True` and
 the Canadian and Mexican variants; Easter in the three churches every third year from 1 to 2998;
 observed holidays of years outside 1..9999, which `calendar.weekday` counts modulo 400;
@@ -75,7 +75,7 @@ a float year, which `new_years(2023.0)` keeps and with which `new_years(2023.0, 
 `TypeError` from `calendar.weekday()`; and the `ValueError`, `NotImplementedError` and
 `DeprecationWarning` that `easter()`, `thanksgiving()` and `columbus_day()` raise.
 
-`tests/port_convertdate_star.py` takes the package's modules with `from convertdate import *`
+`tests/programs/apps/port_convertdate_star.py` takes the package's modules with `from convertdate import *`
 and calls a conversion of each calendar, and the Dublin day count's functions; the import
 stopped at `bahai` while `__all__` named the modules the port leaves out.
 

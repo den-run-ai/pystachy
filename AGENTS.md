@@ -70,20 +70,22 @@ session's tools exist. When access is missing, report the specific limitation.
   and the report path are shared. Use `mktemp -d` for scratch probes; PID-only names
   can collide across sessions. Bound `PYSTACHY_JOBS` on shared hosts. Do not run
   timing benchmarks alongside heavy builds or broad test jobs.
-- `FILES` takes top-level `tests/*.py` programs and `tests/errors/` and
-  `tests/deviations/` cases. `tests/ir/` probes run through `make check-ir`, and other
-  subdirectories hold helper modules; the git pathspec `'tests/*.py'` matches those too,
-  `':(glob)tests/*.py'` does not. Do not name test files or packages after stdlib modules:
-  `tests/record.sh` runs cases with `tests/` first on `sys.path`, and CI's python.org
-  CPython loads more modules (such as `binascii`) from files that a test can shadow.
+- `FILES` takes programs `tests/programs/AREA/*.py`, rejections `tests/errors/AREA/*.py` and
+  `tests/deviations/` cases ([`tests/corpus.sh`](tests/corpus.sh)). A program's `.out`, `.err`,
+  `.path`, `.in` and `.full` sit beside it, and a test left elsewhere fails `make check-recordings`
+  instead of being skipped. `tests/ir/` probes run through `make check-ir`. The helper packages
+  that tests import lie directly in `tests/`, which an importing test's `NAME.path` names. Do not
+  name test files or packages after stdlib modules: a case's own directory comes first on its
+  `sys.path`, and CI's python.org CPython loads more modules (such as `binascii`) from files that
+  a test can shadow.
 
 Run commands from the repository root. Replace the example selectors with affected tests.
 
 ```sh
 tools/setup.sh --check
 make
-make test FILES="tests/str_*.py tests/errors/rtmode_*.py"
-make test-py FILES="tests/str_*.py tests/errors/rtmode_*.py"
+make test FILES="tests/programs/strings/str_*.py tests/errors/runtime/rtmode_*.py"
+make test-py FILES="tests/programs/strings/str_*.py tests/errors/runtime/rtmode_*.py"
 make lint check-recordings
 ```
 
@@ -195,10 +197,10 @@ were checked in a 4-vCPU Claude Code container on 2026-10-18 (`44316e7`); confir
   comparison helpers fail closed: a tolerance check must reject NaN against a finite value,
   and `zip()` must not hide a length mismatch
   ([#583](https://github.com/den-run-ai/pystachy/pull/583)).
-- Fixtures encode today's gaps and exact text: `tests/errors/optional_*.py` assume `sqlite3`
-  is missing (they assumed `json` until #670), `tests/cache.sh` edits runtime messages, and
-  some `tests/errors` headers carry `FILE:LINE`. Search `tests/` and `tools/` before adding
-  a module, rewording a message or moving lines
+- Fixtures encode today's gaps and exact text: `tests/errors/optional/optional_*.py` assume
+  `sqlite3` is missing (they assumed `json` until #670), `tests/cache.sh` edits runtime
+  messages, and some `tests/errors` headers carry `FILE:LINE`. Search `tests/` and `tools/`
+  before adding a module, rewording a message or moving lines
   ([#670](https://github.com/den-run-ai/pystachy/pull/670),
   [#667](https://github.com/den-run-ai/pystachy/pull/667)).
 - The compiler must remain in its own supported Python subset. Follow the

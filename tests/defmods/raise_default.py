@@ -1,4 +1,4 @@
-# The same where a method's default value raises (tests/deftime_class_raises.py)
+# The same where a method's default value raises (tests/programs/imports/deftime_class_raises.py)
 from typing import Iterable
 
 ZERO = 0.0

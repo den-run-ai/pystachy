@@ -1,6 +1,6 @@
 """Check lib/_pystachy_binascii.py on CPython against CPython's C binascii module.
 
-This checks the port's source, not compiled Pystachy (tests/lib_binascii.py compares that): for
+This checks the port's source, not compiled Pystachy (tests/programs/library/lib_binascii.py compares that): for
 random arguments of every function, mostly near the inputs' edge cases (padding and junk in
 base64, line lengths and line ends in quoted-printable, lengths in uu, separators in hex), the
 port must return what the C module returns, or raise the same exception with the same message;

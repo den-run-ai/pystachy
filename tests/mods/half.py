@@ -1,4 +1,4 @@
-# A module whose code raises before it ends, its first two runs (tests/exc_import_retry.py)
+# A module whose code raises before it ends, its first two runs (tests/programs/exceptions/exc_import_retry.py)
 from mods import counter
 
 N = counter.incr(1)

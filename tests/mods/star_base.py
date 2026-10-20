@@ -1,4 +1,4 @@
-"""What mods.star_over and tests/star_rebound.py take with import * or a from-import, then rebind."""
+"""What mods.star_over and tests/programs/containers/star_rebound.py take with import * or a from-import, then rebind."""
 
 
 class Error(Exception):

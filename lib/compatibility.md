@@ -2,7 +2,7 @@
 
 This reference describes compiled behavior. The adapted sources may expose more
 APIs when CPython runs them, because optional imports select CPython's C modules
-and dynamic features. Differential cases live in `tests/lib_*.py`; deliberate
+and dynamic features. Differential cases live in `tests/programs/library/lib_*.py`; deliberate
 differences live in `tests/deviations/`, and rejected inputs in `tests/errors/`.
 
 Pystachy uses 64-bit integers, homogeneous containers and UTF-8 string storage.
@@ -87,7 +87,7 @@ callback must be a function or `None`. `__callback__`, proxies,
 `getweakrefcount()`, `getweakrefs()`, weak containers and the reuse of one
 reference per referent (`ref(x) is ref(x)`) are absent.
 
-`weakref` is CPython's module, adapted ([test](../tests/lib_weakref_module.py)): its `ref`
+`weakref` is CPython's module, adapted ([test](../tests/programs/library/lib_weakref_module.py)): its `ref`
 and `ReferenceType` are `_weakref`'s, also through from-imports and `import *`.
 `_weakrefset` is CPython's file, unchanged.
 
@@ -95,7 +95,7 @@ and `ReferenceType` are `_weakref`'s, also through from-imports and `import *`.
   CPython's code, which is a compile-time error where a program uses them: `WeakSet`
   binds a method under another name (`__sub__ = difference`), the dictionaries derive
   from `_collections_abc.MutableMapping`, and `WeakMethod` from the generic
-  `ReferenceType` ([error tests](../tests/errors/lib_weakref_weakset.py)).
+  `ReferenceType` ([error tests](../tests/errors/library/lib_weakref_weakset.py)).
 - `proxy`, `ProxyType`, `CallableProxyType`, `ProxyTypes`, `getweakrefcount()`,
   `getweakrefs()` and `finalize` are absent, and `__all__` leaves them out
   ([deviation](../tests/deviations/lib_weakref_all.py)); `getweakrefcount()` would need
@@ -446,7 +446,7 @@ CPython.
 for `decoder=None`: `decode()` takes `str` input, holds a final `\r` back until the next call or a
 final one, records the kinds of newline it decodes and, with `translate` true, makes `\r\n` and
 `\r` `\n`. `getstate()`, `setstate()`, `reset()`, `newlines` and the truth tests of `translate`
-and `final` are CPython's ([test](../tests/lib_io_newline_decoder.py)). `text_encoding()` gives its
+and `final` are CPython's ([test](../tests/programs/library/lib_io_newline_decoder.py)). `text_encoding()` gives its
 argument, or for `None` `"utf-8"` in UTF-8 mode, which the runtime's rule above turns on in the C
 and POSIX locales, and `"locale"` otherwise; Pystachy reads no `PYTHONWARNDEFAULTENCODING`, so it
 never warns. `open` and `BlockingIOError` are the builtins, and `DEFAULT_BUFFER_SIZE` is 8192.
@@ -454,7 +454,7 @@ never warns. `open` and `BlockingIOError` are the builtins, and `DEFAULT_BUFFER_
 - A decoder object, which CPython's decodes `bytes` input with first, raises
   `NotImplementedError` ([deviation](../tests/deviations/lib_io_newline_decoder_object.py)), and
   `bytes` input, for which CPython raises `TypeError`, is a compile-time error
-  ([error test](../tests/errors/lib_io_newline_decoder_bytes.py)).
+  ([error test](../tests/errors/library/lib_io_newline_decoder_bytes.py)).
 - `newlines` raises `NotImplementedError` once more than one kind of newline has been decoded,
   where CPython's is a tuple of them, as `TextIOWrapper`'s does
   ([deviation](../tests/deviations/lib_io_newline_decoder_tuple.py)).
@@ -462,14 +462,14 @@ never warns. `open` and `BlockingIOError` are the builtins, and `DEFAULT_BUFFER_
 `_io` is `_pystachy__io`, which Pystachy loads for `import _io`, where CPython imports the C module
 that its `io` is a layer over. It has CPython's docstring and `io`'s `StringIO`, `BytesIO`,
 `TextIOWrapper`, `IncrementalNewlineDecoder`, `text_encoding()`, `open`, `BlockingIOError` and
-`DEFAULT_BUFFER_SIZE` ([test](../tests/lib_io_cmodule.py)). Its classes are `io`'s, and their module
+`DEFAULT_BUFFER_SIZE` ([test](../tests/programs/library/lib_io_cmodule.py)). Its classes are `io`'s, and their module
 is `_io`, as CPython's are, through either module: `type(x).__module__` and an object's default
-`repr()` name `_io` ([test](../tests/lib_io_type_module.py)). `FileIO`, the `Buffered*` classes and
+`repr()` name `_io` ([test](../tests/programs/library/lib_io_type_module.py)). `FileIO`, the `Buffered*` classes and
 `open_code()` need binary files, which `open()` does not make
 ([#493](https://github.com/den-run-ai/pystachy/issues/493)); the `_IOBase` classes, from which
 `io`'s do not derive, and `UnsupportedOperation` are not there either. A use of any is a
-compile-time error ([error test](../tests/errors/lib_io_open_code.py),
-[another](../tests/errors/lib_io_fileio.py)). With `_io`, `importlib` stops next at the missing
+compile-time error ([error test](../tests/errors/library/lib_io_open_code.py),
+[another](../tests/errors/library/lib_io_fileio.py)). With `_io`, `importlib` stops next at the missing
 `_warnings`, and then needs `marshal` and CPython's runtime import machinery.
 
 ## Csv
@@ -686,7 +686,7 @@ floats. Weighted `fmean` uses the port of CPython's
 - `median` of ints or bools returns their union with `float`, as CPython returns the middle
   item of an odd number of them and the mean of the two middle ones otherwise. `quantiles`
   requires floats: of ints CPython returns `n - 1` copies of a single data point, ints, and
-  floats otherwise ([error test](../tests/errors/lib_statistics_quantiles_int.py)).
+  floats otherwise ([error test](../tests/errors/library/lib_statistics_quantiles_int.py)).
   `median_low` and `median_high` retain the item type. `median` of strings is unsupported.
 - `mode` and `multimode` cannot use float keys. String inputs iterate code points.
 - Integer products in weighted `fmean` can raise `OverflowError` beyond 64 bits;
@@ -694,7 +694,7 @@ floats. Weighted `fmean` uses the port of CPython's
 - The port's `sumprod` returns a float, including `11.0` for integer inputs and
   `0.0` for empty inputs, where CPython can return an integer.
 - `correlation` of ints is a compile-time error: it rebinds its list-of-int parameters to
-  the float deviations or ranks ([error test](../tests/errors/lib_statistics_correlation.py)).
+  the float deviations or ranks ([error test](../tests/errors/library/lib_statistics_correlation.py)).
   Its ranks for `method='ranked'` come from itertools' `count()` and `groupby()`, in a list
   that starts as floats, where CPython's starts as ints and holds the same float ranks.
 
@@ -948,12 +948,12 @@ also take a `str` the program makes as it runs, raising CPython's `struct.error`
 format.
 
 - `pack()`, `unpack()`, `unpack_from()` and `iter_unpack()` of a format not known as the program
-  compiles are compile-time errors ([error test](../tests/errors/lib_struct_dynamic.py)), and so
+  compiles are compile-time errors ([error test](../tests/errors/library/lib_struct_dynamic.py)), and so
   are the methods of a `Struct` made of one, and `Struct()` of a `bytes` format.
 - What CPython checks as `pack()` runs, the number of values for the format and the type of a
   value for its code (a `str` for `s`, a `float` for an integer code), is checked as the program
-  compiles, with CPython's message ([error test](../tests/errors/lib_struct_arity.py),
-  [another](../tests/errors/lib_struct_str.py)), and a value that may be `None` is a compile-time
+  compiles, with CPython's message ([error test](../tests/errors/library/lib_struct_arity.py),
+  [another](../tests/errors/library/lib_struct_str.py)), and a value that may be `None` is a compile-time
   error but for `?`. So is a format CPython rejects in `unpack()`, `unpack_from()` and
   `iter_unpack()`; `pack()` and `calcsize()` of one raise CPython's `struct.error` as the
   program runs.
@@ -1010,17 +1010,17 @@ class whose subclasses' `__init__` binds their fields.
 the class of the object a `with` statement passes to `__exit__()` (see [Contextlib](#contextlib)),
 and `GenericAlias` for CPython's idiom for a generic class: `__class_getitem__ = classmethod(GenericAlias)` (or
 `classmethod(types.GenericAlias)`) in a class body defines nothing in Pystachy, so the class
-compiles as it does without it ([test](../tests/types_generic_alias.py)). Its subscripts in
+compiles as it does without it ([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in
 annotations are what they are for any class, and at run time, where CPython makes them
 `types.GenericAlias` objects, they are a compile-time error
-([error test](../tests/errors/types_generic_alias_subscript.py)).
+([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
 
 - Any other use of `GenericAlias`, such as calling it, is a compile-time error
-  ([error test](../tests/errors/types_generic_alias_call.py)).
+  ([error test](../tests/errors/reflection/types_generic_alias_call.py)).
 - The module's other names, CPython's (`MappingProxyType`, `SimpleNamespace`, `FunctionType`,
   `MethodType`, `ModuleType`, `NoneType`, `new_class()`, `coroutine()`, ...), import as in
   CPython, also in an optional import, but any use of one is a compile-time error
-  ([error test](../tests/errors/types_unsupported_name.py)): Pystachy has no such objects, or
+  ([error test](../tests/errors/reflection/types_unsupported_name.py)): Pystachy has no such objects, or
   none that behave exactly as CPython's.
 
 ## Contextlib
@@ -1102,49 +1102,49 @@ keeps the items it has read, `tee()` keeps the items its slowest iterator has no
 shared links of 57), and `product()`, `permutations()`, `combinations()` and
 `combinations_with_replacement()` read the whole of their iterables when they are called. The
 functions are templates: each call's argument types make its code
-([tests](../tests/lib_itertools_terminating.py), [ranges](../tests/lib_itertools_range.py),
-[generators](../tests/lib_itertools_generators.py),
-[upstream](../tests/upstream_itertools.py)).
+([tests](../tests/programs/library/lib_itertools_terminating.py), [ranges](../tests/programs/library/lib_itertools_range.py),
+[generators](../tests/programs/library/lib_itertools_generators.py),
+[upstream](../tests/programs/upstream/upstream_itertools.py)).
 
 - The iterators are generators (`Generator[T]`), which yield items of one type: `chain()` of
-  iterables of different item types ([error test](../tests/errors/lib_itertools_chain_mixed.py)),
+  iterables of different item types ([error test](../tests/errors/library/lib_itertools_chain_mixed.py)),
   an `accumulate()` function that returns another type than the items'
-  ([error test](../tests/errors/lib_itertools_accumulate_type.py)) are compile-time
+  ([error test](../tests/errors/library/lib_itertools_accumulate_type.py)) are compile-time
   errors, as is an `accumulate()` `initial` of another type than its sums, such as `initial=0`
   of floats, where CPython yields the int `0` and then floats (`initial=0.0` is not an error)
-  ([error test](../tests/errors/lib_itertools_accumulate_initial.py)). `accumulate()` of bools
+  ([error test](../tests/errors/library/lib_itertools_accumulate_initial.py)). `accumulate()` of bools
   gives a bool and then ints, as in CPython, and `zip_longest()` without `fillvalue` gives
   optional items. A `zip_longest()` `fillvalue` of another scalar type than an iterable's items
-  gives items of their union ([test](../tests/lib_itertools_zip_longest_fillvalue.py)).
+  gives items of their union ([test](../tests/programs/library/lib_itertools_zip_longest_fillvalue.py)).
 - `batched()`, `permutations()`, `combinations()`, `combinations_with_replacement()` and
   `product(..., repeat=n)` yield tuples whose length the program knows only as it runs, whose
   items must be ints, floats, bools, strs or their optional types
   ([tuples](../docs/language/typing.md)): of tuples, lists or objects, they are compile-time
-  errors ([error test](../tests/errors/lib_itertools_combinations_objects.py),
-  [another](../tests/errors/lib_itertools_batched_tuples.py)), and `product()` with `repeat`
+  errors ([error test](../tests/errors/library/lib_itertools_combinations_objects.py),
+  [another](../tests/errors/library/lib_itertools_batched_tuples.py)), and `product()` with `repeat`
   needs one item type across its iterables
-  ([error test](../tests/errors/lib_itertools_product_repeat_mixed.py)). `product()` without
+  ([error test](../tests/errors/library/lib_itertools_product_repeat_mixed.py)). `product()` without
   `repeat` and `zip_longest()` yield a tuple with an item of each iterable, of its type.
 - A list unpacked into the iterables of `chain()`, `zip_longest()` or `product()` is a number of
   arguments known only as the program runs, a compile-time error
-  ([error test](../tests/errors/lib_itertools_star_list.py)); `chain.from_iterable()` takes a
+  ([error test](../tests/errors/library/lib_itertools_star_list.py)); `chain.from_iterable()` takes a
   list of iterables. `starmap()` takes tuples of arguments, not lists
-  ([error test](../tests/errors/lib_itertools_starmap_list.py)).
+  ([error test](../tests/errors/library/lib_itertools_starmap_list.py)).
 - `tee(iterable, n)` gives a list of the `n` iterators, where CPython gives a tuple
   ([deviation](../tests/deviations/lib_itertools_tee_list.py)); `tee(iterable)` gives a tuple of
   two. Unpacking, indexing, `len()` and loops see the same iterators.
 - `groupby()`'s key of `None` groups by the items themselves; a key function that is an object
   in a variable may be `None`, so its keys must have the items' type unless it is made in the
-  call ([error test](../tests/errors/lib_itertools_groupby_key_object.py)). Its groups are
+  call ([error test](../tests/errors/library/lib_itertools_groupby_key_object.py)). Its groups are
   generators that share the `groupby()`'s iterator, as the C type's do: advancing the
-  `groupby()` ends the group before it ([test](../tests/lib_itertools_groupby.py)). A key that
+  `groupby()` ends the group before it ([test](../tests/programs/library/lib_itertools_groupby.py)). A key that
   is not equal to itself (a NaN) still makes a group of its item, as in CPython; but a float
   has no identity, so the same NaN object twice makes two groups, where CPython makes one
   ([deviation](../tests/deviations/lib_itertools_groupby_nan.py)).
 - An argument whose type the C function rejects (`permutations()`' `r` of another type than
   `int`, `count()` of something other than a number) and `islice()` or `tee()` with too few or
   too many arguments raise CPython's `TypeError` as the program runs
-  ([test](../tests/lib_itertools_argtypes.py)); other wrong numbers of arguments, keywords a
+  ([test](../tests/programs/library/lib_itertools_argtypes.py)); other wrong numbers of arguments, keywords a
   function has not, and non-iterables are compile-time errors.
 - An iterator that an exception has left (from its function, predicate or key, or from its
   input) is finished, as a generator is, where CPython's C iterators can go on
@@ -1166,14 +1166,14 @@ functions are templates: each call's argument types make its code
   ([deviation](../tests/deviations/lib_itertools_protocol.py)).
 - `chain` is an object whose calls make generators, with `from_iterable()` as a method and the C
   type's repr, not a class: `isinstance(x, itertools.chain)` is a compile-time error
-  ([error test](../tests/errors/lib_itertools_isinstance.py)), as are the other functions as
+  ([error test](../tests/errors/library/lib_itertools_isinstance.py)), as are the other functions as
   classes. The iterators do not print (CPython prints `count(5)`), and their type's name,
   pickling, `copy.copy()` (but for `tee()`'s `__copy__()`), `__reduce__()`, `__setstate__()`
   and `__length_hint__()` are not there
-  ([error test](../tests/errors/lib_itertools_print.py),
-  [another](../tests/errors/lib_itertools_type_name.py)).
+  ([error test](../tests/errors/library/lib_itertools_print.py),
+  [another](../tests/errors/library/lib_itertools_type_name.py)).
 - `zip()`, `map()`, `filter()`, `enumerate()` and `reversed()` are not values, so an itertools
-  function cannot take one ([error test](../tests/errors/lib_itertools_zip_argument.py)); it can
+  function cannot take one ([error test](../tests/errors/library/lib_itertools_zip_argument.py)); it can
   take a generator expression over them. Ints are 64-bit: `count()` past `2**63 - 1` raises
   `OverflowError`, where CPython's ints grow.
 
@@ -1204,7 +1204,7 @@ formats `_deprecated()`'s message.
   filters version, `version` in CPython; a value is 1 for `True`. The default filter's module is
   the pattern `re.compile('__main__\\Z')`, which matches the module name `__main__` alone, as the
   str `'__main__'` that CPython's C module keeps does
-  ([test](../tests/lib_warnings_main_filter.py)); `warnings.filters` shows the pattern (same
+  ([test](../tests/programs/library/lib_warnings_main_filter.py)); `warnings.filters` shows the pattern (same
   deviation test).
 - A message that is neither a `str` nor a warning raises `TypeError`, where CPython takes the
   object itself as the warning's text; `showwarning()` and `formatwarning()` given a `str` make a
@@ -1216,18 +1216,18 @@ formats `_deprecated()`'s message.
 
 Not supported, as compile-time errors:
 - Replacing `showwarning()` or `formatwarning()`, as a module's function is bound once
-  ([error test](../tests/errors/lib_warnings_showwarning.py)), and `catch_warnings(module=...)`,
+  ([error test](../tests/errors/library/lib_warnings_showwarning.py)), and `catch_warnings(module=...)`,
   as a module is not a value.
 - A recorded message's `file` and `source`
-  ([error test](../tests/errors/lib_warnings_message_file.py)).
+  ([error test](../tests/errors/library/lib_warnings_message_file.py)).
 - A filter of a tuple of categories, which CPython's `issubclass()` takes
-  ([error test](../tests/errors/lib_warnings_category_tuple.py)).
+  ([error test](../tests/errors/library/lib_warnings_category_tuple.py)).
 - A `skip_file_prefixes` tuple of a `str` and an item of another type, as `warn()` checks its
-  items one by one ([error test](../tests/errors/lib_warnings_skip_prefixes_mixed.py)): CPython
+  items one by one ([error test](../tests/errors/library/lib_warnings_skip_prefixes_mixed.py)): CPython
   raises `TypeError` for it where the call runs, as for a tuple of other items alone
-  ([test](../tests/lib_warnings_skip_prefixes.py)).
+  ([test](../tests/programs/library/lib_warnings_skip_prefixes.py)).
 - `deprecated`, which sets the attribute `__deprecated__` of the function it decorates and wraps
-  it with `functools.wraps()` ([error test](../tests/errors/lib_warnings_deprecated.py)).
+  it with `functools.wraps()` ([error test](../tests/errors/library/lib_warnings_deprecated.py)).
 
 ## Opcode
 
@@ -1247,7 +1247,7 @@ keeps the low 32 bits as CPython does, and with `jump=` true, false or omitted; 
 `has_exc()`, also of numbers no opcode has, and `OverflowError` beyond a C int;
 `get_nb_ops()`, `get_intrinsic1_descs()` and `get_intrinsic2_descs()`, a new list at each call;
 and `get_specialization_stats()`, which gives `None`, as it does in CPython's default build
-([tests](../tests/lib_opcode.py), [upstream](../tests/upstream_opcode.py)).
+([tests](../tests/programs/library/lib_opcode.py), [upstream](../tests/programs/upstream/upstream_opcode.py)).
 
 The tables describe CPython 3.13.16's bytecode, as `opcode`'s do: a program can look up the
 opcodes of CPython's code objects and the stack effects of its instructions. Pystachy compiles a
@@ -1258,9 +1258,9 @@ program to native code; it has no bytecode, code objects or specializing interpr
 - `get_executor()` raises CPython's `TypeError: expected a code object, not '...'`, as no value
   of a Pystachy program is a code object.
 - An argument of a type the C function would not convert is a compile-time error: a `float`
-  opcode or oparg ([error test](../tests/errors/lib_opcode_float.py),
-  [another](../tests/errors/lib_opcode_oparg.py)), and an `int` for `jump=`, for which CPython
-  raises `ValueError` ([error test](../tests/errors/lib_opcode_jump.py)). A `bool`, which CPython
+  opcode or oparg ([error test](../tests/errors/library/lib_opcode_float.py),
+  [another](../tests/errors/library/lib_opcode_oparg.py)), and an `int` for `jump=`, for which CPython
+  raises `ValueError` ([error test](../tests/errors/library/lib_opcode_jump.py)). A `bool`, which CPython
   takes as an int, is one too, as the subset does not convert a `bool` to an `int`.
 - The functions are Python functions, not builtins: their type's name is `function`.
 - `hasjabs`, an empty list that nothing fills in CPython 3.13, is annotated `list[int]`, as nothing

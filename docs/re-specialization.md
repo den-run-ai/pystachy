@@ -130,7 +130,7 @@ runs of one and two loops:
   matchers.
 - **Without matchers.** Programs keep the interpreter's cost: callgrind counts per loop changed by
   −0.7% (`regex_v8`), +0.5% (`regex_effbot`) and +0.06% (`regex_dna`) against main's `lib/re`. The
-  IR of `tests/lib_re.py` grows by 0.9%.
+  IR of `tests/programs/library/lib_re.py` grows by 0.9%.
 - **Build size.** Generated code costs build time and binary size, roughly in proportion to the
   number of matchers:
 
@@ -177,7 +177,7 @@ runs of one and two loops:
   does not end its repeat, which the depth limit hides from the results) fail the unit test. They
   cover mark restores, repeat backtracking, lookbehind width, the INFO minimum, case folding,
   possessive and atomic groups, `must_advance`, the attempt's start and mark gaps.
-- `tests/re_specialize.py` is the native differential test. Its `.path` file finds the 29 matchers
+- `tests/programs/library/re_specialize.py` is the native differential test. Its `.path` file finds the 29 matchers
   generated from its own CPython profile. It covers the probe patterns, mark cases, `fnmatch` globs,
   non-ASCII subjects and a repeat deeper than the limit. It passes in JIT and AOT, and with a
   collection at every allocation. It leaves out HTMLParser to keep CI's GC groups short. There the

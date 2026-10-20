@@ -39,13 +39,13 @@ qr.print_ascii()
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_qrcode_encode.py
-./tests/run.sh ./pystachy "jit aot" tests/port_qrcode_encode.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_qrcode_encode.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_qrcode_encode.py
 ```
 
 The differential test checks matrices/text, every mask and correction level, UTF-8 inputs, capacity boundaries, chunk optimization, setter validation and error paths.
 
-Cases: [port_qrcode_encode.py](../../tests/port_qrcode_encode.py).
+Cases: [port_qrcode_encode.py](../../tests/programs/apps/port_qrcode_encode.py).
 
 <a id="speed"></a>
 

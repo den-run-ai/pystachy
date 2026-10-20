@@ -89,6 +89,7 @@
 # usage: tests/verify.sh [GROUP]   (make verify runs all)   env: PY (default python3), PYSTACHY_LLVM (LLVM 18 bin dir)
 # CI may set VERIFY_BOOTSTRAP_DIR to a verified bundle from this run; local runs build afresh.
 cd "$(dirname "$0")/.." || exit 1
+. tests/corpus.sh
 # shellcheck disable=SC3045 # (ulimit -c is not POSIX, but dash, bash, ksh and busybox have it)
 ulimit -c 0 2> /dev/null  # (no core file of a crashing compiler or test program in the tree)
 ROOT=$(pwd)
@@ -142,6 +143,9 @@ if [ "$GROUP" = --list ]; then
   exit 0
 fi
 SELECTED=$(plan "$GROUP") || exit 2
+# a test outside the corpus's areas would be in no step's count (tests/corpus.sh)
+strays=$(corpus_strays)
+[ -z "$strays" ] || { printf 'tests/verify.sh: no step tests these files, outside the corpus'"'"'s areas:\n%s\n' "$strays" >&2; exit 2; }
 want() { case " $SELECTED " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 expected=0
 for x in $SELECTED; do expected=$((expected + 1)); done
@@ -182,23 +186,27 @@ step() {
 # checks MODES [FILE...]: checks tests/run.sh makes of these files (default: whole suite) in MODES,
 # counted from the files as
 # its loops make them: each program and each deviation once per mode, each rejection once, and one
-# "pystachy check" more of each syntax_*.py program and of each syntax_*.py rejection whose error is
+# "pystachy check" more of each program syntax_*.py and of each rejection syntax_*.py whose error is
 # in its own file
 checks() {
   c=0; m=0
   for x in $1; do m=$((m + 1)); done
   shift
-  [ $# != 0 ] || set -- tests/*.py tests/deviations/*.py tests/errors/*.py
+  if [ $# = 0 ]; then
+    corpus > "$V/corpus.list"
+    while IFS= read -r f; do set -- "$@" "$f"; done < "$V/corpus.list"
+  fi
   for f; do
     [ -f "$f" ] || continue
+    n=${f##*/}
     case $f in
-      tests/errors/*) c=$((c + 1)) ;;
+      tests/errors/*/*) c=$((c + 1)) ;;
       *) c=$((c + m)) ;;
     esac
-    case $f in
-      tests/syntax_*.py) c=$((c + 1)) ;;
-      tests/errors/syntax_*.py)
-        n=${f##*/}; case $(head -1 "$f") in "# error: ${n%.py}.py:"*) c=$((c + 1)) ;; esac ;;
+    case $f:$n in
+      tests/programs/*:syntax_*.py) c=$((c + 1)) ;;
+      tests/errors/*/*:syntax_*.py)
+        case $(head -1 "$f") in "# error: ${n%.py}.py:"*) c=$((c + 1)) ;; esac ;;
     esac
   done
   echo $c
@@ -212,11 +220,12 @@ shard_cases() {
   (
     export LC_ALL=C
     case_index=0
-    for f in tests/*.py tests/deviations/*.py tests/errors/*.py; do
-      [ -f "$f" ] || continue
+    corpus > "$3.all"
+    while IFS= read -r f; do
       [ $((case_index % $2)) != "$1" ] || printf '%s\n' "$f"
       case_index=$((case_index + 1))
-    done
+    done < "$3.all"
+    rm -f "$3.all"
   ) > "$3"
 }
 # tests N LOG...: JSON counts summed over tests/run.sh outputs (the "N passed, M failed" line ends
@@ -704,8 +713,8 @@ sources = {str(p): {"lines": p.read_bytes().count(b"\n"),
 # (suite_checks: the checks of the whole corpus in JIT and AOT, which the shards of each such suite
 # make together; mode_checks: its checks in one mode, which the shards of each GC suite make, and
 # the UBSan thirds once in each mode)
-sources.update(test_programs=len(list(Path("tests").glob("*.py"))),
-               rejection_tests=len(list(Path("tests/errors").glob("*.py"))),
+sources.update(test_programs=len(list(Path("tests/programs").glob("*/*.py"))),
+               rejection_tests=len(list(Path("tests/errors").glob("*/*.py"))),
                suite_checks=int(os.environ["SUITE_CHECKS"]), mode_checks=int(os.environ["MODE_CHECKS"]))
 print('  "sources": ' + json.dumps(sources, sort_keys=True) + ',')
 PY

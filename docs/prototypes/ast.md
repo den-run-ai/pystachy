@@ -135,11 +135,11 @@ Pystachy's AOT model.
 Ordinary class reads of `_fields` and `_field_defaults` incorrectly used the
 compiler's NamedTuple path. For example, `AST._fields` returned internal class
 field names instead of `()`. The two special cases now require an actual
-NamedTuple class. `tests/class_field_metadata.py` checks ordinary class and
+NamedTuple class. `tests/programs/classes/class_field_metadata.py` checks ordinary class and
 inherited class reads, instance reads and shared-dictionary mutation. NamedTuple
 regressions remain part of the focused verification. Inheritance from either
 `typing.NamedTuple` or a `collections.namedtuple()` class remains unsupported;
-the two `tests/errors/namedtuple_subclass_*.py` regressions explicitly reject
+the two `tests/errors/containers/namedtuple_subclass_*.py` regressions explicitly reject
 subclasses that would read `_fields` or `_field_defaults`, instead of allowing
 the metadata path to crash or silently treating them as ordinary classes.
 
@@ -149,17 +149,17 @@ the metadata path to crash or silently treating them as ordinary classes.
 make
 PYTHON=python3.13 tests/record.sh lib_ast_nodes lib_ast_transform lib_ast_match_args \
   lib_ast_name_default lib_ast_expressions class_field_metadata
-tests/run.sh ./pystachy "jit aot" tests/lib_ast_*.py \
-  tests/class_field_metadata.py tests/errors/lib_ast_*.py \
-  tests/errors/namedtuple_subclass_*.py
+tests/run.sh ./pystachy "jit aot" tests/programs/library/lib_ast_*.py \
+  tests/programs/classes/class_field_metadata.py tests/errors/library/lib_ast_*.py \
+  tests/errors/containers/namedtuple_subclass_*.py
 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy "jit aot" \
-  tests/lib_ast_*.py
+  tests/programs/library/lib_ast_*.py
 ```
 
 The tests compare the same programs directly to CPython's native `_ast`, including
 all supported constant kinds and operator tags, inherited metadata, field
 mutation, shared children, recursive construction and a tree-transform consumer.
-`tests/lib_ast_expressions.py` adds every other node's metadata, the 3.13
+`tests/programs/library/lib_ast_expressions.py` adds every other node's metadata, the 3.13
 defaults (fresh lists, the shared `Load`, `None`), kept lists, and a source
 printer and evaluator over boolean operations, chained comparisons, calls with
 keywords and unpacking, subscripts, slices and displays, then rewrites shared

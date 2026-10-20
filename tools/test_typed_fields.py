@@ -158,7 +158,7 @@ class TypedFieldTests(unittest.TestCase):
 
         with patch.object(Gen, "lower", capture):
             for name in ("reference_union_inheritance.py", "typed_ir_slots.py"):
-                Gen().program(Loader([]).program(name, (root / name).read_text()))
+                Gen().program(Loader([]).program(name, next(root.glob(f"programs/*/{name}")).read_text()))
         self.assertTrue(captured)
 
 

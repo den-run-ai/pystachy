@@ -44,7 +44,7 @@ cases=$(git diff --name-only --diff-filter=AM \
 tests/run.sh ./pystachy 'jit aot' $cases
 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh ./pystachy 'jit aot' $cases
 PYSTACHY_OPT=-all PYSTACHY_GC_STRESS_PROGRAM=1 \
-  tests/run.sh ./pystachy 'jit aot' tests/lib_weakref_transition.py
+  tests/run.sh ./pystachy 'jit aot' tests/programs/library/lib_weakref_transition.py
 make test-ffi
 make verify
 ```

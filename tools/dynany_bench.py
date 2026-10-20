@@ -6,7 +6,7 @@ Build once, then alternate the modes, each with the same N:
   union N    list[int | str], narrowed with isinstance(), summed into an int
   dyn N      list[Any], narrowed with isinstance(), summed into an int
   generic N  list[Any], summed into an Any (each addition dispatches and boxes its result)
-  graph N    the heterogeneous object graph of tests/dynany_graph.py: N graphs built, then each
+  graph N    the heterogeneous object graph of tests/programs/inference/dynany_graph.py: N graphs built, then each
              deep-copied and checksummed through its Any values
 Each prints a checksum, the construction CPU nanoseconds and the processing CPU nanoseconds.
 Use PYSTACHY_GC=stats in a separate untimed run to report the heap peak (docs/dynamic-any.md).

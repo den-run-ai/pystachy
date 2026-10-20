@@ -20,7 +20,7 @@ pystachy: $(COMPILER_SOURCES) runtime.c runtime.py
 	@echo "fixed point: runtime.py's IR, rt1 == rt2 == rt3 ($$(wc -l < build/rt1.ll) lines)"
 	cp build/pystachy2 pystachy
 
-# FILES: only these cases, e.g. make test FILES="tests/str_*.py tests/errors/rtmode_*.py"
+# FILES: only these cases, e.g. make test FILES="tests/programs/strings/str_*.py tests/errors/runtime/rtmode_*.py"
 test: pystachy
 	tests/run.sh ./pystachy "jit aot" $(FILES)
 
@@ -253,7 +253,7 @@ port-check:
 # These files also belong to the normal corpus, so every existing CI configuration runs them.
 CPYTHON_SUBSET_COMPILER ?= ./pystachy
 test-cpython-subset: $(CPYTHON_SUBSET_COMPILER)
-	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/upstream_fnmatch.py tests/upstream_textwrap_wrap.py tests/upstream_textwrap_layout.py tests/upstream_textwrap_indent.py tests/upstream_functools_cache.py tests/upstream_textwrap_unicode.py tests/upstream_textwrap_field_rebind.py
+	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/programs/upstream/upstream_fnmatch.py tests/programs/upstream/upstream_textwrap_wrap.py tests/programs/upstream/upstream_textwrap_layout.py tests/programs/upstream/upstream_textwrap_indent.py tests/programs/upstream/upstream_functools_cache.py tests/programs/upstream/upstream_textwrap_unicode.py tests/programs/upstream/upstream_textwrap_field_rebind.py
 
 # Large upstream regex cases with normal GC, outside the collect-at-every-allocation corpus.
 # Reuse a verified compiler by setting PORT_COMPILER; the default bootstraps one.

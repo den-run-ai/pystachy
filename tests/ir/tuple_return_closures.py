@@ -1,4 +1,4 @@
-# tupleret (tuple_return_closures.calls) in the shapes of tests/tuple_return_closures.py: closures
+# tupleret (tuple_return_closures.calls) in the shapes of tests/programs/containers/tuple_return_closures.py: closures
 # (from a factory, nested, a lambda, one with a nonlocal), starred targets, and a generator that
 # unpacks a returned tuple across its yields. Each call only reads the slots, so each callee gets a
 # by-value body (@v.c.<n>.1, @v.f.three, @v.f.strs) beside the wrapper that makes the tuple; the

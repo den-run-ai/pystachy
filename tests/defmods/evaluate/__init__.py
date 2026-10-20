@@ -1,4 +1,4 @@
-"""Modules for tests/deftime_eval.py: what Pystachy runs of the def and class statements it
+"""Modules for tests/programs/imports/deftime_eval.py: what Pystachy runs of the def and class statements it
 leaves uncompiled, the names CPython binds in a package and in a class body, and a global that a
 module importing this one assigns first."""
 import math

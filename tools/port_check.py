@@ -128,7 +128,7 @@ def check_cases(root, module, identifiers):
         evidence = [local_file(root, path) for path in entry["evidence"]]
         if entry["status"] in {"compiled", "partial"}:
             programs = [path for path in evidence if path.suffix == ".py"
-                        and path.parent == (root / "tests").resolve()
+                        and path.parent.parent == (root / "tests/programs").resolve()
                         and f"# {identifier}\n" in path.read_text(encoding="utf-8")]
             if not programs or not all(path.with_suffix(".out").is_file() for path in programs):
                 raise ValueError(f"compiled mapping needs upstream ID and differential recording: {identifier}")

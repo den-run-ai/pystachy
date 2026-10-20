@@ -84,14 +84,14 @@ general shell tool, `.env` loader, or automatic transport retries.
 
 ## Evidence
 
-`tests/example_agent.py` is in the ordinary CPython/JIT/AOT differential corpus.
+`tests/programs/apps/example_agent.py` is in the ordinary CPython/JIT/AOT differential corpus.
 The AskMe tests additionally compare exact transcripts and entire workspace
 bytes across nine positive/negative scenarios in both native modes, including
 raw/escaped Unicode and CRLF. HTTP smoke uses an actual loopback recorded-response
 server in all three modes, with no model calls. To reproduce locally:
 
 ```sh
-tests/run.sh ./pystachy 'jit aot' tests/example_agent.py
+tests/run.sh ./pystachy 'jit aot' tests/programs/apps/example_agent.py
 python3 examples/agent/http_smoke.py -- build/askme-mini
 ```
 

@@ -3,7 +3,7 @@
 usage: python3 tools/inheritprobe.py [NATIVE_COMPILER]
 Counts unique retained AST nodes and clone work at N=80,160,320 (no RSS/timing
 threshold), then checks native ir/run/build at N=800 under 256 MiB. Called
-methods and declaration/flow behavior are covered by tests/exc_classmethod*.py.
+methods and declaration/flow behavior are covered by tests/programs/exceptions/exc_classmethod*.py.
 """
 import importlib.util
 import os

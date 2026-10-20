@@ -663,7 +663,7 @@ def main():
     # given only reads its arguments (runtime mode has no globals)
     # a function that may raise must stay unwindable: an invoke of one that opt marked nounwind
     # (runtime.c built without -fexceptions, say) becomes a call, and the exception escapes the
-    # program's try (tests/rt_raise_unwinds.py)
+    # program's try (tests/programs/runtime/rt_raise_unwinds.py)
     for f in sorted(rpy_ops):
         if "R" in letters[f] and f in nounwind:
             bad.append(f"runtime.py's {f} may raise, but the linked runtime marks it nounwind")

@@ -1,4 +1,4 @@
-"""A function and a class, from-imported and aliased by mods.alias_mid (tests/import_alias_reexport.py)."""
+"""A function and a class, from-imported and aliased by mods.alias_mid (tests/programs/imports/import_alias_reexport.py)."""
 
 
 def inc(x: int) -> int:

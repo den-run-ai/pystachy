@@ -47,7 +47,7 @@ texts and matcher tables. Output is compared with CPython.
 
 ## Checks and reproduction
 
-`tests/example_linediff.py` compares unified/word diffs, context sizes,
+`tests/programs/apps/example_linediff.py` compares unified/word diffs, context sizes,
 line-ending cases, summaries and command-line errors with CPython.
 
 ```sh

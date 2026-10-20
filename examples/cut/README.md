@@ -49,7 +49,7 @@ Peak memory is about 3× CPython’s but remains bounded as input grows.
 
 ## Checks and reproduction
 
-`tests/example_cut.py` compares range parsing, selection, options, generated
+`tests/programs/apps/example_cut.py` compares range parsing, selection, options, generated
 input and errors with CPython.
 
 ```sh

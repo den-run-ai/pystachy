@@ -35,13 +35,13 @@ print(figlet_format("Hi", font="small", width=80))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_pyfiglet_render.py
-./tests/run.sh ./pystachy "jit aot" tests/port_pyfiglet_render.py tests/port_pyfiglet_edges.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_pyfiglet_render.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_pyfiglet_render.py tests/programs/apps/port_pyfiglet_edges.py
 ```
 
 The tests cover upstream banner examples, all three fonts, wrapping/justification, right-to-left output, glyph parsing, Unicode input and errors.
 
-Cases: [port_pyfiglet_render.py](../../tests/port_pyfiglet_render.py), [port_pyfiglet_edges.py](../../tests/port_pyfiglet_edges.py).
+Cases: [port_pyfiglet_render.py](../../tests/programs/apps/port_pyfiglet_render.py), [port_pyfiglet_edges.py](../../tests/programs/apps/port_pyfiglet_edges.py).
 
 <a id="speed"></a>
 

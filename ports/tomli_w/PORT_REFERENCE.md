@@ -34,7 +34,7 @@ Archive SHA-256: `2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae250
 
 ## Validation snapshot
 
-`tests/port_tomli_w_values.py` writes values: `str`s with quotes, backslashes, tabs, the short
+`tests/programs/apps/port_tomli_w_values.py` writes values: `str`s with quotes, backslashes, tabs, the short
 escapes `\b`, `\f`, `\n`, `\r`, the other C0 controls and DEL as `\uXXXX`, and the C1 controls, the
 byte order mark, U+10FFFF, an emoji, the first and last characters of each length in UTF-8, NEL
 and the line and paragraph separators as they are; bare keys and quoted ones (empty, with a
@@ -42,7 +42,7 @@ space, a tab, a control character or a non-ASCII character); multiline strings (
 backslashes and escapes, and strings that stay single-line) and the same text without the option;
 `int`s at both 64-bit limits; `float`s (`inf`, `-inf`, `nan`, `-0.0`, `5e-324`, the largest, and
 exponents); `bool`s; empty and nested arrays, and tuples; `indent=` 0, 1, 2 and the
-`ValueError` for -1. `tests/port_tomli_w_tables.py` writes tables: an empty document, empty and
+`ValueError` for -1. `tests/programs/apps/port_tomli_w_tables.py` writes tables: an empty document, empty and
 nested tables (with no header where they hold only tables), quoted keys in headers, and
 arrays of tables, inline (each table at most 100 characters, the limit exactly, the same table
 twice, nested inline tables, empty tables, a tuple of tables, an array of arrays of tables) or as
@@ -52,7 +52,7 @@ order of keys deleted and set again, and 200 documents of random shapes (tables 
 tables of `int`s, from a linear congruential generator, with keys that need quotes, at indents 0
 to 5). Many cases are those of tomli-w's own tests
 (`tests/test_style.py` and `tests/test_types.py` of its repository at tag 1.2.0; the sdist has
-none), with one type of value in each container. `tests/port_tomli_w_ini2toml.py` is a program
+none), with one type of value in each container. `tests/programs/apps/port_tomli_w_ini2toml.py` is a program
 of two ports, ini2toml: it reads INI text with `ports/iniconfig` and writes it as TOML with
 `tomli_w`, a section as a table and a value continued on more lines as a multiline string, for a
 `setup.cfg` and for a text with a byte order mark, comments, an empty section, a dotted section

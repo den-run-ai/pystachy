@@ -42,7 +42,7 @@ the whole program, so its speedup is smaller than the selection-only speedup.
 
 ## Checks and reproduction
 
-`tests/example_topk.py` compares counts and heap/sort selections over generated
+`tests/programs/apps/example_topk.py` compares counts and heap/sort selections over generated
 text, including n=0 and n beyond the number of distinct words.
 
 ```sh

@@ -226,7 +226,7 @@ class TypedIRTests(unittest.TestCase):
         self.assertEqual(g.fn.blocks[0].code, [])
 
     def test_source_builds_typed_conversions_before_lowering(self):
-        source = (Path(__file__).resolve().parent.parent / "tests" / "typed_ir_slots.py").read_text()
+        source = next((Path(__file__).resolve().parent.parent / "tests").glob("programs/*/typed_ir_slots.py")).read_text()
         captured = []
         lower = Gen.lower
 
@@ -325,7 +325,7 @@ class TypedIRTests(unittest.TestCase):
                 lower(g, fn)
 
             with self.subTest(source=name), patch.object(Gen, "lower", capture):
-                Gen().program(Loader([]).program(name, (root / name).read_text()))
+                Gen().program(Loader([]).program(name, next(root.glob(f"programs/*/{name}")).read_text()))
                 self.assertTrue(captured)
                 for i in captured:
                     self.assertIsInstance(i.a[0], Val)
@@ -333,8 +333,8 @@ class TypedIRTests(unittest.TestCase):
                     self.assertIn(i.s, umembers(i.a[0].t))
 
     def test_source_builds_declared_union_reads(self):
-        source = (Path(__file__).resolve().parent.parent / "tests" /
-                  "scalar_union_optional_narrowing.py").read_text()
+        source = next((Path(__file__).resolve().parent.parent / "tests").glob(
+                  "programs/*/scalar_union_optional_narrowing.py")).read_text()
         captured = []
         lower = Gen.lower
 
@@ -406,7 +406,7 @@ class TypedIRTests(unittest.TestCase):
         self.assert_bad(i)
 
     def test_source_builds_numeric_ops_and_retains_exact_mixed_comparison(self):
-        source = (Path(__file__).resolve().parent.parent / "tests" / "typed_ir_numeric.py").read_text()
+        source = next((Path(__file__).resolve().parent.parent / "tests").glob("programs/*/typed_ir_numeric.py")).read_text()
         captured = []
         lower = Gen.lower
 
@@ -488,7 +488,7 @@ class TypedIRTests(unittest.TestCase):
 
             with self.subTest(source=name), patch.object(Gen, "lower", capture):
                 g = Gen()
-                g.program(Loader([str(root.parent / "lib")]).program(name, (root / name).read_text()))
+                g.program(Loader([str(root.parent / "lib")]).program(name, next(root.glob(f"programs/*/{name}")).read_text()))
                 self.assertTrue(captured)
                 for i in captured:
                     self.assertTrue(i.t in g.classes or i.t.startswith("tuple["))
@@ -590,7 +590,7 @@ class TypedIRTests(unittest.TestCase):
         with patch.object(Gen, "lower", capture):
             for name in ("typed_ir_slots.py", "class_templates.py", "varargs_stack.py",
                          "kwargs.py", "mixed_union_format.py"):
-                Gen().program(Loader([str(root.parent / "lib")]).program(name, (root / name).read_text()))
+                Gen().program(Loader([str(root.parent / "lib")]).program(name, next(root.glob(f"programs/*/{name}")).read_text()))
         self.assertTrue(any(i.op == "tuple.load" for i in captured))
         stores = [i for i in captured if i.op == "tuple.store"]
         self.assertTrue(any(i.a[0].v.startswith("%stk.") for i in stores))

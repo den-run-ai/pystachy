@@ -41,7 +41,7 @@ program uses more peak memory despite storing floats unboxed.
 
 ## Checks and reproduction
 
-`tests/example_latency.py` compares 3,000 generated requests, malformed rows,
+`tests/programs/apps/example_latency.py` compares 3,000 generated requests, malformed rows,
 single-request endpoints, timeouts and empty responses with CPython.
 
 ```sh

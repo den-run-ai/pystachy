@@ -41,7 +41,7 @@ Both programs retain the entire table, which dominates memory use.
 
 ## Checks and reproduction
 
-`tests/example_column.py` compares widths, alignment, options, generated tables
+`tests/programs/apps/example_column.py` compares widths, alignment, options, generated tables
 and error cases with CPython.
 
 ```sh
