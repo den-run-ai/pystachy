@@ -20,6 +20,7 @@ are linked from the relevant guide.
 | [Third-party ports](../ports/README.md) | Port examples, usage and per-package restrictions |
 | [Native JSON prototype](json-prototype.md) | Recursive JSON values, `json.loads()`/`dumps()`, their limits and [benchmark](json-benchmark.md) |
 | [C and CPython interoperability](ffi.md) | Native C calls, embedded CPython and CPython extension modules |
+| [Concurrency](concurrency.md) | Process pools and `asyncio` over extension modules today; the contract for threads, parallel loops and `async` |
 | [Caching](caching.md) | Memoization, regex and text-processing workloads |
 | [Performance](performance.md) | Published speed, memory and startup measurements |
 | [Extended benchmarks](extended-performance.md) | Reproducing diagnostic benchmark runs |
