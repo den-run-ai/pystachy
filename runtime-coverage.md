@@ -1,23 +1,23 @@
 ## Native runtime coverage
 
-Commit `8990e41776e8e74f57812120f81ec3e897065eda`: lines **94.8%** (4268 of 4503) and branches **86.6%** (4378 of 5056) of `runtime.c` (with the `ryu/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 95.6%, regions 92.2%. `pys_init` ran 3058 times: the program runs whose profiles were written.
+Commit `3c63613b9ad4748dfc030fc923f7704e26b21ba9`: lines **94.0%** (4550 of 4838) and branches **85.7%** (4775 of 5572) of `runtime.c` (with the `ryu/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 95.9%, regions 91.2%. `pys_init` ran 3116 times: the program runs whose profiles were written.
 Programs built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).
 
 | Suite | Runs | Checks | Time |
 |---|---|---|---:|
-| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 5007 passed, 0 failed | 924 s |
-| ffi | `tests/ffi/run.sh`, AOT and extension modules | 103 passed, 0 failed | 50 s |
+| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 5091 passed, 0 failed | 785 s |
+| ffi | `tests/ffi/run.sh`, AOT and extension modules | 103 passed, 0 failed | 47 s |
 
 | File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `pyembed.c` | 236 | 18 | 92.4% | 264 | 105 | 60.2% | 95.2% | 80.5% |
 | `pyext.c` | 128 | 10 | 92.2% | 142 | 43 | 69.7% | 100.0% | 83.9% |
-| `runtime.c` | 3667 | 107 | 97.1% | 4520 | 522 | 88.5% | 97.2% | 93.1% |
+| `runtime.c` | 4002 | 160 | 96.0% | 5036 | 641 | 87.3% | 97.4% | 92.0% |
 | `ryu/common.h` | 66 | 46 | 30.3% | 6 | 6 | 0.0% | 44.4% | 23.5% |
 | `ryu/d2s.c` | 284 | 13 | 95.4% | 118 | 2 | 98.3% | 71.4% | 98.3% |
 | `ryu/d2s_intrinsics.h` | 84 | 41 | 51.2% | 2 | 0 | 100.0% | 69.2% | 76.5% |
 | `ryu/d2s_small_table.h` | 38 | 0 | 100.0% | 4 | 0 | 100.0% | 100.0% | 100.0% |
-| **Total** | 4503 | 235 | **94.8%** | 5056 | 678 | **86.6%** | 95.6% | 92.2% |
+| **Total** | 4838 | 288 | **94.0%** | 5572 | 797 | **85.7%** | 95.9% | 91.2% |
 
 `runtime.c` by section (the comments that start them):
 
@@ -27,15 +27,16 @@ Programs built by the native compiler against an instrumented runtime; `runtime.
 | memory: conservative mark-and-sweep garbage collector | 76 | 311 | 97.1% | 260 | 89.2% | 31 | 96.8% |
 | strings | 553 | 447 | 98.9% | 650 | 93.5% | 69 | 97.1% |
 | arithmetic with Python semantics | 1115 | 376 | 99.5% | 318 | 96.5% | 76 | 100.0% |
-| generic repr / equality / ordering driven by a type descriptor | 1685 | 415 | 97.6% | 706 | 89.8% | 48 | 95.8% |
-| lists | 2189 | 465 | 99.6% | 620 | 91.8% | 72 | 97.2% |
-| dicts: CPython's compact ordered layout | 2737 | 238 | 100.0% | 286 | 94.8% | 66 | 100.0% |
-| sets: CPython's setobject.c | 3078 | 280 | 100.0% | 342 | 96.2% | 58 | 100.0% |
-| formatting: f"{x:spec}" | 3422 | 60 | 100.0% | 138 | 90.6% | 5 | 100.0% |
-| I/O and process | 3495 | 541 | 93.5% | 678 | 78.8% | 86 | 93.0% |
-| exceptions: table-driven unwinding (the Itanium C++ ABI's) | 4151 | 307 | 92.8% | 350 | 73.7% | 60 | 98.3% |
-| the time module: clocks and sleep | 4600 | 17 | 94.1% | 16 | 43.8% | 10 | 90.0% |
-| select: a POSIX integer-descriptor subset | 4619 | 67 | 86.6% | 52 | 78.8% | 2 | 100.0% |
-| the errno module: the platform's error numbers | 4693 | 4 | 50.0% | 4 | 75.0% | 1 | 100.0% |
-| temporary directories: tempfile.mkdtemp, os.remove, os.rmdir | 4968 | 96 | 90.6% | 130 | 67.7% | 8 | 100.0% |
-| tables | 5067 | 65 | 98.5% | 82 | 78.0% | 13 | 92.3% |
+| generic repr / equality / ordering driven by a type descriptor | 1685 | 420 | 97.1% | 716 | 89.7% | 48 | 95.8% |
+| lists | 2206 | 465 | 99.6% | 620 | 91.8% | 72 | 97.2% |
+| dicts: CPython's compact ordered layout | 2754 | 240 | 100.0% | 292 | 94.9% | 66 | 100.0% |
+| sets: CPython's setobject.c | 3097 | 64 | 100.0% | 78 | 94.9% | 11 | 100.0% |
+| dynamic values | 3192 | 546 | 90.5% | 762 | 83.5% | 88 | 100.0% |
+| formatting: f"{x:spec}" | 3837 | 61 | 100.0% | 140 | 90.7% | 5 | 100.0% |
+| I/O and process | 3911 | 541 | 93.5% | 678 | 78.8% | 86 | 93.0% |
+| exceptions: table-driven unwinding (the Itanium C++ ABI's) | 4567 | 307 | 92.8% | 350 | 73.7% | 60 | 98.3% |
+| the time module: clocks and sleep | 5016 | 17 | 94.1% | 16 | 43.8% | 10 | 90.0% |
+| select: a POSIX integer-descriptor subset | 5035 | 67 | 86.6% | 52 | 78.8% | 2 | 100.0% |
+| the errno module: the platform's error numbers | 5109 | 4 | 50.0% | 4 | 75.0% | 1 | 100.0% |
+| temporary directories: tempfile.mkdtemp, os.remove, os.rmdir | 5384 | 96 | 90.6% | 130 | 67.7% | 8 | 100.0% |
+| tables | 5483 | 65 | 98.5% | 82 | 78.0% | 13 | 92.3% |
