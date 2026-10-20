@@ -3558,6 +3558,31 @@ List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, 
   for (I i = 0; i < src->len; i++) pys_list_append(l, (I)dyn_of(src->a[i], d->s));
   return l;
 }
+/* o[lo:hi:st] of a str, a list or a tuple, with the bounds and step the compiler gives the typed
+   slices (an omitted bound is -2**63): a new value of its type (all of a str or tuple is itself) */
+Dyn *pys_dyn_slice(Dyn *o, I lo, I hi, I st) {
+  switch (DKIND(o)) {
+  case DK_STR: return dstr(st == 1 ? pys_text_slice((Str *)o->v, lo, hi) : pys_text_slice_step((Str *)o->v, lo, hi, st));
+  case DK_LIST: return dlist(st == 1 ? pys_list_slice((List *)o->v, lo, hi) : pys_list_slice_step((List *)o->v, lo, hi, st));
+  case DK_TUPLE: return dtuple(pys_vtuple_slice((VTuple *)o->v, lo, hi, st));
+  }
+  failf("TypeError: '%s' object is not subscriptable", DNAME(o));
+}
+/* d.update(x) of a dict of Any values: another dict's items, else x's items, each a pair, as
+   CPython's dict.update takes them (its messages for one of another length, or no sequence) */
+void pys_dyn_update(Dict *d, Dyn *x) {
+  if (DKIND(x) == DK_DICT) { pys_dict_update(d, (Dict *)x->v); return; }
+  if (DKIND(x) != DK_LIST && DKIND(x) != DK_TUPLE && DKIND(x) != DK_STR) failf("TypeError: '%s' object is not iterable", DNAME(x));
+  DynIter *it = pys_dyn_iter(x);
+  I n = 0;
+  for (Dyn *e; (e = pys_dyn_next(it)); n++) {
+    int k = DKIND(e);
+    if (k != DK_LIST && k != DK_TUPLE && k != DK_STR) failf("TypeError: cannot convert dictionary update sequence element #%lld to a sequence", (long long)n);
+    I len = pys_dyn_len(e);
+    if (len != 2) failf("ValueError: dictionary update sequence element #%lld has length %lld; 2 is required", (long long)n, (long long)len);
+    pys_dict_set(d, (I)pys_dyn_getitem(e, pys_dyn_int(0)), (I)pys_dyn_getitem(e, pys_dyn_int(1)));
+  }
+}
 /* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
 List *pys_dyn_list(Dyn *o) {
   List *l = pys_list_new(DKIND(o) == DK_LIST ? ((List *)o->v)->len : 0);

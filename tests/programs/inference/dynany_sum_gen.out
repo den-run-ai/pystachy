@@ -1,0 +1,9 @@
+42.5 52.5 3
+yield Money
+radd 0
+yield Money
+add Money
+3
+yield str
+TypeError: unsupported operand type(s) for +: 'int' and 'str'
+[exit 0]

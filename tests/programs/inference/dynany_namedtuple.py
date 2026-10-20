@@ -2,7 +2,8 @@
 # NamedTuple objects through Any values compare and hash as tuples of their fields, as CPython's
 # do: with each other and with tuples (==, !=, in, dict lookups, orderings, sorted(), max()), and
 # a builtin value or an object of another class declines them. A NamedTuple whose class defines
-# __eq__ compares through it, and still hashes as its tuple, as typing.NamedTuple's classes do.
+# __eq__ compares through it, and still hashes as its tuple and takes tuple's !=, as
+# typing.NamedTuple's classes do.
 from typing import Any, NamedTuple
 
 
@@ -30,5 +31,5 @@ one: Any = 1
 print(p == one, one == p, p != one)
 u: Any = Pair("k", 1)
 v: Any = Pair("k", 2)
-print(u == v, u == ("k", 1), u in [v], hash(u) == hash(("k", 1)))
+print(u == v, u != v, u == ("k", 1), u in [v], hash(u) == hash(("k", 1)))
 print(p.x, type(p).__name__, p)

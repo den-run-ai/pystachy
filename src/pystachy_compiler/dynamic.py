@@ -130,8 +130,9 @@ def gen_dyn_class_type(self, c: str) -> str:
     if flags != 0:
         self.ocmp[c] = True  # (@o.eq and @o.cmp, compiled leniently: what the class cannot compare raises when it runs)
     if c in self.nts:
-        flags |= DF_EQ | DF_CMP  # (a NamedTuple's objects compare as tuples of their fields: ntop)
+        flags |= DF_EQ | DF_CMP | DF_NE  # (a NamedTuple's objects compare as tuples of their fields: ntop)
         self.ocmp[c] = True
+        self.one[c] = True  # (its != is tuple's, also where its class defines __eq__ but no __ne__)
     if len([m for m in XCMP if self.dyn_xmethod(c, m)]) > 0 or c in self.nts:
         flags |= DF_X  # (its comparisons with values of other types run its methods: @o.x.<class>, pys_dyn_eq)
         self.xobj[c] = True
@@ -894,6 +895,31 @@ def gen_dyn_float(self, v: Val) -> Val:
     return Val(self.rt("pys_dyn_float_of", "double", [f"ptr {v.v}"]), "float")
 
 
+def gen_dyn_type_module(self, v: Val) -> Val:
+    # type(v).__module__: its class's module (module), "builtins" for the builtin types'
+    return self.dyn_call(self.dyn_dispatcher("module", [DYN], "str", "__module__"), [v])
+
+
+def gen_dyn_bound(self, v: Val, bound: bool) -> str:
+    # a slice's bound (or, not bound, its step) that is an Any value: an int's or a bool's value,
+    # None as an omitted one, else CPython's TypeError; a given bound of -2**63 is -2**63 + 1, as
+    # slice_bound clamps it
+    none = self.dyn_test(v, ["None"])
+    ok = self.scalar("or", [Val(none, "bool"), Val(self.dyn_test(v, ["int", "bool"]), "bool")])
+    self.guard(self.scalar("xor", [Val(ok, "bool"), Val("true", "bool")]), "TypeError: slice indices must be integers or None or have an __index__ method")
+    x = Val(self.to_slot(self.dyn_payload(v, "int")), "int")
+    if bound:
+        x = Val(self.select(self.num_cmp("==", x, Val("-9223372036854775808", "int")).v, Val("-9223372036854775807", "int"), x), "int")
+    return self.select(none, Val("-9223372036854775808" if bound else "1", "int"), x)
+
+
+def gen_dyn_slice(self, o: Val, bnd: list[str], step: str) -> Val:
+    # o[lo:hi:st] for a dyn o: a str's, list's or tuple's items (slice; an object's __getitem__
+    # would take a slice object, which Pystachy does not have)
+    f = self.dyn_dispatcher("slice", [DYN, "int", "int", "int"], DYN, "__getitem__")
+    return self.dyn_call(f, [o, Val(bnd[0], "int"), Val(bnd[1], "int"), Val(step, "int")])
+
+
 def gen_dyn_type_name(self, v: Val) -> Val:
     # type(v).__name__: its DynType's name
     t = self.dyn_typeof(v)
@@ -1031,6 +1057,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         return ci.methods[m].bad == "" and len(ci.methods[m].defaults) >= len(ci.methods[m].params)  # (has.: CPython's lookup finds it)
     if key.startswith("callv."):
         return "__call__" in ci.methods and ci.methods["__call__"].bad == ""
+    if key == "module":
+        return True
     if key == "truth":
         return "__bool__" in ci.methods or "__len__" in ci.methods
     if key == "str":
@@ -1110,6 +1138,11 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
             self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, len(args))))
             return
         r = self.expr(mk("call", "", line, [mk("attr", key[5 : key.rfind(".")], line, [xn])] + an), "")
+    elif key == "module":
+        r = Val(self.sconst(self.refl_type_name(x.t, "__module__")), "str")
+    elif key == "slice":
+        self.raise_("TypeError", self.sconst(f"slicing an object is not supported: {short(x.t)}.__getitem__ would take a slice object, which Pystachy does not have"))
+        return
     elif key.startswith("callv.") and not self.dyn_takes(self.classes[x.t].methods["__call__"], 1, len(args)):
         # (arguments that do not fit __call__'s parameters: CPython's TypeError)
         self.raise_("TypeError", self.sconst(self.dyn_arity(self.classes[x.t].methods["__call__"], 1, len(args))))
@@ -1209,6 +1242,10 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(Val(self.rt("pys_dyn_str", "ptr", [f"ptr {o.v}"]), "str"))
     elif key == "len":
         self.ret_(Val(self.rt("pys_dyn_len", "i64", [f"ptr {o.v}"]), "int"))
+    elif key == "module":
+        self.ret_(Val(self.sconst("builtins"), "str"))
+    elif key == "slice":
+        self.ret_(Val(self.rt("pys_dyn_slice", "ptr", [f"ptr {o.v}", f"i64 {ps[1].v}", f"i64 {ps[2].v}", f"i64 {ps[3].v}"]), DYN))
     elif key == "format":
         # str() for an empty spec, as object.__format__ and the builtin types' give; else a number's
         # or a str's own formatting, or the TypeError that names the value's type
@@ -1324,17 +1361,32 @@ def gen_dyn_mixed(self, es: list[Node]) -> bool:
     # types of those that are not empty displays, which a dry run gives
     ts: list[str] = []
     for e in es:
-        if (e.kind == "list" or e.kind == "dict" or e.kind == "set") and len(e.kids) == 0:
-            continue
+        if holds_empty(e):
+            continue  # (its type comes of the items before it, #782; a dry run alone would reject it)
         if e.kind == "starred" or e.kind == "dstar":
             return False
         ts.append(self.dyn_dry(e))
     if len(ts) < 2:
         return DYN in ts
+    if is_callable(unopt(ts[0])) and len([t for t in ts[1:] if t != ts[0] and not is_fn(t)]) == 0:
+        return False  # (functions after a Callable: Callables of its type, as the display compiles them)
     j = ts[0]
     for t in ts[1:]:
         j = self.join(j, t) if j != "" else ""
     return j == "" or j == DYN
+
+
+def holds_empty(e: Node) -> bool:
+    # is e an empty list, dict or set display, or a display or tuple display that holds one: what
+    # only the display around it types
+    if e.kind != "list" and e.kind != "dict" and e.kind != "set" and e.kind != "tuple":
+        return False
+    if len(e.kids) == 0:
+        return e.kind != "tuple"
+    for k in e.kids:
+        if holds_empty(k):
+            return True
+    return False
 
 
 def gen_dyn_dry(self, e: Node) -> str:

@@ -831,6 +831,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         bnd = [self.slice_bound(n.kids[1], fold), self.slice_bound(n.kids[2], fold)]
         step = self.slice_step(n.kids[3], fold) if len(n.kids) == 4 else "1"
         o = self.unwrap(o, "TypeError: 'NoneType' object is not subscriptable")
+        if o.t == "dyn":
+            return self.dyn_slice(o, bnd, step)  # (by its box's type: dynamic.py)
         if o.t in self.classes and o.t not in self.nts and "__getitem__" not in self.classes[o.t].methods:
             self.err(f"'{tname(o.t)}' object is not subscriptable")
         if o.t in self.classes and o.t not in self.nts:
@@ -1796,6 +1798,8 @@ def gen_slice_bound(self, x: Node, fold: bool = False) -> str:
         return "1" if bv.v == "true" else "0"
     if is_sopt(bv.t):
         return self.optbound(bv)  # (None: omitted)
+    if bv.t == "dyn":
+        return self.dyn_bound(bv, True)  # (an Any value's: dynamic.py)
     # a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker
     bd = self.coerce(self.as_int(bv), "int").v  # (as ival)
     if bd.startswith("%"):
@@ -1816,6 +1820,8 @@ def gen_slice_step(self, x: Node, fold: bool = False) -> str:
         return "1" if bv.v == "true" else "0"
     if is_sopt(bv.t):
         return self.optint(bv, "1")
+    if bv.t == "dyn":
+        return self.dyn_bound(bv, False)  # (an Any value's: dynamic.py)
     return self.coerce(self.as_int(bv), "int").v
 
 def gen_slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
@@ -3417,7 +3423,16 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     # where it is, and on in a new block where it is not; False if no branch can reach hit
     u = unopt(item.t)
     identity = (item.t in self.classes or is_list(u) or is_dict(u) or is_set(u) or is_tuple(u) or is_vtuple(u)) and self.isref(a.t)
-    if identity:
+    if (item.t == "dyn" or a.t == "dyn") and self.comparable(item.t, a.t):
+        # (an Any value: the same value first, also a float's, as the runtime's dyn_eqitem tests
+        # the items of a list of Any values; then ==, which may run a class's __eq__)
+        nx = self.label()
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(self.cmp2("is", item, a).v, hit, nx)
+        self.place(nx)
+        identity = True
+    elif identity:
         # (an object, list, dict, set or tuple, also one that may be None, is found
         # by identity first, as the runtime's eqitem finds a list's item: xs in (xs,)
         # with xs = [nan]; a number has no identity here, see the deviation about NaN,
@@ -3875,6 +3890,10 @@ def gen_numeric_comparable(self, t: str, u: str) -> bool:
 
 def gen_comparable(self, t: str, u: str) -> bool:
     # can t == u be true at all? (otherwise CPython just answers False)
+    if t == "dyn" or u == "dyn":
+        # (an Any value may be any value that a box can hold: dynamic.py)
+        o = u if t == "dyn" else t
+        return o == "dyn" or self.dyn_boxable(self.rec_type(o)) == ""
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
     if t == u or (self.isnum(unopt(t)) and self.isnum(unopt(u))) or self.wider(t, u) != "" or self.numeric_comparable(t, u):

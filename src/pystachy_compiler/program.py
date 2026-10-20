@@ -230,8 +230,8 @@ def gen_init_template(self, st: Node) -> bool:
             ps = d.kids[0].kids
             for i in range(1, len(ps)):
                 a = ps[i].kids[0]
-                if a.kind == "noann" or (self.any_in([a]) and not self.dyn_policy(d.line)) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
-                    return True  # (also *args or **kwargs without an annotation)
+                if a.kind == "noann" or (self.any_in([a]) and (not self.dyn_policy(d.line) or ps[i].kind != "param")) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
+                    return True  # (also *args or **kwargs without an annotation, or with Any, which only a template takes)
                 if st.s in self.tparams and self.names_tv(ps[i].kids[0], self.tparams[st.s]):
                     return True  # (a generic class whose objects bind its type variables, see bind)
             if self.makes_tmpl(d.kids[2]):

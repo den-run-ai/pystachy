@@ -29,6 +29,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_arm as dynamic_dyn_arm,
     gen_dyn_asked as dynamic_dyn_asked,
     gen_dyn_body as dynamic_dyn_body,
+    gen_dyn_bound as dynamic_dyn_bound,
     gen_dyn_box as dynamic_dyn_box,
     gen_dyn_boxable as dynamic_dyn_boxable,
     gen_dyn_builtin as dynamic_dyn_builtin,
@@ -80,6 +81,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_select as dynamic_dyn_select,
     gen_dyn_setattr as dynamic_dyn_setattr,
     gen_dyn_setitem as dynamic_dyn_setitem,
+    gen_dyn_slice as dynamic_dyn_slice,
     gen_dyn_stores_ahead as dynamic_dyn_stores_ahead,
     gen_dyn_str as dynamic_dyn_str,
     gen_dyn_sum as dynamic_dyn_sum,
@@ -89,6 +91,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_test as dynamic_dyn_test,
     gen_dyn_truth as dynamic_dyn_truth,
     gen_dyn_type as dynamic_dyn_type,
+    gen_dyn_type_module as dynamic_dyn_type_module,
     gen_dyn_type_name as dynamic_dyn_type_name,
     gen_dyn_typeof as dynamic_dyn_typeof,
     gen_dyn_types_of as dynamic_dyn_types_of,
@@ -149,6 +152,7 @@ from src.pystachy_compiler.reflection import (
     gen_refl_class_of as reflection_refl_class_of,
     gen_refl_type_attr as reflection_refl_type_attr,
     gen_refl_type_operand as reflection_refl_type_operand,
+    gen_refl_dyn_type_cmp as reflection_refl_dyn_type_cmp,
     gen_refl_type_cmp as reflection_refl_type_cmp,
     gen_refl_derived_only as reflection_refl_derived_only,
     gen_refl_replace_changes as reflection_refl_replace_changes,
@@ -1575,6 +1579,15 @@ class Gen:
     def dyn_format(self, v: Val, spec: Val) -> Val:
         return dynamic_dyn_format(self, v, spec)
 
+    def dyn_type_module(self, v: Val) -> Val:
+        return dynamic_dyn_type_module(self, v)
+
+    def dyn_bound(self, v: Val, bound: bool) -> str:
+        return dynamic_dyn_bound(self, v, bound)
+
+    def dyn_slice(self, o: Val, bnd: list[str], step: str) -> Val:
+        return dynamic_dyn_slice(self, o, bnd, step)
+
     def dyn_mixed(self, es: list[Node]) -> bool:
         return dynamic_dyn_mixed(self, es)
 
@@ -1630,6 +1643,9 @@ class Gen:
 
     def refl_type_operand(self, n: Node) -> str:
         return reflection_refl_type_operand(self, n)
+
+    def refl_dyn_type_cmp(self, n: Node) -> Val:
+        return reflection_refl_dyn_type_cmp(self, n)
 
     def refl_type_cmp(self, n: Node) -> Val | None:
         return reflection_refl_type_cmp(self, n)
