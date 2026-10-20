@@ -742,6 +742,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             if x is not None:
                 return self.refl_type_attr(x, n.s)
         c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
+        if c in self.xmods and n.s == "__module__":
+            # (an exception class's that the program assigns: its ExcClass's, as it shows it then)
+            self.class_ready(n.kids[0])
+            self.xcls[c] = True
+            cls = self.rt("pys_exc_proto", "ptr", [f"ptr {self.sconst(c)}", f"ptr @x.{c}"])
+            return Val(self.rt("pys_exc_module", "ptr", [f"ptr {cls}"]), "str")
         if c in self.classes and ((c in self.nts and (n.s == "_fields" or n.s == "_field_defaults")) or (c not in self.nts and n.s in self.classes[c].fdefault)):
             return self.class_attr(n.kids[0], n.s)
         if c in self.classes and n.s == "__name__":
@@ -750,7 +756,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes and self.classes[c].exc != "" and (n.s == "__qualname__" or n.s == "__module__"):
             # (an exception class's, as its class object's: runtime.c's pys_exc_name, pys_exc_module)
             self.class_ready(n.kids[0])
-            q = shown(c)
+            q = self.exc_disp(c)
             return Val(self.sconst(short(c) if n.s == "__qualname__" else q[: q.rfind(".")] if "." in q else "__main__"), "str")
         if c in self.classes:
             self.no_class_attr(c, n.s)
@@ -1020,6 +1026,8 @@ def gen_cvar_stores(self, ns: list[Node]) -> None:
                 ts.extend(t.kids)
             elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes:
                 c = t.kids[0].s
+                if t.s == "__module__" and self.classes[c].exc != "":
+                    self.xmods[c] = True  # (its ExcClass's displayed name changes: exc_set_module)
                 if not self.is_dc(c) and t.s in self.classes[c].fdefault:
                     self.cvars[c + "." + t.s] = True
                     # (and of the exception classes that share it, see cvar)

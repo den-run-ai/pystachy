@@ -1105,8 +1105,35 @@ def gen_exc_helpers(self, c: str) -> None:
         f.ret = "exc" if i == 2 else "str"
         self.function(f, bodies[i])
     d = Data("exception", f"@x.{c}")
-    d.refs = [self.sconst(c), self.sconst(shown(c)), f"@x.str.{c}", f"@x.repr.{c}", f"@x.exit.{c}" if len(bodies) == 3 else "null"]
+    d.refs = [self.sconst(c), self.sconst(self.exc_disp(c)), f"@x.str.{c}", f"@x.repr.{c}", f"@x.exit.{c}" if len(bodies) == 3 else "null"]
+    d.text = "global" if c in self.xmods else ""  # (C.__module__ = v writes its displayed name: exc_set_module)
     self.consts.append(d)
+
+def gen_exc_disp(self, c: str) -> str:
+    # the name of exception class c that its uncaught exceptions show, and its __module__: its
+    # module's and its own ("mods.errs.Missing", "Missing" in the main program), or those of a
+    # __module__ = "name" in its own class body, which CPython's class takes from its namespace
+    ci = self.classes[c]
+    if "__module__" not in ci.fdefault or "__module__" not in self.body_names(ci.node) or ci.fdefault["__module__"].kind != "str":
+        return shown(c)
+    m = ci.fdefault["__module__"].s
+    if m == "builtins":
+        self.err(f"__module__ = 'builtins' in the body of class {short(c)} is not supported")
+    return short(c) if m == "__main__" else m + "." + short(c)
+
+def gen_exc_set_module(self, cn: Node, v: Val) -> None:
+    # C.__module__ = v of exception class C of the program: its ExcClass's displayed name becomes
+    # v's and C's (runtime.c's pys_exc_setmodule), which an uncaught exception's line, C.__module__
+    # and type(e).__module__ show from then on, as CPython's traceback shows the class's __module__;
+    # so does the class variable of a __module__ in its body, which its objects read
+    c = cn.s
+    self.class_ready(cn)
+    if v.t != "str":
+        self.err(f"assigning {typestr(v.t)} to {short(c)}.__module__ is not supported: assign a str")
+    self.xcls[c] = True
+    self.rt("pys_exc_setmodule", "void", [f"ptr @x.{c}", f"ptr {v.v}"])
+    if c + ".__module__" in self.cvars:
+        self.class_store(self.cvar(cn, "__module__"), "__module__", v)
 
 def gen_throw(self, e: Val) -> None:
     # raise exception e: to the landing block around, or out of the function (pys_throw)

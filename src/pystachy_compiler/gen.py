@@ -537,6 +537,8 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_held as exceptions_exc_held,
     gen_exc_holds as exceptions_exc_holds,
     gen_exc_helpers as exceptions_exc_helpers,
+    gen_exc_disp as exceptions_exc_disp,
+    gen_exc_set_module as exceptions_exc_set_module,
     gen_exc_make as exceptions_exc_make,
     gen_exc_sub as exceptions_exc_sub,
     gen_exc_tables as exceptions_exc_tables,
@@ -1080,6 +1082,7 @@ class Gen:
         self.shadows: list[list[str]] = []
         self.xcls: dict[str, bool] = {}  # exception classes whose objects are made: they get an ExcClass
         self.xvals: dict[str, bool] = {}  # exception classes of the program used as values: calls of class objects make them (exc_ctors)
+        self.xmods: dict[str, bool] = {}  # exception classes whose __module__ the program assigns (C.__module__ = v: exc_set_module)
         self.xsigs: dict[str, int] = {}  # each argument type of calls of class objects ("": none): its table's number
         self.xctors: dict[str, bool] = {}  # the functions exc_ctors compiled ("<table>.<class>"): does the class's __init__ take it
         self.xtypes: dict[str, bool] = {}  # the static types of exceptions whose type() became a class object ("exc": any)
@@ -3141,6 +3144,12 @@ class Gen:
 
     def exc_helpers(self, c: str) -> None:
         return exceptions_exc_helpers(self, c)
+
+    def exc_disp(self, c: str) -> str:
+        return exceptions_exc_disp(self, c)
+
+    def exc_set_module(self, cn: Node, v: Val) -> None:
+        return exceptions_exc_set_module(self, cn, v)
 
     def exc_class_value(self, c: str) -> Val:
         return exceptions_exc_class_value(self, c)

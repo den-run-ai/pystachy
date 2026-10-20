@@ -4791,6 +4791,22 @@ Str *pys_exc_module(Exc *e) {           /* C.__module__: builtins, a builtin cla
   while (n > 0 && k->s[n - 1] != '.') n--;
   return n ? pys_str(k->s, n - 1) : cstr("__main__");
 }
+void pys_exc_setmodule(ExcClass *c, Str *mod) {   /* C.__module__ = mod of a user class: the name its uncaught
+                                                    exceptions show ("Class" for __main__, as traceback's), which
+                                                    pys_exc_module reads back. The class lives as long as the
+                                                    program, so the name is no heap object */
+  int n; const char *q = short_name(c->disp, &n);
+  if (mod->len == 8 && !memcmp(mod->s, "builtins", 8)) pys_fail("NotImplementedError: a class's __module__ = 'builtins' is not supported");
+  int top = mod->len == 8 && !memcmp(mod->s, "__main__", 8);
+  I len = top ? n : mod->len + 1 + n;
+  Str *d = malloc(sizeof(Str) + len + 1);
+  if (!d) oom();
+  d->len = len; d->dict_hash = 0; d->chars1 = 0;
+  char *p = d->s;
+  if (!top) { memcpy(p, mod->s, mod->len); p += mod->len; *p++ = '.'; }
+  memcpy(p, q, n); p[n] = 0;
+  c->disp = d;
+}
 void *pys_exc_ctor(Exc *c, void **table) {   /* the function table holds for class object c's class, {ExcClass, function}
                                               pairs ended by NULL, or NULL */
   if (c->obj) for (; *table; table += 2) if (*table == XCLS(c)) return table[1];

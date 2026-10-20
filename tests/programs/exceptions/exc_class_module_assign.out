@@ -1,0 +1,11 @@
+before excmod._impl
+after excmod
+excmod excmod._impl <class 'excmod.Boom'> <class 'excmod._impl.Worse'>
+excmod Boom Boom('bad') bad
+excmod._impl Worse True
+__main__
+elsewhere.deep <class 'elsewhere.deep.Local'>
+__main__ <class '__main__.Local'>
+pkg pkg <class 'pkg.Named'> Named('n')
+other other <class 'other.Named'>
+[exit 1]

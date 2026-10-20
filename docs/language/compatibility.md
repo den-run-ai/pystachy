@@ -226,6 +226,10 @@ above apply to well-formed text (with the surrogate exception described above).
   tests it only when it prints that line; no other exception class tests it
   (`tests/deviations/exc_syntax_error_truth.py`).
 
+- `E.__module__ = "builtins"` of an exception class raises `NotImplementedError`, where CPython
+  assigns it and its uncaught exceptions' line names the class alone; other names are assigned
+  as in CPython (`tests/deviations/exc_class_module_builtins.py`).
+
 - An `__exit__` whose traceback parameter is not annotated `TracebackType | None` (from `types`)
   is given `None` for it where CPython passes the exception's traceback (`tb is None` is true);
   annotated so, it takes an object of `TracebackType` that has none of a traceback's attributes.

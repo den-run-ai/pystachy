@@ -1,0 +1,3 @@
+NotImplementedError: a class's __module__ = 'builtins' is not supported
+__main__
+[exit 0]

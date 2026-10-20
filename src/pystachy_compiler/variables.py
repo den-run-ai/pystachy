@@ -1771,6 +1771,8 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.store_name(t.s, v)
     elif k == "attr" and self.dotted(t) != "":
         self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
+    elif k == "attr" and t.s == "__module__" and t.kids[0].kind == "name" and t.kids[0].s in self.xmods and t.kids[0].s not in self.ltype:
+        self.exc_set_module(t.kids[0], v)
     elif k == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes and t.kids[0].s not in self.ltype:
         self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
     elif k == "attr":
