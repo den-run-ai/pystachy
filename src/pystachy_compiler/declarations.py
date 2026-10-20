@@ -2356,6 +2356,10 @@ def gen_refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
     # here on: so does the field of the class that declares it and of each class deriving from
     # that one, whose objects begin with its fields. Its stores of None compiled so far store a
     # null pointer, which t's None is too (see optional)
+    if t == "dyn":
+        # (an Any value's None is a box: those stores, and the tests of the field by is None
+        # compiled so far, see a null pointer, dynamic.py)
+        self.err(f"field '{name}' of {shown(ci.name)} holds None until it is given an Any value here; annotate it (self.{name}: Any = None)")
     root = self.field_root(ci, name)
     for c in self.classes.values():
         if c.ftypes.get(name, "") == NONEVAR and (c is root or self.derives(c.name, root.name)):

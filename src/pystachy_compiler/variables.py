@@ -548,6 +548,8 @@ def gen_none_type(self, name: str) -> str:
             if t != "None" and t != "" and "?" not in t and t != NONEVAR:
                 if self.optional(t) == "":
                     self.err(f"'{name}' is assigned None and {typestr(t)}, and None/Optional is only supported for {OPTTYPES}")
+                if t == "dyn":
+                    self.dyn_none_first(name)  # (where it holds None as a null pointer: dynamic.py)
                 return self.optional(t)
     return ""
 
@@ -625,6 +627,8 @@ def gen_none_arms(self, name: str) -> str:
             if x.kind != "None" and not empty_display(x) and self.typed_now(x) and not self.calls_open(x, {}):
                 t = self.dry(x)
                 if t != "None" and t != "" and "?" not in t and t != NONEVAR and self.optional(t) != "":
+                    if t == "dyn":
+                        self.dyn_none_first(name)  # (where it holds None as a null pointer: dynamic.py)
                     return self.optional(t)
     return ""
 
@@ -645,6 +649,8 @@ def gen_none_global_store(self, name: str, v: Val) -> str:
         self.err(f"'{short(name)}' was read as None at {self.nonereads[key]}, where nothing seemed to give it another value; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
     if "?" in v.t:
         self.err(f"cannot infer the type of '{short(name)}' from None and an empty container; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
+    if v.t == "dyn":
+        self.dyn_none_first(name)  # (the None it holds is a null pointer: dynamic.py)
     t = self.optional(v.t)
     if t == "":
         self.err(f"'{short(name)}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
@@ -1116,6 +1122,9 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         if (is_list(t) and elem(t) == "None") or (is_dict(t) and targs(t)[1] == "None"):
             return  # (another None)
         it = elem(t) if is_list(t) else targs(t)[1] if is_dict(t) else ""
+        if it == "dyn":
+            # (its None items are null pointers, not boxes of None as an Any value's are: dynamic.py)
+            self.err(f"'{short(name)}' holds None items until it is given an Any value here; annotate it ({short(name)}: {'list[Any]' if is_list(cur) else 'dict[' + typestr(targs(cur)[0]) + ', Any]'} = ...)")
         if "?" not in it and it != "" and self.optional(it) == "":
             self.err(f"'{short(name)}' holds None and {typestr(it)}, and None/Optional is only supported for {OPTTYPES}")
         if is_dict(t) and targs(t)[0] != targs(cur)[0] and not self.widens(targs(t)[0], targs(cur)[0]):
@@ -1646,6 +1655,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.alloca(v.t, name)
         t = self.ltype[name]
         if t == NONEVAR and v.t != "None":
+            if v.t == "dyn":
+                self.dyn_none_first(name)  # (the None it holds is a null pointer: dynamic.py)
             if self.optional(v.t) == "":
                 self.err(f"'{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
             t = self.optional(v.t)

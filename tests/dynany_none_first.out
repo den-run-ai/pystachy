@@ -1,0 +1,13 @@
+None s 2.5
+True NoneType
+False int
+None 1
+None s None
+None
+s
+[1, None, None, 2.5] 2
+{'a': 's', 'b': None}
+True
+s False True
+[None] [1, 's', 's']
+[exit 0]

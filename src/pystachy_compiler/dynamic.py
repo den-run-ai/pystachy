@@ -59,13 +59,19 @@ def gen_rtdata(self, sym: str) -> str:
 
 def gen_dyn_boxable(self, t: str) -> str:
     # why a value of static type t cannot become a dyn value, or "": a scalar, None, a str, an
-    # object of the program's classes, a container of boxes, a tuple (made one of boxes), and dyn
+    # object of the program's classes, a container of boxes, a tuple (made one of boxes), a union
+    # of these, and dyn
     if t == DYN or t in BUILTIN or t == NONEVAR:
         return ""
     if t in self.classes and t not in self.tmpl:
         return "" if self.classes[t].exc == "" else f"an exception object ({typestr(t)}) as Any is not supported yet"
     if is_opt(t):
         return self.dyn_boxable(unopt(t))
+    if is_union(t):
+        for m in umembers(t):
+            if self.dyn_boxable(m) != "":
+                return self.dyn_boxable(m)
+        return ""
     if is_tuple(t):
         for x in targs(t):
             if self.dyn_boxable(x) != "":
@@ -141,6 +147,8 @@ def gen_dyn_box(self, v: Val) -> Val:
     why = self.dyn_boxable(t)
     if why != "":
         self.err(why)
+    if is_union(unopt(t)):
+        return self.dyn_union_box(Val(v.v, t))
     if is_opt(t):
         # None or the value's box
         end = self.label()
@@ -169,6 +177,35 @@ def gen_dyn_box(self, v: Val) -> Val:
     if is_fn(t) or is_callable(t):
         return self.dyn_fn_box(v)
     return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.dyn_type(t)}", f"ptr {v.v}"]), DYN)
+
+
+def gen_dyn_union_box(self, v: Val) -> Val:
+    # union value v (a union's box, null where it is None: to_union) as a dyn value: the box of
+    # the member's value its tag selects, as usplit selects a member's operation
+    u = Val(v.v, unopt(v.t))
+    ms = umembers(u.t)
+    end = self.label()
+    ph = Ins("phi", DYN, "")
+    if is_opt(v.t) or len([m for m in ms if m in self.classes]) > 0:
+        some = self.label()
+        self.incoming(ph, self.rtdata("pys_dyn_none_box"), self.cur)
+        self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, some)
+        self.place(some)
+    for j in range(len(ms)):
+        hit = self.label()
+        miss = self.label() if j + 1 < len(ms) else ""
+        if miss == "":
+            self.br(hit)
+        else:
+            self.cbr(self.utest(u, [ms[j]], False), hit, miss)
+        self.place(hit)
+        b = self.dyn_box(self.uget(u, ms[j]))
+        self.incoming(ph, b.v, self.cur)
+        self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.place(end)
+    return Val(self.phi(ph), DYN)
 
 
 def gen_dyn_tagged_type(self, v: Val) -> str:
@@ -246,9 +283,9 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
         return self.from_slot(self.to_slot(Val(r, "int")), t)
     if is_union(unopt(t)):
-        ms = umembers(unopt(t))
-        self.dyn_check(v, ms + (["None"] if is_opt(t) or self.optional(unopt(t)) == unopt(t) else []), typestr(t))
-        return self.dyn_select(v, ms + ["None"], t)
+        ms = umembers(unopt(t)) + (["None"] if is_opt(t) or self.optional(unopt(t)) == unopt(t) else [])
+        self.dyn_check(v, ms, typestr(t))
+        return self.dyn_select(v, ms, t)
     if is_tuple(t):
         # a tuple of the length and item types t gives, from a tuple of boxes
         tv = self.dyn_unbox(v, "vtuple[dyn]", what)
@@ -578,6 +615,23 @@ def gen_dyn_widened(self, name: str) -> bool:
     return self.curfn.ll in self.dynwide and name in self.dynwide[self.curfn.ll]
 
 
+def gen_dyn_none_first(self, name: str) -> None:
+    # variable name, which holds None so far as T | None does (NONEVAR: a null pointer), is given
+    # an Any value, or a read types it by one that its code assigns it later (none_type): the null
+    # would be read as the box of None. A local is dynamic from its first store in the function's
+    # next compilation (dyn_widen; also from speculative typing, as the type a read gives the
+    # local stays); a module variable, or a local that cannot be, is an error
+    if self.ltype.get(name, "") == NONEVAR:
+        d = self.drying
+        self.drying = 0
+        ok = self.dyn_widen(name, NONEVAR)
+        self.drying = d
+        if not ok:
+            self.err(f"'{short(name)}' is assigned None and then an Any value, which it cannot hold here; annotate it ({short(name)}: Any = None)")
+    elif name not in self.ltype and self.gtypes.get(name, "") == NONEVAR:
+        self.err(f"'{short(name)}' holds None until it is given an Any value here; annotate it{self.where_def(name)} ({short(name)}: Any = None)")
+
+
 def gen_dyn_asked(self, f: FnInfo) -> int:
     # how many widenings of f's storage dyn_widen has been asked for
     return (len(self.dynwide[f.ll]) if f.ll in self.dynwide else 0) + (1 if f.ll in self.dynrets else 0)
@@ -608,6 +662,15 @@ def gen_dyn_again(self, f: FnInfo, asked: int) -> bool:
         del self.qholes[f.ll]
     if f.ll in self.qforward:
         del self.qforward[f.ll]
+    # (nor the joins it found for the storage that is dynamic now, which the next pass would give
+    # that storage first, see join_hint: only f's own compilation joins its locals, and its result
+    # where no other function took it)
+    k = self.fnkey(f) + "|"
+    if f.ll in self.dynwide:
+        for name in self.dynwide[f.ll]:
+            self.newhints.pop(k + name, "")
+    if f.ll in self.dynrets:
+        self.newhints.pop(k + "return", "")
     return True
 
 

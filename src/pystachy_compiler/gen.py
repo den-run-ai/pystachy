@@ -67,6 +67,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_mixed as dynamic_dyn_mixed,
     gen_dyn_narrow_type as dynamic_dyn_narrow_type,
     gen_dyn_narrowed as dynamic_dyn_narrowed,
+    gen_dyn_none_first as dynamic_dyn_none_first,
     gen_dyn_payload as dynamic_dyn_payload,
     gen_dyn_policy as dynamic_dyn_policy,
     gen_dyn_proven_int as dynamic_dyn_proven_int,
@@ -89,6 +90,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_types_of as dynamic_dyn_types_of,
     gen_dyn_unary as dynamic_dyn_unary,
     gen_dyn_unbox as dynamic_dyn_unbox,
+    gen_dyn_union_box as dynamic_dyn_union_box,
     gen_dyn_widen as dynamic_dyn_widen,
     gen_dyn_widened as dynamic_dyn_widened,
     gen_rtdata as dynamic_rtdata,
@@ -1359,6 +1361,9 @@ class Gen:
     def dyn_box(self, v: Val) -> Val:
         return dynamic_dyn_box(self, v)
 
+    def dyn_union_box(self, v: Val) -> Val:
+        return dynamic_dyn_union_box(self, v)
+
     def dyn_tagged_type(self, v: Val) -> str:
         return dynamic_dyn_tagged_type(self, v)
 
@@ -1424,6 +1429,9 @@ class Gen:
 
     def dyn_widened(self, name: str) -> bool:
         return dynamic_dyn_widened(self, name)
+
+    def dyn_none_first(self, name: str) -> None:
+        return dynamic_dyn_none_first(self, name)
 
     def dyn_asked(self, f: FnInfo) -> int:
         return dynamic_dyn_asked(self, f)

@@ -46,6 +46,8 @@ Storage that an unannotated first value types, and that a later store gives an `
   far as the types known before module code runs show: an `Any` variable, the target of a loop
   over `Any` items, an item of a container of `Any` items, arithmetic, an attribute or a method
   result of an `Any` value, or a call of a function declared to return `Any`.
+- **Locals first assigned `None`**: `found = None`, then `found = x` with an `Any` `x`, also
+  where the code that assigns the `Any` value never runs (`tests/dynany_none_first.py`).
 
 Where something besides the function being compiled has already taken the first type, the
 storage keeps it, and storing an `Any` value of another type raises `TypeError` (a
@@ -54,6 +56,21 @@ local (its frame's layout), an annotated variable or field, a field that only co
 class's methods assigns an `Any` value, or a value whose type only compiling shows. A return
 type that a call from another function took while the function was compiled (functions that
 call each other) stays the compile error it was.
+
+Storage of another type holds `None` as a null pointer, not as the box of `None` that an `Any`
+value is, so storage that holds `None` first and cannot become `Any` before its first store is
+rejected at compile time, with the annotation that makes it `Any` from the start: a generator's
+or closure's local (`last: Any = None`), a module variable that holds `None` until a function
+gives it an `Any` value (`g: Any = None`), a field that `__init__` sets to `None` and code outside
+its class's methods gives an `Any` value (`self.v: Any = None`), and a display of `None` items
+that an `Any` value fills (`xs: list[Any] = [None] * n`, `d: dict[str, Any] = {...}`;
+`tests/errors/dynany_none_*.py`).
+
+[Inferred unions](language/typing.md#inferred-unions) work as in modules that do not opt in: a
+variable or result given an `int` and a `float` is an `int | float`. One that is given an `Any`
+value too is `Any` instead, and a union's value becomes an `Any` value by the member its tag
+selects (`tests/dynany_unions.py`). A display of items of several types (`[1, 2.5]`) is still a
+container of `Any` values, as above, which any later store fits.
 
 ## Representation
 
@@ -94,7 +111,8 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
 - **Into `Any`**: scalars, `None`, `str`, objects of the program's classes (boxed with their
   concrete class's DynType, chosen by the object's class tag in a hierarchy), containers of
   `Any` items, tuples (made a tuple of boxes: only their identity differs), function values,
-  bound methods, closures and `Callable` objects.
+  bound methods, closures and `Callable` objects, and unions of these (boxed as the member the
+  value's tag selects).
 - **Typed mutable containers never become `Any` values.** A `list[int]` boxed into `Any` would
   either read boxes as ints through its typed aliases, store boxes into memory the collector does
   not scan, or have to be copied (breaking identity). The compiler rejects the crossing and says
@@ -106,7 +124,8 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   too, but proves that its payload is an int's or a bool's: arithmetic and comparisons on it
   read the payload as an int, whose results are a bool's too but for `&`, `|` and `^` of two
   bools and `**`, which stay dynamic (`tests/dynany_proven_int.py`). A concrete annotation that
-  receives an `Any` value checks the box's type where it unboxes it, raising
+  receives an `Any` value checks the box's type where it unboxes it (a union's: one of its
+  members), raising
   `TypeError: expected int, got str` where CPython, which does not check annotations, would go
   on: the one kind of runtime error that CPython never raises, a [deviation](#deviations).
 
@@ -147,11 +166,11 @@ the existing `pys_obj_eq`/`pys_obj_cmp`; objects of unrelated classes compare by
 
 The comment is per module: a program can mix modules that opt in with modules that do not, and
 values cross between them as above. A program without the comment produces the same IR,
-messages and exit status as before: compiled by the prototype at `d4a2ce80` and by main
-`b7e869f`, each of the 3,155 programs of `make irsame`'s 3,171-program corpus that do not opt in
-gave the same output, once the reference compiler's own `build/ref/` library paths, which some
-messages name, and the lengths of the strings that hold them were normalized. The 16 that opt
-in differ, as they should.
+messages and exit status as before: compiled by the prototype and by main `611af05e`, which it
+merges, each of the 3,239 programs of `make irsame`'s 3,262-program corpus that do not opt in
+gave the same output, once the reference compiler's own paths were normalized: the
+`build/ref/` library paths that some messages name, the installation prefix that `sys.prefix`
+holds, and the lengths of the strings that hold them. The 23 that opt in differ, as they should.
 
 ## What works
 
