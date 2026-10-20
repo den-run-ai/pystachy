@@ -63,6 +63,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_setattr as dynamic_dyn_setattr,
     gen_dyn_setitem as dynamic_dyn_setitem,
     gen_dyn_str as dynamic_dyn_str,
+    gen_dyn_sum as dynamic_dyn_sum,
     gen_dyn_supports as dynamic_dyn_supports,
     gen_dyn_tagged_type as dynamic_dyn_tagged_type,
     gen_dyn_takes as dynamic_dyn_takes,
@@ -1426,6 +1427,9 @@ class Gen:
 
     def dyn_fn_takes(self, ft: str, n: int) -> str:
         return dynamic_dyn_fn_takes(self, ft, n)
+
+    def dyn_sum(self, xs: Val, start: Val) -> Val:
+        return dynamic_dyn_sum(self, xs, start)
 
     # ---- end of dynamic values
     # ---- reflection (reflection.py)

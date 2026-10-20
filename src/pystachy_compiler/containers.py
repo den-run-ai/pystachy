@@ -889,6 +889,8 @@ def gen_hash_value(self, v: Val) -> Val:
     # tuple's of such items: runtime.c's hitem), a str's (and a bytes's) the dict's hash of it;
     # TypeError for an unhashable type, as CPython's
     t = v.t
+    if t == "dyn":
+        return self.dyn_hash(v)  # (by its box's type: dynamic.py)
     if self.key_class(t):
         return self.obj_hash(v)
     if t == "None":

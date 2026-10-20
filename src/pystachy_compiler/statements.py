@@ -1119,6 +1119,9 @@ def gen_augassign(self, n: Node) -> None:
         self.class_store(ci, t.s, self.inplace(op, self.class_attr(t.kids[0], t.s), n.kids[1]))
     elif t.kind == "attr":
         o = self.expr(t.kids[0], "")
+        if o.t == "dyn":
+            self.dyn_setattr(o, t.s, self.inplace(op, self.dyn_getattr(o, t.s), n.kids[1]))  # (dynamic.py)
+            return
         if self.is_prop(o.t, t.s):
             # o.x op= v of a property x: its getter, then its setter
             self.prop_store(o, t.s, self.inplace(op, self.method_value(o, t.s), n.kids[1]))
@@ -1147,6 +1150,10 @@ def gen_augassign(self, n: Node) -> None:
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
         sub = "TypeError: 'NoneType' object is not subscriptable"
+        if o.t == "dyn":
+            k = self.dyn_box(self.expr(t.kids[1], "dyn"))  # (o[k] op= v, k evaluated once: dynamic.py)
+            self.dyn_setitem(o, k, self.inplace(op, self.dyn_getitem(o, k), n.kids[1]))
+            return
         if is_list(unopt(o.t)):
             et = elem(unopt(o.t))
             i = self.ival(t.kids[1])
@@ -1244,6 +1251,8 @@ def gen_may_change(self, b0: Blk, x0: int, n0: int) -> bool:
 def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
     # the new value of cur op= rhs: lists change in place (+= extends, *= repeats), objects
     # use __iadd__ & co when they define them, anything else is cur op rhs
+    if cur.t == "dyn":
+        return self.dyn_arith(op, cur, self.expr(rhs, "dyn"), True)  # (in place where its box's type is: dynamic.py)
     if is_list(unopt(cur.t)) and op == "+":
         b = self.expr(rhs, cur.t)
         if is_opt(cur.t) or is_opt(b.t):
@@ -1483,6 +1492,8 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             else:
                 v = self.method(o, m, [])
                 own = 0
+                if v.t == "dyn":
+                    v = self.iterable(v)  # (a dynamic value's method's result: dynamic.py)
                 if v.t in self.classes:
                     # (an object it returns is iterated as any other: iter() calls its __iter__,
                     # a comprehension's iter() its iterator's again, as below; an __iter__ that

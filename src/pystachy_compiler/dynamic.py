@@ -884,3 +884,31 @@ def gen_dyn_fn_takes(self, ft: str, n: int) -> str:
         return ""
     have = len(f.params) - own
     return f"TypeError: {short(f.name) if not k.startswith('c:') else k[k.find(':', 2) + 1 : k.find('@')]}() takes {have} positional argument{'s' if have != 1 else ''} but {n} {'were' if n != 1 else 'was'} given"
+
+
+
+def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
+    # sum(xs, start) of a list (of a dynamic value's items, or of dynamic values): start + each
+    # item in turn, as dynamic additions (dyn_arith), the list's length read at every step as
+    # CPython's iterator reads it
+    if xs.t != "list[dyn]" and not is_list(xs.t):
+        self.err(f"sum() of {typestr(xs.t)} is not supported")
+    acc = self.alloca(DYN, "")
+    ctr = self.alloca("int", "")
+    self.mem_store(Val(acc, "*dyn"), self.dyn_box(start))
+    self.mstore("int", "0", ctr)
+    head = self.label()
+    body = self.label()
+    end = self.label()
+    self.br(head)
+    self.place(head)
+    i = self.mload("int", ctr)
+    self.cbr(self.num_cmp("<", Val(i, "int"), Val(self.mload("int", xs.v), "int")).v, body, end)
+    self.place(body)
+    item = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {xs.v}", f"i64 {i}"]), elem(xs.t))
+    total = self.dyn_arith("+", self.mem_load(Val(acc, "*dyn")), item)
+    self.mem_store(Val(acc, "*dyn"), total)
+    self.mstore("int", self.scalar("add", [Val(i, "int"), Val("1", "int")]), ctr)
+    self.br(head)
+    self.place(end)
+    return self.mem_load(Val(acc, "*dyn"))

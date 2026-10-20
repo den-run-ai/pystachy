@@ -617,6 +617,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_check(keyv, f"{name}()")
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
+    if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
+        return self.dyn_sum(self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
         self.err(f"{name}() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
     if name == "sum" and len(vals) == 2 and (self.iter_object(vals[0].t) or is_gen(vals[0].t)) and (vals[1].t == "int" or vals[1].t == "float"):
@@ -2060,6 +2062,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 v = Val(v.v, "list[str]")  # (an item that is None raises when it runs, as CPython's error)
             if key == "bytes.join" and v.t == "list[opt[bytes]]":
                 v = Val(v.v, "list[bytes]")
+            if key == "str.join" and v.t == "list[dyn]":
+                v = Val(self.rt("pys_dyn_strs", "ptr", [f"ptr {self.dyn_box(v).v}"]), "list[str]")  # (strs, checked: dynamic.py)
             if key == "str.join" and is_list(v.t) and elem(v.t) != "str" and "?" not in v.t:
                 self.err(f"sequence item 0: expected str instance, {tname(elem(v.t))} found")  # (CPython's TypeError)
             if key == "bytes.join" and is_list(v.t) and elem(v.t) != "bytes" and "?" not in v.t:
