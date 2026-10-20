@@ -138,7 +138,9 @@ Keep module helpers private with a leading underscore.
 The runtime accepts calls only from the importing thread and requires the GIL,
 including with `abi3t`. Re-import after a successful load and I/O re-entry are
 restricted. Review the [extension contract](reference/ffi.md#extension-modules)
-before using it in a threaded or embedded host.
+before using it in a threaded or embedded host. For parallel work, give each worker
+process its own import of the module, as the [process pools](concurrency.md#process-pools-today)
+of the concurrency contract do.
 
 <a id="why-this-design"></a>
 <a id="deviations"></a>

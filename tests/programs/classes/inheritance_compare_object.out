@@ -1,0 +1,354 @@
+None | None
+ == True
+ != False
+ < TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
+ > TypeError: '>' not supported between instances of 'NoneType' and 'NoneType'
+None | Shape a
+  Shape.__eq__ a NoneType False
+ == False
+  Shape.__eq__ a NoneType False
+ != True
+ < TypeError: '<' not supported between instances of 'NoneType' and 'Shape'
+  Shape.__lt__ a NoneType
+ > False
+None | Square a
+  Square.__eq__ a NoneType
+ == False
+  Square.__eq__ a NoneType
+ != True
+ < TypeError: '<' not supported between instances of 'NoneType' and 'Square'
+  Shape.__lt__ a NoneType
+ > False
+None | Circle a
+  Shape.__eq__ a NoneType False
+ == False
+  Shape.__eq__ a NoneType False
+ != True
+ < TypeError: '<' not supported between instances of 'NoneType' and 'Circle'
+  Shape.__lt__ a NoneType
+ > False
+None | Dot bb
+  Shape.__eq__ bb NoneType False
+ == False
+  Shape.__eq__ bb NoneType False
+ != True
+ < TypeError: '<' not supported between instances of 'NoneType' and 'Dot'
+  Dot.__lt__ bb NoneType
+ > False
+None | Square b
+  Square.__eq__ b NoneType
+ == False
+  Square.__eq__ b NoneType
+ != True
+ < TypeError: '<' not supported between instances of 'NoneType' and 'Square'
+  Shape.__lt__ b NoneType
+ > False
+Shape a | None
+  Shape.__eq__ a NoneType False
+ == False
+  Shape.__eq__ a NoneType False
+ != True
+  Shape.__lt__ a NoneType
+ < False
+ > TypeError: '>' not supported between instances of 'Shape' and 'NoneType'
+Shape a | Shape a
+  Shape.__eq__ a Shape False
+ == True
+  Shape.__eq__ a Shape False
+ != False
+  Shape.__lt__ a Shape
+ < False
+  Shape.__lt__ a Shape
+ > False
+Shape a | Square a
+  Square.__eq__ a Shape
+ == False
+  Square.__eq__ a Shape
+ != True
+  Shape.__lt__ a Square
+ < False
+  Shape.__lt__ a Shape
+ > False
+Shape a | Circle a
+  Shape.__eq__ a Shape False
+ == True
+  Shape.__eq__ a Shape False
+ != False
+  Shape.__lt__ a Circle
+ < False
+  Shape.__lt__ a Shape
+ > False
+Shape a | Dot bb
+  Shape.__eq__ bb Shape False
+ == False
+  Shape.__eq__ bb Shape False
+ != True
+  Shape.__lt__ a Dot
+ < True
+  Dot.__lt__ bb Shape
+ > False
+Shape a | Square b
+  Square.__eq__ b Shape
+ == False
+  Square.__eq__ b Shape
+ != True
+  Shape.__lt__ a Square
+ < True
+  Shape.__lt__ b Shape
+ > False
+Square a | None
+  Square.__eq__ a NoneType
+ == False
+  Square.__eq__ a NoneType
+ != True
+  Shape.__lt__ a NoneType
+ < False
+ > TypeError: '>' not supported between instances of 'Square' and 'NoneType'
+Square a | Shape a
+  Square.__eq__ a Shape
+ == False
+  Square.__eq__ a Shape
+ != True
+  Shape.__lt__ a Shape
+ < False
+  Shape.__lt__ a Square
+ > False
+Square a | Square a
+  Square.__eq__ a Square
+ == True
+  Square.__eq__ a Square
+ != False
+  Shape.__lt__ a Square
+ < False
+  Shape.__lt__ a Square
+ > False
+Square a | Circle a
+  Square.__eq__ a Circle
+ == False
+  Square.__eq__ a Circle
+ != True
+  Shape.__lt__ a Circle
+ < False
+  Shape.__lt__ a Square
+ > False
+Square a | Dot bb
+  Square.__eq__ a Dot
+ == False
+  Square.__eq__ a Dot
+ != True
+  Shape.__lt__ a Dot
+ < True
+  Dot.__lt__ bb Square
+ > False
+Square a | Square b
+  Square.__eq__ a Square
+ == False
+  Square.__eq__ a Square
+ != True
+  Shape.__lt__ a Square
+ < True
+  Shape.__lt__ b Square
+ > False
+Circle a | None
+  Shape.__eq__ a NoneType False
+ == False
+  Shape.__eq__ a NoneType False
+ != True
+  Shape.__lt__ a NoneType
+ < False
+ > TypeError: '>' not supported between instances of 'Circle' and 'NoneType'
+Circle a | Shape a
+  Shape.__eq__ a Shape False
+ == True
+  Shape.__eq__ a Shape False
+ != False
+  Shape.__lt__ a Shape
+ < False
+  Shape.__lt__ a Circle
+ > False
+Circle a | Square a
+  Shape.__eq__ a Square True
+ == True
+  Shape.__eq__ a Square True
+ != False
+  Shape.__lt__ a Square
+ < False
+  Shape.__lt__ a Circle
+ > False
+Circle a | Circle a
+  Shape.__eq__ a Circle False
+ == True
+  Shape.__eq__ a Circle False
+ != False
+  Shape.__lt__ a Circle
+ < False
+  Shape.__lt__ a Circle
+ > False
+Circle a | Dot bb
+  Shape.__eq__ bb Circle False
+ == False
+  Shape.__eq__ bb Circle False
+ != True
+  Shape.__lt__ a Dot
+ < True
+  Dot.__lt__ bb Circle
+ > False
+Circle a | Square b
+  Shape.__eq__ a Square True
+ == False
+  Shape.__eq__ a Square True
+ != True
+  Shape.__lt__ a Square
+ < True
+  Shape.__lt__ b Circle
+ > False
+Dot bb | None
+  Shape.__eq__ bb NoneType False
+ == False
+  Shape.__eq__ bb NoneType False
+ != True
+  Dot.__lt__ bb NoneType
+ < False
+ > TypeError: '>' not supported between instances of 'Dot' and 'NoneType'
+Dot bb | Shape a
+  Shape.__eq__ bb Shape False
+ == False
+  Shape.__eq__ bb Shape False
+ != True
+  Dot.__lt__ bb Shape
+ < False
+  Shape.__lt__ a Dot
+ > True
+Dot bb | Square a
+  Shape.__eq__ bb Square True
+ == False
+  Shape.__eq__ bb Square True
+ != True
+  Dot.__lt__ bb Square
+ < False
+  Shape.__lt__ a Dot
+ > True
+Dot bb | Circle a
+  Shape.__eq__ bb Circle False
+ == False
+  Shape.__eq__ bb Circle False
+ != True
+  Dot.__lt__ bb Circle
+ < False
+  Shape.__lt__ a Dot
+ > True
+Dot bb | Dot bb
+  Shape.__eq__ bb Dot False
+ == True
+  Shape.__eq__ bb Dot False
+ != False
+  Dot.__lt__ bb Dot
+ < False
+  Dot.__lt__ bb Dot
+ > False
+Dot bb | Square b
+  Shape.__eq__ bb Square True
+ == False
+  Shape.__eq__ bb Square True
+ != True
+  Dot.__lt__ bb Square
+ < False
+  Shape.__lt__ b Dot
+ > True
+Square b | None
+  Square.__eq__ b NoneType
+ == False
+  Square.__eq__ b NoneType
+ != True
+  Shape.__lt__ b NoneType
+ < False
+ > TypeError: '>' not supported between instances of 'Square' and 'NoneType'
+Square b | Shape a
+  Square.__eq__ b Shape
+ == False
+  Square.__eq__ b Shape
+ != True
+  Shape.__lt__ b Shape
+ < False
+  Shape.__lt__ a Square
+ > True
+Square b | Square a
+  Square.__eq__ b Square
+ == False
+  Square.__eq__ b Square
+ != True
+  Shape.__lt__ b Square
+ < False
+  Shape.__lt__ a Square
+ > True
+Square b | Circle a
+  Square.__eq__ b Circle
+ == False
+  Square.__eq__ b Circle
+ != True
+  Shape.__lt__ b Circle
+ < False
+  Shape.__lt__ a Square
+ > True
+Square b | Dot bb
+  Square.__eq__ b Dot
+ == False
+  Square.__eq__ b Dot
+ != True
+  Shape.__lt__ b Dot
+ < True
+  Dot.__lt__ bb Square
+ > False
+Square b | Square b
+  Square.__eq__ b Square
+ == True
+  Square.__eq__ b Square
+ != False
+  Shape.__lt__ b Square
+ < False
+  Shape.__lt__ b Square
+ > False
+  Shape.__eq__ c Circle False
+  Shape.__lt__ c Dot
+  Shape.__eq__ c Circle False
+  Dot.__lt__ c Circle
+True True
+Shape a in: True
+Shape a index: 0
+  Square.__eq__ a Shape
+  Shape.__eq__ a Shape False
+  Shape.__eq__ bb Shape False
+Shape a count: 2
+  Square.__eq__ a Shape
+Square a in: True
+  Square.__eq__ a Shape
+Square a index: 1
+  Square.__eq__ a Shape
+  Shape.__eq__ a Square True
+  Shape.__eq__ bb Square True
+Square a count: 2
+  Shape.__eq__ a Shape False
+Circle a in: True
+  Shape.__eq__ a Shape False
+Circle a index: 0
+  Shape.__eq__ a Shape False
+  Square.__eq__ a Circle
+  Shape.__eq__ bb Circle False
+Circle a count: 2
+  Shape.__eq__ bb Shape False
+  Square.__eq__ a Dot
+  Shape.__eq__ bb Circle False
+Dot bb in: True
+  Shape.__eq__ bb Shape False
+  Square.__eq__ a Dot
+  Shape.__eq__ bb Circle False
+Dot bb index: 3
+  Shape.__eq__ bb Shape False
+  Square.__eq__ a Dot
+  Shape.__eq__ bb Circle False
+Dot bb count: 1
+  Square.__eq__ a Shape
+  Shape.__eq__ a Shape False
+  Shape.__eq__ bb NoneType False
+False True False
+[exit 0]
