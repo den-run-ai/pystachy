@@ -82,4 +82,7 @@ jobs:
       - name: Generated regex matcher tests
         run: python3 -m unittest discover -s tools -p test_re_specialize.py
 
+      - name: Concurrency contract probes (docs/concurrency.md)
+        run: python3 -m unittest discover -s tools -p test_concurrency_contract.py
+
       - run: make check-recordings
