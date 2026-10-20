@@ -58,8 +58,8 @@ In these cases a program can compile but behave differently from CPython.
   that begins no character is one character, in `len()` and in widths, padding, precision
   and `expandtabs()` alike, as CPython counts a byte that `surrogateescape` decodes. `read(n)`
   of such a file still counts each byte that does not continue a sequence as a character, so it
-  can return text that `len()` counts as longer than `n`. A native
-  UTF-8 file's `write()` result still counts bytes; a Latin-1 file's counts characters.
+  can return text that `len()` counts as longer than `n`. `write()` returns the number of
+  characters it writes, as `len()` counts them, in a UTF-8 file as in a Latin-1 one.
   A Latin-1 file's bytes are its characters, as in CPython: the str read holds each as
   UTF-8, and a write gives each character as its byte and returns
   the number of characters, or raises CPython's `UnicodeEncodeError` for one above U+00FF
@@ -805,6 +805,15 @@ supported alternatives.
   and indexing, `index()` and `count()` of other than an int (CPython takes a bool as an int, and
   compares other values with the items); `==` with a value that may be `None` but is not a range;
   `dir()` and `vars()`
+- `object()` with arguments (CPython's `TypeError`), assigning an attribute of an object it
+  makes (CPython's `AttributeError`), `==` and `!=` between such an object and an object of a
+  class or an exception, and a variable, return value or `dict.get()` default that would hold
+  either such an object or a value of another type: no union holds one yet (#251); a call of
+  `object` by another name (`builtins.object()`, an alias), and `type(x) is object`, in a program
+  none of whose modules calls `object()`: see [sentinels](semantics.md#sentinels)
+- a program's own module named `_pystachy_iterators`, `_pystachy_range` or `_pystachy_object`, the
+  names of the `lib/` modules that the compiler loads itself (iterators, range objects and
+  `object()`'s sentinels): an import of it is not found
 - a keyword argument Pystachy does not take (`os.path.realpath(p, strict=True)`)
 - a `key=` that may be `None` (`Callable | None`) of items that have no order without a key (a
   closed union, functions)

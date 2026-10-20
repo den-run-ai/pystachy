@@ -24,6 +24,7 @@ from src.pystachy_compiler.specs import (
     OPTTYPES,
     PATHLIKE,
     PYBUILTINS,
+    OBJECTC,
     RANGEC,
     RANGES,
     SPECIAL,
@@ -2237,6 +2238,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return c
         if c == "range" and RANGEC in self.classes and not self.bound(c):
             return RANGEC  # (where it is a value)
+        if c == "object" and OBJECTC in self.classes and not self.bound(c):
+            return OBJECTC  # (object(): an object of lib/_pystachy_object.py's class)
         if c == "len" or c == "ord":
             return "int"
         if c == "input" or c == "repr" or c == "chr" or c == "ascii" or c == "hex" or c == "oct" or c == "bin":

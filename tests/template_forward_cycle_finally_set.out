@@ -1,0 +1,5 @@
+in finally 0 False False 1
+in finally 1 True False 1
+in finally 2 True True 2
+['k1', 'k2', 'k3']
+[exit 0]
