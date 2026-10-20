@@ -4406,11 +4406,11 @@ static I latin1(char *o, const char *p, I n) {   /* the n bytes of a write's tex
   }
   return m;
 }
-I pys_file_write(File *f, Str *s) {   /* newline="\r" or "\r\n" writes "\n" as that. A Latin-1 file's text is
-                                         encoded first, as CPython's (an error leaves the file as it was), and the
-                                         result counts its characters (bytes in a UTF-8 file) */
+void pys_file_put(File *f, Str *s) {   /* f.write(s) whose result is not used. newline="\r" or "\r\n" writes
+                                          "\n" as that. A Latin-1 file's text is encoded first, as CPython's (an
+                                          error leaves the file as it was) */
   io_in(); usable(f, 0);
-  const char *p = s->s, *q; I n = s->len, r = n;
+  const char *p = s->s, *q; I n = s->len;
   if (f->nl >= 3 && memchr(p, '\n', n)) {
     Buf b = {0};
     for (I i = 0; i < n; i = q - p + 1) {
@@ -4420,19 +4420,21 @@ I pys_file_write(File *f, Str *s) {   /* newline="\r" or "\r\n" writes "\n" as t
     }
     p = b.p; n = b.n;
   }
-  if (f->lat) {                        /* (CPython's position of an error counts the "\r"s added, its result not) */
+  if (f->lat) {                        /* (CPython's position of an error counts the "\r"s added) */
     char *o = pys_alloc_atomic(n + 1);
-    I m = latin1(o, p, n);
-    r = m - (n - s->len); p = o; n = m;
+    n = latin1(o, p, n); p = o;
   }
   use(f, 0); put1(f, p, n);
   io_out();
-  return r;
+}
+I pys_file_write(File *f, Str *s) {   /* the number of s's characters, as len() counts them, as CPython's */
+  pys_file_put(f, s);
+  return pys_text_len(s);
 }
 void pys_file_writelines(File *f, List *l) {
   for (I i = 0; i < l->len; i++) {
     if (!l->a[i]) pys_fail("TypeError: write() argument must be str, not None");   /* a str | None item */
-    pys_file_write(f, (Str *)l->a[i]);
+    pys_file_put(f, (Str *)l->a[i]);
   }
 }
 void pys_file_flush(File *f) {
