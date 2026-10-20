@@ -102,7 +102,9 @@ template parameter specialized to `None` cannot be rebound by a conditional assi
 expression; annotate that parameter as `T | None` to allow both values.
 
 `is` and `is not` are supported for identity-bearing values, not numbers.
-Booleans use their two fixed values, so `flag is True` behaves as equality.
+Booleans use their two fixed values, so `flag is True` behaves as equality. A number or bool is
+never an object of a class, so `x is obj` is `False` for one (`is not` `True`), as in CPython.
+For one that may be `None` (`x: int | None`), `x is obj` is `True` only where both are `None`.
 Comparisons with `None` are supported where the static types permit them.
 
 ## Iterator-like expressions
@@ -147,6 +149,26 @@ reject at run time (ordering comparisons, assigning an attribute), `in` of other
 bool, `r[i]`, `index()` and `count()` of other than an int (also of a bool), `==` with a value
 that may be `None` but is not a range, `type(r)` as a value, and the reflection of `dir()` and
 `vars()`.
+
+## Sentinels
+
+`object()` makes a new object of the builtins' `object` type at each call, as a sentinel is made
+(`_MISSING = object()`, a parameter's default tested with `x is _MISSING`). It is an object of the
+class in [`lib/_pystachy_object.py`](../../lib/_pystachy_object.py), which the compiler loads for a
+program that may call `object()`. `is`, `is not`, `==` and `!=` compare identities (a value of a
+builtin type, such as an int, a str, a list, a range, a generator or a function, is never equal to
+one), `hash()`, dict keys and set elements use the identity, `bool()` is true, `repr()` and `str()`
+give `<object object at 0x...>` with Pystachy's address, `type(x).__name__` is `object` and
+`type(x).__module__` is `builtins`, and `isinstance(x, object)` and `type(x) is object` are true.
+The compiler rejects `object()` with arguments (CPython's `TypeError`), assigning an attribute of
+such an object, `==` and `!=` between such an object and an object of a class or an exception
+(whose `__eq__` CPython may call), and a variable, return value or `dict.get()` default that would
+hold either such an object or a value of another type, as no union holds one yet
+([#251](https://github.com/den-run-ai/pystachy/issues/251)). It loads the class for a program one of
+whose modules calls the name `object`, so in a program none of whose modules calls `object()` it
+also rejects a call by another name (`builtins.object()`, or an alias that an import or an
+assignment binds, `obj = object`) and `type(x) is object`; in any other program such a call makes a
+sentinel too.
 
 ## Iterators
 

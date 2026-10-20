@@ -216,8 +216,10 @@ untranslated. Error messages and parsing otherwise follow the upstream code.
 
 CPython's `gettext`, with marked edits. Its table of the plural forms' operators is the dict that
 CPython makes of a tuple bound to the same name first, as a module global has one type here. The
-module imports, as `argparse` needs at its start (`argparse` has other blockers after it). Its
-default locale directory is made of `sys.base_prefix` (the Pystachy home, see
+module imports, as `argparse` needs at its start. `argparse` then imports too, but its
+`ArgumentParser` (two base classes), `Namespace` (a template base class) and `HelpFormatter`
+(statements in its class body) are compile-time errors where used. Its default locale directory
+is made of `sys.base_prefix` (the Pystachy home, see
 [sys](../docs/language/compatibility.md#modules-and-libraries)). `NullTranslations` and its
 methods `gettext()`, `pgettext()`, `add_fallback()`, `info()` and `charset()`, `textdomain()` and
 `bindtextdomain()` work. `optparse` still stops here, as it calls `gettext()` while it is imported.

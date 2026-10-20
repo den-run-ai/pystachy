@@ -302,6 +302,8 @@ ITERS = "_pystachy_iterators"  # lib's module of the iterator classes iter() mak
 TEXTVIEW = "re"  # lib's regex engine, which reads a str whose every byte is a code point in place (__pys_text_bytes)
 RANGES = "_pystachy_range"  # lib's module of the class of range objects, range() as a value (Loader.program)
 RANGEC = "_pystachy_range$range"  # (that class)
+OBJECTS = "_pystachy_object"  # lib's module of the class of the objects object() makes, sentinels (Loader.program)
+OBJECTC = "_pystachy_object$object"  # (that class)
 # the calls whose positional argument range(...) is no range object (analysis.range_values): the
 # consumers that take the numbers at once (1: the first, 2: the first that is the only one, 3:
 # each), of the builtins (fsum and prod also of math, as imported) and of methods (str.join(),
@@ -862,7 +864,8 @@ RUNTIME: dict[str, str] = {
     # files and the standard streams
     "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
     "file.read": "str:S,int|R A I rF wF|", "file.readline": "str:S|R A I rF wF|", "file.readlines": "list[str]:S|R A I rF wF|",
-    "file.write": "int:S,str|R A I rF wF|", "file.writelines": "None:S,list[str]|R A I rL rF wF|",
+    "file.write": "int:S,str|R A I rF wF|", "file.put": "None:S,str|R A I rF wF|",
+    "file.writelines": "None:S,list[str]|R A I rL rF wF|",
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
     "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|", "file.fileno": "int:S|R I rF|",
     # lib/io.py's TextIOWrapper (IOMOD): its default and "locale" encodings, io.UnsupportedOperation
