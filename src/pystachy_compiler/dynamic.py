@@ -20,7 +20,7 @@ from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import METHODS, NONEVAR, RTDATA
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 DYN = "dyn"
 # runtime.c's DynType kinds (DK_*) and the flags of a class's (DF_*)
@@ -475,7 +475,7 @@ def gen_dyn_float(self, v: Val) -> Val:
 def gen_dyn_type_name(self, v: Val) -> Val:
     # type(v).__name__: its DynType's name
     t = self.dyn_typeof(v)
-    return Val(self.mload("%ptr", self.maddr("ptr", t, "2")), "str")
+    return Val(self.mload("%ptr", self.maddr("%ptr", t, "2", True)), "str")
 
 
 # ---- the dispatchers: functions of the program that the compiler writes once every class that
@@ -556,7 +556,6 @@ def gen_dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
     # type calls it (defaults, a closure's env, a bound method's object), or the TypeError of a
     # call with the wrong number of arguments
     t = Val(self.dyn_typeof(o), "dyntype")
-    line = self.line
     for ft in [x for x in self.dynfuncs]:
         hit = self.label()
         nxt = self.label()
