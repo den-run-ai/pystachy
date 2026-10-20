@@ -2655,7 +2655,7 @@ def gen_glue_field(self, o: Val, name: str) -> None:
     if ci is not None and ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"'{short(ci.name)}' object has no attribute '{name}' that a program may use: the fields of Pystachy's {ci.mod}.{short(ci.name)} are its own (its methods are not)")
     if ci is not None and ci.mod in OPAQUE and self.curfn.mod != ci.mod:
-        tshown = TYPEMODS[ci.mod] + "." + short(ci.name) if ci.mod in TYPEMODS else short(ci.name)
+        tshown = TYPEMODS[ci.mod] + "." + short(ci.name) if TYPEMODS.get(ci.mod, "builtins") != "builtins" else short(ci.name)
         self.err(f"'{tshown}' object has no attribute '{name}'")
 
 def gen_fn_attr_read(self, o: Val, name: str) -> None:

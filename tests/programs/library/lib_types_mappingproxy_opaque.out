@@ -1,4 +1,5 @@
 False False True True
 {'a': 1} {'a': 1}
 {'a': 1, 'z': 26} 2 False
+builtins mappingproxy
 [exit 0]

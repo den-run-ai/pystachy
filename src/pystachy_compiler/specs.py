@@ -56,9 +56,9 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
 # over, and a call of __init__ on an object cannot initialize it again
 OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
-# not the module's own: weakref.ReferenceType, ast.Constant, and _io.StringIO (every class that
-# lib's io defines is the C module _io's in CPython)
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast", "io": "_io"}
+# not the module's own: weakref.ReferenceType, ast.Constant, _io.StringIO (every class that lib's
+# io defines is the C module _io's in CPython), and mappingproxy, a builtin type
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast", "io": "_io", "_pystachy_mappingproxy": "builtins"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())

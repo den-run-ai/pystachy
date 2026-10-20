@@ -1029,14 +1029,18 @@ CPython's `TypeError` ([test](../tests/programs/library/lib_types_mappingproxy.p
 deletion are compile-time errors, where CPython raises `TypeError`
 ([error test](../tests/errors/library/lib_types_mappingproxy_setitem.py)). A view has no
 attributes of its own, as CPython's has none, so code given only the view cannot reach its dict:
-`hasattr()` of its fields or of `__dict__` is false, and `__init__` leaves it viewing its dict
-([test](../tests/programs/library/lib_types_mappingproxy_opaque.py)); reading or assigning a field
-is a compile-time error, where CPython raises `AttributeError`
+`hasattr()` of its fields or of `__dict__` is false, `__init__` leaves it viewing its dict, and
+`type(view).__module__` is `builtins` ([test](../tests/programs/library/lib_types_mappingproxy_opaque.py));
+reading or assigning a field is a compile-time error, where CPython raises `AttributeError`
 ([error test](../tests/errors/library/lib_types_mappingproxy_field.py)).
 
 - It takes a dict, whose key and value types are the view's (`MappingProxyType[str, int]`);
   CPython's takes any mapping. `keys()`, `values()` and `items()` give lists, as a dict's do, and
   `dict(view)` and `dict | view` are compile-time errors, as for other mapping objects.
+- A view is equal only to a dict or a view of an equal dict: compared with an object of another
+  class it is unequal, where CPython compares its dict with the object, whose own `__eq__`, given
+  the dict, may decide ([deviation](../tests/deviations/lib_types_mappingproxy_eq_other.py)).
+  Comparing a dict with such an object is a compile-time error.
 
 - Any other use of `GenericAlias`, such as calling it, is a compile-time error
   ([error test](../tests/errors/reflection/types_generic_alias_call.py)).
