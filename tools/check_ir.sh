@@ -1,5 +1,5 @@
 #!/bin/sh
-# IR validity: every program of the tools/irsame.sh corpus, tests/errors/*.py aside (they must not
+# IR validity: every program of the tools/irsame.sh corpus, the rejections tests/errors/AREA/*.py aside (they must not
 # compile), and runtime.py (compiled as `pystachy rt` compiles it), must compile and pass the
 # compiler's own check of the IR it builds (PYSTACHY_IRCHECK=1, unless set otherwise), and llvm-as
 # must accept its `ir` output; llvm-as is run from PYSTACHY_LLVM if
@@ -23,7 +23,7 @@ PYS=${1:-./pystachy}
 [ $# = 0 ] || shift
 for f; do [ -f "$f" ] || { echo "tools/check_ir.sh: no such program: $f" >&2; exit 2; }; done
 if [ $# = 0 ]; then
-  for f in pystachy.py runtime.py tests/*.py tests/deviations/*.py bench/*.py bench/pyperformance/*.py tests/ir/*.py; do
+  for f in pystachy.py runtime.py tests/programs/*/*.py tests/deviations/*.py bench/*.py bench/pyperformance/*.py tests/ir/*.py; do
     [ -f "$f" ] && set -- "$@" "$f"
   done
 fi

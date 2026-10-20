@@ -157,7 +157,7 @@ def main():
                 flags = invocation.read_text().splitlines()
                 if ("-jit-kind=mcjit" in flags) != (mode == "0") or ("-O0" in flags) != (mode == "0"):
                     raise RuntimeError(f"{label}: codegen={mode} selected unexpected lli flags: {flags}")
-                signal_case = subprocess.run(cmd + ["run", str(ROOT / "tests/exec_signal.py")], cwd=ROOT,
+                signal_case = subprocess.run(cmd + ["run", str(ROOT / "tests/programs/language/exec_signal.py")], cwd=ROOT,
                                              env=selected, capture_output=True, timeout=60, check=False)
                 if signal_case.returncode != -signal.SIGTERM or not signal_case.stdout.endswith(b"out\n") or signal_case.stderr != b"last\n":
                     raise RuntimeError(f"{label}: codegen={mode} changed signal status/output: {signal_case}")

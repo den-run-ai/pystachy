@@ -1,4 +1,4 @@
-# a module's object() sentinel, which its importers read (tests/object_sentinel.py)
+# a module's object() sentinel, which its importers read (tests/programs/classes/object_sentinel.py)
 NOTHING = object()
 
 

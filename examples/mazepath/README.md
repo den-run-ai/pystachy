@@ -52,9 +52,9 @@ rerun the script to measure a current build.
 
 ## Tests
 
-`tests/example_mazepath.py` runs `parse()`, `search()`, `path()` and `depths()` on generated
+`tests/programs/apps/example_mazepath.py` runs `parse()`, `search()`, `path()` and `depths()` on generated
 mazes and small grids, and `main()` with and without `-p`, on a maze without a path and on one
-without `E`, and compares what it prints with CPython's (`tests/example_mazepath.path` puts this
+without `E`, and compares what it prints with CPython's (`tests/programs/apps/example_mazepath.path` puts this
 directory on the module path). `bench.py` runs the table above:
 After `make pystachy` at the repository root, run `python3 -I bench.py ../../pystachy 5`
 from `examples/mazepath`; it writes its mazes and executable to `build/mazepath/`.

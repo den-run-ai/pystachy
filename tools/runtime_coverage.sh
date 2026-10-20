@@ -36,7 +36,7 @@ PY=${PY:-python3}
 C=build/runtime-coverage
 # (plain counters, not atomic ones: the registers their updates take moved a dead File pointer into
 # one that collect() scans, which showed open() keeping alive the writer it collected to close,
-# tests/rt_list_vacated.py, as no -O level nor register allocator did: this run is also a variant)
+# tests/programs/runtime/rt_list_vacated.py, as no -O level nor register allocator did: this run is also a variant)
 CF="-fprofile-instr-generate -fcoverage-mapping"
 llvm=${PYSTACHY_LLVM:-$($PY -c 'import pystachy; print(pystachy.llvm_dir())')}
 L=${llvm:+${llvm%/}/}
@@ -99,7 +99,7 @@ if [ "$report" != only ]; then
     case $s in
       corpus)
         p=corpus; [ -z "${RUNTIME_COVERAGE_SHARD:-}" ] || p=corpus-${RUNTIME_COVERAGE_SHARD%/*}
-        cases=$#; [ $# != 0 ] || cases=$(ls tests/*.py tests/deviations/*.py tests/errors/*.py | wc -l | tr -d ' ')
+        cases=$#; [ $# != 0 ] || cases=$(. tests/corpus.sh && corpus | wc -l | tr -d ' ')
         part "$p" corpus "$cases" tests/run.sh "$PYS" "jit aot" "$@" ;;
       ffi) part ffi ffi null env PY="$PY" tests/ffi/run.sh "$PYS" aot ;;
     esac

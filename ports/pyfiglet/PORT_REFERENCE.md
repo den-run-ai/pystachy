@@ -55,12 +55,12 @@ and its sdist ships them beside its MIT `LICENSE`. The port embeds them unmodifi
 
 ## Validation snapshot
 
-`tests/port_pyfiglet_render.py` runs the cases of pyfiglet's own test, `pyfiglet/test.py` in the
+`tests/programs/apps/port_pyfiglet_render.py` runs the cases of pyfiglet's own test, `pyfiglet/test.py` in the
 sdist, which renders four texts in each font with one `Figlet` object whose `setFont()` changes
 and compares each with what the C `figlet` prints: one word, a text cut at its spaces, a long word
 cut at its last character, and an explicit new line, for the three embedded fonts, printed line by
 line with `repr()` as `test.py`'s `dump()` does; then `test.py`'s four banners, in the default
-font at the default width of 80. `tests/port_pyfiglet_edges.py` takes the edge cases the port and
+font at the default width of 80. `tests/programs/apps/port_pyfiglet_edges.py` takes the edge cases the port and
 its verifier met: what the parser reads from each font (header fields, comment, glyph counts and
 widths, the 7 German letters and the Latin Extended-A glyphs, and the glyph of `@`, whose rows hold
 `@`s besides their end marks); every justification, a justification and a direction pyfiglet does
@@ -71,7 +71,7 @@ and `€`, an emoji and CJK characters, which no font has; text made with `chr()
 standard font above `~` and bytes that start no UTF-8 sequence; every printable ASCII character in
 each font; `str()` of a font; `setFont()`; `FontNotFound` for a missing name, a path and `''`; and
 a `FontNotFound` that nothing catches, which ends the program as CPython reports it
-(`tests/port_pyfiglet_edges.err`).
+(`tests/programs/apps/port_pyfiglet_edges.err`).
 Each of its parts is a function, so that the fonts it loads are garbage when it returns.
 
 `tests/run.sh` compares what they print with CPython's, JIT and AOT. Run under CPython against the

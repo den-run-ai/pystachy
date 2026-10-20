@@ -1,4 +1,4 @@
-# classes whose methods are templates (no annotations but self's), for tests/method_templates_mod.py
+# classes whose methods are templates (no annotations but self's), for tests/programs/classes/method_templates_mod.py
 from typing import NamedTuple
 
 

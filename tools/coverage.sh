@@ -102,7 +102,7 @@ for s in $SUITES; do
   launcher "$p" "$s"
   case $s in
     corpus)
-      cases=$#; [ $# != 0 ] || cases=$(ls tests/*.py tests/deviations/*.py tests/errors/*.py | wc -l | tr -d ' ')
+      cases=$#; [ $# != 0 ] || cases=$(. tests/corpus.sh && corpus | wc -l | tr -d ' ')
       part "$p" corpus "$cases" tests/run.sh "$W/$p.run -m pystachy" "jit aot" "$@" ;;
     ffi) part ffi ffi null env PY="$PY" tests/ffi/run.sh "$W/ffi.run -m pystachy" "jit aot" ;;
     cache) part cache cache null env PY="$PY" tests/cache.sh "$W/cache.run -m pystachy" ;;

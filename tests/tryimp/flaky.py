@@ -1,4 +1,4 @@
-# A module whose code raises the first time it runs, and ends the next (tests/import_try_binding.py)
+# A module whose code raises the first time it runs, and ends the next (tests/programs/imports/import_try_binding.py)
 import runs
 
 N = runs.incr()

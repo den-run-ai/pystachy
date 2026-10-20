@@ -35,13 +35,13 @@ print(damerau_levenshtein("ab", "ba"))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_pylev_strings.py
-./tests/run.sh ./pystachy "jit aot" tests/port_pylev_strings.py tests/port_pylev_sequences.py tests/port_pylev_imports.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_pylev_strings.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_pylev_strings.py tests/programs/apps/port_pylev_sequences.py tests/programs/apps/port_pylev_imports.py
 ```
 
 The tests cover upstream pairs, aliases/import forms, empty inputs, transpositions, explicit recursion arguments and list sequences.
 
-Cases: [port_pylev_strings.py](../../tests/port_pylev_strings.py), [port_pylev_sequences.py](../../tests/port_pylev_sequences.py), [port_pylev_imports.py](../../tests/port_pylev_imports.py).
+Cases: [port_pylev_strings.py](../../tests/programs/apps/port_pylev_strings.py), [port_pylev_sequences.py](../../tests/programs/apps/port_pylev_sequences.py), [port_pylev_imports.py](../../tests/programs/apps/port_pylev_imports.py).
 
 <a id="speed"></a>
 

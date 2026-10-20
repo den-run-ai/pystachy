@@ -100,7 +100,7 @@ These four cases are a separate explicit selection, not a complete regex invento
 CI runs `port-check` and `port-check-large` as independent jobs beside the existing
 verification groups; the compiled subset belongs to those groups' normal corpus.
 The existing required verification gate also requires both jobs to succeed. The
-large fixture lives under `tests/upstream/` so the regular `tests/*.py` glob does not
+large fixture lives under `tests/upstream/` so the regular `tests/programs/*/*.py` glob does not
 multiply these inputs through every stress configuration.
 
 ## Checklist for extending a port

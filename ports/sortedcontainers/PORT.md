@@ -37,13 +37,13 @@ print(list(values), values.bisect_left(3))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_sortedcontainers_api.py
-./tests/run.sh ./pystachy "jit aot" tests/port_sortedcontainers_api.py tests/port_sortedcontainers_index.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_sortedcontainers_api.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_sortedcontainers_api.py tests/programs/apps/port_sortedcontainers_index.py
 ```
 
 The tests cover API/error forms, comparisons, duplicates, sublist splitting/merging and positional-index-tree invariants.
 
-Cases: [port_sortedcontainers_api.py](../../tests/port_sortedcontainers_api.py), [port_sortedcontainers_index.py](../../tests/port_sortedcontainers_index.py).
+Cases: [port_sortedcontainers_api.py](../../tests/programs/apps/port_sortedcontainers_api.py), [port_sortedcontainers_index.py](../../tests/programs/apps/port_sortedcontainers_index.py).
 
 <a id="speed"></a>
 

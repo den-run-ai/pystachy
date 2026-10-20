@@ -30,6 +30,7 @@ on:
       - .coveragerc
       - .github/workflows/coverage.yml
       - tests/cache.sh
+      - tests/corpus.sh
       - tests/ffi/run.sh
       - tests/run.sh
       - tools/coverage.sh
@@ -42,6 +43,7 @@ on:
       - .coveragerc
       - .github/workflows/coverage.yml
       - tests/cache.sh
+      - tests/corpus.sh
       - tests/ffi/run.sh
       - tests/run.sh
       - tools/coverage.sh

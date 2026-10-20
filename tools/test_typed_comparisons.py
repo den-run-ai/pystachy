@@ -192,7 +192,7 @@ def changed(d: dict[str, int], k: str) -> int:
 
         with patch.object(Gen, "lower", capture):
             for name in ("typed_ir_numeric.py", "scalar_union_optional_narrowing.py", "opt_dictfuse.py"):
-                Gen().program(Loader([str(root / "lib")]).program(name, (root / "tests" / name).read_text()))
+                Gen().program(Loader([str(root / "lib")]).program(name, next((root / "tests").glob(f"programs/*/{name}")).read_text()))
         self.assertTrue(any(i.op == "int.ucmp" for i in captured))
         self.assertTrue(any(i.op == "num.cmp" for i in captured))
         self.assertFalse(any(i.op == "raw" and "icmp " in i.s and " i64 " in i.s for i in captured))

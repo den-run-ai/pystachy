@@ -71,14 +71,14 @@ event-loop and signal infrastructure is outside this small prototype.
 
 ## Acceptance and remaining work
 
-`tests/lib_select.py` covers empty/finite polling, timeout errors and descriptor
+`tests/programs/library/lib_select.py` covers empty/finite polling, timeout errors and descriptor
 bounds in all three input positions. `tests/ffi/c_select.py` uses C stdio to
 obtain genuine file descriptors and checks read/write readiness, closed-fd
 errors, duplicate/order preservation, fresh lists and indefinite waits through
-the Python API. `tests/lib_select_sigint.py` exercises an interrupted public wait.
+the Python API. `tests/programs/library/lib_select_sigint.py` exercises an interrupted public wait.
 `tests/ffi/py_select.py` checks native and embedded CPython select in the same
 program, including a descriptor created by embedded CPython and polled natively.
-`tests/lib_select_files.py` selects on the descriptors of the standard streams
+`tests/programs/library/lib_select_files.py` selects on the descriptors of the standard streams
 and of open files (`fileno()`), and checks a closed file's error.
 All are CPython 3.13.16 differential cases, with JIT/AOT and GC-stress coverage.
 

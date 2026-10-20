@@ -34,7 +34,7 @@ Archive SHA-256: `25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb
 
 ## Validation snapshot
 
-`tests/port_sortedcontainers_api.py` runs the examples of the docstrings, with ints for their
+`tests/programs/apps/port_sortedcontainers_api.py` runs the examples of the docstrings, with ints for their
 letters, then edge cases: an empty list (every lookup, and the `IndexError` and `ValueError` of
 `pop`, `remove`, `sl[0]`, `index` and `del`), duplicates, negative values and both ends of the
 64-bit range, `index()` with negative and empty `start`/`stop`, every `inclusive` and `reverse`
@@ -45,7 +45,7 @@ and by length, `in`, `count()` and `index()` of lists of sorted lists, also with
 them, `sorted()`, `min()` and `max()` of sorted lists, sorted lists inside tuples and dicts, and
 `==` and `remove()` of lists of optional sorted lists; then the methods called with keyword
 arguments, by upstream's parameter names, also through the aliases written as defs.
-`tests/port_sortedcontainers_index.py` gives about 200 values a load factor of 4 (`_reset(4)`),
+`tests/programs/apps/port_sortedcontainers_index.py` gives about 200 values a load factor of 4 (`_reset(4)`),
 so they split into dozens of sublists: it prints the sublists' sizes, `_offset` and the index
 tree, and checks `SortedList._check`'s invariants, after positional reads, adds that split
 sublists, removes and deletes that merge them, pops at both ends and inside, `update`'s two

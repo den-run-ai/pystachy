@@ -1,1 +1,1 @@
-# _setup_broken_package("", "1/0")'s package _parent_foo (tests/upstream_import_failing.py)
+# _setup_broken_package("", "1/0")'s package _parent_foo (tests/programs/upstream/upstream_import_failing.py)

@@ -46,7 +46,7 @@ mode was about 1.3× faster than its CPython counterpart in this baseline.
 
 ## Checks and reproduction
 
-`tests/example_mailmerge.py` compares 150 generated messages, safe/split modes
+`tests/programs/apps/example_mailmerge.py` compares 150 generated messages, safe/split modes
 and invalid or missing placeholders with CPython.
 
 ```sh

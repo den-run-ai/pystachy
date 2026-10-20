@@ -164,9 +164,9 @@ These counts are results on the inputs the script generates, not a promise for e
 - Additional regression checks cover reversed and strided axis sums and empty reshapes with unrepresentable byte extents; these pass against NumPy 2.3.5 too.
 - **Self-checks first:** the script confirms that its comparisons reject a NaN against a number, lists of different lengths, and an infinity against a large number.
 - **Error messages:** broadcasting, `out=` shapes, `reshape`, indexing and `matmul` errors are checked against NumPy's messages.
-- **Compiled tests:** `tests/example_ndarray.py` carries representative NumPy results into the tests that run under the JIT and as an executable.
+- **Compiled tests:** `tests/programs/apps/example_ndarray.py` carries representative NumPy results into the tests that run under the JIT and as an executable.
 
-NumPy's own test suite is the second source of expected results. `tests/example_ndarray_upstream.py` adapts the cases of NumPy 2.5.3's tests that this array can express: 432 assertions on broadcasting, reshape, transpose and ravel, 0-d subscripts, creation limits, means, 2-D matrix products, sums of strided and reversed views, division and indexing errors. Its header names each upstream test, the source file's SHA-256, the adaptations and what it leaves out (other dtypes, `order='F'` results, fancy indexing, stacked `matmul`, warnings). It runs compiled like the other tests, and
+NumPy's own test suite is the second source of expected results. `tests/programs/apps/example_ndarray_upstream.py` adapts the cases of NumPy 2.5.3's tests that this array can express: 432 assertions on broadcasting, reshape, transpose and ravel, 0-d subscripts, creation limits, means, 2-D matrix products, sums of strided and reversed views, division and indexing errors. Its header names each upstream test, the source file's SHA-256, the adaptations and what it leaves out (other dtypes, `order='F'` results, fancy indexing, stacked `matmul`, warnings). It runs compiled like the other tests, and
 
 ```sh
 python3 check_upstream.py

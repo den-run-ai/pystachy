@@ -659,7 +659,7 @@ TEMPLATE_INSTANCES = 4096
 # They keep their signatures too (key and parameter types, up to TYPE_SIZE per parameter),
 # which long types make hundreds of MiB under that count: bound their total, low enough that
 # a rejection fits tools/compilelimits.py's 256 MiB, hosted too (the corpus's largest total is
-# 4,736 bytes, tests/port_tomli_w_tables.py's 92 instances).
+# 4,736 bytes, tests/programs/apps/port_tomli_w_tables.py's 92 instances).
 TEMPLATE_RETAINED = 16777216
 # Effect letters: R may raise (in a program that has try or with, a raise allocates its exception, so a
 # collection may run before a handler takes it; if none does, the raise prints its message, flushes

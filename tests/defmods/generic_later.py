@@ -1,4 +1,4 @@
-"""Module for tests/deftime_generic_later.py."""
+"""Module for tests/programs/imports/deftime_generic_later.py."""
 
 
 class Box[T]:

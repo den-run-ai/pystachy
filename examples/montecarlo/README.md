@@ -47,7 +47,7 @@ CPython's C generator; the bootstrap's resampling and `fmean()`, under 2×.
 
 ## Checks and reproduction
 
-`tests/example_montecarlo.py` compares each estimator over five seeds, `main()` and its usage
+`tests/programs/apps/example_montecarlo.py` compares each estimator over five seeds, `main()` and its usage
 errors with CPython.
 
 ```sh

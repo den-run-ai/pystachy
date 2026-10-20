@@ -93,7 +93,7 @@ be reproduced from this repository.
 
 Pystachy retained Ouro v1's LLVM design and added checked arithmetic, definite-assignment checks,
 correct default-argument lifetime, runtime error handling, import validation and garbage
-collection. Ouro v2 contributed the `tests/ouro2_*.py` programs and the idea of a second backend.
+collection. Ouro v2 contributed the `tests/programs/apps/ouro2_*.py` programs and the idea of a second backend.
 MiniPy influenced checked arithmetic and the verification approach, including sanitizer builds,
 a Python-free stage and machine-readable reports.
 

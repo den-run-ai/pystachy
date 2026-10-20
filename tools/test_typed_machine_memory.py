@@ -140,7 +140,7 @@ class TypedMachineMemoryTests(unittest.TestCase):
 
         with patch.object(Gen, "lower", capture):
             for name in ("closures.py", "generator_consumers.py", "typed_ir_slots.py", "ir/passes_exc.py"):
-                Gen().program(Loader([]).program(name, (root / name).read_text()))
+                Gen().program(Loader([]).program(name, next(root.glob(f"programs/*/{name}"), root / name).read_text()))
         self.assertTrue({"mach.load", "mach.store", "mach.addr"}.issubset(captured))
 
 

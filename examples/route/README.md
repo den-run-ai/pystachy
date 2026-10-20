@@ -145,8 +145,8 @@ suffixes could also use string operations to reduce regex work on misses.
 
 ## Tests
 
-`tests/example_route.py` compares routing, file processing, no-tab final lines and cache
-statistics with CPython. `tests/example_route_empty.py` checks empty traces in every routing
+`tests/programs/apps/example_route.py` compares routing, file processing, no-tab final lines and cache
+statistics with CPython. `tests/programs/apps/example_route_empty.py` checks empty traces in every routing
 mode, including `--in-memory`, which reports zero routing time. Small traces keep per-allocation GC checks practical. The benchmark
 covers the full repeated-name trace and enough unique names to exceed the cache bound.
 

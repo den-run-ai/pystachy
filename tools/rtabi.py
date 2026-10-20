@@ -69,7 +69,7 @@ code, c_ir, err = run([CLANG, "-O0", "-S", "-emit-llvm", "runtime.c", "-o", "-"]
 if code != 0:
     sys.exit(f"cannot compile runtime.c: {err.strip()}")
 seen = {"runtime.c": sigs(c_ir)}
-progs = [f for f in ["pystachy.py"] + sorted(glob.glob("tests/*.py") + glob.glob("tests/deviations/*.py") + glob.glob("bench/*.py") + glob.glob("bench/pyperformance/*.py") + glob.glob("tests/ir/*.py"))]
+progs = [f for f in ["pystachy.py"] + sorted(glob.glob("tests/programs/*/*.py") + glob.glob("tests/deviations/*.py") + glob.glob("bench/*.py") + glob.glob("bench/pyperformance/*.py") + glob.glob("tests/ir/*.py"))]
 
 
 def program(f):

@@ -32,9 +32,9 @@ Run these from the repository root:
 For a focused edit, select the affected cases:
 
 ```sh
-make test FILES="tests/str_*.py tests/errors/rtmode_*.py"
-make test-py FILES="tests/str_*.py tests/errors/rtmode_*.py"
-tests/run.sh ./pystachy jit tests/lib_fnmatch.py
+make test FILES="tests/programs/strings/str_*.py tests/errors/runtime/rtmode_*.py"
+make test-py FILES="tests/programs/strings/str_*.py tests/errors/runtime/rtmode_*.py"
+tests/run.sh ./pystachy jit tests/programs/library/lib_fnmatch.py
 ```
 
 `PYSTACHY_JOBS` controls test workers; the default is one per CPU. Full verification retains
@@ -42,7 +42,18 @@ all coverage even when CI distributes the work across jobs.
 
 ## Differential tests
 
-`tests/run.sh` compares these results for each `tests/NAME.py`:
+Each program is `tests/programs/AREA/NAME.py`, with its expected results beside it. An area is a
+directory of tests on one subject (`library`, `classes`, `containers`, `exceptions`,
+`optimizations`, `upstream` and others), which the first word of a test's name usually names: put
+a new test with the tests whose names it shares, or in `language` for statements, scopes and
+functions. Names stay unique across areas, because the runner names a case's temporary files by
+them. Rejections are `tests/errors/AREA/NAME.py`, in the same areas. The helper packages that
+tests import (`mods/`, `loader/`, `emods/` and others) lie directly in `tests/`, which an importing
+test's `NAME.path` names. [`tests/corpus.sh`](../tests/corpus.sh) holds these patterns for every
+script that lists the cases. A program or rejection left directly in `tests/` or `tests/errors/`
+fails `make check-recordings` and a whole-corpus `tests/run.sh` instead of being skipped.
+
+`tests/run.sh` compares these results for each program `NAME.py`:
 
 | Artifact | Contract |
 |---|---|
@@ -55,8 +66,9 @@ all coverage even when CI distributes the work across jobs.
 An AOT build's diagnostics are kept separate from the program's stderr and must be empty.
 The runner enables `PYSTACHY_IRCHECK=1` unless explicitly overridden.
 
-`tests/errors/*.py` must fail with status 1 and one source diagnostic on stderr:
-`FILE:LINE: error: MESSAGE`, containing the expected message from the source's first line.
+Rejections `tests/errors/AREA/*.py` must fail with status 1 and one source diagnostic on stderr:
+`FILE:LINE: error: MESSAGE`, containing the expected message from the source's first line. A
+`NAME.path` beside a rejection is its `PYSTACHY_PATH`.
 A traceback containing that message does not pass. Syntax cases also exercise the parse-only
 `pystachy check` command; runtime-mode cases use `pystachy rt`.
 
@@ -272,7 +284,7 @@ and AOT, in configurations that `make verify` does not test and that must change
 
 `make runtime-coverage` is another variant: clang's instrumentation changes the runtime's register
 allocation, and only that build showed `open()` keeping alive the writer it collected to close
-(`tests/rt_list_vacated.py`). With the fix reverted, the runtime built at `-O0`, `-O1`, `-O3`,
+(`tests/programs/runtime/rt_list_vacated.py`). With the fix reverted, the runtime built at `-O0`, `-O1`, `-O3`,
 `-Os` or `-Oz`, or with LLVM's basic or PBQP register allocator, still passes.
 
 `VARIANTS="opt-1 cflags-O0"` selects variants, `FILES=...` cases, `VARIANTS_SHARD=I/N` a shard of

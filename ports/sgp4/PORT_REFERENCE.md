@@ -45,7 +45,7 @@ Archive SHA-256: `06d37247c6985739b707b8b39b6b83e06e8af783b2531e31965501ba983985
 
 ## Validation snapshot
 
-`tests/port_sgp4_verify.py` runs sgp4's official verification as its own test suite does
+`tests/programs/apps/port_sgp4_verify.py` runs sgp4's official verification as its own test suite does
 (`test_satrec_against_tcppver_using_julian_dates` in the sdist's `tests.py`), on 5 of the 33
 satellites of `SGP4-VER.TLE`, 16 of the 700 lines that Vallado's C++ SGP4 wrote to
 `tcppver.out`, which it embeds, and 2 of the 7 errors that `tests.py` expects: 00005 (SGP4),
@@ -54,7 +54,7 @@ with a low perigee, which decays: error 6 at 55 minutes) and 33334 (error 3 at i
 prints each line it computes with `Satrec.twoline2rv()`, `Satrec.sgp4(jd, fr)`, `invjday()` and
 `rv2coe()`, and compares it with the official one as the suite does: positions and velocities to
 2e-7, the other fields as text.
-`tests/port_sgp4_api.py` runs the cases of an evaluation of the port and of an independent check
+`tests/programs/apps/port_sgp4_api.py` runs the cases of an evaluation of the port and of an independent check
 of it: the fields of the ISS's TLE, `sgp4(jd, fr)` and `sgp4_tsince()`, the three gravity
 models, times far from the epoch (error 1, NaN), a satellite that decays (`SGP4_ERRORS`),
 `Satrec.sgp4init()` in both operation modes, Alpha-5 numbers up to 339999 and the

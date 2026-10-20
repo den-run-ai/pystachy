@@ -120,11 +120,11 @@ class PortCheckTests(unittest.TestCase):
         # An upstream unittest file plus .out is not in the compiled test corpus.
         with self.assertRaisesRegex(ValueError, "compiled mapping needs"):
             self.run_port()
-        self.write("tests/upstream_widget.py", f"# {self.identifier}\nassert 17 == 17\n")
-        self.module["cases"][self.identifier]["evidence"] = ["tests/upstream_widget.py"]
+        self.write("tests/programs/upstream/upstream_widget.py", f"# {self.identifier}\nassert 17 == 17\n")
+        self.module["cases"][self.identifier]["evidence"] = ["tests/programs/upstream/upstream_widget.py"]
         with self.assertRaisesRegex(ValueError, "compiled mapping needs"):
             self.run_port()
-        self.write("tests/upstream_widget.out", "")
+        self.write("tests/programs/upstream/upstream_widget.out", "")
         self.assertEqual(self.run_port()["compiled_mapping"], {"compiled": 1})
 
     def test_zero_tests_and_wrong_count_cannot_report_success(self):

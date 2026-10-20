@@ -2,7 +2,7 @@
 
 usage: python3 tools/re_upstream_large.py [NATIVE_COMPILER] [--llvm LLVM_BIN]
 
-The fixture stays outside tests/*.py: upstream's 50,000 repeats, 10,000 alternatives
+The fixture stays outside tests/programs/*/*.py: upstream's 50,000 repeats, 10,000 alternatives
 and 10,000,000-character anchor subjects run with normal GC, not GC stress. The
 CPython interpreter must match .python-version. Each phase has a generous timeout;
 elapsed times are informational, with exact stdout/stderr and exit-status checks.

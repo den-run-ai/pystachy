@@ -99,7 +99,7 @@ def main():
         temp = Path(tmp)
         sources = []
         for name in ("template_type_growth", "template_type_growth_mutual", "template_type_growth_expression", "tuple_repeat_type_size"):
-            sources.append((name, ROOT / "tests" / "errors" / f"{name}.py", TYPE_ERROR))
+            sources.append((name, next((ROOT / "tests" / "errors").glob(f"*/{name}.py")), TYPE_ERROR))
         for name, src, error in (("wide_signature", wide_calls(24, 1), SIGNATURE_ERROR),
                                  ("active_signatures", wide_calls(12, 2), ACTIVE_ERROR),
                                  ("branching_instances", branching_calls(16), INSTANCES_ERROR),
