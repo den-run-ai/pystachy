@@ -8,6 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/den-run-ai/pystachy?include_prereleases)](https://github.com/den-run-ai/pystachy/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Hosted compiler coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fden-run-ai%2Fpystachy%2Fbadges%2Fcoverage.json)](docs/testing.md#compiler-coverage)
+[![Native runtime coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fden-run-ai%2Fpystachy%2Fbadges%2Fruntime-coverage.json)](docs/testing.md#native-runtime-coverage)
 
 Pystachy compiles a statically typed subset of Python to native code, retaining Python
 readability and reusing existing CPython library code. It targets CPU-intensive workloads
