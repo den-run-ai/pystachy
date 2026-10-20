@@ -1,0 +1,112 @@
+a01_record_display                 cpy_rc=0 jit=PASS aot=PASS
+a02_result_record_any              cpy_rc=0 jit=PASS aot=PASS
+a03_result_record_object           cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a03_result_record_object.py:3: error: unsupported type annotation
+    aot: rc=1 probes/idioms/a03_result_record_object.py:3: error: unsupported type annotation
+a04_json_dumps_mixed               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a04_json_dumps_mixed.py:7: error: expected bool | dict[str,JSONValue] | float | int | list[JSONValue] | str | None, got dict[Any,Any]
+    aot: rc=1 probes/idioms/a04_json_dumps_mixed.py:7: error: expected bool | dict[str,JSONValue] | float | int | list[JSONValue] | str | None, got dict[Any,Any]
+a05_json_loads_any                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a05_json_loads_any.py:6: error: a dict[str,JSONValue] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)
+    aot: rc=1 probes/idioms/a05_json_loads_any.py:6: error: a dict[str,JSONValue] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)
+a06_json_loads_plain               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a06_json_loads_plain.py:6: error: 'bool | dict[str,JSONValue] | float | int | list[JSONValue] | str' object is not subscriptable
+    aot: rc=1 probes/idioms/a06_json_loads_plain.py:6: error: 'bool | dict[str,JSONValue] | float | int | list[JSONValue] | str' object is not subscriptable
+a07_sort_records                   cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a07_sort_records.py:11: error: unsupported call sum(list[dyn])
+    aot: rc=1 probes/idioms/a07_sort_records.py:11: error: unsupported call sum(list[dyn])
+a08_handler_registry               cpy_rc=0 jit=PASS aot=PASS
+a09_handler_lambdas                cpy_rc=0 jit=PASS aot=PASS
+a10_visitor                        cpy_rc=0 jit=PASS aot=PASS
+a11_sentinel                       cpy_rc=0 jit=PASS aot=PASS
+a12_parse_tokens                   cpy_rc=0 jit=PASS aot=PASS
+a13_tiny_interp                    cpy_rc=0 jit=PASS aot=PASS
+a14_mixed_tuples_repr              cpy_rc=0 jit=PASS aot=PASS
+a15_isinstance_tuple               cpy_rc=0 jit=PASS aot=PASS
+a16_type_is                        cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a16_type_is.py:7: error: type(x).__name__ of Any is not supported (#486: user classes and the builtin types int, float, bool, str, bytes, list, dict, tuple, set and frozenset)
+    aot: rc=1 probes/idioms/a16_type_is.py:7: error: type(x).__name__ of Any is not supported (#486: user classes and the builtin types int, float, bool, str, bytes, list, dict, tuple, set and frozenset)
+a17_dict_methods                   cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a17_dict_methods.py:8: error: dict.update() of a dict[Any,Any] takes a dict of its type, a list[tuple[Any,Any]] or keyword arguments, not Any
+    aot: rc=1 probes/idioms/a17_dict_methods.py:8: error: dict.update() of a dict[Any,Any] takes a dict of its type, a list[tuple[Any,Any]] or keyword arguments, not Any
+a18_list_methods                   cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a18_list_methods.py:13: error: 'dyn' cannot be sliced
+    aot: rc=1 probes/idioms/a18_list_methods.py:13: error: 'dyn' cannot be sliced
+a19_counter_defaultdict            cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a19_counter_defaultdict.py:7: error: Counter() cannot bind its type variables from the argument for 'iterable', a Generator[Any]: it has no supported iterable item type (specializing collections.Counter(Generator[Any]) for the call at probes/idioms/a19_counter_defaultdict.py:7)
+    aot: rc=1 probes/idioms/a19_counter_defaultdict.py:7: error: Counter() cannot bind its type variables from the argument for 'iterable', a Generator[Any]: it has no supported iterable item type (specializing collections.Counter(Generator[Any]) for the call at probes/idioms/a19_counter_defaultdict.py:7)
+a20_dataclass_any_field            cpy_rc=0 jit=PASS aot=PASS
+a21_recursion_tree                 cpy_rc=0 jit=PASS aot=PASS
+a22_flatten                        cpy_rc=0 jit=PASS aot=PASS
+a23_deep_merge                     cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/a23_deep_merge.py:13: error: a dict[str,Any] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)
+    aot: rc=1 probes/idioms/a23_deep_merge.py:13: error: a dict[str,Any] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a dict[Any, Any] from the start, or copy it)
+a24_get_in_reduce                  cpy_rc=0 jit=PASS aot=PASS
+a25_kwargs_any                     cpy_rc=0 jit=PASS aot=PASS
+a26_exception_payload              cpy_rc=0 jit=PASS aot=PASS
+a27_generator_any                  cpy_rc=0 jit=PASS aot=PASS
+a28_str_format_any                 cpy_rc=0 jit=PASS aot=PASS
+a29_csv_rows                       cpy_rc=0 jit=PASS aot=PASS
+a30_any_numeric_mix                cpy_rc=0 jit=PASS aot=PASS
+b01_json_to_any                    cpy_rc=0 jit=PASS aot=PASS
+b02_dumps_any_handwritten          cpy_rc=0 jit=PASS aot=PASS
+b03_enc_unannotated                cpy_rc=0 jit=PASS aot=PASS
+b04_lib_boundaries                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 ./lib/textwrap.py:175: error: unsupported call ord(dyn) (compiling textwrap.TextWrapper._munge_whitespace(dyn) for the call at ./lib/textwrap.py:364; compiling textwrap.TextWrapper._split_chunks(dyn) for the call at ./lib/textwrap.py:378; compiling textwrap.TextWrapper.wrap(dyn) for the call at ./lib/textwrap.py:406; compiling textwrap.wrap(dyn, int, kw[]) for the call at probes/idioms/b04_lib_boundaries.py:17)
+    aot: rc=1 ./lib/textwrap.py:175: error: unsupported call ord(dyn) (compiling textwrap.TextWrapper._munge_whitespace(dyn) for the call at ./lib/textwrap.py:364; compiling textwrap.TextWrapper._split_chunks(dyn) for the call at ./lib/textwrap.py:378; compiling textwrap.TextWrapper.wrap(dyn) for the call at ./lib/textwrap.py:406; compiling textwrap.wrap(dyn, int, kw[]) for the call at probes/idioms/b04_lib_boundaries.py:17)
+b05_heapq_alone                    cpy_rc=0 jit=PASS aot=PASS
+b06_re_any                         cpy_rc=0 jit=PASS aot=PASS
+b07_template_any                   cpy_rc=0 jit=PASS aot=PASS
+b08_format_map                     cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b08_format_map.py:7: error: % formatting with a mapping (%(name)s) is not supported
+    aot: rc=1 probes/idioms/b08_format_map.py:7: error: % formatting with a mapping (%(name)s) is not supported
+b08b_format_kwargs                 cpy_rc=0 jit=PASS aot=PASS
+b09_json_logic                     cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b09_json_logic.py:78: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+    aot: rc=1 probes/idioms/b09_json_logic.py:78: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+b09b_json_logic_nonempty           cpy_rc=0 jit=PASS aot=PASS
+b10_query_eval                     cpy_rc=0 jit=PASS aot=PASS
+b11_class_registry                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b11_class_registry.py:16: error: class 'A' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)
+    aot: rc=1 probes/idioms/b11_class_registry.py:16: error: class 'A' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)
+b12_getattr_dispatch               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b12_getattr_dispatch.py:8: error: getattr() of a name only the run time knows is supported where its text is used (print(), str(), repr(), an f-string field without a format spec): elsewhere its value would need a type of its own (#487, #489); use a str literal or a constant set of names (#486)
+    aot: rc=1 probes/idioms/b12_getattr_dispatch.py:8: error: getattr() of a name only the run time knows is supported where its text is used (print(), str(), repr(), an f-string field without a format spec): elsewhere its value would need a type of its own (#487, #489); use a str literal or a constant set of names (#486)
+b13_method_keyword                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b13_method_keyword.py:12: error: a method call of an Any value takes positional arguments only (o.show(...))
+    aot: rc=1 probes/idioms/b13_method_keyword.py:12: error: a method call of an Any value takes positional arguments only (o.show(...))
+b14_set_any                        cpy_rc=0 jit=PASS aot=PASS
+b15_lru_cache_any                  cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 ./lib/functools.py:328: error: class functools._lru_cache_wrapper is not supported: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not tuple[Any] (specializing functools._lru_cache_wrapper(<function describe (probes/idioms/b15_lru_cache_any.py:8)>, int, bool) for the call at ./lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:describe@8], int, bool) for the call at ./lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:describe@8]) for the call at probes/idioms/b15_lru_cache_any.py:7)
+    aot: rc=1 ./lib/functools.py:328: error: class functools._lru_cache_wrapper is not supported: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not tuple[Any] (specializing functools._lru_cache_wrapper(<function describe (probes/idioms/b15_lru_cache_any.py:8)>, int, bool) for the call at ./lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:describe@8], int, bool) for the call at ./lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:describe@8]) for the call at probes/idioms/b15_lru_cache_any.py:7)
+b16_sorted_mixed_keys              cpy_rc=0 jit=PASS aot=PASS
+b17_zip_enumerate                  cpy_rc=0 jit=PASS aot=PASS
+b18_any_slicing                    cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b18_any_slicing.py:7: error: 'dyn' cannot be sliced
+    aot: rc=1 probes/idioms/b18_any_slicing.py:7: error: 'dyn' cannot be sliced
+b19_sum_generator                  cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b19_sum_generator.py:6: error: unsupported call sum(list[dyn])
+    aot: rc=1 probes/idioms/b19_sum_generator.py:6: error: unsupported call sum(list[dyn])
+b20_object_annotation              cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b20_object_annotation.py:3: error: unsupported type annotation
+    aot: rc=1 probes/idioms/b20_object_annotation.py:3: error: unsupported type annotation
+b21_empty_in_display               cpy_rc=0 jit=PASS aot=PASS
+b22_textwrap_narrowed              cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 ./lib/textwrap.py:175: error: unsupported call ord(dyn) (compiling textwrap.TextWrapper._munge_whitespace(dyn) for the call at ./lib/textwrap.py:364; compiling textwrap.TextWrapper._split_chunks(dyn) for the call at ./lib/textwrap.py:378; compiling textwrap.TextWrapper.wrap(dyn) for the call at ./lib/textwrap.py:406; compiling textwrap.wrap(dyn, int, kw[]) for the call at probes/idioms/b22_textwrap_narrowed.py:8)
+    aot: rc=1 ./lib/textwrap.py:175: error: unsupported call ord(dyn) (compiling textwrap.TextWrapper._munge_whitespace(dyn) for the call at ./lib/textwrap.py:364; compiling textwrap.TextWrapper._split_chunks(dyn) for the call at ./lib/textwrap.py:378; compiling textwrap.TextWrapper.wrap(dyn) for the call at ./lib/textwrap.py:406; compiling textwrap.wrap(dyn, int, kw[]) for the call at probes/idioms/b22_textwrap_narrowed.py:8)
+b23_statistics_any                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 ./lib/statistics.py:622: error: unsupported call math.fsum(list[dyn]) (compiling statistics.fmean(list[dyn], None) for the call at probes/idioms/b23_statistics_any.py:7)
+    aot: rc=1 ./lib/statistics.py:622: error: unsupported call math.fsum(list[dyn]) (compiling statistics.fmean(list[dyn], None) for the call at probes/idioms/b23_statistics_any.py:7)
+b24_empty_nested                   cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b24_empty_nested.py:5: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+    aot: rc=1 probes/idioms/b24_empty_nested.py:5: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+b25_empty_nested_top               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/b25_empty_nested_top.py:3: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+    aot: rc=1 probes/idioms/b25_empty_nested_top.py:3: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+b26_textwrap_local                 cpy_rc=0 jit=PASS aot=PASS
+c01_vartuple_concat                cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/c01_vartuple_concat.py:9: error: unsupported operand type(s) for +: 'tuple' and 'tuple'
+    aot: rc=1 probes/idioms/c01_vartuple_concat.py:9: error: unsupported operand type(s) for +: 'tuple' and 'tuple'
+c02_vartuple_concat_dyn            cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms/c02_vartuple_concat_dyn.py:10: error: unsupported operand type(s) for +: 'tuple' and 'tuple'
+    aot: rc=1 probes/idioms/c02_vartuple_concat_dyn.py:10: error: unsupported operand type(s) for +: 'tuple' and 'tuple'

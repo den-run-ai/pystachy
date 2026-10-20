@@ -1,0 +1,45 @@
+### tomli_w
+p_tomli_w_nopragma                 cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/pkgs/tomli_w-1.2.0-py3-none-any/tomli_w/_writer.py:21: error: types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)
+p_tomli_w                          cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/dynpkgs/tomli_w/tomli_w/_writer.py:22: error: types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)
+### jmespath
+p_jmespath_nopragma                cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/importlib/_bootstrap_external.py:29: error: module '_warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _warnings.py on the module path
+p_jmespath                         cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/importlib/_bootstrap_external.py:29: error: module '_warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _warnings.py on the module path
+### jsonpointer
+p_jsonpointer_nopragma             cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at upstream/cpython-lib/copyreg.py:31)
+p_jsonpointer                      cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at upstream/cpython-lib/copyreg.py:31)
+### json_logic
+p_json_logic_nopragma              cpy_rc=1 jit=PASS
+    cpython: TypeError: 'dict_keys' object is not subscriptable
+p_json_logic                       cpy_rc=1 jit=PASS
+    cpython: TypeError: 'dict_keys' object is not subscriptable
+### toolz
+p_toolz_nopragma                   cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/importlib/_bootstrap_external.py:29: error: module '_warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _warnings.py on the module path
+p_toolz                            cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/importlib/_bootstrap_external.py:29: error: module '_warnings' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no _warnings.py on the module path
+### dictdiffer
+p_dictdiffer_nopragma              cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at upstream/cpython-lib/copyreg.py:31)
+p_dictdiffer                       cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at upstream/cpython-lib/copyreg.py:31)
+### flatten_json
+p_flatten_json_nopragma            cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/pkgs/flatten_json-0.1.14-py3-none-any/flatten_json/__init__.py:10: error: module 'six' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no six.py on the module path
+p_flatten_json                     cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/dynpkgs/flatten_json/flatten_json/__init__.py:11: error: module 'six' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, dataclasses, __future__, builtins, time, errno, select) and there is no six.py on the module path
+### mergedeep
+p_mergedeep_nopragma               cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at upstream/cpython-lib/copyreg.py:31)
+p_mergedeep                        cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/cpython-lib/copyreg.py:15: error: dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <built-in function complex> (compiling copyreg.pickle(fn[b:complex], fn[f:copyreg.pickle_complex], fn[b:complex]) for the call at upstream/cpython-lib/copyreg.py:31)
+### tabulate
+p_tabulate_nopragma                cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/pkgs/tabulate-0.9.0-py3-none-any/tabulate/__init__.py:312: error: class tabulate.TableFormat is not supported: field 'linebetweenrows' of namedtuple TableFormat given None is not supported (the call that makes an object types its fields) (specializing tabulate.TableFormat(Line[str, str, str, str], Line[str, str, str, str], None, Line[str, str, str, str], DataRow[str, str, str], DataRow[str, str, str], int, list[str]) for the call at upstream/pkgs/tabulate-0.9.0-py3-none-any/tabulate/__init__.py:312)
+p_tabulate                         cpy_rc=0 jit=FAIL
+    jit: rc=1 upstream/dynpkgs/tabulate/tabulate/__init__.py:313: error: class tabulate.TableFormat is not supported: field 'linebetweenrows' of namedtuple TableFormat given None is not supported (the call that makes an object types its fields) (specializing tabulate.TableFormat(Line[str, str, str, str], Line[str, str, str, str], None, Line[str, str, str, str], DataRow[str, str, str], DataRow[str, str, str], int, list[str]) for the call at upstream/dynpkgs/tabulate/tabulate/__init__.py:313)

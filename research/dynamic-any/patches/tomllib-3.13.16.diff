@@ -1,0 +1,348 @@
+diff -ruN a/tomllib/__init__.py b/tomllib/__init__.py
+--- a/tomllib/__init__.py
++++ b/tomllib/__init__.py
+@@ -1,3 +1,4 @@
++# pystachy: dynamic-any
+ # SPDX-License-Identifier: MIT
+ # SPDX-FileCopyrightText: 2021 Taneli Hukkinen
+ # Licensed to PSF under a Contributor Agreement.
+@@ -7,4 +8,4 @@
+ from ._parser import TOMLDecodeError, load, loads
+
+ # Pretend this exception was created here.
+-TOMLDecodeError.__module__ = __name__
++# EDIT 2: no class attribute assignment: TOMLDecodeError.__module__ = __name__
+diff -ruN a/tomllib/_parser.py b/tomllib/_parser.py
+--- a/tomllib/_parser.py
++++ b/tomllib/_parser.py
+@@ -1,3 +1,4 @@
++# pystachy: dynamic-any
+ # SPDX-License-Identifier: MIT
+ # SPDX-FileCopyrightText: 2021 Taneli Hukkinen
+ # Licensed to PSF under a Contributor Agreement.
+@@ -7,8 +8,8 @@
+ from collections.abc import Iterable
+ import string
+ import sys
+-from types import MappingProxyType
+-from typing import Any, BinaryIO, NamedTuple, Final
++# EDIT 1: no types.MappingProxyType
++from typing import Any, BinaryIO, Callable, NamedTuple, Final  # EDIT 5: Callable
+
+ from ._re import (
+     RE_DATETIME,
+@@ -45,7 +46,7 @@
+ KEY_INITIAL_CHARS = BARE_KEY_CHARS | frozenset("\"'")
+ HEXDIGIT_CHARS = frozenset(string.hexdigits)
+
+-BASIC_STR_ESCAPE_REPLACEMENTS = MappingProxyType(
++BASIC_STR_ESCAPE_REPLACEMENTS = (  # EDIT 1
+     {
+         "\\b": "\u0008",  # backspace
+         "\\t": "\u0009",  # tab
+@@ -62,7 +63,7 @@
+     """An error raised if a document is not valid TOML."""
+
+
+-def load(fp: BinaryIO, /, *, parse_float: ParseFloat = float) -> dict[str, Any]:
++def load(fp: BinaryIO, /, *, parse_float: ParseFloat = float) -> dict[Any, Any]:
+     """Parse TOML from a binary file object."""
+     b = fp.read()
+     try:
+@@ -74,7 +75,7 @@
+     return loads(s, parse_float=parse_float)
+
+
+-def loads(s: str, /, *, parse_float: ParseFloat = float) -> dict[str, Any]:  # noqa: C901
++def loads(s: str, /, *, parse_float: ParseFloat = float) -> dict[Any, Any]:  # noqa: C901
+     """Parse TOML from a string."""
+
+     # The spec allows converting "\r\n" to "\n", even in string
+@@ -140,6 +141,23 @@
+     return out.data.dict
+
+
++
++def _cat(a: Key, b: Key) -> Key:  # EDIT 4: runtime-length tuple concatenation
++    out = list(a)
++    for x in b:
++        out.append(x)
++    return tuple(out)
++
++
++
++def _flag_entry() -> Any:  # EDIT 13: dicts stand in for the sets of flags
++    flags: dict[Any, Any] = {}
++    rflags: dict[Any, Any] = {}
++    nested: dict[Any, Any] = {}
++    out: dict[Any, Any] = {"flags": flags, "recursive_flags": rflags, "nested": nested}
++    return out
++
++
+ class Flags:
+     """Flags that map to parsed keys/namespaces."""
+
+@@ -150,11 +168,11 @@
+     EXPLICIT_NEST = 1
+
+     def __init__(self) -> None:
+-        self._flags: dict[str, dict[Any, Any]] = {}
+-        self._pending_flags: set[tuple[Key, int]] = set()
++        self._flags: dict[Any, Any] = {}  # EDIT 12: typed containers do not widen to Any
++        self._pending_flags: list[tuple[Key, int]] = []  # EDIT 3: a list, not a set of nested tuples
+
+     def add_pending(self, key: Key, flag: int) -> None:
+-        self._pending_flags.add((key, flag))
++        self._pending_flags.append((key, flag))  # EDIT 3
+
+     def finalize_pending(self) -> None:
+         for key, flag in self._pending_flags:
+@@ -174,11 +192,11 @@
+         key_parent, key_stem = key[:-1], key[-1]
+         for k in key_parent:
+             if k not in cont:
+-                cont[k] = {"flags": set(), "recursive_flags": set(), "nested": {}}
++                cont[k] = _flag_entry()  # EDIT 13: sets cannot be Any values
+             cont = cont[k]["nested"]
+         if key_stem not in cont:
+-            cont[key_stem] = {"flags": set(), "recursive_flags": set(), "nested": {}}
+-        cont[key_stem]["recursive_flags" if recursive else "flags"].add(flag)
++            cont[key_stem] = _flag_entry()  # EDIT 13: sets cannot be Any values
++        cont[key_stem]["recursive_flags" if recursive else "flags"][flag] = True  # EDIT 13
+
+     def is_(self, key: Key, flag: int) -> bool:
+         if not key:
+@@ -198,21 +216,32 @@
+         return False
+
+
++
++def _new_table() -> Any:  # EDIT 14
++    d: dict[Any, Any] = {}
++    return d
++
++
++def _new_aot() -> Any:  # EDIT 14
++    xs: list[Any] = [_new_table()]
++    return xs
++
++
+ class NestedDict:
+     def __init__(self) -> None:
+         # The parsed content of the TOML document
+-        self.dict: dict[str, Any] = {}
++        self.dict: dict[Any, Any] = {}
+
+     def get_or_create_nest(
+         self,
+         key: Key,
+         *,
+         access_lists: bool = True,
+-    ) -> dict[str, Any]:
++    ) -> dict[Any, Any]:
+         cont: Any = self.dict
+         for k in key:
+             if k not in cont:
+-                cont[k] = {}
++                cont[k] = _new_table()  # EDIT 14: an empty display into Any storage
+             cont = cont[k]
+             if access_lists and isinstance(cont, list):
+                 cont = cont[-1]
+@@ -227,9 +256,9 @@
+             list_ = cont[last_key]
+             if not isinstance(list_, list):
+                 raise KeyError("An object other than list found behind this key")
+-            list_.append({})
++            list_.append(_new_table())  # EDIT 14
+         else:
+-            cont[last_key] = [{}]
++            cont[last_key] = _new_aot()  # EDIT 14
+
+
+ class Output(NamedTuple):
+@@ -333,9 +362,9 @@
+ ) -> Pos:
+     pos, key, value = parse_key_value_pair(src, pos, parse_float)
+     key_parent, key_stem = key[:-1], key[-1]
+-    abs_key_parent = header + key_parent
++    abs_key_parent = _cat(header, key_parent)  # EDIT 4
+
+-    relative_path_cont_keys = (header + key[:i] for i in range(1, len(key)))
++    relative_path_cont_keys = (_cat(header, key[:i]) for i in range(1, len(key)))  # EDIT 4
+     for cont_key in relative_path_cont_keys:
+         # Check that dotted key syntax does not redefine an existing table
+         if out.flags.is_(cont_key, Flags.EXPLICIT_NEST):
+@@ -357,7 +386,7 @@
+         raise suffixed_err(src, pos, "Cannot overwrite a value")
+     # Mark inline table and array namespaces recursively immutable
+     if isinstance(value, (dict, list)):
+-        out.flags.set(header + key, Flags.FROZEN, recursive=True)
++        out.flags.set(_cat(header, key), Flags.FROZEN, recursive=True)  # EDIT 4
+     nest[key_stem] = value
+     return pos
+
+@@ -392,7 +421,7 @@
+         pos += 1
+         pos = skip_chars(src, pos, TOML_WS)
+         pos, key_part = parse_key_part(src, pos)
+-        key += (key_part,)
++        key = _cat(key, (key_part,))  # EDIT 4
+         if len(key) > MAX_KEY_PARTS:
+             raise RecursionError(
+                 f"TOML key has more than the allowed {MAX_KEY_PARTS} parts"
+@@ -445,7 +474,7 @@
+             return pos + 1, array
+
+
+-def parse_inline_table(src: str, pos: Pos, parse_float: ParseFloat) -> tuple[Pos, dict[str, Any]]:
++def parse_inline_table(src: str, pos: Pos, parse_float: ParseFloat) -> tuple[Pos, dict[Any, Any]]:
+     pos += 1
+     nested_dict = NestedDict()
+     flags = Flags()
+@@ -562,6 +591,7 @@
+
+
+ def parse_basic_str(src: str, pos: Pos, *, multiline: bool) -> tuple[Pos, str]:
++    parse_escapes: Callable[[str, Pos], tuple[Pos, str]]  # EDIT 5: two different functions in one local (#8)
+     if multiline:
+         error_on = ILLEGAL_MULTILINE_BASIC_STR_CHARS
+         parse_escapes = parse_basic_str_escape_multiline
+@@ -593,6 +623,16 @@
+         pos += 1
+
+
++def _box(p: Pos, v: Any) -> tuple[Pos, Any]:  # EDIT 6: tuple[Pos, X] to tuple[Pos, Any]
++    return p, v
++
++
++def _box_t(t):  # EDIT 6
++    p, v = t
++    return _box(p, v)
++
++
++
+ def parse_value(  # noqa: C901
+     src: str, pos: Pos, parse_float: ParseFloat
+ ) -> tuple[Pos, Any]:
+@@ -606,30 +646,30 @@
+     # Basic strings
+     if char == '"':
+         if src.startswith('"""', pos):
+-            return parse_multiline_str(src, pos, literal=False)
+-        return parse_one_line_basic_str(src, pos)
++            return _box_t(parse_multiline_str(src, pos, literal=False))  # EDIT 6
++        return _box_t(parse_one_line_basic_str(src, pos))  # EDIT 6
+
+     # Literal strings
+     if char == "'":
+         if src.startswith("'''", pos):
+-            return parse_multiline_str(src, pos, literal=True)
+-        return parse_literal_str(src, pos)
++            return _box_t(parse_multiline_str(src, pos, literal=True))  # EDIT 6
++        return _box_t(parse_literal_str(src, pos))  # EDIT 6
+
+     # Booleans
+     if char == "t":
+         if src.startswith("true", pos):
+-            return pos + 4, True
++            return _box(pos + 4, True)  # EDIT 6
+     if char == "f":
+         if src.startswith("false", pos):
+-            return pos + 5, False
++            return _box(pos + 5, False)  # EDIT 6
+
+     # Arrays
+     if char == "[":
+-        return parse_array(src, pos, parse_float)
++        return _box_t(parse_array(src, pos, parse_float))  # EDIT 6
+
+     # Inline tables
+     if char == "{":
+-        return parse_inline_table(src, pos, parse_float)
++        return _box_t(parse_inline_table(src, pos, parse_float))  # EDIT 6
+
+     # Dates and times
+     datetime_match = RE_DATETIME.match(src, pos)
+@@ -638,25 +678,25 @@
+             datetime_obj = match_to_datetime(datetime_match)
+         except ValueError as e:
+             raise suffixed_err(src, pos, "Invalid date or datetime") from e
+-        return datetime_match.end(), datetime_obj
++        return _box(datetime_match.end(), datetime_obj)  # EDIT 6
+     localtime_match = RE_LOCALTIME.match(src, pos)
+     if localtime_match:
+-        return localtime_match.end(), match_to_localtime(localtime_match)
++        return _box(localtime_match.end(), match_to_localtime(localtime_match))  # EDIT 6
+
+     # Integers and "normal" floats.
+     # The regex will greedily match any type starting with a decimal
+     # char, so needs to be located after handling of dates and times.
+     number_match = RE_NUMBER.match(src, pos)
+     if number_match:
+-        return number_match.end(), match_to_number(number_match, parse_float)
++        return _box(number_match.end(), match_to_number(number_match, parse_float))  # EDIT 6
+
+     # Special floats
+     first_three = src[pos : pos + 3]
+     if first_three in {"inf", "nan"}:
+-        return pos + 3, parse_float(first_three)
++        return _box(pos + 3, parse_float(first_three))  # EDIT 6
+     first_four = src[pos : pos + 4]
+     if first_four in {"-inf", "+inf", "-nan", "+nan"}:
+-        return pos + 4, parse_float(first_four)
++        return _box(pos + 4, parse_float(first_four))  # EDIT 6
+
+     raise suffixed_err(src, pos, "Invalid value")
+
+diff -ruN a/tomllib/_re.py b/tomllib/_re.py
+--- a/tomllib/_re.py
++++ b/tomllib/_re.py
+@@ -1,3 +1,4 @@
++# pystachy: dynamic-any
+ # SPDX-License-Identifier: MIT
+ # SPDX-FileCopyrightText: 2021 Taneli Hukkinen
+ # Licensed to PSF under a Contributor Agreement.
+@@ -49,7 +50,7 @@
+ )
+
+
+-def match_to_datetime(match: re.Match[str]) -> datetime | date:
++def match_to_datetime(match) -> Any:  # EDIT 9: datetime | date overlaps
+     """Convert a `RE_DATETIME` match to `datetime.datetime` or `datetime.date`.
+
+     Raises ValueError if the match does not correspond to a valid date
+@@ -75,7 +76,7 @@
+     micros = int(micros_str.ljust(6, "0")) if micros_str else 0
+     if offset_sign_str:
+         tz: tzinfo | None = cached_tz(
+-            offset_hour_str, offset_minute_str, offset_sign_str
++            str(offset_hour_str), str(offset_minute_str), offset_sign_str  # EDIT 10: Optional groups
+         )
+     elif zulu_time:
+         tz = timezone.utc
+@@ -95,13 +96,13 @@
+     )
+
+
+-def match_to_localtime(match: re.Match[str]) -> time:
++def match_to_localtime(match) -> time:
+     hour_str, minute_str, sec_str, micros_str = match.groups()
+     micros = int(micros_str.ljust(6, "0")) if micros_str else 0
+     return time(int(hour_str), int(minute_str), int(sec_str), micros)
+
+
+-def match_to_number(match: re.Match[str], parse_float: ParseFloat) -> Any:
++def match_to_number(match, parse_float: ParseFloat) -> Any:
+     if match.group("floatpart"):
+-        return parse_float(match.group())
+-    return int(match.group(), 0)
++        return parse_float(str(match.group()))  # EDIT 11: group() is str | None
++    return int(str(match.group()), 0)  # EDIT 11
+diff -ruN a/tomllib/_types.py b/tomllib/_types.py
+--- a/tomllib/_types.py
++++ b/tomllib/_types.py
+@@ -1,3 +1,4 @@
++# pystachy: dynamic-any
+ # SPDX-License-Identifier: MIT
+ # SPDX-FileCopyrightText: 2021 Taneli Hukkinen
+ # Licensed to PSF under a Contributor Agreement.

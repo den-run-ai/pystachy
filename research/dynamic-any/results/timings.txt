@@ -1,0 +1,37 @@
+Timings at main ad19255e, AOT/JIT built by that compiler, CPython 3.13.16, 4-vCPU shared container,
+each process pinned to CPU 1 (taskset -c 1), nothing else running. Raw outputs, as printed.
+
+## tomllib.loads() of records.toml (525,959 bytes, 3,000 records; sha256 d9be31c9...)
+python3.13 bench/controller.py 7 "records.toml 5" "aot=./bench_tomllib_aot" "cpython=python3.13 -I bench_tomllib.py"
+aot        median of 7 process medians:     95.5 ms  (min 80.3, max 124.7)  checksum: 3000 134478253 117338.542 89 4500 606
+cpython    median of 7 process medians:    187.5 ms  (min 175.7, max 226.5)  checksum: 3000 134478253 117338.542 89 4500 606
+first single runs, 3 loads each: aot median 88.2 ms (min 79.9); cpython median 187.0 ms (min 181.7)
+peak RSS (getrusage of the child, 1 load): aot 40 MiB, wall 113 ms; cpython 16 MiB, wall 222 ms
+JIT (pystachy run, 5 loads): median 119.8 ms min 96.7 ms; end to end 3,006 ms
+AOT binary: 547,336 bytes
+
+## pipeline.py big.jsonl (100,000 events, 15,201,956 bytes; sha256 e3188960...)
+first single run, 3 rounds: aot decode 464.6 ms, process 266.9 ms; cpython decode 696.9 ms, process 114.4 ms
+python3.13 pipeline/controller2.py 7 "big.jsonl 3" "aot=./pipeline_aot" "cpython=python3.13 -I pipeline.py"
+aot      decode   379.0 ms (min 338.2)   process   165.1 ms (min 130.2, max 191.1)
+cpython  decode   592.5 ms (min 545.0)   process   101.2 ms (min 92.9, max 124.0)
+python3.13 pipeline/controller2.py 7 "big.jsonl 3" "aot=./pipeline_aot" "aot_exp=./pipeline_aot_exp" "cpython=python3.13 -I pipeline.py"
+aot      decode   365.0 ms (min 313.9)   process   164.1 ms (min 138.3, max 179.1)
+aot_exp  decode   320.7 ms (min 290.4)   process   152.4 ms (min 130.9, max 194.7)
+cpython  decode   598.9 ms (min 558.5)   process   106.2 ms (min 94.5, max 113.3)
+(aot_exp: built with PYSTACHY_HOME holding runtime.c + patches/runtime-anykey-str-fastpath.diff)
+end to end, 1 round, three sequential trios: jit 1079 / 945 / 1112 ms; aot 641 / 726 / 727 ms; cpython 889 / 802 / 766 ms
+AOT build of pipeline.py: 2,843 ms; binary 253,464 bytes
+
+## callgrind, pipeline_proc.py mid.jsonl (the first 10,000 events), rounds 1 and 6
+per processing round (difference / 5 / 10,000): 7,870 instructions per event; with the fast path 6,607
+with the fast path, by function group:
+dict lookup/insert (Any keys)       2482 instr/event   37.8%
+hashing                             1152 instr/event   17.5%
+allocation + GC                     1552 instr/event   23.6%
+str split/slice                      443 instr/event    6.7%
+boxing/dispatch                      549 instr/event    8.4%
+other                                396 instr/event    6.0%
+without the fast path, top functions: dfindc 12.5%, memset 7.1%, eqv 7.1%, scan 6.8%, dkeyeq 6.3%,
+hitem 5.4%, pys_dyn_hash 4.9%, dfind 4.8%, pys_dyn_eq 4.4%, hval 4.3%, pys_dict_getitem 3.9%,
+gc_slow 3.9%, pys_str_split 3.8%, memcmp 3.1%
