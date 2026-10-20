@@ -1,0 +1,15 @@
+sys.exit: SystemExit() ''
+SystemExit: SystemExit(None) 'None'
+sys.exit((code,)): SystemExit(None) 'None'
+made: SystemExit(None) 'None'
+raised: SystemExit(None)
+sys.exit: SystemExit(3) '3'
+SystemExit: SystemExit(3) '3'
+sys.exit((code,)): SystemExit(3) '3'
+made: SystemExit(3) '3'
+raised: SystemExit(3)
+sys.exit(()): SystemExit() ''
+sys.exit((1, 'x')): SystemExit(1, 'x') "(1, 'x')"
+SystemExit((1, 'x')): SystemExit((1, 'x')) "(1, 'x')"
+exiting
+[exit 4]
