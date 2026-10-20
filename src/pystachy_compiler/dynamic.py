@@ -174,11 +174,12 @@ def gen_dyn_xhelper(self, c: str) -> None:
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
-    # method annotated with a type that b's value does not have (dyn_isa) cannot run with it: 3,
-    # and the comparison is identity's, or TypeError for an ordering, without b's reflected method,
-    # as a method that returns no NotImplemented (#499) decides in CPython. A NamedTuple without
-    # the method (!= also where it defines __eq__: tuple's __ne__) compares its fields with a
-    # tuple, as tuple's methods do, which decline any other value
+    # method annotated with a type that b's value does not have (dyn_isa), or that no Any value has
+    # (list[int]), cannot run with it: 3, and the comparison is identity's, or TypeError for an
+    # ordering, without b's reflected method, as a method that returns no NotImplemented (#499)
+    # decides in CPython. A NamedTuple without the method (!= also where it defines __eq__:
+    # tuple's __ne__) compares its fields with a tuple, as tuple's methods do, which decline any
+    # other value
     line = self.line
     op = self.read(mk("name", "op", line, []))
     a = self.read(mk("name", "a", line, []))
@@ -198,6 +199,10 @@ def gen_dyn_xbody(self, c: str) -> None:
         self.place(hit)
         ps = self.classes[c].methods[m].ptypes if self.dyn_xmethod(c, m) else []
         takes = self.dyn_isa(b, ps[1]) if len(ps) == 2 else ""
+        if takes == "false":
+            self.ret_(Val("3", "int"))
+            self.place(nxt)
+            continue
         if takes != "":
             run = self.label()
             decline = self.label()
@@ -399,12 +404,28 @@ def gen_dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
     self.guard(self.scalar("xor", [Val(self.dyn_test(v, ts), "bool"), Val("true", "bool")]), f"TypeError: expected {shown}")
 
 
+def gen_dyn_unboxable(self, t: str) -> bool:
+    # can an Any value have static type t: does dyn_unbox compile for it (not for a list[int],
+    # whose items an Any list does not type, nor for a function)
+    if t == DYN or t == "None" or t in BUILTIN:
+        return True
+    if is_opt(t) and t != NONEVAR:
+        return self.dyn_unboxable(unopt(t))
+    if t in self.classes:
+        return t not in self.tmpl and self.classes[t].exc == ""
+    if is_union(unopt(t)):
+        return True
+    return is_tuple(t) and len([x for x in targs(t) if not self.dyn_unboxable(x)]) == 0
+
+
 def gen_dyn_isa(self, v: Val, t: str) -> str:
-    # i1: does dyn_unbox take box v as a value of static type t without TypeError, or "" where it
-    # takes any value (t is dyn, or a template's "") or decides at compile time (dyn_xbody: a
-    # comparison method annotated t does not run with another value)
+    # i1: does dyn_unbox take box v as a value of static type t without an error: "" where it
+    # takes any value (t is dyn, or a template's ""), "false" where no Any value has t
+    # (dyn_unboxable: dyn_xbody's comparison method annotated t never runs)
     if t == "" or t == DYN:
         return ""
+    if not self.dyn_unboxable(t):
+        return "false"
     if t == "None":
         return self.dyn_test(v, ["None"])
     if is_opt(t) and t != NONEVAR:
@@ -419,9 +440,29 @@ def gen_dyn_isa(self, v: Val, t: str) -> str:
         return self.num_cmp("!=", Val(r, "int"), Val("0", "int")).v
     if is_union(unopt(t)):
         return self.dyn_test(v, umembers(unopt(t)) + (["None"] if is_opt(t) or self.optional(unopt(t)) == unopt(t) else []))
-    if is_tuple(t):
-        return self.dyn_test(v, ["vtuple[dyn]"])
-    return ""
+    # a tuple of t's length whose items each have t's item type (dyn_unbox checks them in turn)
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    tup = self.label()
+    self.incoming(ph, "false", self.cur)
+    self.cbr(self.dyn_test(v, ["vtuple[dyn]"]), tup, end)
+    self.place(tup)
+    tv = self.dyn_payload(v, "vtuple[dyn]")
+    sized = self.label()
+    self.incoming(ph, "false", self.cur)
+    self.cbr(self.num_cmp("==", Val(self.mload("int", tv.v), "int"), Val(str(len(targs(t))), "int")).v, sized, end)
+    self.place(sized)
+    for j in range(len(targs(t))):
+        r = self.dyn_isa(self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {tv.v}", f"i64 {j}"]), DYN), targs(t)[j])
+        if r != "":
+            nx = self.label()
+            self.incoming(ph, "false", self.cur)
+            self.cbr(r, nx, end)
+            self.place(nx)
+    self.incoming(ph, "true", self.cur)
+    self.br(end)
+    self.place(end)
+    return self.phi(ph)
 
 
 def gen_dyn_select(self, v: Val, ts: list[str], t: str) -> Val:
