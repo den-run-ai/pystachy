@@ -20,6 +20,7 @@ from src.pystachy_compiler.specs import (
     is_excname,
     ITERS,
     MODATTRS,
+    OBJECTS,
     PURE,
     PYBUILTINS,
     RAISERS,
@@ -722,9 +723,9 @@ def gen_abc_class(self, c: str) -> bool:
 
 def gen_program(self, mods: list[Mod]) -> str:
     self.opts = optimizations()
-    # (lib's module of range objects binds no global of another module: the names it binds do not
-    # keep a global of the program from being constant)
-    own = [m for m in mods if m.name != RANGES]
+    # (lib's modules of range objects and of object()'s bind no global of another module: the
+    # names they bind do not keep a global of the program from being constant)
+    own = [m for m in mods if m.name != RANGES and m.name != OBJECTS]
     if "moduleints" in self.opts:
         self.intglobals = module_ints(own, self.intat)
     self.strglobals = module_strs(own, self.strtuples)
@@ -1021,9 +1022,9 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.err(f"cannot infer the initial optional type of '{short(name)}'; annotate its later assignment")
                 self.declare(name, t)
     for i in range(len(mods)):
-        if mods[i].name != ITERS and mods[i].name != RANGES:
-            # (lib's modules of iter()'s classes and of range's run no code: nothing imports them,
-            # see Loader.program)
+        if mods[i].name != ITERS and mods[i].name != RANGES and mods[i].name != OBJECTS:
+            # (lib's modules of iter()'s classes, of range's and of object's run no code: nothing
+            # imports them, see Loader.program)
             self.function(self.inits[mods[i].name], tops[i])
         self.inited[mods[i].name] = True
     self.modlevel = False

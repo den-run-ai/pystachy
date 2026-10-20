@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, RANGEC, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CTYPES, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -388,6 +388,8 @@ def gen_lower_module(self) -> str:
             continue  # (a class template's objects are its specializations')
         if ci.name == RANGEC and not self.rangeused:
             continue  # (lib's class of range objects, which a program that may make one loads: of no code here)
+        if ci.name == OBJECTC and not self.objectused:
+            continue  # (and of object()'s objects)
         hdr.append(f"%C.{ci.name} = type {{{', '.join(struct_types(ci))}}}")
     for g in self.globs:
         hdr.append(f"{g.v} = internal global {lt(g.t)} zeroinitializer")
