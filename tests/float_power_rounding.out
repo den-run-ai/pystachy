@@ -1,0 +1,19 @@
+square 9.304674641850267e-11 9.304674641850267e-11 9.304674641850267e-11
+reciprocal 4.958564606712046 4.958564606712046 4.958564606712046
+base two 7.993223866522653e-05 7.993223866522653e-05 7.993223866522653e-05
+-0.0 0.0 0.0
+ZeroDivisionError: 0.0 cannot be raised to a negative power
+ValueError: math domain error
+0.0 0.0 0.0
+ZeroDivisionError: 0.0 cannot be raised to a negative power
+ValueError: math domain error
+-inf inf inf
+operator reciprocal -0.0
+math reciprocal -0.0
+inf inf inf
+operator reciprocal 0.0
+math reciprocal 0.0
+nan nan nan
+operator reciprocal nan
+math reciprocal nan
+[exit 0]

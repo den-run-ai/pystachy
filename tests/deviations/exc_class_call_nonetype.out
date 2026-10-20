@@ -1,0 +1,3 @@
+TypeError: a call of class object NoneType is not supported (CPython's returns None)
+E()
+[exit 0]

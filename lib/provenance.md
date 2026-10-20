@@ -38,6 +38,8 @@ observable contract.
 | `random` | `Lib/random.py` | `fb2625eb54412c880e8f1af449785a74e125556159fc7997814e51dd054cc5da` |
 | `datetime` | `Lib/_pydatetime.py` | `9a6652ecbdc8bcb9774136febc36b13f99aa926c7b42c19ac77e6c84128560a4` |
 | `codecs` | `Lib/codecs.py` | `2f278497548b8313580b247a1097a0a304e5087a355ebb11a92ec685fa9e63ff` |
+| `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
+| `opcode` | `Lib/opcode.py` | `aaf8e6e0291b6ff439c27ad1657d5b1d2fc738f961bee3fa4863a51e494dc843` |
 
 `heapq` adapts its top-k routines while retaining the other upstream code.
 `datetime` is `_pydatetime`, which CPython's `Lib/datetime.py` re-exports when its C
@@ -214,6 +216,27 @@ code point, in both versions; `lookup()` of every name, in upper and lower case,
 sequence and derived name, and of 4,000 malformed ones; `normalize()` and `is_normalized()` of
 50,000 random strings in the four forms of both versions; and the functions' signatures and
 docstrings: 3,515,917 checks.
+
+`tools/opcode_tables.py` reads CPython 3.13.16's `Include/opcode_ids.h` (SHA-256
+`e30e7b48f764be2bf4530a931ea5a120d4d91d1427a31c5979206a98fa672ca1`) and
+`Include/internal/pycore_opcode_metadata.h`
+(`d2c33fe54ba2416e5badcfc95a940dd1be0be09e27f21756f7009ba630776cce`), which CPython's
+`Tools/cases_generator` makes from `Python/bytecodes.c`, and writes `lib/_pystachy_opcode_db.py`
+once `lib/_pystachy_opcode.py` on those tables gives what CPython's `_opcode` gives: every predicate of
+every opcode, and `stack_effect()` of every real opcode for each `jump`, over 4,000 opargs at the edges
+of a C int and between them (2,708,100 checks). `tools/opcode_check.py` runs `lib/_pystachy_opcode.py`
+on CPython and compares it with the C module (`Modules/_opcode.c`, SHA-256
+`eeb27e6027d9afd5d66aad063f2e080bdbf9fc09187a66385fcbd4d1b1bf1c6f`, whose `stack_effect()` and
+predicates are those of `Python/compile.c`, SHA-256
+`1ac4e5a70e82d97a56cbb6d6b9ae1e40102f9c9b4f0f0615b4ec5823f8b98ea0`, and whose intrinsics' names are
+`Python/intrinsics.c`'s, SHA-256 `f99dd40886e0abec7f3fb8caa151933959a65cca1ba1ff0249d179abff6886b4`):
+the predicates of every number from -1,100 to 1,100 and at the edges of a C int, `stack_effect()` of
+every opcode below 600 for each `jump` over opargs at the edges of a C int and a C long, 200,000 random
+calls, the lists of operators and intrinsics, `get_executor()` of objects that are not code objects,
+and the functions' signatures, docstrings and names: 1,431,973 checks.
+`tests/upstream_opcode.py` adapts every test of `Lib/test/test__opcode.py` (SHA-256
+`26d8f889040bbd9416970111df4e784a7f1047901428f9e1758bfa6b96c23a60`); its header lists the
+adaptations and the excluded checks.
 
 Regex validation also includes `tests/upstream_re_*.py`, deterministic
 `tools/re_fuzz.py` comparisons against CPython, and `tools/re_probe.py` checks of

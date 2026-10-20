@@ -335,6 +335,8 @@ def gen_generic_ann(self, c: str, a: Node) -> str:
     # variables are bound to X and Y, which the call c[X, Y](...), or c(...) where its context
     # expects that type, makes objects of; or "!" and why not. Its fields are typed by
     # __init__'s annotations (see named_params)
+    if c in self.unsupported:
+        return "!" + self.unsupported[c]  # (an imported module's class that cannot be declared)
     tvs = self.tparams[c]
     xs = a.kids if a.kind == "tuple" else [a]
     if c in self.tmpl and "__init__" not in self.classes[c].methods:

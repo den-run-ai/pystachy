@@ -312,7 +312,9 @@ Effects describe observable behavior for optimization, not an ownership or alias
 `U?` applies only when a static descriptor can contain user classes or custom exceptions;
 a dict or set operation carries its keys' descriptor in `Ins.x` for this, where an object
 hashed by its class (`H<id>`) runs `__hash__` and `__eq__`, and one hashed by identity
-(`P<id>`) runs only the `__repr__` of a `KeyError`.
+(`P<id>`) runs only the `__repr__` of a `KeyError`. `R?` is `R` only when the descriptor
+holds a recursive alias's edge (`R<n>:`): the runtime's descriptor walks count those edges
+and raise `RecursionError` past 512 of them, and no other descriptor nests without bound.
 Allocation-triggered collection can close unreachable files; that unspecified cleanup timing
 is represented by `A`, rather than adding file or I/O effects to every allocation.
 
@@ -327,8 +329,8 @@ Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type varia
 
 ## Optimizations
 
-`OPTS` lists the available switches. Only `listget` and `dictfuse` are whole-function IR
-passes; the others select frontend or lowering choices.
+`OPTS` lists the available switches. Only `listget`, `dictfuse` and `unionslots` are
+whole-function IR passes; the others select frontend or lowering choices.
 
 | Option | Implemented behavior |
 |---|---|
@@ -337,9 +339,29 @@ passes; the others select frontend or lowering choices.
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
 | `moduleints` | Use stable module-level integer literals directly while preserving required initialization checks |
+| `fieldtbaa` | Give every load and store of an object field a struct-path TBAA tag, so that LLVM knows that two fields at different offsets of one class, or fields of classes neither of which lays out the other, are never the same memory; it keeps such fields in registers across each other's stores ([#701](https://github.com/den-run-ai/pystachy/issues/701)) |
+| `tupleret` | Return a function's new fixed tuple as an LLVM aggregate of its slots to the calls that only read the slots (`a, b = f()`, `f()[0]`, a loop over `f()`), so that neither makes the tuple ([#703](https://github.com/den-run-ai/pystachy/issues/703)) |
+| `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+`tupleret` applies to a function whose every `return` returns a tuple display that the return's
+own block makes (`alloc.fixed`) and that nothing but that block's `tuple.store`s reaches: a new
+tuple, which CPython makes too and no code could hold. A call of it whose result only
+`tuple.load`s read takes the slots from the function's by-value body, `@v.<symbol>`, which
+returns `{i64, ...}`; the function's own symbol becomes a wrapper that makes the tuple from them,
+for every other call and use. A function that returns another tuple on some path (`return t`),
+a generator, and a function no such call reaches are lowered as before, which keeps the identity
+of a tuple a function returns again. `tests/tuple_return_values.py` checks behavior, and
+`tests/ir/tuple_return.calls` pins which calls allocate.
+A field's TBAA tag names the class whose struct lays the field out. A derived class's struct
+begins with its base's, flags included, so an inherited field has its base's tag whichever class
+a reference names, and two references to one object agree (the rule of `Gen.disjoint`). The
+tags hang from a root of their own, so LLVM never sets them apart from the accesses of
+`runtime.c` (clang's root) or of `runtime.py` (its own): only the program's field accesses are
+told apart from each other. Tuple slots, union payloads, container slots and runtime calls carry
+no tag. `tests/field_alias.py` checks the orders that a wrong tag would change, and
+`tests/ir/field_tbaa.tbaa` pins the tags (`tools/check_ir.sh`).
 Dictionary fusion is deliberately bounded; it does not promise to combine every equivalent
 lookup. Calls that may mutate containers, joins and exception handlers limit reuse.
 Unpacking a list (`a, b = xs`, `a, *b, c = xs`) reads its items with `list.load` whatever
@@ -375,7 +397,8 @@ see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
 
 ## Validation
 
-- `make check-ir` verifies generated IR and checks IR probes, including calls and effect summaries.
+- `make check-ir` verifies generated IR and checks IR probes, including calls, function attributes
+  and effect summaries.
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.

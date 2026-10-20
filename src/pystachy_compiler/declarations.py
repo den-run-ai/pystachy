@@ -2110,6 +2110,12 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return f"fn[f:{e.s}]" if e.s in self.funcs else f"fn[b:{e.s}]"
+    if k == "name" and ((e.s in self.classes and self.classes[e.s].exc != "") or (is_excname(e.s) and e.s not in self.funcs and e.s not in self.classes and e.s not in self.mvars)):
+        # an exception class: its class object (unless a local of the method has its name)
+        asg = {}
+        local_names(guess_scope(f), asg)
+        if e.s not in asg:
+            return "exctype"
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
     if p in MODFUNCS:
         # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the
@@ -2164,9 +2170,11 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         return "str"  # (a str path is its own file system path, and its own posixpath normcase())
     if k == "call" and e.kids[0].kind == "name":
         c = e.kids[0].s
-        if c == "__pys_weakref_new" and f.mod == "_weakref" and len(e.kids) == 2:
+        if c == "__pys_weakref_new" and f.mod == "_weakref" and (len(e.kids) == 2 or len(e.kids) == 3):
             t = self.guess(e.kids[1], f)
             return "weakhandle[" + t + "]" if t != "" and not t.startswith("!") else t
+        if c == "__pys_weakref_fired" and f.mod == "_weakref" and len(e.kids) == 1:
+            return "opt[callable[None]]"
         if c in self.tmpl:
             # a class template's object: of the specialization its arguments' types pick, once
             # code is being compiled (a specialization compiles its special methods)

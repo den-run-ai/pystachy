@@ -246,7 +246,7 @@ def builtin_has(mod: str, x: str) -> bool:
     if mod == "dataclasses":
         return x == "dataclass"
     if mod == "ffi":
-        return x in ("extern", "export", "string_at", "c_buf", "c_float", "track", "untrack", "collected") or x in CTYPES
+        return x in ("extern", "export", "string_at", "at", "c_buf", "c_float", "track", "untrack", "collected") or x in CTYPES
     return mod == "builtins" or known_path(mod + "." + x)  # (a builtin is checked where it is called)
 
 
@@ -541,6 +541,25 @@ def collect(body: list[Node], out: dict[str, bool]) -> None:
                 if kid.s != "":
                     out[kid.s] = True
                 collect(kid.kids[1].kids, out)
+
+def bind_line(body: list[Node], nm: str) -> int:
+    # the line of the first statement in body that assigns nm, as collect finds them, or -1
+    for st in body:
+        one: dict[str, bool] = {}
+        targets(st, one)
+        if nm in one:
+            return st.line
+        if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
+            continue
+        for kid in st.kids:
+            ln = -1
+            if kid.kind == "block":
+                ln = bind_line(kid.kids, nm)
+            elif kid.kind == "except":
+                ln = kid.line if kid.s == nm else bind_line(kid.kids[1].kids, nm)
+            if ln >= 0:
+                return ln
+    return -1
 
 def mark(names: list[str], sure: dict[str, bool], maybe: dict[str, bool], added: list[str]) -> None:
     # names are bound: added gets those that were not surely bound
@@ -1293,6 +1312,76 @@ def stack_kept(n: Node, names: list[str]) -> bool:
     return False
 
 
+def key_reads(n: Node, names: dict[str, bool], builtins: dict[str, bool], key: str) -> bool:
+    # whether code n uses what a name of names holds, a tuple, only to read it: its items (x[i],
+    # for v in x, f(*x), a, b = x), its length or its type (len(x), isinstance(x, C), of builtins:
+    # those that the code and its module do not bind); and to assign it to another name of names
+    # (y = x: stack_aliases). Such code cannot keep the tuple, nor return it (Gen.stack_key); a
+    # def, lambda or generator expression that names it, which could, stack_kept rejects. key is
+    # the parameter that holds the tuple where no statement assigns it ("" if one does)
+    k = n.kind
+    if k == "name":
+        return n.s not in names
+    if k == "if" and n.kids[0].kind == "call" and len(n.kids[0].kids) == 3 and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == "isinstance" and "isinstance" in builtins:
+        x = n.kids[0].kids[1]
+        c = n.kids[0].kids[2]
+        if x.kind == "name" and x.s == key and c.kind == "name" and c.s in builtins and (c.s == "int" or c.s == "float" or c.s == "str" or c.s == "bool"):
+            # (if isinstance(key, int): its block runs where key is no tuple, as a template's other
+            # specializations take it, and its else block where key is one. Not an alias's: the
+            # local may hold another value there)
+            return key_reads(n.kids[2], names, builtins, key)
+    if k == "call" and len(n.kids) >= 2 and n.kids[0].kind == "name" and n.kids[0].s in builtins and n.kids[1].kind == "name" and n.kids[1].s in names:
+        if n.kids[0].s == "len" and len(n.kids) == 2:
+            return True
+        if n.kids[0].s == "isinstance" and len(n.kids) == 3:
+            return key_reads(n.kids[2], names, builtins, key)
+    if (k == "index" or k == "starred") and n.kids[0].kind == "name" and n.kids[0].s in names:
+        return len([x for x in n.kids[1:] if not key_reads(x, names, builtins, key)]) == 0
+    if k == "for":
+        return key_target(n.kids[0], names, builtins, key) and (n.kids[1].kind == "name" and n.kids[1].s in names or key_reads(n.kids[1], names, builtins, key)) and len([x for x in n.kids[2:] if not key_reads(x, names, builtins, key)]) == 0
+    if k == "assign":
+        ts = n.kids[:-1]
+        v = n.kids[-1]
+        if v.kind == "name" and v.s in names:
+            # (y = x, y one of names, or a, b = x)
+            return len([t for t in ts if not (t.kind == "name" and t.s in names) and not ((t.kind == "tuple" or t.kind == "list") and key_target(t, names, builtins, key))]) == 0
+        return len([t for t in ts if not key_target(t, names, builtins, key)]) == 0 and key_reads(v, names, builtins, key)
+    if k == "augassign" or k == "annassign" or k == "del":
+        for i in range(len(n.kids)):
+            if i == 0 or k == "del":
+                if n.kids[i].kind == "name" and n.kids[i].s in names or not key_target(n.kids[i], names, builtins, key):
+                    return False  # (x += t reads x first)
+            elif not key_reads(n.kids[i], names, builtins, key):
+                return False
+        return True
+    for c in n.kids:
+        if not key_reads(c, names, builtins, key):
+            return False
+    return True
+
+
+def key_target(t: Node, names: dict[str, bool], builtins: dict[str, bool], key: str) -> bool:
+    # key_reads of an assignment's target: a name is assigned, not read; the object and the key
+    # of an attribute or item assigned are read (d[x] = v keeps x)
+    if t.kind == "name":
+        return True
+    if t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
+        return len([c for c in t.kids if not key_target(c, names, builtins, key)]) == 0
+    return key_reads(t, names, builtins, key)
+
+
+def comp_vars(n: Node, out: dict[str, bool]) -> None:
+    # the names that the comprehensions in code n bind, their own variables (comp_names), which a
+    # function's locals (local_names) leave out
+    if n.kind == "listcomp" or n.kind == "asynccomp":
+        names: list[str] = []
+        comp_names(n, names)
+        for nm in names:
+            out[nm] = True
+    for c in n.kids:
+        comp_vars(c, out)
+
+
 def chk_names(n: Node, out: dict[str, bool]) -> None:
     # the names of the reads in code n (not in the defs and lambdas in it) that Flow marked
     # (Node.chk): they may find their variable unassigned
@@ -1318,11 +1407,11 @@ def local_names(body: list[Node], out: dict[str, bool]) -> None:
             out[nm] = True
 
 
-def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dict[str, bool]) -> None:
+def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dict[str, bool], closed: dict[str, bool]) -> None:
     # the names that code n of a function reads where no import in it has surely bound them yet
     # (sure: those an import before n has bound, to which n adds those it surely binds: in both
-    # branches of an if, in a with block, not in a loop), and those its imports of Python modules
-    # bind (user)
+    # branches of an if, in a with block, not in a loop), those that the defs and generator
+    # expressions in it read there (closed), and those its imports of Python modules bind (user)
     if n.kind == "global":
         return  # (it names them, but reads none)
     if n.kind == "name" and n.s not in sure:
@@ -1335,16 +1424,45 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
         closure_free(n, free)
         for nm in free:
             if nm not in sure:
+                closed[nm] = True
+        for p in n.kids[0].kids:
+            import_reads(p.kids[1], sure, out, user, closed)  # (its defaults run where it is)
+        for d in n.kids[3:]:
+            # (and its decorators: a dotted name, or a call of one)
+            root = d.s[: d.s.find(".")] if "." in d.s else d.s
+            if d.s != "async" and root not in sure:
+                out[root] = True
+            import_reads(d, sure, out, user, closed)
+    if n.kind == "lambda":
+        # A lambda reads the names around it where it runs, checking the binding flags of the
+        # imports that bind them (Gen.lambda_flags): one that no import has surely bound where it
+        # is defined is the function's early read (as is one its defaults read)
+        for p in n.kids[0].kids:
+            import_reads(p.kids[1], sure, out, user, closed)
+        lfree: dict[str, bool] = {}
+        closure_free(lambda_def(n), lfree)
+        for nm in lfree:
+            if nm not in sure:
                 out[nm] = True
+        return
+    if n.kind == "listcomp" and n.s == "gen":
+        # A generator expression checks no binding flag where it runs: what it reads where an
+        # import may not have run yet is rejected, as for a def
+        gnames: dict[str, bool] = {}
+        read_names(n, gnames)
+        for nm in gnames:
+            if nm not in sure:
+                closed[nm] = True
+        return
     for a in n.kids if n.kind == "import" else n.kids[:0]:
         sure[a.s] = True
         if n.s.startswith("from.") or not (builtin_import(n, a) or a.kids[1].s == "typing_extensions"):
             user[a.s] = True
     if n.kind == "if":
-        import_reads(n.kids[0], sure, out, user)
+        import_reads(n.kids[0], sure, out, user, closed)
         then = dict(sure)
-        import_reads(n.kids[1], then, out, user)
-        import_reads(n.kids[2], sure, out, user)
+        import_reads(n.kids[1], then, out, user, closed)
+        import_reads(n.kids[2], sure, out, user, closed)
         gone: list[str] = []
         for nm in sure:
             if nm not in then:
@@ -1356,7 +1474,7 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
                 sure[nm] = True
         return
     for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else n.kids[:0]:
-        import_reads(k, dict(sure) if k.kind == "block" and n.kind != "with" else sure, out, user)
+        import_reads(k, dict(sure) if k.kind == "block" and n.kind != "with" else sure, out, user, closed)
     first = n.kids[0].kids[0] if n.kind == "try" and len(n.kids[0].kids) > 0 else n
     for a in first.kids if first.kind == "import" else first.kids[:0]:
         # try: import m as x / ... (or from m import x): after the statement, x is bound unless the
@@ -1413,6 +1531,25 @@ def global_assigns(body: list[Node], out: dict[str, bool], imports: bool = False
     for d in inner:
         if d.kind == "def":
             global_assigns(d.kids[2].kids, out, imports)
+
+
+def global_line(body: list[Node], nm: str) -> int:
+    # the line of the first statement that assigns nm as a global in a function's body, or else in
+    # a def inside it that declares nm global itself (each a scope of its own, as global_assigns
+    # finds them), or -1
+    decl: dict[str, bool] = {}
+    globals_in(body, decl)
+    ln = bind_line(body, nm) if nm in decl else -1
+    if ln >= 0:
+        return ln
+    inner: list[Node] = []
+    for st in body:
+        nested_defs(st, inner)
+    for d in inner:
+        ln = global_line(d.kids[2].kids, nm) if d.kind == "def" else -1
+        if ln >= 0:
+            return ln
+    return -1
 
 
 def fn_globals(n: Node, out: dict[str, bool]) -> None:

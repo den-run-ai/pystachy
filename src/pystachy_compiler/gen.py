@@ -181,6 +181,8 @@ from src.pystachy_compiler.calls import (
     gen_callable_pat as calls_callable_pat,
     gen_close_temp as calls_close_temp,
     gen_dispatches as calls_dispatches,
+    gen_ffi_at as calls_ffi_at,
+    gen_at_arg as calls_at_arg,
     gen_fname as calls_fname,
     gen_kw_dict as calls_kw_dict,
     gen_kw_list as calls_kw_list,
@@ -409,13 +411,33 @@ from src.pystachy_compiler.exceptions import (
     gen_catch_set as exceptions_catch_set,
     gen_catches as exceptions_catches,
     gen_cause as exceptions_cause,
+    gen_cause_value as exceptions_cause_value,
     gen_class_defaults as exceptions_class_defaults,
     gen_clause_or as exceptions_clause_or,
     gen_exc_args as exceptions_exc_args,
     gen_exc_brepr as exceptions_exc_brepr,
     gen_exc_class as exceptions_exc_class,
     gen_exc_classes as exceptions_exc_classes,
+    gen_exc_any as exceptions_exc_any,
+    gen_exc_each as exceptions_exc_each,
+    gen_exc_none_class as exceptions_exc_none_class,
+    gen_exc_call as exceptions_exc_call,
+    gen_exc_class_value as exceptions_exc_class_value,
+    gen_exc_ctor_arity as exceptions_exc_ctor_arity,
+    gen_exc_ctor_classes as exceptions_exc_ctor_classes,
+    gen_exc_ctor_takes as exceptions_exc_ctor_takes,
+    gen_exc_ctors as exceptions_exc_ctors,
+    gen_exc_dynamic as exceptions_exc_dynamic,
+    gen_exc_flat as exceptions_exc_flat,
+    gen_exc_held as exceptions_exc_held,
+    gen_exc_holds as exceptions_exc_holds,
     gen_exc_helpers as exceptions_exc_helpers,
+    gen_exc_make as exceptions_exc_make,
+    gen_exc_sub as exceptions_exc_sub,
+    gen_exc_tables as exceptions_exc_tables,
+    gen_exc_test as exceptions_exc_test,
+    gen_exc_tree as exceptions_exc_tree,
+    gen_exc_type_of as exceptions_exc_type_of,
     gen_exc_isinst as exceptions_exc_isinst,
     gen_exc_keep as exceptions_exc_keep,
     gen_exc_kw as exceptions_exc_kw,
@@ -423,6 +445,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_object as exceptions_exc_object,
     gen_exc_of as exceptions_exc_of,
     gen_exc_vals as exceptions_exc_vals,
+    gen_exc_str_args as exceptions_exc_str_args,
     gen_exc_value as exceptions_exc_value,
     gen_exc_value_of as exceptions_exc_value_of,
     gen_exit_ as exceptions_exit_,
@@ -501,6 +524,7 @@ from src.pystachy_compiler.expressions import (
     gen_isnull as expressions_isnull,
     gen_iter_ret as expressions_iter_ret,
     gen_keep_stack as expressions_keep_stack,
+    gen_key_read as expressions_key_read,
     gen_knownobj as expressions_knownobj,
     gen_list_read as expressions_list_read,
     gen_bytes_read as expressions_bytes_read,
@@ -534,6 +558,7 @@ from src.pystachy_compiler.expressions import (
     gen_slice_bound as expressions_slice_bound,
     gen_slice_step as expressions_slice_step,
     gen_slice_tuple as expressions_slice_tuple,
+    gen_stack_key as expressions_stack_key,
     gen_stack_ok as expressions_stack_ok,
     gen_stack_target as expressions_stack_target,
     gen_stack_tuple as expressions_stack_tuple,
@@ -656,9 +681,11 @@ from src.pystachy_compiler.ircheck import (
 )
 from src.pystachy_compiler.lowering import (
     gen_eh_ir as lowering_eh_ir,
+    gen_field_tag as lowering_field_tag,
     gen_invoke as lowering_invoke,
     gen_lower as lowering_lower,
     gen_lower_ins as lowering_lower_ins,
+    gen_tuple_rets as lowering_tuple_rets,
 )
 from src.pystachy_compiler.lower_module import (
     gen_cextern as lower_module_cextern,
@@ -667,6 +694,7 @@ from src.pystachy_compiler.lower_module import (
     gen_gen_module as lower_module_gen_module,
     gen_lower_module as lower_module_lower_module,
     gen_pyext as lower_module_pyext,
+    gen_tbaa_nodes as lower_module_tbaa_nodes,
 )
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.optimizations import (
@@ -679,6 +707,13 @@ from src.pystachy_compiler.optimizations import (
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
     gen_same as optimizations_same,
+    gen_tag_read as optimizations_tag_read,
+    gen_ufresh as optimizations_ufresh,
+    gen_uleaves as optimizations_uleaves,
+    gen_unionslots as optimizations_unionslots,
+    gen_upaid as optimizations_upaid,
+    gen_uparts as optimizations_uparts,
+    gen_usplits as optimizations_usplits,
 )
 from src.pystachy_compiler.program import (
     gen_body_effect as program_body_effect,
@@ -932,6 +967,11 @@ class Gen:
         # type than the name has outside): [name, its type outside ("": a global), register, flag]
         self.shadows: list[list[str]] = []
         self.xcls: dict[str, bool] = {}  # exception classes whose objects are made: they get an ExcClass
+        self.xvals: dict[str, bool] = {}  # exception classes of the program used as values: calls of class objects make them (exc_ctors)
+        self.xsigs: dict[str, int] = {}  # each argument type of calls of class objects ("": none): its table's number
+        self.xctors: dict[str, bool] = {}  # the functions exc_ctors compiled ("<table>.<class>"): does the class's __init__ take it
+        self.xtypes: dict[str, bool] = {}  # the static types of exceptions whose type() became a class object ("exc": any)
+        self.exctree = ""  # the str constant of the exception classes with their bases (exc_tree), once made
         self.eh = False  # the program has try or with (closed world): exceptions are on (pys_eh_on)
         self.opts: dict[str, bool] = {}  # the optimizations on (optimizations()), once program() starts
         self.lcs: list[str] = []
@@ -1069,6 +1109,22 @@ class Gen:
         self.mcall: Node | None = None  # the call o.m(...) whose method Gen.method is compiling (close())
         self.coros = False  # a generator function was lowered: the module declares LLVM's coroutine intrinsics
         self.lowblk = ""  # the label of the block being lowered (gen.start's phi names it)
+        # fieldtbaa: the field addresses of the function being lowered, each with the TBAA access
+        # tag of its loads and stores, and the program's tags, by "<class> <index>" of the class
+        # that lays the field out: their numbers, from TBAA_FIELDS (Gen.field_tag); and the classes
+        # whose structs the tags can describe (each member of a known size)
+        self.ftags: dict[str, str] = {}
+        self.tbaa: dict[str, int] = {}
+        self.tbaacls: dict[str, bool] = {}
+        # tupleret (Gen.tuple_rets): the functions lowered to return their tuple's slots by value,
+        # by symbol, with how many slots, and the calls that take them so, by "<caller's symbol>
+        # %tN"; while a function is lowered, the tuples it returns so, the slots its tuple.stores
+        # give them (by "%tN k") and the results of its calls that take slots (their LLVM type)
+        self.vrets: dict[str, int] = {}
+        self.vcalls: dict[str, bool] = {}
+        self.vtuples: dict[str, bool] = {}
+        self.vslots: dict[str, str] = {}
+        self.vaggs: dict[str, str] = {}
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
         self.brks: list[list[dict[str, str]]] = []  # for each loop being compiled, what narrowed holds at its breaks
@@ -2187,8 +2243,8 @@ class Gen:
     def externtype(self, a: Node, t: str, what: str, f: FnInfo) -> str:
         return functions_externtype(self, a, t, what, f)
 
-    def cextern(self, f: FnInfo) -> None:
-        return lower_module_cextern(self, f)
+    def cextern(self, f: FnInfo, at: bool = False) -> None:
+        return lower_module_cextern(self, f, at)
 
     def pyext(self) -> list[str]:
         return lower_module_pyext(self)
@@ -2210,6 +2266,15 @@ class Gen:
 
     def lower_ins(self, fn: IFn, i: Ins) -> None:
         return lowering_lower_ins(self, fn, i)
+
+    def field_tag(self, c: str, k: int) -> str:
+        return lowering_field_tag(self, c, k)
+
+    def tbaa_nodes(self) -> list[str]:
+        return lower_module_tbaa_nodes(self)
+
+    def tuple_rets(self) -> None:
+        return lowering_tuple_rets(self)
 
     def invoke(self, c: str, i: Ins) -> str:
         return lowering_invoke(self, c, i)
@@ -2243,6 +2308,27 @@ class Gen:
 
     def dictfuse(self, fn: IFn) -> int:
         return optimizations_dictfuse(self, fn)
+
+    def unionslots(self, fn: IFn) -> int:
+        return optimizations_unionslots(self, fn)
+
+    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_usplits(self, fn, defs, v, seen)
+
+    def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
+        return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
+
+    def uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
+        return optimizations_uleaves(self, fn, uses, i, split)
+
+    def ufresh(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_ufresh(self, fn, defs, uses, v, seen)
+
+    def upaid(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], addr: str, split: dict[str, Ins]) -> bool:
+        return optimizations_upaid(self, fn, defs, uses, addr, split)
+
+    def tag_read(self, i: Ins) -> bool:
+        return optimizations_tag_read(self, i)
 
     def canon(self, vs: Values, v: str) -> str:
         return optimizations_canon(self, vs, v)
@@ -2529,11 +2615,14 @@ class Gen:
     def exc_class(self, e: Node) -> str:
         return exceptions_exc_class(self, e)
 
-    def cause(self, c: Node) -> Val:
-        return exceptions_cause(self, c)
+    def cause_value(self, c: Node) -> Val:
+        return exceptions_cause_value(self, c)
 
-    def exc_value_of(self, e: Node, k: str) -> Val:
-        return exceptions_exc_value_of(self, e, k)
+    def cause(self, c: Node, v: Val) -> Val:
+        return exceptions_cause(self, c, v)
+
+    def exc_value_of(self, e: Node, k: str, make: bool = True) -> Val:
+        return exceptions_exc_value_of(self, e, k, make)
 
     def raise_stmt(self, n: Node) -> None:
         return exceptions_raise_stmt(self, n)
@@ -2546,6 +2635,9 @@ class Gen:
 
     def exc_value(self, name: str, vals: list[Val]) -> Val:
         return exceptions_exc_value(self, name, vals)
+
+    def exc_str_args(self, msg: str) -> str:
+        return exceptions_exc_str_args(self, msg)
 
     def exit_(self, vals: list[Val], sysx: bool) -> None:
         return exceptions_exit_(self, vals, sysx)
@@ -2576,6 +2668,63 @@ class Gen:
 
     def exc_helpers(self, c: str) -> None:
         return exceptions_exc_helpers(self, c)
+
+    def exc_class_value(self, c: str) -> Val:
+        return exceptions_exc_class_value(self, c)
+
+    def exc_tree(self) -> str:
+        return exceptions_exc_tree(self)
+
+    def exc_type_of(self, v: Val) -> Val:
+        return exceptions_exc_type_of(self, v)
+
+    def exc_sub(self, a: Val, b: Val) -> Val:
+        return exceptions_exc_sub(self, a, b)
+
+    def exc_dynamic(self, t: Node) -> bool:
+        return exceptions_exc_dynamic(self, t)
+
+    def exc_test(self, v: Val, t: Node, what: str) -> Val:
+        return exceptions_exc_test(self, v, t, what)
+
+    def exc_flat(self, t: str, what: str) -> None:
+        return exceptions_exc_flat(self, t, what)
+
+    def exc_held(self, t: Node) -> bool:
+        return exceptions_exc_held(self, t)
+
+    def exc_holds(self, t: str) -> bool:
+        return exceptions_exc_holds(self, t)
+
+    def exc_any(self, v: Val, bs: list[Val], what: str) -> Val:
+        return exceptions_exc_any(self, v, bs, what)
+
+    def exc_each(self, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> Val:
+        return exceptions_exc_each(self, v, bs, what, done, ph)
+
+    def exc_none_class(self) -> Val:
+        return exceptions_exc_none_class(self)
+
+    def exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
+        return exceptions_exc_call(self, c, args, how)
+
+    def exc_make(self, c: Val, vals: list[Val], how: int = 0) -> Val:
+        return exceptions_exc_make(self, c, vals, how)
+
+    def exc_ctors(self) -> int:
+        return exceptions_exc_ctors(self)
+
+    def exc_ctor_arity(self, c: str, n: int) -> str:
+        return exceptions_exc_ctor_arity(self, c, n)
+
+    def exc_ctor_takes(self, t: str, p: str) -> bool:
+        return exceptions_exc_ctor_takes(self, t, p)
+
+    def exc_ctor_classes(self) -> list[str]:
+        return exceptions_exc_ctor_classes(self)
+
+    def exc_tables(self) -> None:
+        return exceptions_exc_tables(self)
 
     def throw(self, e: Val) -> None:
         return exceptions_throw(self, e)
@@ -2853,6 +3002,12 @@ class Gen:
     def stack_ok(self, f: FnInfo) -> bool:
         return expressions_stack_ok(self, f)
 
+    def stack_key(self, t: str, ms: list[str]) -> bool:
+        return expressions_stack_key(self, t, ms)
+
+    def key_read(self, f: FnInfo) -> bool:
+        return expressions_key_read(self, f)
+
     def keep_stack(self, n: Node) -> None:
         return expressions_keep_stack(self, n)
 
@@ -3050,6 +3205,12 @@ class Gen:
 
     def open_call(self, n: Node) -> bool:
         return calls_open_call(self, n)
+
+    def ffi_at(self, n: Node) -> bool:
+        return calls_ffi_at(self, n)
+
+    def at_arg(self, n: Node, f: FnInfo, j: int, offs: dict[int, Val]) -> Val:
+        return calls_at_arg(self, n, f, j, offs)
 
     def close_temp(self, n: Node, v: Val) -> None:
         return calls_close_temp(self, n, v)

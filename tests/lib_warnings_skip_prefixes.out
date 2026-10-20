@@ -1,0 +1,7 @@
+top: Found non-str 'int' in skip_file_prefixes.
+call: Found non-str 'int' in skip_file_prefixes.
+ints: Found non-str 'int' in skip_file_prefixes.
+bytes: Found non-str 'bytes' in skip_file_prefixes.
+category: category must be a Warning subclass, not 'int'
+['str prefixes', 'empty']
+[exit 0]

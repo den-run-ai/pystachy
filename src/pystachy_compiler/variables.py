@@ -25,7 +25,7 @@ from src.pystachy_compiler.analysis import (
 from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, where
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import owner, short
-from src.pystachy_compiler.specs import INERT_DECOS, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED
+from src.pystachy_compiler.specs import INERT_DECOS, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
@@ -131,6 +131,8 @@ def gen_load_name(self, name: str) -> Val:
         return self.modattr(self.aliases[name])
     if name in self.funcs:
         return self.fn_value(name)
+    if name in self.classes and self.classes[name].exc != "":
+        return self.exc_class_value(name)  # (an exception class: its class object)
     if name in self.classes:
         self.err(f"class '{name}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)")
     if name in self.fglobals:
@@ -149,6 +151,8 @@ def gen_load_name(self, name: str) -> Val:
         self.err(self.unsupported[name])
     if name in PYBUILTINS and name[0].islower():
         return Val("null", f"fn[b:{name}]")  # (a builtin function, or a class such as int: calling it calls it)
+    if is_excname(name):
+        return self.exc_class_value(name)  # (a builtin exception class: its class object)
     if name in PYBUILTINS:
         self.err(f"the builtin '{name}' cannot be used as a value (not supported)")
     if name == "__doc__":
@@ -581,6 +585,8 @@ def gen_read(self, n: Node) -> Val:
         # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
         # folds the identity operation to a literal for opcode dispatch and other arithmetic.
         return Val(self.scalar('add', [Val(self.intglobals[name], 'int'), Val('0', 'int')]), "int")
+    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and self.classes[name].exc != "":
+        self.class_ready(n)  # (an exception class as a value, where its class statement may not have run yet)
     return self.load_name(name)
 
 def gen_modchk(self, n: Node) -> None:
@@ -1591,8 +1597,13 @@ def gen_assign(self, t: Node, v: Val) -> None:
             o = self.unwrap(o, nosub)
             self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(self.coerce(v, kv[1]))], self.key_fx(kv[0]))
         elif o.t in self.classes:
-            # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated
-            ik = self.expr(t.kids[1], self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment"))
+            # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated (a tuple display k in
+            # the frame where __setitem__ only reads it: stack_key)
+            keyt = self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment")
+            if self.lookup_key(t.kids[1]) and self.stack_key(o.t, ["__setitem__"]):
+                self.stkkey = t.kids[1]
+            ik = self.expr(t.kids[1], keyt)
+            self.stkkey = self.nokey
             self.notnone(o, nosub)
             self.protocol(o, "__setitem__", [ik, v])
         elif is_kw(o.t):
