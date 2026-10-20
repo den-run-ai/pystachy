@@ -100,21 +100,31 @@ def prefix_at(s: str, i: int) -> str:
     return p if p in PREFIXES else ""
 
 
-def big_decimal(digits: str, base: int) -> str:
-    # the decimal digits of the number that digits (of base 16, 8 or 2, without prefix, underscores
-    # or leading zeros) write, which does not fit in 64 bits: a digit at a time, as no int holds it
-    # (quadratic in the length: Parser.pliteral calls it only for a short mapping pattern key)
-    dec = [0]  # (least significant first)
-    for c in digits:
-        carry = int(c, 16)
-        for i in range(len(dec)):
-            v = dec[i] * base + carry
-            dec[i] = v % 10
-            carry = v // 10
-        while carry > 0:
-            dec.append(carry % 10)
-            carry = carry // 10
-    return "".join([str(dec[i]) for i in range(len(dec) - 1, -1, -1)])
+NIBBLES = "0000000100100011010001010110011110001001101010111100110111101111"  # 0 to 15, in four bits each
+
+
+def big_key(big: str) -> str:
+    # the value of an int too big for 64 bits, from its token's big (see Tok), as mapping pattern
+    # keys compare it: its decimal digits, or past 14,285 bits "0x" and its hexadecimal ones (2**14285
+    # has 4,301 digits, and CPython rejects a decimal literal of more than 4,300, so no key written in
+    # decimal equals those). Linear in the length but for the decimal digits, at most 4,301 of them,
+    # which no int holds: 28 bits at a time, in limbs of nine digits (the lowest first)
+    w = 4 if big[0] == "x" else (3 if big[0] == "o" else 1)
+    bits = "".join([NIBBLES[4 * int(c, 16) + 4 - w : 4 * int(c, 16) + 4] for c in big[1:]]).lstrip("0")
+    if len(bits) > 14285:
+        bits = "0" * ((4 - len(bits) % 4) % 4) + bits
+        return "0x" + "".join(["0123456789abcdef"[int(bits[i : i + 4], 2)] for i in range(0, len(bits), 4)])
+    bits = "0" * ((28 - len(bits) % 28) % 28) + bits
+    limbs = [0]
+    for i in range(0, len(bits), 28):
+        carry = int(bits[i : i + 28], 2)
+        for j in range(len(limbs)):
+            v = limbs[j] * 268435456 + carry
+            limbs[j] = v % 1000000000
+            carry = v // 1000000000
+        if carry > 0:
+            limbs.append(carry)
+    return str(limbs[len(limbs) - 1]) + "".join([str(limbs[j] + 1000000000)[1:] for j in range(len(limbs) - 2, -1, -1)])
 
 
 class Tok:

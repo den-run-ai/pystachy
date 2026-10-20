@@ -1,7 +1,7 @@
 """Parser component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import CPYSTACK, MAXNEST, TOODEEP, fail
-from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, big_decimal, debug_text, string_end, utf8
+from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, big_key, debug_text, string_end, utf8
 from src.pystachy_compiler.scope import Symtable
 from src.pystachy_compiler.syntax import (
     AUGOPS,
@@ -565,7 +565,7 @@ class Parser:
     # each key, then its pattern; s **name), "pclass" (kids the class, its positional patterns,
     # then "pkw" ones: s the attribute) and "por" (kids the alternatives). A number literal is a
     # "pnum": s its value's repr(), kids its "num" nodes (see number_repr), the first's s a key that
-    # equal numbers share
+    # equal numbers share ("" for a complex number whose real part no float holds)
     def patterns(self) -> Node:
         # a case's patterns: a pattern, or an open sequence of them (a, *b)
         line = self.line()
@@ -685,11 +685,8 @@ class Parser:
         self.p += 1
         re = mk("num", ("-" if neg else "") + t.text, line, [])
         if t.big != "":
-            # (a literal too big for 64 bits, written in base 16, 8 or 2: keys compare its value's
-            # decimal digits, up to a thousand digits written; a longer one equals no key)
-            d = t.big[1:]
-            base = 16 if t.big[0] == "x" else 8 if t.big[0] == "o" else 2
-            re.s = ("-" if neg else "") + (big_decimal(d, base) if len(d) <= 1000 else f"{t.text}#{self.p}")
+            # (a literal too big for 64 bits, written in base 16, 8 or 2: keys compare its value)
+            re.s = ("-" if neg else "") + big_key(t.big)
         if self.peek() != "+" and self.peek() != "-":
             return mk("pnum", self.number_repr(re, mk("num", "", line, [])), line, [re])
         if t.kind == "complex":
@@ -708,17 +705,22 @@ class Parser:
     def number_repr(self, re: Node, im: Node) -> str:
         # repr() of the number literal re, or of the complex number re + im (re - im): both texts as
         # the lexer gives them, maybe negated (and im "" for none); re.s becomes the value's
-        # floats ("real imag"), or an int's digits, which key equality compares
+        # floats ("real imag"), or an int's digits, which key equality compares ("" for a real part
+        # that is an int no float holds, which CPython cannot add to an imaginary number)
         x = re.s[1:] if re.s.startswith("-") else re.s
-        if "#" in x:
-            return x[: x.find("#")]
-        if not x.endswith("j") and "." not in x and "e" not in x and "E" not in x and im.s == "":
-            # an int: its digits (as written, but leading zeros), which may not fit in 64 bits (then
-            # no float equals it here)
-            x = x.lstrip("0")
+        isint = x.startswith("0x") or (not x.endswith("j") and "." not in x and "e" not in x and "E" not in x)
+        if isint and im.s == "":
+            # an int: its digits (as written, but leading zeros), which may not fit in 64 bits (a
+            # float equal to it has the same, see int_digits); or "0x" and its hexadecimal digits,
+            # past 14,285 bits (big_key)
+            x = x if x.startswith("0x") else x.lstrip("0")
             x = "0" if x == "" else x
             re.s = ("-" if re.s.startswith("-") and x != "0" else "") + x
             return re.s
+        if isint and (x.startswith("0x") or float(x) - float(x) != 0.0):
+            # (CPython's compiler leaves the sum or difference an expression, which pcheck rejects)
+            re.s = ""
+            return ""
         r = 0.0
         i = 0.0
         if x.endswith("j"):
@@ -825,7 +827,7 @@ class Parser:
             return True
         if k == "pas" or k == "pstar":
             return (len(p.kids) > 0 and self.pcheck(p.kids[0], irrefutable, stores)) or self.pstore(p.s, p.line, stores)
-        if k == "pvalue" and p.kids[0].kind == "fstr":
+        if k == "pvalue" and (p.kids[0].kind == "fstr" or (p.kids[0].kind == "pnum" and p.kids[0].kids[0].s == "")):
             self.later(2, "patterns may only match literals and attribute lookups", p.line)
             return True
         if k == "pseq":
@@ -839,7 +841,7 @@ class Parser:
             seen: list[str] = []
             for i in range(0, len(p.kids), 2):
                 key = p.kids[i]
-                if key.kind == "fstr":
+                if key.kind == "fstr" or (key.kind == "pnum" and key.kids[0].s == ""):
                     self.later(2, "mapping pattern keys may only match literals and attribute lookups", p.line)
                     return True
                 if key.kind != "attr":
