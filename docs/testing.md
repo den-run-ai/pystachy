@@ -247,6 +247,15 @@ The final report job allows ten minutes for artifact downloads and validation.
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: lint, report-gate tests
 and recording checks use the pinned CPython and require no compiler bootstrap.
 
+The [Installation workflow](../.github/workflows/install.yml) builds and installs from source
+on Ubuntu 24.04, macOS 15 arm64 and macOS 15 x86-64, then runs hosted and native JIT/AOT smoke
+tests (`tools/install_smoke.py`). The [Packages workflow](../.github/workflows/packages.yml)
+builds the example and ports source wheels and runs them under CPython, JIT and AOT
+(`tools/package_smoke.py`). The [Release workflow](../.github/workflows/release.yml) runs its
+archive and Docker builds and smoke tests on pull requests that change packaging; publishing a
+version requires CI, Installation, Lint and Packages to succeed on the release commit
+([releases](releasing.md)).
+
 The [Coverage workflow](../.github/workflows/coverage.yml) runs apart from CI, daily and when its
 setup changes, and no check requires it; [compiler coverage](#compiler-coverage) describes it.
 

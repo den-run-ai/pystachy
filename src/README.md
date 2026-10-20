@@ -13,14 +13,15 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Analysis | [analysis](pystachy_compiler/analysis.py), [scope](pystachy_compiler/scope.py), [flow](pystachy_compiler/flow.py): AST queries, lexical checks and definite assignment. |
 | Compilation | [gen](pystachy_compiler/gen.py), [program](pystachy_compiler/program.py), [functions](pystachy_compiler/functions.py): compiler state, program orchestration and function compilation. |
 | Types | [declarations](pystachy_compiler/declarations.py), [templates](pystachy_compiler/templates.py): annotations, fields and specialization. |
-| Values | [variables](pystachy_compiler/variables.py), [expressions](pystachy_compiler/expressions.py): binding, closures and expression typing. |
-| Calls | [calls](pystachy_compiler/calls.py), [builtins](pystachy_compiler/builtins.py): function dispatch and builtin operations. |
+| Unions | [unions](pystachy_compiler/unions.py), [union_arithmetic](pystachy_compiler/union_arithmetic.py): explicit closed scalar, container and native reference unions, their narrowing and numeric operations. |
+| Values | [variables](pystachy_compiler/variables.py), [local_versions](pystachy_compiler/local_versions.py), [expressions](pystachy_compiler/expressions.py): binding, bounded local retyping, closures and expression typing. |
+| Calls | [calls](pystachy_compiler/calls.py), [builtins](pystachy_compiler/builtins.py), [structs](pystachy_compiler/structs.py): function dispatch, builtin operations and `struct` calls whose format is known at compile time. |
 | Reflection | [reflection](pystachy_compiler/reflection.py): `type()` names and identity, `getattr`/`setattr`/`hasattr`, `vars`, `dir` and `dataclasses`' introspection, and classes' reflection records. |
 | Containers | [containers](pystachy_compiler/containers.py), [conversions](pystachy_compiler/conversions.py): collection operations, coercion and runtime slots. |
 | Control flow | [statements](pystachy_compiler/statements.py), [exceptions](pystachy_compiler/exceptions.py): statements, loops and exceptional cleanup. |
 | Generators | [generators](pystachy_compiler/generators.py): generator functions as LLVM coroutines, `yield`, `yield from`, loops that own generators, generator expressions as values, `send()`, `throw()` and `close()`. |
-| Typed IR | [ir](pystachy_compiler/ir.py), [emission](pystachy_compiler/emission.py): records, instruction building and function-state save/restore. |
-| Backend | [ircheck](pystachy_compiler/ircheck.py), [optimizations](pystachy_compiler/optimizations.py), [lowering](pystachy_compiler/lowering.py): verification, effects, IR passes and LLVM lowering. |
+| Typed IR | [ir](pystachy_compiler/ir.py), [emission](pystachy_compiler/emission.py), [scalar_ir](pystachy_compiler/scalar_ir.py), [memory_ir](pystachy_compiler/memory_ir.py): records, instruction building, typed machine scalars and memory addresses, and function-state save/restore. |
+| Backend | [ircheck](pystachy_compiler/ircheck.py), [optimizations](pystachy_compiler/optimizations.py), [lowering](pystachy_compiler/lowering.py), [lower_module](pystachy_compiler/lower_module.py), [llvm_abi](pystachy_compiler/llvm_abi.py): verification, effects, IR passes, and LLVM lowering of functions, modules and native ABI declarations. |
 | Shared support | [specs](pystachy_compiler/specs.py), [diagnostics](pystachy_compiler/diagnostics.py), [names](pystachy_compiler/names.py), [utils](pystachy_compiler/utils.py): operation tables, source locations, names and type helpers. |
 | CLI | [driver](pystachy_compiler/driver.py): JIT, AOT, extensions, LLVM tools and runtime caching. |
 

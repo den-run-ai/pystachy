@@ -18,14 +18,14 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 | Approach | Modules and useful APIs |
 |---|---|
 | Unchanged CPython sources | `bisect`, `colorsys`, `stat` constants and predicates, path-string helpers from `posixpath` / `genericpath`, `curses.ascii`, `this`, `struct`, on a port of `_struct`, and `_opcode_metadata` |
-| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `gettext` (its import, `NullTranslations`, `textdomain()` and `bindtextdomain()`), `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `token`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry), `warnings` (filters and `catch_warnings()`; `warn()` shows no location), `opcode` (on a port of `_opcode` and CPython's tables; `dis` does not compile), `weakref` (its `ref`, without the weak containers) and the incremental `html.parser` probe |
+| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `gettext` (its import, `NullTranslations`, `textdomain()` and `bindtextdomain()`), `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `token`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry), `warnings` (filters and `catch_warnings()`; `warn()` shows no location), `opcode` (on a port of `_opcode` and CPython's tables; `dis` does not compile), `weakref` (its `ref`, without the weak containers), `contextlib` (`contextmanager`, `closing`, `nullcontext`, `suppress`) and the incremental `html.parser` probe |
 | Larger port | `re`: CPython's Python parser/compiler plus a matcher adapted from its C engine |
-| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper` / `IncrementalNewlineDecoder` (also as `_io`'s), `csv`, `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`, `itertools` (every function, on generators) and `_opcode`, which CPython builds in, `abc`, and `types` (`GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
+| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper` / `IncrementalNewlineDecoder` (also as `_io`'s), `csv`, `json` (a bounded native prototype for recursive values), `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`, `itertools` (every function, on generators) and `_opcode`, which CPython builds in, `abc`, and `types` (`GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
 
 The library reference is the authority for each module's limits. For example, `difflib`
-supports matching strings and lists of strings, including `get_grouped_opcodes()`;
-its other diff APIs still have reflection, formatting or callback-type blockers.
-`textwrap` supports its public operations with code-point widths; tab expansion still counts UTF-8 bytes.
+supports matching strings and lists of strings, including `get_grouped_opcodes()`,
+`unified_diff()` and `restore()`; `context_diff()`, `ndiff()` and `HtmlDiff` still have
+blockers. `textwrap` supports its public operations with code-point widths and tab expansion.
 
 Selected APIs from `sys`, `os`, `math`, `time`, `errno`, `tempfile` and `select` are compiler builtins.
 `typing`, `collections.abc` (also imported as `_collections_abc`) and `dataclasses` also have
@@ -93,7 +93,8 @@ have their own [FFI guide](ffi.md).
 The [2026-10-17 compatibility audit](reports/compatibility-2026-10-17.md) records a
 pinned main revision, execution checks, package adaptations, suite boundaries and
 remaining blockers. Treat its measurements as a snapshot, and rerun them after
-compiler or library changes.
+compiler or library changes. Later checkpoints are in the
+[rolling log](reports/compatibility-updates.md).
 
 These tools answer different questions:
 

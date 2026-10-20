@@ -193,10 +193,11 @@ were checked in a 4-vCPU Claude Code container on 2026-10-18 (`44316e7`); confir
   comparison helpers fail closed: a tolerance check must reject NaN against a finite value,
   and `zip()` must not hide a length mismatch
   ([#583](https://github.com/den-run-ai/pystachy/pull/583)).
-- Fixtures encode today's gaps and exact text: `tests/errors/optional_*.py` assume `json`
-  is missing, `tests/cache.sh` edits runtime messages, and some `tests/errors` headers
-  carry `FILE:LINE`. Search `tests/` and `tools/` before adding a module, rewording a
-  message or moving lines ([#670](https://github.com/den-run-ai/pystachy/pull/670),
+- Fixtures encode today's gaps and exact text: `tests/errors/optional_*.py` assume `sqlite3`
+  is missing (they assumed `json` until #670), `tests/cache.sh` edits runtime messages, and
+  some `tests/errors` headers carry `FILE:LINE`. Search `tests/` and `tools/` before adding
+  a module, rewording a message or moving lines
+  ([#670](https://github.com/den-run-ai/pystachy/pull/670),
   [#667](https://github.com/den-run-ai/pystachy/pull/667)).
 - The compiler must remain in its own supported Python subset. Follow the
   `gen_*`/forwarding boundaries in `src/README.md`; new compiler modules must be

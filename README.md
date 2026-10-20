@@ -32,7 +32,7 @@ produce byte-identical LLVM IR.
   CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster than
   the same model in pure Python on CPython; results match PyTorch within 1.4e-14
   ([example](examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)).
-- **1,200+ differential programs** checked against CPython, plus **1,600+ rejection tests**,
+- **1,400+ differential programs** checked against CPython, plus **1,800+ rejection tests**,
   with JIT/AOT, self-hosting, sanitizer and garbage-collection stress coverage
   ([verification](docs/testing.md)).
 - **Python and C interoperability:** call C libraries, build CPython extensions, or explicitly
@@ -146,8 +146,9 @@ Unannotated functions and supported `Any` annotations specialize to concrete typ
 Some standard-library modules compile unchanged. Others, including `fnmatch`, `textwrap`,
 `difflib`, `statistics` and `random`, use localized adaptations marked `# Pystachy port:`.
 The adapted code remains valid Python and can be diffed against upstream.
-The library also includes `re`, `itertools`, Unicode normalization, `functools.cache` /
-`lru_cache`, `collections.namedtuple`, and in-memory binary I/O with `io.BytesIO`.
+The library also includes `re`, `itertools`, Unicode normalization, a bounded native `json`,
+`functools.cache` / `lru_cache`, `collections.namedtuple`, and in-memory binary I/O with
+`io.BytesIO`.
 See [library coverage and port notes](lib/README.md) for supported APIs and remaining limits.
 There are also [15 third-party ports](ports/README.md), with scoped APIs and documented adaptations.
 The [compatibility audit](docs/reports/compatibility-updates.md) records measured coverage and blockers.
