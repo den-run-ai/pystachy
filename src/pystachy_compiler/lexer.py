@@ -103,6 +103,7 @@ def prefix_at(s: str, i: int) -> str:
 def big_decimal(digits: str, base: int) -> str:
     # the decimal digits of the number that digits (of base 16, 8 or 2, without prefix, underscores
     # or leading zeros) write, which does not fit in 64 bits: a digit at a time, as no int holds it
+    # (quadratic in the length: Parser.pliteral calls it only for a short mapping pattern key)
     dec = [0]  # (least significant first)
     for c in digits:
         carry = int(c, 16)
@@ -123,6 +124,7 @@ class Tok:
         self.line = line
         self.esc = False  # a string literal (or bytes literal) whose escapes the parser decodes
         self.part = False  # an f-string that the tokenizer's error (the next token) cut short, or that error
+        self.big = ""  # an int too big for 64 bits, written in base 16, 8 or 2 (its text is a sentinel): "x", "o" or "b" and its digits
 
 
 class Lexer:
@@ -393,9 +395,10 @@ class Lexer:
                     d0 = d0 >> 1
                 bits += (len(h) - 1) * (4 if base == 16 else (3 if base == 8 else 1))
             if bits > 64 or (bits == 64 and (h[1:].strip("0") != "" or int(h[0], 16) & (int(h[0], 16) - 1) != 0)):
-                # its value's decimal digits, which Gen rejects where it compiles the literal ("integer
-                # literal does not fit in 64 bits"), and which a mapping pattern's keys compare
-                self.add("int", big_decimal(h, base))
+                # Gen rejects the literal where it compiles it: "integer literal does not fit in 64 bits";
+                # a mapping pattern's keys compare its value (Parser.pliteral)
+                self.add("int", "99999999999999999999")
+                self.toks[-1].big = pfx[1] + h.lower()
                 self.i = j
                 return
             # 2**63 is valid only negated; Gen checks that, as for decimal literals

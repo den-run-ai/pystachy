@@ -1,7 +1,7 @@
 """Parser component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import CPYSTACK, MAXNEST, TOODEEP, fail
-from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, debug_text, string_end, utf8
+from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, big_decimal, debug_text, string_end, utf8
 from src.pystachy_compiler.scope import Symtable
 from src.pystachy_compiler.syntax import (
     AUGOPS,
@@ -684,6 +684,12 @@ class Parser:
             self.invalid(t.line)
         self.p += 1
         re = mk("num", ("-" if neg else "") + t.text, line, [])
+        if t.big != "":
+            # (a literal too big for 64 bits, written in base 16, 8 or 2: keys compare its value's
+            # decimal digits, up to a thousand digits written; a longer one equals no key)
+            d = t.big[1:]
+            base = 16 if t.big[0] == "x" else 8 if t.big[0] == "o" else 2
+            re.s = ("-" if neg else "") + (big_decimal(d, base) if len(d) <= 1000 else f"{t.text}#{self.p}")
         if self.peek() != "+" and self.peek() != "-":
             return mk("pnum", self.number_repr(re, mk("num", "", line, [])), line, [re])
         if t.kind == "complex":
@@ -704,6 +710,8 @@ class Parser:
         # the lexer gives them, maybe negated (and im "" for none); re.s becomes the value's
         # floats ("real imag"), or an int's digits, which key equality compares
         x = re.s[1:] if re.s.startswith("-") else re.s
+        if "#" in x:
+            return x[: x.find("#")]
         if not x.endswith("j") and "." not in x and "e" not in x and "E" not in x and im.s == "":
             # an int: its digits (as written, but leading zeros), which may not fit in 64 bits (then
             # no float equals it here)
