@@ -160,8 +160,8 @@ def gen_dyn_xmethod(self, c: str, m: str) -> bool:
 def gen_dyn_xhelper(self, c: str) -> None:
     # @o.x.<class>(op, a, b): comparison op (1 ==, 2 !=, 3 <, 4 <=, 5 >, 6 >=, XCMP) of the object a
     # of class c with b, an Any value that is no object of c's hierarchy (pys_dyn_eq, through
-    # pys_obj_cmp(-1 - id, op, a, b): gen_dispatch): 0 or 1, its result, or 2 where c has no
-    # method for op, as object's own methods decline (dyn_xbody)
+    # pys_obj_cmp(-1 - id, op, a, b): gen_dispatch): 0 or 1, its result, 2 where c has no method
+    # for op, as object's own methods decline, or 3 where its method does not take b (dyn_xbody)
     f = FnInfo("x", f"@o.x.{c}", self.classes[c].node, "")
     f.params = ["op", "a", "b"]
     f.ptypes = ["int", c, DYN]
@@ -174,8 +174,11 @@ def gen_dyn_xhelper(self, c: str) -> None:
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
-    # NamedTuple without the method compares its fields with a tuple, as tuple's methods do, which
-    # decline any other value
+    # method annotated with a type that b's value does not have (dyn_isa) cannot run with it: 3,
+    # and the comparison is identity's, or TypeError for an ordering, without b's reflected method,
+    # as a method that returns no NotImplemented (#499) decides in CPython. A NamedTuple without
+    # the method (!= also where it defines __eq__: tuple's __ne__) compares its fields with a
+    # tuple, as tuple's methods do, which decline any other value
     line = self.line
     op = self.read(mk("name", "op", line, []))
     a = self.read(mk("name", "a", line, []))
@@ -184,7 +187,7 @@ def gen_dyn_xbody(self, c: str) -> None:
     for k in range(len(XCMP)):
         m = XCMP[k]
         inv = False
-        if not self.dyn_xmethod(c, m) and k == 1 and self.dyn_xmethod(c, "__eq__"):
+        if not self.dyn_xmethod(c, m) and k == 1 and self.dyn_xmethod(c, "__eq__") and not nt:
             m = "__eq__"
             inv = True
         if not self.dyn_xmethod(c, m) and not nt:
@@ -193,6 +196,15 @@ def gen_dyn_xbody(self, c: str) -> None:
         nxt = self.label()
         self.cbr(self.num_cmp("==", op, Val(str(k + 1), "int")).v, hit, nxt)
         self.place(hit)
+        ps = self.classes[c].methods[m].ptypes if self.dyn_xmethod(c, m) else []
+        takes = self.dyn_isa(b, ps[1]) if len(ps) == 2 else ""
+        if takes != "":
+            run = self.label()
+            decline = self.label()
+            self.cbr(takes, run, decline)
+            self.place(decline)
+            self.ret_(Val("3", "int"))
+            self.place(run)
         if self.dyn_xmethod(c, m):
             r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
             if inv:
@@ -385,6 +397,31 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
 def gen_dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
     # TypeError unless box v holds a value of one of static types ts
     self.guard(self.scalar("xor", [Val(self.dyn_test(v, ts), "bool"), Val("true", "bool")]), f"TypeError: expected {shown}")
+
+
+def gen_dyn_isa(self, v: Val, t: str) -> str:
+    # i1: does dyn_unbox take box v as a value of static type t without TypeError, or "" where it
+    # takes any value (t is dyn, or a template's "") or decides at compile time (dyn_xbody: a
+    # comparison method annotated t does not run with another value)
+    if t == "" or t == DYN:
+        return ""
+    if t == "None":
+        return self.dyn_test(v, ["None"])
+    if is_opt(t) and t != NONEVAR:
+        r = self.dyn_isa(v, unopt(t))
+        return "" if r == "" else self.scalar("or", [Val(self.dyn_test(v, ["None"]), "bool"), Val(r, "bool")])
+    if t in BUILTIN:
+        return self.dyn_test(v, [t])
+    if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
+        # (an object of t or a subclass, or None, as pys_dyn_unbox walks the box's bases: also of
+        # a subclass that the program boxes after this test is compiled)
+        r = self.rt("pys_dyn_isa", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
+        return self.num_cmp("!=", Val(r, "int"), Val("0", "int")).v
+    if is_union(unopt(t)):
+        return self.dyn_test(v, umembers(unopt(t)) + (["None"] if is_opt(t) or self.optional(unopt(t)) == unopt(t) else []))
+    if is_tuple(t):
+        return self.dyn_test(v, ["vtuple[dyn]"])
+    return ""
 
 
 def gen_dyn_select(self, v: Val, ts: list[str], t: str) -> Val:

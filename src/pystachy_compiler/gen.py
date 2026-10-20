@@ -64,6 +64,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_hash as dynamic_dyn_hash,
     gen_dyn_identity as dynamic_dyn_identity,
     gen_dyn_int as dynamic_dyn_int,
+    gen_dyn_isa as dynamic_dyn_isa,
     gen_dyn_isinst as dynamic_dyn_isinst,
     gen_dyn_isinst_types as dynamic_dyn_isinst_types,
     gen_dyn_items_ahead as dynamic_dyn_items_ahead,
@@ -1422,6 +1423,9 @@ class Gen:
 
     def dyn_test(self, v: Val, ts: list[str]) -> str:
         return dynamic_dyn_test(self, v, ts)
+
+    def dyn_isa(self, v: Val, t: str) -> str:
+        return dynamic_dyn_isa(self, v, t)
 
     def dyn_types_of(self, t: str) -> list[str]:
         return dynamic_dyn_types_of(self, t)

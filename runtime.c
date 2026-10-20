@@ -3242,19 +3242,19 @@ Dyn *pys_dyn_ref(const DynType *t, void *p) {
 static Dyn *dlist(List *l) { return pys_dyn_ref(&pys_dyntype_list, l); }
 static Dyn *dstr(Str *s) { return pys_dyn_ref(&pys_dyntype_str, s); }
 static Dyn *dtuple(VTuple *t) { return pys_dyn_ref(&pys_dyntype_tuple, t); }
-/* x as a value of type t, which the compiler expects (a typed variable, argument or field): its
-   payload, where x has that type; an object also where its class derives from t's, and None
-   where t is a class's (whose values may be None); else TypeError, where CPython would not check
-   the annotation (docs/dynamic-any.md) */
+static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
+/* does x have type t as a typed variable, argument or field of type t takes it (pys_dyn_unbox):
+   x's type is t; or t is a class's, and x an object of a class that derives from it, or None (a
+   class's values may be None). A comparison method annotated with t declines another value (the
+   program's @o.x.<class>) */
+I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
+/* x as a value of type t, which the compiler expects: its payload (None's is 0) where x has that
+   type (pys_dyn_isa), else TypeError, where CPython would not check the annotation
+   (docs/dynamic-any.md) */
 I pys_dyn_unbox(Dyn *x, const DynType *t) {
-  if (x->t == t) return x->v;
-  if (t->kind == DK_OBJ) {
-    if (DKIND(x) == DK_NONE) return 0;
-    for (const DynType *b = x->t; b; b = b->base) if (b == t) return x->v;
-  }
+  if (pys_dyn_isa(x, t)) return x->v;
   failf("TypeError: expected %s, got %s", t->name->s, DNAME(x));
 }
-static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
 
 /* repr(), str(), truth, format() */
 Str *pys_dyn_repr(Dyn *x) { return pys_repr(x->v, x->t->desc); }
@@ -3277,14 +3277,16 @@ I pys_dyn_truth(Dyn *x) {
    class both are objects of (dhier); an object and another value, an object of an unrelated class
    among them, as CPython's do_richcompare: the left operand's method, else the right one's reflected
    method (dobj), else identity for == and != and TypeError for an ordering. There is no
-   NotImplemented (#499): the first method that runs gives the result */
+   NotImplemented (#499): the first method that runs gives the result, and one annotated with a type
+   that the other value does not have, which cannot run with it, gives identity's (or TypeError) */
 static const DynType *dhier(Dyn *a, Dyn *b) {
   if (DKIND(a) != DK_OBJ || DKIND(b) != DK_OBJ) return 0;
   return derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
 }
 /* comparison k (0 ==, 1 !=, 2 <, 3 <=, 4 >, 5 >=) of the object a with b by a's class's own method,
    which the program's helper calls with b as an Any value (pys_obj_cmp(-1 - id, 1 + k, a, b)): 0 or 1,
-   its result, or 2 where a is no object or its class has no such method, as object's methods decline */
+   its result, 2 where a is no object or its class has no such method, as object's methods decline,
+   or 3 where its method's parameter is annotated with a type that b does not have (pys_dyn_isa) */
 static I dobj(Dyn *a, Dyn *b, I k) { return DKIND(a) == DK_OBJ && (a->t->flags & DF_X) ? pys_obj_cmp(-1 - a->t->cls, 1 + k, a->v, (I)b) : 2; }
 I pys_dyn_eq(Dyn *a, Dyn *b) {
   int ka = DKIND(a), kb = DKIND(b);
@@ -3293,7 +3295,7 @@ I pys_dyn_eq(Dyn *a, Dyn *b) {
     if (t) return t->flags & DF_EQ ? pys_obj_eq(t->cls, a->v, b->v) : a->v == b->v;   /* (x == x runs __eq__ too; a container's search tries identity first) */
     I r = dobj(a, b, 0);
     if (r == 2) r = dobj(b, a, 0);
-    return r == 2 ? 0 : r;   /* (no method: identity, and these are not one object) */
+    return r >= 2 ? 0 : r;   /* (no method that runs: identity, and these are not one object) */
   }
   if (dnum(a) && dnum(b)) return a->v == b->v;
   if (ka == DK_FLOAT || kb == DK_FLOAT) {
@@ -3316,7 +3318,7 @@ I pys_dyn_ne(Dyn *a, Dyn *b) {
     if (t) return t->flags & DF_NE ? pys_obj_cmp(-1 - t->cls, 0, a->v, b->v) != 0 : !pys_dyn_eq(a, b);
     I r = dobj(a, b, 1);   /* (a's __ne__, else not its __eq__, as object.__ne__ inverts it) */
     if (r == 2) r = dobj(b, a, 1);
-    return r == 2 ? 1 : r;
+    return r >= 2 ? 1 : r;
   }
   return !pys_dyn_eq(a, b);
 }
@@ -3334,7 +3336,7 @@ I pys_dyn_cmp(Dyn *a, Dyn *b, I op) {   /* a OP b, op 0..3: < <= > >= */
     if (!t) {
       I r = dobj(a, b, 2 + op);
       if (r == 2) r = dobj(b, a, 2 + (op ^ 2));   /* (the reflected method: < and >, <= and >= swap) */
-      if (r != 2) return r;
+      if (r < 2) return r;
     }
     dyn_noorder(a, b, op);
   }
