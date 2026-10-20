@@ -636,7 +636,7 @@ GENTHROWC = 3
 # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
 # functions return by value to the calls that only read their slots (Gen.tuple_rets), which
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots"]
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)
@@ -648,6 +648,12 @@ CANON_DEPTH = 1000
 JIT_INLINE = 20000
 REACH = 256
 LOOKUPS = 32
+# the ops whose values Values places, by the number each defines (its block and position there),
+# as how: 1, the value of one that defines one; 2, the payload of union.payload and dyn.payload,
+# their second; 3, each value of tuple.load and tuple.store
+VALUE_AT: dict[str, int] = {"select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
+                            "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
+                            "ptr.cmp": 1, "dyn.type": 1, "union.payload": 2, "dyn.payload": 2, "tuple.load": 3, "tuple.store": 3}
 # Types are serialized strings. Bound their size before joining children, and the active
 # template signatures before making keys or call contexts; a depth limit alone misses
 # exponential width growth such as f((x, x)). These are compiler resource limits.
