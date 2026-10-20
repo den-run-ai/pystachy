@@ -104,6 +104,7 @@ expression; annotate that parameter as `T | None` to allow both values.
 `is` and `is not` are supported for identity-bearing values, not numbers.
 Booleans use their two fixed values, so `flag is True` behaves as equality. A number or bool is
 never an object of a class, so `x is obj` is `False` for one (`is not` `True`), as in CPython.
+For one that may be `None` (`x: int | None`), `x is obj` is `True` only where both are `None`.
 Comparisons with `None` are supported where the static types permit them.
 
 ## Iterator-like expressions

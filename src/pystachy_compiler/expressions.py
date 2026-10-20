@@ -3572,6 +3572,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             # a number or bool (or one that may be None) is never an object of a class: x is
             # _MISSING, a sentinel default's test, where x was given an int
             return Val("false" if op == "is" else "true", "bool")
+        if (a.t in self.classes and is_sopt(b.t)) or (b.t in self.classes and is_sopt(a.t)):
+            # nor is one that may be None, but where both are None (an object of a class may be):
+            # x is _MISSING, of an x: int | None
+            bothnone = Val(self.scalar('and', [self.ptr_cmp('==', a, Val('null', 'None')), self.ptr_cmp('==', b, Val('null', 'None'))]), "bool")
+            return bothnone if op == "is" else Val(self.scalar('xor', [bothnone, Val('true', 'bool')]), "bool")
         if not self.isref(a.t) or not self.isref(b.t) or (is_sopt(a.t) and b.t != "None") or (is_sopt(b.t) and a.t != "None"):
             self.err("'is' is only supported for objects and None")
         return self.ptr_cmp('==' if op == 'is' else '!=', a, b)
