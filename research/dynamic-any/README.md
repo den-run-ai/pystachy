@@ -268,3 +268,35 @@ for this study. The other wheels' SHA-256s: jmespath 1.0.1 `02e2e4cc…`, jsonpo
 `13e088ad…`, json-logic 0.6.3 `dd873af8…`, toolz 1.0.0 `292c8f1c…`, dictdiffer 0.9.0
 `442bfc69…`, flatten-json 0.1.14 `75e455db…`, mergedeep 1.3.4 `70775750…`, tabulate 0.9.0
 `024ca478…`.
+
+## Addendum: issues #772–#775 (filed the same day by another session)
+
+Re-checked at `ad19255e`: #772's first case reproduces in JIT and AOT (`probes/check772/`).
+`x == y`, `x in [y]` and `[x].count(y)` of two `Q(1)` held as `Any` give `False False 0`, where
+CPython gives `True True 1`. With a `__hash__`, dict lookups miss too: `d.get(y, "missing")` gives
+`missing` and `y in d` `False` (CPython: `found`, `True`). The same file without the comment, or
+with `other: object`, is right. In a module that opts in, typed `a in [b]` of two such objects is
+rejected at compile time (`calls __eq__() with a Q, but it takes a Any`), though it compiles and
+matches CPython without the comment: a seventh opt-in regression beside section 1's six.
+
+None of this study's passing probes or workloads defines `__eq__` with an `Any` parameter, so
+their results stand. But a class whose `__eq__` takes `other: Any` is common, and #772 answers
+wrongly without an error. Under #409, #772 comes before recommendation 1 below: the comment
+should not be recommended for whole programs until it is fixed.
+
+Where section 2's gaps are tracked now:
+
+| Gap | Tracked by |
+|---|---|
+| G1 typed containers into `Any` (`dict[str, Any]`, locals holding displays, typed locals that later get `Any`) | none; #775 has its `[0] * n` case, and docs/dynamic-any.md lists "typed-container crossings" as a next step |
+| G2 tuples with `Any` items | none |
+| G3 `object`, `Mapping`, bare annotations in a module that opts in | none (#713 and #597 cover modules that do not opt in) |
+| G4 `isinstance()` with `collections.abc` classes | none |
+| G5 empty displays into `Any` storage | none |
+| G6 slicing, `sum()` of a `list[dyn]` or generator, `dict.update()` of a display, `type(x) is int` | none (#775 lists `sum(x)` of an `Any` value as working, which it is) |
+| G6 `round`, `abs`, `ord`, `chr`, `divmod`; keyword arguments | #775; #774 |
+| G7 JSON bridge | none |
+| G8 sets as `Any` values | #775 |
+| G9 widening for incompatible concrete stores | none (docs/dynamic-any.md's "widening" next step covers closures, generators and mutual returns) |
+| G10 library templates for `dyn` (`textwrap`: `ord`; `statistics`: `math.fsum`); module-level narrowing | #775 for the builtins; none for narrowing |
+| Performance: `Any`-keyed dict lookups, boxes of accumulators | none (docs/dynamic-any.md's "box elimination" next step covers boxes) |
