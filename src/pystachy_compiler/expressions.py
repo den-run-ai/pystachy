@@ -3396,9 +3396,9 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if a.t == "dyn" or b.t == "dyn":
-        r = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
-        if r.t != "":
-            return r
+        dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
+        if dc.t != "":
+            return dc
     if (op == "==" or op == "!=") and (a.t == RANGEC) != (b.t == RANGEC):
         # a range and a value of a builtin type, which is never equal to a range (CPython compares
         # them by identity); None, or a value that may be None, may be the same as a range that is
