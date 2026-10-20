@@ -118,7 +118,7 @@ def gen_load_name(self, name: str) -> Val:
         r = self.mem_load(Val(self.lreg[name], "*" + t)).v
         if name == self.selfname and name not in self.compvars:
             self.nn[r] = True
-        if name in self.narrowed and (is_opt(t) or is_union(t) or t in self.classes) and t != NONEVAR:
+        if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
             return self.narrow_val(Val(r, t), self.narrowed[name])  # known not to be None here, or a member
         return Val(r, t)
     self.read_ahead(name)
@@ -548,6 +548,8 @@ def gen_none_type(self, name: str) -> str:
             if t != "None" and t != "" and "?" not in t and t != NONEVAR:
                 if self.optional(t) == "":
                     self.err(f"'{name}' is assigned None and {typestr(t)}, and None/Optional is only supported for {OPTTYPES}")
+                if t == "dyn":
+                    self.dyn_none_first(name)  # (where it holds None as a null pointer: dynamic.py)
                 return self.optional(t)
     return ""
 
@@ -625,6 +627,8 @@ def gen_none_arms(self, name: str) -> str:
             if x.kind != "None" and not empty_display(x) and self.typed_now(x) and not self.calls_open(x, {}):
                 t = self.dry(x)
                 if t != "None" and t != "" and "?" not in t and t != NONEVAR and self.optional(t) != "":
+                    if t == "dyn":
+                        self.dyn_none_first(name)  # (where it holds None as a null pointer: dynamic.py)
                     return self.optional(t)
     return ""
 
@@ -645,6 +649,8 @@ def gen_none_global_store(self, name: str, v: Val) -> str:
         self.err(f"'{short(name)}' was read as None at {self.nonereads[key]}, where nothing seemed to give it another value; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
     if "?" in v.t:
         self.err(f"cannot infer the type of '{short(name)}' from None and an empty container; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
+    if v.t == "dyn":
+        self.dyn_none_first(name)  # (the None it holds is a null pointer: dynamic.py)
     t = self.optional(v.t)
     if t == "":
         self.err(f"'{short(name)}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
@@ -1116,6 +1122,9 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         if (is_list(t) and elem(t) == "None") or (is_dict(t) and targs(t)[1] == "None"):
             return  # (another None)
         it = elem(t) if is_list(t) else targs(t)[1] if is_dict(t) else ""
+        if it == "dyn":
+            # (its None items are null pointers, not boxes of None as an Any value's are: dynamic.py)
+            self.err(f"'{short(name)}' holds None items until it is given an Any value here; annotate it ({short(name)}: {'list[Any]' if is_list(cur) else 'dict[' + typestr(targs(cur)[0]) + ', Any]'} = ...)")
         if "?" not in it and it != "" and self.optional(it) == "":
             self.err(f"'{short(name)}' holds None and {typestr(it)}, and None/Optional is only supported for {OPTTYPES}")
         if is_dict(t) and targs(t)[0] != targs(cur)[0] and not self.widens(targs(t)[0], targs(cur)[0]):
@@ -1622,6 +1631,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.err(f"assigning '{owner(name)}.{short(name)}' anything but the literal {lit} is not supported: its module assigns it {lit} once, so its tests of it are decided at compile time")
         if name not in self.gtypes:
             t0 = self.none_type(name) if v.t == "None" and self.modlevel else ""
+            if v.t == "None" and t0 == "" and self.dyn_global_ahead(name, "None"):
+                t0 = "dyn"  # (module code assigns it an Any value later: dynamic.py)
             if v.t == "None" and t0 == "":
                 # None so far (module code's other values for it are typed here, as far as they
                 # can be): the first value of another type the program gives it gives it its
@@ -1629,7 +1640,10 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
                 t0 = NONEVAR
             if v.t == "":
                 self.err(f"cannot infer the type of '{name}'; add a type annotation")
-            self.declare(name, t0 if t0 != "" else v.t)
+            t0 = t0 if t0 != "" else v.t
+            if t0 != "dyn" and self.dyn_global_ahead(name, t0):
+                t0 = "dyn"  # (module code assigns it an Any value later: dynamic.py)
+            self.declare(name, t0)
         t = self.gtypes[name]
         if t == NONEVAR and v.t != "None" and v.t != NONEVAR:
             t = self.none_global_store(name, v)
@@ -1667,7 +1681,9 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
                 if name in self.narrowed:
                     del self.narrowed[name]
                 self.lkk.pop(name, "")
-        if name not in self.ltype and self.local_hint(name) != "":
+        if name not in self.ltype and self.dyn_widened(name):
+            self.alloca("dyn", name)  # (one that an Any value is assigned later: dyn_widen)
+        elif name not in self.ltype and self.local_hint(name) != "":
             self.alloca(self.local_hint(name), name)  # (a join's type: as if annotated, see join_hint)
         elif name not in self.ltype and v.t == "None":
             # first None: T | None, typed by the first store of another value, or by a read
@@ -1677,6 +1693,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.alloca(v.t, name)
         t = self.ltype[name]
         if t == NONEVAR and v.t != "None":
+            if v.t == "dyn":
+                self.dyn_none_first(name)  # (the None it holds is a null pointer: dynamic.py)
             if self.optional(v.t) == "":
                 self.err(f"'{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
             t = self.optional(v.t)
@@ -1686,6 +1704,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:
             self.refine(name, v.t)
             t = v.t
+        if v.t == "dyn" and t != "dyn":
+            self.dyn_widen(name, t)  # (an Any value: the next compilation makes the variable dynamic)
         was = self.join_at("local", name, t)  # (a value it does not take may widen it: join_hint)
         cv = self.coerce(v, t, self.assigned_to(v, t, name))
         self.join_at(was[0], was[1], was[2])
@@ -1713,7 +1733,7 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
     # name is only read, so in a function it can be a module-level variable
     if n.kind == "name":
         if base and n.s in self.narrowed and self.narrowable(n.s):
-            return self.narrowed[n.s]
+            return self.narrowed[n.s] if self.narrowed[n.s] != "dyn[int]" else "dyn"
         if base and n.s not in self.ltype and (n.s not in self.assigned or n.s in self.gdecl):
             return self.gtypes.get(n.s, "")
         if len(self.hints) > 0 and n.s not in self.ltype and n.s not in self.gtypes:
@@ -1755,6 +1775,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
     elif k == "attr":
         o = self.expr(t.kids[0], "")
+        if o.t == "dyn":
+            self.dyn_setattr(o, t.s, v)  # (a field of its box's class: dynamic.py)
+            return
         if self.is_prop(o.t, t.s):
             self.prop_store(o, t.s, v)
             return
@@ -1784,6 +1807,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
         nosub = "TypeError: 'NoneType' object does not support item assignment"
+        if o.t == "dyn":
+            self.dyn_setitem(o, self.expr(t.kids[1], "dyn"), v)  # (by its box's type: dynamic.py)
+            return
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1])
             o = self.unwrap(o, nosub)
@@ -1812,6 +1838,12 @@ def gen_assign(self, t: Node, v: Val) -> None:
         bnd: list[str] = []
         o = self.slice_target(t, bnd, "TypeError: 'NoneType' object does not support item assignment")
         self.slice_store(o, bnd, v)
+    elif (k == "tuple" or k == "list") and v.t == "dyn" and not starred_target(t):
+        # a, b = x: x's items, all taken (as CPython does) before the first is stored
+        u = Val(self.rt("pys_dyn_unpack", "ptr", [f"ptr {v.v}", f"i64 {len(t.kids)}"]), "vtuple[dyn]")
+        items = [self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {u.v}", f"i64 {i}"]), "dyn") for i in range(len(t.kids))]
+        for i in range(len(t.kids)):
+            self.assign(t.kids[i], items[i])
     elif k == "tuple" and is_opt(v.t):
         self.assign(t, self.unwrap(v, "TypeError: cannot unpack non-iterable NoneType object"))
     elif k == "tuple" and is_vtuple(v.t):

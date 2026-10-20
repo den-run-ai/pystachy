@@ -1,0 +1,25 @@
+1 2 3 0 1 -1 1 True True True 0.5 1
+1 1 1 1 0 4 0 False True True
+true 1
+True 2 3 0 1 -1 1 True True True 0.5 1
+1 1 True True False 4 0 False True True
+true True
+bool True 2
+False 1 0 0 0 0 0 False True False 0.0 0
+0 0 False False False 0 0 True False False
+bool False 0
+7 8 21 3 1 -7 7 False False True 3.5 49
+1 7 1 1 0 28 3 False True True
+true 7
+-3 -2 -9 -2 0 3 -3 False True False -1.5 9
+1 -3 1 1 0 -12 -2 False True True
+true -3
+0 1 0 0 0 0 0 False True False 0.0 0
+0 0 0 0 0 0 0 True False False
+6
+50 True s 1
+2
+abab
+3
+0.5
+[exit 0]

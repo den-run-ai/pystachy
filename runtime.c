@@ -1688,7 +1688,9 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    has three digits or more (O007, O1234): a letter or the end of the descriptor follows it;
    ?<e> None (null) or a value of <e>; E an exception (an Exc);
    U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
-   R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor.
+   R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
+   A a dynamic value's box (see dynamic values), walked by its DynType's descriptor, Z the
+   function a box holds, which compares and hashes by identity.
    skip treats R as a leaf; value operations follow it without changing the slot layout.
    A dict's key kind and a set's element kind (Dict.kind) and their tuples' items have P<id> and
    H<id> where the type is a class: P where no class its objects may be of defines __eq__ or
@@ -1698,6 +1700,16 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
+typedef struct DynType DynType;   /* (see dynamic values) */
+struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; };
+typedef struct { const DynType *t; I v; } Dyn;
+typedef struct DynIter DynIter;
+I pys_dyn_eq(Dyn *a, Dyn *b);
+I pys_dyn_cmp(Dyn *a, Dyn *b, I op);
+I pys_dyn_hash(Dyn *x);
+static int dyn_eqitem(Dyn *a, Dyn *b);
+DynIter *pys_dyn_iter(Dyn *o);
+Dyn *pys_dyn_next(DynIter *it);
 static I ocls(const char *d) {   /* three digits, then those of an id of 1000 or more */
   I c = (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0';
   for (d += 3; *d >= '0' && *d <= '9'; d++) c = c * 10 + *d - '0';
@@ -1833,6 +1845,8 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
     repr_depth(b, v, recdesc(ref), depth + 1); return skip(ref);
   }
   case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
+  case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
+  case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
@@ -1935,6 +1949,7 @@ static int eqitem(I a, I b, const char *d) {
   d = recdesc(d);
   char c = d[*d == '?'];
   if (c == 'U') return eqpair(a, b, d, d);
+  if (c == 'A') return dyn_eqitem((Dyn *)a, (Dyn *)b);
   return (a == b && (c == 'L' || c == 'D' || c == 'T' || c == 'V' || c == 'S' || c == 'F')) || eqv(a, b, d);
 }
 #ifndef EQ_PROBE
@@ -1945,6 +1960,7 @@ static int eqv(I a, I b, const char *d) {
   EQ_PROBE();
   switch (*d) {
   case 'U': return eqpair(a, b, d, d);
+  case 'A': return pys_dyn_eq((Dyn *)a, (Dyn *)b);
   case 'f': return dbl(a) == dbl(b);
   case 's': return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;   /* (None in a looked-up key, see hval) */
   case 'L': {   /* an __eq__ may change either list: as CPython's list_richcompare, re-read both
@@ -2102,6 +2118,7 @@ static int opv(I a, I b, const char *d, I op) {
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, op) != 0;   /* subsets */
   case 'O': return pys_obj_cmp(ocls(d + 1), op, a, b) != 0;
+  case 'A': return pys_dyn_cmp((Dyn *)a, (Dyn *)b, op);
   case 'K': return opv(((I *)a)[0], ((I *)b)[0], d + 1, op);   /* key='s records {key, value}: their keys */
   case 'U': {   /* numbers of a union (the compiler orders no other): an int and a float exactly, as CPython */
     EqValue x = eqresolve(a, d), y = eqresolve(b, d);
@@ -2781,12 +2798,12 @@ static uint64_t hstrd(Str *s) {                      /* a str key's hash */
 static I ohash(I k, const char *d) { return pys_obj_eq(-1 - ocls(d + 1), k, 0); }   /* hash(k) of an H<id> */
 static I hitem(I k, const char *d);
 static uint64_t dmask(Dict *d) { return (uint64_t)(d->kind & KTAG ? d->size : d->size * 2) - 1; }   /* idx's slots, less one */
-static int khash(I kind) { return (kind & KTAG) || (kind > 1 && strchr(kdesc(kind), 'H')); }   /* keys hashed by CPython's hash */
+static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (strchr(kdesc(kind), 'H') || strchr(kdesc(kind), 'A'))); }   /* keys hashed by CPython's hash */
 /* a tuple or object key's hash (or its item's), by its descriptor d, never 0; 0 where d holds an
    H<id> (khash), before any item is hashed by its class: hsh then takes CPython's hash. The items
    before it are ints, strs, None, objects by identity and such tuples, which run no code */
 static uint64_t hval(I k, const char *d) {
-  if (*d == 'H' || (*d == '?' && d[1] == 'H')) return 0;
+  if (*d == 'H' || *d == 'A' || (*d == '?' && d[1] == 'H')) return 0;
   if ((*d == '?' || *d == 's' || *d == 'T' || *d == 'P') && !k) {   /* None (also a looked-up key's) */
     for (const char *z = *d == 's' || *d == 'P' ? d : skip(d); d < z; d++) if (*d == 'H') return 0;
     return 0x9E3779B97F4A7C15ULL;
@@ -2831,7 +2848,9 @@ static int keq(I a, I b, const char *d, int pure) {
   }
   return 1;
 }
-static int keyeq(I a, I b, const char *d) { return *d == 'T' ? keq(a, b, d, 0) : eqv(a, b, d); }   /* keys of descriptor d */
+static int keyeq(I a, I b, const char *d) {   /* keys of descriptor d: an Any key is found as itself first, as an item is */
+  return *d == 'T' ? keq(a, b, d, 0) : *d == 'A' ? dyn_eqitem((Dyn *)a, (Dyn *)b) : eqv(a, b, d);
+}
 static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
 static I *keymem(I kind, I n) {      /* the key array of a dict or set of this kind: an int key holds no pointer */
   return kind ? pys_alloc(n * 8) : pys_alloc_atomic(n * 8);
@@ -3147,6 +3166,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'V': return htuple(((VTuple *)k)->a, ((VTuple *)k)->len, d + 1, 0);
   case 'P': case 'C': return hptr(k);   /* (an exception class's class object: by identity, as object's) */
   case 'H': return ohash(k, d);
+  case 'A': return pys_dyn_hash((Dyn *)k);
   }
   return hint(k);
 }
@@ -3169,6 +3189,401 @@ static int seq(Set *s, uint64_t j, I x, I k, int add) {   /* sxeq's answer, a tu
 /* hash(v) of a value of descriptor d (an object's by its class's __hash__: H<id>) */
 I pys_hash(I v, Str *d) { return hitem(v, d->s); }
 I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
+/* ---------- dynamic values ----------
+   A module whose first lines, before any code, hold the comment "# pystachy: dynamic-any"
+   compiles typing.Any as a dynamic type (docs/dynamic-any.md). A value of it is a pointer to
+   an immutable 16-byte box {DynType *t, I v}. t is a constant: the program defines one for each
+   class whose objects it boxes, and this section the builtin ones. kind tells the builtin kinds
+   (and a class's objects) apart, name is type(x).__name__, desc the payload's layout as the
+   descriptor walks above read it, cls a class's O<id> and base its base class's DynType. v is
+   the payload's slot: an int's, float's or bool's bits, or the original pointer of a str,
+   list, dict, tuple or object, so that boxing never copies a container or gives an alias a
+   second layout. The containers a box may hold have boxes for items (list[Any] LA, dict[Any,
+   Any] DAA, tuple VA): descriptor A is such a slot, which the walks follow through its box's
+   DynType. None is the constant box pys_dyn_none_box and never null, which is an unbound
+   variable's; True, False and the ints from -5 to 256 are constant boxes too, and the other
+   numbers' boxes atomic, so that boxing a number allocates nothing the collector scans. */
+enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC };
+enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16 };   /* a class's ==, ordering, hash and != run the program's
+                                                                     helpers; a box of this type is its own identity (a bound method's) */
+#define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
+DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
+DSTR(dd_list, "LA"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
+DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
+DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
+#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0}
+DTYPE(pys_dyntype_none, DK_NONE, dd_none, dn_none); DTYPE(pys_dyntype_bool, DK_BOOL, dd_bool, dn_bool);
+DTYPE(pys_dyntype_int, DK_INT, dd_int, dn_int); DTYPE(pys_dyntype_float, DK_FLOAT, dd_float, dn_float);
+DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
+DTYPE(pys_dyntype_dict, DK_DICT, dd_dict, dn_dict); DTYPE(pys_dyntype_tuple, DK_TUPLE, dd_tuple, dn_tuple);
+const Dyn pys_dyn_none_box = {&pys_dyntype_none, 0};
+const Dyn pys_dyn_true_box = {&pys_dyntype_bool, 1}, pys_dyn_false_box = {&pys_dyntype_bool, 0};
+#define DI(v) {&pys_dyntype_int, v}
+#define DI4(v) DI(v), DI(v + 1), DI(v + 2), DI(v + 3)
+#define DI16(v) DI4(v), DI4(v + 4), DI4(v + 8), DI4(v + 12)
+#define DI64(v) DI16(v), DI16(v + 16), DI16(v + 32), DI16(v + 48)
+static const Dyn smallint[262] = {DI4(-5), DI(-1), DI64(0), DI64(64), DI64(128), DI64(192), DI(256)};   /* -5 to 256 */
+#define DNONE ((Dyn *)&pys_dyn_none_box)
+#define DKIND(x) ((x)->t->kind)
+#define DNAME(x) ((x)->t->name->s)
+static int dnum(const Dyn *x) { return DKIND(x) == DK_INT || DKIND(x) == DK_BOOL; }   /* an int or a bool: its value is v */
+Dyn *pys_dyn_int(I v) {
+  if ((uint64_t)(v + 5) < 262) return (Dyn *)&smallint[v + 5];
+  Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_int; d->v = v; return d;
+}
+Dyn *pys_dyn_float(double x) { Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
+static Dyn *dbool(I b) { return (Dyn *)(b ? &pys_dyn_true_box : &pys_dyn_false_box); }
+/* a reference of type t: None where it is null (an object of a class type may be None) */
+Dyn *pys_dyn_ref(const DynType *t, void *p) {
+  if (!p) return DNONE;
+  Dyn *d = pys_alloc(sizeof(Dyn)); d->t = t; d->v = (I)p; return d;
+}
+static Dyn *dlist(List *l) { return pys_dyn_ref(&pys_dyntype_list, l); }
+static Dyn *dstr(Str *s) { return pys_dyn_ref(&pys_dyntype_str, s); }
+static Dyn *dtuple(VTuple *t) { return pys_dyn_ref(&pys_dyntype_tuple, t); }
+/* x as a value of type t, which the compiler expects (a typed variable, argument or field): its
+   payload, where x has that type; an object also where its class derives from t's, and None
+   where t is a class's (whose values may be None); else TypeError, where CPython would not check
+   the annotation (docs/dynamic-any.md) */
+I pys_dyn_unbox(Dyn *x, const DynType *t) {
+  if (x->t == t) return x->v;
+  if (t->kind == DK_OBJ) {
+    if (DKIND(x) == DK_NONE) return 0;
+    for (const DynType *b = x->t; b; b = b->base) if (b == t) return x->v;
+  }
+  failf("TypeError: expected %s, got %s", t->name->s, DNAME(x));
+}
+static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
+
+/* repr(), str(), truth, format() */
+Str *pys_dyn_repr(Dyn *x) { return pys_repr(x->v, x->t->desc); }
+Str *pys_dyn_str(Dyn *x) { return DKIND(x) == DK_STR ? (Str *)x->v : pys_repr(x->v, x->t->desc); }
+I pys_dyn_truth(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_NONE: return 0;
+  case DK_BOOL: case DK_INT: return x->v != 0;
+  case DK_FLOAT: return dbl(x->v) != 0;
+  case DK_STR: return ((Str *)x->v)->len != 0;
+  case DK_LIST: return ((List *)x->v)->len != 0;
+  case DK_DICT: return ((Dict *)x->v)->len != 0;
+  case DK_TUPLE: return ((VTuple *)x->v)->len != 0;
+  }
+  return 1;   /* an object of a class without __bool__ and __len__ (the program tests those first) */
+}
+
+/* ==, ordering and hash, also of a box in a container (descriptor A) */
+I pys_dyn_eq(Dyn *a, Dyn *b) {
+  int ka = DKIND(a), kb = DKIND(b);
+  if (dnum(a) && dnum(b)) return a->v == b->v;
+  if (ka == DK_FLOAT || kb == DK_FLOAT) {
+    if (ka == DK_FLOAT && kb == DK_FLOAT) return dbl(a->v) == dbl(b->v);
+    if (ka == DK_FLOAT && dnum(b)) return pys_cmp_if(b->v, dbl(a->v)) == 0;
+    if (kb == DK_FLOAT && dnum(a)) return pys_cmp_if(a->v, dbl(b->v)) == 0;
+    return 0;
+  }
+  if (ka == DK_OBJ && kb == DK_OBJ) {   /* by the class both are objects of, as the program compares them */
+    const DynType *t = derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
+    if (!t || !(t->flags & DF_EQ)) return a->v == b->v;
+    return pys_obj_eq(t->cls, a->v, b->v);   /* (x == x runs __eq__ too; a container's search tries identity first) */
+  }
+  if (ka != kb) return 0;
+  if (ka == DK_NONE) return 1;
+  if (ka == DK_FUNC) return a->t == b->t && a->v == b->v;   /* the same function, and object or env */
+  return eqv(a->v, b->v, a->t->desc->s);
+}
+/* a != b: where the class both objects are of (as for ==) or a subclass defines __ne__ (DF_NE),
+   the program's helper, pys_obj_cmp(-1 - id, 0, a, b), runs it as typed code does; else not ==,
+   as object.__ne__ inverts __eq__ */
+I pys_dyn_ne(Dyn *a, Dyn *b) {
+  if (DKIND(a) == DK_OBJ && DKIND(b) == DK_OBJ) {
+    const DynType *t = derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
+    if (t && (t->flags & DF_NE)) return pys_obj_cmp(-1 - t->cls, 0, a->v, b->v) != 0;
+  }
+  return !pys_dyn_eq(a, b);
+}
+/* the items of a container: identity first, as CPython's PyObject_RichCompareBool (a float box
+   is a float object here, so a NaN equals itself in a list) */
+static int dyn_eqitem(Dyn *a, Dyn *b) { return a == b || (DKIND(a) != DK_FLOAT && a->t == b->t && a->v == b->v) || pys_dyn_eq(a, b); }
+static _Noreturn void dyn_noorder(Dyn *a, Dyn *b, I op) {
+  failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", DNAME(a), DNAME(b));
+}
+I pys_dyn_cmp(Dyn *a, Dyn *b, I op) {   /* a OP b, op 0..3: < <= > >= */
+  int ka = DKIND(a), kb = DKIND(b);
+  if (dnum(a) && dnum(b)) return cmpop((a->v > b->v) - (a->v < b->v), op);
+  if ((ka == DK_FLOAT || dnum(a)) && (kb == DK_FLOAT || dnum(b))) {
+    if (ka == DK_FLOAT && kb == DK_FLOAT) return opv(a->v, b->v, "f", op);
+    I c = ka == DK_FLOAT ? -pys_cmp_if(b->v, dbl(a->v)) : pys_cmp_if(a->v, dbl(b->v));
+    return c == 2 || c == -2 ? 0 : cmpop(c, op);   /* (a NaN: unordered, every comparison false) */
+  }
+  if (ka == DK_OBJ && kb == DK_OBJ) {
+    const DynType *t = derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
+    if (t && (t->flags & DF_CMP)) return pys_obj_cmp(t->cls, op, a->v, b->v) != 0;
+    dyn_noorder(a, b, op);
+  }
+  if (ka != kb || (ka != DK_STR && ka != DK_LIST && ka != DK_TUPLE)) dyn_noorder(a, b, op);
+  return opv(a->v, b->v, a->t->desc->s, op);
+}
+I pys_dyn_hash(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_NONE: return NONE_HASH;
+  case DK_BOOL: case DK_INT: return hint(x->v);
+  case DK_FLOAT: return hdbl(dbl(x->v));
+  case DK_STR: return hstr((Str *)x->v);
+  case DK_TUPLE: return htuple(((VTuple *)x->v)->a, ((VTuple *)x->v)->len, "A", 0);
+  case DK_OBJ: return x->t->flags & DF_HASH ? pys_obj_eq(-1 - x->t->cls, x->v, 0) : hptr(x->v);
+  case DK_FUNC: return hptr(x->v);
+  }
+  failf("TypeError: unhashable type: '%s'", DNAME(x));
+}
+
+/* arithmetic: op 0..11 = + - * / // % ** << >> & | ^ (the program runs a class's dunders first) */
+static const char *const dops[] = {"+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"};
+static _Noreturn void dyn_unsupported(Dyn *a, Dyn *b, I op) {
+  failf("TypeError: unsupported operand type(s) for %s: '%s' and '%s'", dops[op], DNAME(a), DNAME(b));
+}
+static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tuple and an int (or bool) */
+  I k = n->v < 0 ? 0 : n->v;
+  if (DKIND(seq) == DK_STR) return dstr(pys_str_mul((Str *)seq->v, k));
+  if (DKIND(seq) == DK_LIST) return dlist(pys_list_mul((List *)seq->v, k));
+  VTuple *t = (VTuple *)seq->v;
+  if (k == 1 || !t->len) return seq;   /* (CPython's tuple * 1 is the tuple itself) */
+  if (!k) return dtuple(pys_alloc(sizeof(VTuple)));   /* (the empty tuple) */
+  if (t->len > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I) / k) pys_fail("MemoryError");   /* (its size in bytes fits) */
+  VTuple *r = pys_alloc(sizeof(VTuple) + t->len * k * sizeof(I)); r->len = t->len * k;
+  for (I i = 0; i < k; i++) memcpy(r->a + i * t->len, t->a, t->len * sizeof(I));
+  return dtuple(r);
+}
+static int dseq(const Dyn *x) { return DKIND(x) == DK_STR || DKIND(x) == DK_LIST || DKIND(x) == DK_TUPLE; }
+Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) {
+  int ka = DKIND(a), kb = DKIND(b);
+  if (dnum(a) && dnum(b)) {
+    I x = a->v, y = b->v, r;
+    switch (op) {
+    case 0: if (__builtin_add_overflow(x, y, &r)) pys_fail(OVF); return pys_dyn_int(r);
+    case 1: if (__builtin_sub_overflow(x, y, &r)) pys_fail(OVF); return pys_dyn_int(r);
+    case 2: if (__builtin_mul_overflow(x, y, &r)) pys_fail(OVF); return pys_dyn_int(r);
+    case 3: return pys_dyn_float(pys_idiv(x, y));
+    case 4: return pys_dyn_int(pys_floordiv(x, y));
+    case 5: return pys_dyn_int(pys_mod(x, y));
+    case 6: return y < 0 ? pys_dyn_float(pys_fpow((double)x, (double)y)) : pys_dyn_int(pys_pow(x, y));   /* (2 ** -1 is 0.5) */
+    case 7: return pys_dyn_int(pys_shl(x, y));
+    case 8: return pys_dyn_int(pys_shr(x, y));
+    case 9: case 10: case 11: {
+      r = op == 9 ? x & y : op == 10 ? x | y : x ^ y;
+      return ka == DK_BOOL && kb == DK_BOOL ? dbool(r) : pys_dyn_int(r);   /* (True & False is a bool) */
+    }
+    }
+  }
+  if ((ka == DK_FLOAT || dnum(a)) && (kb == DK_FLOAT || dnum(b)) && op <= 6) {
+    double x = ka == DK_FLOAT ? dbl(a->v) : (double)a->v, y = kb == DK_FLOAT ? dbl(b->v) : (double)b->v;
+    switch (op) {
+    case 0: return pys_dyn_float(x + y);
+    case 1: return pys_dyn_float(x - y);
+    case 2: return pys_dyn_float(x * y);
+    case 3: return pys_dyn_float(pys_fdiv(x, y));
+    case 4: return pys_dyn_float(pys_ffloordiv(x, y));
+    case 5: return pys_dyn_float(pys_fmod(x, y));
+    case 6: return pys_dyn_float(pys_fpow(x, y));
+    }
+  }
+  if (op == 0 && dseq(a)) {
+    if (ka != kb) failf("TypeError: can only concatenate %s (not \"%s\") to %s", DNAME(a), DNAME(b), DNAME(a));
+    if (ka == DK_STR) return dstr(pys_str_add((Str *)a->v, (Str *)b->v));
+    if (ka == DK_LIST) return dlist(pys_list_add((List *)a->v, (List *)b->v));
+    VTuple *x = (VTuple *)a->v, *y = (VTuple *)b->v;
+    if (!y->len) return a;
+    if (!x->len) return b;
+    VTuple *r = pys_alloc(sizeof(VTuple) + (x->len + y->len) * sizeof(I)); r->len = x->len + y->len;
+    memcpy(r->a, x->a, x->len * sizeof(I)); memcpy(r->a + x->len, y->a, y->len * sizeof(I));
+    return dtuple(r);
+  }
+  if (op == 2 && (dseq(a) || dseq(b))) {
+    Dyn *s = dseq(a) ? a : b, *n = s == a ? b : a;
+    if (!dnum(n)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(n));
+    return dyn_repeat(s, n);
+  }
+  dyn_unsupported(a, b, op);
+}
+/* a OP= b: a list extends or repeats itself in place, as list's __iadd__ and __imul__ do; other
+   values have no in-place operation and make a new value */
+Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
+  if (DKIND(a) == DK_LIST && op == 0) {
+    if (DKIND(b) == DK_LIST) { pys_list_extend((List *)a->v, (List *)b->v); return a; }
+    if (DKIND(b) == DK_TUPLE) { VTuple *t = (VTuple *)b->v; for (I i = 0; i < t->len; i++) pys_list_append((List *)a->v, t->a[i]); return a; }
+    if (DKIND(b) == DK_DICT || DKIND(b) == DK_STR) {   /* (list += iterable: its items, a dict's keys, a str's characters) */
+      DynIter *it = pys_dyn_iter(b);
+      for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append((List *)a->v, (I)x);
+      return a;
+    }
+    failf("TypeError: '%s' object is not iterable", DNAME(b));
+  }
+  if (DKIND(a) == DK_LIST && op == 2) {
+    if (!dnum(b)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(b));
+    pys_list_imul((List *)a->v, b->v < 0 ? 0 : b->v);
+    return a;
+  }
+  return pys_dyn_binop(a, b, op);
+}
+Dyn *pys_dyn_unary(Dyn *a, I op) {   /* op 0..2: - + ~ */
+  if (dnum(a)) {
+    if (op == 0) { if (a->v == INT64_MIN) pys_fail(OVF); return pys_dyn_int(-a->v); }
+    return pys_dyn_int(op == 1 ? a->v : ~a->v);   /* (+True is 1) */
+  }
+  if (DKIND(a) == DK_FLOAT && op < 2) return op == 1 ? a : pys_dyn_float(-dbl(a->v));
+  failf("TypeError: bad operand type for unary %s: '%s'", op == 0 ? "-" : op == 1 ? "+" : "~", DNAME(a));
+}
+
+/* len(), items, membership and iteration of the builtin containers and str */
+I pys_dyn_len(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_STR: return pys_text_len((Str *)x->v);
+  case DK_LIST: return ((List *)x->v)->len;
+  case DK_DICT: return ((Dict *)x->v)->len;
+  case DK_TUPLE: return ((VTuple *)x->v)->len;
+  }
+  failf("TypeError: object of type '%s' has no len()", DNAME(x));
+}
+static I dindex(Dyn *o, Dyn *k) {   /* k as a sequence's index: an int or a bool */
+  if (dnum(k)) return k->v;
+  if (DKIND(o) == DK_STR) failf("TypeError: string indices must be integers, not '%s'", DNAME(k));
+  failf("TypeError: %s indices must be integers or slices, not %s", DNAME(o), DNAME(k));
+}
+Dyn *pys_dyn_getitem(Dyn *o, Dyn *k) {
+  switch (DKIND(o)) {
+  case DK_LIST: return (Dyn *)pys_list_get((List *)o->v, dindex(o, k));
+  case DK_DICT: return (Dyn *)pys_dict_getitem((Dict *)o->v, (I)k);
+  case DK_TUPLE: { VTuple *t = (VTuple *)o->v; return (Dyn *)t->a[idx(dindex(o, k), t->len, "IndexError: tuple index out of range")]; }
+  case DK_STR: return dstr(pys_text_get((Str *)o->v, dindex(o, k)));
+  }
+  failf("TypeError: '%s' object is not subscriptable", DNAME(o));
+}
+void pys_dyn_setitem(Dyn *o, Dyn *k, Dyn *v) {
+  if (DKIND(o) == DK_LIST) { pys_list_set((List *)o->v, dindex(o, k), (I)v); return; }
+  if (DKIND(o) == DK_DICT) { pys_dict_set((Dict *)o->v, (I)k, (I)v); return; }
+  failf("TypeError: '%s' object does not support item assignment", DNAME(o));
+}
+void pys_dyn_delitem(Dyn *o, Dyn *k) {
+  if (DKIND(o) == DK_LIST) { pys_list_del((List *)o->v, dindex(o, k)); return; }
+  if (DKIND(o) == DK_DICT) { pys_dict_del((Dict *)o->v, (I)k); return; }
+  failf("TypeError: '%s' object doesn't support item deletion", DNAME(o));
+}
+I pys_dyn_contains(Dyn *o, Dyn *k) {   /* k in o */
+  switch (DKIND(o)) {
+  case DK_LIST: {   /* (an __eq__ may change the list: re-read its length at every step) */
+    List *l = (List *)o->v;
+    for (I i = 0; i < l->len; i++) if (dyn_eqitem((Dyn *)l->a[i], k)) return 1;
+    return 0;
+  }
+  case DK_TUPLE: { VTuple *t = (VTuple *)o->v; for (I i = 0; i < t->len; i++) if (dyn_eqitem((Dyn *)t->a[i], k)) return 1; return 0; }
+  case DK_DICT: return pys_dict_has((Dict *)o->v, (I)k);
+  case DK_STR:
+    if (DKIND(k) != DK_STR) failf("TypeError: 'in <string>' requires string as left operand, not %s", DNAME(k));
+    return pys_str_contains((Str *)o->v, (Str *)k->v);
+  }
+  failf("TypeError: argument of type '%s' is not iterable", DNAME(o));
+}
+/* an iterator over a list's items, a tuple's, a dict's keys or a str's characters: i is the next
+   item's index (a str's byte, a dict's entry), used and count what a dict's loop checks (see
+   pys_dict_next). A list's length is read at every step, as CPython's list iterator reads it */
+struct DynIter { Dyn *o; I i, used, count; };
+DynIter *pys_dyn_iter(Dyn *o) {
+  int k = DKIND(o);
+  if (k != DK_LIST && k != DK_DICT && k != DK_TUPLE && k != DK_STR) failf("TypeError: '%s' object is not iterable", DNAME(o));
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->o = o;
+  if (k == DK_DICT) it->used = ((Dict *)o->v)->len;
+  return it;
+}
+Dyn *pys_dyn_next(DynIter *it) {   /* the next item, or null at the end */
+  Dyn *o = it->o;
+  switch (DKIND(o)) {
+  case DK_LIST: { List *l = (List *)o->v; return it->i < l->len ? (Dyn *)l->a[it->i++] : 0; }
+  case DK_TUPLE: { VTuple *t = (VTuple *)o->v; return it->i < t->len ? (Dyn *)t->a[it->i++] : 0; }
+  case DK_DICT: {
+    Dict *d = (Dict *)o->v; I e = pys_dict_next(d, it->i, it->used, it->count);
+    if (e < 0) return 0;
+    it->i = e + 1; it->count++;
+    return (Dyn *)d->keys[e];
+  }
+  }
+  Str *s = (Str *)o->v;
+  if (it->i >= s->len) return 0;
+  Str *c = pys_text_at(s, it->i); it->i = pys_text_next(s, it->i);
+  return dstr(c);
+}
+/* the box of slot v of descriptor d, of a fresh result that a builtin method gave (a str's split, a
+   dict's items): a number, a str, a box, None or a value, a tuple of these (made one of boxes) */
+static Dyn *dyn_of(I v, const char *d) {
+  switch (*d) {
+  case 'i': return pys_dyn_int(v);
+  case 'b': return dbool(v);
+  case 'f': return pys_dyn_float(dbl(v));
+  case 's': return dstr((Str *)v);
+  case 'A': return (Dyn *)v;
+  case '?': return v ? dyn_of(unbox(v, d + 1), d + 1) : DNONE;
+  case 'T': {
+    I n = d[1] - '0'; const char *e = d + 2;
+    VTuple *t = pys_alloc(sizeof(VTuple) + n * sizeof(I)); t->len = n;
+    for (I i = 0; i < n; i++, e = skip(e)) t->a[i] = (I)dyn_of(((I *)v)[i], e);
+    return dtuple(t);
+  }
+  }
+  failf("TypeError: a value of descriptor %s cannot become an Any value", d);
+}
+List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, of descriptor d */
+  List *l = pys_list_new(src->len);
+  for (I i = 0; i < src->len; i++) pys_list_append(l, (I)dyn_of(src->a[i], d->s));
+  return l;
+}
+/* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
+List *pys_dyn_list(Dyn *o) {
+  List *l = pys_list_new(DKIND(o) == DK_LIST ? ((List *)o->v)->len : 0);
+  DynIter *it = pys_dyn_iter(o);
+  for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(l, (I)x);
+  return l;
+}
+List *pys_dyn_strs(Dyn *o) {
+  if (DKIND(o) != DK_LIST && DKIND(o) != DK_DICT && DKIND(o) != DK_TUPLE && DKIND(o) != DK_STR) pys_fail("TypeError: can only join an iterable");
+  List *l = pys_list_new(0);
+  DynIter *it = pys_dyn_iter(o);
+  for (Dyn *x; (x = pys_dyn_next(it));) {
+    if (DKIND(x) != DK_STR) failf("TypeError: sequence item %lld: expected str instance, %s found", (long long)l->len, DNAME(x));
+    pys_list_append(l, x->v);
+  }
+  return l;
+}
+/* a, b = o: o's items, which must be n, all taken before the first is stored (CPython's unpack_iterable) */
+VTuple *pys_dyn_unpack(Dyn *o, I n) {
+  if (DKIND(o) != DK_LIST && DKIND(o) != DK_DICT && DKIND(o) != DK_TUPLE && DKIND(o) != DK_STR)
+    failf("TypeError: cannot unpack non-iterable %s object", DNAME(o));
+  VTuple *t = pys_alloc(sizeof(VTuple) + n * sizeof(I)); t->len = n;
+  DynIter *it = pys_dyn_iter(o); I k = 0;
+  for (Dyn *x; (x = pys_dyn_next(it));) {
+    if (k == n) failf("ValueError: too many values to unpack (expected %lld)", (long long)n);
+    t->a[k++] = (I)x;
+  }
+  if (k < n) failf("ValueError: not enough values to unpack (expected %lld, got %lld)", (long long)n, (long long)k);
+  return t;
+}
+/* id(x): a reference's own address, as the identity of the object it is; a number's box's (the
+   collector moves nothing, so neither changes while the value lives) */
+I pys_dyn_id(Dyn *x) { return DKIND(x) >= DK_STR && !(x->t->flags & DF_BOXID) ? x->v : (I)x; }
+/* int(x) and float(x) */
+I pys_dyn_int_of(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_BOOL: case DK_INT: return x->v;
+  case DK_FLOAT: return pys_f2i(dbl(x->v));
+  case DK_STR: return pys_int_str((Str *)x->v, 10);
+  }
+  failf("TypeError: int() argument must be a string, a bytes-like object or a real number, not '%s'", DNAME(x));
+}
+double pys_dyn_float_of(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_BOOL: case DK_INT: return (double)x->v;
+  case DK_FLOAT: return dbl(x->v);
+  case DK_STR: return pys_float_str((Str *)x->v);
+  }
+  failf("TypeError: float() argument must be a string or a real number, not '%s'", DNAME(x));
+}
 static void stable(Set *s, I size) {                 /* an empty table of size slots */
   /* the 8 slots of a new or cleared set are scanned whatever its kind: the compiler gives an empty
      set from a template the kind of the type its caller expects (typed_empty) only after it is
@@ -3443,6 +3858,7 @@ Str *pys_format_int(I v, I isbool, Str *spec);
 Str *pys_format_float(double x, Str *spec);
 Str *pys_format(I v, Str *desc, Str *spec) {
   const char *ds = desc->s;
+  if (*ds == 'A') { Dyn *x = (Dyn *)v; v = x->v; ds = x->t->desc->s; }   /* (a dynamic value: its own) */
   if (*ds == '?') {                            /* None or a value */
     if (!v && spec->len) failf("TypeError: unsupported format string passed to NoneType.__format__");
     if (!v) return cstr("None");

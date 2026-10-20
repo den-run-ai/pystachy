@@ -49,7 +49,7 @@ from src.pystachy_compiler.analysis import (
     top_bindings,
     walrus_names,
 )
-from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, RAW, fail
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, LINES, MODDUNDERS, RAW, dynamic_pragma, fail
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
@@ -288,6 +288,8 @@ class Loader:
     def program(self, path: str, src: str) -> list[Mod]:
         # the main program and the modules it imports, in the order their code may first run
         m = Mod("", path, "")
+        if dynamic_pragma(src):
+            DYNFILES[len(FILES)] = True
         FILES.append(path)
         m.body = Parser(Lexer(src, 1).file()).module()
         tb_import(m.body)
@@ -598,6 +600,8 @@ class Loader:
         f.close()
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
+        if dynamic_pragma(src):
+            DYNFILES[k] = True
         self.parsed[path] = Parser(Lexer(src, k * LINES + 1).file()).module()
         tb_import(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))

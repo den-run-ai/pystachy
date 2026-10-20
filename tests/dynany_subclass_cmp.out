@@ -1,0 +1,17 @@
+S.__gt__ 2 1
+True
+S.__gt__ 2 1
+True
+S.__le__ 2 1
+False
+TypeError: '>' not supported between instances of 'B' and 'S'
+TypeError: '<' not supported between instances of 'S' and 'B'
+S.__gt__ 3 2
+True
+S.__gt__ 3 2
+True
+S.__le__ 2 3
+True
+TypeError: '<' not supported between instances of 'B' and 'B'
+2
+[exit 0]

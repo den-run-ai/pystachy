@@ -11,6 +11,7 @@ are linked from the relevant guide.
 | [Installation](install.md) | Native releases, Docker, Linux/macOS source setup, uv and custom prefixes |
 | [Packages and apps](packages.md) | Source wheels, dependency locks, CPython reuse and standalone deployment |
 | [Language](language.md) | Supported Python, types, inference and compatibility limits |
+| [Dynamic `Any` (prototype)](dynamic-any.md) | Opt-in runtime-typed `Any` values: representation, contract, deviations and costs |
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
 | [Compatibility audit (2026-10-17)](reports/compatibility-2026-10-17.md) | Measured stdlib, PyPI, benchmark and test-suite coverage at a pinned revision |

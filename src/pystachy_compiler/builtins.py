@@ -285,7 +285,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             v = self.as_list(v, "tuple")  # (the items of its iterator object; a range's numbers)
         if not is_list(v.t):
             self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
-        if unopt(elem(v.t)) not in ["int", "float", "bool", "str"]:
+        if unopt(elem(v.t)) not in ["int", "float", "bool", "str", "dyn"]:
             self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
         return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {v.v}"]), self.ctype("vtuple", [elem(v.t)]))
     if name == "typing.NamedTuple":
@@ -461,6 +461,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # decided by the static types, or by whether it is None (an optional value, an object)
         v = self.expr(args[0], "")
         self.isinst_reads(args[1])
+        if v.t == "dyn":
+            return self.dyn_isinst(v, args[1])  # (by its box's type: dynamic.py)
         if (v.t == "exc" or (v.t in self.classes and self.classes[v.t].exc != "")) and self.exc_classes(args[1]):
             return self.exc_isinst(v, args[1])
         if v.t == "opt[exc]" and self.exc_classes(args[1]):
@@ -630,6 +632,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         elif kvals[j].t != "None":
             keyv = kvals[j]  # (key=None: the items themselves)
             self.key_check(keyv, f"{name}()")
+    if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id"]:
+        return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
+    if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
+        return self.dyn_sum(self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
         self.err(f"{name}() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
     if name == "sum" and len(vals) == 2 and (self.iter_object(vals[0].t) or is_gen(vals[0].t)) and (vals[1].t == "int" or vals[1].t == "float"):
@@ -1540,6 +1546,11 @@ def gen_as_list(self, v: Val, name: str) -> Val:
     # name "slice": the value assigned to a list slice, with its errors
     if is_kw(v.t):
         return self.kw_list(v)  # (the names of **kwargs)
+    if v.t == "dyn":
+        # (a dynamic value's items, as list() takes them: a fresh list of their boxes, or of the
+        # strs they must be for str.join(): dynamic.py)
+        fn = "pys_dyn_strs" if name == "join" else "pys_dyn_list"
+        return Val(self.rt(fn, "ptr", [f"ptr {v.v}"]), "list[str]" if name == "join" else "list[dyn]")
     if v.t in self.nts:
         self.notnone(v, "TypeError: must assign iterable to extended slice" if name == "slice" else "TypeError: 'NoneType' object is not iterable")
         v = self.ntup(v, True)
@@ -2178,6 +2189,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 v = Val(v.v, "list[str]")  # (an item that is None raises when it runs, as CPython's error)
             if key == "bytes.join" and v.t == "list[opt[bytes]]":
                 v = Val(v.v, "list[bytes]")
+            if key == "str.join" and v.t == "list[dyn]":
+                v = Val(self.rt("pys_dyn_strs", "ptr", [f"ptr {self.dyn_box(v).v}"]), "list[str]")  # (strs, checked: dynamic.py)
             if key == "str.join" and is_list(v.t) and elem(v.t) != "str" and "?" not in v.t:
                 self.err(f"sequence item 0: expected str instance, {tname(elem(v.t))} found")  # (CPython's TypeError)
             if key == "bytes.join" and is_list(v.t) and elem(v.t) != "bytes" and "?" not in v.t:
@@ -2219,6 +2232,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 dt = pt
             v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
             av.append("i64 " + self.to_slot(v) if slot else self.rarg(v))
+        elif dflt != "" and slot and pt == "dyn" and dflt == "0":
+            av.append(f"i64 ptrtoint (ptr {self.rtdata('pys_dyn_none_box')} to i64)")  # (None, as a dynamic value: dynamic.py)
         elif dflt != "":
             av.append(("i64 " if slot else rtt(pt) + " ") + dflt)
         else:

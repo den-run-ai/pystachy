@@ -194,6 +194,8 @@ def tname(t: str) -> str:
         return typestr(t)
     if t == "exc":
         return "BaseException"
+    if t == "dyn":
+        return "Any"  # (whose type is its value's: dynamic.py)
     if t == "exctype":
         return "type"
     if is_gen(t):
@@ -550,7 +552,7 @@ def typestr(t: str) -> str:
     w = ""
     for c in t + ",":
         if c == "[" or c == "]" or c == ",":
-            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Generator" if w == "gen" and c == "[" else SPECSHOW[w] if w in SPECSHOW else short(w))
+            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Any" if w == "dyn" else "Generator" if w == "gen" and c == "[" else SPECSHOW[w] if w in SPECSHOW else short(w))
             out.append(c)
             w = ""
         else:

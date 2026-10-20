@@ -1,0 +1,21 @@
+1 Box(1)
+now a str Box('now a str')
+Box([1, 2, 3]) [1, 2, 3]
+Point(1, 2) 1
+Box Box(1)
+Point Point(3, 4)
+Dog Dog('rex')
+Animal Animal('cat')
+int 5
+str 's'
+rex barks
+cat makes a sound
+7 7
+Point(10, 4)
+rex barks rex
+{Point(1, 2): 'b', Point(2, 1): 'c'} 2
+True False
+True False False True
+7 7
+changed
+[exit 0]

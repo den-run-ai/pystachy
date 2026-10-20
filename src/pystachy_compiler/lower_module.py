@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RTDATA, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -101,6 +101,16 @@ def lower_data(d: Data) -> str:
         # the names a class's objects answer to, sorted by their bytes, each with its kind
         es = ["{ptr, i64} {ptr " + d.refs[j] + ", i64 " + d.items[j].v + "}" for j in range(len(d.refs))]
         return f"{d.name} = internal constant [{len(es)} x {{ptr, i64}}] [{', '.join(es)}], align 8"
+    if d.kind == "dyntype":
+        # a class's DynType (dynamic.py): kind, descriptor, name, O<id>, base's DynType, flags, as
+        # runtime.c's struct DynType lays them out. Internal, and its address is the class's
+        # identity to a dynamic value's box: never merged
+        r = d.refs
+        return (f"{d.name} = internal constant {DYNTYPE_LL} {{i64 {d.items[0].v}, ptr {r[0]}, ptr {r[1]}, "
+                f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}}}, align 8")
+    if d.kind == "dynbox":
+        # a def's dynamic value (dynamic.py): its DynType and, as its payload, that DynType's address
+        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 ptrtoint (ptr {d.refs[0]} to i64)}}, align 8"
     if d.kind == "classfields":
         # the fields of an object's __dict__ in their order: name, type descriptor, byte offset in
         # the class's layout (d.text) and that of its "is assigned" flag (-1: always assigned)
@@ -308,16 +318,19 @@ def gen_pyext(self) -> list[str]:
 
 def gen_dispatch(self, op: str) -> None:
     # pys_obj_<op>(class id, [op code,] a, b), called by the runtime for "O<id>" descriptors;
-    # pys_obj_eq(-1 - id, a, 0) is the hash of a, for "H<id>" (hcls: hash_helper). Only a
+    # pys_obj_eq(-1 - id, a, 0) is the hash of a, for "H<id>" (hcls: hash_helper), and
+    # pys_obj_cmp(-1 - id, 0, a, b) is a != b, for a dynamic value's (one: pys_dyn_ne). Only a
     # class that a descriptor compares (ocmp) has @o.eq and @o.cmp
     r = "ptr" if op == "repr" else "i64"
     hs = [c for c in self.hcls] if op == "eq" else []
+    ns = [c for c in self.one] if op == "cmp" else []
     cs = [c for c in self.ocls if op == "repr" or c in self.ocmp]
     self.out.append(f"define {r} @pys_obj_{op}(i64 %c, {'i64 %op, ' if op == 'cmp' else ''}i64 %a, i64 %b) {{")
     self.out.append("entry:")
     self.out.append("  %pa = inttoptr i64 %a to ptr")
     self.out.append("  %pb = inttoptr i64 %b to ptr")
     cases = [f"i64 {self.ocls[c]}, label %k{self.ocls[c]}" for c in cs] + [f"i64 {-1 - self.ocls[c]}, label %h{self.ocls[c]}" for c in hs]
+    cases += [f"i64 {-1 - self.ocls[c]}, label %n{self.ocls[c]}" for c in ns]
     self.out.append(f"  switch i64 %c, label %none [{' '.join(cases)}]")
     for c in cs:
         i = self.ocls[c]
@@ -334,6 +347,12 @@ def gen_dispatch(self, op: str) -> None:
         self.out.append(f"h{i}:")
         self.out.append(f"  %x{i} = call i64 @o.hash.{c}(ptr %pa)")
         self.out.append(f"  ret i64 %x{i}")
+    for c in ns:
+        i = self.ocls[c]
+        self.out.append(f"n{i}:")
+        self.out.append(f"  %y{i} = call i1 @o.ne.{c}(ptr %pa, ptr %pb)")
+        self.out.append(f"  %w{i} = zext i1 %y{i} to i64")
+        self.out.append(f"  ret i64 %w{i}")
     self.out.append("none:")
     self.out.append("  unreachable")
     self.out.append("}")
@@ -403,6 +422,8 @@ def gen_lower_module(self) -> str:
     for k in self.rtfns:
         if not (self.rtmode and self.rtfns[k].sym in self.rtdefs):
             hdr.append(runtime_decl(k))  # (runtime mode: what runtime.py defines is not declared)
+    for sym in self.rtdatas:
+        hdr.append(f"@{sym} = external constant {RTDATA[sym]}")  # (the runtime's data that dynamic values use)
     for x in self.externs.values():
         if x != "":
             hdr.append(x)
