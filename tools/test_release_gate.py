@@ -1,9 +1,11 @@
 """Prevent stale, unrelated, or incomplete CI from authorizing publication."""
 
+from contextlib import redirect_stderr, redirect_stdout
+import io
 import unittest
 from unittest.mock import patch
 
-from release_gate import REQUIRED_WORKFLOWS, should_promote, validate_version, workflow_states
+from release_gate import REQUIRED_WORKFLOWS, main, should_promote, validate_version, workflow_states
 
 COMMIT = "a" * 40
 
@@ -29,6 +31,22 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertEqual(set(workflow_states([], COMMIT).values()), {"pending"})
         self.assertEqual(set(workflow_states([run(n) for n in REQUIRED_WORKFLOWS], COMMIT).values()),
                          {"success"})
+
+    def test_source_wheel_packages_are_required(self):
+        states = workflow_states([run(name) for name in ("CI", "Installation", "Lint")], COMMIT)
+        self.assertEqual(states, {"CI": "success", "Installation": "success", "Lint": "success",
+                                  "Packages": "pending"})
+
+    def test_timeout_names_the_missing_workflow(self):
+        runs = {"workflow_runs": [run(name) for name in ("CI", "Installation", "Lint")]}
+        argv = ["release_gate.py", "--repository", "den-run-ai/pystachy", "--commit", COMMIT,
+                "--version", "v0.1.0"]
+        stderr = io.StringIO()
+        with patch("release_gate.get_json", side_effect=[None, None, runs]), patch("sys.argv", argv), \
+                patch.dict("os.environ", {"GH_TOKEN": "test"}), redirect_stdout(io.StringIO()), \
+                redirect_stderr(stderr):
+            self.assertEqual(main(), 1)
+        self.assertEqual(stderr.getvalue(), "release gate: Release commit is missing successful Packages\n")
 
     def test_other_commits_branches_and_prs_do_not_count(self):
         for changes in ({"head_sha": "b" * 40}, {"head_branch": "other"}, {"event": "pull_request"}):

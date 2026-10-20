@@ -25,12 +25,13 @@ only build inputs and excludes environment files, keys and caches.
 1. Set [VERSION](../VERSION) to the intended semantic version (initially
    `v0.1.0-alpha.1`), then merge the version bump, intended fixes and packaging changes
    into `main`.
-2. Wait for **CI**, **Installation** and **Lint** to succeed on the exact `main` commit.
+2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
+   `main` commit.
 3. Run **Release** manually from `main`, with a new tag matching `VERSION`.
    Alternatively, push that tag pointing to a verified commit on `main`.
 
 The workflow verifies that the source commit belongs to `main` and waits up to 20
-minutes for all three verification workflows on that commit. A failure or cancellation
+minutes for all four verification workflows on that commit. A failure or cancellation
 blocks publication. A published version cannot be replaced, and an existing tag must
 resolve to the selected commit. Create a new version for changed code.
 
