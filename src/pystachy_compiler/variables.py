@@ -1285,6 +1285,17 @@ def gen_adopt(self, t: str) -> None:
         self.holes[h] = t
         if is_dict(t) or is_set(t):
             self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+    for k in self.qroot:
+        # a function that returns this one's open result unchanged (qchain) stores the key
+        # layout of what it returns as the call returns (typed_empty), before its own finally
+        # blocks run: t's, not the int's an open hole stores
+        if k != self.curfn.ll and k in self.qholes:
+            for g in self.qchain(self.qroot[k]):
+                if g.ll == self.curfn.ll:
+                    for h in self.qholes[k]:
+                        self.holes[h] = t
+                    if is_dict(t) or is_set(t):
+                        self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
 
 def gen_qchain(self, f: FnInfo) -> list[FnInfo]:
     # f, and the functions whose open empty result it returns unchanged, through those it
