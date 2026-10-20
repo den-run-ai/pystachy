@@ -1,0 +1,12 @@
+(80, 121, 115) () [80, 121, 115] (80, 121, 115, 0) [0, 1, 2, 3]
+[1, 2] True True [1, 2, 9]
+{97: None, 98: None} {80: 0, 121: 0, 115: 0} {}
+[1, 65, 66, 3]
+[120, 65, 121, 3]
+ValueError: attempt to assign sequence of size 1 to extended slice of size 2
+80 [121, 115]
+[0] 255
+97 [] 122
+ValueError: not enough values to unpack (expected at least 2, got 1)
+[0] [122, 1]
+[exit 0]
