@@ -29,7 +29,7 @@ skip_empty = True
 [html]
 directory = build/coverage/html
 title = Pystachy hosted compiler coverage
-# the suites that ran each line (corpus, ffi, cache, unit)
+# the suites that ran each line (corpus, ffi, cache, unit, ir)
 show_contexts = True
 
 [json]
