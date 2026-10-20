@@ -33,7 +33,7 @@ produce byte-identical LLVM IR.
   CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster than
   the same model in pure Python on CPython; results match PyTorch within 1.4e-14
   ([example](examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)).
-- **1,400+ differential programs** checked against CPython, plus **1,800+ rejection tests**,
+- **1,400+ differential programs** checked against CPython, plus **1,700+ rejection tests**,
   with JIT/AOT, self-hosting, sanitizer and garbage-collection stress coverage
   ([verification](docs/testing.md)).
 - **Python and C interoperability:** call C libraries, build CPython extensions, or explicitly
