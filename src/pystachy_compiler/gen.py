@@ -816,6 +816,8 @@ from src.pystachy_compiler.optimizations import (
     gen_dictfuse as optimizations_dictfuse,
     gen_disjoint as optimizations_disjoint,
     gen_listget as optimizations_listget,
+    gen_nullcheck as optimizations_nullcheck,
+    gen_nullslot as optimizations_nullslot,
     gen_optimize as optimizations_optimize,
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
@@ -2791,6 +2793,12 @@ class Gen:
 
     def unionslots(self, fn: IFn) -> int:
         return optimizations_unionslots(self, fn)
+
+    def nullcheck(self, fn: IFn) -> int:
+        return optimizations_nullcheck(self, fn)
+
+    def nullslot(self, fn: IFn, lds: list[int], stride: int, slots: dict[str, int], q: Ins) -> str:
+        return optimizations_nullslot(self, fn, lds, stride, slots, q)
 
     def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
         return optimizations_usplits(self, fn, defs, v, seen)

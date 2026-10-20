@@ -78,6 +78,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 hierarchy comparison dispatch (#785), **partial** | `554f3d13`; docs-only #776/#788 also inspected | Hosted raw IR at 80 subclasses: exception 357,105 → 9,317 lines, ordinary 353,611 → 6,063. 135 tooling tests, 56 positive compilations and 30 rejections pass; native evaluation remains incomplete. [Evidence](compatibility-2026-10-20-hierarchy-partial.json). |
 | 2026-10-20 comparison-operand widening (#792), **partial** | `452a0864`; follows #785 | The retained 80-subclass `other: object` probe moves from #785's 4,096-specialization rejection to 13,220 raw IR lines; 40 subclasses shrink 73,420 → 6,860. Declared-`Base` controls are byte-identical. 135 tooling tests, 57 before/after hosted compilations, 30 rejections and four CPython 3.12 recordings pass; native evaluation remains incomplete. [Evidence](compatibility-2026-10-20-comparison-widening-partial.json). |
 | 2026-10-20 concurrency contract (#789), bounded tooling evaluation complete | `870bfa15`; no compiler/runtime/library implementation paths | Five registration checks and both 25-line source-twin clients pass; exact-tree native CI and FFI coverage jobs succeeded. This records contracts and probes, not a new native concurrency or import-compatibility claim. [Evidence](compatibility-2026-10-20-concurrency-contract.json). |
+| 2026-10-20 dominated null-check elimination (#791), **partial** | `10097965`; compiler/typed-IR pass changes after #789 | On the same prior compiler source, hosted IR falls **710,837→621,696 lines** and null tests **36,182→13,978**; disabling the pass is byte-identical to the previous compiler. 137 hosted tests, three call contracts, the new reference and linear-scaling controls pass. Native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-nullcheck-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5151,3 +5152,87 @@ successfully on the identical tree. It also does not complete #762 or #792's
 outstanding native/release work. Latest fully evaluated main therefore remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**; full CPython regrtest and compiled
 upstream suites were not run, and unrelated known gaps were not rechecked.
+
+## 2026-10-20 — #791: dominated null-check elimination; hosted evidence
+
+Inspected [main `100979652775ab55ff2ecfd83750270395ece789`](https://github.com/den-run-ai/pystachy/commit/100979652775ab55ff2ecfd83750270395ece789)
+after [#791](https://github.com/den-run-ai/pystachy/pull/791) merged at
+2026-10-20 22:21:37 UTC. Fresh history and ancestry checks establish it as the
+sole first-parent merge after #789. Implementation head
+`c4d28c11d41c8ed876c5cafb5f2140e9db6c0d30` and the merge share tree
+`56c70c4875a633b20a0590c1767836c5b0b8c580`.
+
+The compiler gains a typed-IR `nullcheck` pass that removes a repeated null test
+only when a passed test of the same canonical value dominates it. It retains
+checks after joins, possibly skipped branches/loops, handlers, reassignment and
+cell-writing calls. Compiler and typed-IR implementation changed; runtime,
+libraries and ports did not.
+
+[Machine-readable evidence](compatibility-2026-10-20-nullcheck-partial.json)
+retains exact commands, source and output hashes, changed-path hashes, workflow
+links, environment and clean pre/post snapshots. The fresh checkout had no
+tracked, untracked or ignored files before or after the run. CPython **3.12.14**
+hosted these local compiler checks; pinned CPython 3.13.16 and LLVM 18 were not
+available.
+
+The same prior-main `pystachy.py` source was compiled three ways:
+
+| Hosted compiler | Raw LLVM lines | Null-pointer tests | `pys_raise` calls |
+|---|---:|---:|---:|
+| Previous `870bfa15` compiler | 710,837 | 36,182 | 16,911 |
+| Current `10097965`, `PYSTACHY_OPT=-nullcheck` | 710,837 | 36,182 | 16,911 |
+| Current `10097965`, pass enabled | **621,696** | **13,978** | **9,403** |
+
+The disabled output is byte-identical to the previous compiler. Enabling the
+pass independently reduces raw IR lines by **12.54%** and null-pointer tests by
+**61.37%** on this input. These are unoptimized hosted LLVM-text counts, not
+binary size, compile time, runtime, memory, JIT machine code or universal
+scaling measurements.
+
+The new path-sensitive program provides a smaller disable control: previous and
+current-disabled outputs are byte-identical at 1,214 lines, 22 null tests and 16
+raise calls; enabled output has 1,184 lines, 14 null tests and 14 raise calls.
+Its CPython 3.12.14 output exactly matches the checked-in recording after the
+recording's exit marker is separated.
+
+| Additional fresh hosted check | Result and boundary |
+|---|---|
+| Typed-IR tests | `test_typed*.py`: **84/84 pass**, including both new dominance/cold-block tests. |
+| Verification tooling | `test_*verif*.py`: **53/53 pass**. Combined hosted unit/verification total: **137/137**. |
+| Changed call contracts | `index_key`, `init_hasattr` and `reflect_effects` compile with the internal IR checker; extracted runtime calls match all three updated `.calls` fixtures. LLVM assembly was not run locally. |
+| Scaling controls | Hosted `nulls`, `fields` and `long` at N=500/1000 pass `--ops --check`. Executed-line and flow counts grow exactly 2.0x; item work grows 1.0x for `nulls` and 2.0x for both controls. One-run elapsed values are retained only as advisory output. |
+
+Historical workflows on the identical implementation tree all succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39503338365) has
+**27/27 successful jobs**, including bootstrap, gc-self, contracts, scaling,
+native, hosted, GC, UBSan, runtime-cache and final `make verify` gates;
+[Coverage](https://github.com/den-run-ai/pystachy/actions/runs/39503338411)
+has 19 successful jobs with only the main-only badge publication skipped.
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39503338360),
+[Packages](https://github.com/den-run-ai/pystachy/actions/runs/39503338413) and
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39503338340)
+also succeeded. The preceding audit-head
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39502760660) succeeded.
+These are historical exact-tree CI results, not relabeled local execution.
+
+The PR's Codex review completed without findings at `0cf7de2`; later commits
+merged newer main revisions. No substantive review thread was present. This
+audit verified the final tree and behavior above but does not treat that earlier
+review as a review of a different final commit.
+
+Preserve the implementation PR's performance risk as **author-reported, not
+independently timed here**: it reports about +2.9% frontend instructions and
++10% median frontend wall time for self-compilation, largely from one extra
+collection, while whole AOT-build and selected runtime differences were within
+that setup's noise. The independent audit claims only the deterministic IR
+reductions and disable controls above.
+
+No local native JIT/AOT, GC-stressed execution, LLVM assembly, cache suite,
+metadata-enabled import sweep, adapted port/benchmark run, full upstream suite
+or CPython regrtest was run. Existing import totals and first errors remain
+historical; no new library-support, runtime-speed or peak-memory claim follows.
+No uncovered correctness bug was confirmed, so no new issue was filed. Complete
+the compiler checkpoint with an authorized pinned CPython 3.13.16 / LLVM 18
+rebuild, selected native parity and the pinned import sweep. #762 and #792's
+outstanding native/release work also remains. Latest fully evaluated main stays
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

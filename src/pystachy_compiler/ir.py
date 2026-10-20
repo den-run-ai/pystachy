@@ -1,6 +1,6 @@
 """Ir component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.specs import FXALL
+from src.pystachy_compiler.specs import FXALL, VALUE_AT
 from src.pystachy_compiler.syntax import Node
 
 
@@ -366,13 +366,12 @@ class Values:
             code = fn.blocks[j].code
             for x in range(len(code)):
                 i = code[x]
-                if (i.op == "select" or i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp" or i.op == "rt" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "mach.load" or i.op == "mach.addr" or i.op == "mem.load" or i.op == "field.addr" or i.op == "int.ucmp" or i.op == "ptr.cmp") and len(i.r) == 1:
+                how = VALUE_AT.get(i.op, 0)
+                if how == 1 and len(i.r) == 1:
                     self.at[i.r[0]] = j * self.stride + x
-                elif (i.op == "union.payload" or i.op == "dyn.payload") and len(i.r) == 2:
+                elif how == 2 and len(i.r) == 2:
                     self.at[i.r[1]] = j * self.stride + x
-                elif i.op == "dyn.type" and len(i.r) == 1:
-                    self.at[i.r[0]] = j * self.stride + x
-                elif i.op == "tuple.load" or i.op == "tuple.store":
+                elif how == 3:
                     for r in i.r:
                         self.at[r] = j * self.stride + x
 
