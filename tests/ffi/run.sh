@@ -17,7 +17,9 @@
 #   tests/ffi/ext/*.py     pystachy ext: the modules that import export from ffi become extension
 #                          modules (abi3; abi3t on a free-threaded CPython), and each client prints with
 #                          them what it prints with their source and tools/rt_cpython (its 'loaded' and
-#                          'gil' lines aside: they name the file, and the GIL an extension turns on)
+#                          'gil' lines aside: they name the file, and the GIL an extension turns on),
+#                          and exits with status 0 (so that a check of its own that fails both runs
+#                          alike fails the case too)
 # The compiler checks the IR it builds (PYSTACHY_IRCHECK=1, unless set otherwise).
 # The c_ and error cases need no python: without $PY (default python3, 3.12 or later, with a shared
 # libpython) the py_ and ext cases are skipped, and the report says so.
@@ -122,14 +124,14 @@ else
       rm -f "$T/so/$n.py"
       if $PYS ext "$f" --abi $abi -o "$T/so/$n.$abi.so" 2> "$T/ext.$n.err"; then ok; else bad "pystachy ext $f"; head -5 "$T/ext.$n.err"; fi
     done
-    for c in client.py client2.py avclient.py reclient.py pk3.py use3.py rdclient.py memclient.py wrclient.py fmclient.py bxclient.py; do
+    for c in client.py client2.py avclient.py reclient.py pk3.py use3.py rdclient.py memclient.py wrclient.py fmclient.py bxclient.py pwclient.py aioclient.py; do
       st=1; [ "$c" = memclient.py ] && st=0
       for d in src so; do
         tw=; [ $d = src ] && tw=$TW
         (cd "$T/$d" && PYTHONPATH=$tw PYSTACHY_GC_STRESS=$st "$PY" -W ignore "$c" a b < /dev/null > "$T/$c.$d" 2>&1; echo "[exit $?]" >> "$T/$c.$d")
         grep -v -e '^loaded ' -e '^gil ' "$T/$c.$d" > "$T/$c.$d.cmp"
       done
-      if cmp -s "$T/$c.src.cmp" "$T/$c.so.cmp"; then ok; else bad "ext client $c (CPython 3.$MINOR$FT, $abi)"; diff "$T/$c.src.cmp" "$T/$c.so.cmp" | head -10; fi
+      if cmp -s "$T/$c.src.cmp" "$T/$c.so.cmp" && [ "$(tail -1 "$T/$c.so.cmp")" = "[exit 0]" ]; then ok; else bad "ext client $c (CPython 3.$MINOR$FT, $abi)"; diff "$T/$c.src.cmp" "$T/$c.so.cmp" | head -10; tail -3 "$T/$c.so.cmp"; fi
     done
   fi
 fi
