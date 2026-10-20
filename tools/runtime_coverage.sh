@@ -107,6 +107,15 @@ if [ "$report" != only ]; then
   [ -z "$failed" ] || { echo "tools/runtime_coverage.sh: the tests failed:$failed ($C/parts/)" >&2; exit 1; }
   [ -n "$report" ] || exit 0
 fi
+# the objects that llvm-cov reads the counts through: runtime.c's name and pyembed.c's and pyext.c's
+# ("-": standard input) are the driver's, which name its static functions' counters. (Before the
+# merged profile: llvm-cov warns of a profile older than its objects, and a warning fails the run.)
+mkdir -p "$C/objects" || exit 1
+for f in runtime pyembed pyext; do
+  name=; [ $f = runtime ] || name="-Xclang -main-file-name -Xclang -"
+  # shellcheck disable=SC2086
+  "${L}clang" -O2 -fPIC -c -x c "$f.c" -o "$C/objects/$f.o" $CF -fexceptions -fcoverage-compilation-dir=. $name || exit 1
+done
 # the profiles of the parts that PART.json describes (tools/coverage_report.py checks those)
 set --
 for j in "$C"/parts/*.json; do
@@ -116,14 +125,6 @@ for j in "$C"/parts/*.json; do
 done
 [ $# != 0 ] || { echo "tools/runtime_coverage.sh: no parts in $C/parts/" >&2; exit 1; }
 "${L}llvm-profdata" merge -sparse "$@" -o "$C/runtime.profdata" || exit 1
-# the objects that llvm-cov reads the counts through: runtime.c's name and pyembed.c's and pyext.c's
-# ("-": standard input) are the driver's, which name its static functions' counters
-mkdir -p "$C/objects" || exit 1
-for f in runtime pyembed pyext; do
-  name=; [ $f = runtime ] || name="-Xclang -main-file-name -Xclang -"
-  # shellcheck disable=SC2086
-  "${L}clang" -O2 -fPIC -c -x c "$f.c" -o "$C/objects/$f.o" $CF -fexceptions -fcoverage-compilation-dir=. $name || exit 1
-done
 objects="$C/objects/runtime.o -object $C/objects/pyembed.o -object $C/objects/pyext.o"
 # shellcheck disable=SC2086
 {
