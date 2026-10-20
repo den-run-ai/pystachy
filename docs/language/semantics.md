@@ -151,9 +151,9 @@ that may be `None` but is not a range, `type(r)` as a value, and the reflection 
 (`_MISSING = object()`, a parameter's default tested with `x is _MISSING`). It is an object of the
 class in [`lib/_pystachy_object.py`](../../lib/_pystachy_object.py), which the compiler loads for a
 program that may call `object()`. `is`, `is not`, `==` and `!=` compare identities (a value of a
-builtin type, such as an int, a str, a list or a range, is never equal to one), `hash()`, dict keys
-and set elements use the identity, `bool()` is true, `repr()` and `str()` give
-`<object object at 0x...>` with Pystachy's address, `type(x).__name__` is `object` and
+builtin type, such as an int, a str, a list, a range, a generator or a function, is never equal to
+one), `hash()`, dict keys and set elements use the identity, `bool()` is true, `repr()` and `str()`
+give `<object object at 0x...>` with Pystachy's address, `type(x).__name__` is `object` and
 `type(x).__module__` is `builtins`, and `isinstance(x, object)` and `type(x) is object` are true.
 The compiler rejects `object()` with arguments (CPython's `TypeError`), assigning an attribute of
 such an object, `==` and `!=` between such an object and an object of a class or an exception

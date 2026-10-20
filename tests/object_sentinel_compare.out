@@ -8,6 +8,8 @@ seen 2
 seen b
 False True
 False False True True False True
+False True False True False True False True
+False True False True
 False True True False
 True True True False True
 False False False True

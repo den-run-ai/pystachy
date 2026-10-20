@@ -3374,12 +3374,13 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         else:
             return Val("false" if op == "==" else "true", "bool")
     if (op == "==" or op == "!=") and (a.t == OBJECTC) != (b.t == OBJECTC):
-        # object()'s object and a value of builtin types (a range object and an iterator too),
-        # which is never that object and whose __eq__ declines it: CPython compares them by
-        # identity (None, which an object of a class type may be, is compared below; an object of
-        # a class may have its own __eq__)
+        # object()'s object and a value of builtin types (also a range object, an iterator, a
+        # generator, a function, a Callable and an exception class), which is never that object
+        # and whose __eq__ declines it: CPython compares them by identity (None, which an object of
+        # a class type may be, is compared below; an object of a class, also an exception, may
+        # have its own __eq__)
         o = unopt(b.t if a.t == OBJECTC else a.t)
-        if all(m in ["int", "float", "bool", "str", "bytes", RANGEC] or m.startswith(ITERS + "$") or is_list(m) or is_dict(m) or is_tuple(m) or is_vtuple(m) or is_set(m) for m in (umembers(o) if is_union(o) else [o])):
+        if all(m in ["int", "float", "bool", "str", "bytes", "exctype", RANGEC] or m.startswith(ITERS + "$") or is_list(m) or is_dict(m) or is_tuple(m) or is_vtuple(m) or is_set(m) or is_gen(m) or is_fn(m) or is_callable(m) for m in (umembers(o) if is_union(o) else [o])):
             return Val("false" if op == "==" else "true", "bool")
     if (op == "in" or op == "not in") and b.t == RANGEC:
         # x in a range object: arithmetic, as x in range(...) (an int | None that is None equals
