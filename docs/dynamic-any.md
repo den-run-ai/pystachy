@@ -193,11 +193,53 @@ value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` a
 ## Measurements
 
 `tools/dynany_bench.py` (one module that opts in) times construction and processing separately
-with `process_time_ns`, excluding startup and compilation. Median of 7 alternating AOT runs on
-the 4-vCPU x86-64 Linux container of this session, LLVM 18.1.3, prototype compiler; CPython
-3.13.16 for comparison. Heap peaks come from separate `PYSTACHY_GC=stats` runs.
+with `process_time_ns`, excluding startup and compilation. Medians of 7 rounds, each running
+every mode once for the AOT build and for CPython 3.13.16, alternating and pinned to one core
+(`taskset -c 1`), on a 4-vCPU Intel Xeon 2.80 GHz Linux container with LLVM 18.1.3, compiler at
+`bc79f24c`. Every run's checksum equals CPython's. Single samples on a shared host: differences
+under about 20% are noise.
 
-MEASUREMENTS
+| Mode (N) | What | AOT build | AOT process | CPython build | CPython process |
+|---|---|---:|---:|---:|---:|
+| `typed` (1,000,000) | `list[int]` summed into an `int` | 8.9 ms | 1.1 ms | 37.5 ms | 30.4 ms |
+| `union` (1,000,000) | `list[int \| str]`, `isinstance()`, summed | 32.2 ms | 3.2 ms | 37.9 ms | 50.8 ms |
+| `dyn` (1,000,000) | `list[Any]`, `isinstance(x, int)`, summed into an `int` | 26.6 ms | 3.2 ms | 46.8 ms | 54.3 ms |
+| `generic` (1,000,000) | `list[Any]` summed into an `Any` | 26.5 ms | 17.8 ms | 39.6 ms | 30.5 ms |
+| `graph` (2,000) | the acceptance graph: built, then deep-copied and checksummed | 6.7 ms | 28.9 ms | 19.2 ms | 166.9 ms |
+
+- **Boxing** costs construction 3.0× the typed list's (26.6 ms against 8.9 ms: a 16-byte box
+  per int above 256), a little less than a closed union's (32.2 ms), which tags its boxes too.
+- **Proven payloads**: after `isinstance(x, int)` the scan reads the payload with no dispatch or
+  new box, 3.2 ms, as the union's tag test does. Before that path the scan took 26.2 ms, 8.4×
+  as long (the same program built by the compiler at `48e31e33`, median of 7 runs interleaved
+  with this build's).
+- **Generic arithmetic**, a dispatch and a new box per addition, is 16× the typed sum
+  (17.8 ms against 1.1 ms) and 0.6× CPython's processing time.
+- **The acceptance graph** builds 2.9× and copies and checks 5.8× faster than CPython.
+
+Memory, from separate `PYSTACHY_GC=stats` runs and the process's peak resident size
+(`getrusage`; an empty CPython process is 10 MiB):
+
+| Mode | Heap peak | Live at the last collection | AOT peak RSS | CPython peak RSS |
+|---|---:|---:|---:|---:|
+| `typed` | 13.0 MiB | 4.0 MiB | 13 MiB | 48 MiB |
+| `union` | 34.1 MiB | 24.0 MiB | 33 MiB | 48 MiB |
+| `dyn` | 34.1 MiB | 24.0 MiB | 33 MiB | 48 MiB |
+| `generic` | 55.2 MiB | 24.0 MiB | 56 MiB | 48 MiB |
+| `graph` | 34.2 MiB | 8.6 MiB | 35 MiB | 18 MiB |
+
+The boxes of a million ints retain 16 MiB beside the list's 8 MiB: a heap peak 2.6× the typed
+list's (34.1 MiB against 13.0 MiB), the same as the union's. A generic accumulator's discarded
+boxes raise the peak until a collection, and so does the graph's copy: its live data, 8.6 MiB,
+is close to CPython's 8 MiB above an empty process, but the heap grows to 1.9× CPython's peak
+before the collector runs.
+
+Compilation and code size for the benchmark module (5 runs each, median): the IR takes 18 ms,
+an AOT build 1.45 s (clang's `-O2` and the link with the runtime) for a 124,000-byte binary,
+and a JIT run of `graph 1` 0.153 s end to end with the runtime cache built, where the AOT
+binary starts and finishes in 2 ms and CPython in 25 ms. The module's 13 dispatchers are 332 of
+its 3,037 lines of function IR: each `get.<field>` dispatcher tests the six classes, 28 or 29
+lines.
 
 ## Next steps
 
