@@ -1,7 +1,9 @@
 # pystachy: dynamic-any
 # Calls through an Any value of what is not a method: an object's __call__, with CPython's
 # TypeError where the arguments do not fit its parameters, and a field's value, called as a
-# function value is, or CPython's TypeError for one that is not callable.
+# function value is, or CPython's TypeError for one that is not callable. The field's value is
+# read before the arguments are evaluated, as CPython's LOAD_ATTR reads it, so an argument that
+# assigns the field anew does not change which function the call calls.
 from typing import Any, Callable
 
 
@@ -51,6 +53,18 @@ def main() -> None:
     print(y.f(7))
     for which in range(3):
         attempt(x, which)
+    c = C()
+    z: Any = c
+
+    def side() -> int:
+        c.f = other
+        return 1
+
+    print(z.f(side()), z.f(2))
+
+
+def other(v: int) -> int:
+    return -v
 
 
 main()

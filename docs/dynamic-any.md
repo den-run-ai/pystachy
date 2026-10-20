@@ -102,7 +102,9 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   boxed function, which prints as `<function>` and equals a box of the same function with the
   same object (a bound method's) or env (a closure's), as CPython's methods compare. A bound
   method's box is its own identity for `is` and `id()`, as each evaluation of `o.m` makes a new
-  method object.
+  method object; a def's box is a constant, whose payload is its DynType's address, and a
+  closure's holds the env its def made for it, so different functions have different `id()`s
+  (`tests/dynany_fn_identity.py`).
 
 Two typed IR operations read a box: `dyn.type` its DynType pointer and `dyn.payload` its
 payload, declaring the type a test proved it holds. Neither has a memory effect: a box never
@@ -156,7 +158,7 @@ or CPython's `AttributeError`/`TypeError`:
 | `truth`, `str`, `len` | `__bool__`/`__len__`, `__str__`/`__repr__`, `__len__` |
 | `getitem`, `setitem`, `delitem`, `contains` | the container protocol |
 | `get.<a>`, `set.<a>` | attribute `a`: a field or property of the class, or a method, which reads as its bound method |
-| `has.<m>.<n>`, `call.<m>.<n>` | method `m` with `n` positional arguments: found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, or CPython's `TypeError` where the arguments do not fit its parameters; a field's value, called as `callv.<n>` calls it; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` that take `n` arguments |
+| `has.<m>.<n>`, `call.<m>.<n>` | method `m` with `n` positional arguments: found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, or CPython's `TypeError` where the arguments do not fit its parameters; a field's value, read before the arguments as `LOAD_ATTR` reads it (`has.<m>.<n>` gives it) and called as `callv.<n>` calls it; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` that take `n` arguments |
 | `callv.<n>` | a call of a boxed function value, bound method or object with `__call__` with `n` positional arguments, through the function's own calling code (defaults, a closure's env), or CPython's `TypeError` for a wrong count, worded by the function's qualified name |
 
 Each case calls the class's operation with `Any` arguments: a method whose parameters are

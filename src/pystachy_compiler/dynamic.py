@@ -1009,8 +1009,10 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
     elif key.startswith("set."):
         self.assign(mk("attr", key[4:], line, [xn]), args[0])
         r = Val("null", "None")
+    elif key.startswith("has.") and key[4 : key.rfind(".")] not in self.classes[x.t].methods and self.dyn_boxable(self.rec_type(self.classes[x.t].ftypes[key[4 : key.rfind(".")]])) == "":
+        r = self.dyn_box(self.expr(mk("attr", key[4 : key.rfind(".")], line, [xn]), ""))  # (a field's value, which the call calls)
     elif key.startswith("has."):
-        r = Val("null", "None")  # (it has the method: the call that follows calls it)
+        r = Val("null", DYN)  # (a method, which call.<m>.<n> calls, or a field no box holds, whose call raises there)
     elif key.startswith("call.") and key[5 : key.rfind(".")] not in self.classes[x.t].methods:
         # a field's value, called as a function value is (callv.<n>), or CPython's TypeError for
         # one that no box holds, which is not callable either
@@ -1076,7 +1078,7 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
         self.cbr(self.ptr_cmp("==", t, Val(self.dyn_type(bt), "dyntype")).v, hit, nxt)
         self.place(hit)
         if key.startswith("has."):
-            self.ret_(Val("null", "None"))
+            self.ret_(Val("null", DYN))  # (a method, which call.<m>.<n> calls)
         else:
             x = self.dyn_payload(o, "int" if bt == "bool" else bt)
             r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + [self.vnode(a) for a in args]), "")
@@ -1200,10 +1202,29 @@ def gen_dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
             self.err(f"a method call of an Any value takes positional arguments only (o.{m}(...))")
     # (no lookup first where no argument can run code or raise: literals, and locals that flow
     # analysis found assigned, whose reads have no check)
-    if len([a for a in args if a.kind not in ["int", "float", "str", "True", "False", "None"] and not (a.kind == "name" and a.s in self.ltype and not a.chk)]) > 0:
-        self.dyn_call(self.dyn_dispatcher(f"has.{m}.{len(args)}", [DYN], "None", m), [o])
+    call = self.dyn_dispatcher(f"call.{m}.{len(args)}", [DYN] * (len(args) + 1), DYN, m)
+    if len([a for a in args if a.kind not in ["int", "float", "str", "True", "False", "None"] and not (a.kind == "name" and a.s in self.ltype and not a.chk)]) == 0:
+        vals = [self.dyn_box(self.expr(a, DYN)) for a in args]
+        return self.dyn_call(call, [o] + vals)
+    # the lookup gives null for a method, which call.<m>.<n> then calls, or a field's value, read
+    # now as LOAD_ATTR reads it, which callv.<n> calls although an argument assigns the field anew
+    h = self.dyn_call(self.dyn_dispatcher(f"has.{m}.{len(args)}", [DYN], DYN, m), [o])
     vals = [self.dyn_box(self.expr(a, DYN)) for a in args]
-    return self.dyn_call(self.dyn_dispatcher(f"call.{m}.{len(args)}", [DYN] * (len(args) + 1), DYN, m), [o] + vals)
+    fld = self.label()
+    meth = self.label()
+    end = self.label()
+    ph = Ins("phi", DYN, "")
+    self.cbr(self.ptr_cmp("==", h, Val("null", "None")).v, meth, fld)
+    self.place(fld)
+    r = self.dyn_call(self.dyn_dispatcher(f"callv.{len(args)}", [DYN] * (len(args) + 1), DYN, "__call__"), [h] + vals)
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(meth)
+    r = self.dyn_call(call, [o] + vals)
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), DYN)
 
 
 def gen_dyn_mixed(self, es: list[Node]) -> bool:
