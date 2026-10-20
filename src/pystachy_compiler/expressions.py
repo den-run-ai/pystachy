@@ -3379,14 +3379,14 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         else:
             return Val("false" if op == "==" else "true", "bool")
     if (op == "==" or op == "!=") and (a.t == OBJECTC) != (b.t == OBJECTC):
-        # object()'s object and a value of builtin types (also a range object, an iterator, a
-        # generator, a function, a Callable and an exception class), which is never that object
-        # and whose __eq__ declines it: CPython compares them by identity (None, which an object of
-        # a class type may be, is compared below; an object of a class, also an exception, may
-        # have its own __eq__)
+        # object()'s object and a value of builtin types (numbers, str, bytes, containers, files,
+        # generators, functions, exception classes, range objects and iterators), which is never
+        # that object and whose __eq__ declines it: CPython compares them by identity. None, which
+        # an object of a class type may be, is compared below; an object of a class but range's
+        # and the iterators', also an exception, may have its own __eq__, which CPython would call
         w = b.t if a.t == OBJECTC else a.t
         o = unopt(w)
-        if all(m in ["int", "float", "bool", "str", "bytes", "exctype", RANGEC] or m.startswith(ITERS + "$") or is_list(m) or is_dict(m) or is_tuple(m) or is_vtuple(m) or is_set(m) or is_gen(m) or is_fn(m) or is_callable(m) for m in (umembers(o) if is_union(o) else [o])):
+        if o != "None" and all(m != "" and m != "exc" and not m.startswith("rec[") and (m not in self.classes or m == RANGEC or m.startswith(ITERS + "$")) for m in (umembers(o) if is_union(o) else [o])):
             if not is_opt(w) and w not in self.classes:
                 return Val("false" if op == "==" else "true", "bool")
             # (an object of a class type may be None, and so may the other: equal where both are)
