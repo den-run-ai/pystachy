@@ -689,8 +689,9 @@ for _j in range(len(FX)):
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
 # result too long in join and replace, where CPython raises OverflowError too
 RUNTIME: dict[str, str] = {
-    # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE)
-    "weakref.new": "%ptr:%ptr|A I|", "weakref.get": "%ptr:%ptr|I|",
+    # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE), as does
+    # the queue of the fire functions of references whose referents a collection found dead
+    "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",
     # homogeneous runtime-length tuples (immutable copied slots)
     "vtuple.new": "%ptr:list[T]|R A rL|", "vtuple.from": "%ptr:%ptr,int|R A|",
     "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A|", "vtuple.box": "%ptr:%ptr|R A|",

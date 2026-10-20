@@ -33,11 +33,10 @@ With CPython 3.13.16 sources in the import overlay, this prototype rebased on
 | The same, with throwaway definitions of the missing `_weakref` names | Rejected next at `ProxyTypes = (ProxyType, CallableProxyType)`: classes are not values ([#7](https://github.com/den-run-ai/pystachy/issues/7)) |
 | `from _weakrefset import WeakSet; WeakSet()` | Rejected: cannot infer the type of `WeakSet.__sub__` |
 
-Importing a module is not evidence that its APIs work. Even after the `WeakSet`
-inference error is addressed, its callback-bearing references need semantics
-this prototype does not implement. Missing callbacks, proxies and registry
-helpers must be implemented and tested before claiming a standard-library
-weakref user is supported. Equality and hashing are implemented (below).
+Importing a module is not evidence that its APIs work. Callbacks, equality and
+hashing are implemented (below); proxies and the registry helpers are not, and
+must be implemented and tested before claiming a standard-library weakref user
+is supported.
 
 ## Contract and limits
 
@@ -50,9 +49,20 @@ weakref user is supported. Equality and hashing are implemented (below).
   finds it unreachable, every surviving weak handle to it yields `None`, before
   the old object's storage is reclaimed. Cycles reachable only through weak
   handles do not keep a target alive.
-* The constructor takes exactly one argument. A second argument, including an
-  explicit `None`, is rejected. Callbacks are not implemented. Builtin container,
-  scalar, exception and slotted instances are rejected by the compiler.
+* The constructor takes the referent and, positionally, an optional callback: a
+  function of the reference, or `None` for none. Builtin container, scalar,
+  exception and slotted instances are rejected by the compiler, as is a callback
+  that is not a function (CPython takes any object, and reports the `TypeError`
+  of calling it once the referent dies) or one passed by keyword.
+* A reference's callback runs once, with the reference, after the referent has
+  died, and never while it lives. CPython calls it when the referent's last
+  counted reference goes; here a collection finds the referent dead, and the
+  callback runs where the program next makes or calls a reference. A referent's callbacks
+  run newest reference first, as CPython's do. A reference that is itself dead
+  by then does not call back, as in CPython. A callback that raises is reported
+  as CPython reports an exception it ignores, with the exception's last line for
+  CPython's traceback, and the other callbacks and the program go on. A callback
+  may make and call references; the callbacks that become due meanwhile run too.
 * `==` and `!=` compare the referents while both are alive, with their class's
   comparison; once either is dead, a reference equals only itself. `hash()` is
   the referent's, computed once and kept, so a reference hashed while its
@@ -84,8 +94,9 @@ weakref user is supported. Equality and hashing are implemented (below).
   one reused reference equals itself (an implementation detail, CPython issue
   #16453).
 * Proxies, `getweakrefs`, `getweakrefcount`, `_remove_dead_weakref`, weak mappings,
-  weak sets, `finalize`, callback introspection (`__callback__`) and reference
-  subclassing are outside the prototype contract. `getweakrefcount()` would also
+  weak sets, `finalize`, callback introspection (`__callback__`, which a
+  decorated special name cannot provide here) and reference subclassing are
+  outside the prototype contract. `getweakrefcount()` would also
   need CPython's reuse of one reference per referent to give its counts. Missing
   module APIs remain missing; no success-shaped placeholder is provided.
 
@@ -98,14 +109,31 @@ alive. `PYSTACHY_GC=off` naturally prevents automatic clearing.
 ## Implementation
 
 The Python wrapper stores one opaque, statically typed `weakhandle[T]`. The
-handle is allocated in atomic memory and contains the target and the next
-registry link. Neither word is scanned. The registry is deliberately absent
-from GC roots. After strong marking, `weakrefs_sweep` removes unmarked handles
-and clears unmarked targets, before ordinary sweep can free or recycle either.
-Weak-reference sweeping runs no callback, allocation or Python code. It runs
-before `files_sweep`, `trk_sweep` (the independent `ffi.track` owner queue) and
-ordinary reclamation, preserving the existing tracked-owner cleanup.
-Collection adds one linear traversal of outstanding handles.
+handle is allocated in atomic memory and contains the target, the next
+registry link and, for a reference with a callback, its fire function. No word
+is scanned. The registry is deliberately absent from GC roots. After strong
+marking, `weakrefs_sweep` removes unmarked handles and clears unmarked targets,
+before ordinary sweep can free or recycle either. It runs before `files_sweep`,
+`trk_sweep` (the independent `ffi.track` owner queue) and ordinary reclamation,
+preserving the existing tracked-owner cleanup. Collection adds one linear
+traversal of outstanding handles.
+
+The fire function is a `Callable[[], None]` that the wrapper makes and keeps:
+it calls the callback with the wrapper. The wrapper holds no field of the
+callback's own type, which names the wrapper's class: the specialization that
+an annotation `ref[T]` makes and the one a call makes would then differ. Where
+`weakrefs_sweep` clears a target, it appends the handle's fire function, if it
+has one and the function is itself marked (so the wrapper lives), to a queue
+that is a collector root, and forgets it. A marked handle whose fire function is
+not marked (the wrapper died while a stale word kept the handle) forgets the
+function in that collection, before its slot can be reused. Sweeping runs no
+callback, allocation of the collected heap or Python code; the queue grows with
+`realloc`. `_weakref` takes each queued function once (`pys_weakref_fired`,
+oldest first, which is a referent's newest reference first, as the registry
+lists newest handles first) and calls it before it makes or calls a reference.
+A reference that a callback makes or calls leaves the queue to the call already
+taking from it, so a callback ends before the next starts, as CPython calls a
+referent's callbacks one after another.
 
 Lookup has an `I` effect in typed IR. `Gen.canon` only reuses runtime expressions
 whose effects are at most `R`, and function summaries preserve `I` through the
@@ -165,21 +193,40 @@ values. `tests/lib_weakref_eq.py` compares names, `hasattr()`, reinitialization,
 equality, hashing, dict and set membership and the `repr()` format with CPython
 while every referent is owned; `tests/lib_weakref_dead_eq.py` checks a dead
 reference's identity equality, kept hash and failing first hash on cohorts, as
-the transition test does. Error cases cover unsupported target kinds, callbacks,
-private primitive access, the module's fields (read, assigned, `vars()`, run-time
-names) and `__init__` argument checks.
+the transition test does. `tests/lib_weakref_callback.py` checks on a cohort
+that no callback runs while the owners live and that, once they are dropped,
+each reference that reads `None` has called back exactly once and each live one
+not; its callbacks allocate nothing, so no collection runs between the queue and
+the reads. `tests/lib_weakref_callback_order.py` checks newest-first order for a
+referent's two references, with callbacks that make and call references;
+`tests/lib_weakref_callback_nested.py` that such a callback ends before the next
+starts; `tests/lib_weakref_callback_dead_ref.py` that references dropped before
+their referents do not call back; `tests/lib_weakref_callback_raise.py` the
+report of an exception a callback raises. Those that allocate in callbacks hold the live
+referents while they read, so a collection a callback starts cannot clear one
+that was read live. Error cases cover unsupported target kinds, a callback that
+is not a function, a keyword callback, a third argument, private primitive
+access, the module's fields (read, assigned, `vars()`, run-time names) and
+`__init__` argument checks.
 
 `make weakrefprobe` includes the real C runtime and runs normally and with a
 collection at every allocation. It checks live roots, dead self-cycles, small
 and large targets, repeated allocations after clearing, and pruning 1,000
 abandoned handles. The same small and large targets are also registered through
 `ffi.track`: live owners must not be queued, and each dead owner must be queued
-exactly once while its weak references are cleared. It clears its carrier list
-before dropping the list root,
-so a stale conservative address of that carrier cannot invalidate the test.
+exactly once while its weak references are cleared. A handle with a fire
+function must not queue it while its target lives, must queue it exactly once
+once the target dies, and the queue alone must keep it through later collections
+until it is taken. A handle that is still marked whose fire function (and so its
+reference) is dead must queue nothing. One whose fire function dies while its
+target lives must forget the function in that collection, and must not queue the
+live object that later takes the function's slot when the target dies. Without
+the queue's root, the fire function's mark check, or that forgetting, the probe
+fails. It clears its carrier list before dropping the list root, so a stale
+conservative address of that carrier cannot invalidate the test.
 The same probe belongs to `make verify` and the CI `contracts` group.
 
-Promotion requires full-suite validation and review of the GC change. Callback
-ordering/resurrection, no-callback reference caching, standard-library helper
-coverage and supported type coverage remain separate work; this prototype does
-not close #491.
+Promotion requires full-suite validation and review of the GC change.
+No-callback reference caching, `__callback__`, standard-library helper coverage
+and supported type coverage remain separate work; this prototype does not close
+#491.

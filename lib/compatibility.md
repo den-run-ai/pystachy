@@ -78,9 +78,15 @@ collection clears it. `repr()` is CPython's, without the ` (NAME)` suffix CPytho
 adds for a referent whose class defines `__name__`. A reference has no attributes
 of its own: reading, assigning, reflecting over or `hasattr()` of its fields,
 which are the module's, is rejected or false, and `r.__init__(obj)` leaves it
-unchanged. Callbacks, `__callback__`, proxies, `getweakrefcount()`,
-`getweakrefs()`, weak containers and the reuse of one reference per referent
-(`ref(x) is ref(x)`) are absent, so the `weakref` module does not import.
+unchanged. A callback, `ref(obj, callback)`, runs once with the reference after
+the collection that finds the referent dead, where the program next makes or
+calls a reference, rather than when CPython's last counted reference goes: a
+referent's callbacks newest reference first, none of a reference that is itself
+dead, and an exception one raises reported as CPython reports one it ignores. A
+callback must be a function or `None`. `__callback__`, proxies,
+`getweakrefcount()`, `getweakrefs()`, weak containers and the reuse of one
+reference per referent (`ref(x) is ref(x)`) are absent, so the `weakref` module
+does not import.
 
 ## Operator
 
