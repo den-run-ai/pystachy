@@ -262,7 +262,8 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "ret":
         o.append(f"  ret {lt(i.a[0].t)} {i.a[0].v}" if len(i.a) > 0 else "  ret void")
     elif op == "ret.none":
-        o.append("  ret void" if fn.f.ret == "None" else "  ret ptr null")
+        # (None: null, but a dynamic value's, which is its constant box: dynamic.py)
+        o.append("  ret void" if fn.f.ret == "None" else f"  ret ptr {self.rtdata('pys_dyn_none_box')}" if fn.f.ret == "dyn" else "  ret ptr null")
     elif op == "raise":
         o.append(f"  call void @pys_raise(ptr {i.a[0].v}, ptr {i.a[1].v})")
         o.append("  unreachable")

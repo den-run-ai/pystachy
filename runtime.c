@@ -3470,6 +3470,23 @@ List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, 
   for (I i = 0; i < src->len; i++) pys_list_append(l, (I)dyn_of(src->a[i], d->s));
   return l;
 }
+/* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
+List *pys_dyn_list(Dyn *o) {
+  List *l = pys_list_new(DKIND(o) == DK_LIST ? ((List *)o->v)->len : 0);
+  DynIter *it = pys_dyn_iter(o);
+  for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(l, (I)x);
+  return l;
+}
+List *pys_dyn_strs(Dyn *o) {
+  if (DKIND(o) != DK_LIST && DKIND(o) != DK_DICT && DKIND(o) != DK_TUPLE && DKIND(o) != DK_STR) pys_fail("TypeError: can only join an iterable");
+  List *l = pys_list_new(0);
+  DynIter *it = pys_dyn_iter(o);
+  for (Dyn *x; (x = pys_dyn_next(it));) {
+    if (DKIND(x) != DK_STR) failf("TypeError: sequence item %lld: expected str instance, %s found", (long long)l->len, DNAME(x));
+    pys_list_append(l, x->v);
+  }
+  return l;
+}
 /* a, b = o: o's items, which must be n, all taken before the first is stored (CPython's unpack_iterable) */
 VTuple *pys_dyn_unpack(Dyn *o, I n) {
   if (DKIND(o) != DK_LIST && DKIND(o) != DK_DICT && DKIND(o) != DK_TUPLE && DKIND(o) != DK_STR)

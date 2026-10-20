@@ -316,11 +316,13 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
         return out
     if c.kind == "call" and len(c.kids) == 2 and c.kids[0].kind == "name" and c.kids[0].s == "type" and c.kids[1].kind == "None":
         return ["None"]
-    if c.kind != "name" or self.bound(c.s):
+    if c.kind != "name":
         return [""]
-    if c.s in self.classes and self.classes[c.s].exc == "":
+    if c.s in self.classes and self.classes[c.s].exc == "" and c.s not in self.tmpl:
         self.dyn_class_type(c.s)  # (so that dyn_test has its DynType, even if no object of it is boxed yet)
         return [c.s]
+    if self.bound(c.s):
+        return [""]
     m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]"], "dict": ["dict[dyn,dyn]"],
          "tuple": ["vtuple[dyn]"], "object": ["*"]}
     if c.s in m:
@@ -648,7 +650,7 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
 def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
     # does builtin type bt (one a box holds) have method m, called with n positional arguments
     base = "list" if is_list(bt) else "dict" if is_dict(bt) else "vtuple" if is_vtuple(bt) else bt
-    special = {"list.sort": "0 0", "dict.update": "1 1", "dict.pop": "1 2", "dict.setdefault": "1 2", "str.join": "1 1"}
+    special = {"list.sort": "0 0", "dict.update": "1 1", "dict.pop": "1 2", "dict.setdefault": "2 2", "str.join": "1 1"}
     k = base + "." + m
     if k in special:
         lo = int(special[k].split(" ")[0])

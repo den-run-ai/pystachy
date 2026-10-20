@@ -742,6 +742,9 @@ def gen_stmt(self, n: Node) -> None:
                 self.add(Ins("ret.none", "", ""))
             else:
                 self.ret_(v)
+        elif len(n.kids) == 0 and self.ret == "dyn":
+            if not self.leave(0):
+                self.ret_(Val(self.rtdata("pys_dyn_none_box"), "dyn"))  # (None, as a dynamic value: dynamic.py)
         elif len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
             if self.ret != "None" and self.curfn.infer and self.optional(self.ret) != self.ret and self.optional(self.ret) != "":
                 self.reopt(self.optional(self.ret))  # a template's function returns T, and None: T | None
@@ -837,7 +840,9 @@ def gen_stmt(self, n: Node) -> None:
                 continue
             o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
             nodel = "TypeError: 'NoneType' object does not support item deletion"
-            if is_list(unopt(o.t)):
+            if o.t == "dyn":
+                self.dyn_delitem(o, self.expr(dt.kids[1], "dyn"))  # (by its box's type: dynamic.py)
+            elif is_list(unopt(o.t)):
                 ix = self.ival(dt.kids[1])
                 self.rt("pys_list_del", "void", [f"ptr {self.unwrap(o, nodel).v}", f"i64 {ix.v}"])
             elif is_dict(unopt(o.t)):
@@ -853,7 +858,7 @@ def gen_stmt(self, n: Node) -> None:
                 if bool_for_int(kval.t, kt):
                     self.bool_find(o.v, kval, key)
                 fx = self.key_fx(kt)
-                self.nonekey(kx, "", "pys_dict_del" if "H" in fx else "pys_dict_pop", [f"ptr {o.v}", "i64 " + key], fx)
+                self.nonekey(kx, "", "pys_dict_del" if "H" in fx or "A" in fx else "pys_dict_pop", [f"ptr {o.v}", "i64 " + key], fx)
             elif o.t in self.classes:
                 # del o[k]: o.__delitem__(k)
                 ik = self.expr(dt.kids[1], self.argtype(o.t, "__delitem__", 1, f"'{tname(o.t)}' object doesn't support item deletion"))

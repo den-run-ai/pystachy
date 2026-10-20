@@ -217,6 +217,8 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         e = self.landing(hm, slot, mark)
         self.mem_store(Val(f"{f.ll}.done", "*bool"), Val("false", "bool"))
         self.throw(e)
+    if not self.term and f.ret == "dyn":
+        self.ret_(Val(self.rtdata("pys_dyn_none_box"), "dyn"))  # (None, as a dynamic value: dynamic.py)
     if not self.term:
         if f.ret == "None" or (f.infer and f.ret in self.classes) or is_opt(f.ret) or (self.retann and f.ret != "" and self.optional(f.ret) == f.ret and self.ann_none(f.node.kids[1], [])):
             # (a template's function that ends without a return, or one returning T | None: None;

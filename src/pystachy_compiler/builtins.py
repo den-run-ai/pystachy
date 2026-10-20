@@ -1422,6 +1422,11 @@ def gen_as_list(self, v: Val, name: str) -> Val:
     # name "slice": the value assigned to a list slice, with its errors
     if is_kw(v.t):
         return self.kw_list(v)  # (the names of **kwargs)
+    if v.t == "dyn":
+        # (a dynamic value's items, as list() takes them: a fresh list of their boxes, or of the
+        # strs they must be for str.join(): dynamic.py)
+        fn = "pys_dyn_strs" if name == "join" else "pys_dyn_list"
+        return Val(self.rt(fn, "ptr", [f"ptr {v.v}"]), "list[str]" if name == "join" else "list[dyn]")
     if v.t in self.nts:
         self.notnone(v, "TypeError: must assign iterable to extended slice" if name == "slice" else "TypeError: 'NoneType' object is not iterable")
         v = self.ntup(v, True)
@@ -2096,6 +2101,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 dt = pt
             v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
             av.append("i64 " + self.to_slot(v) if slot else self.rarg(v))
+        elif dflt != "" and slot and pt == "dyn" and dflt == "0":
+            av.append(f"i64 ptrtoint (ptr {self.rtdata('pys_dyn_none_box')} to i64)")  # (None, as a dynamic value: dynamic.py)
         elif dflt != "":
             av.append(("i64 " if slot else rtt(pt) + " ") + dflt)
         else:

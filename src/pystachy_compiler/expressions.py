@@ -946,7 +946,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(ks[i]), "i64 " + self.to_slot(vs[i])], self.key_fx(kv[0]))
         return Val(r, self.ctype("dict", kv))
     if k == "tuple":
-        ws = targs(want) if is_tuple(want) else []
+        ws = targs(want) if is_tuple(want) else ["dyn"] * len(n.kids) if want == "dyn" else []  # (dynamic items: dynamic.py)
         vals: list[Val] = []
         for i in range(len(n.kids)):
             v = self.expr(n.kids[i], ws[i] if i < len(ws) else "", returnctx, resultsoft)
