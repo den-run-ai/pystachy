@@ -75,6 +75,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 — #761: opt-in dynamic Any, not general library compatibility | `3c63613b` | [Evidence](compatibility-2026-10-20-dynamic-any.json). Completed checkpoint; detailed findings and limits below. |
 | 2026-10-20 release validation (#762), **incomplete** | `afb59cd3`; fully evaluated marker remains `3c63613b` | Hosted checks and historical CI verified; local LLVM/native execution unavailable. [Evidence](compatibility-2026-10-20-release-partial.json). |
 | 2026-10-20 test-area layout (#771), bounded tooling evaluation complete | `ad19255e`; #762 native work still incomplete, full marker remains `3c63613b` | 3,301 cases preserved; 180 tooling tests, 158 path-sensitive expected rejections and six CPython recordings/hosted IR programs pass. [Evidence](compatibility-2026-10-20-test-layout.json). |
+| 2026-10-20 hierarchy comparison dispatch (#785), **partial** | `554f3d13`; docs-only #776/#788 also inspected | Hosted raw IR at 80 subclasses: exception 357,105 → 9,317 lines, ordinary 353,611 → 6,063. 135 tooling tests, 56 positive compilations and 30 rejections pass; native evaluation remains incomplete. [Evidence](compatibility-2026-10-20-hierarchy-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -4936,3 +4937,94 @@ No fresh full `make verify`, import sweep, native port/benchmark execution, full
 upstream suite or CPython regrtest was run. Existing import totals and unrelated
 gap assessments remain historical, not assumed freshly verified. No duplicate
 issue or release action is needed for the measured layout change.
+
+## 2026-10-20 — #785: shared hierarchy comparisons; hosted evidence, native gap
+
+Inspected [main `554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab`](https://github.com/den-run-ai/pystachy/commit/554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab)
+after [#785](https://github.com/den-run-ai/pystachy/pull/785) merged at
+2026-10-20 18:17:50 UTC. Fresh metadata and ancestry verify the merge; main and
+implementation head `e647b02447df971cf1696119715f7b28f6d3fc3b` share tree
+`0edfdeca7819e8e401bdd5d9ec1c4c7481adba99`. Since the last full checkpoint, #762
+remains partial and #771 has bounded tooling coverage above. Intervening #776 and
+#788 change only `AGENTS.md`; they require no compatibility rerun. Read the latest
+rolling/baseline records, current guide, #491/#616 coordination, #785 review and
+#625/#786/#787 before selecting affected work. No implementation branch was edited.
+
+The change shares comparison arms with the same method instance, operand side,
+inversion and coercion types, and adds typed-IR `switch` for ordinary class tags.
+Exception class-pointer tests remain comparisons. Runtime/library/port sources
+are unchanged, but this is a code-generation change requiring a native rebuild
+before native claims. Local **CPython 3.13.16 is now also missing**, along with
+LLVM 18: the known paths and a search of available installations found neither.
+Available **CPython 3.12.14** can host this compiler. It is explicitly not the
+pinned reference, and no recordings were regenerated. No privileged setup or
+permission workaround was attempted.
+
+[Evidence and exact embedded replay](compatibility-2026-10-20-hierarchy-partial.json)
+retain commands, source hashes, outputs, IR hashes/line counts, versions and
+pre/post snapshots. Both evaluated `554f3d13` and reference `16141879` trees were
+pristine before generation, including untracked and ignored inputs. Afterwards,
+only new-tree ignored `build/runtime-py.hashes` was generated; tracked/untracked
+status remained empty. Native compiler build/hash fields are null and separate
+from the source revisions. Reference compilation used its own compiler/runtime/lib
+and the new selected test source, including the new pairwise regression; `.path`
+helpers are unchanged between the two revisions.
+
+| Fresh local check under CPython 3.12.14 | Result and boundary |
+|---|---|
+| `python3 -B -m unittest discover -s tools -p 'test_typed*.py' -v` | **82/82** pass, including four new `switch` tests: terminator/lowering, invalid shape/cases/labels, duplicate edges into phi, and actual class-tag dispatch. This is the project's typed verifier, not LLVM assembly. |
+| Same discovery with `-p 'test_*verif*.py'` | **53/53** harness tests pass; **135** unit tests total. |
+| Selected hierarchy/class/dataclass/exception/dynamic-Any inputs | **28/28** compile under both old and new hosted compilers (**56** compilations), with IR checking enabled. **13** have fewer raw IR lines, **15** equal counts, none grow: total **45,166 → 40,233**. Equal line counts are not a byte-equality claim. No whole-corpus acceptance claim follows. |
+| `sh tests/run.sh 'python3 -B -m pystachy' 'jit aot' SELECTED_ERRORS` | **30/30** expected compile-time rejections pass. Despite the modes argument, these do not execute native programs. |
+| Eight affected reference recordings | CPython **3.12.14** outputs and expected stderr match all eight checked-in recordings: dataclass/hierarchy comparisons, pairwise methods/None/reflected priority, container comparisons, exception comparisons, and dynamic-Any subclass equality/order. This does not establish native parity or a pinned-3.13 rerun. |
+
+The retained `tools/inheritprobe.py::compare_source` generator uses **eight**
+comparison sites; both compilers receive each identical generated source. Raw
+emitted LLVM line counts (not optimized IR or executable size):
+
+| Base / subclasses | Before `16141879` | After `554f3d13` |
+|---|---:|---:|
+| Exception / 40 | 95,625 | 4,957 |
+| Exception / 80 | 357,105 | 9,317 |
+| Ordinary, declared `other: Base` / 40 | 93,851 | 3,263 |
+| Ordinary, declared `other: Base` / 80 | 353,611 | 6,063 |
+
+Doubling subclasses now grows these outputs **1.88x / 1.86x**, versus
+**3.73x / 3.77x** before. This independently confirms the bounded IR-growth
+improvement in [#625](https://github.com/den-run-ai/pystachy/issues/625); it does
+not establish universal linear compilation. Pair-key analysis is still quadratic,
+and ordinary methods specialized for each receiver/`object` argument pair can
+retain quadratic instances. Field-name error dispatch is separately tracked in
+[#786](https://github.com/den-run-ai/pystachy/issues/786), compiler receiver-null
+checks in [#787](https://github.com/den-run-ai/pystachy/issues/787). Neither issue
+was independently remeasured or closed here.
+
+Preserve the implementation PR's explicitly accepted trade-off: it reports
+**8.7–18.3% slower AOT wall time** for exception equality calling `str(self)`,
+despite fewer instructions, attributed to shared indirect-call targets. Those
+are **author-reported measurements, not this audit's timings**. This audit's
+shared-host elapsed fields are advisory; no speed, binary-size, peak-memory or
+new library-support claim follows from smaller raw IR.
+
+Historical CI was re-fetched on the exact implementation head with main's tree:
+Lint, Packages, Installation and [CI](https://github.com/den-run-ai/pystachy/actions/runs/39471120331)
+all succeeded. The returned CI list contains all **27** jobs, all successful,
+including gc-self and the complete-report/every-required-group gates. Conditional
+steps skipped within unrelated groups are retained in the evidence. This is
+separate historical CI evidence, not a local rebuild or native correctness run.
+
+Replay the JSON's `replay_source` outside fresh worktrees:
+`python3 -B audit-785.py NEW_554F3D13 OLD_16141879 OUTPUT.json`.
+The script removes inherited `PYSTACHY_*`, `PYTHONPATH` and `PYTHONHOME`, then sets
+`PYSTACHY_IRCHECK=1`, `PYSTACHY_JOBS=2`, `LC_ALL=C` and
+`PYTHONDONTWRITEBYTECODE=1`. Inputs/selectors and generated source are retained.
+It must not be presented as running all native stages of `tools/inheritprobe.py`.
+
+**Incomplete:** restore an authorized pinned CPython 3.13.16 / complete LLVM 18
+environment, rebuild the changed compiler, run selected JIT/AOT and program-GC
+comparisons, rerun the pinned inventory/overlay import sweeps with `--metadata`,
+and affected native port/benchmark correctness. #762's native difflib/release-smoke
+work also remains pending. No replacement 3.12 inventory was used to manufacture
+an import delta. Latest fully evaluated main stays
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**. Full CPython regrtest and compiled
+upstream suites were not run; unrelated known gaps were not freshly checked.

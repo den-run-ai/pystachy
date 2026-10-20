@@ -155,7 +155,7 @@ The exact operation table is `IROPS`; its current groups are:
 | Numeric promotion and comparison | `num.cast`, `num.cmp`, `int.ucmp` |
 | Native reference identity and null tests | `ptr.cmp` |
 | Calls | `rt`, `call`, `icall`, `init` |
-| Ordinary control flow | `br`, `cbr`, `ret`, `ret.none`, `unreachable` |
+| Ordinary control flow | `br`, `cbr`, `switch`, `ret`, `ret.none`, `unreachable` |
 | Value joins and checked arithmetic | `phi`, `select`, `ovf` |
 | Guards and errors | `check`, `raise` |
 | Optimized list reads | `list.len`, `list.load` |
@@ -279,8 +279,12 @@ call. `gen.drop` closes and destroys a generator a loop owns and never raises. T
 checks their places, operands and metadata; lowering alone emits the `llvm.coro.*` calls.
 
 Each block ends with one terminator. Branch labels stay within the function, and phi
-predecessors must branch to their join. Checked operations share cold error blocks per
-function, message and handler. The verifier checks these invariants and number bounds.
+predecessors must branch to their join. `switch` branches on an `int` to the label of the
+case it equals, else to its default: its cases are distinct `int` literals, and it reaches a
+block that starts with a phi by one edge at most, since a phi has one entry per block that
+branches there. Comparisons dispatch on class tags with it, which LLVM may lower to a jump
+table. Checked operations share cold error blocks per function, message and handler. The
+verifier checks these invariants and number bounds.
 
 <a id="37-effects"></a>
 <a id="45-effects"></a>

@@ -46,7 +46,8 @@
 #                  with the results of CPython's re
 #   rt-abi         tools/rtabi.py: each function runtime.py defines or declares has the same LLVM
 #                  signature in runtime.py, runtime.c and every program of the corpus
-#   inherited-ast tools/inheritprobe.py: unused inherited methods retain linear AST storage
+#   inherited-ast tools/inheritprobe.py: unused inherited methods retain linear AST storage, and
+#                  comparisons of a base's values compile to IR linear in its subclasses
 #   streaming      tools/streamprobe.py: sum(), min() and max() of range() and of generator expressions
 #                  take the items as they come: 100,000,000 of them in 64 MiB, AOT
 #   ffi            tests/ffi/run.sh with the stage-2 compiler: @ffi.extern's C calls and the FFI's
