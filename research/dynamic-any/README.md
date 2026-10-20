@@ -138,8 +138,10 @@ The upstream generator (`yield from`) and the `id()`-keyed inline-table cache th
 removed both work. `probes/pkgs/p_tomli_w.py` (mixed document), `probes/tomliw_tests/t_direct.py`
 (homogeneous, nested and empty displays passed directly) and `probes/upstream/u_roundtrip.py`
 match pristine upstream on CPython in JIT and AOT. The port's tests
-(`tests/programs/apps/port_tomli_w_*.py`, copied as `t_*.py`) fail at compile time with and
-without the comment in the caller: `a dict[str,str] cannot become an Any value`.
+(`tests/programs/apps/port_tomli_w_*.py`) fail at compile time against this copy, with and
+without the comment in the caller: `a dict[str,str] cannot become an Any value`. To repeat that,
+run them with the copy first on the module path, as they are and with the comment as their first
+line (`sed '1i # pystachy: dynamic-any'`).
 
 ## 5. PyPI and stdlib first blockers
 
@@ -262,9 +264,8 @@ identical to the installed one). The pipeline's input is
 3.13.16's `Lib/tomllib` and tomli-w 1.2.0 (`tomli_w-1.2.0-py3-none-any.whl`, SHA-256
 `188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90`); both are by Taneli Hukkinen
 under the MIT license (`SPDX-FileCopyrightText: 2021 Taneli Hukkinen`; tomllib "Licensed to PSF
-under a Contributor Agreement"). `probes/tomliw_tests/t_*.py` are this repository's
-`tests/programs/apps/port_tomli_w_*.py` with the comment added. Everything else here was written
-for this study. The other wheels' SHA-256s: jmespath 1.0.1 `02e2e4cc…`, jsonpointer 3.0.0
+under a Contributor Agreement"); `THIRD_PARTY_NOTICES` records them. Everything else here was
+written for this study. The other wheels' SHA-256s: jmespath 1.0.1 `02e2e4cc…`, jsonpointer 3.0.0
 `13e088ad…`, json-logic 0.6.3 `dd873af8…`, toolz 1.0.0 `292c8f1c…`, dictdiffer 0.9.0
 `442bfc69…`, flatten-json 0.1.14 `75e455db…`, mergedeep 1.3.4 `70775750…`, tabulate 0.9.0
 `024ca478…`.
