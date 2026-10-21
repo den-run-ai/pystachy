@@ -1,6 +1,7 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, str_appends
+from src.pystachy_compiler.diagnostics import Rejoin
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
@@ -100,14 +101,22 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     ret = f.ret
     noret = f.noret
     asked = self.dyn_asked(f)
-    self.function_body(f, body)
-    while self.dyn_again(f, asked):
-        # (an Any value reached storage that its first value typed, in a module that compiles
-        # Any so: again, with that storage dynamic from the start, see dyn_widen)
-        f.ret = "dyn" if f.ll in self.dynrets else ret
-        f.noret = noret
-        asked = self.dyn_asked(f)
+    try:
         self.function_body(f, body)
+        while self.dyn_again(f, asked):
+            # (an Any value reached storage that its first value typed, in a module that compiles
+            # Any so: again, with that storage dynamic from the start, see dyn_widen)
+            f.ret = "dyn" if f.ll in self.dynrets else ret
+            f.noret = noret
+            asked = self.dyn_asked(f)
+            self.function_body(f, body)
+    except Rejoin:
+        if self.xtry != "":
+            # (a comparison method's call that does not compile, after which dyn_xcall goes on:
+            # f is left uncompiled, and a call of it later in the pass compiles it again)
+            del self.building[f.ll]
+            del self.compiled[f.ll]
+        raise
     del self.building[f.ll]
     self.selfcls = sel
     self.fn.n = self.n

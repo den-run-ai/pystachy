@@ -237,14 +237,15 @@ def gen_dyn_xcall(self, c: str, m: str, a: Val, b: Val, line: int) -> str:
     # is declined then, as the next pass declines it (Gen.xnot), and this pass, whose code the
     # driver drops, goes on to find the other methods to decline, so that one more pass declines
     # them all (#801). What the failed call left is undone: the helper's frame (its register
-    # count among it), what the call added to the helper's code and tables, and the state that
-    # the code it was compiling changes and changes back, which the error left changed (Transient:
-    # the loops' and template calls' stacks and the template budget's tallies among it).
-    # tools/test_dynany_declines.py checks that nothing else of Gen's changes but its tables' new
-    # entries, and that Frame and Transient hold every field that code puts back. A function it
-    # left half compiled stays so, a template's instance among them: a later call of it fails as
-    # this one did in a pass that compiles it, or compiles here, which costs at most a pass more:
-    # no method is declined that the next pass would compile
+    # count among it), what the call added to the helper's code and tables, and Gen's state that
+    # the code it was compiling changes or sets for what follows, which the error left changed
+    # (Transient: the loops' and template calls' stacks and the template budget's tallies among
+    # it). The functions it was compiling when it failed are left uncompiled (gen_function,
+    # gen_instance): a later call compiles them again and fails as this one did, as in a pass
+    # that compiles them, so that no method is declined that the next pass would compile, and
+    # each that calls them is declined here. tools/test_dynany_declines.py checks that nothing
+    # else of Gen's changes but its tables' new entries, and that Frame and Transient hold every
+    # field that Gen's code changes but its caches and registries
     key = f"{c}.{m}"
     f = self.fn
     fr = self.save()

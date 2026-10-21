@@ -2,9 +2,10 @@
 
 The CPython-hosted compiler compiles each program in this process: a program with any number of
 such methods takes two passes, and each failed call leaves nothing of Gen's state that the rest of
-its pass reads but what the next pass, a fresh Gen, never sees (gen_dyn_xcall). The compiler's
-own source shows the state that code changes and changes back, which an error leaves changed:
-Frame and Transient must hold all of it.
+its pass reads but what the next pass, a fresh Gen, never sees (gen_dyn_xcall). And from the
+compiler's own source: every field of Gen's that its code gives a new value, or changes and
+changes back in place, is in Frame or Transient, which dyn_xcall puts back after an error, or is
+listed with why a failed call cannot leave it changed.
 Run with python3 -m unittest discover -s tools -p test_dynany_declines.py.
 """
 import ast
@@ -24,14 +25,29 @@ from src.pystachy_compiler.ir import ClassInfo, FnInfo  # noqa: E402
 
 # Gen's tables that a failed call may add entries to, changing none it found: what the functions
 # it compiled entered, which only its pass sees, the closures they define (by their def sites in
-# those functions), and the methods that pass declines (newx)
-GROWS = {"building", "called", "clokeys", "closures", "compiled", "dynfns", "dynkeys", "dynlines", "holes", "newx", "vnodes", "wide"}
-# and a template's instances (FnInfo.insts), where the one the failed call made stays, half
-# compiled: a later call with its types fails as the failed call did, in a pass that compiles it
+# those functions), the classes and class ids it made (a specialization it left half made stays,
+# under its own name, and no id is given twice), and the methods that pass declines (newx)
+GROWS = {"building", "called", "classes", "clokeys", "closures", "compiled", "dynfns", "dynkeys", "dynlines", "holes", "newx", "ocls", "ocmp", "vnodes", "wide"}
+# and a template's instances (FnInfo.insts), where the one the failed call made stays under a key
+# no call makes, so that a later call with its types makes and compiles one anew (gen_instance);
+# and a class template's count of specializations (ClassInfo.nspec), which names them
 INSTS = "insts"
-# Gen's fields that code changes and changes back but that hold no state of what is being compiled:
-# caches, which only ever learn something of the whole program
-CACHES = {"cmexit": "whether a class of the program defines __exit__, found once (cm_exits)"}
+NSPEC = "nspec"
+# Gen's fields that its code gives new values, and that neither Frame nor Transient holds, as no
+# failed call can leave one changed for what its pass compiles next:
+OTHERS = {
+    # set by a pass's phases around all that it compiles: its setup (gen_program), the flow
+    # analysis, dataclass options and the dispatchers' fixed point (dyn_dispatchers)
+    "causeread", "compiling", "dynsig", "eh", "excread", "flowlater", "fns", "fvars", "gproto", "hasfrozen",
+    "intglobals", "opts", "strglobals",
+    # lowering's, which runs once the pass's code is compiled, anew for each function
+    "coros", "ftags", "gendrops", "lowblk", "objectused", "rangeused", "vaggs", "vslots", "vtuples",
+    # counts and caches that only grow: adapters' and generator expressions' names, whether a local
+    # is optional and a class defines __exit__, the exception classes' tree, the class ids above
+    "anyopt", "cmexit", "exctree", "ncv", "ngenexp", "ocls", "ocmp",
+    # dyn_xcall's own, which it clears
+    "xtry",
+}
 
 
 def declining(k: int) -> str:
@@ -42,6 +58,18 @@ def declining(k: int) -> str:
                 "    def __eq__(self, other):", "        return self.items == other.items", ""]
     out += ["xs: list[Any] = []"] + [f"xs.append(B{i}(1))" for i in range(k)]
     out.append("print(len(xs) == 0 or xs[0] == xs[0], len(xs))")
+    return "\n".join(out) + "\n"
+
+
+def sharing(k: int) -> str:
+    # k classes whose __eq__ calls one template function, which returns once before it compares
+    # a typed list with an Any value's field: the failed calls share its instance
+    out = ["# pystachy: dynamic-any", "from typing import Any", "", "", "def same(a, other):",
+           "    if len(a) == 0:", "        return False", "    return a == other.items", "", ""]
+    for i in range(k):
+        out += [f"class S{i}:", "    def __init__(self, n: int) -> None:", "        self.items = [n]", "",
+                "    def __eq__(self, other):", "        return same(self.items, other)", "", ""]
+    out += ["xs: list[Any] = [" + ", ".join(f"S{i}(1)" for i in range(k)) + "]", "print([x == x for x in xs])"]
     return "\n".join(out) + "\n"
 
 
@@ -78,6 +106,8 @@ CASES = [
     ("InAssert", "", "__eq__", "assert self.items == other.items\nreturn True"),
     ("InFstring", "", "__eq__", "return f'{self.items == other.items}' == 'True'"),
     ("InWalrus", "", "__eq__", "if (r := self.items == other.items):\n    return r\nreturn False"),
+    # a class template's specialization, whose __init__ reads the Any value's field
+    ("InSpec", "", "__eq__", "return Holder(other).n == self.items"),
     ("Fine", "self.v = n", "__eq__", "if isinstance(other, int):\n    return self.v == other\nreturn False"),
 ]
 
@@ -87,7 +117,8 @@ def contexts() -> str:
            "def same(a, b):", "    return a == b.items", "", "",
            "def loopy(a, b):", "    for x in a:", "        return a == b.items", "    return False", "", "",
            "class Ctx:", '    def __enter__(self) -> "Ctx":', "        return self", "",
-           "    def __exit__(self, a, b, c) -> None:", "        pass", "", ""]
+           "    def __exit__(self, a, b, c) -> None:", "        pass", "", "",
+           "class Holder:", "    def __init__(self, v) -> None:", "        self.n = v.items", "", ""]
     for name, init, m, body in CASES:
         out += [f"class {name}:", "    def __init__(self, n: int) -> None:", "        self.items = [n]"]
         out += ["        " + init] if init != "" else []
@@ -141,7 +172,8 @@ def snapshot(g: Gen) -> tuple[dict, dict]:
 
 def changes(before: tuple[dict, dict], after: tuple[dict, dict]) -> list[str]:
     # what a failed call changed of Gen's state that it may not: anything but new entries of
-    # GROWS's tables and of a template's instances, and the objects it made
+    # GROWS's tables and of a template's instances, a higher count of specializations, and the
+    # objects it made
     (b0, names0), (a0, _) = before, after
     out = []
     for w in set(b0) | set(a0):
@@ -156,6 +188,8 @@ def changes(before: tuple[dict, dict], after: tuple[dict, dict]) -> list[str]:
         else:
             if w[1] not in names0 or (w[2] == INSTS and (len(w) == 4 and b is None or len(w) == 3 and grown)):
                 continue  # (an object the failed call made, or a template's new instance)
+            if w[2] == NSPEC and len(w) == 3 and b is not None and a is not None and a[1] >= b[1]:
+                continue
             where = f"{names0[w[1]]}.{w[2]}" + (f"[{w[3]!r}]" if len(w) == 4 else "")
         out.append(f"{where}: {b} -> {a}")
     return sorted(out)
@@ -178,30 +212,43 @@ def init_fields(path: Path, cls: str) -> set[str]:
     raise AssertionError(f"{path.name} defines no {cls}.__init__")
 
 
-def changed_back() -> dict[str, str]:
-    # the fields that a function of the compiler changes and changes back: a value it saves in a
-    # local and puts back, a stack it pushes and pops, a count it raises and lowers, a field it
-    # gives two constants (a flag it sets and resets); field -> such a function, for messages
-    out: dict[str, str] = {}
+def gen_code() -> list[tuple[str, ast.FunctionDef]]:
+    # Gen's code: its methods but __init__, and the gen_* functions that take it as self
+    out = []
     for path in sorted(SRC.glob("*.py")):
-        for fn in ast.walk(ast.parse(path.read_text())):
-            if not isinstance(fn, ast.FunctionDef):
-                continue
-            nodes = list(ast.walk(fn))
-            assigns = [n for n in nodes if isinstance(n, ast.Assign) and len(n.targets) == 1]
-            saved = {n.targets[0].id: self_field(n.value) for n in assigns if isinstance(n.targets[0], ast.Name) and self_field(n.value) != ""}
-            found = {self_field(n.targets[0]) for n in assigns if isinstance(n.value, ast.Name) and saved.get(n.value.id, "") == self_field(n.targets[0]) != ""}
-            calls = [(self_field(n.func.value), n.func.attr, len(n.args)) for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)]
-            found |= {f for f, m, _ in calls if f != "" and m == "append"} & {f for f, m, k in calls if f != "" and m == "pop" and k == 0}
-            augs = [(self_field(n.target), type(n.op)) for n in nodes if isinstance(n, ast.AugAssign)]
-            found |= {f for f, op in augs if f != "" and op is ast.Add} & {f for f, op in augs if op is ast.Sub}
-            consts: dict[str, set] = {}
-            for n in assigns:
-                if self_field(n.targets[0]) != "" and isinstance(n.value, ast.Constant):
-                    consts.setdefault(self_field(n.targets[0]), set()).add(repr(n.value.value))
-            found |= {f for f, vs in consts.items() if len(vs) > 1}
-            for f in found:
-                out.setdefault(f, f"{path.name}:{fn.name}")
+        for n in ast.parse(path.read_text()).body:
+            if isinstance(n, ast.FunctionDef) and n.name.startswith("gen_") and len(n.args.args) > 0 and n.args.args[0].arg == "self":
+                out.append((path.name, n))
+            if isinstance(n, ast.ClassDef) and n.name == "Gen":
+                out += [(path.name, f) for f in n.body if isinstance(f, ast.FunctionDef) and f.name != "__init__"]
+    return out
+
+
+def reassigned() -> dict[str, str]:
+    # the fields that Gen's code gives a new value (=, +=); field -> where, for messages
+    out: dict[str, str] = {}
+    for name, fn in gen_code():
+        for n in ast.walk(fn):
+            targets = n.targets if isinstance(n, ast.Assign) else [n.target] if isinstance(n, (ast.AugAssign, ast.AnnAssign)) else []
+            for t in targets:
+                if self_field(t) != "":
+                    out.setdefault(self_field(t), f"{name}:{fn.name}")
+    return out
+
+
+def changed_back() -> dict[str, str]:
+    # the tables that a function of Gen's code changes and changes back in place: a stack it pushes
+    # and pops, a table it enters something in and deletes it from; field -> where
+    out: dict[str, str] = {}
+    for name, fn in gen_code():
+        nodes = list(ast.walk(fn))
+        calls = [(self_field(n.func.value), n.func.attr, len(n.args)) for n in nodes if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)]
+        found = {f for f, m, _ in calls if m == "append"} & {f for f, m, k in calls if m == "pop" and k == 0}
+        entered = {self_field(t.value) for n in nodes if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Subscript)}
+        deleted = {self_field(t.value) for n in nodes if isinstance(n, ast.Delete) for t in n.targets if isinstance(t, ast.Subscript)}
+        found |= entered & (deleted | {f for f, m, k in calls if m == "pop" and k == 1})
+        for f in found - {""}:
+            out.setdefault(f, f"{name}:{fn.name}")
     return out
 
 
@@ -252,6 +299,14 @@ class DeclineTests(unittest.TestCase):
                 self.assertEqual((got, failed), (passes, k))
                 self.assertEqual(left, [])
 
+    def test_shared_function(self):
+        # (the functions a failed call was compiling are compiled anew by the next call, which
+        # fails too: kept compiled, the instance that same() returns False from let each later
+        # call compile, a pass for each class)
+        for k in (2, 8):
+            with self.subTest(k=k):
+                self.assertEqual(self.compile(sharing(k)), (2, [], k))
+
     def test_state_after_failed_calls(self):
         # (each case's call fails but Fine's, which compiles)
         got, left, failed = self.compile(contexts())
@@ -265,14 +320,24 @@ class DeclineTests(unittest.TestCase):
                 self.assertEqual(self.compile(src), (2, [], failed))
 
     def test_transient_fields(self):
-        # every field of Gen's that a function changes and changes back is a function's (Frame:
-        # restore() puts it back, and each function compiles with its own tables), or Transient's,
-        # which dyn_xcall puts back after an error, or a cache
+        # every field of Gen's that its code gives a new value is a function's (Frame: restore()
+        # puts it back), or Transient's, which dyn_xcall puts back after an error, or one of
+        # OTHERS; and every table it changes and changes back in place is a function's (each
+        # compiles with its own) or Transient's, but for what a failed call may leave (GROWS)
         gen = init_fields(SRC / "gen.py", "Gen")
-        held = init_fields(SRC / "ir.py", "Frame") | init_fields(SRC / "ir.py", "Transient") | set(CACHES)
-        missing = {f: w for f, w in changed_back().items() if f in gen and f not in held}
-        self.assertEqual(missing, {}, "add these to Transient (ir.py, and emission.py's gen_save_transient and gen_restore_transient)")
-        self.assertEqual(init_fields(SRC / "ir.py", "Transient") - gen, set())
+        frame, transient = init_fields(SRC / "ir.py", "Frame"), init_fields(SRC / "ir.py", "Transient")
+        hint = "add these to Transient (ir.py, and emission.py's gen_save_transient and gen_restore_transient)"
+        self.assertEqual({f: w for f, w in reassigned().items() if f in gen and f not in frame | transient | OTHERS}, {}, hint)
+        self.assertEqual({f: w for f, w in changed_back().items() if f in gen and f not in frame | transient | GROWS}, {}, hint)
+        self.assertEqual(transient - gen, {"memo"})
+        self.assertEqual(OTHERS & (frame | transient), set())
+        # (and gen_save_transient sets each of Transient's fields, which gen_restore_transient reads)
+        code = {fn.name: fn for _, fn in gen_code()}
+        uses = {}
+        for name in ("gen_save_transient", "gen_restore_transient"):
+            uses[name] = {n.attr for n in ast.walk(code[name]) if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == "t"}
+        self.assertEqual(uses["gen_save_transient"], transient)
+        self.assertEqual(uses["gen_restore_transient"], transient)
 
 
 if __name__ == "__main__":

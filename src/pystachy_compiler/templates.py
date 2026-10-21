@@ -1,7 +1,7 @@
 """Templates component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
-from src.pystachy_compiler.diagnostics import shown, where
+from src.pystachy_compiler.diagnostics import Rejoin, shown, where
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import (
@@ -688,7 +688,16 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     fr = self.save()
     self.modlevel = False
     self.lenient = False
-    self.function(g, f.node.kids[2].kids)
+    try:
+        self.function(g, f.node.kids[2].kids)
+    except Rejoin:
+        if self.xtry != "":
+            # (after which dyn_xcall goes on: a call with these types later in the pass makes the
+            # instance anew, and fails as this one did; this one stays under a key no call makes,
+            # so that no other takes its name)
+            del f.insts[key]
+            f.insts[key + " " + g.ll] = g
+        raise
     self.restore(fr)
     ret = SPECIAL[f.name][SPECIAL[f.name].find(":") + 1 :] if f.cls != "" and f.name in SPECIAL else ""
     if ret != "" and g.ret != ret and not (f.name == "__len__" and g.ret == "bool"):
