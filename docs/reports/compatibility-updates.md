@@ -6422,3 +6422,58 @@ regrtest, performance or memory run completed for the integrated tree. The
 implementation-head CI matrices supply separately attributable native evidence;
 hosted IR emission is not a substitute. The latest fully evaluated main
 therefore remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #832: function and class alias readiness
+
+Inspected [main `11722f0c0590441487fa4c9a2ead1c9fbcf618b4`](https://github.com/den-run-ai/pystachy/commit/11722f0c0590441487fa4c9a2ead1c9fbcf618b4)
+after [#832](https://github.com/den-run-ai/pystachy/pull/832) merged at
+2026-10-21 21:57:32 UTC. Fresh first-parent history establishes it as the only
+merge after `90156da2`. Merge and final implementation head `8c569575` share
+tree `a9430983ce2a3ffac69d99468a2d43b90dbe6869`.
+
+#832 gives each supported module-level function or class alias a binding flag.
+Reads check that flag before using the statically known target, and assignment
+marks it only after its source read succeeds. The checks cover early calls,
+module attributes, import cycles, failed imports, retries, alias chains,
+specialized calls and starred calls. Static callees are resolved before their
+arguments and retained across argument side effects. Existing restrictions on
+unsupported alias forms, direct early module reads and general class values remain.
+
+[Machine-readable evidence](compatibility-2026-10-21-alias-readiness-partial.json)
+retains exact source/tree identities, commands, hashes, corrected and discarded
+setup attempts, hosted comparisons, import metadata, workflows and limitations.
+
+| Fresh merged-tree measurement | Result and boundary |
+|---|---|
+| CPython recordings | In the pinned dependency environment, CPython **3.13.16** validates all **1,550 recordings**, 95 deviations and 12 pinned library files with zero failures. This includes **11/11** new alias-readiness recordings. |
+| New alias fixtures | Both the previous and current hosted compilers accept all **11/11** current-source programs. All 11 IR outputs change (170,927 → 192,803 aggregate bytes) to add readiness behavior. Hosted emission does not execute the IR. |
+| Retained alias controls | Across **33** selected alias programs and expected rejections, both compilers accept 16 and reject 17: **zero status changes**. Eighteen complete outcomes are identical; the intended 11 new programs and four existing accepted controls change IR. |
+| Pinned isolated imports | Both corrected `--metadata` sweeps report **148/460** included CPython 3.13.16 imports, 62 overlay exclusions, 312 errors and zero timeouts. There are no new/lost successes or normalized first-error changes. |
+| Fast hosted/tooling checks | `make check-fast` passes Ruff, mypy on **45/45** files, seven effect-summary and **88/88** typed-IR tests. All **53/53** verifier-tool tests, four workflow-limit tests, actionlint 1.7.12 and `git diff --check` pass. |
+
+Two setup failures are explicit evidence rather than compatibility results. A
+bare CPython recording run lacked `typing_extensions` and reported ten failures;
+the pinned `uv` environment resolved all of them. An initial wrapper-based import
+sweep omitted `PYSTACHY_HOME`, treated the wrapper directory as the compiler home
+and produced an invalid 138/522 result without the retained overlay. The corrected
+current and previous sweeps set distinct compiler homes and are identical after
+path normalization.
+
+The exact final implementation tree has **32/32 successful external jobs**:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39677487817) 27/27,
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39677487733) 3/3,
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39677487740) 1/1 and
+[Packages](https://github.com/den-run-ai/pystachy/actions/runs/39677487805) 1/1.
+The final Codex review found no issue and no review thread remains. The preceding
+audit-head [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39674183777)
+also passed. Existing issue [#814](https://github.com/den-run-ai/pystachy/issues/814)
+covers the corrected behavior; no duplicate issue was filed.
+
+This is a bounded correctness gain for statically supported aliases, not a new
+stdlib import, runtime layout, general class-as-value, dynamic-`Any`, package or
+NumPy gain. LLVM 18 remains unavailable locally, so there is no fresh local
+native build, JIT/AOT execution or GC-stress run. Exact-tree implementation CI
+supplies the native matrix separately. No local full `make verify`, broad port or
+package suite, CPython regrtest, performance or memory comparison completed.
+The latest fully evaluated main therefore remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

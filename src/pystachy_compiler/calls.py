@@ -10,6 +10,7 @@ from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     atomic_dict,
+    clone,
     codec,
     elem,
     fbits,
@@ -44,6 +45,8 @@ from src.pystachy_compiler.utils import (
 def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
     f = n.kids[0]
     args = n.kids[1:]
+    if f.kind == "name":
+        self.modchk(f)  # resolve the callable's binding before specialized or unpacked arguments
     if self.getattr_name(f) != "":
         # getattr(o, "m")(args) is o.m(args): o, then the method, then the arguments
         f = mk("attr", self.getattr_name(f), f.line, [f.kids[1]])
@@ -79,8 +82,6 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             return r
     if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
         return self.star_call(n, want, resultsoft, typeargs)
-    if f.kind == "name":
-        self.modchk(f)
     if f.kind == "name" and f.s not in self.ltype:
         self.read_ahead(f.s)
         if (f.chk or self.foreign(f.s)) and f.s in self.gflag:
@@ -188,6 +189,18 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
     # only print() takes: a sole star's once the keywords are evaluated, as CPython unpacks it)
     f = n.kids[0]
     args = n.kids[1:]
+    if self.static_callee(f):
+        if f.kind == "attr":
+            self.modchk(f)
+        # The callable has been read now. An argument may retry a failed module's import,
+        # resetting its binding flags; the recursive call below must not read them again.
+        f = clone(f)
+        callee = f
+        while callee.kind == "attr":
+            callee.mchk = ""
+            callee = callee.kids[0]
+        if callee.kind == "name":
+            callee.mchk = ""
     if f.kind == "attr" and not self.static_callee(f) and f.kids[0].kind != "val":
         receiver = self.expr(f.kids[0], "")
         if self.reference_union(receiver.t):

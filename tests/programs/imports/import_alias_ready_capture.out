@@ -1,0 +1,6 @@
+mods: init mods
+mods.shapes: init mods.shapes
+initial after alias
+retry before alias
+7
+[exit 0]
