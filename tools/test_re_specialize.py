@@ -25,7 +25,7 @@ import unittest
 import warnings
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import re_specialize  # noqa: E402
+import re_specialize
 
 ROOT = re_specialize.ROOT
 TEST = os.path.join(ROOT, "tests", "programs", "library", "re_specialize.py")
