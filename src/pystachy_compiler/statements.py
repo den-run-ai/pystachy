@@ -994,12 +994,16 @@ def gen_stmt(self, n: Node) -> None:
             if self.key_problem(kv[0]) != "":
                 self.err(self.key_problem(kv[0]))
             self.lct[-1] = self.ctype("dict", kv)
+            if self.lct[-1] == "dict[dyn,dyn]":
+                kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
         self.rt("pys_dict_set", "void", [f"ptr {self.lcs[-1]}", "i64 " + self.to_slot(self.store_key(kx, kv[0])), "i64 " + self.to_slot(self.coerce(vx, kv[1]))], self.key_fx(kv[0]))
     elif k == "lcappend":
         et = self.lct[-1]
         v = self.expr(n.kids[0], et, resultsoft=self.lcsoft[-1])
         if et == "":
             self.lct[-1] = self.none_items(v.t) if n.s == "set" and is_tuple(v.t) else v.t
+            if n.s != "set" and n.s != "discard" and self.ctype("list", [v.t]) == "list[dyn]":
+                self.lct[-1] = "dyn"  # (where the items are Any values or containers: ctype)
             et = self.lct[-1]
             if n.s == "set" and self.elem_problem(et) != "":
                 self.err(self.elem_problem(et))

@@ -111,8 +111,9 @@ def lower_data(d: Data) -> str:
         return (f"{d.name} = internal constant {DYNTYPE_LL} {{i64 {d.items[0].v}, ptr {r[0]}, ptr {r[1]}, "
                 f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}}}, align 8")
     if d.kind == "dynbox":
-        # a def's dynamic value (dynamic.py): its DynType and, as its payload, that DynType's address
-        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 ptrtoint (ptr {d.refs[0]} to i64)}}, align 8"
+        # a constant dynamic value (dynamic.py): its DynType and, as its payload, the address of its
+        # last ref: a def's own DynType, or a str constant
+        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 ptrtoint (ptr {d.refs[-1]} to i64)}}, align 8"
     if d.kind == "classfields":
         # the fields of an object's __dict__ in their order: name, type descriptor, byte offset in
         # the class's layout (d.text) and that of its "is assigned" flag (-1: always assigned)
