@@ -379,6 +379,14 @@ other shape of `tools/scaling.py` (its `-x`), so a new shape is checked as well;
 the two to check every shape once. Locally, `scaling` runs both.
 The final report job allows ten minutes for artifact downloads and validation.
 
+The compiler state research controls (`python3 -m unittest discover -s tools -p
+'test_compiler_state*.py'`) run in Lint. They check declared Frame mappings,
+successful dry emission restoration, known restart rewinds and the nested-state
+probe's ability to detect entry leaks and failed restoration. The standalone
+`tools/compiler_state_nested_probe.py --strict` reports known #822 violations
+on the baseline; its success is not asserted by the mechanism tests. See the
+[prototype's guarantees and limits](../research/compiler-state-767/README.md).
+
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: `make check-fast lint`,
 report-gate tests and recording checks use the pinned CPython and require no compiler bootstrap.
 It also validates every GitHub Actions workflow with actionlint 1.7.12, installed

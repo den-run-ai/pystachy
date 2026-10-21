@@ -1,0 +1,135 @@
+{
+  "date": "2026-10-21",
+  "status": "bounded tooling evaluation complete",
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9",
+  "source": {
+    "main_commit": "d7e331dda7d896a244a345d66d00f3a7a8fc48fa",
+    "main_tree": "009bcba6b8cc031aa177d88b4599851263a279de",
+    "previous_main": "185849790523815d0f63ab1a8b33c17549bf31b4",
+    "merged_pr": 818,
+    "implementation_head": "2711e00b34cfdcd78e14ff9dd40c0c674a3f143d",
+    "merged_at_utc": "2026-10-21T18:09:24Z",
+    "first_parent_merges_since_previous": [818],
+    "production_diff_empty": true,
+    "production_paths": ["pystachy.py", "runtime.py", "src/", "lib/", "ports/"],
+    "pystachy_py_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+    "runtime_py_sha256": "427907a36fc36d7d13de4e787c9b7f1a61cd2bfe7505cebc0af8b40cd715e780"
+  },
+  "toolchains": {
+    "required_cpython": "3.13.16",
+    "required_llvm": "18",
+    "local_cpython": "3.12.14",
+    "local_cpython_3_13_16_available": false,
+    "local_llvm_18_available": false,
+    "actionlint": "1.7.12",
+    "pinned_results_python": "3.13.16"
+  },
+  "commands": [
+    "python3 tools/compiler_state_contract.py",
+    "python3 -m unittest discover -s tools -p 'test_compiler_state*.py'",
+    "python3 tools/compiler_state_nested_probe.py",
+    "python3 tools/compiler_state_nested_probe.py --strict",
+    "python3 tools/compiler_state_probe.py research/compiler-state-767/dry_template.py",
+    "python3 tools/compiler_state_probe.py --baseline research/compiler-state-767/dry_template.py",
+    "python3 tools/compiler_state_probe.py tests/programs/inference/dynany_eq_restart_global.py",
+    "python3 tools/compiler_state_probe.py --baseline tests/programs/inference/dynany_eq_restart_global.py",
+    "python3 pystachy.py ir tests/programs/inference/dynany_eq_restart_global.py -o <output>",
+    "python3 pystachy.py ir tests/programs/optional/nestcomp_nonecmp_one_read.py -o <output>",
+    "make check-fast",
+    "python3 -m unittest discover -s tools -p test_workflow_limits.py",
+    "actionlint -pyflakes=",
+    "git diff --check 185849790523815d0f63ab1a8b33c17549bf31b4..d7e331dda7d896a244a345d66d00f3a7a8fc48fa"
+  ],
+  "results": {
+    "frame_contract": {
+      "returncode": 0,
+      "summary": "all declared fields match Gen initialization and exact save/restore mappings"
+    },
+    "state_unit_tests": {"passed": 31, "failed": 0},
+    "nested_probe": {
+      "normal_returncode": 0,
+      "strict_returncode": 1,
+      "strict_failure_expected": true,
+      "depths": [1, 2, 3],
+      "boundary_count": 6,
+      "reviewed_fields": ["drying", "carried", "nonecmp", "fieldcmp", "cmpnode", "stkkey", "reflcopies", "stmtexpr"],
+      "entry_leak_observations": 48,
+      "caller_restore_change_observations": 48,
+      "violations": true,
+      "scope": "Synthetic calls to the actual Gen.save/enter/restore methods; not exhaustive ownership or whole-program execution."
+    },
+    "probe_transparency": [
+      {
+        "case": "research/compiler-state-767/dry_template.py",
+        "observed_ir_sha256": "d78d631d9ff78aefc99690660837538e722e27ea4cf89d1d542f420fbce74af0",
+        "baseline_ir_sha256": "d78d631d9ff78aefc99690660837538e722e27ea4cf89d1d542f420fbce74af0",
+        "equal": true,
+        "passes": 1,
+        "successful_dry_calls": 1
+      },
+      {
+        "case": "tests/programs/inference/dynany_eq_restart_global.py",
+        "observed_ir_sha256": "f0252d782a0038d65e301f65a00de6f23107e920d0cb358701bf8845dcf158f0",
+        "baseline_ir_sha256": "f0252d782a0038d65e301f65a00de6f23107e920d0cb358701bf8845dcf158f0",
+        "equal": true,
+        "passes": 2,
+        "first_pass": "aborted with xs: list[int] and new decline A.__eq__",
+        "final_pass": "returned with xs: list[str] and only A.__eq__ declined"
+      }
+    ],
+    "acceptance_control": {
+      "case": "tests/programs/optional/nestcomp_nonecmp_one_read.py",
+      "input_sha256": "48424738585d30b9b5437acfcfc741ecc62a4301d4fffaf114b95ba0f38837c2",
+      "recording_sha256": "3423b5e1dd713a577943ec33ee670f63674c368dd1e42129f293be285cbfb140",
+      "current_main_hosted_compile": "pass",
+      "current_main_ir_sha256": "8eadb90a423016ac423c1f58eb6f8ea702e3790fcf4bf96091cb10421e131ee8",
+      "current_main_ir_bytes": 4689,
+      "cpython_3_12_14_recording_match": true,
+      "pinned_cpython_3_13_16_recording_match": true,
+      "pr_824_reviewed_head": "59713c2ce2ede474551daac88588fb86ab72e648",
+      "pr_824_result": "rejected with cannot-infer-None diagnostic",
+      "interpretation": "#824 must preserve this accepted one-iteration program while correcting the multiple-iteration wrong result."
+    },
+    "fast_checks": {
+      "ruff": "pass",
+      "mypy_source_files": 45,
+      "function_summary_tests_passed": 7,
+      "typed_ir_tests_passed": 84,
+      "workflow_limit_tests_passed": 4,
+      "actionlint": "pass"
+    },
+    "imports": {
+      "rerun": false,
+      "reason": "Compiler, runtime, libraries, overlay and CPython inventory are byte-identical to #821.",
+      "carried_forward_pinned_successes": 148,
+      "carried_forward_pinned_included": 460,
+      "compatibility_gain_claimed": false
+    }
+  },
+  "input_hashes": {
+    "tools/compiler_state_probe.py": "2b91f6e1959f46418b9a93e3b50ad6bc4c63aa70edc1d16a225c6e2c86ded8c5",
+    "tools/compiler_state_nested_probe.py": "1f0c2506eadae6687c2866476422474ed40b33e7797889dea4c6405a2ebacfe8",
+    "tools/test_compiler_state_nested_probe.py": "ae4827e6a4a5205dd8a690e4a4199dc6c3d040682fc4eeabc26ecbc186546e15",
+    "tests/programs/inference/dynany_eq_restart_global.py": "538d77d7fde2d61907193110eabf057a8bb72ba8d4269b8eb5afe80705fc0eac",
+    "tests/programs/optional/nestcomp_nonecmp_one_read.py": "48424738585d30b9b5437acfcfc741ecc62a4301d4fffaf114b95ba0f38837c2",
+    "tests/programs/optional/nestcomp_nonecmp_one_read.out": "3423b5e1dd713a577943ec33ee670f63674c368dd1e42129f293be285cbfb140"
+  },
+  "external_workflows": [
+    {"name": "CI", "run": 39643236764, "tree": "009bcba6b8cc031aa177d88b4599851263a279de", "successful_jobs": 27, "failed_jobs": 0, "status": "success"},
+    {"name": "Installation", "run": 39643236768, "tree": "009bcba6b8cc031aa177d88b4599851263a279de", "successful_jobs": 3, "failed_jobs": 0, "status": "success"},
+    {"name": "Lint", "run": 39643236932, "tree": "009bcba6b8cc031aa177d88b4599851263a279de", "successful_jobs": 1, "failed_jobs": 0, "status": "success"},
+    {"name": "Packages", "run": 39643236779, "tree": "009bcba6b8cc031aa177d88b4599851263a279de", "successful_jobs": 1, "failed_jobs": 0, "status": "success"}
+  ],
+  "issues": {
+    "existing_scope": [767, 822, 824],
+    "new_issue_filed": false,
+    "pr_824_gc_self_timeout": {"run": 39630216342, "job": 119327947645, "seconds": 600, "cause_inferred": false}
+  },
+  "limitations": [
+    "Pinned CPython 3.13.16 and LLVM 18 executables were unavailable locally.",
+    "No fresh local native rebuild, JIT/AOT, GC stress, full make verify, package/port, upstream-suite or CPython regrtest run completed.",
+    "Exact-final-tree CI supplies native coverage externally; those jobs are not relabeled as local measurements.",
+    "The state probes are bounded observability contracts, not proof of exhaustive mutable-state ownership or rollback safety.",
+    "The strict nested-probe exit 1 is an expected measurement of known #822 violations, not a test harness failure."
+  ]
+}

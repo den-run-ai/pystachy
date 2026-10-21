@@ -93,6 +93,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 fast hosted tooling (#825), **partial** | `10aa4175`; workflows/lint/tool tests after #820 | `make check-fast` passes Ruff, mypy on 45 files, seven effect-summary and 84 typed-IR tests; actionlint accepts all eight workflows and four workflow-limit tests pass. Exact-tree CI is green; no language/library gain is claimed. [Evidence](compatibility-2026-10-21-fast-tooling-partial.json). |
 | 2026-10-21 Python tooling dependency maintenance (#668), **partial** | `f4b93961`; packaging/dependency configuration after #825 | The new packaging manifest preserves all three pins, the Dependabot pip block has the intended monthly/grouped scope, and the merged tree passes `make check-fast`, actionlint and four workflow-limit tests. The implementation head's 32 workflow jobs, including package smoke, pass. No dependency version or compatibility surface changes. [Evidence](compatibility-2026-10-21-python-tooling-dependencies-partial.json). |
 | 2026-10-21 dynamic `Any` container layouts (#821), **partial with blocker** | `18584979`; compiler/tests/docs after #668 | Four retained programs newly emit hosted IR and all seven new CPython recordings match, but fresh typed consumers of `dict[str, Any].keys()` and `.items()` regress from accepted on #668 to layout-mismatch rejections. The pinned import sweep is byte-identical at 148/460. Native local evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-any-layout-partial.json). |
+| 2026-10-21 compiler-state contracts (#818), bounded tooling evaluation complete | `d7e331dd`; research/tooling/tests after #821 | The structural contract and 31/31 mechanism tests pass. The real nested-boundary probe reproduces all eight known entry leaks and caller-restoration changes at depths 1–3; strict mode therefore exits 1 by design. Main accepts the new one-read `None` control that #824 rejects. No production or import surface changed, and no compatibility gain is claimed. [Evidence](compatibility-2026-10-21-compiler-state-contracts.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -6234,4 +6235,62 @@ JIT/AOT execution, GC stress, fixed-point build, full `make verify`, port,
 package, upstream-suite or CPython regrtest completed. Because the exact merged
 tree lacks a local native matrix and has a confirmed typed-view blocker, the
 latest fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #818: executable compiler-state contracts
+
+Inspected [main `d7e331dda7d896a244a345d66d00f3a7a8fc48fa`](https://github.com/den-run-ai/pystachy/commit/d7e331dda7d896a244a345d66d00f3a7a8fc48fa)
+after [#818](https://github.com/den-run-ai/pystachy/pull/818) merged at
+2026-10-21 18:09:24 UTC. Fresh first-parent history establishes it as the only
+merge after #821. Merged main and final implementation head `2711e00b` share
+tree `009bcba6b8cc031aa177d88b4599851263a279de`.
+
+#818 adds research probes, negative controls, two differential fixtures and a
+separate Lint step for compiler-state contracts. It makes no production changes:
+`pystachy.py`, `runtime.py`, `src/`, `lib/` and `ports/` are byte-identical to
+#821. The checks cover direct and unconditional `Gen`/`Frame` initialization,
+exact save/restore mappings, successful `dry()` observation, fresh-`Gen` restart
+with five global rewinds, and real nested save/enter/restore boundaries.
+
+[Machine-readable evidence](compatibility-2026-10-21-compiler-state-contracts.json)
+retains exact source/tree identities, commands, hashes, results, external
+workflows and limitations. The merge's own pinned raw records remain under
+`research/compiler-state-767/` and are not rewritten by this audit.
+
+| Measurement | Result and boundary |
+|---|---|
+| Structural/mechanism contracts | The Frame contract passes and **31/31** state-tool unit tests pass locally. Negative controls exercise annotation-only and conditional initialization, transfer defects, nested mutation/alias changes and all five global rewinds. |
+| Nested boundary probe | Normal mode reports findings and exits 0. Strict mode exits **1 by design**: each of the six measured boundaries across depths 1, 2 and 3 leaks all eight reviewed fields on entry and changes all eight caller values or identities on restore. This is **48 entry-leak plus 48 restore-change observations**, not 96 distinct fields. |
+| Probe transparency and restart | The observed and baseline processes emit byte-identical hosted IR for `dry_template.py` (`d78d631d…`) and `dynany_eq_restart_global.py` (`f0252d78…`). The latter aborts once with `xs: list[int]`, restarts fresh, then returns with `xs: list[str]`; only `A.__eq__` is declined. |
+| Accepted-program control | Current main emits hosted IR for `nestcomp_nonecmp_one_read.py` (`8eadb90a…`, 4,689 bytes), and the available CPython 3.12.14 matches its three-line recording. The merge's pinned CPython **3.13.16** record also matches. Reviewed #824 head `59713c2c` rejects this accepted program, so #824 must preserve it while fixing the multi-iteration wrong result. |
+| Fast hosted/tooling checks | `make check-fast` passes Ruff, mypy on **45/45** files, seven function-summary tests and 84 typed-IR tests. Four workflow-limit tests and actionlint **1.7.12** also pass. |
+
+Exact-final-tree external workflows succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39643236764) has
+**27/27 successful jobs**, [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39643236768)
+has **3/3**, while [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39643236932)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39643236779)
+each have **1/1**. These 32 jobs cover tree `009bcba6`; Lint includes all 31
+state tests, while CI supplies the native differential, GC and fixed-point matrix.
+The expected same-repository DCO skip is not a failure. No review threads exist,
+and the final Codex review of `2711e00b` reported no findings.
+
+The eight-field boundary leak is existing issue [#822](https://github.com/den-run-ai/pystachy/issues/822)
+scope, and the broader ownership work remains in [#767](https://github.com/den-run-ai/pystachy/issues/767).
+The accepted-program conflict is already recorded on #824; no duplicate issue
+was filed. #824's recorded `gc-self` timeout is an additional failed gate, but
+this audit does not infer its cause.
+
+This checkpoint adds observability and regression coverage, not a language,
+runtime or library compatibility gain. The #821 pinned import result remains
+**148/460** because compiler, runtime, library, overlay and CPython inventory are
+unchanged; the sweep was not rerun. API, port, package, performance and memory
+measurements were likewise not repeated.
+
+Pinned CPython **3.13.16** and LLVM 18 executables were unavailable locally.
+The two recordings also match the available CPython 3.12.14 and both cases emit
+hosted IR, but no fresh local native rebuild, JIT/AOT, GC stress, full
+`make verify`, upstream suite or CPython regrtest completed. Exact-final-tree CI
+supplies the native matrix externally. This bounded tooling evaluation does not
+advance the latest fully evaluated main, which remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
