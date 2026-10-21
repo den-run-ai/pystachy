@@ -1745,6 +1745,8 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
         return t if is_list(t) else ""
     if n.kind == "attr" or n.kind == "index":
         t = self.target_type(n.kids[0], True)
+        if t == "dyn":
+            return "dyn"  # (an Any value's item or attribute: a display stored there holds Any values, cont[k] = {})
         if n.kind == "attr" and self.is_prop(t, n.s):
             ms = self.classes[t].methods
             s = n.s + ".setter"
@@ -1757,6 +1759,37 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
             return targs(t)[1]
         if n.kind == "index" and t in self.classes and "__setitem__" in self.classes[t].methods and len(self.classes[t].methods["__setitem__"].ptypes) > 2:
             return self.classes[t].methods["__setitem__"].ptypes[2]
+        if base and n.kind == "index" and is_tuple(t) and self.dyn_policy(n.line):
+            # (a tuple's Any item, at a constant index as the tuple's subscript takes one, -1 and
+            # True too: pair[1][k] = {}, pair[-1][k] = {})
+            k = n.kids[1]
+            neg = k.kind == "unary" and k.s == "-" and k.kids[0].kind == "int"
+            d = k.kids[0].s if neg else k.s if k.kind == "int" else "1" if k.kind == "True" else "0" if k.kind == "False" else ""
+            if not d.isdigit() or len(d) > 3:
+                return ""
+            ts = targs(t)
+            j = -int(d) if neg else int(d)
+            if j < 0:
+                j += len(ts)
+            return "dyn" if 0 <= j < len(ts) and ts[j] == "dyn" else ""
+    if base and n.kind == "call" and self.dyn_policy(n.line):
+        # (a call's Any value, in a module that compiles Any so: f()[k] = {}, o.f().x = []. CPython
+        # calls it after it evaluates the value stored, so nothing is compiled ahead: a call is
+        # Any where its function, not a local of that name, is declared to return Any, or where
+        # it calls through an Any value)
+        c = n.kids[0]
+        if c.kind == "name" and c.s in self.funcs and c.s not in self.ltype and c.s not in self.assigned:
+            f = self.funcs[c.s]
+            return "dyn" if not f.generic and f.ret == "dyn" else ""
+        if c.kind != "attr":
+            return "dyn" if self.target_type(c, True) == "dyn" else ""
+        t = self.target_type(c.kids[0], True)
+        if t in self.classes and c.s in self.classes[t].methods:
+            m = self.classes[t].methods[c.s]
+            return "dyn" if not m.generic and not m.prop and m.ret == "dyn" else ""
+        return "dyn" if t == "dyn" else ""
+    if base and n.kind == "ifexp" and self.dyn_policy(n.line):
+        return "dyn" if self.target_type(n.kids[1], True) == "dyn" and self.target_type(n.kids[2], True) == "dyn" else ""  # (Any either way)
     return ""
 
 def gen_assign(self, t: Node, v: Val) -> None:

@@ -1,0 +1,218 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 dynamic Any display stores (partial)",
+  "event": {
+    "pull_request": 817,
+    "merge_sha": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
+    "source_sha": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
+    "source_tree": "297d42d8ad52f30547a1ed273e463fff4f1f1a13",
+    "implementation_head_sha": "b5294f09f8a298bfaec65ce299b1e791d41a0fa2",
+    "implementation_head_tree": "297d42d8ad52f30547a1ed273e463fff4f1f1a13",
+    "previous_source_sha": "617c7ec06aef0f50d255d84bc44a477c80e609b3",
+    "previous_source_tree": "31f4d7ca8cbf1028a5d393d3172006d50203bc95",
+    "merged_at_utc": "2026-10-21T13:48:09Z",
+    "first_parent_merges_since_previous": [
+      817
+    ]
+  },
+  "changed_scope": {
+    "files": 11,
+    "compiler": [
+      {
+        "path": "src/pystachy_compiler/variables.py",
+        "sha256": "918da0967618327c31c0b542536b43f03c8036e286b4697e57c7e205549f86ec"
+      }
+    ],
+    "documentation": [
+      {
+        "path": "docs/dynamic-any.md",
+        "sha256": "ed4bd017db77b66d5e54959d07da648a41199474799bbed5be67d33566b0bf6f"
+      }
+    ],
+    "tests_and_fixtures": 9,
+    "runtime_library_ports_or_tools_changed": false
+  },
+  "behavior": {
+    "newly_accepted": "in dynamic-Any modules, a display stored through an Any-valued item or attribute target receives expected type Any, including supported declared-Any call results, Any callables, both-Any conditional expressions and constant tuple Any items",
+    "evaluation_order": "the receiver is not compiled ahead of the right-hand side; declarations and already-known name types supply the target type",
+    "typed_boundary": "a typed field or __setitem__ parameter still rejects an Any-valued display; only the first diagnostic changes",
+    "out_of_scope": [
+      "locals that hold displays",
+      "typed containers crossing into Any storage",
+      "set()",
+      "template or inherited-method call receivers that require compilation to type",
+      "computed tuple indices"
+    ]
+  },
+  "environment": {
+    "hosted_python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "hosted_python_path": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "hosted_stdlib": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12",
+    "pinned_cpython_3_13_16_available": false,
+    "llvm_18_available": false,
+    "native_compiler_available": false,
+    "source_snapshot_clean_before_and_after": true
+  },
+  "fresh_hosted_results": {
+    "dynamic_any_corpus": {
+      "scope": "all tests/programs and tests/deviations named dynany*.py, plus all tests/errors named dynany*.py, compiled from the same current source inputs with the previous and current hosted compiler frontends",
+      "positive_or_deviation_inputs": 70,
+      "current_compiled": 70,
+      "previous_compiled": 68,
+      "newly_compiled": [
+        "tests/programs/inference/dynany_store_display.py",
+        "tests/programs/inference/dynany_store_import.py"
+      ],
+      "common_compiled": 68,
+      "common_byte_identical_ir": 67,
+      "common_ir_changes": [
+        "tests/programs/inference/dynany_scopes.py"
+      ],
+      "rejection_inputs": 11,
+      "current_rejected": 11,
+      "previous_rejected": 11,
+      "rejection_diagnostic_changes": [
+        "tests/errors/inference/dynany_store_display_typed.py"
+      ],
+      "evidence_sha256": "37877e5161945ee032b214a775811493f22a40658cfbe97b69f2f7b0c00dd42f"
+    },
+    "new_programs": {
+      "dynany_store_display": {
+        "previous": "exit 1 at line 14: cannot infer the type of an empty dict",
+        "current_ir_lines": 1043,
+        "current_ir_sha256": "3b39b220f87be19370b6e84d667d437b85c3ffa71502dda46f93ab3bd871f145"
+      },
+      "dynany_store_import": {
+        "previous": "exit 1 at line 11: cannot infer the type of an empty dict",
+        "current_ir_lines": 249,
+        "current_ir_sha256": "5d871848fc82cc79c4fe8543a8169863bec18e96d31f58bf7534ce3bd702ae0b"
+      },
+      "dynany_store_order": {
+        "previous_and_current_ir_lines": 441,
+        "previous_and_current_ir_sha256": "39adb61dc1ce129a099d411ec947b468147b0bfd9460b4a77aa256554ad092a5"
+      },
+      "typed_store_rejection": {
+        "previous": "cannot infer the type of an empty dict",
+        "current": "an Any value cannot be used as dict[str,int] (narrow it with isinstance() first)"
+      }
+    },
+    "cpython_references": {
+      "interpreter": "CPython 3.12.14, not the pinned 3.13.16 recorder",
+      "programs": 3,
+      "recordings_matched": 3,
+      "stderr_free": 3,
+      "evidence_sha256": "47fa1b94cb9f748253c35737bb7e0fcb86c507a77d8a8f17e5897db862ac52c1"
+    },
+    "verification_harness": {
+      "command": "python3 -m unittest discover -s tools -p 'test_*verif*.py'",
+      "passed": 53,
+      "failed": 0
+    },
+    "import_sweep": {
+      "scope": "isolated compilation to hosted IR over the available CPython 3.12.14 stdlib inventory; no API execution",
+      "before": {
+        "source_sha": "617c7ec06aef0f50d255d84bc44a477c80e609b3",
+        "ok": 141,
+        "included": 441,
+        "excluded": 62,
+        "errors": 300,
+        "timeouts": 0,
+        "duration_s": 80.03111003999948,
+        "result_sha256": "e54e3a85497d29a36e1e09aec0aab1aeba7a0266a1ea08ba35d15cba9847df1b",
+        "metadata_sha256": "14763b521b0f84517b2e310c39a10986161fa15e21efcb0e097ebece7a700e19"
+      },
+      "after": {
+        "source_sha": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
+        "ok": 141,
+        "included": 441,
+        "excluded": 62,
+        "errors": 300,
+        "timeouts": 0,
+        "duration_s": 81.33253872400383,
+        "result_sha256": "cb31393a1ced9354ef95d2d4afc5e053ff0bc854f58fb4788ac65a47b7ca0077",
+        "metadata_sha256": "bdf0a2c5f399723408daafabcbd6ab3a83cd2c8517adc2441fceb6f66da797bf"
+      },
+      "new_successes": [],
+      "lost_successes": [],
+      "semantic_first_error_changes": [],
+      "path_only_changes": [
+        "optparse"
+      ]
+    }
+  },
+  "implementation_workflows": [
+    {
+      "name": "CI",
+      "run_id": 39608811830,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39608811830",
+      "successful_jobs": 27,
+      "total_jobs": 27,
+      "conclusion": "success",
+      "notable": [
+        "verify bootstrap",
+        "23 verify shards",
+        "final make verify gate",
+        "two upstream port jobs"
+      ]
+    },
+    {
+      "name": "Installation",
+      "run_id": 39608812063,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39608812063",
+      "successful_jobs": 3,
+      "total_jobs": 3,
+      "conclusion": "success"
+    },
+    {
+      "name": "Lint",
+      "run_id": 39608811617,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39608811617",
+      "successful_jobs": 1,
+      "total_jobs": 1,
+      "conclusion": "success"
+    },
+    {
+      "name": "Packages",
+      "run_id": 39608811664,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39608811664",
+      "successful_jobs": 1,
+      "total_jobs": 1,
+      "conclusion": "success"
+    }
+  ],
+  "attributed_final_tree_results": {
+    "source": "#817 PR body at implementation head b5294f09; exact-tree workflows above were independently read",
+    "selected_dynamic_any_union_and_tomllib_cases": "124 source cases / 237 passing JIT+AOT checks in normal mode; 122 source cases / 233 passing JIT+AOT checks with program GC stress",
+    "focused_cpython_hosted": "four store tests / 7 checks pass",
+    "fixed_points": "compiler 637,923 lines; runtime 18,709 lines",
+    "recordings": "1520 recordings and 95 deviations",
+    "irsame": "4 of 3449 programs differ from main before #817: the two new compiling store programs, the typed-rejection diagnostic, and dynany_scopes; the PR reports dynany_scopes as numbering/slot differences"
+  },
+  "review": {
+    "resolved_threads": 6,
+    "unresolved_threads": 0,
+    "severity": "six P2 findings across intermediate heads",
+    "final_no_findings_review_sha": "375ff01a392c6e4fa2813025ce66b9b8a4b92dbe",
+    "integration_head_caveat": "b5294f09 only merges main 617c7ec0 into the reviewed implementation; exact-final-tree workflows passed"
+  },
+  "commands": [
+    "PYSTACHY_HOME=<before> python3 tools/import_sweep.py -j 8 --metadata <before-meta.json> <before-hosted-wrapper> <python3.12-stdlib> <before.json>",
+    "PYSTACHY_HOME=<after> python3 tools/import_sweep.py -j 8 --metadata <after-meta.json> <after-hosted-wrapper> <python3.12-stdlib> <after.json>",
+    "PYSTACHY_HOME=<after> python3 <before-or-after>/pystachy.py ir <each dynany*.py input> -o <per-revision.ll>",
+    "PYTHONPATH=<sidecar path, when present> python3 tests/programs/inference/dynany_store_{display,import,order}.py",
+    "python3 -m unittest discover -s tools -p 'test_*verif*.py'"
+  ],
+  "issue_state": {
+    "777": "partially addressed by displays stored through supported Any-valued targets; other allocation-site and local-display cases remain",
+    "775": "set() inference remains outside #817",
+    "779": "closed-union JSON-value consumers remain separate"
+  },
+  "limitations": [
+    "Pinned CPython 3.13.16 and LLVM 18 were unavailable locally. No fresh local native JIT/AOT, fixed-point build, GC-stress run or full make verify completed.",
+    "The fresh import sweep uses CPython 3.12.14 and must not be combined with the separately attributed pinned 3.13.16 inventory. It finds no successful-import or semantic first-error delta.",
+    "Hosted IR emission checks compiler acceptance and output shape; it does not execute the C runtime or establish JIT/AOT behavior. Exact-tree CI supplies the native matrix externally.",
+    "The CPython 3.12.14 references check the three new recordings but do not regenerate pinned 3.13.16 fixtures.",
+    "No package, adapted-port, performance, memory, upstream-suite or CPython regrtest claim follows. General Python or PyPI compatibility is unchanged by this focused result."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

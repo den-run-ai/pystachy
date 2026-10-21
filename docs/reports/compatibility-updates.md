@@ -88,6 +88,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 seeded dynamic `Any` differential fuzzer (#808), **partial** | `4ef45ca0`; tooling/tests/docs only after #812 | 17/17 unit tests pass; 450 default and 3,000 wider CPython-only generated cases satisfy deterministic framing, and three fail-closed controls detect their mismatch. No live local native fuzz run completed; no compatibility gain is claimed. [Evidence](compatibility-2026-10-21-dynamic-any-fuzzer-partial.json). |
 | 2026-10-21 module-attribute class aliases (#809), **partial** | `824dcca0`; compiler/tests/docs change after #808 | Two new alias programs emit hosted IR, nine rejection boundaries retain their contracts and 16 focused tooling tests pass. Fresh CPython 3.12.14 imports remain 141/441 with `email.header` advancing to its next blocker; the attributed pinned sweep remains 149/457 with all 24 affected modules reaching another blocker. [Evidence](compatibility-2026-10-21-module-class-alias-partial.json). |
 | 2026-10-21 dynamic `Any` integer small-box overflow (#813), **partial** | `89646780`; one runtime line and a differential test after #809 | A fresh GCC 13 UBSan negative control stops the previous runtime on `INT64_MAX + 5`; merged main boxes the same value and exits cleanly. The 10-line CPython reference matches and hosted IR emits. Exact-tree CI is green, including all three UBSan shards; pinned local LLVM 18 native evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-int-overflow-partial.json). |
+| 2026-10-21 dynamic `Any` display stores (#817), **partial** | `c5d7f9e8`; compiler/tests/docs change after #815 | Two new store programs move from empty-display rejection to hosted IR; the evaluation-order control is byte-identical and all 11 retained rejections remain rejections. The 70-input dynamic-`Any` positive/deviation corpus compiles, and the fresh import sweep stays 141/441 with no semantic first-error delta. Exact-tree CI is green; local pinned native evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-any-store-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5916,3 +5917,79 @@ build, full native matrix, import sweep, benchmark, package/port suite, FFI/cach
 suite or CPython regrtest completed. Exact-tree CI supplies the missing native
 matrix, while the benchmark figures remain attributed. The latest fully evaluated
 main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #817: displays stored through dynamic Any targets
+
+Inspected [main `c5d7f9e8ee334efedd4ff069cd052b4ba582ac85`](https://github.com/den-run-ai/pystachy/commit/c5d7f9e8ee334efedd4ff069cd052b4ba582ac85)
+after [#817](https://github.com/den-run-ai/pystachy/pull/817) merged at
+2026-10-21 13:48:09 UTC. Fresh first-parent history establishes it as the only
+merge after #815. Merged main and final implementation head `b5294f09` share
+tree `297d42d8ad52f30547a1ed273e463fff4f1f1a13`.
+
+#817 gives a display stored into an `Any` value's item or attribute the expected
+type `Any` in modules that opt in to dynamic `Any`. Besides a receiver the existing
+target rules already type as `Any`, it covers supported calls declared to return
+`Any`, calls through an `Any` value, conditional expressions whose alternatives
+are both `Any`, and constant tuple items typed `Any`. The right-hand side still
+precedes receiver evaluation: the new rules read declarations and known name types
+rather than compiling a receiver early. A typed field or `__setitem__` parameter
+continues to reject the store, now with the `Any`-narrowing diagnostic.
+
+[Machine-readable evidence](compatibility-2026-10-21-dynamic-any-store-partial.json)
+retains exact source/tree identities, changed-file hashes, commands, hosted corpus
+and import results, workflow jobs, review state and limitations.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| Dynamic-`Any` positive/deviation corpus | **70/70** current inputs emit hosted IR. The #815 compiler emits **68/70**: only the new display-store and imported-call-store programs are rejected. Of the 68 common successes, **67** are byte-identical and `dynany_scopes` changes IR. |
+| Rejection boundaries | All **11/11** remain rejected on both revisions. Only the new typed-store fixture changes diagnostic, from empty-display inference to the expected `Any`-narrowing error. |
+| Evaluation-order control | `dynany_store_order.py` emits the same **441-line**, byte-identical IR on both compilers, covering RHS binding/retyping and a RHS-bound local hiding a declared function. |
+| Available CPython references | All **3/3** new positive programs match their checked recordings with no stderr under CPython **3.12.14**. This is a consistency check, not pinned-3.13 fixture regeneration. |
+| Fresh import sweep | Both revisions compile **141/441** isolated CPython 3.12.14 imports, with 62 overlay exclusions, 300 errors and no timeout. There is no new/lost success or semantic first-error change; `optparse` differs only by checkout path. |
+| Verification harness | **53/53** `test_*verif*.py` tests pass. |
+
+The two newly accepted programs exercise empty and populated list/dict displays,
+nested stores, attributes, tuple targets, comprehensions, `+=`, supported call
+receivers, conditional receivers, tuple indices and imported `-> Any` functions.
+The unchanged evaluation-order control guards the principal review risk. The one
+common IR change, `dynany_scopes`, is retained explicitly rather than counted as
+byte-identical; the PR's full `irsame` analysis attributes it to numbering/slot
+changes. Hosted emission does not execute that IR.
+
+Exact-final-tree external workflows succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39608811830) has
+**27/27 successful jobs**, including the bootstrap, all 23 verify shards, two
+upstream port jobs and final `make verify` gate;
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39608812063)
+has **3/3** successful platform jobs, while
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39608811617) and
+[Packages](https://github.com/den-run-ai/pystachy/actions/runs/39608811664)
+each succeeded. All **32/32** final-head jobs are now completed successfully.
+
+The PR's exact-tree local report supplies native scope that could not be repeated
+here: **124** selected dynamic-`Any`, union and `tomllib` sources produce **237**
+passing JIT/AOT checks normally; the 122-source subset without `tomllib` produces
+**233** under per-allocation program GC stress. Four focused CPython-hosted store
+tests produce seven passes, both compiler/runtime fixed points converge at
+637,923/18,709 IR lines, and 1,520 recordings plus 95 deviations pass. These are
+attributed final-tree results, not fresh local native measurements.
+
+All six P2 review threads are resolved. Five findings produced regressions for
+call-result receivers, evaluation order, RHS retyping, local-callee shadowing and
+negative tuple indices. The sixth, imported `Any`-returning callees, did not
+reproduce and was pinned with import-form coverage. The final no-findings review
+covered `375ff01a`; final head `b5294f09` only merged #815's main tree and passed
+the exact-tree workflows. No uncovered bug was confirmed, so no new issue was filed.
+
+This is a focused dynamic-storage gain, not a general import or package gain.
+Locals that hold displays, typed containers that cross to `Any`, `set()`, template
+or inherited-method receivers that need compilation to type, and computed tuple
+indices remain outside #817. Existing [#777](https://github.com/den-run-ai/pystachy/issues/777),
+[#775](https://github.com/den-run-ai/pystachy/issues/775) and
+[#779](https://github.com/den-run-ai/pystachy/issues/779) retain that adjacent scope.
+
+Pinned CPython **3.13.16** and LLVM 18 were unavailable locally. No fresh local
+native JIT/AOT, fixed-point build, GC-stress matrix, `make verify`, package/port,
+performance, memory, upstream-suite or CPython regrtest run completed. Exact-tree
+CI supplies the native matrix externally. The latest fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
