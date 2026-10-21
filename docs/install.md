@@ -186,6 +186,7 @@ uv venv --python "$(cat .python-version)"
 uv pip install --python .venv/bin/python -r tools/requirements-dev.txt
 tools/setup.sh --verify      # Ubuntu: also install the UBSan runtime for make verify
 PATH="$PWD/.venv/bin:$PATH" make lint   # ruff and shellcheck come from PATH
+PATH="$PWD/.venv/bin:$PATH" make typecheck  # mypy; no LLVM or compiler bootstrap needed
 make verify PY="$PWD/.venv/bin/python"
 ```
 

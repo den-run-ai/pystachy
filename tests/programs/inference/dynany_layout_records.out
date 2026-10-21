@@ -1,0 +1,5 @@
+{'a': 1, 'b': ['two']} two True
+['a', 'b', 'c']
+{'a': 1, 'b': [2, 'x']} True
+{'a': 'changed', 'b': [2, 'x']} 1
+[exit 0]
