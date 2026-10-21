@@ -1,0 +1,9 @@
+mods: init mods
+mods.shapes: init mods.shapes
+shadow 9
+UnboundLocalError cannot access local variable 'plus' where it is not associated with a value
+conditional 10
+NameError name 'plus' is not defined
+NameError name 'plus' is not defined
+7 41
+[exit 0]

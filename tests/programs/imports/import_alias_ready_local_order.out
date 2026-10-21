@@ -1,0 +1,9 @@
+mods: init mods
+mods.shapes: init mods.shapes
+UnboundLocalError cannot access local variable 'chosen' where it is not associated with a value
+later 3
+UnboundLocalError cannot access local variable 'chosen' where it is not associated with a value
+later 3
+retained 4
+closure 5
+[exit 0]
