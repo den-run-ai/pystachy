@@ -96,6 +96,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 compiler-state contracts (#818), bounded tooling evaluation complete | `d7e331dd`; research/tooling/tests after #821 | The structural contract and 31/31 mechanism tests pass. The real nested-boundary probe reproduces all eight known entry leaks and caller-restoration changes at depths 1–3; strict mode therefore exits 1 by design. Main accepts the new one-read `None` control that #824 rejects. No production or import surface changed, and no compatibility gain is claimed. [Evidence](compatibility-2026-10-21-compiler-state-contracts.json). |
 | 2026-10-21 dynamic `Any` dictionary views (#829), **partial** | `bd0eb909`; compiler/tests after #818 | The 75-program dynamic-`Any` corpus improves **73→75 hosted compilations** with no loss: direct typed consumers of `dict[str, Any].keys()` and `.items()` recover. Pinned imports remain 148/460. Saved-bound and unbound `dict.keys`/`values`/`items` spellings still reject; existing #777 and the acknowledged follow-up retain that gap. [Evidence](compatibility-2026-10-21-dynamic-views-partial.json). |
 | 2026-10-21 nested compiler-state isolation (#819), **partial** | `4046df59`; compiler/tests/tooling after #832 | All eight new nested-compilation regressions emit checked hosted IR: four previous rejections become accepted and four accepted cases change IR. The structural guard passes 18/18 tests; all 31 retained state tests pass. Caller restoration has no observed change at depths 1–3, while the intentional `nonecmp` inheritance and its known multi-iteration miscompile remain under #822. Pinned imports remain 148/460. [Evidence](compatibility-2026-10-21-nested-compiler-state-partial.json). |
+| 2026-10-21 dynamic `Any` numeric object identity (#807), **partial** | `8433b9d7`; compiler/runtime/tests/docs after #819 | Pinned CPython validates 1,563 recordings and 96 deviations. The retained dynamic-`Any` corpus preserves all 87 acceptances and 12 rejections; 65 accepted programs change IR for identity boxes/slots. Exact-tree native CI is green and reports zero mismatches in the 450-case fuzzer, versus five on prior main. Pinned imports remain 148/460. Documented identity boundaries remain under open #797. [Evidence](compatibility-2026-10-21-dynamic-identity-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -6537,4 +6538,71 @@ coverage separately. No local full `make verify`, broad port/package/upstream
 suite, CPython regrtest, performance or memory comparison completed. These are
 compiler-correctness gains, not a new stdlib import, package-support or
 performance claim. The latest fully evaluated main therefore remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #807: dynamic `Any` numeric object identity
+
+Inspected [main `8433b9d78e02c1b3e4abdba632999da33e2fac56`](https://github.com/den-run-ai/pystachy/commit/8433b9d78e02c1b3e4abdba632999da33e2fac56)
+after [#807](https://github.com/den-run-ai/pystachy/pull/807) merged at
+2026-10-21 23:05:31 UTC. Fresh first-parent history establishes it as the only
+merge after `4046df59`. Merge and final implementation head `13f7f674` share
+tree `3e1870f9ce5c538c2437ce7a186c5df51635cb35`.
+
+#807 makes `is` agree with `id()` equality for live dynamic values and gives
+ints and floats CPython-like object identity through supported typed-variable
+crossings. Non-small int identity is now its box; small ints and module-local
+integer literals use constant boxes. Typed numeric locals, parameters and module
+variables in opted-in programs keep an adjacent box slot across supported
+assignments, swaps, repeated reads, narrowing and `Any` round trips. The compiler
+state guard from #819 classifies the new `gidbox` map as program-scoped.
+
+[Machine-readable evidence](compatibility-2026-10-21-dynamic-identity-partial.json)
+retains exact revisions and trees, selected source hashes, commands, hosted IR
+hashes, import metadata, workflow/review evidence, attributed native results and
+limits.
+
+| Fresh merged-tree measurement | Result and boundary |
+|---|---|
+| CPython recordings | Pinned CPython **3.13.16** validates all **1,563 recordings**, 96 deviations and 12 pinned library files with zero failures. This adds five positive identity recordings and one intentional deviation after #819's 1,558/95 result. |
+| Dynamic-`Any` hosted corpus | Both the previous and current hosted compilers accept **87/87** positive/deviation inputs and reject the same **12/12** expected-error inputs with byte-identical diagnostics. Of the 87 accepted inputs, **22 are byte-identical** and **65 change IR** for the new identity boxes and slots. There is no compile-status gain or loss. |
+| Identity fixtures | All five positive identity programs and the boundary-deviation program emit checked hosted IR with both compilers, and all six outputs change. The typed fixture grows 1,250 → 2,841 lines because it exercises local, parameter, module, cross-module, narrowed, swapped, generator and rebinding paths. Hosted emission does not execute IR. |
+| Compiler-state contracts | The frame-field suite passes **18/18**, the retained compiler-state suite **31/31**, and the contract reports exact initialization/save/restore mappings. |
+| Pinned isolated imports | Both CPython 3.13.16 source sweeps report **148/460** included imports, 62 overlay exclusions, 312 errors and zero timeouts. After checkout paths are normalized, every result is identical: no new/lost success or first-error change. |
+| Fast hosted/tooling checks | `make check-fast` passes Ruff, mypy on **45/45** files, seven effect-summary and **88/88** typed-IR tests. All **53/53** verifier-tool tests, four workflow-limit tests, actionlint 1.7.12 and `git diff --check` pass. |
+
+The core issue is materially improved. Two independently created equal non-small
+ints no longer compare identical while reporting different ids, and a typed int
+or float variable retains one object across the measured supported crossings.
+The retained corpus shows no accepted-program or expected-rejection regression.
+This is a runtime correctness gain for opted-in dynamic code, not an increase in
+the import count or general package coverage.
+
+Documented boundaries remain: arguments/defaults/returns, typed container items,
+fields and class variables, closure/comprehension variables, copies made before
+the first crossing, folded expressions, float literals, conditionals selecting
+different variables and some runtime-path-sensitive rebindings. Existing open
+[#797](https://github.com/den-run-ai/pystachy/issues/797) remains the appropriate
+tracker for those deviations, so no duplicate issue was filed.
+
+The final implementation tree has **32/32 successful external jobs**:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39688727827) 27/27,
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39688727840) 3/3,
+and [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39688727820) and
+[Packages](https://github.com/den-run-ai/pystachy/actions/runs/39688727855) 1/1
+each. The final automated review found no major issue and all eight review threads
+are resolved. The preceding audit-head
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39688734576) also passed.
+
+The PR additionally attributes **226** passing selected JIT/AOT checks, **30**
+passing selected GC-stress checks, zero mismatches in the default 450-case
+dynamic-`Any` fuzzer (versus five identity mismatches on prior main), and 70
+expected `irsame` differences among 3,495 inputs, all in opted-in code. These are
+attributed final-tree measurements, not fresh local native runs.
+
+LLVM 18 remains unavailable locally, so there is no fresh local native build,
+JIT/AOT or GC execution, fuzzer run or full `make verify`. Hosted IR emission is
+not a substitute for runtime execution; the exact-tree external matrix supplies
+native evidence separately. No broad port/package/upstream suite, CPython
+regrtest, performance or memory comparison completed. The latest fully evaluated
+main therefore remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
