@@ -53,8 +53,11 @@ and ordering. Bounds errors raise `IndexError` at runtime.
 Optional scalar elements use boxes when needed; widening an immutable tuple to
 optional elements copies its slots rather than reinterpreting numeric bits as pointers.
 
-Runtime-length tuples currently do not support concatenation, repetition,
-membership, dictionary keys, or set elements. Their annotation is distinct
+Runtime-length tuples concatenate (`a + b`, `a += b`) with each other and with fixed tuples
+into a new tuple of one item type, or return the other operand itself where one is empty, as
+CPython does; items of a type and items that are `None`, or of that type or `None`, make a tuple
+of that type or `None` (`nums + (None,)`). They do not
+support repetition, membership, dictionary keys, or set elements yet. Their annotation is distinct
 from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
 `bool`, `str` or optional versions of those types, the objects of iterator classes and
@@ -129,8 +132,13 @@ those classes. Generic class subscriptions such as `Box[int]` are supported
 when they use the standard `typing.Generic` hook. Calls, other operators, custom class
 subscripting, and expressions that could execute user code are rejected. CPython's idiom for a
 generic class, `__class_getitem__ = classmethod(types.GenericAlias)` in its body, defines
-nothing: the class's subscripts at run time, generic aliases in CPython, are rejected. `os.PathLike` and the supported
-`collections.abc` names are exceptions to the restriction on builtin module attributes.
+nothing: the class's subscripts at run time, generic aliases in CPython, are rejected, and its
+subscripts in annotations, evaluated or not, name the class, as CPython does not check their
+arguments: types, or number, `None`, `True`, `False` and `...` constants (`C[int]`, `C[1]`,
+`C[int, ...]`). A string argument is a forward reference, as elsewhere in an annotation, and any
+other argument must still be an annotation. `re.Pattern[str]` and `re.Match[str]` are such
+annotations. `os.PathLike` and the supported `collections.abc` names are exceptions to the
+restriction on builtin module attributes.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
 value's type; a class-body value must be a constant. `x: Final` alone binds nothing.
@@ -529,10 +537,11 @@ Method calls dispatch on the union member and use ordinary native class dispatch
 within that member's family. Every member must declare the requested method, and
 all implementations must return the same static type. Positional and keyword
 arguments run once; each selected method uses its own defaults. A subclass may be
-stored under one base member, but a union cannot contain overlapping class families
-such as `Base | Child`. `isinstance()` checks the actual subclass; narrowing to a
-whole declared member is supported, while narrowing a base member to a subclass is
-not yet implemented.
+stored under one base member, and an annotation leaves out a member derived from another,
+whose type holds its objects: `Base | Child` and `datetime | date` are the base class, and
+`Base | Child | Other` is `Base | Other`. `isinstance()` checks the actual subclass; narrowing to
+a whole declared member is supported, while narrowing a base member to a subclass is not yet
+implemented.
 
 Reference unions cannot mix with scalar or container members or exception types.
 Callable fields, bound-method extraction and unpacked method arguments

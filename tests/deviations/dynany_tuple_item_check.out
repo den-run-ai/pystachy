@@ -1,0 +1,3 @@
+[('a', 1)]
+TypeError: expected str, got int
+[exit 1]

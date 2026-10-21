@@ -1,0 +1,24 @@
+'a\tb\n"c"'
+KeyError '\\q'
+1 2 True False True True
+1 None 0
+['b', 'a'] ['a', 'b'] ['b', 'a'] ['a', 'b'] b
+['b', 'a'] [2, 1] [('b', 2), ('a', 1)]
+b 2
+a 1
+{'a': 1, 'c': 3} 2 3 False
+mappingproxy({'a': 1, 'c': 3}) {'a': 1, 'c': 3} {'a': 1, 'c': 3} mappingproxy({'a': 1, 'c': 3})
+mappingproxy True True
+{'a': 1, 'c': 3, 'x': 9} {'a': 1, 'c': 3} dict
+{'a': 1, 'c': 3, 'z': 26} {'a': 0, 'c': 3} dict
+True False True True
+True False True
+TypeError '|=' is not supported by mappingproxy; use '|' instead
+TypeError unhashable type: 'dict'
+RuntimeError dictionary changed size during iteration
+{'a': 1, 'c': 3, 'aa': 0}
+9 a,c
+{} 0 0 None
+11 {'z': 26}
+{'o': Point(0), 'p': Point(5)} 5 [0, 5]
+[exit 0]
