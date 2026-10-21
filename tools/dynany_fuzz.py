@@ -243,12 +243,19 @@ def big_int(line: str) -> bool:
 EXPECTED = [
     (lambda c, cp, ps: big_int(cp) and ps.split(" ")[1:2] == ["OverflowError:"],
      "ints hold 64 bits: OverflowError where CPython's int grows (docs/language/compatibility.md)"),
-    (lambda c, cp, ps: c[1] in ("%", "%=") and c[2] == "str" and ps.split(" ")[1:2] == ["TypeError:"],
-     "% of an Any str (tests/deviations/dynany_str_mod.py)"),
+    (lambda c, cp, ps: c[1] in ("%", "%=") and c[2] == "str"
+     and re.fullmatch(r"\d+ TypeError: unsupported operand type\(s\) for " + re.escape(c[1]) + r": 'str' and '[^']+'", ps) is not None,
+     "% of an Any str: this TypeError, where CPython formats or raises its own (tests/deviations/dynany_str_mod.py)"),
     (lambda c, cp, ps: c[1] in ("**", "**=") and re.fullmatch(r"\d+ \(?[-+0-9.einfa]*j\)?", cp) is not None
      and ps.split(" ", 1)[1:] == ["ValueError: a negative number to a fractional power has a complex result (not supported)"],
      "no complex numbers (tests/deviations/complex_pow.py)"),
 ]
+
+
+def built(seed: int, r: tuple[int, str]) -> list[str]:
+    # a build that succeeds prints nothing: what one prints (a warning, a sanitizer's report) is a
+    # mismatch, as compare() makes a line of no case one (a failed build: compare() reports it)
+    return [f"seed {seed} aot: the build printed: {r[1][-800:]}"] if r[0] == 0 and r[1] != "" else []
 
 
 def run(cmd: list[str], cwd: str) -> tuple[int, str]:
@@ -341,7 +348,7 @@ def main() -> int:
         if aot:
             exe = os.path.join(work, f"dynany_fuzz_{seed}")
             r = run(cmd + ["build", path, "-o", exe], work)
-            bad += compare(seed, cases, "aot", cp, run([exe], work) if r[0] == 0 else r)
+            bad += built(seed, r) + compare(seed, cases, "aot", cp, run([exe], work) if r[0] == 0 else r)
     for line in bad:
         print(line)
     if keep == "":

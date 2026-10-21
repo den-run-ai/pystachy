@@ -68,8 +68,25 @@ class CompareTest(unittest.TestCase):
 
     def test_expected(self) -> None:
         cp = "0 3\n1 'a1'\n2 18446744073709551614\n"
-        ps = "0 3\n1 TypeError: not all arguments converted during string formatting\n2 OverflowError: integer overflow\n"
+        ps = "0 3\n1 TypeError: unsupported operand type(s) for %: 'str' and 'int'\n2 OverflowError: integer overflow\n"
         self.assertEqual(fz.compare(1, self.cases, "jit", (0, cp), (0, ps)), [])
+
+    def test_str_mod(self) -> None:
+        # (% of an Any str: only the deviation's own TypeError, for its operator, where CPython
+        # formats or raises another error)
+        mod = "1 TypeError: unsupported operand type(s) for %: 'str' and 'int'\n"
+        own = "1 TypeError: not all arguments converted during string formatting\n"
+        self.assertEqual(fz.compare(1, self.cases[:2], "jit", (0, "0 3\n" + own), (0, "0 3\n" + mod)), [])
+        self.assertEqual(len(fz.compare(1, self.cases[:2], "jit", (0, "0 3\n1 'a1'\n"), (0, "0 3\n" + own))), 1)
+        c = [("v3 %= v4", "%=", "str", "'a'", "v3")]
+        self.assertEqual(fz.compare(1, c, "jit", (0, "0 'a1'\n"), (0, "0 TypeError: unsupported operand type(s) for %=: 'str' and 'int'\n")), [])
+        self.assertEqual(len(fz.compare(1, c, "jit", (0, "0 'a1'\n"), (0, "0 TypeError: unsupported operand type(s) for %: 'str' and 'int'\n"))), 1)
+
+    def test_build_output(self) -> None:
+        # (a build that succeeds and prints something is a mismatch; a failed one is compare()'s)
+        self.assertEqual(fz.built(1, (0, "")), [])
+        self.assertEqual(len(fz.built(1, (0, "runtime.c:1:1: runtime error: something\n"))), 1)
+        self.assertEqual(fz.built(1, (1, "error\n")), [])
 
     def test_mismatch(self) -> None:
         cp = "0 3\n1 'a1'\n2 18446744073709551614\n"
