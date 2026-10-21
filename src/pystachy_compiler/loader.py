@@ -884,27 +884,46 @@ class Loader:
 
     def plain_class(self, q: str, depth: int) -> bool:
         # is the class of qualified name q surely no exception class, and the only thing its
-        # module binds to its name (not class C: ... C = C(), a singleton): its class statement
-        # names no base, or object, or only classes that are such classes too (late_aliases)
+        # module binds to its name (not class C: ... C = C(), a singleton, nor a decorated class,
+        # which its decorator may replace: @object.__new__): its class statement names no base, or
+        # object, or only classes that are such classes too, by name or through a module's
+        # attribute (base_class; late_aliases)
         for x in self.order:
             if depth > 64 or not q.startswith(x.q) or "$" in q[len(x.q) :]:
                 continue
             if top_bindings(x.body.kids).get(q[len(x.q) :], 0) != 1 or q[len(x.q) :] in x.fnglobal:
                 return False
             for st in x.body.kids:
-                if st.kind == "class" and st.s == q[len(x.q) :]:
-                    return True
-                if st.kind != "subclass" or st.s != q[len(x.q) :]:
+                if (st.kind != "class" and st.kind != "subclass") or st.s != q[len(x.q) :]:
                     continue
-                for base in st.kids[1:]:
-                    k = x.kinds.get(base.s, "") if base.kind == "name" else "?"
-                    if base.kind == "typeparams" or (k == "" and base.s == "object"):
+                for d in st.kids if st.kind == "class" else st.kids[0].kids:
+                    if d.kind == "deco":
+                        return False
+                for base in st.kids[1:] if st.kind == "subclass" else st.kids[:0]:
+                    if base.kind == "typeparams" or (base.kind == "name" and base.s == "object" and x.kinds.get("object", "") == ""):
                         continue
-                    if not (k == "c" and self.plain_class(x.q + base.s, depth + 1)) and not (k.startswith("a:") and self.plain_class(k[2:], depth + 1)):
+                    b = self.base_class(x, base)
+                    if b == "" or not self.plain_class(b, depth + 1):
                         return False
                 return True
             return False
         return False
+
+    def base_class(self, x: Mod, base: Node) -> str:
+        # the qualified name of the class, or alias of one, that base, a base of a class statement
+        # of module x, names: by name, or through a module's attribute as attr_mod resolves it in
+        # x's code (class D(m.B)); else "" (plain_class)
+        if base.kind == "name":
+            k = x.kinds.get(base.s, "")
+            return x.q + base.s if k == "c" else k[2:] if k.startswith("a:") else ""
+        if base.kind != "attr":
+            return ""
+        dm = self.dm
+        self.dm = x
+        t = self.attr_mod(base.kids[0])
+        self.dm = dm
+        k = self.mods[t].kinds.get(base.s, "") if t != "" and base.s not in self.mods[t].amb else ""
+        return self.mods[t].q + base.s if k == "c" else k[2:] if k.startswith("a:") else ""
 
     def type_value(self, e: Node, top: bool) -> bool:
         # does e, a value that module dm's top-level code assigns, surely evaluate to a type that
