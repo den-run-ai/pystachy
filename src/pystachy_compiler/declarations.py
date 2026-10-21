@@ -274,12 +274,21 @@ def gen_ann(self, n: Node) -> str:
 def gen_class_family(self, ts: list[str]) -> str:
     # the type of an annotation A | B ... whose members include classes of the program derived
     # from another member, whose type holds their objects too: the union of the others
-    # (datetime | date is date, Base | Child | Other is Base | Other); "" where there are none
-    cs = [t for t in ts if t in self.classes and self.classes[t].exc == ""]
+    # (datetime | date is date, Base | Child | Other is Base | Other); "" where there are none.
+    # A member that is a union or an optional counts by its members, as union_type flattens it
+    # (Union[Union[Base, Other], Child], or an alias of Base | Other with Child)
+    ms: list[str] = []
+    for t in ts:
+        t = self.rec_type(t)
+        if is_opt(t):
+            ms.append("None")
+            t = unopt(t)
+        ms.extend(umembers(t) if is_union(t) else [t])
+    cs = [t for t in ms if t in self.classes and self.classes[t].exc == ""]
     drop = [c for c in cs if len([b for b in cs if b != c and self.derives(c, b)]) > 0]
     if len(drop) == 0:
         return ""
-    return self.union_type([t for t in ts if t not in drop])
+    return self.union_type([t for t in ms if t not in drop])
 
 def gen_ann_base(self, b: Node) -> str:
     # what b of annotation b[...] is (a name or attribute): list, dict, tuple, set, frozenset, or
