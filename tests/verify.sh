@@ -62,6 +62,8 @@
 #                  including ordering and list searches, normally and with GC stress
 #   weakrefs       tools/weakrefprobe.c: true weak targets and dead registry entries are cleared
 #                  before sweeping, including cycles, large objects and allocation stress
+#   box-slots      tools/boxprobe.c: Any and union boxes take exact 16-byte slots of the right kind;
+#                  a pointer to a box's payload keeps it, one past its end does not, with GC stress too
 #   file-buffers   tools/fileprobe.c: writable files' malloc'd buffers count as heap bytes, so files
 #                  dropped without close() run collections; every close takes back exactly what was
 #                  counted, a standard stream's are never counted (deterministic counts, no RSS)
@@ -99,7 +101,7 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted-0) echo 'bootstrap tests-cpython-0' ;;
     hosted-1) echo 'bootstrap tests-cpython-1' ;;
     hosted-2) echo 'bootstrap tests-cpython-2' ;;
@@ -128,7 +130,7 @@ plan() {
     gc-aot) echo 'bootstrap gc-aot-0 gc-aot-1 gc-aot-2' ;;
     gc-stress) echo 'bootstrap gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
     runtime-cache) echo 'bootstrap runtime-cache' ;;
-    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
+    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks scaling-0' ;;
     scaling-1) echo 'bootstrap scaling-1' ;;
     scaling) echo 'bootstrap scaling-0 scaling-1' ;; # local alias
@@ -615,6 +617,16 @@ L=$V/weakrefs.log; s=$(now); r=fail
   "${LLVM}clang" -O2 "$V/weakrefprobe.bc" -o "$V/weakrefprobe" -lm &&
   "$V/weakrefprobe" && PYSTACHY_GC_STRESS=1 "$V/weakrefprobe" && r=pass; } > "$L" 2>&1
 step weakrefs $r "$s" "$L" ', "referents": 2, "churned_handles": 1000'
+fi
+
+# ---- box-slots: boxes take 16-byte slots; a payload pointer keeps a box, one past its end does not
+if want box-slots; then
+L=$V/box-slots.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/boxprobe.c -o "$V/boxprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/boxprobe.ll" -o "$V/boxprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/boxprobe.bc" -o "$V/boxprobe" -lm &&
+  "$V/boxprobe" && PYSTACHY_GC_STRESS=1 "$V/boxprobe" && r=pass; } > "$L" 2>&1
+step box-slots $r "$s" "$L" ', "box_bytes": 16'
 fi
 
 # ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts
