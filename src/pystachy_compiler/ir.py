@@ -432,6 +432,20 @@ class Frame:
         self.branch = 0
         self.modlevel = False
         self.lenient = False
+        # the state of the operation that the function was compiling when it compiled another,
+        # which that function must neither see nor change (#822): dry()'s depth, a return's value
+        # while leave() compiles finally blocks, the comparison with None and the lookup key being
+        # compiled, the copies unrolled loops make and the expression statement
+        self.drying = 0
+        self.carried = Val("", "")
+        self.nonecmp = False
+        self.fieldcmp = False
+        self.cmpnode = Node("", "", 0)
+        self.stkkey = Node("", "", 0)
+        self.reflcopies = 1
+        self.stmtexpr: Node | None = None
+        self.dmemo: list[Node] = []
+        self.dmemot: list[str] = []
         self.n = 0
         self.cur = ""
         self.term = False
