@@ -10,6 +10,7 @@ from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     atomic_dict,
+    clone,
     codec,
     elem,
     fbits,
@@ -44,6 +45,8 @@ from src.pystachy_compiler.utils import (
 def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
     f = n.kids[0]
     args = n.kids[1:]
+    if f.kind == "name":
+        self.modchk(f)  # resolve the callable's binding before specialized or unpacked arguments
     if self.getattr_name(f) != "":
         # getattr(o, "m")(args) is o.m(args): o, then the method, then the arguments
         f = mk("attr", self.getattr_name(f), f.line, [f.kids[1]])
@@ -79,8 +82,6 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             return r
     if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
         return self.star_call(n, want, resultsoft, typeargs)
-    if f.kind == "name":
-        self.modchk(f)
     if f.kind == "name" and f.s not in self.ltype:
         self.read_ahead(f.s)
         if (f.chk or self.foreign(f.s)) and f.s in self.gflag:
@@ -125,10 +126,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 # a class template: the types of the arguments pick the specialization, whose
                 # object call_fn makes once it has them (in made[0])
                 made = [Val("", f.s)]
-                self.call_fn(self.classes[f.s].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs)
+                self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
                 return made[0]
             o = self.new_obj(f.s)
-            self.call_fn(self.classes[f.s].methods["__init__"], [o], args, direct=True)
+            self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], [o], args, direct=True))
             return o
         if f.s in self.mvars:
             self.not_callable(f.s, self.gtype(f.s))
@@ -188,6 +189,18 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
     # only print() takes: a sole star's once the keywords are evaluated, as CPython unpacks it)
     f = n.kids[0]
     args = n.kids[1:]
+    if self.static_callee(f):
+        if f.kind == "attr":
+            self.modchk(f)
+        # The callable has been read now. An argument may retry a failed module's import,
+        # resetting its binding flags; the recursive call below must not read them again.
+        f = clone(f)
+        callee = f
+        while callee.kind == "attr":
+            callee.mchk = ""
+            callee = callee.kids[0]
+        if callee.kind == "name":
+            callee.mchk = ""
     if f.kind == "attr" and not self.static_callee(f) and f.kids[0].kind != "val":
         receiver = self.expr(f.kids[0], "")
         if self.reference_union(receiver.t):
@@ -538,11 +551,12 @@ def gen_call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool =
     # is still the builtin)
     k = v.t[3:-1]
     if k.startswith("u:"):
-        return self.unbound_call(k[2 : k.find(".")], k[k.find(".") + 1 :], args)
+        return self.unbound_call(k[2 : k.find(".")], k[k.find(".") + 1 :], args, "" if resultsoft else want)
     if k.startswith("m:"):
         return self.method(Val(v.v, k[2 : k.rfind(".")]), k[k.rfind(".") + 1 :], args, want, resultsoft)  # (a bound method: o.name(args))
     if k.startswith("d:"):
-        return self.method(Val(v.v, k[k.find(":", 2) + 1 :]), k[2 : k.find(":", 2)], args)
+        mn = k[2 : k.find(":", 2)]
+        return self.method(Val(v.v, k[k.find(":", 2) + 1 :]), mn, args, want if (mn == "keys" or mn == "values" or mn == "items") and not resultsoft else "")
     if k.startswith("b:"):
         return self.builtin(k[2:], args, want, resultsoft)
     if k.startswith("c:"):
@@ -649,9 +663,10 @@ def gen_open_(self, args: list[Node]) -> Val:
                                            f"i64 {vals['buffering']}"]), "file")
 
 def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsoft: bool = False) -> Val:
-    if (m == "keys" or m == "values" or m == "items") and len(args) == 0 and want != "" and is_dict(unopt(o.t)):
+    if (m == "keys" or m == "values" or m == "items") and len(args) == 0 and want != "" and not resultsoft and is_dict(unopt(o.t)):
         # (the new list of a dict's keys, values or items, which a typed list expected of it takes
-        # with its items unboxed where the dict holds boxes, as list(d) does: typed_list)
+        # with its items unboxed where the dict holds boxes, as list(d) does: typed_list; not where
+        # want is only a hint, a comparison's other operand's type: resultsoft)
         return self.typed_list(gen_method(self, o, m, args, "", resultsoft), want)
     if o.t == "fn[b:bytes]" and m == "maketrans":
         return self.bytes_method(o, m, args)  # (the static method, of the class)
@@ -664,7 +679,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             self.err(f"fromhex() argument must be str, not {tname(s.t)}")
         return Val(self.rt("pys_bytes_fromhex", "ptr", [f"ptr {s.v}"]), "bytes")
     if (o.t == "fn[b:str]" or o.t == "fn[b:list]" or o.t == "fn[b:dict]") and (has_method(o.t[5:-1], m) or (o.t == "fn[b:str]" and (m == "format" or m == "format_map"))):
-        return self.unbound_call(o.t[5:-1], m, args)
+        return self.unbound_call(o.t[5:-1], m, args, "" if resultsoft else want)
     if is_kw(o.t):
         return self.kw_method(o, m, args)
     if o.t == "dyn":
@@ -743,7 +758,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         return self.call_fn(ci.methods[m], [o] if ci.methods[m].deco == "" else [], args, want, resultsoft=resultsoft)  # (a static or class method gets no o)
     return self.bmethod(o, m, args)
 
-def gen_unbound_call(self, tn: str, m: str, args: list[Node]) -> Val:
+def gen_unbound_call(self, tn: str, m: str, args: list[Node], want: str = "") -> Val:
     # T.m(o, args) of builtin type T (str.lower(s), list.append(xs, x)): o.m(args), where o must
     # be a T (CPython's TypeError otherwise: a compile error here, but for None)
     if len(args) == 0 or args[0].kind == "kw" or args[0].kind == "starred" or args[0].kind == "dstar":
@@ -757,7 +772,8 @@ def gen_unbound_call(self, tn: str, m: str, args: list[Node]) -> Val:
         # (an o that may be None raises once the other arguments are evaluated, as CPython's call does)
         rest = [mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], ""))]) if a.kind == "kw" else self.vnode(self.expr(a, "")) for a in rest]
     o = self.unwrap(o, f"TypeError: descriptor '{m}' for '{tn}' objects doesn't apply to a 'NoneType' object")
-    return self.method(o, m, rest)
+    # (want: the typed list expected of a dict's keys(), values() or items(), as o.keys() takes it)
+    return self.method(o, m, rest, want if m == "keys" or m == "values" or m == "items" else "")
 
 def gen_kw_record(self, names: list[str], vals: list[Val]) -> Val:
     # the **kwargs of a call: its extra keyword arguments, a tuple of the values typed by the
@@ -961,7 +977,7 @@ def gen_dc_replace(self, args: list[Node]) -> Val:
             if "no-init" not in c.fopts[fl] and fl not in given:
                 kws.append(mk("kw", fl, self.line, [self.vnode(self.getfield(x, self.field(x, fl), fl))]))
         r = self.new_obj(c.name)
-        self.call_fn(c.methods["__init__"], [r], kws, direct=True)
+        self.init_result(self.call_fn(c.methods["__init__"], [r], kws, direct=True))
         if end != "" and not self.term:
             self.incoming(ph, r.v, self.cur)
             self.br(end)
@@ -992,6 +1008,41 @@ def gen_asdict(self, o: Val, args: list[Node]) -> Val:
         v = self.coerce(self.getfield(o, self.field(o, fl), fl), kv[1])
         self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
     return Val(r, dt)
+
+def gen_init_result(self, v: Val) -> None:
+    # Construction requires None from __init__, after its side effects and exceptions. An
+    # explicit call of the method (including super().__init__) may return any value instead.
+    # Ordinary initializers emit no extra IR; a call that never returns has no value to check.
+    if v.t == "None" or self.term:
+        return
+    v = Val(v.v, self.rec_type(v.t))
+    if v.t == "dyn":
+        bad = self.label()
+        end = self.label()
+        self.cbr(self.cmp2("is", v, Val("null", "None")).v, end, bad)
+        self.place(bad)
+        msg = self.concat([Val(self.sconst("__init__() should return None, not '"), "str"), self.dyn_type_name(v), Val(self.sconst("'"), "str")])
+        self.raise_("TypeError", msg.v)
+        self.place(end)
+        return
+    # The actual type of a union member or returned subclass belongs in the error. Reuse
+    # reflection's guarded split, including its None arm, without requiring every value's
+    # type to support type(x).__name__ (functions, generators and files need only tname).
+    leaves = self.refl_split(v)
+    end = ""
+    for leaf in leaves:
+        self.place(leaf.label)
+        if leaf.c == "None":
+            end = self.label()
+            self.br(end)
+        elif leaf.c == "exc" or (leaf.c in self.classes and self.classes[leaf.c].exc != ""):
+            name = self.refl_type_attr(self.vnode(leaf.v), "__name__")
+            msg = self.concat([Val(self.sconst("__init__() should return None, not '"), "str"), name, Val(self.sconst("'"), "str")])
+            self.raise_("TypeError", msg.v)
+        else:
+            self.raise_("TypeError", self.sconst(f"__init__() should return None, not '{tname(leaf.c)}'"))
+    if end != "":
+        self.place(end)
 
 def gen_new_obj(self, c: str) -> Val:
     # a new object of class c, which its __init__ initializes: it holds its class-body defaults

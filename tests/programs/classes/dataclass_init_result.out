@@ -1,0 +1,8 @@
+record init 0
+record init 0
+0
+record init 1
+TypeError __init__() should return None, not 'str'
+record init 2
+direct '' 2
+[exit 0]

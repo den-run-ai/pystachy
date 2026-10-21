@@ -1,0 +1,5 @@
+generic init 1
+TypeError __init__() should return None, not 'int'
+generic init text
+TypeError __init__() should return None, not 'int'
+[exit 0]

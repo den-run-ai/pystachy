@@ -591,18 +591,11 @@ def gen_none_global(self, name: str) -> str:
                 continue
             self.making.append(f"compiling {f.name if f.cls == '' else f.cls + '.' + f.name}() for the type of '{short(name)}' at {where(self.line)}")
             fr = self.save()
-            cmps = [self.nonecmp, self.fieldcmp]
-            cmpnode = self.cmpnode
             self.nonecmp = False  # (the read being compiled may be compared with None, not that function's)
-            self.fieldcmp = False
-            self.cmpnode = self.nokey
             self.modlevel = False
             self.lenient = False
             self.function(f, f.node.kids[2].kids)
             self.restore(fr)
-            self.nonecmp = cmps[0]
-            self.fieldcmp = cmps[1]
-            self.cmpnode = cmpnode
             self.making.pop()
         del self.fieldbusy[key]
         if self.gtypes[name] != NONEVAR:

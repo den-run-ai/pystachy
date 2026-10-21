@@ -874,7 +874,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_sort(Val(c, t), keyv, rev, False)
         elif name == "sorted":
             self.rt("pys_list_sort_r", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(elem(t), '<'))}", f"i64 {rev}"])
-        return self.typed_list(Val(c, t), want)
+        return self.typed_list(Val(c, t), "" if resultsoft else want)
     elif name == "divmod" and len(vals) == 2 and self.isnum(t) and self.isnum(vals[1].t):
         dn = self.as_int(v)
         dd = self.as_int(vals[1])
@@ -896,7 +896,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # comparing keys hashed by their class (key_fx)
         return Val(self.rt("pys_dict_from", "ptr", [f"ptr {v.v}"], self.key_fx(targs(t)[0])), t)
     elif name == "list" and is_dict(t):
-        return self.typed_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]])), want)
+        return self.typed_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]])), "" if resultsoft else want)
     elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":
         tuple_use = "tuple(), bytes(), " if name == "range" else "tuple() (with scalar or optional scalar items), bytes(), " if name == "reversed" else ""
         self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), {tuple_use}sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()")
