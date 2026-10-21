@@ -214,7 +214,9 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
 list compared with an `Any` value's field), the program is compiled again without that call
 (`Gen.xnot`), and the method runs only with objects of its class, as in a module that does not opt
-in (`tests/programs/inference/dynany_eq_template.py`). One whose parameter is annotated with a class (or
+in (`tests/programs/inference/dynany_eq_template.py`). The pass that finds such a method goes on to
+find the others, so one more pass declines them all, however many there are
+(`tests/programs/inference/dynany_eq_declines.py`, `tools/test_dynany_declines.py`). One whose parameter is annotated with a class (or
 another concrete type) runs where the other value has that type (an object of the class or of a
 subclass, or `None`, as such a parameter takes an `Any` value; for a tuple's shape, a tuple of its
 length whose items have its item types); its body is compiled for that type, so it does not run

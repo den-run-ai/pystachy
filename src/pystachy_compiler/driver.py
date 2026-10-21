@@ -72,9 +72,9 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # the program's IR: where a join finds a location's inferred type too narrow for a value the
     # program stores to it (Gen.join_hint), the program is compiled again with the union of both
     # types, as if annotated, until no join widens one (at most JOINS passes after the first).
-    # Where a comparison method's call with an Any value does not compile, it is compiled again
-    # without that call (Gen.xnot: each such pass adds a method, so these passes count toward no
-    # limit)
+    # Where comparison methods' calls with an Any value do not compile, it is compiled again
+    # without those calls: the pass that meets the first goes on to find the others (Gen.xnot,
+    # dyn_xcall), and each such pass adds a method, so these passes count toward no limit
     hints: dict[str, str] = {}
     xnot: dict[str, bool] = {}
     files = len(FILES)

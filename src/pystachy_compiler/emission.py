@@ -26,6 +26,10 @@ def gen_err(self, msg: str) -> None:
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
+    if len(self.newx) > 0:
+        # (a pass that declined a comparison method goes on only to find the others: the next
+        # pass declines them all, and reports an error that comes of the program, see dyn_xcall)
+        raise Rejoin()
     if len(self.making) > 0:
         # an error in a template's function: say which call made it compile
         for i in range(len(self.making) - 1, -1, -1):

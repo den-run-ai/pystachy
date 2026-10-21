@@ -15,7 +15,7 @@ the program's classes, functions the compiler writes once every class that is bo
 (dyn_dispatchers): each tests the box's DynType for those classes and calls the class's own code.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import LINES, dynamic_file
+from src.pystachy_compiler.diagnostics import LINES, Rejoin, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import METHODS, NONEVAR, RTDATA
@@ -199,7 +199,7 @@ def gen_dyn_xbody(self, c: str) -> None:
         self.place(hit)
         ps = self.classes[c].methods[m].ptypes if self.dyn_xmethod(c, m) else []
         takes = self.dyn_isa(b, ps[1]) if len(ps) >= 2 else ""
-        if takes == "false" or f"{c}.{m}" in self.xnot:
+        if takes == "false" or f"{c}.{m}" in self.xnot or f"{c}.{m}" in self.newx:
             self.ret_(Val("3", "int"))
             self.place(nxt)
             continue
@@ -211,13 +211,14 @@ def gen_dyn_xbody(self, c: str) -> None:
             self.ret_(Val("3", "int"))
             self.place(run)
         if self.dyn_xmethod(c, m):
-            self.xtry = f"{c}.{m}"
-            r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
-            self.xtry = ""
-            if inv:
-                r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
-            if not self.term:
-                self.ret_(Val(self.select(r, Val("1", "int"), Val("0", "int")), "int"))
+            r = self.dyn_xcall(c, m, a, b, line)
+            if r == "":
+                self.ret_(Val("3", "int"))  # (it does not compile: declined, see dyn_xcall)
+            else:
+                if inv:
+                    r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
+                if not self.term:
+                    self.ret_(Val(self.select(r, Val("1", "int"), Val("0", "int")), "int"))
         else:
             tup = self.label()
             other = self.label()
@@ -229,6 +230,68 @@ def gen_dyn_xbody(self, c: str) -> None:
             self.ret_(Val("2", "int"))
         self.place(nxt)
     self.ret_(Val("2", "int"))
+
+
+def gen_dyn_xcall(self, c: str, m: str, a: Val, b: Val, line: int) -> str:
+    # the truth of a.m(b) in @o.x.<class> (dyn_xbody), or "" where that call does not compile: m
+    # is declined then, as the next pass declines it (Gen.xnot), and this pass, whose code the
+    # driver drops, goes on to find the other methods to decline, so that one more pass declines
+    # them all (#801). What the failed call left is undone: the helper's frame (its register
+    # count among it) and what the call added to the helper's code and tables, and the state the
+    # functions it was compiling set for their own time (tools/test_dynany_declines.py checks
+    # that nothing else of Gen's changes). A function it left half compiled stays so: a later call
+    # of it fails as this one did in a pass that compiles it, or compiles here, which costs at
+    # most a pass more: no method is declined that the next pass would compile
+    key = f"{c}.{m}"
+    f = self.fn
+    fr = self.save()
+    nb = len(f.blocks)
+    nc = len(self.blk.code)
+    ns = len(f.slots)
+    nl = len(f.loops)
+    nt = len(f.tries)
+    ncold = len(f.cold)
+    ncoldh = len(f.coldh)
+    nfa = len(f.fa)
+    making = len(self.making)
+    drying = self.drying
+    sel = self.selfcls
+    tbytes = self.template_bytes
+    tinstances = self.template_instances
+    tretained = self.template_retained
+    self.xtry = key
+    try:
+        r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
+    except Rejoin:
+        if key not in self.newx:
+            raise
+        self.restore(fr)
+        while len(f.blocks) > nb:
+            f.blocks.pop()
+        while len(self.blk.code) > nc:
+            self.blk.code.pop()
+        while len(f.slots) > ns:
+            f.slots.pop()
+        while len(f.loops) > nl:
+            f.loops.pop()
+        while len(f.tries) > nt:
+            f.tries.pop()
+        for k in [k for k in f.cold][ncold:]:
+            del f.cold[k]
+        for k in [k for k in f.coldh][ncoldh:]:
+            del f.coldh[k]
+        for k in [k for k in f.fa][nfa:]:
+            del f.fa[k]
+        while len(self.making) > making:
+            self.making.pop()
+        self.drying = drying
+        self.selfcls = sel
+        self.template_bytes = tbytes
+        self.template_instances = tinstances
+        self.template_retained = tretained
+        r = ""
+    self.xtry = ""
+    return r
 
 
 def gen_dyn_box(self, v: Val) -> Val:
