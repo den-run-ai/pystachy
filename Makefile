@@ -310,9 +310,13 @@ lint-python:
 	ruff check
 
 # Fast feedback for compiler edits; full native/runtime validation remains in verify.
-check-fast: lint-python typecheck
+check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_function_summaries.py
 	$(PY) -m unittest discover -s tools -p 'test_typed*.py'
+
+check-repository:
+	$(PY) tools/check_repository_hygiene.py
+	$(PY) -m unittest discover -s tools -p test_repository_hygiene.py
 
 # ruff (findings only, ruff.toml), shellcheck of the scripts as POSIX sh, and clang's warnings on the C
 # sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
@@ -335,4 +339,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz re-probe re-specialize-check typecheck lint-python check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

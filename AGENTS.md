@@ -334,7 +334,8 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
 - Close issues only when their acceptance scope is met on merged main; use `Refs` for
   partial work, narrow residual scope and search existing follow-ups before duplicating.
   Better diagnostics alone may not close a tracker. Keep research/roadmaps in issues
-  and raw evaluations on a separate research branch.
+  and raw evaluations on a research branch. Never merge `research/`, transient handoffs
+  or unapplied patches. Promote reusable checks/fixtures and run `make check-repository`.
 - Answer direct questions first with a short TL;DR; apply mid-task feedback and implement
   approved plans. Respect token budgets, ask before fanning out agents, and have them
   save findings. On wrap-up, finish on CI evidence and file follow-ups. Comment on GitHub
