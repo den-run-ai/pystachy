@@ -1,0 +1,111 @@
+# Documented deviation (docs/dynamic-any.md): in a module that compiles typing.Any as dynamic
+# values, an int or float variable of typed code holds one object (#797), but these values do not
+# keep their object where they become Any values: a copy of a variable made before the variable
+# first became one, an argument or a parameter's default value (the parameter receives a new
+# object), a return value, an item of a typed container, a typed field or class variable, a
+# variable that a closure reads and a comprehension's variable. Each is a new object there, where
+# CPython's names, containers and classes hold one (it prints True for each). So is the value of
+# an expression of literals, which CPython's compiler folds into one constant (999 + 1 is 1000
+# there), and a float literal, where CPython's equal constants are one object. `is` and id() still
+# agree. The other way round, a module variable that has no box yet, read in an expression that
+# then calls a function which rebinds it to an equal value, gives the new binding the read value's
+# box: one object where CPython has two (it prints False there).
+# pystachy: dynamic-any
+from typing import Any
+
+
+class Box:
+    K = int("1000")
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+
+def same(a: Any, b: Any) -> bool:
+    return a is b and id(a) == id(b)
+
+
+def callee(a: Any, n: int) -> None:
+    b: Any = n
+    print("an argument", a is b, id(a) == id(b))
+
+
+def dflt(a: Any, n: int = 1000) -> None:
+    b: Any = n
+    print("a parameter's default value", a is b, id(a) == id(b))
+
+
+def give(a: Any) -> int:
+    n: int = a
+    return n
+
+
+G = int("1000")
+
+
+def rebind() -> int:
+    global G
+    G = int("1000")
+    return 0
+
+
+def rebound() -> None:
+    a: list[Any] = [G, rebind()]
+    b: Any = G
+    print("a module variable that a call rebinds", a[0] is b, id(a[0]) == id(b))
+
+
+def run() -> None:
+    n = int("1000")
+    m = n
+    a: Any = n
+    b: Any = m
+    print("a copy made before the variable became Any", a is b, id(a) == id(b))
+    callee(n, n)
+    r: Any = int("1000")
+    g2: Any = give(r)
+    print("a return value", r is g2, id(r) == id(g2))
+    xs: list[int] = [int("1000")]
+    c: Any = xs[0]
+    d: Any = xs[0]
+    print("a typed list's item", c is d, id(c) == id(d))
+    o = Box(int("1000"))
+    e: Any = o.n
+    f: Any = o.n
+    print("a typed field", e is f, id(e) == id(f))
+    g: Any = Box.K
+    h: Any = Box.K
+    print("a class variable", g is h, id(g) == id(h))
+    dflt(1000)
+    k = int("1000")
+
+    def inner() -> None:
+        g: Any = k
+        h: Any = k
+        print("a variable a closure reads", g is h, id(g) == id(h))
+
+    inner()
+    print("a comprehension's variable", [same(i, i) for i in xs])
+
+
+run()
+rebind()
+rebound()
+k: Any = 1000
+m: Any = 999 + 1
+print("a folded constant", k is m, id(k) == id(m))
+h: Any = 1.5
+j: Any = 1.5
+print("a float literal", h is j, id(h) == id(j))
+bx = int("1000")
+bflag = bool(int("0"))
+bys: list[Any] = [bx, (bx := int("2000")) if bflag else 0]
+bw: Any = bx
+print("a read before a store in a branch that does not run", bys[0] is bw, id(bys[0]) == id(bw))
+cx = int("1000")
+cz = int("1000")
+cflag = bool(int("1"))
+cw: Any = cx
+cy = cx if cflag else cz
+cv: Any = cy
+print("a value a conditional chooses from two variables", cw is cv, id(cw) == id(cv))

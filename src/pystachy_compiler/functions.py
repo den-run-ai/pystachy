@@ -47,6 +47,8 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.iflag = {}
     self.appends = {}
     self.owned = {}
+    self.idbox = {}
+    self.idstores = {}
     self.lcs = []
     self.lct = []
     self.lcsoft = []
@@ -57,6 +59,16 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.branch = 0
     self.cells = {}
     self.nlw = {}
+    # (none of the operation that was compiling when this function's compile began: see Frame)
+    self.drying = 0
+    self.carried = Val("", "")
+    self.fieldcmp = False
+    self.cmpnode = self.nokey
+    self.stkkey = self.nokey
+    self.reflcopies = 1
+    self.stmtexpr = None
+    self.dmemo = []
+    self.dmemot = []
     self.curfn = f
     self.line = f.node.line
     if not self.modlevel:

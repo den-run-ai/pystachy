@@ -65,6 +65,8 @@ def gen_save(self) -> Frame:
     fr.iflag = self.iflag
     fr.appends = self.appends
     fr.owned = self.owned
+    fr.idbox = self.idbox
+    fr.idstores = self.idstores
     fr.cells = self.cells
     fr.nlw = self.nlw
     fr.nonevars = self.nonevars
@@ -74,6 +76,16 @@ def gen_save(self) -> Frame:
     fr.branch = self.branch
     fr.modlevel = self.modlevel
     fr.lenient = self.lenient
+    fr.drying = self.drying
+    fr.carried = self.carried
+    fr.nonecmp = self.nonecmp
+    fr.fieldcmp = self.fieldcmp
+    fr.cmpnode = self.cmpnode
+    fr.stkkey = self.stkkey
+    fr.reflcopies = self.reflcopies
+    fr.stmtexpr = self.stmtexpr
+    fr.dmemo = self.dmemo
+    fr.dmemot = self.dmemot
     fr.n = self.n
     fr.cur = self.cur
     fr.term = self.term
@@ -108,6 +120,8 @@ def gen_restore(self, fr: Frame) -> None:
     self.iflag = fr.iflag
     self.appends = fr.appends
     self.owned = fr.owned
+    self.idbox = fr.idbox
+    self.idstores = fr.idstores
     self.cells = fr.cells
     self.nlw = fr.nlw
     self.nonevars = fr.nonevars
@@ -117,6 +131,16 @@ def gen_restore(self, fr: Frame) -> None:
     self.branch = fr.branch
     self.modlevel = fr.modlevel
     self.lenient = fr.lenient
+    self.drying = fr.drying
+    self.carried = fr.carried
+    self.nonecmp = fr.nonecmp
+    self.fieldcmp = fr.fieldcmp
+    self.cmpnode = fr.cmpnode
+    self.stkkey = fr.stkkey
+    self.reflcopies = fr.reflcopies
+    self.stmtexpr = fr.stmtexpr
+    self.dmemo = fr.dmemo
+    self.dmemot = fr.dmemot
     self.n = fr.n
     self.cur = fr.cur
     self.term = fr.term
@@ -559,6 +583,17 @@ def gen_alloca(self, t: str, name: str) -> str:
             i.r = [self.n]
             self.fn.slots.append(i)
             self.owned[name] = f"%{name}.own.{self.n}"
+        if name not in self.compvars:
+            # (a comprehension's variable has none, and the function's variable of its name keeps
+            # its own)
+            self.idbox.pop(name, "")
+        if (t == "int" or t == "float") and name not in self.compvars and self.dyn_policy(self.line):
+            # the box of its binding as an Any value (idbox): null, as each slot is where the
+            # function begins, until a store or its first crossing gives it one (dyn_box)
+            i = Ins("slot", "dyn", name + ".box")
+            i.r = [self.n]
+            self.fn.slots.append(i)
+            self.idbox[name] = f"%{name}.box.{self.n}"
     return r
 
 # ---- value conversions
