@@ -2462,9 +2462,11 @@ class Loader:
                     mine = self.rebinds(m, src, x, x, infn)  # (a def or class statement of m binds x)
                     k = src.kinds[x] if mine else self.take(m, src, x, x, infn, keep, inits, copies, line)
                     took.append(" " if mine else x if k != "v" else "")
-                    # Resolve the source check after late_aliases: its assignment or a
-                    # re-export may acquire an alias binding flag only after this import.
-                    checks.append(f"?{src.name} {x}" if k != "v" else "")
+                    # Aliases may acquire a flag only after late_aliases. Other imports check
+                    # only existing source flags: from . import submodule must not check the
+                    # destination flag that this same statement will create in its package.
+                    key = f"{src.name}  {x}"
+                    checks.append(f"?{src.name} {x}" if k.startswith("a:") else f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
                     if not mine:
                         names.append(x)
                 if src.pdir != "" and not has_all(src.body.kids):
@@ -2476,7 +2478,8 @@ class Loader:
                 mine = self.rebinds(m, src, x, a.s, infn)
                 k = src.kinds[x] if mine else self.take(m, src, x, a.s, infn, keep, inits, copies, line)
                 took.append(" " if mine else a.s if k != "v" else "")
-                checks.append(f"?{src.name} {x}" if k != "v" else "")
+                key = f"{src.name}  {x}"
+                checks.append(f"?{src.name} {x}" if k.startswith("a:") else f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
                 if not mine:
                     names.append(a.s)
         at.append(len(inits.kids))
