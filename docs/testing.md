@@ -19,6 +19,7 @@ Run these from the repository root:
 | `make variants` | Run the suite, JIT and AOT, in configurations that verification does not test: combinations of IR passes turned off, and the runtime and AOT programs built at `-O0` ([configuration variants](#configuration-variants)). |
 | `make verify` | Run the complete verification plan and write `build/verification.json`. |
 | `make lint` | Run Ruff, ShellCheck and Clang warnings. |
+| `make typecheck` | Run mypy on the Python compiler and its entry point; no native build needed. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
 | `make test-cache` | Check runtime build-cache reuse, invalidation and failed-build handling with both compilers. |
 | `make test-ffi` | Check C calls, FFI diagnostics, embedded CPython (`pyobj`) and CPython extension modules. |
@@ -375,8 +376,25 @@ probe's ability to detect entry leaks and failed restoration. The standalone
 on the baseline; its success is not asserted by the mechanism tests. See the
 [prototype's guarantees and limits](../research/compiler-state-767/README.md).
 
-The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: lint, report-gate tests
+The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: type checking, lint, report-gate tests
 and recording checks use the pinned CPython and require no compiler bootstrap.
+
+`make typecheck` uses the mypy version pinned in `tools/requirements-dev.txt` and
+the scope in [`mypy.ini`](../mypy.ini): `pystachy.py` and all of `src/`, targeting
+the supported Python 3.11 bootstrap floor. It checks annotated arguments, returns,
+record fields and local values, including bodies without complete annotations.
+Unannotated locals may change type across control-flow paths. Reused annotated
+locals have one declaration per function. There are no whole-module ignores or
+disabled error categories; the one local argument exception documents a terminating
+call through an untyped receiver and is checked for obsolescence.
+
+This is an incremental check, not strict typing: the generic `gen_*` operations
+intentionally leave `self` unannotated for self-hosted specialization, so accesses
+through that receiver remain unchecked. Keep the one-way component dependencies
+described in [`src/README.md`](../src/README.md); do not add runtime imports of `Gen`
+just for mypy. The initial gate excludes development tools, vendored/ported modules,
+test programs (many intentionally invalid), and `runtime.py`'s compiler-only `_rt`
+intrinsics. It does not replace bootstrap, IR parity or runtime verification.
 
 The [Installation workflow](../.github/workflows/install.yml) builds and installs from source
 on Ubuntu 24.04, macOS 15 arm64 and macOS 15 x86-64, then runs hosted and native JIT/AOT smoke

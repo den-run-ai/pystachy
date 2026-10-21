@@ -1,4 +1,4 @@
-# make lint: ruff (findings only), shellcheck of the scripts as POSIX sh, and clang's warnings on
+# make typecheck (mypy), then make lint: ruff, shellcheck of the scripts as POSIX sh, and clang's warnings on
 # runtime.c and tools/dictprobe.c, with the versions of tools/requirements-dev.txt; then make
 # check-recordings (tests/record.sh --check): the CPython of .python-version, which recorded the
 # tests' expected output (with the typing_extensions of tools/requirements-dev.txt), still prints
@@ -40,6 +40,9 @@ jobs:
           cache-dependency-path: tools/requirements-dev.txt
 
       - run: python3 -m pip install -r tools/requirements-dev.txt
+
+      - name: Type-check the compiler (mypy)
+        run: make typecheck
 
       - run: make lint
 

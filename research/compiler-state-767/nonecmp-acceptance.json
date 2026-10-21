@@ -22,6 +22,16 @@
       "returncode": 1,
       "stdout": "",
       "stderr": "/workspace/scratch/a8a327275305/pystachy-767/tests/programs/optional/nestcomp_nonecmp_one_read.py:7: error: cannot infer the type of 'y' from None here, before a value of another type is assigned to it; annotate it (y: T | None) (compiling g(int) for the call at /workspace/scratch/a8a327275305/pystachy-767/tests/programs/optional/nestcomp_nonecmp_one_read.py:19)\n"
+    },
+    {
+      "compiler_commit": "0536d1a8e009ed59fb6485dd09f2fdd4661bd68a",
+      "command": "PYSTACHY_IRCHECK=1 python3.13 pystachy.py ir <case> -o <output>",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "ir_sha256": "8eadb90a423016ac423c1f58eb6f8ea702e3790fcf4bf96091cb10421e131ee8",
+      "ir_bytes": 4689,
+      "source_note": "Retested while integrating main 0536d1a8; compiler/runtime/lib diff against that main is empty."
     }
   ],
   "cpython": {

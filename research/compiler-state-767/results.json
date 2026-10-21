@@ -1,9 +1,9 @@
 {
-  "base_commit": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
-  "audit_parent_commit": "572bb6581c0ee9e1ffa2d39352dbc635fb14defa",
+  "base_commit": "0536d1a8e009ed59fb6485dd09f2fdd4661bd68a",
+  "audit_parent_commit": "63fa91b877bcb39a5d54fa9b5fdac5b2239ac1a3",
   "python": "3.13.16",
   "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
-  "scope": "Hosted audit only; IR hashes include checkout paths. Differential fixture recorded with pinned CPython; native coverage registered, local execution blocked by LLVM setup.",
+  "scope": "Hosted audit after integrating main 0536d1a8; IR hashes include checkout paths. Native execution remains pending CI for this integration.",
   "cases": [
     {
       "case": "tests/programs/inference/dynany_eq_restart_global.py",
@@ -252,24 +252,24 @@
     "src/pystachy_compiler/calls.py": "bbd5051a5007056d765e80b77113c5df7bbcb35db58ef6a3e6e4c24937d99e4e",
     "src/pystachy_compiler/containers.py": "b934cde4c77c751dd3713a0eacbfa3ad29c727a70004ecf426d7cc3757bfa1c7",
     "src/pystachy_compiler/conversions.py": "93117a3d871998186a22ed0cabf202abd7b421b1a882ef111857dcdcda5c4d50",
-    "src/pystachy_compiler/declarations.py": "cdc53366c5c6e27064cc73054ca86d78c285fd9a416e4676f97cc99a705d2271",
+    "src/pystachy_compiler/declarations.py": "f7c9657ebc21c802eb5723bc3e1b5370bb8da666afd83b2447adbd01e5c34092",
     "src/pystachy_compiler/diagnostics.py": "2c83b75d8a88a2cf89a7e4e5b44fd263c135a7c41c7923cc709d725148132a1e",
     "src/pystachy_compiler/driver.py": "c455ddcfcad9bf138e453fad4c098d090cef8c9d59af19cde25e9e1f363a0aa4",
     "src/pystachy_compiler/dynamic.py": "3d6771b257fb94000d269fe60ba5b743c47cee33d44b45ded48661d06b5bbbbf",
     "src/pystachy_compiler/emission.py": "30795f0b3b32baa5eda5501938cb132d6044ee0a420b377c320f79eeca9095c6",
     "src/pystachy_compiler/exceptions.py": "236f12919960ffa2ad7e83ff6d98314087b36248d8c1e33dcfb980fac6265eb3",
-    "src/pystachy_compiler/expressions.py": "f2d05679aa7756cbacc30bd243230b0643d0e527fedceae7943d42af15460811",
-    "src/pystachy_compiler/flow.py": "d1f2e8261822c45cb366e72ea6c0af1f3d54f81d802c3456bf26d1a080c4e581",
+    "src/pystachy_compiler/expressions.py": "5de4959001d9d9845b63f901499017140bf97944ccca983e8d1e9109141af487",
+    "src/pystachy_compiler/flow.py": "ec4a3017feed742df868076e874973fe3389291f39a8980c8d747f0692d68387",
     "src/pystachy_compiler/functions.py": "4cd3b38ecf2bedb3a02a551c27e5546c82f413173f5e9ef64cf44885c1aba872",
     "src/pystachy_compiler/generators.py": "e6a58fabf7d14341f682011afa919fff7e046d6bb9a92cb69e1eeaa28999347c",
-    "src/pystachy_compiler/gen.py": "19285b710b950257c3518655c7b7afd315d7d2991538896e45064da5ebc8f961",
+    "src/pystachy_compiler/gen.py": "32af8807cd15b24f504e6ea36085e8f7c8c531f2c87b13d0286dc3f2011671b1",
     "src/pystachy_compiler/ir.py": "672ad966771244a2393d046dcf8ef95227c1934b56e52692f8d5e54d91235081",
     "src/pystachy_compiler/ircheck.py": "f551a37635a7ed87d36c5c7587a876db21f6822c685c578430847d934463e33e",
     "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
     "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
     "src/pystachy_compiler/loader.py": "99e8c89b87ed839a5eefd01ad9dce14548001c773705030ec15efc753a6e2514",
     "src/pystachy_compiler/local_versions.py": "84911a4de75a7b48e5a37f86ccdfb08620fd4f24153692970e925c32d8e201a2",
-    "src/pystachy_compiler/lower_module.py": "ff7fe53d36fc4b6ec7263905cd788a382a479b959041ebbb6e6ff9b5893d6ded",
+    "src/pystachy_compiler/lower_module.py": "ffd42458778c6c9561578c186ba7e272525a51580f400f313df5ddc868c05c61",
     "src/pystachy_compiler/lowering.py": "93292a0a6cf5f1bc653b6913fb8503d074bb7aa8cf4659be59475e2b48540715",
     "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
     "src/pystachy_compiler/module.py": "64bb4ab4a01e5ecc297e9ae3b236c5cc385b55814d6b88dca37541edcf1a8ff0",
@@ -288,13 +288,15 @@
     "src/pystachy_compiler/union_arithmetic.py": "fc6e1a74768a95e651fdd4c6cc798fdecee9106e4e07211c65ec7c9a1607e209",
     "src/pystachy_compiler/unions.py": "e3120fc06a378a4ece650dbe270758b52c275b889a71287a43f97c5153f4ad40",
     "src/pystachy_compiler/utils.py": "227383a94655f742ea8dce43ad515a79ab15588a595274ad90b446cddd5ac1b3",
-    "src/pystachy_compiler/variables.py": "918da0967618327c31c0b542536b43f03c8036e286b4697e57c7e205549f86ec"
+    "src/pystachy_compiler/variables.py": "9b99e918c7a6f3ceb1a958603ddbb9b23e60bb9400eb6f9ff05521ee8ad05d77"
   },
   "audit_sha256": {
     "tools/compiler_state_contract.py": "6d9f063876e834bb962ee925d4601cceb80d68a8737852fda652b8e0a92c0b68",
     "tools/compiler_state_probe.py": "2b91f6e1959f46418b9a93e3b50ad6bc4c63aa70edc1d16a225c6e2c86ded8c5",
     "tools/test_compiler_state_contract.py": "5f1054669dd71662bcd06cc7ea05a58c566eabc2b9118eae22c19ece5a2ac47b",
-    "tools/test_compiler_state_probe.py": "d6dd1f68274ffad373d7d6010374a11cb9a3d2a73d4f13c890e10262017a25c6"
+    "tools/test_compiler_state_probe.py": "d6dd1f68274ffad373d7d6010374a11cb9a3d2a73d4f13c890e10262017a25c6",
+    "tools/compiler_state_nested_probe.py": "1f0c2506eadae6687c2866476422474ed40b33e7797889dea4c6405a2ebacfe8",
+    "tools/test_compiler_state_nested_probe.py": "ae4827e6a4a5205dd8a690e4a4199dc6c3d040682fc4eeabc26ecbc186546e15"
   },
   "recording_sha256": {
     "tests/programs/inference/dynany_eq_restart_global.out": "7c134b6362a917acfd0f500e1a1247be78785c9bc7a52f54dcac0a420e1538bd"

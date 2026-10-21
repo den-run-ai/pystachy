@@ -40,9 +40,9 @@ and nested values, keeps old objects alive to prevent identity reuse, and reject
 unknown types. It is expensive debug tooling, unsuitable for the self-hosted hot
 path. Deep graphs can hit Python's recursion limit. Use one small case per process.
 
-## Evidence at main c5d7f9e8
+## Evidence at main 0536d1a8
 
-Baseline: [`c5d7f9e8ee334efedd4ff069cd052b4ba582ac85`](https://github.com/den-run-ai/pystachy/commit/c5d7f9e8ee334efedd4ff069cd052b4ba582ac85),
+Baseline: [`0536d1a8e009ed59fb6485dd09f2fdd4661bd68a`](https://github.com/den-run-ai/pystachy/commit/0536d1a8e009ed59fb6485dd09f2fdd4661bd68a),
 2026-10-21. AST inventory: **252 initialized Gen fields; 40 Frame fields**.
 The earlier issue's field counts are historical.
 
@@ -59,12 +59,15 @@ of a future refactor. Raw observations and input/source hashes are in
 [`results.json`](results.json).
 
 Local: Linux x86-64, CPython 3.13.16 (the pinned recording interpreter).
-**25 unit tests passed**, including controls that deliberately break constructor
+**31 unit tests passed**, including controls that deliberately break constructor
 initialization (including annotation-only and conditional Gen assignments), field
 membership, transfer mappings, dry restoration, and each of
 the five global rewinds. The controls also detect same-size dictionary/list
 changes, nested function-record changes and alias replacement.
-Ruff 0.17.0, four workflow-limit tests and `git diff --check` also pass.
+Ruff 0.17.0, mypy 2.4.0 (45 compiler source files), four workflow-limit tests and
+`git diff --check` also pass. Main's #820 type-checking changes were merged into
+the branch; the documentation conflict was resolved by retaining both its
+type-checking guidance and these research controls. Both Lint steps remain.
 
 Run from the repository root:
 
@@ -125,7 +128,7 @@ program regressions; they do not prove that every caller uses the boundary or
 that retained semantic discoveries are safe. They require no rollback or new
 production reflection.
 
-[Pinned results](nested-results.json): main `c5d7f9e8` reports all eight entry
+[Pinned results](nested-results.json): main `0536d1a8` reports all eight entry
 leaks and all eight caller restoration changes at every measured boundary;
 #824 `59713c2c` reports none. `--strict` exits 1 and 0 respectively. The normal
 invocation prints findings without failing, so the research probe can inspect
@@ -148,7 +151,8 @@ remain observable; a successful boundary check does not approve those effects.
 `tests/programs/optional/nestcomp_nonecmp_one_read.py` is the one-iteration
 acceptance control for #822's `nonecmp` reproducer. Its only truth test reads
 `None`, before the later assignment; CPython prints `x is None`, `y is falsy`
-and `x still None`. Main compiles it successfully with typed-IR checks enabled.
+and `x still None`. Main (both `c5d7f9e8` and `0536d1a8`) compiles it successfully
+with typed-IR checks enabled.
 The emitted IR takes the falsy branch in its only iteration. #824 at
 `59713c2c` rejects it with the cannot-infer-None diagnostic.
 [The pinned hosted comparison](nonecmp-acceptance.json) records both results,

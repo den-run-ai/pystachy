@@ -8,8 +8,8 @@
   },
   "runs": [
     {
-      "compiler_source_commit": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
-      "compiler_source_tree": "7fa7a6eceaa2f5333d57311755864f69150b444f",
+      "compiler_source_commit": "0536d1a8e009ed59fb6485dd09f2fdd4661bd68a",
+      "compiler_source_tree": "0a223246247ca25cf45408dc80fc274633e2790f",
       "command": "python3.13 tools/compiler_state_nested_probe.py --strict",
       "exit_status": 1,
       "stderr": "",
