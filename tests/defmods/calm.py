@@ -1,5 +1,5 @@
 # Classes that Pystachy leaves uncompiled whose bodies run without raising
-# (tests/deftime_class_raises.py). Skipped holds operations Pystachy does not evaluate, so it
+# (tests/programs/imports/deftime_class_raises.py). Skipped holds operations Pystachy does not evaluate, so it
 # evaluates none in the classes after it: each calm_*.py module has one such operation first.
 from typing import Iterable
 

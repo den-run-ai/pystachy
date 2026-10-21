@@ -1,4 +1,4 @@
-# Names bound only in code that CPython never runs here (tests/optional_partial.py).
+# Names bound only in code that CPython never runs here (tests/programs/optional/optional_partial.py).
 import sys
 from typing import TYPE_CHECKING
 

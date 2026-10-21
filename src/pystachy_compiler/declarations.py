@@ -1,8 +1,8 @@
 """Declarations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.analysis import calls_init, local_names, stmt_walrus
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
+from src.pystachy_compiler.diagnostics import shown, where
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
@@ -19,15 +19,19 @@ from src.pystachy_compiler.specs import (
     ITERS,
     METHODS,
     MODFUNCS,
+    NONEVAR,
+    OPAQUE,
     OPTTYPES,
     PATHLIKE,
     PYBUILTINS,
+    OBJECTC,
     RANGEC,
     RANGES,
     SPECIAL,
     STANDINS,
     STUB,
     TYPEARGS,
+    TYPEMODS,
     TYPEVAR,
     TYPE_SIZE,
     TYPING,
@@ -40,6 +44,7 @@ from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, menti
 from src.pystachy_compiler.utils import (
     clone,
     elem,
+    empty_display,
     gelem,
     gsend,
     is_callable,
@@ -70,6 +75,12 @@ from src.pystachy_compiler.utils import (
 def gen_ctype(self, base: str, ts: list[str]) -> str:
     # A composite type, checking its serialized size before join copies any children.
     # In a recursive template, a two-item tuple may double this on every instance.
+    # Recursive value aliases have finite self edges in mutable storage. Only
+    # fold the exact element/value type; never widen an existing container.
+    if base == "list" and len(ts) == 1:
+        ts = [self.rec_fold(ts[0])]
+    elif base == "dict" and len(ts) == 2:
+        ts = [ts[0], self.rec_fold(ts[1])]
     size = len(base) + 2 + (len(ts) - 1 if len(ts) > 0 else 0)
     for t in ts:
         size += len(t)
@@ -147,7 +158,9 @@ def gen_ann(self, n: Node) -> str:
         if t == "TextIO" or t == "Self" or t.startswith("!"):
             return "file" if t == "TextIO" else self.self_type() if t == "Self" else t
         if t == "Any":
-            return "!" + ANYUSE  # (where no call types what it annotates: see declare_fn)
+            # (where no call types what it annotates, see declare_fn; a dynamic value in a module
+            # that compiles Any so: dynamic.py)
+            return "dyn" if self.dyn_policy(n.line) else "!" + ANYUSE
         if s in self.unsupported:
             return "!" + self.unsupported[s]
         if s in self.typevars:
@@ -160,7 +173,7 @@ def gen_ann(self, n: Node) -> str:
     elif k == "attr" and self.typing_attr(n) == "Self":
         return self.self_type()
     elif k == "attr" and self.typing_attr(n) == "Any":
-        return "!" + ANYUSE
+        return "dyn" if self.dyn_policy(n.line) else "!" + ANYUSE
     elif k == "binop" and n.s == "|" and self.has_path(n):
         return self.path_union(self.union_members(n, []))
     elif k == "binop" and n.s == "|" and n.kids[1].kind == "None":
@@ -168,11 +181,12 @@ def gen_ann(self, n: Node) -> str:
     elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
         return self.opt(self.ann(n.kids[1]), n.kids[1])  # None | T
     elif k == "binop" and n.s == "|":
-        ts = [self.ann(x) for x in self.union_members(n, [])]
+        ts: list[str] = [self.ann(x) for x in self.union_members(n, [])]
         for t in ts:
             if t.startswith("!"):
                 return t
-        return self.union_type(ts)  # A | B
+        fam = self.class_family(ts)
+        return fam if fam != "" else self.union_type(ts)  # A | B
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and (is_excname(n.kids[1].s) or (n.kids[1].s in self.classes and self.classes[n.kids[1].s].exc != "")):
         # type[BaseException], as __exit__ takes the class of the exception: exctype, which is the
         # exception itself (its class is what it shows)
@@ -181,13 +195,28 @@ def gen_ann(self, n: Node) -> str:
         return self.alias_ann(n)
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.tparams:
         return self.generic_ann(n.kids[0].s, n.kids[1])
+    elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr") and self.ann(n.kids[0]) in self.galias:
+        # C[...] of a class whose body binds __class_getitem__ = classmethod(GenericAlias), CPython's
+        # idiom for a generic class (generic_aliases), which re.Pattern and re.Match follow too: the
+        # class, whose fields have one type each whatever the subscript names. CPython does not
+        # check the arguments: constants are any (C[1], C[None], C[int, ...]), and the others
+        # annotations, whose names must be bound (a string is a forward reference: Loader.qann)
+        for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
+            t = "" if is_const(x) or x.kind == "ellipsis" else self.ann(x)
+            if t.startswith("!"):
+                return t
+        return self.ann(n.kids[0])
     elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
         base = self.ann_base(n.kids[0])
         if base.startswith("!"):
             return base
+        a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
+        if base == "annotated" and len(a) >= 2 and self.dyn_policy(n.line) and self.any_in(a[:1]):
+            # (Annotated[Any, ...] in a module that compiles Any as dyn: its type, Any, where other
+            # modules infer what it annotates; its metadata aside, as any_in reads it, #782)
+            return self.ann(a[0])
         if base == "literal" or base == "annotated":
             return "!unsupported type annotation"  # (metadata is not an annotation: Literal["Any"], Annotated[int, "Any"])
-        a: list[Node] = n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]
         if base == "iterator" or base == "generator":
             # Iterator[T], Generator[Y, None, R] (typing's or collections.abc's): a generator object
             # (an iterator of another kind, as #477 makes them, is not one of these)
@@ -208,10 +237,10 @@ def gen_ann(self, n: Node) -> str:
             return self.path_union(a)
         if base == "tuple" and len(a) == 2 and a[1].kind == "ellipsis":
             t = self.ann(a[0])
-            if unopt(t) not in ["int", "float", "bool", "str"]:
+            if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
                 return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
             return self.ctype("vtuple", [t])
-        ts: list[str] = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
+        ts = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -234,12 +263,32 @@ def gen_ann(self, n: Node) -> str:
                 return us[0]  # Union[T]
             if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
                 return self.opt(us[0] if us[1] == "None" else us[1], [x for x in a if x.kind != "None"][0])  # Union[T, None]
-            return self.union_type(us)
+            fam = self.class_family(us)
+            return fam if fam != "" else self.union_type(us)
     if self.typing_ref(n) == "Final":
         return "!a bare Final needs a value to give its type (x: Final = v, a constant in a class body); write Final[T]"
     if self.pathlike(n):
         return "!" + PATHLIKE
     return "!unsupported type annotation"
+
+def gen_class_family(self, ts: list[str]) -> str:
+    # the type of an annotation A | B ... whose members include classes of the program derived
+    # from another member, whose type holds their objects too: the union of the others
+    # (datetime | date is date, Base | Child | Other is Base | Other); "" where there are none.
+    # A member that is a union or an optional counts by its members, as union_type flattens it
+    # (Union[Union[Base, Other], Child], or an alias of Base | Other with Child)
+    ms: list[str] = []
+    for t in ts:
+        t = self.rec_type(t)
+        if is_opt(t):
+            ms.append("None")
+            t = unopt(t)
+        ms.extend(umembers(t) if is_union(t) else [t])
+    cs = [t for t in ms if t in self.classes and self.classes[t].exc == ""]
+    drop = [c for c in cs if len([b for b in cs if b != c and self.derives(c, b)]) > 0]
+    if len(drop) == 0:
+        return ""
+    return self.union_type([t for t in ms if t not in drop])
 
 def gen_ann_base(self, b: Node) -> str:
     # what b of annotation b[...] is (a name or attribute): list, dict, tuple, set, frozenset, or
@@ -407,7 +456,11 @@ def gen_any_variables(self, n: Node, classbody: bool) -> None:
     if n.kind == "def":
         self.any_variables(n.kids[2], False)
         return
-    if not classbody and n.kind == "annassign" and len(n.kids) == 3 and n.kids[0].kind == "name" and self.any_in([n.kids[1]]):
+    # (In a module that compiles Any as dyn, an annotation is kept, but one that gives a class of
+    # the program a type argument that mentions Any, box: Box[Any] = Box(3): a generic class's
+    # specialization is its constructor call's, #782)
+    generic = n.kind == "annassign" and len(n.kids) == 3 and n.kids[1].kind == "index" and n.kids[1].kids[0].kind == "name" and n.kids[1].kids[0].s in self.classes
+    if not classbody and n.kind == "annassign" and len(n.kids) == 3 and n.kids[0].kind == "name" and self.any_in([n.kids[1]]) and (not self.dyn_policy(n.line) or generic):
         n.kind = "assign"
         n.kids = [n.kids[0], n.kids[2]]
     for k in n.kids:
@@ -578,6 +631,48 @@ def gen_alias_kept(self, name: str) -> bool:
         return self.alias_kept(v.s)
     return v.kind == "name" and v.s in ["int", "float", "str", "bool"]
 
+def gen_rec_type(self, t: str) -> str:
+    # Unfold one named edge only. The result still contains finite rec[...] edges.
+    if t.startswith("rec[") and t.endswith("]"):
+        return self.recursive.get(t[4:-1], t)
+    return t
+
+def gen_rec_fold(self, t: str) -> str:
+    # Mutable storage uses the named edge, while values expose its outer shape.
+    for name in self.recursive:
+        if self.recursive[name] == t:
+            return "rec[" + name + "]"
+    return t
+
+def gen_recursive_aliases(self) -> None:
+    # Nongeneric PEP 695 aliases of scalar/None members, list[Self] and
+    # dict[str, Self]. Self edges occur only behind containers. Other recursive
+    # forms keep alias_ann's diagnostic; no alias cycles or depth expansion.
+    for name in self.taliases:
+        st = self.taliases[name]
+        if st.kind != "typealias" or st.kids[0].s != "":
+            continue
+        members: list[str] = []
+        recursive = False
+        valid = True
+        for n in self.union_members(self.alias_value(name), []):
+            if n.kind == "None":
+                members.append("None")
+            elif n.kind == "name" and n.s in ["int", "float", "bool", "str"]:
+                members.append(n.s)
+            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "list" and n.kids[1].kind == "name" and n.kids[1].s == name:
+                members.append("list[rec[" + name + "]]")
+                recursive = True
+            elif n.kind == "index" and n.kids[0].kind == "name" and n.kids[0].s == "dict" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) == 2 and n.kids[1].kids[0].kind == "name" and n.kids[1].kids[0].s == "str" and n.kids[1].kids[1].kind == "name" and n.kids[1].kids[1].s == name:
+                members.append("dict[str,rec[" + name + "]]")
+                recursive = True
+            else:
+                valid = False
+        if valid and recursive:
+            t = self.union_type(members)
+            if is_union(unopt(t)):
+                self.recursive[name] = t
+
 def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     # annotation a with each type alias that it names replaced by the alias's value, where a
     # generic alias's type arguments replace its type parameters; what cannot be replaced (a
@@ -586,6 +681,8 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     k = a.kind
     if k == "noann":
         return a  # (a generic def's, which types nothing)
+    if k == "name" and a.s in self.recursive:
+        return a  # preserve the named graph, never expand its self edge
     self.unaliased += 1  # (the nodes it has made of the annotation, which aliases of aliases can double)
     if self.unaliased > TYPE_SIZE:
         self.err(f"the type aliases this annotation names expand to more than {TYPE_SIZE} nodes (not supported: simplify them)")
@@ -616,6 +713,8 @@ def gen_subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
 def gen_alias_ann(self, n: Node) -> str:
     # the type that annotation n, type alias X or X[...], denotes, or "!" and why not
     name = n.s if n.kind == "name" else n.kids[0].s
+    if n.kind == "name" and name in self.recursive:
+        return self.recursive[name]
     tps = self.alias_params(name)
     xs = (n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]) if n.kind == "index" else []
     if name in self.resolving:
@@ -786,7 +885,11 @@ def gen_opt(self, t: str, x: Node) -> str:
     return r if r != "" else f"!None/Optional is only supported for {OPTTYPES}, not {typestr(t)}"
 
 def gen_optional(self, t: str) -> str:
-    # the type of a value that is a t or None, "" if there is none
+    # the type of a value that is a t or None, "" if there is none (a dynamic value may be None)
+    if t == "dyn":
+        return t
+    if self.rec_type(t) != t:
+        return self.rec_fold(self.optional(self.rec_type(t)))
     if t in self.classes or is_opt(t):
         return t
     if is_union(t):
@@ -814,9 +917,11 @@ def gen_ann_none(self, n: Node, seen: list[str]) -> bool:
 
 def gen_join(self, a: str, b: str) -> str:
     # the type of a value that is an a or a b, where None and optional types meet (T and None
-    # make T | None), or ""
+    # make T | None), or "" (a dynamic value and one that boxes: a dynamic value)
     if a == b or self.widens(b, a):
         return a
+    if (a == "dyn" and self.boxes(b, a)) or (b == "dyn" and self.boxes(a, b)):
+        return "dyn"
     if self.widens(a, b):
         return b
     if a in self.classes and b in self.classes:
@@ -839,8 +944,8 @@ def gen_wider(self, a: str, b: str) -> str:
     # the type of values of types a and b as they are, where they differ only in what may be
     # None (list[str] and list[str | None]: list[str | None]), for comparisons and for new
     # containers made of both; "" if there is none (an int is no int | None as it is: that is a box)
-    if a == b:
-        return a
+    if self.rec_type(a) == self.rec_type(b):
+        return b
     if a in self.classes and b in self.classes:
         return self.join(a, b)
     if self.isnum(a) or self.isnum(b):
@@ -919,6 +1024,8 @@ def gen_widens(self, a: str, b: str) -> bool:
     # is a value of type a, as it is, a value of type b: None or T as T | None (or as an object
     # type), an object of an exception class as one of a base class (whose layout its own
     # extends), and a tuple item by item (tuples cannot change, so their items can widen)
+    a = self.rec_type(a)
+    b = self.rec_type(b)
     if a == b:
         return True
     if is_opt(b):
@@ -1037,7 +1144,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # types (any argument: isinstance() narrows it), where a template may be
         if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
-    if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
+    if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
         # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
         # those of each call's), the return what the function returns; no value is boxed, so
@@ -1054,10 +1161,31 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             if not genann:
                 d.kids[1] = mk("noann", "", d.line, [])
                 f.anys.append("")
-    if cls != "" and (d.s == "__iter__" or d.s == "__next__") and not has_kind(d.kids[2], "yield") and self.any_in([d.kids[1]]):
+    elif (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport:
+        # in a module that compiles Any as dyn: an annotation that mentions Any where no Any value
+        # can stand (Callable[..., Any], whose parameters no Callable type names) requests
+        # inference, as in a module that does not opt in, and so do __exit__'s, which a with
+        # statement gives an exception class and an exception, which no Any value holds yet
+        # (#775): the comment rejects no program that compiles without it (#782)
+        for i in range(len(ps)):
+            pa = ps[i].kids[0]
+            if not (cls != "" and i == 0 and f.deco != "staticmethod") and self.any_in([pa]) and (d.s == "__exit__" or self.ann(pa).startswith("!")):
+                ps[i].kids[0] = mk("noann", "", d.line, [])
+                f.anys.append(ps[i].s)
+        if not init and self.any_in([d.kids[1]]):
+            # (a generator's -> Any too, but Generator[...] and Iterator[...], whose Any items are
+            # Any values: no generator object is an Any value yet, #773)
+            ra = self.parse_expr(d.kids[1].s) if d.kids[1].kind == "str" else d.kids[1]
+            gen = has_kind(d.kids[2], "yield")
+            genann = gen and ra.kind == "index" and self.typing_ref(ra.kids[0]) in ["Generator", "Iterator", "Iterable"]
+            if (gen and not genann) or (not gen and self.ann(d.kids[1]).startswith("!")):
+                d.kids[1] = mk("noann", "", d.line, [])
+                f.anys.append("")
+    if cls != "" and (d.s == "__iter__" or d.s == "__next__") and not has_kind(d.kids[2], "yield") and self.any_in([d.kids[1]]) and (not self.dyn_policy(d.line) or d.s == "__iter__"):
         # These protocols already infer an omitted return from their body. An Any return
         # (also Iterator[Any]) uses that path, without making their parameters templates.
-        # Generator annotations retain their separate yield, send and return channels.
+        # Generator annotations retain their separate yield, send and return channels. (So does
+        # __iter__'s in a module that compiles Any as dyn: iter() takes no Any value yet, #773)
         d.kids[1] = mk("noann", "", d.line, [])
         f.anys.append("")
     tvbad = f"method '{d.s}' of class '{short(cls)}' mentions TypeVar '{short(tv)}', which is not supported: {d.s}() is not a template (another method whose parameters mention a TypeVar is, compiled for each call's argument types)"
@@ -1243,7 +1371,7 @@ def gen_iter_ann(self, n: Node) -> str:
     t = self.iter_item(n)
     return self.ctype("list", [self.vtype(t)]) if t is not None else ""
 
-def gen_iter_item(self, n: Node) -> Node:
+def gen_iter_item(self, n: Node) -> Node | None:
     # T, of an __iter__'s return annotation Iterator[T] or Iterable[T]; else None
     if n.kind == "str":
         n = self.parse_expr(n.s)
@@ -1560,6 +1688,7 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
         if "__init__" in ci.methods and ci.methods["__init__"].cls == ci.name and ci.name not in self.tmpl:
             f = ci.methods["__init__"]
             self.scan_fields(ci, f, f.node.kids[2].kids, {})
+            self.dyn_fields(ci)  # (those an Any value is assigned later: dynamic.py)
     if ci.tag > 0:
         for name in ci.ftypes:
             if name in ci.methods:
@@ -1913,6 +2042,17 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 t = "" if t == "None" or why != "" else t  # (f() that returns None: a field has a value type)
                 if t == "" and why == "" and ci.origin in self.cnts:
                     why = f"field '{name}' of namedtuple {short(ci.name)} given {'None' if given == 'None' else 'a value whose type cannot be inferred'} is not supported (the call that makes an object types its fields)"
+                jh = self.hints.get(f"field:{self.stable(ci.name)}.{name}", "") if k == "assign" and len(self.hints) > 0 else ""
+                if jh != "":
+                    t = jh  # (a join's type: as if annotated, see join_hint)
+                    why = ""
+                if k == "assign":
+                    ci.fguess[name] = True  # (inferred, as join_hint may widen it)
+                if t == "" and why == "" and (given == "None" or nonexpr(st.kids[-1])):
+                    # None so far: the first value of another type that the program gives it
+                    # gives it its type, T | None, as for a variable (see none_field)
+                    t = NONEVAR
+                    ci.fnone[name] = st.kids[-1]
                 if t == "" and why == "":
                     why = f"cannot infer the type of field '{name}'; annotate it (self.{name}: T = ...)"
                 if t == "" and ci.mod == "":
@@ -2052,6 +2192,12 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return f"fn[f:{e.s}]" if e.s in self.funcs else f"fn[b:{e.s}]"
+    if k == "name" and ((e.s in self.classes and self.classes[e.s].exc != "") or (is_excname(e.s) and e.s not in self.funcs and e.s not in self.classes and e.s not in self.mvars)):
+        # an exception class: its class object (unless a local of the method has its name)
+        asg = {}
+        local_names(guess_scope(f), asg)
+        if e.s not in asg:
+            return "exctype"
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
     if p in MODFUNCS:
         # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the
@@ -2106,10 +2252,15 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         return "str"  # (a str path is its own file system path, and its own posixpath normcase())
     if k == "call" and e.kids[0].kind == "name":
         c = e.kids[0].s
+        if c == "__pys_weakref_new" and f.mod == "_weakref" and (len(e.kids) == 2 or len(e.kids) == 3):
+            t = self.guess(e.kids[1], f)
+            return "weakhandle[" + t + "]" if t != "" and not t.startswith("!") else t
+        if c == "__pys_weakref_fired" and f.mod == "_weakref" and len(e.kids) == 1:
+            return "opt[callable[None]]"
         if c in self.tmpl:
             # a class template's object: of the specialization its arguments' types pick, once
             # code is being compiled (a specialization compiles its special methods)
-            ts = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling else ["!"]
+            ts: list[str] = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling else ["!"]
             lits = self.literal_args(self.classes[c].methods["__init__"], e.kids[1:]) if self.literal_class(c) and "!" not in ts else {}
             return self.specialize(c, ts, {}, False, lits) if "!" not in ts else ""
         if c in self.classes or c in self.unsupported:
@@ -2128,7 +2279,7 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
                 args = e.kids[1:]
                 if c in f.params or c in assigned or len(args) > len(helper.params) or (helper.npos >= 0 and len(args) > helper.npos):
                     return ""
-                ts: list[str] = []
+                ts = []
                 for i in range(len(helper.params)):
                     if i < len(args):
                         arg = args[i]
@@ -2155,6 +2306,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return c
         if c == "range" and RANGEC in self.classes and not self.bound(c):
             return RANGEC  # (where it is a value)
+        if c == "object" and OBJECTC in self.classes and not self.bound(c):
+            return OBJECTC  # (object(): an object of lib/_pystachy_object.py's class)
         if c == "len" or c == "ord":
             return "int"
         if c == "input" or c == "repr" or c == "chr" or c == "ascii" or c == "hex" or c == "oct" or c == "bin":
@@ -2256,6 +2409,230 @@ def gen_guess_iter(self, a: Node, f: FnInfo) -> str:
     c = ITERS + "$" + name
     return self.specialize(c, [t], {}, False, {}) if name != "" and c in self.tmpl else ""
 
+def gen_field_root(self, ci: ClassInfo, name: str) -> ClassInfo:
+    # the class that declares field name of class ci: ci, or the base it inherits the field from
+    while ci.base in self.classes and name in self.classes[ci.base].ftypes:
+        ci = self.classes[ci.base]
+    return ci
+
+def gen_refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
+    # field name of class ci, which only None has been given so far (NONEVAR), holds a t from
+    # here on: so does the field of the class that declares it and of each class deriving from
+    # that one, whose objects begin with its fields. Its stores of None compiled so far store a
+    # null pointer, which t's None is too (see optional)
+    if t == "dyn":
+        # (an Any value's None is a box: those stores, and the tests of the field by is None
+        # compiled so far, see a null pointer, dynamic.py)
+        self.err(f"field '{name}' of {shown(ci.name)} holds None until it is given an Any value here; annotate it (self.{name}: Any = None)")
+    root = self.field_root(ci, name)
+    for c in self.classes.values():
+        if c.ftypes.get(name, "") == NONEVAR and (c is root or self.derives(c.name, root.name)):
+            c.ftypes[name] = t
+
+def gen_none_field(self, cls: str, name: str, cmp: bool) -> str:
+    # the type of field name of class cls, which only None has been given so far, read here:
+    # T | None for the first value of another type that a store gives it, found in this
+    # function's source (field_fill), the module-level code compiled so far (field_modfill), a
+    # function that stores it, compiled now (field_early), or else self.name = v in a method of
+    # its class (field_guess); None where no code of the program may give it another value
+    # (set_elsewhere); NONEVAR, still unknown, where it is compared with None by is or is not
+    # (cmp), which tests the pointer only; else an error
+    ci = self.classes[cls]
+    root = self.field_root(ci, name)
+    key = root.name + "." + name
+    t = ""
+    if "fill " + key not in self.fieldbusy:
+        self.fieldbusy["fill " + key] = True  # (a value that reads the field itself, self.x = self.x or v)
+        t = self.field_fill(root, name)
+        if t == "":
+            t = self.field_modfill(root, name)
+        del self.fieldbusy["fill " + key]
+    if t == "" and key not in self.fieldbusy:
+        self.fieldbusy[key] = True  # (a function compiled for its type reads it too: field_fill there)
+        t = self.field_early(root, name)
+        if t == "":
+            t = self.field_guess(root, name)
+        del self.fieldbusy[key]
+    if t != "":
+        if ci.ftypes[name] == NONEVAR:
+            self.refine_field(ci, name, t)
+        return ci.ftypes[name]
+    if not self.set_elsewhere(root, name):
+        self.nonereads[key] = where(self.line)
+        return "None"
+    if cmp:
+        return NONEVAR
+    self.err(f"cannot infer the type of field '{name}' from None here, before a value of another type is assigned to it; annotate it (self.{name}: T | None = None)")
+    return ""
+
+def gen_field_fill(self, root: ClassInfo, name: str) -> str:
+    # T | None for the first value of another type than None that a store in this function's
+    # source gives field name of root (or of a class deriving from it), where the store's object
+    # and value can be typed here and call no template being compiled (as none_type finds a
+    # variable's values); "" if there is none
+    body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
+    found: list[Node] = []
+    attr_fills(body, name, found)
+    for i in range(0, len(found), 2):
+        x = found[i]
+        e = found[i + 1]
+        if e.kind == "None" or empty_display(e) or not self.typed_now(x) or not self.typed_now(e) or self.calls_open(x, {}) or self.calls_open(e, {}):
+            continue
+        c = unopt(self.dry(x))
+        if c not in self.classes or name not in self.classes[c].ftypes or self.field_root(self.classes[c], name) is not root:
+            continue
+        t = self.dry(e)
+        if t != "" and t != "None" and t != NONEVAR and "?" not in t and self.optional(t) != "":
+            return self.optional(t)
+    return ""
+
+def gen_field_modfill(self, root: ClassInfo, name: str) -> str:
+    # field_fill's type from the module-level code of the program's modules that the store's
+    # object and value can be typed in where that code is compiled so far (a = Node(1), a.f(),
+    # a.next = Node(2): the object made before the call); "" if there is none
+    for mod in self.inits:
+        body = self.inits[mod].node.kids
+        found: list[Node] = []
+        attr_fills(body, name, found)
+        if len([i for i in range(1, len(found), 2) if found[i].kind != "None" and not empty_display(found[i])]) == 0:
+            continue
+        fr = self.modframe(mod, self.line)
+        t = ""
+        for i in range(0, len(found), 2):
+            x = found[i]
+            e = found[i + 1]
+            if t != "" or e.kind == "None" or empty_display(e) or not self.typed_now(x) or not self.typed_now(e) or self.calls_open(x, {}) or self.calls_open(e, {}):
+                continue
+            c = unopt(self.dry(x))
+            if c in self.classes and name in self.classes[c].ftypes and self.field_root(self.classes[c], name) is root:
+                v = self.dry(e)
+                t = self.optional(v) if v != "" and v != "None" and v != NONEVAR and "?" not in v else ""
+        self.restore(fr)
+        if t != "":
+            return t
+    return ""
+
+def gen_field_early(self, root: ClassInfo, name: str) -> str:
+    # the type of field name of root (none_field's), read before the function that gives it a
+    # value of another type than None is compiled: each function or method that stores to an
+    # attribute name a value other than None, and that is no template, is compiled now (the
+    # methods of root and of the classes deriving from it first), as early compiles a function
+    # for a global, until one of them gives the field its type; "" if none does. As for
+    # set_elsewhere, self.name = v in a method of a class that neither derives from root nor is a
+    # base of it stores that class's own field, so such a method is not compiled for it
+    fam = [root] + [c for c in self.classes.values() if c is not root and self.derives(c.name, root.name)]
+    rel: dict[str, bool] = {}  # (the names of root's family and of its bases)
+    for c in fam:
+        rel[c.name] = True
+    b = root.base
+    while b in self.classes:
+        rel[b] = True
+        b = self.classes[b].base
+    fs: list[FnInfo] = []
+    for c in fam:
+        fs.extend([m for m in c.methods.values() if m.cls == c.name])
+    for c in self.classes.values():
+        if c.name not in self.tmpl and c.origin == "" and len([x for x in fam if x is c]) == 0:
+            fs.extend([m for m in c.methods.values() if m.cls == c.name])
+    fs.extend([f for f in self.funcs.values()])
+    for m in fs:
+        if root.ftypes[name] != NONEVAR:
+            return root.ftypes[name]
+        if m.generic or m.bad != "" or m.ll in self.compiled or m.node.kind != "def":
+            continue
+        found: list[Node] = []
+        attr_fills(m.node.kids[2].kids, name, found)
+        me = m.params[0] if takes_self(m) and len(m.params) > 0 and m.cls not in rel else ""
+        if len([i for i in range(1, len(found), 2) if found[i].kind != "None" and not empty_display(found[i]) and not (found[i - 1].kind == "name" and found[i - 1].s == me)]) == 0 or self.unready(m.node.kids[2], m.mod, {}):
+            continue
+        self.making.append(f"compiling {short(m.name) if m.cls == '' else short(m.cls) + '.' + m.name}() for the type of field '{name}' at {where(self.line)}")
+        fr = self.save()
+        cmps = [self.nonecmp, self.fieldcmp]
+        cmpnode = self.cmpnode
+        self.nonecmp = False  # (the read being compiled may be compared with None, not that function's)
+        self.fieldcmp = False
+        self.cmpnode = self.nokey
+        self.modlevel = False
+        self.lenient = False
+        self.function(m, m.node.kids[2].kids)
+        self.restore(fr)
+        self.nonecmp = cmps[0]
+        self.fieldcmp = cmps[1]
+        self.cmpnode = cmpnode
+        self.making.pop()
+    return root.ftypes[name] if root.ftypes[name] != NONEVAR else ""
+
+def gen_field_type(self, c: str, name: str) -> str:
+    # the type that field name of class c is read as here: none_field's, where only None has
+    # been given to it so far
+    t = self.classes[c].ftypes[name]
+    return self.none_field(c, name, False) if t == NONEVAR else t
+
+def gen_field_guess(self, root: ClassInfo, name: str) -> str:
+    # T | None for the first value of another type than None that self.name = v in a method of
+    # root (or of a class deriving from it) gives field name, as guess types v (as it types the
+    # values of __init__'s fields); "" if there is none
+    fam = [root] + [c for c in self.classes.values() if c is not root and self.derives(c.name, root.name)]
+    for c in fam:
+        ms = self.classes[c.origin].methods if c.origin != "" else c.methods
+        for m in ms.values():
+            if not takes_self(m) or m.node.kind != "def" or m.bad != "" or len(m.params) == 0:
+                continue
+            found: list[Node] = []
+            attr_fills(m.node.kids[2].kids, name, found)
+            for i in range(0, len(found), 2):
+                x = found[i]
+                e = found[i + 1]
+                if x.kind != "name" or x.s != m.params[0] or e.kind == "None" or e.kind == "index" or empty_display(e):
+                    continue
+                t = self.guess(e, m)
+                if t != "" and t != "None" and t != NONEVAR and not t.startswith("!") and "?" not in t and self.optional(t) != "":
+                    return self.optional(t)
+    return ""
+
+def gen_set_elsewhere(self, root: ClassInfo, name: str) -> bool:
+    # may the program give field name of class root a value other than None: does any of its
+    # code store a value that is not the literal None to an attribute of that name, but where
+    # __init__ gave the field its None (ClassInfo.fnone), and self.name = v in a method of a class
+    # that neither derives from root nor is a base of it
+    if len(self.attrvals) == 0:
+        self.attrvals[""] = []  # (once: every module's code, its functions and classes too)
+        self.attrown[""] = []
+        for m in self.inits.values():
+            attr_values(m.node, self.nokey, "", self.attrvals, self.attrown, self.nokey)
+    fam = [c.node for c in self.classes.values() if c is root or self.derives(c.name, root.name)]
+    b = root.base
+    while b in self.classes:
+        fam.append(self.classes[b].node)
+        b = self.classes[b].base
+    given = root.fnone.get(name, None)
+    vals = self.attrvals.get(name, [])
+    owns = self.attrown.get(name, [])
+    for i in range(len(vals)):
+        if vals[i].kind == "None" or vals[i] is given:
+            continue
+        if owns[i] is not self.nokey and len([c for c in fam if c is owns[i]]) == 0:
+            continue  # (self.name = v of another class's object)
+        return True
+    return False
+
+def gen_none_field_store(self, o: Val, name: str, v: Val) -> None:
+    # o.name = v, where only None has been given to field name of o's class so far: a value of
+    # another type gives the field its type from here on, T | None, as a variable's first other
+    # value gives the variable its type
+    if o.t not in self.classes or self.classes[o.t].ftypes.get(name, "") != NONEVAR or v.t == "None" or v.t == NONEVAR:
+        return
+    ci = self.classes[o.t]
+    key = self.field_root(ci, name).name + "." + name
+    if key in self.nonereads:
+        self.err(f"field '{name}' of {shown(o.t)} was read as None at {self.nonereads[key]}, where nothing seemed to give it another value; annotate it (self.{name}: T | None = None)")
+    if "?" in v.t:
+        self.err(f"cannot infer the type of field '{name}' from None and an empty container; annotate it (self.{name}: T | None = None)")
+    t = self.optional(v.t)
+    if t == "":
+        self.err(f"field '{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
+    self.refine_field(ci, name, t)
+
 def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
     if o.t == "exctype":
         self.err(f"the attributes of the class of an exception (type[BaseException]) other than __name__ are not supported (.{name})")
@@ -2306,13 +2683,20 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
             self.err("rebinding __slots__ through an instance is not supported")
         self.class_default(ci, name)
         return Val(ci.fglob[name], ci.ftypes[name])
+    if not store and ci.ftypes[name] == NONEVAR:
+        self.none_field(o.t, name, self.fieldcmp)  # (a field only None has been given so far)
     return Val(self.fgep(o, ci.fpos[name]), ci.ftypes[name])
 
 def gen_glue_field(self, o: Val, name: str) -> None:
-    # a field of an object of a class of GLUE (pyobj.Object) is that module's own: its twin has others
+    # a field of an object of a class of GLUE (pyobj.Object) is that module's own: its twin has others;
+    # one of OPAQUE's (weakref.ReferenceType, mappingproxy) too, as CPython's object has no such
+    # attribute (named as CPython names its type: with the module of TYPEMODS, or a builtin's alone)
     ci = self.classes.get(unopt(o.t), None)
     if ci is not None and ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"'{short(ci.name)}' object has no attribute '{name}' that a program may use: the fields of Pystachy's {ci.mod}.{short(ci.name)} are its own (its methods are not)")
+    if ci is not None and ci.mod in OPAQUE and self.curfn.mod != ci.mod:
+        tshown = TYPEMODS[ci.mod] + "." + short(ci.name) if TYPEMODS.get(ci.mod, "builtins") != "builtins" else short(ci.name)
+        self.err(f"'{tshown}' object has no attribute '{name}'")
 
 def gen_fn_attr_read(self, o: Val, name: str) -> None:
     # o.name read through object o, where its class binds name to a function in its body
@@ -2422,6 +2806,8 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             self.place(l2)
         else:
             self.guard(bad, f"AttributeError: '{tname(o.t)}' object has no attribute '{name}'")
+    if p.t == NONEVAR and not self.fieldcmp:
+        return Val("null", "None")  # (a field that is always None, see none_field)
     if r == "":
         r = self.mem_load(Val(p.v, "*" + p.t)).v
     if is_opt(p.t) or is_union(p.t):
@@ -2431,7 +2817,11 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
 def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
     ci = self.classes[o.t]
     what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
-    self.mem_store(Val(p.v, "*" + p.t), self.coerce(v, p.t, what))
+    # (a value of another type than an inferred field's may widen it: join_hint)
+    was = self.join_at("field" if name in self.field_root(ci, name).fguess else "", self.field_key(ci, name), p.t)
+    cv = self.coerce(v, p.t, what)
+    self.join_at(was[0], was[1], was[2])
+    self.mem_store(Val(p.v, "*" + p.t), cv)
     if name in ci.fflag:
         self.mem_store(Val(self.fgep(o, ci.fflag[name]), "*bool"), Val("true", "bool"))
 

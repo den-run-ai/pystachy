@@ -10,17 +10,120 @@ from src.pystachy_compiler.scalar_ir import (
     gen_verify_scalar as scalar_ir_verify_scalar,
 )
 from src.pystachy_compiler.union_arithmetic import (
+    gen_ucmp as union_arithmetic_ucmp,
     gen_unumeric as union_arithmetic_unumeric,
     gen_unumeric_case as union_arithmetic_unumeric_case,
+    gen_uorders as union_arithmetic_uorders,
+    gen_usplit as union_arithmetic_usplit,
 )
 from src.pystachy_compiler.memory_ir import (
     gen_mload as memory_ir_mload,
     gen_mstore as memory_ir_mstore,
     gen_maddr as memory_ir_maddr,
 )
+from src.pystachy_compiler.dynamic import (
+    gen_dyn_again as dynamic_dyn_again,
+    gen_dyn_ahead as dynamic_dyn_ahead,
+    gen_dyn_arith as dynamic_dyn_arith,
+    gen_dyn_arity as dynamic_dyn_arity,
+    gen_dyn_arm as dynamic_dyn_arm,
+    gen_dyn_asked as dynamic_dyn_asked,
+    gen_dyn_body as dynamic_dyn_body,
+    gen_dyn_bound as dynamic_dyn_bound,
+    gen_dyn_box as dynamic_dyn_box,
+    gen_dyn_boxable as dynamic_dyn_boxable,
+    gen_dyn_builtin as dynamic_dyn_builtin,
+    gen_dyn_builtin_methods as dynamic_dyn_builtin_methods,
+    gen_dyn_builtin_takes as dynamic_dyn_builtin_takes,
+    gen_dyn_call as dynamic_dyn_call,
+    gen_dyn_call_value as dynamic_dyn_call_value,
+    gen_dyn_callables as dynamic_dyn_callables,
+    gen_dyn_check as dynamic_dyn_check,
+    gen_dyn_class_type as dynamic_dyn_class_type,
+    gen_dyn_cmp2 as dynamic_dyn_cmp2,
+    gen_dyn_compare as dynamic_dyn_compare,
+    gen_dyn_contains as dynamic_dyn_contains,
+    gen_dyn_delitem as dynamic_dyn_delitem,
+    gen_dyn_dispatcher as dynamic_dyn_dispatcher,
+    gen_dyn_dry as dynamic_dyn_dry,
+    gen_dyn_dispatchers as dynamic_dyn_dispatchers,
+    gen_dyn_fallback as dynamic_dyn_fallback,
+    gen_dyn_field_stores as dynamic_dyn_field_stores,
+    gen_dyn_fields as dynamic_dyn_fields,
+    gen_dyn_float as dynamic_dyn_float,
+    gen_dyn_format as dynamic_dyn_format,
+    gen_dyn_fn_arms as dynamic_dyn_fn_arms,
+    gen_dyn_fn_box as dynamic_dyn_fn_box,
+    gen_dyn_fn_takes as dynamic_dyn_fn_takes,
+    gen_dyn_fn_type as dynamic_dyn_fn_type,
+    gen_dyn_fresh as dynamic_dyn_fresh,
+    gen_dyn_getattr as dynamic_dyn_getattr,
+    gen_dyn_getitem as dynamic_dyn_getitem,
+    gen_dyn_global_ahead as dynamic_dyn_global_ahead,
+    gen_dyn_guessed as dynamic_dyn_guessed,
+    gen_dyn_hash as dynamic_dyn_hash,
+    gen_dyn_identity as dynamic_dyn_identity,
+    gen_dyn_int as dynamic_dyn_int,
+    gen_dyn_isa as dynamic_dyn_isa,
+    gen_dyn_isinst as dynamic_dyn_isinst,
+    gen_dyn_isinst_types as dynamic_dyn_isinst_types,
+    gen_dyn_items_ahead as dynamic_dyn_items_ahead,
+    gen_dyn_len as dynamic_dyn_len,
+    gen_dyn_method as dynamic_dyn_method,
+    gen_dyn_mixed as dynamic_dyn_mixed,
+    gen_dyn_narrow_type as dynamic_dyn_narrow_type,
+    gen_dyn_narrowed as dynamic_dyn_narrowed,
+    gen_dyn_none_first as dynamic_dyn_none_first,
+    gen_dyn_payload as dynamic_dyn_payload,
+    gen_dyn_policy as dynamic_dyn_policy,
+    gen_dyn_proven_int as dynamic_dyn_proven_int,
+    gen_dyn_reflected as dynamic_dyn_reflected,
+    gen_dyn_repr as dynamic_dyn_repr,
+    gen_dyn_return as dynamic_dyn_return,
+    gen_dyn_select as dynamic_dyn_select,
+    gen_dyn_setattr as dynamic_dyn_setattr,
+    gen_dyn_setitem as dynamic_dyn_setitem,
+    gen_dyn_slice as dynamic_dyn_slice,
+    gen_dyn_stores_ahead as dynamic_dyn_stores_ahead,
+    gen_dyn_str as dynamic_dyn_str,
+    gen_dyn_sum as dynamic_dyn_sum,
+    gen_dyn_supports as dynamic_dyn_supports,
+    gen_dyn_tagged_type as dynamic_dyn_tagged_type,
+    gen_dyn_takes as dynamic_dyn_takes,
+    gen_dyn_test as dynamic_dyn_test,
+    gen_dyn_truth as dynamic_dyn_truth,
+    gen_dyn_type as dynamic_dyn_type,
+    gen_dyn_type_module as dynamic_dyn_type_module,
+    gen_dyn_type_name as dynamic_dyn_type_name,
+    gen_dyn_typeof as dynamic_dyn_typeof,
+    gen_dyn_types_of as dynamic_dyn_types_of,
+    gen_dyn_unary as dynamic_dyn_unary,
+    gen_dyn_unbox as dynamic_dyn_unbox,
+    gen_dyn_unboxable as dynamic_dyn_unboxable,
+    gen_dyn_union_box as dynamic_dyn_union_box,
+    gen_dyn_untyped_empty as dynamic_dyn_untyped_empty,
+    gen_dyn_untyped_items as dynamic_dyn_untyped_items,
+    gen_dyn_value_type as dynamic_dyn_value_type,
+    gen_dyn_widen as dynamic_dyn_widen,
+    gen_dyn_widened as dynamic_dyn_widened,
+    gen_dyn_xbody as dynamic_dyn_xbody,
+    gen_dyn_xhelper as dynamic_dyn_xhelper,
+    gen_dyn_xmethod as dynamic_dyn_xmethod,
+    gen_empty_ctor as dynamic_empty_ctor,
+    gen_rtdata as dynamic_rtdata,
+)
 from src.pystachy_compiler.unions import (
+    gen_field_key as unions_field_key,
+    gen_fnkey as unions_fnkey,
+    gen_join_at as unions_join_at,
+    gen_join_hint as unions_join_hint,
+    gen_join_type as unions_join_type,
+    gen_joinable as unions_joinable,
+    gen_local_hint as unions_local_hint,
+    gen_stable as unions_stable,
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
+    gen_num_union as unions_num_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_uequal as unions_uequal,
@@ -56,6 +159,7 @@ from src.pystachy_compiler.reflection import (
     gen_refl_class_of as reflection_refl_class_of,
     gen_refl_type_attr as reflection_refl_type_attr,
     gen_refl_type_operand as reflection_refl_type_operand,
+    gen_refl_dyn_type_cmp as reflection_refl_dyn_type_cmp,
     gen_refl_type_cmp as reflection_refl_type_cmp,
     gen_refl_derived_only as reflection_refl_derived_only,
     gen_refl_replace_changes as reflection_refl_replace_changes,
@@ -156,6 +260,10 @@ from src.pystachy_compiler.builtins import (
     gen_pwrite as builtins_pwrite,
     gen_reduce as builtins_reduce,
     gen_reduce_item as builtins_reduce_item,
+    gen_comp_end as builtins_comp_end,
+    gen_neumaier as builtins_neumaier,
+    gen_sum_union_item as builtins_sum_union_item,
+    gen_sum_union_end as builtins_sum_union_end,
     gen_reverse_arg as builtins_reverse_arg,
     gen_bytes_ as builtins_bytes_,
     gen_bytes_method as builtins_bytes_method,
@@ -181,6 +289,8 @@ from src.pystachy_compiler.calls import (
     gen_callable_pat as calls_callable_pat,
     gen_close_temp as calls_close_temp,
     gen_dispatches as calls_dispatches,
+    gen_ffi_at as calls_ffi_at,
+    gen_at_arg as calls_at_arg,
     gen_fname as calls_fname,
     gen_kw_dict as calls_kw_dict,
     gen_kw_list as calls_kw_list,
@@ -211,6 +321,7 @@ from src.pystachy_compiler.calls import (
     gen_virtual_call as calls_virtual_call,
 )
 from src.pystachy_compiler.containers import (
+    gen_none_container as containers_none_container,
     gen_affix_any as containers_affix_any,
     gen_bool_find as containers_bool_find,
     gen_dkey as containers_dkey,
@@ -263,6 +374,7 @@ from src.pystachy_compiler.conversions import (
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
     gen_floats as conversions_floats,
+    gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
     gen_is_dc as conversions_is_dc,
     gen_isnum as conversions_isnum,
@@ -283,6 +395,9 @@ from src.pystachy_compiler.declarations import (
     gen_alias_value as declarations_alias_value,
     gen_alias_variadic as declarations_alias_variadic,
     gen_alias_whole as declarations_alias_whole,
+    gen_rec_type as declarations_rec_type,
+    gen_rec_fold as declarations_rec_fold,
+    gen_recursive_aliases as declarations_recursive_aliases,
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
@@ -292,6 +407,7 @@ from src.pystachy_compiler.declarations import (
     gen_any_variables as declarations_any_variables,
     gen_boxto as declarations_boxto,
     gen_boxwider as declarations_boxwider,
+    gen_class_family as declarations_class_family,
     gen_class_params as declarations_class_params,
     gen_class_tvars as declarations_class_tvars,
     gen_ctype as declarations_ctype,
@@ -304,6 +420,16 @@ from src.pystachy_compiler.declarations import (
     gen_fn_attr_read as declarations_fn_attr_read,
     gen_glue_field as declarations_glue_field,
     gen_field as declarations_field,
+    gen_field_early as declarations_field_early,
+    gen_field_fill as declarations_field_fill,
+    gen_field_modfill as declarations_field_modfill,
+    gen_field_guess as declarations_field_guess,
+    gen_field_root as declarations_field_root,
+    gen_field_type as declarations_field_type,
+    gen_none_field as declarations_none_field,
+    gen_none_field_store as declarations_none_field_store,
+    gen_refine_field as declarations_refine_field,
+    gen_set_elsewhere as declarations_set_elsewhere,
     gen_frozen as declarations_frozen,
     gen_frozen_store as declarations_frozen_store,
     gen_dc_field as declarations_dc_field,
@@ -366,6 +492,7 @@ from src.pystachy_compiler.emission import (
     gen_boxes as emission_boxes,
     gen_br as emission_br,
     gen_cbr as emission_cbr,
+    gen_switch as emission_switch,
     gen_checked as emission_checked,
     gen_convert_at as emission_convert_at,
     gen_convert_in as emission_convert_in,
@@ -406,13 +533,35 @@ from src.pystachy_compiler.exceptions import (
     gen_catch_set as exceptions_catch_set,
     gen_catches as exceptions_catches,
     gen_cause as exceptions_cause,
+    gen_cause_value as exceptions_cause_value,
     gen_class_defaults as exceptions_class_defaults,
     gen_clause_or as exceptions_clause_or,
     gen_exc_args as exceptions_exc_args,
     gen_exc_brepr as exceptions_exc_brepr,
     gen_exc_class as exceptions_exc_class,
     gen_exc_classes as exceptions_exc_classes,
+    gen_exc_any as exceptions_exc_any,
+    gen_exc_each as exceptions_exc_each,
+    gen_exc_none_class as exceptions_exc_none_class,
+    gen_exc_call as exceptions_exc_call,
+    gen_exc_class_value as exceptions_exc_class_value,
+    gen_exc_ctor_arity as exceptions_exc_ctor_arity,
+    gen_exc_ctor_classes as exceptions_exc_ctor_classes,
+    gen_exc_ctor_takes as exceptions_exc_ctor_takes,
+    gen_exc_ctors as exceptions_exc_ctors,
+    gen_exc_dynamic as exceptions_exc_dynamic,
+    gen_exc_flat as exceptions_exc_flat,
+    gen_exc_held as exceptions_exc_held,
+    gen_exc_holds as exceptions_exc_holds,
     gen_exc_helpers as exceptions_exc_helpers,
+    gen_exc_disp as exceptions_exc_disp,
+    gen_exc_set_module as exceptions_exc_set_module,
+    gen_exc_make as exceptions_exc_make,
+    gen_exc_sub as exceptions_exc_sub,
+    gen_exc_tables as exceptions_exc_tables,
+    gen_exc_test as exceptions_exc_test,
+    gen_exc_tree as exceptions_exc_tree,
+    gen_exc_type_of as exceptions_exc_type_of,
     gen_exc_isinst as exceptions_exc_isinst,
     gen_exc_keep as exceptions_exc_keep,
     gen_exc_kw as exceptions_exc_kw,
@@ -420,6 +569,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_object as exceptions_exc_object,
     gen_exc_of as exceptions_exc_of,
     gen_exc_vals as exceptions_exc_vals,
+    gen_exc_str_args as exceptions_exc_str_args,
     gen_exc_value as exceptions_exc_value,
     gen_exc_value_of as exceptions_exc_value_of,
     gen_exit_ as exceptions_exit_,
@@ -461,6 +611,13 @@ from src.pystachy_compiler.expressions import (
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
     gen_inherit_cmp as expressions_inherit_cmp,
+    gen_cmp_alts as expressions_cmp_alts,
+    gen_cmp_key as expressions_cmp_key,
+    gen_cmp_arm as expressions_cmp_arm,
+    gen_cmp_rest as expressions_cmp_rest,
+    gen_cmp_null as expressions_cmp_null,
+    gen_cmp_tags as expressions_cmp_tags,
+    gen_cmp_widen as expressions_cmp_widen,
     gen_inherit_contains as expressions_inherit_contains,
     gen_member_item as expressions_member_item,
     gen_iter_in as expressions_iter_in,
@@ -498,8 +655,10 @@ from src.pystachy_compiler.expressions import (
     gen_isnull as expressions_isnull,
     gen_iter_ret as expressions_iter_ret,
     gen_keep_stack as expressions_keep_stack,
+    gen_key_read as expressions_key_read,
     gen_knownobj as expressions_knownobj,
     gen_list_read as expressions_list_read,
+    gen_bytes_read as expressions_bytes_read,
     gen_listcomp as expressions_listcomp,
     gen_lookup_key as expressions_lookup_key,
     gen_narrow_by as expressions_narrow_by,
@@ -528,8 +687,10 @@ from src.pystachy_compiler.expressions import (
     gen_puretype as expressions_puretype,
     gen_richcmp as expressions_richcmp,
     gen_slice_bound as expressions_slice_bound,
+    gen_slice_dyn as expressions_slice_dyn,
     gen_slice_step as expressions_slice_step,
     gen_slice_tuple as expressions_slice_tuple,
+    gen_stack_key as expressions_stack_key,
     gen_stack_ok as expressions_stack_ok,
     gen_stack_target as expressions_stack_target,
     gen_stack_tuple as expressions_stack_tuple,
@@ -618,6 +779,7 @@ from src.pystachy_compiler.functions import (
     gen_extern_args as functions_extern_args,
     gen_externtype as functions_externtype,
     gen_function as functions_function,
+    gen_function_body as functions_function_body,
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
 )
@@ -652,9 +814,11 @@ from src.pystachy_compiler.ircheck import (
 )
 from src.pystachy_compiler.lowering import (
     gen_eh_ir as lowering_eh_ir,
+    gen_field_tag as lowering_field_tag,
     gen_invoke as lowering_invoke,
     gen_lower as lowering_lower,
     gen_lower_ins as lowering_lower_ins,
+    gen_tuple_rets as lowering_tuple_rets,
 )
 from src.pystachy_compiler.lower_module import (
     gen_cextern as lower_module_cextern,
@@ -663,6 +827,7 @@ from src.pystachy_compiler.lower_module import (
     gen_gen_module as lower_module_gen_module,
     gen_lower_module as lower_module_lower_module,
     gen_pyext as lower_module_pyext,
+    gen_tbaa_nodes as lower_module_tbaa_nodes,
 )
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.optimizations import (
@@ -671,10 +836,19 @@ from src.pystachy_compiler.optimizations import (
     gen_dictfuse as optimizations_dictfuse,
     gen_disjoint as optimizations_disjoint,
     gen_listget as optimizations_listget,
+    gen_nullcheck as optimizations_nullcheck,
+    gen_nullslot as optimizations_nullslot,
     gen_optimize as optimizations_optimize,
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
     gen_same as optimizations_same,
+    gen_tag_read as optimizations_tag_read,
+    gen_ufresh as optimizations_ufresh,
+    gen_uleaves as optimizations_uleaves,
+    gen_unionslots as optimizations_unionslots,
+    gen_upaid as optimizations_upaid,
+    gen_uparts as optimizations_uparts,
+    gen_usplits as optimizations_usplits,
 )
 from src.pystachy_compiler.program import (
     gen_body_effect as program_body_effect,
@@ -796,6 +970,11 @@ from src.pystachy_compiler.templates import (
 )
 from src.pystachy_compiler.utils import RtFn, fxmask
 from src.pystachy_compiler.variables import (
+    gen_none_extend as variables_none_extend,
+    gen_global_setters as variables_global_setters,
+    gen_none_arms as variables_none_arms,
+    gen_none_global as variables_none_global,
+    gen_none_global_store as variables_none_global_store,
     gen_adopt as variables_adopt,
     gen_ahead as variables_ahead,
     gen_applies as variables_applies,
@@ -844,6 +1023,7 @@ from src.pystachy_compiler.variables import (
     gen_none_type as variables_none_type,
     gen_none_values as variables_none_values,
     gen_only_empties as variables_only_empties,
+    gen_qchain as variables_qchain,
     gen_qtype as variables_qtype,
     gen_qualname as variables_qualname,
     gen_read as variables_read,
@@ -928,6 +1108,12 @@ class Gen:
         # type than the name has outside): [name, its type outside ("": a global), register, flag]
         self.shadows: list[list[str]] = []
         self.xcls: dict[str, bool] = {}  # exception classes whose objects are made: they get an ExcClass
+        self.xvals: dict[str, bool] = {}  # exception classes of the program used as values: calls of class objects make them (exc_ctors)
+        self.xmods: dict[str, bool] = {}  # exception classes whose __module__ the program assigns (C.__module__ = v: exc_set_module)
+        self.xsigs: dict[str, int] = {}  # each argument type of calls of class objects ("": none): its table's number
+        self.xctors: dict[str, bool] = {}  # the functions exc_ctors compiled ("<table>.<class>"): does the class's __init__ take it
+        self.xtypes: dict[str, bool] = {}  # the static types of exceptions whose type() became a class object ("exc": any)
+        self.exctree = ""  # the str constant of the exception classes with their bases (exc_tree), once made
         self.eh = False  # the program has try or with (closed world): exceptions are on (pys_eh_on)
         self.opts: dict[str, bool] = {}  # the optimizations on (optimizations()), once program() starts
         self.lcs: list[str] = []
@@ -937,6 +1123,7 @@ class Gen:
         self.ret = "None"
         self.retann = False
         self.nn: dict[str, bool] = {}
+        self.dynints: dict[str, bool] = {}  # the boxes a test proved hold an int or a bool (dynamic.py)
         self.selfname = ""
         self.lazy: dict[str, FnInfo] = {}
         self.lazyat: dict[str, int] = {}  # each lazy function's position in lazy, once it is complete
@@ -947,6 +1134,8 @@ class Gen:
         self.ocmp: dict[str, bool] = {}  # those of ocls a descriptor compares, not only prints (obj_helpers)
         self.fchk: dict[str, bool] = {}  # the records whose fields desc is checking
         self.hcls: dict[str, bool] = {}  # those of them that keys hash through the program (H<id>: obj_hash)
+        self.one: dict[str, bool] = {}  # those whose != a dynamic value runs through the program (@o.ne: pys_dyn_ne)
+        self.xobj: dict[str, bool] = {}  # those whose comparisons with a dynamic value of another type run their methods (@o.x: dyn_xhelper)
         self.lenient = False
         self.uflags: dict[str, bool] = {}
         self.lflag: dict[str, str] = {}
@@ -984,6 +1173,29 @@ class Gen:
         self.soft = Node("", "", 0)  # a display compared with a value: what it holds widens the type expected of it (see wider)
         self.nokey = Node("", "", 0)
         self.stkkey = self.nokey  # a tuple display that a lookup takes as its key (lookup_key): made in the frame
+        self.cmpnode = self.nokey  # the operand of x is None (is not None) being compiled (see none_field)
+        self.fieldcmp = False  # the field read being compiled is that operand
+        self.nonereads: dict[str, str] = {}  # Class.field -> where it was read as None, the only value it gets (none_field)
+        self.fieldbusy: dict[str, bool] = {}  # Class.field whose type none_field is looking for
+        self.attrvals: dict[str, list[Node]] = {}  # attribute name -> the values the program's code stores to it (attr_values)
+        self.attrown: dict[str, list[Node]] = {}  # and the class statement whose method stores each to its self (or nokey)
+        # joins (see join_hint): the types an earlier pass found for locations whose inferred type
+        # took no value stored to them, which this pass compiles them with, as if annotated; the
+        # ones this pass finds; whether a value a location does not take is an error (the last
+        # pass, as for every compilation but driver.compile_program's earlier ones)
+        self.hints: dict[str, str] = {}
+        self.newhints: dict[str, str] = {}
+        self.final = True
+        # comparison methods (Class.method) that @o.x.<class> does not call with an Any value, as
+        # their call with one did not compile on an earlier pass (dyn_xbody); the ones this pass
+        # finds; the method whose call with one is being compiled (then an error restarts: gen_err)
+        self.xnot: dict[str, bool] = {}
+        self.newx: dict[str, bool] = {}
+        self.xtry = ""
+        self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
+        self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
+        self.jointype = ""  # (and its type)
+        self.joinsrc = self.nokey  # the value being assigned (see join_hint)
         self.retseen: dict[str, bool] = {}  # templates' functions a call used the return type of while they were compiled
         self.branch = 0  # how many if branches and loop bodies enclose the code being compiled
         self.making: list[str] = []  # the template functions being compiled, each with its call site
@@ -1000,6 +1212,7 @@ class Gen:
         self.noneglobals: dict[str, bool] = {}  # module globals of imported modules that are always None
         self.intglobals: dict[str, str] = {}  # single-binding module int literals, after normal read checks
         self.rangeused = False  # code addresses an object of lib's range class (declared then: lower_module)
+        self.objectused = False  # and of lib's object class, which object() makes
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
@@ -1015,6 +1228,7 @@ class Gen:
         self.lib = False  # declaring an imported module's function: what it cannot compile is an error only where it is called
         self.ext = ""  # pystachy ext: the name of the CPython extension module the program becomes
         self.libdir = ""  # the lib/ beside the compiler, the last directory of the module path (lib_fn)
+        self.prefix = ""  # the directory that holds it, absolute: sys.prefix (gen_modattr)
         self.csyms: dict[str, str] = {}  # @ffi.extern: each C symbol's declare (one signature per program)
         self.csymline: dict[str, int] = {}  # and the line that declared it
         self.cdirect: dict[str, bool] = {}  # the C symbols a GLUE module (lib/pyobj.py) calls directly, declared once
@@ -1064,6 +1278,22 @@ class Gen:
         self.mcall: Node | None = None  # the call o.m(...) whose method Gen.method is compiling (close())
         self.coros = False  # a generator function was lowered: the module declares LLVM's coroutine intrinsics
         self.lowblk = ""  # the label of the block being lowered (gen.start's phi names it)
+        # fieldtbaa: the field addresses of the function being lowered, each with the TBAA access
+        # tag of its loads and stores, and the program's tags, by "<class> <index>" of the class
+        # that lays the field out: their numbers, from TBAA_FIELDS (Gen.field_tag); and the classes
+        # whose structs the tags can describe (each member of a known size)
+        self.ftags: dict[str, str] = {}
+        self.tbaa: dict[str, int] = {}
+        self.tbaacls: dict[str, bool] = {}
+        # tupleret (Gen.tuple_rets): the functions lowered to return their tuple's slots by value,
+        # by symbol, with how many slots, and the calls that take them so, by "<caller's symbol>
+        # %tN"; while a function is lowered, the tuples it returns so, the slots its tuple.stores
+        # give them (by "%tN k") and the results of its calls that take slots (their LLVM type)
+        self.vrets: dict[str, int] = {}
+        self.vcalls: dict[str, bool] = {}
+        self.vtuples: dict[str, bool] = {}
+        self.vslots: dict[str, str] = {}
+        self.vaggs: dict[str, str] = {}
         self.elsekids: list[Node] = []  # the body of a for/while ... else loop being compiled
         self.elsebrk = ""  # and the label after its else block
         self.brks: list[list[dict[str, str]]] = []  # for each loop being compiled, what narrowed holds at its breaks
@@ -1102,6 +1332,7 @@ class Gen:
         self.qholes: dict[str, list[int]] = {}  # direct/forwarded empty returns' layout holes, typed by adopt
         self.qused: dict[str, str] = {}  # layouts already consumed by recursive calls
         self.qforward: dict[str, bool] = {}  # open returns include a forwarded empty result
+        self.qroot: dict[str, FnInfo] = {}  # by such a function: the one whose open result it returns, of a call cycle (qchain)
         self.inited: dict[str, bool] = {}  # the modules whose top-level code is compiled
         self.guessed: dict[str, str] = {}  # by function: why such a container is list[int] or dict[int, int] there, for a type error
         self.galias: dict[str, bool] = {}  # the classes whose body binds __class_getitem__ = classmethod(GenericAlias) (generic_aliases)
@@ -1123,6 +1354,7 @@ class Gen:
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
         self.taliases: dict[str, Node] = {}
+        self.recursive: dict[str, str] = {}  # named finite recursive value graphs
         self.resolving: list[str] = []
         self.unaliased = 0  # (the nodes unalias has made of the annotation it expands)
         self.reflrecs: dict[str, Data] = {}  # the reflection records made (refl_record), by global name
@@ -1130,7 +1362,303 @@ class Gen:
         self.refllate: dict[str, bool] = {}  # those assigned other than by an __init__ through its object (refl_late)
         self.refltexts: list[RText] = []  # the deferred texts of reflective lookups (refl_defer)
         self.reflcopies = 1  # the copies of the code being compiled that unrolled loops make (refl_unroll_for)
+        # dynamic values (dynamic.py): the runtime data the module declares (RTDATA), the DynTypes
+        # of the classes whose objects are boxed (in the order they were made), the dispatchers
+        # (by key, with the dunder each runs and the line of its first use) and what they were
+        # last compiled for (dyn_dispatchers)
+        self.rtdatas: dict[str, bool] = {}
+        self.dyntypes: dict[str, str] = {}
+        self.dynclasses: list[str] = []
+        self.dynfns: dict[str, FnInfo] = {}
+        self.dynkeys: dict[str, str] = {}
+        self.dynlines: dict[str, int] = {}
+        self.dynsig = ""
+        # and the function value types boxed, with their DynTypes, and the constant boxes of defs
+        self.dynfuncs: list[str] = []
+        self.dynfnt: dict[str, str] = {}
+        self.dynboxes: dict[str, bool] = {}
+        # and, by function, the locals made dynamic from their first store and the return types
+        # made dynamic (with the error a refusal reports, and its line), which compile it again
+        # (dyn_widen), and the functions a call from another function used the return type of while
+        # they were compiled (dyn_again)
+        self.dynwide: dict[str, dict[str, bool]] = {}
+        self.dynrets: dict[str, str] = {}
+        self.dynrline: dict[str, int] = {}
+        self.dynseen: dict[str, bool] = {}
+        # and the items of displays whose dry-run types dyn_dry remembers for the statement being
+        # compiled, with those types (each item's memo is its position)
+        self.dmemo: list[Node] = []
+        self.dmemot: list[str] = []
 
+    # ---- dynamic values (dynamic.py)
+    def dyn_policy(self, line: int) -> bool:
+        return dynamic_dyn_policy(self, line)
+
+    def rtdata(self, sym: str) -> str:
+        return dynamic_rtdata(self, sym)
+
+    def dyn_boxable(self, t: str) -> str:
+        return dynamic_dyn_boxable(self, t)
+
+    def dyn_type(self, t: str) -> str:
+        return dynamic_dyn_type(self, t)
+
+    def dyn_class_type(self, c: str) -> str:
+        return dynamic_dyn_class_type(self, c)
+
+    def dyn_xmethod(self, c: str, m: str) -> bool:
+        return dynamic_dyn_xmethod(self, c, m)
+
+    def dyn_xhelper(self, c: str) -> None:
+        return dynamic_dyn_xhelper(self, c)
+
+    def dyn_xbody(self, c: str) -> None:
+        return dynamic_dyn_xbody(self, c)
+
+    def dyn_box(self, v: Val) -> Val:
+        return dynamic_dyn_box(self, v)
+
+    def dyn_union_box(self, v: Val) -> Val:
+        return dynamic_dyn_union_box(self, v)
+
+    def dyn_tagged_type(self, v: Val) -> str:
+        return dynamic_dyn_tagged_type(self, v)
+
+    def dyn_typeof(self, v: Val) -> str:
+        return dynamic_dyn_typeof(self, v)
+
+    def dyn_payload(self, v: Val, t: str) -> Val:
+        return dynamic_dyn_payload(self, v, t)
+
+    def dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
+        return dynamic_dyn_unbox(self, v, t, what)
+
+    def dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
+        return dynamic_dyn_check(self, v, ts, shown)
+
+    def dyn_select(self, v: Val, ts: list[str], t: str) -> Val:
+        return dynamic_dyn_select(self, v, ts, t)
+
+    def dyn_test(self, v: Val, ts: list[str]) -> str:
+        return dynamic_dyn_test(self, v, ts)
+
+    def dyn_isa(self, v: Val, t: str) -> str:
+        return dynamic_dyn_isa(self, v, t)
+
+    def dyn_unboxable(self, t: str) -> bool:
+        return dynamic_dyn_unboxable(self, t)
+
+    def dyn_value_type(self, v: Val) -> str:
+        return dynamic_dyn_value_type(self, v)
+
+    def dyn_untyped_empty(self, e: Node) -> bool:
+        return dynamic_dyn_untyped_empty(self, e)
+
+    def dyn_untyped_items(self, ks: list[Node]) -> bool:
+        return dynamic_dyn_untyped_items(self, ks)
+
+    def empty_ctor(self, e: Node) -> str:
+        return dynamic_empty_ctor(self, e)
+
+    def dyn_types_of(self, t: str) -> list[str]:
+        return dynamic_dyn_types_of(self, t)
+
+    def dyn_isinst_types(self, c: Node) -> list[str]:
+        return dynamic_dyn_isinst_types(self, c)
+
+    def dyn_isinst(self, v: Val, c: Node) -> Val:
+        return dynamic_dyn_isinst(self, v, c)
+
+    def dyn_narrow_type(self, c: Node, truth: bool) -> str:
+        return dynamic_dyn_narrow_type(self, c, truth)
+
+    def dyn_narrowed(self, v: Val, nt: str) -> Val:
+        return dynamic_dyn_narrowed(self, v, nt)
+
+    def dyn_proven_int(self, v: Val) -> Val:
+        return dynamic_dyn_proven_int(self, v)
+
+    def dyn_widen(self, name: str, t: str) -> bool:
+        return dynamic_dyn_widen(self, name, t)
+
+    def dyn_fields(self, ci: ClassInfo) -> None:
+        return dynamic_dyn_fields(self, ci)
+
+    def dyn_field_stores(self, ci: ClassInfo, f: FnInfo, ns: list[Node]) -> None:
+        return dynamic_dyn_field_stores(self, ci, f, ns)
+
+    def dyn_guessed(self, e: Node, f: FnInfo) -> bool:
+        return dynamic_dyn_guessed(self, e, f)
+
+    def dyn_global_ahead(self, name: str, t: str) -> bool:
+        return dynamic_dyn_global_ahead(self, name, t)
+
+    def dyn_stores_ahead(self, ns: list[Node], name: str, env: dict[str, bool]) -> bool:
+        return dynamic_dyn_stores_ahead(self, ns, name, env)
+
+    def dyn_ahead(self, e: Node, env: dict[str, bool]) -> bool:
+        return dynamic_dyn_ahead(self, e, env)
+
+    def dyn_items_ahead(self, it: Node, env: dict[str, bool]) -> str:
+        return dynamic_dyn_items_ahead(self, it, env)
+
+    def dyn_widened(self, name: str) -> bool:
+        return dynamic_dyn_widened(self, name)
+
+    def dyn_none_first(self, name: str) -> None:
+        return dynamic_dyn_none_first(self, name)
+
+    def dyn_asked(self, f: FnInfo) -> int:
+        return dynamic_dyn_asked(self, f)
+
+    def dyn_again(self, f: FnInfo, asked: int) -> bool:
+        return dynamic_dyn_again(self, f, asked)
+
+    def dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
+        return dynamic_dyn_arith(self, op, a, b, inplace)
+
+    def dyn_unary(self, op: str, v: Val) -> Val:
+        return dynamic_dyn_unary(self, op, v)
+
+    def dyn_compare(self, op: str, a: Val, b: Val) -> Val:
+        return dynamic_dyn_compare(self, op, a, b)
+
+    def dyn_cmp2(self, op: str, a: Val, b: Val) -> Val:
+        return dynamic_dyn_cmp2(self, op, a, b)
+
+    def dyn_identity(self, op: str, a: Val, b: Val) -> Val:
+        return dynamic_dyn_identity(self, op, a, b)
+
+    def dyn_truth(self, v: Val) -> str:
+        return dynamic_dyn_truth(self, v)
+
+    def dyn_str(self, v: Val) -> Val:
+        return dynamic_dyn_str(self, v)
+
+    def dyn_repr(self, v: Val) -> Val:
+        return dynamic_dyn_repr(self, v)
+
+    def dyn_len(self, v: Val) -> Val:
+        return dynamic_dyn_len(self, v)
+
+    def dyn_hash(self, v: Val) -> Val:
+        return dynamic_dyn_hash(self, v)
+
+    def dyn_getitem(self, o: Val, k: Val) -> Val:
+        return dynamic_dyn_getitem(self, o, k)
+
+    def dyn_setitem(self, o: Val, k: Val, v: Val) -> None:
+        return dynamic_dyn_setitem(self, o, k, v)
+
+    def dyn_delitem(self, o: Val, k: Val) -> None:
+        return dynamic_dyn_delitem(self, o, k)
+
+    def dyn_contains(self, o: Val, k: Val) -> Val:
+        return dynamic_dyn_contains(self, o, k)
+
+    def dyn_int(self, v: Val) -> Val:
+        return dynamic_dyn_int(self, v)
+
+    def dyn_float(self, v: Val) -> Val:
+        return dynamic_dyn_float(self, v)
+
+    def dyn_type_name(self, v: Val) -> Val:
+        return dynamic_dyn_type_name(self, v)
+
+    def dyn_dispatcher(self, key: str, ptypes: list[str], ret: str, dunder: str) -> FnInfo:
+        return dynamic_dyn_dispatcher(self, key, ptypes, ret, dunder)
+
+    def dyn_call(self, f: FnInfo, args: list[Val]) -> Val:
+        return dynamic_dyn_call(self, f, args)
+
+    def dyn_body(self, key: str) -> None:
+        return dynamic_dyn_body(self, key)
+
+    def dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
+        return dynamic_dyn_fn_arms(self, f, key, o, args)
+
+    def dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
+        return dynamic_dyn_supports(self, c, key, dunder, nargs)
+
+    def dyn_takes(self, fm: FnInfo, own: int, nargs: int) -> bool:
+        return dynamic_dyn_takes(self, fm, own, nargs)
+
+    def dyn_arity(self, fm: FnInfo, own: int, nargs: int) -> str:
+        return dynamic_dyn_arity(self, fm, own, nargs)
+
+    def dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) -> None:
+        return dynamic_dyn_reflected(self, f, c, r, a, b, ok)
+
+    def dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val]) -> None:
+        return dynamic_dyn_arm(self, f, key, dunder, x, args)
+
+    def dyn_return(self, f: FnInfo, r: Val) -> None:
+        return dynamic_dyn_return(self, f, r)
+
+    def dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
+        return dynamic_dyn_builtin_methods(self, f, key, o, args)
+
+    def dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
+        return dynamic_dyn_builtin_takes(self, bt, m, n)
+
+    def dyn_fresh(self, v: Val) -> Val:
+        return dynamic_dyn_fresh(self, v)
+
+    def dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
+        return dynamic_dyn_fallback(self, f, key, ps)
+
+    def dyn_dispatchers(self) -> bool:
+        return dynamic_dyn_dispatchers(self)
+
+    def dyn_builtin(self, name: str, v: Val) -> Val:
+        return dynamic_dyn_builtin(self, name, v)
+
+    def dyn_getattr(self, o: Val, a: str) -> Val:
+        return dynamic_dyn_getattr(self, o, a)
+
+    def dyn_setattr(self, o: Val, a: str, v: Val) -> None:
+        return dynamic_dyn_setattr(self, o, a, v)
+
+    def dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return dynamic_dyn_method(self, o, m, args)
+
+    def dyn_format(self, v: Val, spec: Val) -> Val:
+        return dynamic_dyn_format(self, v, spec)
+
+    def dyn_type_module(self, v: Val) -> Val:
+        return dynamic_dyn_type_module(self, v)
+
+    def dyn_bound(self, v: Val, bound: bool) -> str:
+        return dynamic_dyn_bound(self, v, bound)
+
+    def dyn_slice(self, o: Val, bs: list[Node]) -> Val:
+        return dynamic_dyn_slice(self, o, bs)
+
+    def dyn_mixed(self, es: list[Node]) -> bool:
+        return dynamic_dyn_mixed(self, es)
+
+    def dyn_dry(self, e: Node) -> str:
+        return dynamic_dyn_dry(self, e)
+
+    def dyn_callables(self, ts: list[str]) -> bool:
+        return dynamic_dyn_callables(self, ts)
+
+    def dyn_fn_type(self, ft: str) -> str:
+        return dynamic_dyn_fn_type(self, ft)
+
+    def dyn_fn_box(self, v: Val) -> Val:
+        return dynamic_dyn_fn_box(self, v)
+
+    def dyn_call_value(self, o: Val, args: list[Node]) -> Val:
+        return dynamic_dyn_call_value(self, o, args)
+
+    def dyn_fn_takes(self, ft: str, n: int) -> str:
+        return dynamic_dyn_fn_takes(self, ft, n)
+
+    def dyn_sum(self, xs: Val, start: Val) -> Val:
+        return dynamic_dyn_sum(self, xs, start)
+
+    # ---- end of dynamic values
     # ---- reflection (reflection.py)
     def refl_typeof(self, n: Node) -> Node | None:
         return reflection_refl_typeof(self, n)
@@ -1164,6 +1692,9 @@ class Gen:
 
     def refl_type_operand(self, n: Node) -> str:
         return reflection_refl_type_operand(self, n)
+
+    def refl_dyn_type_cmp(self, n: Node) -> Val:
+        return reflection_refl_dyn_type_cmp(self, n)
 
     def refl_type_cmp(self, n: Node) -> Val | None:
         return reflection_refl_type_cmp(self, n)
@@ -1411,6 +1942,9 @@ class Gen:
     def cbr(self, c: str, a: str, b: str) -> None:
         return emission_cbr(self, c, a, b)
 
+    def switch(self, v: Val, cases: list[str], to: list[str], other: str) -> None:
+        return emission_switch(self, v, cases, to, other)
+
     def ret_(self, v: Val) -> None:
         return emission_ret_(self, v)
 
@@ -1519,6 +2053,9 @@ class Gen:
     def floats(self, v: Val) -> Val:
         return conversions_floats(self, v)
 
+    def ufloats(self, v: Val) -> Val:
+        return conversions_ufloats(self, v)
+
     def is_dc(self, t: str) -> bool:
         return conversions_is_dc(self, t)
 
@@ -1576,6 +2113,9 @@ class Gen:
     def union_members(self, n: Node, out: list[Node]) -> list[Node]:
         return declarations_union_members(self, n, out)
 
+    def class_family(self, ts: list[str]) -> str:
+        return declarations_class_family(self, ts)
+
     def has_path(self, n: Node) -> bool:
         return declarations_has_path(self, n)
 
@@ -1629,6 +2169,15 @@ class Gen:
 
     def unalias(self, a: Node, seen: list[str]) -> Node:
         return declarations_unalias(self, a, seen)
+
+    def rec_type(self, t: str) -> str:
+        return declarations_rec_type(self, t)
+
+    def rec_fold(self, t: str) -> str:
+        return declarations_rec_fold(self, t)
+
+    def recursive_aliases(self) -> None:
+        return declarations_recursive_aliases(self)
 
     def subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
         return declarations_subst_ann(self, n, tps, args)
@@ -1690,7 +2239,7 @@ class Gen:
     def iter_ann(self, n: Node) -> str:
         return declarations_iter_ann(self, n)
 
-    def iter_item(self, n: Node) -> Node:
+    def iter_item(self, n: Node) -> Node | None:
         return declarations_iter_item(self, n)
 
     def exc_attr(self, ci: ClassInfo, name: str) -> None:
@@ -1777,6 +2326,36 @@ class Gen:
     def field(self, o: Val, name: str, store: bool=False) -> Val:
         return declarations_field(self, o, name, store)
 
+    def field_root(self, ci: ClassInfo, name: str) -> ClassInfo:
+        return declarations_field_root(self, ci, name)
+
+    def refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
+        return declarations_refine_field(self, ci, name, t)
+
+    def none_field(self, cls: str, name: str, cmp: bool) -> str:
+        return declarations_none_field(self, cls, name, cmp)
+
+    def field_fill(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_fill(self, root, name)
+
+    def field_guess(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_guess(self, root, name)
+
+    def field_modfill(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_modfill(self, root, name)
+
+    def field_early(self, root: ClassInfo, name: str) -> str:
+        return declarations_field_early(self, root, name)
+
+    def field_type(self, c: str, name: str) -> str:
+        return declarations_field_type(self, c, name)
+
+    def set_elsewhere(self, root: ClassInfo, name: str) -> bool:
+        return declarations_set_elsewhere(self, root, name)
+
+    def none_field_store(self, o: Val, name: str, v: Val) -> None:
+        return declarations_none_field_store(self, o, name, v)
+
     def fgep(self, o: Val, i: int) -> str:
         return declarations_fgep(self, o, i)
 
@@ -1851,6 +2430,57 @@ class Gen:
 
     def none_read(self, name: str) -> str:
         return variables_none_read(self, name)
+
+    def none_extend(self, name: str) -> None:
+        return variables_none_extend(self, name)
+
+    def none_container(self, e: Node) -> Val:
+        return containers_none_container(self, e)
+
+    def usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
+        return union_arithmetic_usplit(self, name, vals, i, want)
+
+    def uorders(self, a: str, b: str) -> bool:
+        return union_arithmetic_uorders(self, a, b)
+
+    def ucmp(self, op: str, a: Val, b: Val) -> Val:
+        return union_arithmetic_ucmp(self, op, a, b)
+
+    def join_hint(self, t: str, vt: str) -> bool:
+        return unions_join_hint(self, t, vt)
+
+    def joinable(self, t: str) -> bool:
+        return unions_joinable(self, t)
+
+    def join_type(self, a: str, b: str) -> str:
+        return unions_join_type(self, a, b)
+
+    def stable(self, s: str) -> str:
+        return unions_stable(self, s)
+
+    def fnkey(self, f: FnInfo) -> str:
+        return unions_fnkey(self, f)
+
+    def field_key(self, ci: ClassInfo, name: str) -> str:
+        return unions_field_key(self, ci, name)
+
+    def local_hint(self, name: str) -> str:
+        return unions_local_hint(self, name)
+
+    def join_at(self, kind: str, name: str, t: str) -> list[str]:
+        return unions_join_at(self, kind, name, t)
+
+    def none_global(self, name: str) -> str:
+        return variables_none_global(self, name)
+
+    def none_arms(self, name: str) -> str:
+        return variables_none_arms(self, name)
+
+    def global_setters(self, name: str) -> list[FnInfo]:
+        return variables_global_setters(self, name)
+
+    def none_global_store(self, name: str, v: Val) -> str:
+        return variables_none_global_store(self, name, v)
 
     def none_type(self, name: str) -> str:
         return variables_none_type(self, name)
@@ -1966,6 +2596,9 @@ class Gen:
     def typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
         return variables_typed_empty(self, v, want, f)
 
+    def qchain(self, f: FnInfo) -> list[FnInfo]:
+        return variables_qchain(self, f)
+
     def fills(self, body: list[Node], name: str, found: list[Node]) -> bool:
         return variables_fills(self, body, name, found)
 
@@ -2032,6 +2665,9 @@ class Gen:
 
     def function(self, f: FnInfo, body: list[Node]) -> None:
         return functions_function(self, f, body)
+
+    def function_body(self, f: FnInfo, body: list[Node]) -> None:
+        return functions_function_body(self, f, body)
 
     def builtin_catch(self, b: str) -> str:
         return generators_builtin_catch(self, b)
@@ -2172,8 +2808,8 @@ class Gen:
     def externtype(self, a: Node, t: str, what: str, f: FnInfo) -> str:
         return functions_externtype(self, a, t, what, f)
 
-    def cextern(self, f: FnInfo) -> None:
-        return lower_module_cextern(self, f)
+    def cextern(self, f: FnInfo, at: bool = False) -> None:
+        return lower_module_cextern(self, f, at)
 
     def pyext(self) -> list[str]:
         return lower_module_pyext(self)
@@ -2195,6 +2831,15 @@ class Gen:
 
     def lower_ins(self, fn: IFn, i: Ins) -> None:
         return lowering_lower_ins(self, fn, i)
+
+    def field_tag(self, c: str, k: int) -> str:
+        return lowering_field_tag(self, c, k)
+
+    def tbaa_nodes(self) -> list[str]:
+        return lower_module_tbaa_nodes(self)
+
+    def tuple_rets(self) -> None:
+        return lowering_tuple_rets(self)
 
     def invoke(self, c: str, i: Ins) -> str:
         return lowering_invoke(self, c, i)
@@ -2228,6 +2873,33 @@ class Gen:
 
     def dictfuse(self, fn: IFn) -> int:
         return optimizations_dictfuse(self, fn)
+
+    def unionslots(self, fn: IFn) -> int:
+        return optimizations_unionslots(self, fn)
+
+    def nullcheck(self, fn: IFn) -> int:
+        return optimizations_nullcheck(self, fn)
+
+    def nullslot(self, fn: IFn, lds: list[int], stride: int, slots: dict[str, int], q: Ins) -> str:
+        return optimizations_nullslot(self, fn, lds, stride, slots, q)
+
+    def usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_usplits(self, fn, defs, v, seen)
+
+    def uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
+        return optimizations_uparts(self, fn, defs, v, t, parts, before, after, heads)
+
+    def uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
+        return optimizations_uleaves(self, fn, uses, i, split)
+
+    def ufresh(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool]) -> bool:
+        return optimizations_ufresh(self, fn, defs, uses, v, seen)
+
+    def upaid(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], addr: str, split: dict[str, Ins]) -> bool:
+        return optimizations_upaid(self, fn, defs, uses, addr, split)
+
+    def tag_read(self, i: Ins) -> bool:
+        return optimizations_tag_read(self, i)
 
     def canon(self, vs: Values, v: str) -> str:
         return optimizations_canon(self, vs, v)
@@ -2514,11 +3186,14 @@ class Gen:
     def exc_class(self, e: Node) -> str:
         return exceptions_exc_class(self, e)
 
-    def cause(self, c: Node) -> Val:
-        return exceptions_cause(self, c)
+    def cause_value(self, c: Node) -> Val:
+        return exceptions_cause_value(self, c)
 
-    def exc_value_of(self, e: Node, k: str) -> Val:
-        return exceptions_exc_value_of(self, e, k)
+    def cause(self, c: Node, v: Val) -> Val:
+        return exceptions_cause(self, c, v)
+
+    def exc_value_of(self, e: Node, k: str, make: bool = True) -> Val:
+        return exceptions_exc_value_of(self, e, k, make)
 
     def raise_stmt(self, n: Node) -> None:
         return exceptions_raise_stmt(self, n)
@@ -2531,6 +3206,9 @@ class Gen:
 
     def exc_value(self, name: str, vals: list[Val]) -> Val:
         return exceptions_exc_value(self, name, vals)
+
+    def exc_str_args(self, msg: str) -> str:
+        return exceptions_exc_str_args(self, msg)
 
     def exit_(self, vals: list[Val], sysx: bool) -> None:
         return exceptions_exit_(self, vals, sysx)
@@ -2561,6 +3239,69 @@ class Gen:
 
     def exc_helpers(self, c: str) -> None:
         return exceptions_exc_helpers(self, c)
+
+    def exc_disp(self, c: str) -> str:
+        return exceptions_exc_disp(self, c)
+
+    def exc_set_module(self, cn: Node, v: Val) -> None:
+        return exceptions_exc_set_module(self, cn, v)
+
+    def exc_class_value(self, c: str) -> Val:
+        return exceptions_exc_class_value(self, c)
+
+    def exc_tree(self) -> str:
+        return exceptions_exc_tree(self)
+
+    def exc_type_of(self, v: Val) -> Val:
+        return exceptions_exc_type_of(self, v)
+
+    def exc_sub(self, a: Val, b: Val) -> Val:
+        return exceptions_exc_sub(self, a, b)
+
+    def exc_dynamic(self, t: Node) -> bool:
+        return exceptions_exc_dynamic(self, t)
+
+    def exc_test(self, v: Val, t: Node, what: str) -> Val:
+        return exceptions_exc_test(self, v, t, what)
+
+    def exc_flat(self, t: str, what: str) -> None:
+        return exceptions_exc_flat(self, t, what)
+
+    def exc_held(self, t: Node) -> bool:
+        return exceptions_exc_held(self, t)
+
+    def exc_holds(self, t: str) -> bool:
+        return exceptions_exc_holds(self, t)
+
+    def exc_any(self, v: Val, bs: list[Val], what: str) -> Val:
+        return exceptions_exc_any(self, v, bs, what)
+
+    def exc_each(self, v: Val, bs: list[Val], what: str, done: str, ph: Ins) -> Val:
+        return exceptions_exc_each(self, v, bs, what, done, ph)
+
+    def exc_none_class(self) -> Val:
+        return exceptions_exc_none_class(self)
+
+    def exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
+        return exceptions_exc_call(self, c, args, how)
+
+    def exc_make(self, c: Val, vals: list[Val], how: int = 0) -> Val:
+        return exceptions_exc_make(self, c, vals, how)
+
+    def exc_ctors(self) -> int:
+        return exceptions_exc_ctors(self)
+
+    def exc_ctor_arity(self, c: str, n: int) -> str:
+        return exceptions_exc_ctor_arity(self, c, n)
+
+    def exc_ctor_takes(self, t: str, p: str) -> bool:
+        return exceptions_exc_ctor_takes(self, t, p)
+
+    def exc_ctor_classes(self) -> list[str]:
+        return exceptions_exc_ctor_classes(self)
+
+    def exc_tables(self) -> None:
+        return exceptions_exc_tables(self)
 
     def throw(self, e: Val) -> None:
         return exceptions_throw(self, e)
@@ -2739,14 +3480,14 @@ class Gen:
     def cls_bound(self, f: FnInfo, c: str, obj: bool) -> None:
         return expressions_cls_bound(self, f, c, obj)
 
-    def percent(self, fmt: str, rhs: Node) -> Val:
-        return expressions_percent(self, fmt, rhs)
+    def percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
+        return expressions_percent(self, fmt, rhs, lit)
 
     def percent_opt(self, fmt: str, v: Val) -> Val:
         return expressions_percent_opt(self, fmt, v)
 
-    def pformat(self, fmt: str, items: list[Val], rtnone: bool) -> Val:
-        return expressions_pformat(self, fmt, items, rtnone)
+    def pformat(self, fmt: str, items: list[Val], rtnone: bool, lazy: list[Node]) -> Val:
+        return expressions_pformat(self, fmt, items, rtnone, lazy)
 
     def nonefmt(self, t: str) -> str:
         return expressions_nonefmt(self, t)
@@ -2802,11 +3543,14 @@ class Gen:
     def optbound(self, v: Val) -> str:
         return expressions_optbound(self, v)
 
-    def slice_bound(self, x: Node, fold: bool=False) -> str:
-        return expressions_slice_bound(self, x, fold)
+    def slice_bound(self, x: Node, dvs: list[Val], fold: bool=False) -> str:
+        return expressions_slice_bound(self, x, dvs, fold)
 
-    def slice_step(self, x: Node, fold: bool=False) -> str:
-        return expressions_slice_step(self, x, fold)
+    def slice_step(self, x: Node, dvs: list[Val], fold: bool=False) -> str:
+        return expressions_slice_step(self, x, dvs, fold)
+
+    def slice_dyn(self, ss: list[str], dvs: list[Val]) -> None:
+        return expressions_slice_dyn(self, ss, dvs)
 
     def slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
         return expressions_slice_tuple(self, o, bnd, step)
@@ -2838,6 +3582,12 @@ class Gen:
     def stack_ok(self, f: FnInfo) -> bool:
         return expressions_stack_ok(self, f)
 
+    def stack_key(self, t: str, ms: list[str]) -> bool:
+        return expressions_stack_key(self, t, ms)
+
+    def key_read(self, f: FnInfo) -> bool:
+        return expressions_key_read(self, f)
+
     def keep_stack(self, n: Node) -> None:
         return expressions_keep_stack(self, n)
 
@@ -2867,6 +3617,9 @@ class Gen:
 
     def list_read(self, o: Val, i: Val) -> Val:
         return expressions_list_read(self, o, i)
+
+    def bytes_read(self, o: Val, i: Val) -> Val:
+        return expressions_bytes_read(self, o, i)
 
     def argtype(self, t: str, m: str, j: int, missing: str) -> str:
         return expressions_argtype(self, t, m, j, missing)
@@ -2922,8 +3675,29 @@ class Gen:
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
 
-    def inherit_cmp(self, op: str, a: Val, b: Val, phase: int=0) -> Val:
-        return expressions_inherit_cmp(self, op, a, b, phase)
+    def inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_inherit_cmp(self, op, a, b)
+
+    def cmp_alts(self, v: Val) -> list[Val]:
+        return expressions_cmp_alts(self, v)
+
+    def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
+        return expressions_cmp_widen(self, op, x, y, at, bt)
+
+    def cmp_key(self, op: str, a: Val, b: Val) -> str:
+        return expressions_cmp_key(self, op, a, b)
+
+    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
+        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end)
+
+    def cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
+        return expressions_cmp_rest(self, v, alts, to)
+
+    def cmp_null(self, v: Val, alts: list[Val], to: list[str]) -> str:
+        return expressions_cmp_null(self, v, alts, to)
+
+    def cmp_tags(self, v: Val, alts: list[Val], to: list[str]) -> None:
+        return expressions_cmp_tags(self, v, alts, to)
 
     def inherit_contains(self, op: str, a: Val, b: Val) -> Val:
         return expressions_inherit_contains(self, op, a, b)
@@ -3032,6 +3806,12 @@ class Gen:
 
     def open_call(self, n: Node) -> bool:
         return calls_open_call(self, n)
+
+    def ffi_at(self, n: Node) -> bool:
+        return calls_ffi_at(self, n)
+
+    def at_arg(self, n: Node, f: FnInfo, j: int, offs: dict[int, Val]) -> Val:
+        return calls_at_arg(self, n, f, j, offs)
 
     def close_temp(self, n: Node, v: Val) -> None:
         return calls_close_temp(self, n, v)
@@ -3227,6 +4007,18 @@ class Gen:
 
     def reduce(self, name: str, args: list[Node], stt: str) -> Val:
         return builtins_reduce(self, name, args, stt)
+
+    def comp_end(self, acc: str, comp: str) -> str:
+        return builtins_comp_end(self, acc, comp)
+
+    def neumaier(self, acc: str, comp: str, x: str) -> None:
+        return builtins_neumaier(self, acc, comp, x)
+
+    def sum_union_item(self, r: Reduce, v: Val) -> None:
+        return builtins_sum_union_item(self, r, v)
+
+    def sum_union_end(self, r: Reduce) -> Val:
+        return builtins_sum_union_end(self, r)
 
     def reduce_item(self, r: Reduce, e: Node) -> None:
         return builtins_reduce_item(self, r, e)
@@ -3449,6 +4241,9 @@ class Gen:
 
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)
+
+    def num_union(self, t: str) -> bool:
+        return unions_num_union(self, t)
 
     def value_union(self, t: str) -> bool:
         return unions_value_union(self, t)

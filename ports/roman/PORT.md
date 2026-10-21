@@ -25,7 +25,7 @@ print(fromRoman("mcmlxxxvii"))
 ## Compatibility
 
 - Invalid argument types are rejected during compilation rather than following CPython’s dynamic coercion/error paths.
-- ASCII case conversion agrees; non-ASCII text uses Pystachy’s byte-oriented rules. CPython accepts dotless `ı` as `I`, while the port rejects it.
+- ASCII case conversion agrees; non-ASCII text uses Pystachy’s ASCII-only case mapping. CPython accepts dotless `ı` as `I`, while the port rejects it.
 - Values beyond checked 64-bit integers overflow before the converter can raise `OutOfRangeError`.
 
 <a id="tests"></a>
@@ -35,13 +35,13 @@ print(fromRoman("mcmlxxxvii"))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_roman_convert.py
-./tests/run.sh ./pystachy "jit aot" tests/port_roman_convert.py tests/port_roman_validate.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_roman_convert.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_roman_convert.py tests/programs/apps/port_roman_validate.py
 ```
 
 The tests cover upstream examples/errors, every integer 1–4999 in both directions, lowercase forms, pattern boundaries and exceptions.
 
-Cases: [port_roman_convert.py](../../tests/port_roman_convert.py), [port_roman_validate.py](../../tests/port_roman_validate.py).
+Cases: [port_roman_convert.py](../../tests/programs/apps/port_roman_convert.py), [port_roman_validate.py](../../tests/programs/apps/port_roman_validate.py).
 
 <a id="speed"></a>
 

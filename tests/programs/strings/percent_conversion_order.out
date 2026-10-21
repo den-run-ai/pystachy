@@ -1,0 +1,55 @@
+str a
+eval 1
+a 1
+repr b
+eval 2
+<b> 2
+str c
+eval 3
+c   |3
+repr é
+eval 4
+<\xe9> and 4
+str d
+str e
+str f
+repr g
+str h
+    d|e|f|<g>|    h
+str i
+str j
+eval 5
+           i|j|5
+str k
+eval 6
+100% k 6
+eval 7
+str l
+l                                                                                                   |7
+eval 8
+str m
+m|8
+eval 9
+str n
+n 1
+eval 10
+str o
+o 10
+eval 11
+str p
+p 11
+str q
+eval boom
+KeyError 'boom'
+str bad
+ValueError bad str
+eval 13
+str bad
+ValueError bad str
+eval 14
+str s
+TypeError not all arguments converted during string formatting
+eval 15
+str t
+TypeError not enough arguments for format string
+[exit 0]

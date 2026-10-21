@@ -100,6 +100,33 @@ def prefix_at(s: str, i: int) -> str:
     return p if p in PREFIXES else ""
 
 
+NIBBLES = "0000000100100011010001010110011110001001101010111100110111101111"  # 0 to 15, in four bits each
+
+
+def big_key(big: str) -> str:
+    # the value of an int too big for 64 bits, from its token's big (see Tok), as mapping pattern
+    # keys compare it: its decimal digits, or past 14,285 bits "0x" and its hexadecimal ones (2**14285
+    # has 4,301 digits, and CPython rejects a decimal literal of more than 4,300, so no key written in
+    # decimal equals those). Linear in the length but for the decimal digits, at most 4,301 of them,
+    # which no int holds: 28 bits at a time, in limbs of nine digits (the lowest first)
+    w = 4 if big[0] == "x" else (3 if big[0] == "o" else 1)
+    bits = "".join([NIBBLES[4 * int(c, 16) + 4 - w : 4 * int(c, 16) + 4] for c in big[1:]]).lstrip("0")
+    if len(bits) > 14285:
+        bits = "0" * ((4 - len(bits) % 4) % 4) + bits
+        return "0x" + "".join(["0123456789abcdef"[int(bits[i : i + 4], 2)] for i in range(0, len(bits), 4)])
+    bits = "0" * ((28 - len(bits) % 28) % 28) + bits
+    limbs = [0]
+    for i in range(0, len(bits), 28):
+        carry = int(bits[i : i + 28], 2)
+        for j in range(len(limbs)):
+            v = limbs[j] * 268435456 + carry
+            limbs[j] = v % 1000000000
+            carry = v // 1000000000
+        if carry > 0:
+            limbs.append(carry)
+    return str(limbs[len(limbs) - 1]) + "".join([str(limbs[j] + 1000000000)[1:] for j in range(len(limbs) - 2, -1, -1)])
+
+
 class Tok:
     def __init__(self, kind: str, text: str, line: int):
         self.kind = kind
@@ -107,6 +134,7 @@ class Tok:
         self.line = line
         self.esc = False  # a string literal (or bytes literal) whose escapes the parser decodes
         self.part = False  # an f-string that the tokenizer's error (the next token) cut short, or that error
+        self.big = ""  # an int too big for 64 bits, written in base 16, 8 or 2 (its text is a sentinel): "x", "o" or "b" and its digits
 
 
 class Lexer:
@@ -250,13 +278,29 @@ class Lexer:
         while self.i < n:
             c = src[self.i]
             if bol and len(opens) == 0:
+                # the indentation, read as CPython's tokenizer reads it: spaces, form feeds and the
+                # backslashes that continue the line into the next one, whose spaces count too; the
+                # first such backslash after a space gives the column (cont), and a line continued
+                # into a blank or comment line is blank
                 col = 0
-                while self.i < n and (src[self.i] == " " or src[self.i] == "\f"):
-                    col = col + 1 if src[self.i] == " " else 0  # (a form feed restarts the count, as in CPython)
-                    self.i += 1
+                cont = 0
+                while self.i < n and (src[self.i] == " " or src[self.i] == "\f" or (src[self.i] == "\\" and (src.startswith("\n", self.i + 1) or self.i + 1 == n))):
+                    if src[self.i] == "\\":
+                        cont = col if cont == 0 else cont
+                        self.i += 2
+                        self.line += 1
+                        if self.i >= n:
+                            self.stop("unexpected EOF while parsing", self.line - 1)
+                    else:
+                        col = col + 1 if src[self.i] == " " else 0  # (a form feed restarts the count, as in CPython)
+                        self.i += 1
                 if self.i >= n:
                     break
                 c = src[self.i]
+                if c == "\\":
+                    self.stop("unexpected character after line continuation character", self.line)
+                    break
+                col = cont if cont > 0 else col
                 j = self.i
                 while j < n and (src[j] == " " or src[j] == "\t"):
                     j += 1
@@ -361,8 +405,10 @@ class Lexer:
                     d0 = d0 >> 1
                 bits += (len(h) - 1) * (4 if base == 16 else (3 if base == 8 else 1))
             if bits > 64 or (bits == 64 and (h[1:].strip("0") != "" or int(h[0], 16) & (int(h[0], 16) - 1) != 0)):
-                # Gen rejects the literal where it compiles it: "integer literal does not fit in 64 bits"
+                # Gen rejects the literal where it compiles it: "integer literal does not fit in 64 bits";
+                # a mapping pattern's keys compare its value (Parser.pliteral)
                 self.add("int", "99999999999999999999")
+                self.toks[-1].big = pfx[1] + h.lower()
                 self.i = j
                 return
             # 2**63 is valid only negated; Gen checks that, as for decimal literals

@@ -49,7 +49,11 @@ reuse the f-string's quote, nest f-strings, and hold backslashes, newlines and c
 assignment binds to one (`FMT = "%8.3f"`, also `Final`) where nothing else in the program, not
 even a function's local, binds its name. It supports `s r a d i u x X o e E f F g G c`, flags,
 widths and precisions, but not named substitutions, `*` widths or precisions, or integer
-precisions. A variable format string such as `fmt % value` is rejected.
+precisions. A variable format string such as `fmt % value` is rejected. A literal format of
+only `%s`, `%r` and `%a` conversions, whose widths and precisions have at most two digits,
+applied to a tuple display with one item for each, is evaluated as CPython 3.11+ compiles it,
+as an f-string: each item just before its conversion. Any other `%` evaluates all its
+arguments first.
 
 `str.format()` and `str.format_map()` (also `str.format(FMT, ...)`) also require a literal format
 string or such a module global, compiled like an f-string: automatic and manual numbering, keyword
@@ -98,7 +102,9 @@ template parameter specialized to `None` cannot be rebound by a conditional assi
 expression; annotate that parameter as `T | None` to allow both values.
 
 `is` and `is not` are supported for identity-bearing values, not numbers.
-Booleans use their two fixed values, so `flag is True` behaves as equality.
+Booleans use their two fixed values, so `flag is True` behaves as equality. A number or bool is
+never an object of a class, so `x is obj` is `False` for one (`is not` `True`), as in CPython.
+For one that may be `None` (`x: int | None`), `x is obj` is `True` only where both are `None`.
 Comparisons with `None` are supported where the static types permit them.
 
 ## Iterator-like expressions
@@ -143,6 +149,26 @@ reject at run time (ordering comparisons, assigning an attribute), `in` of other
 bool, `r[i]`, `index()` and `count()` of other than an int (also of a bool), `==` with a value
 that may be `None` but is not a range, `type(r)` as a value, and the reflection of `dir()` and
 `vars()`.
+
+## Sentinels
+
+`object()` makes a new object of the builtins' `object` type at each call, as a sentinel is made
+(`_MISSING = object()`, a parameter's default tested with `x is _MISSING`). It is an object of the
+class in [`lib/_pystachy_object.py`](../../lib/_pystachy_object.py), which the compiler loads for a
+program that may call `object()`. `is`, `is not`, `==` and `!=` compare identities (a value of a
+builtin type, such as an int, a str, a list, a range, a generator or a function, is never equal to
+one), `hash()`, dict keys and set elements use the identity, `bool()` is true, `repr()` and `str()`
+give `<object object at 0x...>` with Pystachy's address, `type(x).__name__` is `object` and
+`type(x).__module__` is `builtins`, and `isinstance(x, object)` and `type(x) is object` are true.
+The compiler rejects `object()` with arguments (CPython's `TypeError`), assigning an attribute of
+such an object, `==` and `!=` between such an object and an object of a class or an exception
+(whose `__eq__` CPython may call), and a variable, return value or `dict.get()` default that would
+hold either such an object or a value of another type, as no union holds one yet
+([#251](https://github.com/den-run-ai/pystachy/issues/251)). It loads the class for a program one of
+whose modules calls the name `object`, so in a program none of whose modules calls `object()` it
+also rejects a call by another name (`builtins.object()`, or an alias that an import or an
+assignment binds, `obj = object`) and `type(x) is object`; in any other program such a call makes a
+sentinel too.
 
 ## Iterators
 
@@ -249,16 +275,16 @@ compiled for its arguments), or take `*args`:
 
 | Parameter | Annotation | Value |
 |---|---|---|
-| The exception's class | `type[BaseException] \| None` | `None`, or the class: `__name__`, `issubclass()`, `str()` and `repr()` (`<class 'KeyError'>`) |
+| The exception's class | `type[BaseException] \| None` | `None`, or the class's [class object](#exception-classes-as-values) |
 | The exception | `BaseException \| None` | `None`, or the exception: `str()`, `repr()`, `isinstance()`, `is`, `raise` |
 | The traceback | `TracebackType \| None` (`from types import TracebackType`) | `None`, or an object with none of a traceback's attributes |
 
-`type(e)` of an exception is such a class value, and `sys.exception()` the exception being
+`type(e)` of an exception is such a class object, and `sys.exception()` the exception being
 handled (or `None`). `e.__cause__` is the cause that `raise ... from c` gave, or the
 `StopIteration` that PEP 479's `RuntimeError` replaced.
 
 `lib/contextlib` provides `contextmanager` (also as a decorator, `@cm()`), `closing`,
-`nullcontext`, `suppress` (as a `with` statement's item, with exception classes named) and
+`nullcontext`, `suppress` (as a `with` statement's item, or kept as a value) and
 `AbstractContextManager`; `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper` and `_thread`'s locks are context managers too
 ([library](../../lib/compatibility.md#contextlib)).
 
@@ -345,7 +371,8 @@ time knows (#487), names that need per-object storage (#489), or a class object 
 expression, `type(a) is C`, `type(a) == type(b)`, their negations and `x.__class__ is C` compare
 the exact classes (`type(True) is bool`, `type(True) is int` is false). `str()` and `repr()` of a
 reference union print each object as its own class prints it. `type(x)` as a value (a class
-object) is unsupported.
+object) is unsupported, but for an exception ([exception classes as
+values](#exception-classes-as-values)).
 
 ### Attribute names the compiler knows
 
@@ -473,7 +500,8 @@ with `isinstance()` or `type(e).__name__`. An annotation such as `Exception` nam
 builtin exception value type; it does not accept arbitrary user exception objects.
 `BaseException | None` (any exception class with `| None`) is an exception that may be
 `None`, which `raise` raises as CPython does (`TypeError` for `None`), and
-`type[BaseException]` the class of an exception ([context managers](#context-managers)).
+`type[BaseException]` an exception class's class object ([exception classes as
+values](#exception-classes-as-values)).
 
 `OSError(errno, strerror[, filename])` selects the subclass associated with the errno.
 `UnicodeDecodeError(encoding, object, start, end, reason)` (of a bytes object) and
@@ -528,8 +556,51 @@ classes, otherwise the builtin exception type. An uncaught user exception prints
 `module.E: message` (`E` in the main program) and exits with status 1; a `SystemExit`
 subclass exits using its code. Exception values keep identity when raised.
 
+`E.__module__ = name` gives the class another module's name, as a package does for the
+exceptions of its submodules ("Pretend this exception was created here", as `tomllib` does): from
+then on `E.__module__`, `type(e).__module__`, `repr(E)` and an uncaught exception's line show it
+(`E` alone for `"__main__"`), while what was read before and the subclasses keep their own. The
+name must be a `str`, and `"builtins"` raises `NotImplementedError`
+([test](../../tests/programs/exceptions/exc_class_module_assign.py)). An ordinary class's
+`__module__` is not assigned this way.
+
 Additional inheritance, constructor and attribute restrictions are in
 [exception restrictions](compatibility.md#exceptions-and-exception-classes).
+
+<a id="exception-classes-as-values"></a>
+
+### Exception classes as values
+
+An exception class, builtin or of the program, is a value: `k = KeyError`, a default
+(`category=UserWarning`), an argument, a field, an item of a list, tuple or set, a dict's key
+or value (`{KeyError: 1}`, `(text, category, lineno)`). `type[E]`, with `| None`, annotates it.
+Each class has one class object, so `is`, `==` and `hash()` compare and hash it by identity
+(`IOError is OSError`). `type(e)` of an exception, and the class an `__exit__` takes, are its
+class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, which is
+`type(None)`; raising it raises CPython's `TypeError`, and calling it raises `TypeError` too
+([deviation](compatibility.md#exceptions-and-exception-classes)).
+
+- `str()`, `repr()` and formatting give CPython's text (`<class 'KeyError'>`,
+  `<class '__main__.E'>`); `__name__`, `__qualname__` and `__module__` are its names (`builtins`,
+  `io`, or the module of a class of the program). Ordering raises CPython's `TypeError`.
+- `issubclass(c, b)` and `isinstance(x, b)` take as `b` a class object (also one that an
+  expression gives: `type(e)`, `kinds[0]`, a call, a conditional expression), a tuple of them
+  (nested ones too) or classes named. A tuple's classes are tested in turn, as CPython tests them: the first that matches
+  stops, and a `None` reached raises `TypeError`. `isinstance(c, type)` is true, and
+  `isinstance(x, b)` of a value that is no exception (a `str`, a class object) is false, but
+  `None` is an instance of `NoneType`'s class object, which derives from no exception class
+  (`BaseException` included). `type(c).__name__` is `type`.
+- A class object is callable (`callable(c)` is true). A call of it makes an object of its class
+  from none or one positional argument, as CPython's call does (a `KeyError`'s `str()` is its
+  argument's `repr()`, a `SystemExit`'s status its `int`); `raise c` raises `c()`, as
+  `raise X from c` takes `c()` as the cause (none where `c` is `None`, as `from None`). A class
+  of the program runs its `__init__`, which raises CPython's `TypeError` where it takes another
+  number of arguments; one that takes another type than the argument's raises `TypeError`
+  instead ([deviation](compatibility.md#exceptions-and-exception-classes)).
+- `contextlib.suppress()` given class objects (`suppress(type(e))`), or kept as a value, tests
+  its classes as CPython's does.
+
+An `except` clause names its classes; one that takes class objects is not supported.
 
 ## Syntax errors
 
@@ -539,12 +610,14 @@ statement placement, aiming to match CPython's error location and message.
 
 Checks include bracket and indentation limits, unterminated literals, invalid targets,
 argument-list errors, invalid `global` / `nonlocal`, misplaced control-flow statements,
-late future imports and excessive statically nested blocks. Error selection follows the
-parser, tokenizer where reached, symbol table, then compiler checks.
+late future imports and excessive statically nested blocks. A `match` statement's patterns
+follow CPython's grammar and its compiler's checks (a capture or `_` before the last case,
+alternatives that bind different names, a name bound twice, duplicate mapping keys), although
+match statements themselves are not compiled. Error selection follows the parser, tokenizer
+where reached, symbol table, then compiler checks.
 
-Some messages fall back to `invalid syntax` where CPython is more specific.
-Patterns inside `match` statements are not checked, and the supported source syntax has
-[additional restrictions](compatibility.md#source-text).
+Some messages fall back to `invalid syntax` where CPython is more specific, and the supported
+source syntax has [additional restrictions](compatibility.md#source-text).
 `tools/syntax_sweep.py` compares `pystachy check` with CPython's `compile()`;
 `pystachy check` checks parsing and syntax, not whether a program can compile.
 

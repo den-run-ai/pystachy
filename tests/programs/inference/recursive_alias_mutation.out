@@ -1,0 +1,12 @@
+True
+['changed', 'x', None, {'nested': [False]}]
+True False True
+True False
+2.5 None
+True 5
+again 1
+[[...]] True
+True
+True 1 0
+[{'x': [True]}]
+[exit 0]

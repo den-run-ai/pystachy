@@ -5,7 +5,7 @@ from src.pystachy_compiler.diagnostics import shown, where
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import EXCEPTIONS, GLUE, HASATTR, MODATTRS, OPAQUE, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -316,7 +316,7 @@ def gen_not_callable(self, name: str, t: str) -> None:
     # a call of variable name's value (c() for an object c), of type t: CPython's TypeError,
     # unless it has __call__ or is a function (is_fn); a builtin's name bound as a variable is
     # rejected as such
-    if is_fn(t) or is_callable(unopt(t)):
+    if is_fn(t) or is_callable(unopt(t)) or unopt(t) == "exctype" or t == "dyn":
         return
     if short(name) in PYBUILTINS or t == "":
         self.err(f"'{name}' is a variable, so it cannot be called")
@@ -331,6 +331,10 @@ def gen_obj_call(self, o: Val, args: list[Node], want: str, resultsoft: bool = F
         return self.call_value(o, args, want, resultsoft)
     if is_callable(unopt(o.t)):
         return self.call_callable(o, args)
+    if o.t == "dyn":
+        return self.dyn_call_value(o, args)  # (the function its box holds: dynamic.py)
+    if unopt(o.t) == "exctype":
+        return self.exc_call(o, args)  # (an exception class's class object: an object of its class)
     if o.t not in self.classes or "__call__" not in self.classes[o.t].methods:
         self.err(f"'{tname(unopt(o.t))}' object is not callable")
     if self.cached_wrapper(o.t):
@@ -550,6 +554,39 @@ def gen_bound(self, s: str) -> bool:
     # a builtin's name that the program binds (a local, def, class or module-level variable)
     return s in self.ltype or s in self.funcs or s in self.classes or s in self.mvars
 
+def gen_ffi_at(self, n: Node) -> bool:
+    # whether n calls ffi.at (from ffi import at too), which only an argument of a call of an
+    # @extern function may (call_fn, at_arg)
+    if n.kind != "call":
+        return False
+    c = n.kids[0]
+    if c.kind == "name":
+        return c.s not in self.ltype and c.s not in self.funcs and c.s not in self.gtypes and self.aliases.get(c.s, "") == "ffi.at"
+    return c.kind == "attr" and self.dotted(c) == "ffi.at"
+
+def gen_at_arg(self, n: Node, f: FnInfo, j: int, offs: dict[int, Val]) -> Val:
+    # ffi.at(xs, k) passed for parameter j of @extern function f: xs, a list f takes as its items,
+    # from index k (in offs[j]), which the call checks once the other arguments are evaluated.
+    # First, as call does for a name it calls, whether ffi.at is bound where it runs: an import
+    # that has not run yet (modchk), a local assigned later (read_ahead) or a global (gflag)
+    c = n.kids[0]
+    self.modchk(c)
+    if c.kind == "name":
+        self.read_ahead(c.s)
+        if (c.chk or self.foreign(c.s)) and c.s in self.gflag:
+            bad = self.scalar('xor', [Val(self.mload('bool', f'@g.{c.s}.def'), 'bool'), Val('true', 'bool')])
+            self.guard(bad, self.unbound(c.s))
+    if not is_list(f.ptypes[j]):
+        self.err(f"ffi.at() passes a list from an index, but parameter '{f.params[j]}' of {f.name}() takes no list")
+    if len(n.kids) != 3 or len([a for a in n.kids[1:] if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
+        self.err("ffi.at() takes a list and an index: ffi.at(xs, k)")
+    xs = self.pcoerce(self.expr(n.kids[1], f.ptypes[j]), f.ptypes[j], f, j)
+    k = self.expr(n.kids[2], "int")
+    if k.t != "int" and k.t != "bool":
+        self.err(f"ffi.at() takes an int index, not {typestr(k.t)}")
+    offs[j] = self.as_int(k)
+    return xs
+
 def gen_open_call(self, n: Node) -> bool:
     return n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "open" and not self.bound("open")
 
@@ -626,6 +663,8 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         return self.unbound_call(o.t[5:-1], m, args)
     if is_kw(o.t):
         return self.kw_method(o, m, args)
+    if o.t == "dyn":
+        return self.dyn_method(o, m, args)  # (its box's type's: dynamic.py)
     if is_opt(o.t):
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     if is_union(o.t):
@@ -637,6 +676,22 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         # compiler's (see nt_class), which only construction and _replace() call. Operator's
         # C getters likewise initialize through __new__; reinitialization must not mutate
         # fields whose literal values the compiler has specialized.
+        for a in args:
+            x = a.kids[0] if a.kind == "kw" else a
+            if not pure_arg(x):
+                self.expr(x, "")
+        return Val("null", "None")
+    if o.t in self.classes and self.classes[o.t].mod in OPAQUE and m == "__init__":
+        # r.__init__(obj) of a weak reference: CPython's __new__ made it, and its __init__ checks
+        # the arguments (an object, and a callback) and leaves the reference as it was; a mapping
+        # proxy's __init__ is object's, which takes any arguments, as its __new__ made it
+        weak = self.classes[o.t].mod == "_weakref"
+        if weak and len([a for a in args if a.kind == "kw"]) > 0:
+            self.err("ref() takes no keyword arguments")
+        if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
+            self.err(f"star arguments of __init__() of a {'weak reference' if weak else short(o.t)} are not supported")
+        if weak and (len(args) == 0 or len(args) > 2):
+            self.err(f"__init__ expected {'at least 1 argument' if len(args) == 0 else 'at most 2 arguments'}, got {len(args)}")
         for a in args:
             x = a.kids[0] if a.kind == "kw" else a
             if not pure_arg(x):
@@ -1040,6 +1095,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     extra: list[Val] = []
     kwn: list[str] = []
     kwv: list[Val] = []
+    offs: dict[int, Val] = {}  # (the index of each list that an @extern call takes as ffi.at(xs, k))
     for a in args:
         j = pos
         e = a
@@ -1062,6 +1118,9 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             e = a.kids[0]
         else:
             pos += 1
+        if f.extern and self.ffi_at(e):
+            vals[j] = self.at_arg(e, f, j, offs)
+            continue
         vals[j] = self.pcoerce(self.expr(e, f.ptypes[j] if f.ptypes[j] != "" or j >= len(hint) else self.generic_hint(e, hint[j])), f.ptypes[j], f, j)
         if j in f.pats:
             vals[j] = self.pat_arg(vals[j], f.pats[j])
@@ -1165,6 +1224,14 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft)
     c = Ins("call", f.ret, f.ll)
     c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+    if len(offs) > 0:
+        # a list as ffi.at(xs, k): the stub that takes an index after the arguments for each list
+        # (0 for one passed as it is), which it checks as the call starts (cextern)
+        if f.ll + ".at" not in self.externs:
+            self.cextern(f, True)
+            self.line = line
+        c = Ins("call", f.ret, f.ll + ".at")
+        c.a = [v for v in vals if v.t != "None"] + [offs[j] if j in offs else Val("0", "int") for j in range(np) if is_list(f.ptypes[j])]
     if f.noret:
         # it never returns: the code after the call is not reached, and the call's value has the
         # type its context expects (return fail("bad") in a function returning int)
@@ -1184,12 +1251,26 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     self.gencall = f"%t{c.r[0]}" if f.gen else ""  # (a new generator: a loop over it owns it, see owned_gen)
     self.gencallf = f if f.gen else None
     if "?" in f.ret:
-        v = self.typed_empty(Val(f"%t{c.r[0]}", f.ret), want, f)
-        if f.ll in self.building:
+        # f returns an open empty result: its own, or also that of the call cycle's functions
+        # it returns unchanged (qchain), one of which may have its type now: f returns it too
+        chain = self.qchain(f)
+        known = ""
+        for g in chain:
+            if known == "" and g.ret != "" and "?" not in g.ret:
+                v = self.typed_empty(Val(f"%t{c.r[0]}", f.ret), g.ret, f)
+                if v.t != g.ret:
+                    self.err(f"cannot infer what {short(f.name)}() returns: it returns what {short(g.name)}() does, {typestr(g.ret)}; annotate its return type")
+                known = g.ret
+        if known == "":
+            v = self.typed_empty(Val(f"%t{c.r[0]}", f.ret), want, f)
+        if "?" not in v.t:
             # A recursive call may already consume a concrete layout. Later
             # inference can adopt exactly that layout, never a different one.
-            old = self.qused.get(f.ll, v.t)
-            self.qused[f.ll] = v.t if old == v.t else "?"
+            # One that forwards the result still open (return a(n)) consumes none.
+            for g in chain:
+                if g.ll in self.building:
+                    old = self.qused.get(g.ll, v.t)
+                    self.qused[g.ll] = v.t if old == v.t else "?"
         return v
     return Val(f"%t{c.r[0]}", f.ret)
 

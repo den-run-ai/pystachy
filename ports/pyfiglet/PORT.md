@@ -26,7 +26,7 @@ print(figlet_format("Hi", font="small", width=80))
 - A helper decodes UTF-8 input into characters before selecting glyphs. Unsupported glyphs are skipped as upstream does. Only ASCII-drawn fonts are embedded.
 - `setFont()` takes its font as a `str` keyword argument, as upstream reads it; `setFont(font=None)`, on which upstream fails, is a compile-time error.
 - Until the re-baseline (#262), the port took `figlet_format()`'s and `setFont()`'s arguments by position too, and had `direction()` and `justify()` methods; such calls, which upstream rejects, are now compile-time errors.
-- Very large widths can overflow or exhaust native memory; measuring output strings still counts UTF-8 bytes.
+- Very large widths can overflow or exhaust native memory.
 
 <a id="tests"></a>
 
@@ -35,13 +35,13 @@ print(figlet_format("Hi", font="small", width=80))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_pyfiglet_render.py
-./tests/run.sh ./pystachy "jit aot" tests/port_pyfiglet_render.py tests/port_pyfiglet_edges.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_pyfiglet_render.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_pyfiglet_render.py tests/programs/apps/port_pyfiglet_edges.py
 ```
 
 The tests cover upstream banner examples, all three fonts, wrapping/justification, right-to-left output, glyph parsing, Unicode input and errors.
 
-Cases: [port_pyfiglet_render.py](../../tests/port_pyfiglet_render.py), [port_pyfiglet_edges.py](../../tests/port_pyfiglet_edges.py).
+Cases: [port_pyfiglet_render.py](../../tests/programs/apps/port_pyfiglet_render.py), [port_pyfiglet_edges.py](../../tests/programs/apps/port_pyfiglet_edges.py).
 
 <a id="speed"></a>
 

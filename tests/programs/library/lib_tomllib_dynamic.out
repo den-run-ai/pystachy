@@ -1,0 +1,17 @@
+ValueError: parse_float must not return dicts or lists
+ValueError: parse_float must not return dicts or lists
+name:
+  str 'x'
+values:
+    int 1
+    float 2.5
+    str 'three'
+    bool True
+    date datetime.date(1979, 5, 27)
+table:
+  nested:
+    a:
+        b:
+          int 1
+4.5 2
+[exit 0]

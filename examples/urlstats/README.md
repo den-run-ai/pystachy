@@ -45,7 +45,7 @@ caches `urlsplit` results; the port does not.
 
 ## Checks and reproduction
 
-`tests/example_urlstats.py` compares 400 generated requests, malformed lines
+`tests/programs/apps/example_urlstats.py` compares 400 generated requests, malformed lines
 and URL escaping/canonicalization edge cases with CPython.
 
 ```sh

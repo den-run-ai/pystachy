@@ -38,7 +38,7 @@ export PATH="$HOME/.local/bin:$PATH"
 pystachy run demo.py
 ```
 
-Replace `VERSION` with the release tag, such as `v0.1.0-alpha.1`, and use your
+Replace `VERSION` with the release tag, such as `v0.1.0-alpha.2`, and use your
 platform's archive name. Keep the complete extracted directory: it contains the
 runtime and libraries alongside the compiler. The directory can be moved, and its
 launcher resolves symlinks. `manifest.json` records the source commit and file hashes.
@@ -185,7 +185,8 @@ system Python. CI's Python version is pinned in `.python-version`:
 uv venv --python "$(cat .python-version)"
 uv pip install --python .venv/bin/python -r tools/requirements-dev.txt
 tools/setup.sh --verify      # Ubuntu: also install the UBSan runtime for make verify
-make lint PY="$PWD/.venv/bin/python"
+PATH="$PWD/.venv/bin:$PATH" make lint   # ruff and shellcheck come from PATH
+PATH="$PWD/.venv/bin:$PATH" make typecheck  # mypy; no LLVM or compiler bootstrap needed
 make verify PY="$PWD/.venv/bin/python"
 ```
 

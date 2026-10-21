@@ -17,17 +17,17 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 
 | Approach | Modules and useful APIs |
 |---|---|
-| Unchanged CPython sources | `bisect`, `colorsys`, `stat` constants and predicates, path-string helpers from `posixpath` / `genericpath`, `curses.ascii`, `this`, and `struct`, on a port of `_struct` |
-| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `token`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry) and the incremental `html.parser` probe |
+| Unchanged CPython sources | `bisect`, `colorsys`, `stat` constants and predicates, path-string helpers from `posixpath` / `genericpath`, `curses.ascii`, `this`, `struct`, on a port of `_struct`, and `_opcode_metadata` |
+| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `gettext` (its import, `NullTranslations`, `textdomain()` and `bindtextdomain()`), `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `token`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry), `warnings` (filters and `catch_warnings()`; `warn()` shows no location), `opcode` (on a port of `_opcode` and CPython's tables; `dis` does not compile), `weakref` (its `ref`, without the weak containers), `contextlib` (`contextmanager`, `closing`, `nullcontext`, `suppress`), `tomllib` (`loads()`, compiled with [dynamic `Any`](dynamic-any.md) values; no binary-file `load()`) and the incremental `html.parser` probe |
 | Larger port | `re`: CPython's Python parser/compiler plus a matcher adapted from its C engine |
-| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper`, `csv`, `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata` and `itertools` (every function, on generators), which CPython builds in, `abc`, and `types` (`GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
+| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper` / `IncrementalNewlineDecoder` (also as `_io`'s), `csv`, `json` (a bounded native prototype for recursive values), `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`, `itertools` (every function, on generators) and `_opcode`, which CPython builds in, `abc`, and `types` (`MappingProxyType`, a read-only view of a dict, and `GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
 
 The library reference is the authority for each module's limits. For example, `difflib`
-supports matching strings and lists of strings, including `get_grouped_opcodes()`;
-its other diff APIs still have reflection, formatting or callback-type blockers.
-`textwrap` supports its public operations, but widths count UTF-8 bytes.
+supports matching strings and lists of strings, including `get_grouped_opcodes()`,
+`unified_diff()` and `restore()`; `context_diff()`, `ndiff()` and `HtmlDiff` still have
+blockers. `textwrap` supports its public operations with code-point widths and tab expansion.
 
-Selected APIs from `sys`, `os`, `math`, `time`, `errno` and `tempfile` are compiler builtins.
+Selected APIs from `sys`, `os`, `math`, `time`, `errno`, `tempfile` and `select` are compiler builtins.
 `typing`, `collections.abc` (also imported as `_collections_abc`) and `dataclasses` also have
 compiler support; this does not provide
 the full dynamic `collections` package; its shipped subset provides `deque`, `defaultdict`,
@@ -70,14 +70,14 @@ surface and changes. Application examples show these libraries in use; the
 
 ## Remaining limits
 
-Multiple/generic inheritance, arbitrary recursive value types and dynamic `Any` storage,
-`bytearray` and binary files, dynamic reflection and unrestricted argument expansion still
-limit library coverage. Generator functions, resumable generator objects, bytes, bounded
-unions and per-call function/constructor specialization are already supported; their
-remaining restrictions depend on the operation and the concrete types involved.
-CPython extensions and import
-graphs through unavailable modules can block otherwise suitable pure-Python functions.
-The [compatibility reference](language/compatibility.md) lists the detailed restrictions.
+Multiple/generic inheritance, arbitrary recursive value types, dynamic `Any` storage (an opt-in
+[prototype](dynamic-any.md) only), `bytearray` and binary files, dynamic reflection and
+unrestricted argument expansion still limit library coverage. Generator functions, resumable
+generator objects, bytes, bounded unions and per-call function/constructor specialization are
+already supported; their remaining restrictions depend on the operation and the concrete types
+involved. CPython extensions and import graphs through unavailable modules can block otherwise
+suitable pure-Python functions. The [compatibility reference](language/compatibility.md) lists
+the detailed restrictions.
 
 Prioritize a small port when it offers a useful application without requiring a broad dynamic
 feature. Broader inference, generic typing, library coverage and optimizations remain areas of
@@ -93,7 +93,8 @@ have their own [FFI guide](ffi.md).
 The [2026-10-17 compatibility audit](reports/compatibility-2026-10-17.md) records a
 pinned main revision, execution checks, package adaptations, suite boundaries and
 remaining blockers. Treat its measurements as a snapshot, and rerun them after
-compiler or library changes.
+compiler or library changes. Later checkpoints are in the
+[rolling log](reports/compatibility-updates.md).
 
 These tools answer different questions:
 
@@ -102,7 +103,7 @@ These tools answer different questions:
 | `tools/census.py` | Historical source-feature heuristic; inspect candidates, then verify with the current compiler. |
 | `tools/import_sweep.py` | A module's import program compiles; this does not verify its functions. |
 | `tools/import_sweep.py --stubs` | A module's import compiles once the modules built into CPython that it needs exist; this ranks those modules. |
-| `tests/lib_*.py` | Selected compiled APIs match CPython in the differential suite. |
+| `tests/programs/library/lib_*.py` | Selected compiled APIs match CPython in the differential suite. |
 | Upstream tests on an adapted file under CPython | The adaptations preserve the tested Python behavior. |
 
 With CPython's standard-library sources available, run from the repository root:
@@ -113,7 +114,7 @@ python3 tools/import_sweep.py ./pystachy /usr/lib/python3.13 build/import-sweep.
 python3 tools/import_sweep.py --overlay ./pystachy /usr/lib/python3.13 build/cpython-lib
 python3 tools/import_sweep.py --stubs /usr/lib/python3.13 build/import-sweep-stubs.json
 PYSTACHY_PATH=build/cpython-lib ./pystachy run prog.py
-make test FILES="tests/lib_*.py"
+make test FILES="tests/programs/library/lib_*.py"
 ```
 
 Adjust the CPython source path for your installation. The overlay excludes names provided by

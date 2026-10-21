@@ -24,8 +24,8 @@ sets the field delimiter (tab by default); `-s` skips undelimited lines;
 The corresponding long forms `--fields`, `--characters`, `--delimiter` and
 `--only-delimited`, and unique prefixes such as `--compl`, also work.
 
-Errors print usage and exit with status 2. Outside ASCII, `-c` counts bytes
-under Pystachy and Unicode characters under CPython.
+Errors print usage and exit with status 2. `-c` counts Unicode characters under both
+Pystachy and CPython.
 
 <a id="cut-fields-and-characters-of-each-line-with-getopts-option-parsing"></a>
 <a id="speed"></a>
@@ -49,7 +49,7 @@ Peak memory is about 3× CPython’s but remains bounded as input grows.
 
 ## Checks and reproduction
 
-`tests/example_cut.py` compares range parsing, selection, options, generated
+`tests/programs/apps/example_cut.py` compares range parsing, selection, options, generated
 input and errors with CPython.
 
 ```sh

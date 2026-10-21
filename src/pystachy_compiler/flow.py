@@ -1,10 +1,12 @@
 """Flow component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import (
+    bind_line,
     closure_free,
     collect,
     deleted,
     global_assigns,
+    global_line,
     globals_in,
     lambda_def,
     local_names,
@@ -205,6 +207,20 @@ def gen_flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: 
     # one binding per name: a function, a class, an import or a variable
     for nm in gl:
         if nm in self.funcs or nm in self.classes or (nm in self.imports and not self.imports[nm].startswith("__future__")):
+            # (reported where the module binds it as a variable, else where a function of it
+            # assigns it as a global, else at its decorated def)
+            ln = bind_line(top, nm)
+            for f in fns:
+                ga = {}
+                if ln < 0 and not f.pending:
+                    global_assigns(f.node.kids[2].kids, ga)
+                if nm in ga:
+                    ln = global_line(f.node.kids[2].kids, nm)
+                    ln = f.node.line if ln < 0 else ln
+            for st in top:
+                if ln < 0 and st.kind == "def" and st.s == nm:
+                    ln = st.line
+            self.line = ln if ln >= 0 else self.line
             self.err(f"'{nm}' is bound both as a variable and as a function, class or import (not supported)")
     for nm in self.imports if first else {}:
         # (those of every module, which no module's flow changes: once)
@@ -784,7 +800,7 @@ def gen_fl_stmt(self, fl: Flow, n: Node) -> None:
             fl.drop(nm)
             fl.unb.append(nm)  # (a break out of the statement runs the finally block first)
         mark = len(fl.log)
-        bdels: dict[str, bool] = {}
+        bdels = {}
         deleted(n.kids[0].kids, bdels)
         self.fl_stmts(fl, n.kids[0].kids)
         self.fl_stmts(fl, orelse)
@@ -809,7 +825,7 @@ def gen_fl_stmt(self, fl: Flow, n: Node) -> None:
         if hasfin:
             st = fl.since(mark)
             fl.undo(mark)
-            dels: dict[str, bool] = {}
+            dels = {}
             deleted([n], dels)
             for nm in dels:
                 fl.drop(nm)

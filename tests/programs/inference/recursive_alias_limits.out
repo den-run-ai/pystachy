@@ -1,0 +1,7 @@
+cycle equality guarded
+[[...]] True
+[[1], 2] True
+cycle equality guarded
+[[...]] True
+[[1], 2] True
+[exit 0]

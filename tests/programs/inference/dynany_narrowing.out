@@ -1,0 +1,21 @@
+int 2
+bool False
+float 1.25
+str HI2
+list of 2 first 3
+dict keys ['a', 'b']
+tuple (1, 't')
+none
+12 int 24
+None none
+1.5 float 0.75
+'word' str WORD4
+[1, 2, 'x'] list of 3 first 1
+6.5
+3s4
+0 int
+1 str
+2 int
+333 str
+4 int
+[exit 0]

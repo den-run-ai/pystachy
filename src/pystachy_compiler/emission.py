@@ -1,9 +1,10 @@
 """Emission component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import Rejoin, fail
+from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
-from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, UNICODE_AUDIT
+from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
     is_opt,
@@ -18,12 +19,25 @@ from src.pystachy_compiler.utils import (
 
 
 def gen_err(self, msg: str) -> None:
+    if self.xtry != "":
+        # (the call of a comparison method with an Any value, which only @o.x.<class> compiles:
+        # the next pass declines it there, see Gen.xnot)
+        self.newx[self.xtry] = True
+        raise Rejoin()
+    if len(self.newhints) > 0 and not self.final:
+        raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
     if len(self.making) > 0:
         # an error in a template's function: say which call made it compile
         for i in range(len(self.making) - 1, -1, -1):
             msg += ("; " if i < len(self.making) - 1 else " (") + self.making[i]
         msg += ")"
-    fail(optnames(unionnames(msg)) if "opt[" in msg or "union[" in msg else msg, self.line)
+    if "opt[" in msg or "union[" in msg:
+        msg = optnames(unionnames(msg))
+    for name in self.recursive:
+        # (a recursive alias's edge is the alias, as typestr writes it; the message may quote the
+        # program's text, getattr(o, "rec[1]"), which only an alias's own name could match)
+        msg = msg.replace("rec[" + name + "]", short(name))
+    fail(msg, self.line)
 
 def gen_save(self) -> Frame:
     fr = Frame(self.curfn, self.fn, self.blk)
@@ -44,6 +58,7 @@ def gen_save(self) -> Frame:
     fr.ret = self.ret
     fr.retann = self.retann
     fr.nn = self.nn
+    fr.dynints = self.dynints
     fr.selfname = self.selfname
     fr.uflags = self.uflags
     fr.lflag = self.lflag
@@ -86,6 +101,7 @@ def gen_restore(self, fr: Frame) -> None:
     self.ret = fr.ret
     self.retann = fr.retann
     self.nn = fr.nn
+    self.dynints = fr.dynints
     self.selfname = fr.selfname
     self.uflags = fr.uflags
     self.lflag = fr.lflag
@@ -169,6 +185,14 @@ def gen_cbr(self, c: str, a: str, b: str) -> None:
     self.add(i)
     self.term = True
 
+def gen_switch(self, v: Val, cases: list[str], to: list[str], other: str) -> None:
+    # go to to[j] where int v is cases[j], distinct int literals, else to other
+    i = Ins("switch", "", "")
+    i.a = [v] + [Val(c, "int") for c in cases]
+    i.b = [other] + to
+    self.add(i)
+    self.term = True
+
 def gen_ret_(self, v: Val) -> None:
     # return v (of type None: return nothing)
     i = Ins("ret", "", "")
@@ -215,6 +239,11 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     # runtime mode, a function that runtime.py defines is called the same way: it is defined,
     # not declared, with RUNTIME's types, which Gen.function checks.) x: the descriptor of the
     # keys a dict or set op hashes (key_fx), for its U?
+    if not self.rtmode:
+        if name == "pys_chr":
+            name = "pys_text_chr"
+        elif name in TEXT_OPS:
+            name = TEXT_OPS[name]
     if self.unicode_audit and not self.rtmode and name.startswith("pys_str_") and name[8:] in UNICODE_AUDIT:
         self.rt("pys_str_audit", "void", [args[0], f"ptr {self.sconst('str.' + name[8:])}"])
     if self.rtmode and "@" + name == self.curfn.ll:
@@ -330,8 +359,8 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
                             (">", a[3], n1), (">", a[4], self.scalar('sub', [Val(n1, 'int'), Val(a[3], 'int')]))]:
             x = self.num_cmp(p, Val(lhs, "int"), Val(rhs, "int")) if p == "<" else self.int_ucmp(p, Val(lhs, "int"), Val(rhs, "int"))
             self.guard(x.v, "IndexError: compare out of range")
-        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('16', 'int')])}")
-        p1 = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('16', 'int')])}")
+        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('24', 'int')])}")
+        p1 = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('24', 'int')])}")
         return Val(self.scalar_cmp('eq', Val(self.rt('memcmp', 'i32', [f'ptr {p0}', f'ptr {p1}', f'i64 {a[4]}']), '%i32'), Val('0', '%i32')), "bool")
     if name == "find_byte":
         # find_byte(s, c, st, en): 0 <= st <= en <= len(s)
@@ -339,21 +368,21 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
         for lhs, rhs in [(a[3], n0), (a[2], a[3])]:
             self.guard(self.int_ucmp(">", Val(lhs, "int"), Val(rhs, "int")).v, "IndexError: search out of range")
         self.guard(self.int_ucmp('>', Val(a[1], "int"), Val('255', "int")).v, "ValueError: byte must be in range(0, 256)")
-        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('16', 'int')])}")
+        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('24', 'int')])}")
         f = self.rt("memchr", "ptr", [f"ptr {p0}", f"i32 {self.scalar_cast('trunc', Val(a[1], 'int'), '%i32')}", f"i64 {self.scalar('sub', [Val(a[3], 'int'), Val(a[2], 'int')])}"])
         d = self.scalar('sub', [Val(self.scalar_cast('ptrtoint', Val(f, '%ptr'), 'int'), 'int'), Val(self.scalar_cast('ptrtoint', Val(a[0], '%ptr'), 'int'), 'int')])
-        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('16', 'int')]), 'int')), "int")
+        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('24', 'int')]), 'int')), "int")
     if name == "find_sub":
         # find_sub(h, n, st, en): 0 <= st <= en <= len(h)
         n0 = self.mload('int', a[0], 'length.range')
         for lhs, rhs in [(a[3], n0), (a[2], a[3])]:
             self.guard(self.int_ucmp(">", Val(lhs, "int"), Val(rhs, "int")).v, "IndexError: search out of range")
-        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('16', 'int')])}")
-        p1 = self.maddr('%byte', a[1], '16')
+        p0 = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[2], 'int'), Val('24', 'int')])}")
+        p1 = self.maddr('%byte', a[1], '24')
         m = self.mload('int', a[1], 'length.range')
         f = self.rt("memmem", "ptr", [f"ptr {p0}", f"i64 {self.scalar('sub', [Val(a[3], 'int'), Val(a[2], 'int')])}", f"ptr {p1}", f"i64 {m}"])
         d = self.scalar('sub', [Val(self.scalar_cast('ptrtoint', Val(f, '%ptr'), 'int'), 'int'), Val(self.scalar_cast('ptrtoint', Val(a[0], '%ptr'), 'int'), 'int')])
-        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('16', 'int')]), 'int')), "int")
+        return Val(self.select(self.scalar_cmp('eq', Val(f, '%ptr'), Val('null', '%ptr')), Val('-1', 'int'), Val(self.scalar('sub', [Val(d, 'int'), Val('24', 'int')]), 'int')), "int")
     if name == "fail":
         if not a[0].startswith("@s."):
             self.err("_rt.fail() takes the exception's name as a str literal")
@@ -363,8 +392,8 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
     if name == "str_new":
         # a size the allocator cannot serve (negative, or past 2**63 with the header and NUL)
         # is CPython's MemoryError, as in runtime.c
-        self.guard(self.int_ucmp('>', Val(a[0], "int"), Val('9223372036854775790', "int")).v, "MemoryError: ")
-        r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.scalar('add', [Val(a[0], 'int'), Val('17', 'int')], 'nuw nsw')}"])  # zeroed: dict_hash and NUL
+        self.guard(self.int_ucmp('>', Val(a[0], "int"), Val('9223372036854775782', "int")).v, "MemoryError: ")
+        r = self.rt("pys_alloc_atomic", "ptr", [f"i64 {self.scalar('add', [Val(a[0], 'int'), Val('25', 'int')], 'nuw nsw')}"])  # zeroed: dict_hash, chars1 and NUL
         self.mstore('int', a[0], r, 'length')
         return Val(r, "str")
     # the others index a str: an unsigned compare with its length also rejects a negative index
@@ -376,12 +405,12 @@ def gen_primitive(self, name: str, vals: list[Val]) -> Val:
                             (">", a[3], m), (">", a[4], self.scalar('sub', [Val(m, 'int'), Val(a[3], 'int')]))]:
             x = self.num_cmp(p, Val(lhs, "int"), Val(rhs, "int")) if p == "<" else self.int_ucmp(p, Val(lhs, "int"), Val(rhs, "int"))
             self.guard(x.v, "IndexError: copy out of range")
-        dst = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('16', 'int')])}")
-        src = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('16', 'int')])}")
+        dst = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('24', 'int')])}")
+        src = self.maddr('%byte', a[2], f"{self.scalar('add', [Val(a[3], 'int'), Val('24', 'int')])}")
         self.rt("llvm.memmove.p0.p0.i64", "void", [f"ptr {dst}", f"ptr {src}", f"i64 {a[4]}", "i1 false"])
         return Val("null", "None")
     self.guard(self.int_ucmp('>=', Val(a[1], "int"), Val(n, "int")).v, "IndexError: string index out of range")
-    p = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('16', 'int')])}")
+    p = self.maddr('%byte', a[0], f"{self.scalar('add', [Val(a[1], 'int'), Val('24', 'int')])}")
     if name == "byte":
         return Val(self.scalar_cast('zext', Val(self.mload('%byte', p, 'bytes'), '%byte'), 'int'), "int")
     self.guard(self.int_ucmp('>', Val(a[2], "int"), Val('255', "int")).v, "ValueError: byte must be in range(0, 256)")
@@ -415,13 +444,15 @@ def gen_deref(self, v: Val) -> Val:
 
 def gen_reboxes(self, a: str, b: str) -> bool:
     # is tuple type a tuple type b, but for items that are ints, floats or bools where b's may
-    # be None (boxed), and that are as they are otherwise
+    # be None (boxed), items that one of them holds as Any values (boxed, or unboxed with
+    # dyn_unbox's check: dynamic.py), and that are as they are otherwise
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)) or a == b:
         return False
     for i in range(len(targs(a))):
         x = targs(a)[i]
         y = targs(b)[i]
-        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y):
+        dyn = x != y and ((y == "dyn" and self.dyn_boxable(x) == "") or (x == "dyn" and self.dyn_boxable(y) == ""))
+        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn:
             return False
     return True
 
@@ -442,7 +473,9 @@ def gen_converts(self, a: str, b: str) -> bool:
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a
-    # union, also as tuple items
+    # union, also as tuple items, and a value as a dynamic one (dynamic.py)
+    if b == "dyn":
+        return a != "dyn" and self.dyn_boxable(a) == ""
     return (is_sopt(b) and a == unopt(b)) or self.uboxes(a, b) or self.reboxes(a, b)
 
 def gen_convert_in(self, v: Val, t: str, blk: Blk) -> Val:
@@ -494,7 +527,7 @@ def gen_alloca(self, t: str, name: str) -> str:
         # a variable a closure takes: its cell, which the function allocated as it began
         self.ltype[name] = t
         self.lreg[name] = self.cells[name]
-        self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t in self.classes
+        self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t == "dyn" or t in self.classes
         if name in self.uflags:
             self.n += 1
             self.lflag[name] = f"%{name}.def.{self.n}"
@@ -505,7 +538,7 @@ def gen_alloca(self, t: str, name: str) -> str:
         return self.cells[name]
     self.n += 1
     r = f"%{name or 'h'}.{self.n}"
-    self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t in self.classes
+    self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t == "dyn" or t in self.classes
     i = Ins("slot", t, name)
     i.r = [self.n]
     self.fn.slots.append(i)

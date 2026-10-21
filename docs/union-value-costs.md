@@ -10,20 +10,24 @@ specialization and does not promise faster execution.
 
 `tools/union_values_bench.py` builds one million integers and sums them. The two paths
 differ only in the list's element type and the boxed scan's explicit narrowing.
-Both return 499999500000. Seven alternating AOT process pairs on shared x86-64
-Linux with LLVM 18.1.3 produced these median **process CPU times**, excluding
-startup; heap peaks come from separate untimed `PYSTACHY_GC=stats` runs.
+Both return 499999500000. Seven alternating AOT process pairs, pinned to one core of
+a shared x86-64 Linux host (Intel Xeon at 2.10 GHz) with LLVM 18.1.3, at `2438e7e0`,
+produced these median **process CPU times**, excluding startup; heap peaks and
+collections come from separate untimed `PYSTACHY_GC=stats` runs.
 
-| Representation | Construction | Scan | Heap peak |
-|---|---:|---:|---:|
-| `list[int]` | 10.472 ms | 1.205 ms | 17.0 MiB |
-| `list[int \| str]`, all integer payloads | 43.194 ms | 4.071 ms | 33.1 MiB |
+| Representation | Construction | Scan | Heap peak | Collections |
+|---|---:|---:|---:|---:|
+| `list[int]` | 9.197 ms | 0.775 ms | 13.0 MiB | 2 |
+| `list[int \| str]`, all integer payloads | 19.043 ms | 2.392 ms | 33.1 MiB | 0 |
 
-For this workload, boxing costs 4.1 times the construction CPU time and 1.95 times
+For this workload, boxing costs 2.1 times the construction CPU time and 2.5 times
 the peak heap. This measures the existing union representation's cost, not a
 slowdown introduced by adding operations. GC thresholds, list growth and retained
 objects affect the ratios; they are not universal per-value memory multipliers.
-The boxed run collects once; the concrete run does not collect.
+The concrete run collects twice as its pointer-free item array grows. Each box takes
+a 16-byte heap slot (#800). With the 24-byte slots before, the same build took
+32.5 ms to construct the boxed list (against 19.4 ms, in 7 runs alternating the two),
+and it collected once, at the same heap peak.
 
 ```sh
 python3 -m pystachy build tools/union_values_bench.py -o build/union-values

@@ -161,7 +161,9 @@ Results within a benchmark are checked against CPython, not against upstream pyp
 
 <a id="blocked"></a>
 
-## Current runner-only census
+<a id="current-runner-only-census"></a>
+
+## Runner-only census (2026-10-17)
 
 Refreshed on 2026-10-17 against compiler source `d3fbfc6f`, using the CPython-hosted
 compiler, CPython 3.13.16 and the pinned 1.14.0 sdist. Source hashes, port annotations
@@ -180,7 +182,10 @@ by default, so a missing-module error means no shipped implementation was found 
 this census's `PYSTACHY_PATH=ports`; it does not establish that the upstream Python
 module cannot be compiled when explicitly supplied. See the
 [compatibility audit](../../docs/reports/compatibility-2026-10-17-benchmarks.md) for
-harness tests, runtime checks and performance caveats.
+harness tests, runtime checks and performance caveats. The full census has not been rerun
+since; a [2026-10-19 rerun of five sources](../../docs/reports/compatibility-updates.md#useful-json-support-but-not-general-dynamic-python)
+found `json_dumps` and `json_loads` past their missing-`json` errors (now at lines 7 and 50),
+with the three regex results unchanged.
 
 ### Sources without a delivered port
 

@@ -46,7 +46,7 @@ memory because the subset reader materializes the file.
 
 ## Checks and reproduction
 
-`tests/example_csvstat.py` compares reports for 3,000 generated orders and rows
+`tests/programs/apps/example_csvstat.py` compares reports for 3,000 generated orders and rows
 shorter or longer than their header with CPython.
 
 ```sh

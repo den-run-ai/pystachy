@@ -31,7 +31,7 @@ Archive SHA-256: `67f4b9c50da0dedf52af349e7749a80a9057a5031199791b906c3bb3ae8789
 
 ## Validation snapshot
 
-`tests/port_iniconfig_parse.py` and `tests/port_iniconfig_api.py` run the cases of iniconfig's
+`tests/programs/apps/port_iniconfig_parse.py` and `tests/programs/apps/port_iniconfig_api.py` run the cases of iniconfig's
 own `testing/test_iniconfig.py` as programs, and `tests/run.sh` compares what they print with
 CPython's, JIT and AOT. They leave out a default of another type than the result's without
 `convert=` (`get("section", "missing", default=1)`, a result of `str` or `int`, which Pystachy

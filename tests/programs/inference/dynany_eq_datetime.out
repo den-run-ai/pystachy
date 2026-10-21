@@ -1,0 +1,6 @@
+True False True False
+when True False False True False False
+day True False False True False False
+at True False False True False False
+False False True False False False True False
+[exit 0]

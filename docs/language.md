@@ -20,9 +20,11 @@ cover [typing](language/typing.md), [imports and builtins](language/modules.md),
 | Optional values | `T \| None`, `Optional[T]`, `Union[T, None]` |
 | Functions | Typed `Callable[[A, B], R]`, functions, lambdas, closures and bound methods |
 | Generics | Function templates and `Generic` or PEP 695 (`class Box[T]`) classes with inferred or explicit type arguments; module-level type aliases |
+| Recursive values (prototype) | `type JSONValue = None \| bool \| int \| float \| str \| list[JSONValue] \| dict[str, JSONValue]` and smaller closed recursive unions, narrowed with `isinstance()`; see [recursive value aliases](language/typing.md#recursive-value-aliases-prototype) |
 
-Integers are checked 64-bit values. Strings hold UTF-8 bytes; a `bytes` holds its bytes, and its
-items are ints. Dictionary keys and set elements
+Integers are checked 64-bit values. Strings are stored as UTF-8, and their lengths, indexing,
+slicing, iteration and search positions count code points, as CPython's do; a `bytes` holds its
+bytes, and its items are ints. Dictionary keys and set elements
 have a restricted set of types: integers, strings, `bytes`, objects (hashed by identity, or by their
 class's `__hash__` and `__eq__`) and supported tuples (whose items may include booleans).
 Fixed-shape tuples have at most nine items; a variable index gives an item of their union
@@ -31,9 +33,11 @@ type, and a constant index the item's own type. Runtime-length
 `int`, `float`, `bool`, `str`, or one of these with `None`.
 
 Explicit closed scalar unions such as `int | str`, bounded native reference unions,
-and optional unions are supported. `Any` in supported function/method signatures,
+and optional unions are supported. A variable, field or return given values of several
+scalar types holds their union. `Any` in supported function/method signatures,
 constructor parameters and initialized module/local variables uses concrete inference;
-dynamic `Any` values are not supported.
+a module that opts in to the [dynamic `Any` prototype](dynamic-any.md) gets runtime-typed
+`Any` values instead.
 Generic classes can infer type arguments from construction or name them explicitly with
 `Box[int]` annotations and constructor subscriptions; variadic generic classes remain inferred.
 Module-level type aliases (`Row = list[str]`, `type Pair[T] = tuple[T, T]`) name types in
@@ -61,8 +65,11 @@ print(total([1.5, 2.5]), counts["request"])
 The main rules are:
 
 - An unannotated local or parameter can change type at a simple, unconditional assignment
-  in a supported function body. An explicit annotation remains a contract; branches, loops,
-  fields and globals still require consistent types. See [local bindings](language/typing.md#variables-and-empty-containers).
+  in a supported function body. An explicit annotation remains a contract. A local in branches
+  or loops, a field or a global given values of several scalar types (`int`, `float`, `bool`,
+  `str`, `None`) holds their union; other types must be consistent. See
+  [local bindings](language/typing.md#variables-and-empty-containers) and
+  [inferred unions](language/typing.md#inferred-unions).
 - Mutable containers are invariant: a `list[int]` cannot become a `list[int | None]`.
 - Empty lists and dictionaries need an annotation or a use that determines their type.
 - Ordinary functions and methods infer an omitted return annotation from their supported returns,
@@ -70,7 +77,8 @@ The main rules are:
   types, explicit `-> None` stays a contract, and functions without value returns return `None`.
   Constructors and implicit special methods keep their own result contracts.
 - A module-level function or ordinary method with an unannotated parameter is specialized for
-  each call's argument types. Its supported branches and returns must have consistent types.
+  each call's argument types. Returns of several scalar types return their union; other
+  branches and returns must have consistent types.
 - An unannotated constructor can specialize its class from the fields it initializes.
   Objects of different specializations cannot share one variable or container.
 
@@ -162,6 +170,7 @@ program's classes (`__enter__` and `__exit__`), and `lib/contextlib` provides
 | Indexing and slicing | Negative indices; string, list and tuple slices with optional steps; list slice assignment and `del` |
 | Iterator-like expressions | `range`, `enumerate`, `zip`, `reversed` in supported loops and consumers |
 | Range objects | `range()` as a value: iteration, `len`, `in`, indexing and slicing, `start`, `stop` and `step`, `==`, `hash`, `index`, `count`; see [range objects](language/semantics.md#range-objects) |
+| Sentinels | `object()`: a new object at each call, compared by identity (`is`, `==`, `hash`); see [sentinels](language/semantics.md#sentinels) |
 | Generator expressions, `map`, `filter` | Direct arguments of supported consumers such as `sum`, `list`, `tuple`, `sorted`, `any` and `str.join`; a generator expression elsewhere is a generator object |
 | Generators | Functions and methods (including `__iter__`) that `yield` or `yield from`, consumed by `for`, `next()`, `iter()`, `in` and the builtins that take iterables; `send()`, `throw()`, `close()` and the value of a `yield` expression |
 | Iterators | Classes with `__iter__` and `__next__`; `iter()` and `next()` values that share their position |
@@ -180,7 +189,9 @@ keys, division by zero, failed file opens and integer overflow can be caught.
 
 User-defined exception classes can derive from a supported builtin exception or another
 exception class in the program. They can define fields, constructors and string
-representations. `raise`, bare re-raise and `raise ... from ...` are supported.
+representations. `raise`, bare re-raise and `raise ... from ...` are supported. Exception
+classes are values too: stored, compared, tested with `issubclass()` and `isinstance()`,
+called and raised ([exception classes as values](language/semantics.md#exception-classes-as-values)).
 
 Exception attributes such as `e.args`, exception groups and `except*` are not supported.
 Uncaught exceptions print the final error line rather than a complete traceback.
@@ -220,13 +231,14 @@ imports and code deferred until use.
 ## Builtins and library modules
 
 Common numeric, text, container, sorting and file operations are supported. Builtin modules
-provide selected APIs from `sys`, `os`, `math`, `time`, `errno` and `tempfile`.
+provide selected APIs from `sys`, `os`, `math`, `time`, `errno`, `tempfile` and `select`.
 An imported module name does not imply every CPython API is available.
 
 The shipped libraries include unchanged upstream modules, localized ports such as
 `fnmatch`, `textwrap`, `difflib`, `random` and `datetime`, and implementations such as
 `functools.cache` / `lru_cache`, `collections` (`deque`, `defaultdict`, `OrderedDict`,
-`Counter`), `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper` and `csv`. Each has its own supported operations and deviations.
+`Counter`), `io.StringIO`, `io.BytesIO`, `io.TextIOWrapper`, `csv` and a bounded native `json`.
+Each has its own supported operations and deviations.
 
 Use the [builtin API reference](language/modules.md#builtins) and
 [library port notes](../lib/README.md) for current coverage. C calls, calls into an
@@ -237,10 +249,11 @@ separately in [FFI](ffi.md).
 
 ## Unsupported features
 
-The main gaps are multiple inheritance, general object unions and dynamic `Any` values, `async`,
-`bytearray`, `memoryview` and binary files, complex and arbitrary-precision numbers, `match`,
-attribute values looked up by names only the run time knows (their text and `hasattr()` are
-supported), slice objects and unrestricted argument expansion.
+The main gaps are multiple inheritance, general object unions, dynamic `Any` values outside the
+opt-in [prototype](dynamic-any.md), `async`, `bytearray`, `memoryview` and binary files, complex
+and arbitrary-precision numbers, `match`, attribute values looked up by names only the run time
+knows (their text and `hasattr()` are supported), slice objects and unrestricted argument
+expansion.
 
 Supported templates can avoid compiling unused branches containing some of these features.
 An unsupported feature that the program needs produces a compile-time error.
@@ -251,8 +264,8 @@ records the less common cases.
 
 Pystachy checks syntax even in unused functions and dropped import-time branches.
 Diagnostics use `file:line: error:` and aim to match CPython's location and message.
-Some messages are less specific; `match` patterns and parts of newer syntax are not fully
-checked. [Syntax checks](language/semantics.md#syntax-errors) describe those boundaries.
+Some messages are less specific, and parts of newer syntax are not fully checked.
+[Syntax checks](language/semantics.md#syntax-errors) describe those boundaries.
 
 ## Deviations from CPython
 
@@ -261,7 +274,7 @@ The most important differences for supported programs are:
 | Area | Difference |
 |---|---|
 | Integers | Overflow raises instead of growing to arbitrary precision |
-| Strings | Length and indexing count UTF-8 bytes; Unicode support varies by operation |
+| Strings | Code-point length, indexing, slicing and search; Unicode case mapping and some other operations remain incomplete |
 | Containers | Dictionary views are snapshots; string-set order differs from CPython |
 | Exceptions | Uncaught errors omit the full traceback; native resource failures bypass handlers |
 | Recursion | The native stack, rather than `sys.setrecursionlimit()`, limits depth |

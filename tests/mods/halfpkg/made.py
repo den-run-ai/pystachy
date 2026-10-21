@@ -1,5 +1,5 @@
 # A submodule whose code defines a variable, a class, an exception class and a function, then
-# raises: no import of it binds a name (tests/exc_import_failed_names.py)
+# raises: no import of it binds a name (tests/programs/exceptions/exc_import_failed_names.py)
 X = 5
 
 

@@ -1,6 +1,9 @@
-10 True 11 True
-100 True 101 True
-1000 True 1001 True
-10000 True 10001 True
-a<é1>b<é4> ('<é0><é2><é4>', 3)
+10 1 True 2 True
+10 2 True 22 True
+100 1 True 0 True
+100 2 True 202 True
+1000 1 True 0 True
+1000 2 True 2002 True
+10000 1 True 0 True
+10000 2 True 20002 True
 [exit 0]

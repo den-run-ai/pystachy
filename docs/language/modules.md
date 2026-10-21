@@ -23,6 +23,19 @@ Pystachy loads its ports of those C modules, `lib/_pystachy_binascii.py`,
 ([library reference](../../lib/compatibility.md#binascii)), and the
 end of the program runs `atexit`'s callbacks. For `abc`, which CPython imports as it starts, it
 loads `lib/_pystachy_abc.py` ([abc](../../lib/compatibility.md#abc)).
+`_imp` loads `lib/_pystachy_imp.py`, a [capability and one-thread lock
+prototype](../prototypes/imp.md) that does not add runtime module loading.
+`_ast` loads `lib/_pystachy_ast.py`, typed [expression nodes](../prototypes/ast.md) to build,
+inspect and rewrite, without a parser. `_weakref` loads `lib/_pystachy_weakref.py`,
+[collector-backed references](../prototypes/weakref.md) to ordinary class instances, with
+callbacks that run after the collection that finds a referent dead; as in CPython, a reference
+has no attributes of its own, so its class's fields are the module's.
+`import ast` does not work; `import weakref` loads an adapted `lib/weakref.py`, whose `ref` is
+this one ([weakref](../../lib/compatibility.md#_weakref-prototype)).
+`_io` loads `lib/_pystachy__io.py`, which gives `io`'s classes and functions under the C module's
+names ([io](../../lib/compatibility.md#io)); `FileIO` and the other binary-file classes are not there.
+`_opcode` loads `lib/_pystachy_opcode.py`, a port of CPython's C module on CPython 3.13.16's
+opcode tables, under the shipped `opcode` ([opcode](../../lib/compatibility.md#opcode)).
 
 Packages, namespace packages, submodules, relative imports, `import a.b as x`,
 `from ... import`, `from m import *` and circular imports are supported. A Python module's
@@ -46,9 +59,15 @@ An imported module cannot bind `__name__`.
 A module sees its own names and the builtins. Names in the main program do not change
 another module's bindings: defining `len` in the program does not change `bisect`'s `len`.
 An import of a Python module inside a function binds its names in that function only.
-Nested functions resolve enclosing Python-module imports and from-imported functions or
-classes. The import must have surely run before the nested `def`; enclosing imports that
-may remain unbound are rejected. Builtin import aliases are not supported as closure values.
+Where the function reads such a name and the import may not have run (it is in a branch or a
+loop, or comes after the read), the read checks whether it has: if not, it raises CPython's
+`UnboundLocalError`, and a lambda's read, which checks when the lambda runs, its `NameError`
+for a free variable. A nested `def`'s defaults and decorators are read where the `def` runs,
+so they check it there; its annotations do not. Nested functions resolve enclosing
+Python-module imports and from-imported functions or classes. An import that a nested `def`'s
+body reads must have surely run before the `def`; enclosing imports that may remain unbound
+are rejected, also where a generator expression reads them. Builtin import aliases are not
+supported as closure values.
 Builtin-module imports have a [documented scope deviation](../language.md#deviations-from-cpython).
 
 | Import or binding | Behavior |
@@ -59,6 +78,7 @@ Builtin-module imports have a [documented scope deviation](../language.md#deviat
 | `from m import *` | Uses `__all__` when present; otherwise takes public names bound when the module's code ends. `__all__` may be extended with `+=`, `append()` and `extend()`. |
 | A package's own binding, such as `from .parse import parse` | Takes precedence over a submodule with the same name. |
 | A module-level alias, `name = function` | Names that function, including a from-imported function or class, for later from-imports and star imports. |
+| A module-level alias of a class through a module's attribute, `name = m.C` (after `import m`, `import m as n` or `import a.b`, as `a.b.C`) | Names that class, as `name = C` after `from m import C` does, where nothing else binds `name`, for a class whose bases are only `object` or such classes, named directly or through a module's attribute (`class D(m.B)`). The statement still reads `m.C` where it stands, as CPython's assignment does. An exception class's name holds its class object, as before; a class with other bases, or with a decorator (which may bind its name to something else, as `@object.__new__` binds an instance), is not aliased yet. Nor is a class read where the module that `m.C` reads imports the alias's module back, itself or through others: through a package's submodule attribute (`a.b.C` after `import a.b`), as CPython attaches the submodule to its package only once its code has run, or as that module's own alias (`m.C` after `C = K` in `m`), which `m` binds only where that statement runs. Nor is it made where code may read `name` before the statement binds it, where CPython raises `NameError` or `AttributeError`: a statement before it that names `name`, also in a function, class or lambda it defines (which a call could run then), or that imports, at the top level, itself or through other modules, a module whose code imports the alias's module back (in that import cycle, that code runs first and may read `m.name`). As for the other aliases, a read during an import cycle through an import in a function is not caught (#814). |
 | A class rebound to its instance, `class C: ...` directly followed by `C = C()` at module level (a sentinel, as `enum._not_given`) | `C` is the class in that call and the instance from then on, also in functions and other modules; the class keeps its name (`type(C).__name__`, `__qualname__`, reprs and messages). The class may have no base but `object`, and no decorator, `__init__` or `__new__`, so that the call runs none of the program's code, which could read `C` before it is bound. |
 | `from builtins import RuntimeError as error` at module level | Names that builtin exception class, also as `m.error` and through from-imports, in `except` clauses, `raise`, calls and `isinstance()`, as `_thread.error` names `RuntimeError`. |
 | A module-level [type alias](typing.md#type-aliases), `Row = list[str]` or `type Row = ...` | Names that type in the annotations of modules that import it, as `m.Row` or by a from-import or star import. |
@@ -186,7 +206,7 @@ Pystachy. The [library reference](../../lib/README.md) records provenance, avail
 restrictions and tests for each module.
 
 The adapted sources remain valid Python, but that does not imply every upstream API compiles.
-Common limitations include unsupported generator forms, byte-oriented string positions, lack of
+Common limitations include unsupported generator forms, ASCII-only case mapping, lack of
 `bytearray` and binary files, and homogeneous container types. Check the module's reference before choosing an API.
 
 ## Builtins
@@ -260,7 +280,7 @@ arguments. Supported iteration contexts and other restrictions are in the
 
 | Module | Supported surface |
 |---|---|
-| `sys` | `argv`, `warnoptions`, `exit`, `stdin`, `stdout`, `stderr`, `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `setrecursionlimit`, `getrecursionlimit`; the streams are files. `warnoptions` is `[]`, CPython's for a program run without `-W` options (an extension module's is its host's). |
+| `sys` | `argv`, `warnoptions`, `exit`, `stdin`, `stdout`, `stderr`, `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `prefix`, `base_prefix`, `exec_prefix`, `base_exec_prefix` (see [compatibility](compatibility.md)), `setrecursionlimit`, `getrecursionlimit`; the streams are files. `warnoptions` is `[]`, CPython's for a program run without `-W` options (an extension module's is its host's). |
 | `sys.version_info` | CPython 3.13.16's, a tuple of its items, and `major`, `minor`, `micro`, `releaselevel`, `serial` read as `sys.version_info.major` and the like; `str()` shows the tuple. |
 | `sys.float_info` | `max`, `max_exp`, `max_10_exp`, `min`, `min_exp`, `min_10_exp`, `dig`, `mant_dig`, `epsilon`, `radix`, `rounds`, matching CPython for IEEE 754 doubles. `sys.float_info` itself is not a value. |
 | `os` | `system`, `execv`, `getpid`, `getenv`, `remove`, `rmdir`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
@@ -268,12 +288,14 @@ arguments. Supported iteration contexts and other restrictions are in the
 | `time` | `time`, `time_ns`, `monotonic`, `perf_counter`, `process_time`, their `_ns` forms, and `sleep`. |
 | `tempfile` | `mkdtemp`. |
 | `errno` | The errno constants. |
+| `select` | `select()` of three lists of integer descriptors and an optional timeout, a [POSIX prototype](../prototypes/select.md); a file's `fileno()` is its descriptor. |
 | `math` | Functions and constants with CPython's domain and range errors; restrictions below. |
+| `select` | `select()` of `list[int]` file descriptors and an optional positional timeout, with CPython's results and errors; no `poll`, `epoll`, `fileno()` objects or keyword arguments ([prototype](../prototypes/select.md)). |
 | Type and compiler support | `typing`, `collections.abc` (also `_collections_abc`), `dataclasses`, `builtins`, `__future__`; [FFI](../ffi.md) provides `@ffi.extern` and `@ffi.export`. |
 
 `open()` supports text modes, `buffering=`, `newline=` translation and positions for `"+"`
 modes. Files provide `read`, `readline`, `readlines`, `write`, `writelines`, `flush`, `close`,
-iteration, and `closed`, `name` and `mode`. Encoding, buffering and automatic closure differences
+`fileno`, iteration, and `closed`, `name` and `mode`. Encoding, buffering and automatic closure differences
 are documented in [CPython deviations](../language.md#deviations-from-cpython).
 
 `math.fsum()`, `math.prod()` (including `start=`) and `math.dist()` follow CPython's algorithms.

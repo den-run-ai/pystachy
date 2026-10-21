@@ -1,4 +1,4 @@
-# A module that catches the ImportError its own code raises (tests/exc_import_selfcatch.py)
+# A module that catches the ImportError its own code raises (tests/programs/exceptions/exc_import_selfcatch.py)
 try:
     raise ImportError("handled inside")
 except ImportError:

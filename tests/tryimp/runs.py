@@ -1,4 +1,4 @@
-# How many times flaky's code has run (tests/import_try_binding.py)
+# How many times flaky's code has run (tests/programs/imports/import_try_binding.py)
 n = 0
 
 

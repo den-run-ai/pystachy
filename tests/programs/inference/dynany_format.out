@@ -1,0 +1,12 @@
+'Num:' 'Num:' 'Num:' 'Num:>5' 'Num:>5'
+'Num:' 'Num:' 'Num:' 'Num:x' 'Num:x'
+'P!' 'P!' 'P!' 'P!' 'P!'
+TypeError: unsupported format string passed to P.__format__
+'42' '42' '42' '00042' '00042'
+'2.5' '2.5' '2.5' '2.500' '2.500'
+'ab' 'ab' 'ab' '  ab  ' '  ab  '
+'True' 'True' 'True' 'True' 'True'
+'None' 'None' 'None' 'None' 'None'
+"[1, 'a']" "[1, 'a']" "[1, 'a']" "[1, 'a']" "[1, 'a']"
+[Num:>7]       7 Num:x|Num:
+[exit 0]

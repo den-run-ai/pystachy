@@ -13,10 +13,13 @@ disagrees with its entry is an internal error. This tool checks the table itself
   - exceptions: the builtin exception classes the compiler knows (EXCBASES) are this Python's,
     with the same bases; every builtin exception class of this Python is one of them, and so is
     every class a raise statement accepts (EXCEPTIONS);
-  - effects: every letter is one of the compiler's FX, or U?; an entry has R if the function's
+  - effects: every letter is one of the compiler's FX, U? or R?; an entry has R if the function's
     C call graph reaches a raise funnel (RAISES; not counting the allocator's MemoryError: that
-    is A), A if it reaches the allocator's slow path (gc_slow) other than on the way out of a
-    raise (through a raise funnel, or the exception it builds, EXC_MAKERS: R stands for that),
+    is A) other than through rec_deep (DEEP: a descriptor walk past a recursive alias's 512th
+    edge, which those walks alone may call, DEEP_WALKS), and R or R? if it reaches rec_deep (R? is
+    R where the op's descriptor holds such an edge: Gen.opfx), A if it reaches the allocator's slow
+    path (gc_slow) other than on the way out of a raise (through a raise funnel, or the exception
+    it builds, EXC_MAKERS: R stands for that),
     U or U? if it reaches pys_obj_eq, pys_obj_cmp or pys_obj_repr (user code), rL and rD if it
     has a # parameter and reaches eqv, opv or repr (which walk a value of any type by its
     descriptor: the lists and dicts in it), and N if the C function is noreturn;
@@ -28,7 +31,8 @@ disagrees with its entry is an internal error. This tool checks the table itself
     the locals they are stored in, and the parameters of the runtime functions they are passed
     to (from clang -O1, whose SSA form leaves few locals; a C library function other than
     READS_ONLY counts as both, and user code as neither: that is U). Stores to Str.dict_hash
-    alone are excluded: caching a hash changes neither a string's value nor a container;
+    and Str.chars1 alone are excluded: caching a hash or code-point count changes neither a
+    string's value nor a container;
   - it has I if its call graph, outside a raise (R: the funnels, which end the program or
     unwind to a handler) and the allocator (A), reads or writes a mutable static of the runtime
     other than NO_STATE's or calls a C library function other than PURE_C's (I/O, the process,
@@ -74,11 +78,17 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LLVM = os.environ.get("PYSTACHY_LLVM", "")
 TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
-# functions whose call graph reaches user code only through comparing elements, which they never do:
-# set.copy merges into a new set, whose table has none yet (the dict and set operations that hash
-# or compare keys have U?, which an object's key descriptor makes U: Gen.opfx)
+# functions whose call graph reaches user code, and rec_deep, only through comparing elements, which
+# they never do: set.copy merges into a new set, whose table has none yet (the dict and set
+# operations that hash or compare keys have U? and R?, which an object's or a recursive alias's
+# key descriptor makes U or R: Gen.opfx)
 NO_USER = {"set.copy"}
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise"}
+# the depth guard of runtime.c's descriptor walks (repr_depth, eqpair_depth), which counts only the
+# edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?
+DEEP = {"rec_deep"}
+# and those walks, its only callers: R? stands for nothing else
+DEEP_WALKS = {"repr_depth", "eqpair_depth"}
 # what the raise funnels build their exception with: in a program that has a try, a raise allocates
 # its Exc on the way out, which R stands for (a collection may then run before a handler takes it),
 # so these do not make an entry A
@@ -87,6 +97,11 @@ EXC_MAKERS = {"exc_line", "exc_raise", "exc_exit"}
 # pys_unwind_file the unwind action that a landing pad or an uncaught exception runs
 STORES = {"pys_eh_on": "throw_", "pys_unwind_file": "close_with"}
 USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"}
+# a dynamic value's box in a descriptor walk (A): what its DynType holds decides what the walk
+# runs, an object's helpers among them, so that the compiler gives an op whose descriptor holds
+# an A every effect, as it does for an O (Gen.opfx). The walks of other entries do not look into
+# them, as they do not into user code; the dyn.* entries are checked from their own bodies
+DYN_WALKS = {"pys_dyn_eq", "pys_dyn_cmp", "pys_dyn_hash", "dyn_eqitem"}
 # the functions that walk a value by its descriptor (its static type), reading the lists and dicts in it
 BY_DESC = {"eqv", "opv", "repr"}
 # the messages of the subset's implicit checks that fire only on a bug of runtime.py: an index out
@@ -118,11 +133,12 @@ PURE_C = set("""sqrt sin cos tan asin acos atan sinh cosh tanh asinh acosh atanh
 HOOKS = {"std_hook", "in_hook"}
 # and those that only read the memory their pointer arguments point to
 READS_ONLY = set("""memcmp bcmp memchr memmem strlen strchr strstr strcmp strncasecmp strtod __isoc23_strtol
-    __isoc23_strtoll fwrite fputs fprintf snprintf sprintf vsnprintf write""".split()) | HOOKS
+    __isoc23_strtoll fwrite fputs fprintf snprintf sprintf vsnprintf write fileno""".split()) | HOOKS
 # runtime statics that keep no state from one call to the next: the cache of one-character
 # strings (immutable, made on first use), the scratch buffers of round(x, n), and the C locale that
-# float text uses once CPython or a C library shares the process (c_num: the text is the same)
-NO_STATE = {"ch1", "pys_round_n.b", "pys_round_n.o", "c_num"}
+# float text uses once CPython or a C library shares the process (c_num: the text is the same),
+# and weak string-position hints (cleared before GC reuse and on in-place string mutation).
+NO_STATE = {"ch1", "pys_round_n.b", "pys_round_n.o", "c_num", "text_hints"}
 # the parameter types whose memory the letters rL wL, rD wD and rF wF are about, by entry prefix
 # for S (the receiver)
 OWNER = {"list.": "L", "dict.": "D", "set.": "D", "file.": "F"}  # (a set's memory counts as a dict's)
@@ -256,7 +272,7 @@ def params(ll):
     fns = {}
     cur = None
     hook = {}  # (a register loaded from a HOOKS static: the call through it is that hook's)
-    cache_layout = "%struct.Str = type { i64, i64, [0 x i8] }" in ll.split("\n")
+    cache_layout = "%struct.Str = type { i64, i64, i64, [0 x i8] }" in ll.split("\n")
     cache_fields = set()
     for line in ll.split("\n"):
         m = re.match(r"define [^@]*@([\w.]+)\((.*)\)[^(]*\{$", line)
@@ -271,9 +287,9 @@ def params(ll):
             h = re.match(r"\s*(%[\w.]+) = load ptr, ptr @(\w+)\b", line)
             if h and h.group(2) in HOOKS:
                 hook[h.group(1)] = h.group(2)
-            # Only a direct i64 store to Str's second field is an invisible cache write.
+            # Only a direct i64 store to Str's hash or character count is an invisible cache write.
             # Keep its loads, calls, and every other reachable store in the effect analysis.
-            m = re.fullmatch(r"  (%[\w.]+) = getelementptr (?:inbounds )?%struct.Str, ptr %[\w.]+, i64 0, i32 1", line)
+            m = re.fullmatch(r"  (%[\w.]+) = getelementptr (?:inbounds )?%struct.Str, ptr %[\w.]+, i64 0, i32 [12]", line)
             if cache_layout and m:
                 cache_fields.add(m.group(1))
             x = instruction(line.strip())
@@ -360,10 +376,12 @@ def derived(fns, eff, f, p):
 
 # The cache exception must not hide writes to string contents, lengths, or another struct.
 for _struct, _field, _store, _writes in [
-    ("Str", 1, "i64", False), ("Str", 0, "i64", True), ("Str", 2, "i8", True),
-    ("Dict", 1, "i64", True), ("Str", 1, "i32", True),
+    ("Str", 1, "i64", False), ("Str", 2, "i64", False),
+    ("Str", 0, "i64", True), ("Str", 3, "i8", True), ("Str", 3, "i64", True),
+    ("Dict", 1, "i64", True), ("Dict", 2, "i64", True),
+    ("Str", 1, "i32", True), ("Str", 2, "i32", True),
 ]:
-    _probe = f"""%struct.Str = type {{ i64, i64, [0 x i8] }}
+    _probe = f"""%struct.Str = type {{ i64, i64, i64, [0 x i8] }}
 define void @probe(ptr %p) {{
   %field = getelementptr inbounds %struct.{_struct}, ptr %p, i64 0, i32 {_field}
   store {_store} 1, ptr %field
@@ -371,6 +389,8 @@ define void @probe(ptr %p) {{
 }}
 """
     assert params(_probe)["probe"][0][1] is _writes
+    # A stale or unrelated layout must never acquire the cache exception.
+    assert params(_probe.replace("i64, i64, i64,", "i64, i64,"))["probe"][0][1] is True
 
 
 def state(ll):
@@ -399,13 +419,13 @@ def state(ll):
     return used
 
 
-def uses_state(fns, used, f):
-    # does f's call graph, outside the end of the program and the allocator, use state (I)?
+def uses_state(fns, used, f, skip=frozenset()):
+    # does f's call graph, outside the end of the program and the allocator (and skip), use state (I)?
     seen = set()
     todo = [f]
     while todo:
         g = todo.pop()
-        if g in seen or g in END or g in ALLOC or g in USER or g not in fns:
+        if g in seen or g in END or g in ALLOC or g in USER or g in skip or g not in fns:
             continue
         seen.add(g)
         if g not in used:
@@ -615,11 +635,11 @@ def main():
                 if x[1:] in pys.RTSYM:
                     e = rt[pys.RTSYM[x[1:]]]
                     m.update(y for y in e[e.find("|") + 1 : e.rfind("|")].split() if y in ("A", "U", "I"))
-                if reaches(fns, x[1:], {"gc_slow"}, set()):
+                if reaches(fns, x[1:], {"gc_slow"}, DYN_WALKS - {x[1:]}):
                     m.add("A")
-                if reaches(fns, x[1:], USER, set()):
+                if reaches(fns, x[1:], USER | (DYN_WALKS - {x[1:]}), set()):
                     m.add("U")
-                if uses_state(fns, used, x[1:]):
+                if uses_state(fns, used, x[1:], DYN_WALKS - {x[1:]}):
                     m.add("I")
                 via[x[1:]] = {g for g in rpy_ops if reaches(fns, x[1:], {g}, set())}
         letters[f] = m
@@ -643,7 +663,7 @@ def main():
     # given only reads its arguments (runtime mode has no globals)
     # a function that may raise must stay unwindable: an invoke of one that opt marked nounwind
     # (runtime.c built without -fexceptions, say) becomes a call, and the exception escapes the
-    # program's try (tests/rt_raise_unwinds.py)
+    # program's try (tests/programs/runtime/rt_raise_unwinds.py)
     for f in sorted(rpy_ops):
         if "R" in letters[f] and f in nounwind:
             bad.append(f"runtime.py's {f} may raise, but the linked runtime marks it nounwind")
@@ -707,12 +727,24 @@ def main():
     named.update(f"llvm.{op}.with.overflow.i64" for op in pys.CHECKED.values())
     # (not the pys_obj_ functions, which the program defines, nor the names of the compiler's
     # own builtins, __pys_*, of which Gen.builtin calls two by their names without __)
-    named.update(s for s in re.findall(r"(?<!_)pys_[a-z0-9_]*[a-z0-9](?![\w{])", src) if not s.startswith("pys_obj_"))
+    named.update(s for s in re.findall(r"(?<!_)pys_[a-z0-9_]*[a-z0-9](?![\w{])", src) if not s.startswith("pys_obj_") and s not in pys.RTDATA)
     named.update(["pys_repr_enter", "pys_repr_leave"])
     named.update(f"pys_file_{a}" for a in ("closed", "name", "mode"))
     named.add("llvm.frameaddress.p0")
     # (and what the compiler calls by its symbol, such as runtime mode's memchr)
     named.update(re.findall(r"""self\.rt\(\s*["']([\w.]+)["']""", src))
+    # runtime data (RTDATA): each a global of runtime.c, of the LLVM type the program declares it with
+    for s, t in sorted(pys.RTDATA.items()):
+        m = re.search(r"^@" + re.escape(s) + r" = (?:[a-z_]+ )*(?:global|constant) (%[\w.]+|\{[^}]*\}|\[[^\]]*\])", ll, re.M)
+        if m is None:
+            bad.append(f"RTDATA: runtime.c defines no global {s}")
+            continue
+        have = m.group(1)
+        if have.startswith("%"):
+            body = re.search(r"^" + re.escape(have) + r" = type (\{[^}]*\})", ll, re.M)
+            have = body.group(1) if body else have
+        if have.replace(" ", "") != t.replace(" ", ""):
+            bad.append(f"RTDATA: {s} is {t} to the compiler, {have} in runtime.c")
     for s in sorted(named):
         if s not in pys.RTSYM:
             bad.append(f"{s}: compiler source names it, but RUNTIME has no entry for it")
@@ -750,6 +782,10 @@ def main():
                 note.append(f"{k}: {x}, which runtime.py's code does not show")
     # effects of runtime.c's functions: what their call graph shows, runtime.py's functions they
     # call included (with the letters derived above)
+    callers = sorted(n for n, v in fns.items() if v[4] == "define" and DEEP & v[3])
+    if callers != sorted(DEEP_WALKS):
+        bad.append(f"rec_deep has the callers {', '.join(callers) or 'none'}, but R? stands for the depth guards of "
+                   f"{' and '.join(sorted(DEEP_WALKS))} alone")
     pyr = {f for f in letters if "R" in letters[f]}
     pya = {f for f in letters if "A" in letters[f]}
     pyu = {f for f in letters if "U" in letters[f]}
@@ -760,29 +796,32 @@ def main():
         e = rt[k]
         have = e[e.find("|") + 1 : e.rfind("|")].split()
         for x in have:
-            if x not in pys.FX and x != "U?":
+            if x not in pys.FX and x != "U?" and x != "R?":
                 bad.append(f"{k}: {x} is no effect letter (FX)")
         derived = []
-        if reaches(fns, sym, RAISES | pyr, COLLECTS):
+        dw = DYN_WALKS - {sym}
+        if reaches(fns, sym, RAISES | pyr, COLLECTS | DEEP | dw):
             derived.append("R")
+        elif reaches(fns, sym, DEEP, COLLECTS | dw) and k not in NO_USER:
+            derived.append("R?")
         if fns[sym][2]:
             derived.append("N")
-        if reaches(fns, sym, COLLECTS | pya, EXC_MAKERS | RAISES):
+        if reaches(fns, sym, COLLECTS | pya, EXC_MAKERS | RAISES | dw):
             derived.append("A")
-        if reaches(fns, sym, USER | pyu, set()) and k not in NO_USER:
+        if reaches(fns, sym, USER | pyu | dw, set()) and k not in NO_USER:
             derived.append("U")
-        if "#" in pys.rtsig(k)[1:] and reaches(fns, sym, BY_DESC, set()):
+        if "#" in pys.rtsig(k)[1:] and reaches(fns, sym, BY_DESC, dw):
             derived.extend(["rL", "rD"])
-        if uses_state(fns, used, sym):
+        if uses_state(fns, used, sym, dw):
             derived.append("I")
         for i, p in enumerate(pys.rtsig(k)[1:]):
             o = OWNER.get(k[: k.find(".") + 1], "") if p == "S" else "L" if p.startswith("list[") else "D" if p.startswith("dict[") or p.startswith("set[") else "F" if p == "file" else ""
             if o and sym in eff and i < len(eff[sym]) and eff[sym][i] is not None:
                 derived.extend((["r" + o] if eff[sym][i][0] else []) + (["w" + o] if eff[sym][i][1] else []))
         for x in derived:
-            if x not in have and "U" not in have and not (x == "U" and "U?" in have):
+            if x not in have and "U" not in have and not (x == "U" and "U?" in have) and not (x == "R?" and "R" in have):
                 bad.append(f"{k}: {sym} has effect {x} in runtime.c, which RUNTIME leaves out")
-        for x in ("R", "N", "A", "I", "rL", "wL", "rD", "wD", "rF", "wF"):
+        for x in ("R", "R?", "N", "A", "I", "rL", "wL", "rD", "wD", "rF", "wF"):
             if x in have and x not in derived:
                 note.append(f"{k}: {x}, which runtime.c does not show")
     # recursion: an rt op that calls a function of runtime.py goes through a node of its own, so

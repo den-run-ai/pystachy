@@ -81,7 +81,7 @@ changes, since lists are invariant.
 The one exception is an empty list that a template returns while its type is still open,
 which each call's context types (`typed_empty`). It is allocated scanned, as are the copies
 and growth made of it, because one allocation may serve a `list[int]` context and a
-`list[str]` one. `tests/gc_list_kinds.py` covers these cases under
+`list[str]` one. `tests/programs/runtime/gc_list_kinds.py` covers these cases under
 `PYSTACHY_GC_STRESS_PROGRAM=1`, and `make listprobe` checks the allocation kinds directly.
 
 Dict value arrays follow the same rule. The compiler makes a dict whose values are ints,
@@ -89,7 +89,7 @@ floats or bools with `pys_dict_new_atomic`, which sets the dict's `vatomic` word
 array of that dict is then atomic, through growth and `clear()`, as are the value arrays of
 its copies (`dict.copy()`, `dict(d)`) and `list(d.values())`. `dict.fromkeys` and an open
 empty dict that a template returns are made scanned. Key arrays keep their own rule: those
-of int keys are atomic. `tests/gc_dict_values.py` and `make dictprobe` cover dict values.
+of int keys are atomic. `tests/programs/runtime/gc_dict_values.py` and `make dictprobe` cover dict values.
 
 ## Build and cache
 

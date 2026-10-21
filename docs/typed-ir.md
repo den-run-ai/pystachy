@@ -29,7 +29,8 @@ building IR. Every function instruction is a registered typed operation, includi
 arithmetic, internal storage, closure pointers and runtime byte accesses. There is no
 `raw` instruction or instruction-text builder. Module declarations, constants and ABI
 wrappers are serialized by the LLVM backend. This completes instruction coverage for
-the current backend; WebAssembly and dynamic `Any` values remain future work.
+the current backend; WebAssembly remains future work, and dynamic `Any` values are a
+[prototype](dynamic-any.md) that a module opts in to.
 
 <a id="4-passes"></a>
 <a id="41-the-pipeline"></a>
@@ -109,6 +110,13 @@ User callbacks are excluded from this paired-descriptor equality path.
 Native reference unions keep the original object/file pointer in that payload;
 their method calls dispatch by member tag. Narrowing checks the tag before reading
 the concrete payload.
+In a module that opts in to [dynamic `Any`](dynamic-any.md), `dyn` is a pointer to an immutable
+box of a `DynType` pointer and an eight-byte payload, which is a number's bits or a reference's
+own pointer. `dyn.type` reads the `DynType` (type `dyntype`), and `dyn.payload` reads the payload
+as the static type its `s` names, after a test has proved it; neither has a memory effect, since
+a box never changes. A box in a container slot is descriptor `A`, which runtime walks follow
+through the box's own `DynType`, and a boxed function is `Z`; runtime calls whose descriptor
+holds an `A` have every effect, as an `O` does.
 An `Ins` uses only the fields its operation needs:
 
 | Field | Meaning |
@@ -147,7 +155,7 @@ The exact operation table is `IROPS`; its current groups are:
 | Numeric promotion and comparison | `num.cast`, `num.cmp`, `int.ucmp` |
 | Native reference identity and null tests | `ptr.cmp` |
 | Calls | `rt`, `call`, `icall`, `init` |
-| Ordinary control flow | `br`, `cbr`, `ret`, `ret.none`, `unreachable` |
+| Ordinary control flow | `br`, `cbr`, `switch`, `ret`, `ret.none`, `unreachable` |
 | Value joins and checked arithmetic | `phi`, `select`, `ovf` |
 | Guards and errors | `check`, `raise` |
 | Optimized list reads | `list.len`, `list.load` |
@@ -271,8 +279,12 @@ call. `gen.drop` closes and destroys a generator a loop owns and never raises. T
 checks their places, operands and metadata; lowering alone emits the `llvm.coro.*` calls.
 
 Each block ends with one terminator. Branch labels stay within the function, and phi
-predecessors must branch to their join. Checked operations share cold error blocks per
-function, message and handler. The verifier checks these invariants and number bounds.
+predecessors must branch to their join. `switch` branches on an `int` to the label of the
+case it equals, else to its default: its cases are distinct `int` literals, and it reaches a
+block that starts with a phi by one edge at most, since a phi has one entry per block that
+branches there. Comparisons dispatch on class tags with it, which LLVM may lower to a jump
+table. Checked operations share cold error blocks per function, message and handler. The
+verifier checks these invariants and number bounds.
 
 <a id="37-effects"></a>
 <a id="45-effects"></a>
@@ -291,7 +303,7 @@ local effects or dependencies invalidate their caller closure; resetting that cl
 removes obsolete effects from cycles. Unaffected summaries are reused. These are compiler
 analysis facts for already compiled functions, not runtime type profiles or new language
 support. `tools/test_function_summaries.py` compares incremental updates against a full
-fixed-point oracle; `tests/summary_worklist.py` also executes the solver natively.
+fixed-point oracle; `tests/programs/language/summary_worklist.py` also executes the solver natively.
 
 | Letter | Meaning |
 |---|---|
@@ -312,7 +324,9 @@ Effects describe observable behavior for optimization, not an ownership or alias
 `U?` applies only when a static descriptor can contain user classes or custom exceptions;
 a dict or set operation carries its keys' descriptor in `Ins.x` for this, where an object
 hashed by its class (`H<id>`) runs `__hash__` and `__eq__`, and one hashed by identity
-(`P<id>`) runs only the `__repr__` of a `KeyError`.
+(`P<id>`) runs only the `__repr__` of a `KeyError`. `R?` is `R` only when the descriptor
+holds a recursive alias's edge (`R<n>:`): the runtime's descriptor walks count those edges
+and raise `RecursionError` past 512 of them, and no other descriptor nests without bound.
 Allocation-triggered collection can close unreachable files; that unspecified cleanup timing
 is represented by `A`, rather than adding file or I/O effects to every allocation.
 
@@ -327,19 +341,40 @@ Each `RUNTIME` entry has the form `result:params|effects|symbol`. Its type varia
 
 ## Optimizations
 
-`OPTS` lists the available switches. Only `listget` and `dictfuse` are whole-function IR
-passes; the others select frontend or lowering choices.
+`OPTS` lists the available switches. Only `listget`, `dictfuse`, `unionslots` and `nullcheck`
+are whole-function IR passes; the others select frontend or lowering choices.
 
 | Option | Implemented behavior |
 |---|---|
-| `listget` | Replace a sequence loop's list read with an unchecked load when the loop test proves the index valid and no intervening effect can shorten the list |
+| `listget` | Replace a sequence loop's list read with an unchecked load when the loop test proves the index valid and no intervening effect can shorten the list; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
 | `dictfuse` | Reuse a known dictionary entry across membership tests, reads and updates of the same dictionary/key, until a mutation or user-code effect invalidates it |
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
-| `listfast` | Inline a checked fast path for arbitrary `list[int]` reads, retaining the runtime fallback for negative or out-of-range indices |
+| `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
 | `moduleints` | Use stable module-level integer literals directly while preserving required initialization checks |
+| `fieldtbaa` | Give every load and store of an object field a struct-path TBAA tag, so that LLVM knows that two fields at different offsets of one class, or fields of classes neither of which lays out the other, are never the same memory; it keeps such fields in registers across each other's stores ([#701](https://github.com/den-run-ai/pystachy/issues/701)) |
+| `tupleret` | Return a function's new fixed tuple as an LLVM aggregate of its slots to the calls that only read the slots (`a, b = f()`, `f()[0]`, a loop over `f()`), so that neither makes the tuple ([#703](https://github.com/den-run-ai/pystachy/issues/703)) |
+| `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
+| `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+`tupleret` applies to a function whose every `return` returns a tuple display that the return's
+own block makes (`alloc.fixed`) and that nothing but that block's `tuple.store`s reaches: a new
+tuple, which CPython makes too and no code could hold. A call of it whose result only
+`tuple.load`s read takes the slots from the function's by-value body, `@v.<symbol>`, which
+returns `{i64, ...}`; the function's own symbol becomes a wrapper that makes the tuple from them,
+for every other call and use. A function that returns another tuple on some path (`return t`),
+a generator, and a function no such call reaches are lowered as before, which keeps the identity
+of a tuple a function returns again. `tests/programs/containers/tuple_return_values.py` checks behavior, and
+`tests/ir/tuple_return.calls` pins which calls allocate.
+A field's TBAA tag names the class whose struct lays the field out. A derived class's struct
+begins with its base's, flags included, so an inherited field has its base's tag whichever class
+a reference names, and two references to one object agree (the rule of `Gen.disjoint`). The
+tags hang from a root of their own, so LLVM never sets them apart from the accesses of
+`runtime.c` (clang's root) or of `runtime.py` (its own): only the program's field accesses are
+told apart from each other. Tuple slots, union payloads, container slots and runtime calls carry
+no tag. `tests/programs/classes/field_alias.py` checks the orders that a wrong tag would change, and
+`tests/ir/field_tbaa.tbaa` pins the tags (`tools/check_ir.sh`).
 Dictionary fusion is deliberately bounded; it does not promise to combine every equivalent
 lookup. Calls that may mutate containers, joins and exception handlers limit reuse.
 Unpacking a list (`a, b = xs`, `a, *b, c = xs`) reads its items with `list.load` whatever
@@ -375,7 +410,8 @@ see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
 
 ## Validation
 
-- `make check-ir` verifies generated IR and checks IR probes, including calls and effect summaries.
+- `make check-ir` verifies generated IR and checks IR probes, including calls, function attributes
+  and effect summaries.
 - `make check-runtime` checks runtime signature/effect declarations.
 - `make irsame` and `make irsame-py` compare a refactor's IR, diagnostics and exit status with a
   reference compiler. Behavior changes need their own explicit tests, not a byte-identical promise.

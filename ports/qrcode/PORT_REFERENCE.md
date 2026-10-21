@@ -38,7 +38,7 @@ Archive SHA-256: `35c3f2a4172b33136ab9f6b3ef1c00260dd2f66f858f24d88418a015f44650
 
 ## Validation snapshot
 
-`tests/port_qrcode_encode.py` prints three codes with `print_ascii()`: alphanumeric
+`tests/programs/apps/port_qrcode_encode.py` prints three codes with `print_ascii()`: alphanumeric
 (`HELLO WORLD`, level Q, border 1), numeric (20 digits, level L, inverted, no border) and
 UTF-8 bytes (`https://example.com/путь?q=€`, level H, version 4). Then it prints checksums of
 the modules of codes of no data, of mixed data that the optimizer splits into four chunks, of

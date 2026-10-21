@@ -1,0 +1,36 @@
+# make coverage (docs/testing.md#compiler-coverage): the statements and branches of the compiler's own
+# source that its tests run, measured in the CPython-hosted compiler. runtime.c, runtime.py, lib/ and
+# the compiled programs run as native code, which this does not measure (make runtime-coverage
+# measures runtime.c's C code).
+[run]
+branch = True
+# the package wherever it is imported from: tests/cache.sh runs a copy of the compiler in a directory
+# of its own, which [paths] below takes for the source tree
+source_pkgs = src.pystachy_compiler
+# one data file per compiler process, combined afterwards (tools/coverage.sh names it, by
+# COVERAGE_FILE, and gives each suite a context of its own, by coverage run --context)
+parallel = True
+# pystachy run becomes lli through os.execv (driver.py), which ends CPython without its exit
+# handlers: the process's data is saved first
+patch = execv
+relative_files = True
+data_file = build/coverage/data
+
+[paths]
+# tests/cache.sh's copy, recorded relative to the directory each of its processes starts in
+compiler =
+    src/pystachy_compiler/
+    */src/pystachy_compiler/
+
+[report]
+precision = 1
+skip_empty = True
+
+[html]
+directory = build/coverage/html
+title = Pystachy hosted compiler coverage
+# the suites that ran each line (corpus, ffi, cache, unit, ir)
+show_contexts = True
+
+[json]
+output = build/coverage/coverage.json

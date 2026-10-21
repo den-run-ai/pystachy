@@ -3,7 +3,7 @@
 # test_bug_418626, test_big_codesize and test_search_anchor_at_beginning.
 # PSF License v2; see CPYTHON-LICENSE.txt here and THIRD_PARTY_NOTICES.
 # Run by tools/re_upstream_large.py under CPython and compiled JIT/AOT with normal GC.
-# These retain upstream's sizes, outside tests/*.py's collect-every-allocation runs.
+# These retain upstream's sizes, outside tests/programs/*/*.py's collect-every-allocation runs.
 # unittest assertions become assert; the upstream anchor CPUStopwatch bound is omitted
 # (the runner has a generous wall-clock timeout, not a machine-dependent speed gate).
 import re

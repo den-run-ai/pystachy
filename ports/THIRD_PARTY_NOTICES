@@ -26,21 +26,21 @@ They use the Python Software Foundation License Version 2; the exact upstream
 license is included at tests/upstream/ports/cpython/LICENSE. The recorded adaptation
 diffs are derived from the same sources and use the same license.
 
-tests/upstream_fnmatch.py and tests/upstream/regex_large.py adapt selected test
+tests/programs/upstream/upstream_fnmatch.py and tests/upstream/regex_large.py adapt selected test
 methods from that commit's Lib/test/test_fnmatch.py and Lib/test/test_re.py.
 They replace unittest scaffolding with standalone assertions; their headers name
 the methods and any exclusions. They use the same license and copyright notices.
 
-tests/upstream_textwrap_wrap.py, tests/upstream_textwrap_layout.py,
-tests/upstream_textwrap_indent.py and tests/deviations/upstream_textwrap_unicode.py
-adapt that commit's Lib/test/test_textwrap.py. tests/upstream_functools_cache.py
+tests/programs/upstream/upstream_textwrap_wrap.py, tests/programs/upstream/upstream_textwrap_layout.py,
+tests/programs/upstream/upstream_textwrap_indent.py and tests/programs/upstream/upstream_textwrap_unicode.py
+adapt that commit's Lib/test/test_textwrap.py. tests/programs/upstream/upstream_functools_cache.py
 adapts selected methods from Lib/test/test_functools.py, whose source SHA-256 is
-recorded in its header. tests/upstream_contextlib.py and tests/upstream_generators_protocol.py
+recorded in its header. tests/programs/upstream/upstream_contextlib.py and tests/programs/upstream/upstream_generators_protocol.py
 adapt selected cases of that commit's Lib/test/test_contextlib.py and
 Lib/test/test_generators.py. They preserve the upstream assertions for the supported
 cases and disclose adaptations and exclusions; the same PSF license applies.
 
-CPython's sequence regression (tests/upstream_slice_none.py)
+CPython's sequence regression (tests/programs/upstream/upstream_slice_none.py)
 ------------------------------------------------------------
 
 The two list assertions with explicit None bounds are adapted from CPython 3.13.16's
@@ -57,7 +57,7 @@ CPython's HTML parser probe
 lib/html/__init__.py, lib/html/entities.py, lib/html/parser.py and
 lib/_markupbase.py derive from CPython 3.13.16 at commit
 cbc944f4bc59639a444dd971c737788ba2283a91. Their upstream hashes are recorded in
-lib/provenance.md. tests/upstream_html_parser.py adapts 45 complete assertion sets
+lib/provenance.md. tests/programs/upstream/upstream_html_parser.py adapts 45 complete assertion sets
 from Lib/test/test_htmlparser.py at that commit; its header records the source
 hash, adaptations and exclusions. These sources and test assertions use the
 Python Software Foundation License Version 2 and copyright notice below.
@@ -82,6 +82,19 @@ derived from Python and is used under the same license and copyright notice.
 lib/getopt.py is CPython 3.13.16's Lib/getopt.py with the edits lib/README.md lists, each
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
+
+lib/tomllib/ is CPython 3.13.16's Lib/tomllib with the edits lib/compatibility.md lists, each
+marked "Pystachy port:" in the source; it is derived from Python and is used under the same license
+and copyright notice. Its files are Taneli Hukkinen's code ("SPDX-FileCopyrightText: 2021 Taneli
+Hukkinen"), licensed to the PSF under a Contributor Agreement and also available under the MIT
+License, whose text and copyright notice are in ports/tomli_w/LICENSE.
+tests/programs/upstream/upstream_tomllib_data.py holds the TOML documents of CPython 3.13.16's
+Lib/test/test_tomllib/data, and tests/programs/upstream/upstream_tomllib_misc.py adapts the
+assertions of its Lib/test/test_tomllib/test_error.py and test_misc.py, under the same licenses.
+
+lib/_pystachy_mappingproxy.py is Pystachy's own mappingproxy (types.MappingProxyType), written
+after CPython 3.13.16's Objects/descrobject.c, whose behaviour, messages and docstrings it follows;
+it is derived from Python and is used under the same license and copyright notice.
 
 lib/io.py is Pystachy's own StringIO, written after CPython 3.13.16's Modules/_io/stringio.c,
 whose behaviour and messages it follows and whose docstrings it keeps; it is derived from Python
@@ -133,7 +146,7 @@ lib/_pystachy_itertools.py ports CPython 3.13.16's Modules/itertoolsmodule.c to 
 subset as generators that follow the pure-Python equivalents in its Doc/library/itertools.rst,
 with the C module's behaviour, messages and docstrings; it is derived from Python and is used
 under the same license and copyright notice (the documentation's code examples are also
-offered under the Zero-Clause BSD license). tests/upstream_itertools.py adapts selected tests
+offered under the Zero-Clause BSD license). tests/programs/upstream/upstream_itertools.py adapts selected tests
 of that release's Lib/test/test_itertools.py; its header names them, the adaptations and the
 exclusions, and the same license applies.
 
@@ -197,7 +210,7 @@ copyright notice. lib/urllib/__init__.py is CPython's, which is empty.
 
 lib/html/__init__.py, lib/html/entities.py and lib/keyword.py adapt CPython 3.13.16's
 files of the same paths under Lib/, at commit cbc944f4bc59639a444dd971c737788ba2283a91.
-tests/lib_html.py and tests/lib_keyword.py adapt selected methods of Lib/test/test_html.py
+tests/programs/library/lib_html.py and tests/programs/library/lib_keyword.py adapt selected methods of Lib/test/test_html.py
 and Lib/test/test_keyword.py from the same commit; their headers pin the source hashes
 and identify exclusions. These sources and tests use the same PSF license and copyright
 notice. Every source adaptation is marked # Pystachy port:.
@@ -209,7 +222,7 @@ cbc944f4bc59639a444dd971c737788ba2283a91. It is derived from Python and is used 
 license and copyright notice.
 
 lib/shlex.py adapts CPython 3.13.16's Lib/shlex.py at the same commit. Its upstream
-table assertions in tests/lib_shlex_upstream.py derive from Lib/test/test_shlex.py.
+table assertions in tests/programs/library/lib_shlex_upstream.py derive from Lib/test/test_shlex.py.
 lib/collections/__init__.py implements a typed deque and defaultdict after
 Modules/_collectionsmodule.c, including the deque's comparison mutation checks and their
 messages, and an OrderedDict and a Counter after Lib/collections/__init__.py, whose
@@ -312,14 +325,14 @@ authorization of the copyright holder.
 CPython's math tests (tests/)
 ----------------------------
 
-tests/upstream_math_fmod.py and tests/errors/upstream_math_fmod_arity.py adapt
+tests/programs/upstream/upstream_math_fmod.py and tests/errors/upstream/upstream_math_fmod_arity.py adapt
 MathTests.testFmod from CPython 3.13.16's Lib/test/test_math.py, commit
 cbc944f4bc59639a444dd971c737788ba2283a91, under the Python Software Foundation
 License Version 2 reproduced below; tests/upstream/CPYTHON-LICENSE.txt retains CPython's
 full license. unittest and test.support scaffolding is removed;
 the supported calls keep their expected values and exception classes as plain assertions.
 The no-argument TypeError becomes an expected compile-time rejection, as Pystachy's
-language contract specifies for static type errors. tests/math_fmod_ieee.py is Pystachy's
+language contract specifies for static type errors. tests/programs/numbers/math_fmod_ieee.py is Pystachy's
 own extension covering the IEEE nonfinite and signed-zero cross-product.
 
 convertdate (ports/convertdate/)
@@ -481,7 +494,7 @@ tomli-w (ports/tomli_w/)
 ports/tomli_w/__init__.py and _writer.py are tomli-w 1.2.0's modules, edited where
 ports/tomli_w/PORT.md lists (each edit is marked "Pystachy port:"). tomli-w is used under the MIT
 License, whose text and copyright notice ("Copyright (c) 2021 Taneli Hukkinen") are in
-ports/tomli_w/LICENSE. tests/port_tomli_w_values.py and tests/port_tomli_w_tables.py adapt cases
+ports/tomli_w/LICENSE. tests/programs/apps/port_tomli_w_values.py and tests/programs/apps/port_tomli_w_tables.py adapt cases
 of tomli-w's own tests (tests/test_style.py and tests/test_types.py of its repository at tag
 1.2.0), under the same license.
 
@@ -624,13 +637,13 @@ Summary of changes: the compiler reads the format, over the literal's UTF-8 byte
 each field the lookups, conversion and format() call that CPython makes when the call runs, or
 the exception CPython raises where it reaches an error.
 
-CPython's sum regression tests (tests/upstream_sum_start.py)
+CPython's sum regression tests (tests/programs/upstream/upstream_sum_start.py)
 -----------------------------------------------------------
 
-The range/start assertion in tests/upstream_sum_start.py is adapted from
+The range/start assertion in tests/programs/upstream/upstream_sum_start.py is adapted from
 Lib/test/test_builtin.py, BuiltinTest.test_sum, at CPython commit
 cbc944f4bc59639a444dd971c737788ba2283a91. The bool-start rejection fixture in
-tests/errors/sum_bool_start.py records the supported-language disposition of that
+tests/errors/containers/sum_bool_start.py records the supported-language disposition of that
 method's empty-list/bool-start assertion. These adaptations are used under the
 Python Software Foundation License Version 2; the complete CPython license and
 copyright notices are retained in tests/upstream/CPYTHON-LICENSE.txt.
@@ -640,22 +653,22 @@ replace the dynamic bool result expectation with an explicit compiler rejection,
 and add Pystachy regressions for iterator construction, argument evaluation and
 traversal order. Differential output is recorded with CPython 3.13.16.
 
-CPython's language and builtin regression tests (tests/upstream_*.py)
+CPython's language and builtin regression tests (tests/programs/upstream/upstream_*.py)
 ---------------------------------------------------------------------
 
 These differential tests and rejection fixtures adapt test methods of CPython 3.13.16's
 Lib/test/ at commit cbc944f4bc59639a444dd971c737788ba2283a91:
 
-- tests/upstream_scope_*.py and tests/errors/upstream_scope_*.py: Lib/test/test_scope.py
-- tests/upstream_decorators_*.py and tests/errors/upstream_decorators_*.py:
+- tests/programs/upstream/upstream_scope_*.py and tests/errors/upstream/upstream_scope_*.py: Lib/test/test_scope.py
+- tests/programs/upstream/upstream_decorators_*.py and tests/errors/upstream/upstream_decorators_*.py:
   Lib/test/test_decorators.py
-- tests/upstream_extcall_*.py and tests/errors/upstream_extcall_*.py: Lib/test/test_extcall.py
+- tests/programs/upstream/upstream_extcall_*.py and tests/errors/upstream/upstream_extcall_*.py: Lib/test/test_extcall.py
   (with test.support.sortdict() of Lib/test/support/__init__.py)
-- tests/upstream_call_*.py and tests/errors/upstream_call_*.py: Lib/test/test_call.py
-- tests/upstream_iter_*.py: Lib/test/test_iter.py
-- tests/upstream_builtin_*.py and tests/errors/upstream_builtin_*.py: Lib/test/test_builtin.py
-- tests/upstream_enumerate_*.py: Lib/test/test_enumerate.py
-- tests/upstream_dict_*.py: Lib/test/test_dict.py
+- tests/programs/upstream/upstream_call_*.py and tests/errors/upstream/upstream_call_*.py: Lib/test/test_call.py
+- tests/programs/upstream/upstream_iter_*.py: Lib/test/test_iter.py
+- tests/programs/upstream/upstream_builtin_*.py and tests/errors/upstream/upstream_builtin_*.py: Lib/test/test_builtin.py
+- tests/programs/upstream/upstream_enumerate_*.py: Lib/test/test_enumerate.py
+- tests/programs/upstream/upstream_dict_*.py: Lib/test/test_dict.py
 
 They are used under the Python Software Foundation License Version 2 reproduced above;
 tests/upstream/CPYTHON-LICENSE.txt retains CPython's full license. Each file's header names the
@@ -672,10 +685,10 @@ back, and leave out the cases that use what the subset does not support; where a
 changes more (an attribute set on a function becomes a field of an object that holds it), the
 file's header says so. Differential output is recorded with CPython 3.13.16.
 
-CPython's import tests (tests/upstream_import_failing.py)
+CPython's import tests (tests/programs/upstream/upstream_import_failing.py)
 ---------------------------------------------------------
 
-tests/upstream_import_failing.py adapts ImportTests.test_failing_import_sticks and
+tests/programs/upstream/upstream_import_failing.py adapts ImportTests.test_failing_import_sticks and
 ImportTracebackTests.test_exec_failure, test_exec_failure_nested, test_broken_submodule,
 test_broken_from, test_broken_parent and test_broken_parent_from from CPython 3.13.16's
 Lib/test/test_import/__init__.py, at commit cbc944f4bc59639a444dd971c737788ba2283a91;
@@ -688,14 +701,14 @@ names of their own; the sys.modules and traceback assertions are left out, as Py
 neither; each test also checks that the name its failed import would bind stays unbound.
 Differential output is recorded with CPython 3.13.16.
 
-CPython's re tests (tests/upstream_re_*.py, tools/re_fuzz.py)
+CPython's re tests (tests/programs/upstream/upstream_re_*.py, tools/re_fuzz.py)
 -------------------------------------------------------------
 
-tests/upstream_re_tests.py and tests/upstream_re_tests_perl.py hold the benchmarks and tests
+tests/programs/upstream/upstream_re_tests.py and tests/programs/upstream/upstream_re_tests_perl.py hold the benchmarks and tests
 tables of CPython 3.13.16's Lib/test/re_tests.py, with their comments, and adapt
 ExternalTests.test_re_tests and test_re_benchmarks of Lib/test/test_re.py, which run them;
-tests/upstream_re_errors.py, tests/upstream_re_match.py, tests/upstream_re_sub.py and
-tests/upstream_re_flags.py adapt cases of Lib/test/test_re.py's ReTests and PatternReprTests, and
+tests/programs/upstream/upstream_re_errors.py, tests/programs/upstream/upstream_re_match.py, tests/programs/upstream/upstream_re_sub.py and
+tests/programs/upstream/upstream_re_flags.py adapt cases of Lib/test/test_re.py's ReTests and PatternReprTests, and
 tools/re_fuzz.py runs some of them at their full size; all at commit
 cbc944f4bc59639a444dd971c737788ba2283a91. They are used under the Python Software Foundation
 License Version 2; the complete CPython license and copyright notices are retained in
@@ -705,12 +718,12 @@ Summary of changes: the unittest scaffolding becomes tables of the upstream argu
 expected values, and each case prints its result (the recorded output is CPython's re's); the
 cases each file's header lists are left out, and some run on smaller inputs.
 
-CPython's set tests (tests/upstream_set_*.py)
+CPython's set tests (tests/programs/upstream/upstream_set_*.py)
 ---------------------------------------------
 
-tests/upstream_set_joint_ops.py adapts TestJointOps (run for set and frozenset, as TestSet and
+tests/programs/upstream/upstream_set_joint_ops.py adapts TestJointOps (run for set and frozenset, as TestSet and
 TestFrozenSet run it) and TestSet's and TestFrozenSet's own tests, and
-tests/upstream_set_basic_ops.py adapts TestBasicOps (its Empty, Singleton, Tuple and String
+tests/programs/upstream/upstream_set_basic_ops.py adapts TestBasicOps (its Empty, Singleton, Tuple and String
 cases), TestExceptionPropagation.test_changingSizeWhileIterating, TestBinaryOps, TestUpdateOps,
 TestMutate, TestSubsets, TestOnlySetsInBinaryOps and TestIdentities, all from CPython 3.13.16's
 Lib/test/test_set.py at commit cbc944f4bc59639a444dd971c737788ba2283a91. They are used under the
@@ -722,27 +735,27 @@ self.thetype and the loops over set, frozenset, dict.fromkeys, str, list and tup
 templates; generator functions become generator expressions; the cases each file's header lists
 are left out, with the reason. Differential output is recorded with CPython 3.13.16.
 
-CPython's numeric, tuple and exception tests (tests/upstream_*.py)
+CPython's numeric, tuple and exception tests (tests/programs/upstream/upstream_*.py)
 ------------------------------------------------------------------
 
 These differential tests and rejection fixtures adapt test methods of CPython 3.13.16's
 Lib/test/ at commit cbc944f4bc59639a444dd971c737788ba2283a91:
 
-- tests/upstream_int_*.py and tests/errors/upstream_int_*.py: Lib/test/test_int.py and
+- tests/programs/upstream/upstream_int_*.py and tests/errors/upstream/upstream_int_*.py: Lib/test/test_int.py and
   Lib/test/test_long.py (with the underscore literals of Lib/test/support/numbers.py)
-- tests/upstream_float_*.py: Lib/test/test_float.py (with Lib/test/mathdata/
+- tests/programs/upstream/upstream_float_*.py: Lib/test/test_float.py (with Lib/test/mathdata/
   formatfloat_testcases.txt and floating_points.txt, and Lib/test/support/numbers.py's
   underscore literals)
-- tests/upstream_math_*.py (but upstream_math_fmod.py, under CPython's math tests above) and
-  tests/errors/upstream_math_prod_*.py: Lib/test/test_math.py (with
+- tests/programs/upstream/upstream_math_*.py (but upstream_math_fmod.py, under CPython's math tests above) and
+  tests/errors/upstream/upstream_math_prod_*.py: Lib/test/test_math.py (with
   Lib/test/mathdata/math_testcases.txt, the real cases of cmath_testcases.txt, and the doctest
   ieee754.txt)
-- tests/upstream_bool.py and tests/errors/upstream_bool_*.py: Lib/test/test_bool.py
-- tests/upstream_tuple_seq.py and tests/errors/upstream_tuple_*.py: Lib/test/test_tuple.py and
+- tests/programs/upstream/upstream_bool.py and tests/errors/upstream/upstream_bool_*.py: Lib/test/test_bool.py
+- tests/programs/upstream/upstream_tuple_seq.py and tests/errors/upstream/upstream_tuple_*.py: Lib/test/test_tuple.py and
   the methods of Lib/test/seq_tests.py that its TupleTest runs
-- tests/upstream_exceptions_*.py and tests/errors/upstream_exceptions_*.py:
+- tests/programs/upstream/upstream_exceptions_*.py and tests/errors/upstream/upstream_exceptions_*.py:
   Lib/test/test_exceptions.py
-- tests/upstream_baseexception.py and tests/errors/upstream_baseexception_*.py:
+- tests/programs/upstream/upstream_baseexception.py and tests/errors/upstream/upstream_baseexception_*.py:
   Lib/test/test_baseexception.py (with Lib/test/exception_hierarchy.txt)
 
 They are used under the Python Software Foundation License Version 2 reproduced above;
@@ -762,10 +775,10 @@ errors that Pystachy reports at compile time with CPython's message (among them 
 errors that upstream checks with compile()), and leave out the cases that use what the subset
 does not support. Differential output is recorded with CPython 3.13.16.
 
-NumPy's array tests (tests/example_ndarray_upstream.py)
+NumPy's array tests (tests/programs/apps/example_ndarray_upstream.py)
 -------------------------------------------------------
 
-tests/example_ndarray_upstream.py adapts test functions and methods of NumPy 2.5.3, from the
+tests/programs/apps/example_ndarray_upstream.py adapts test functions and methods of NumPy 2.5.3, from the
 files of the numpy 2.5.3 wheel: numpy/lib/tests/test_stride_tricks.py and
 numpy/_core/tests/test_multiarray.py, test_ufunc.py, test_umath.py, test_indexerrors.py,
 test_indexing.py and test_regression.py. Its header records each file's SHA-256 and names the

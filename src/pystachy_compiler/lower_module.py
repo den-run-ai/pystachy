@@ -5,11 +5,66 @@ object dispatch and process/extension entry points. They do not create IR operat
 """
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
-from src.pystachy_compiler.ir import Data, FnInfo
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, RANGEC, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_LEN
+from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RTDATA, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
+
+# pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
+# constructor, which the driver adds to the program's module, that hands the library the program's
+# object callbacks (gen_dispatch) before @main
+OBJHOOKS = """declare void @pys_obj_hooks(ptr, ptr, ptr)
+define internal void @pys.obj.hooks() {
+  call void @pys_obj_hooks(ptr @pys_obj_eq, ptr @pys_obj_cmp, ptr @pys_obj_repr)
+  ret void
+}
+@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 0, ptr @pys.obj.hooks, ptr null }]
+"""
+
+
+def struct_types(ci: ClassInfo) -> list[str]:
+    # the LLVM types of the members of class ci's struct, %C.<name>: its fields', then its "is
+    # assigned" flags
+    return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)]
+
+
+def gen_tbaa_nodes(self) -> list[str]:
+    # fieldtbaa's metadata, for the access tags that lowering numbered (Gen.field_tag): a root of
+    # its own, a scalar type of each LLVM type of the members of the structs tagged, and the struct
+    # type of each class that lays out a field tagged, with all of its struct's members at their
+    # offsets (each aligned to its size, as the targets' data layouts do), after the tags
+    if len(self.tbaa) == 0:
+        return []
+    root = TBAA_FIELDS + len(self.tbaa)
+    md = [f'!{root} = !{{!"pystachy fields"}}']
+    scalar: dict[str, int] = {}  # LLVM type -> its node
+    node: dict[str, int] = {}  # class -> its struct's node, numbered after the scalar types
+    tys: dict[str, list[str]] = {}  # and its members' types
+    offs: dict[str, list[int]] = {}  # and offsets
+    for key in self.tbaa:
+        c = key[: key.rfind(" ")]
+        if c not in node:
+            node[c] = len(node)
+            tys[c] = struct_types(self.classes[c])
+            offs[c] = []
+            at = 0
+            for t in tys[c]:
+                if t not in scalar:
+                    scalar[t] = root + 1 + len(scalar)
+                    md.append(f'!{scalar[t]} = !{{!"{TBAA_NAMES[t]}", !{root}, i64 0}}')
+                at = (at + TBAA_SIZES[t] - 1) // TBAA_SIZES[t] * TBAA_SIZES[t]
+                offs[c].append(at)
+                at += TBAA_SIZES[t]
+    first = root + 1 + len(scalar)
+    for c in node:
+        ms = ", ".join([f"!{scalar[tys[c][j]]}, i64 {offs[c][j]}" for j in range(len(tys[c]))])
+        md.append(f'!{first + node[c]} = !{{!"{c}", {ms}}}')
+    for key in self.tbaa:
+        c = key[: key.rfind(" ")]
+        k = int(key[key.rfind(" ") + 1 :])
+        md.append(f"!{self.tbaa[key]} = !{{!{first + node[c]}, !{scalar[tys[c][k]]}, i64 {offs[c][k]}}}")
+    return md
 
 
 def gen_extern_decl(self, f: FnInfo) -> None:
@@ -19,15 +74,24 @@ def gen_extern_decl(self, f: FnInfo) -> None:
 def lower_data(d: Data) -> str:
     if d.kind == "string":
         n = len(d.text) + 1
-        # Bytes are immutable; runtime.c's Str dictionary hash cache is writable.
-        return f'{d.name} = private unnamed_addr global {{i64, i64, [{n} x i8]}} {{i64 {n - 1}, i64 0, [{n} x i8] c"{llstr(d.text)}\\00"}}, align 8'
+        # The frontend stores one character per UTF-8 byte. Seed the code-point count
+        # for ASCII literals; runtime.c computes it lazily for all other text.
+        chars1 = n
+        for c in d.text:
+            if ord(c) >= 128:
+                chars1 = 0
+                break
+        # Bytes are immutable; runtime.c's Str hash and character-count caches are writable.
+        return f'{d.name} = private unnamed_addr global {{i64, i64, i64, [{n} x i8]}} {{i64 {n - 1}, i64 0, i64 {chars1}, [{n} x i8] c"{llstr(d.text)}\\00"}}, align 8'
     if d.kind == "tuple":
         # Fixed tuples use one i64 slot per item. These literals refer only to static strings,
         # so no heap allocation or collector root is needed; keep their address significant.
         slots = ["i64 ptrtoint (ptr " + v.v + " to i64)" if v.t == "str" else "i64 " + v.v for v in d.items]
         return f"{d.name} = private constant [{len(slots)} x i64] [{', '.join(slots)}], align 8"
     if d.kind == "callable" or d.kind == "exception":
-        return f"{d.name} = private constant {{{', '.join(['ptr' for _ in d.refs])}}} {{{', '.join(['ptr ' + x for x in d.refs])}}}"
+        # (an ExcClass whose displayed name the program assigns, d.text, is written: exc_set_module)
+        how = "global" if d.text == "global" else "constant"
+        return f"{d.name} = private {how} {{{', '.join(['ptr' for _ in d.refs])}}} {{{', '.join(['ptr ' + x for x in d.refs])}}}"
     if d.kind == "classrec":
         # a class's reflection record (reflection.py): name, qualified name and module, flags,
         # the sorted name table and the field table with their lengths (null and 0 until a site
@@ -37,12 +101,22 @@ def lower_data(d: Data) -> str:
                 f"i64 {d.items[0].v}, i64 {d.items[1].v}, ptr {r[3]}, i64 {d.items[2].v}, ptr {r[4]}}}, align 8")
     if d.kind == "classnames":
         # the names a class's objects answer to, sorted by their bytes, each with its kind
-        es = ["{ptr, i64} {ptr " + d.refs[j] + ", i64 " + d.items[j].v + "}" for j in range(len(d.refs))]
+        es: list[str] = ["{ptr, i64} {ptr " + d.refs[j] + ", i64 " + d.items[j].v + "}" for j in range(len(d.refs))]
         return f"{d.name} = internal constant [{len(es)} x {{ptr, i64}}] [{', '.join(es)}], align 8"
+    if d.kind == "dyntype":
+        # a class's DynType (dynamic.py): kind, descriptor, name, O<id>, base's DynType, flags, as
+        # runtime.c's struct DynType lays them out. Internal, and its address is the class's
+        # identity to a dynamic value's box: never merged
+        r = d.refs
+        return (f"{d.name} = internal constant {DYNTYPE_LL} {{i64 {d.items[0].v}, ptr {r[0]}, ptr {r[1]}, "
+                f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}}}, align 8")
+    if d.kind == "dynbox":
+        # a def's dynamic value (dynamic.py): its DynType and, as its payload, that DynType's address
+        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 ptrtoint (ptr {d.refs[0]} to i64)}}, align 8"
     if d.kind == "classfields":
         # the fields of an object's __dict__ in their order: name, type descriptor, byte offset in
         # the class's layout (d.text) and that of its "is assigned" flag (-1: always assigned)
-        es: list[str] = []
+        es = []
         for j in range(len(d.refs) // 2):
             off = f"ptrtoint (ptr getelementptr ({d.text}, ptr null, i32 0, i32 {d.items[2 * j].v}) to i64)"
             fl = d.items[2 * j + 1].v
@@ -53,7 +127,7 @@ def lower_data(d: Data) -> str:
     return ""
 
 
-def gen_cextern(self, f: FnInfo) -> None:
+def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
     # @ffi.extern: the program calls @f.<name> as any function, an internal stub that checks and
     # narrows C integers (OverflowError), passes a str as its bytes (const char *, NUL-terminated;
     # ValueError for a NUL in it) and a list[float] or list[c_int64] as its items (double *,
@@ -62,7 +136,10 @@ def gen_cextern(self, f: FnInfo) -> None:
     # meanwhile), and copies a returned char * (NULL: None, or ValueError). It calls
     # the C function through @ffi.fp.<f.ll>, which the def statement set as ctypes.CDLL would find it, in
     # the library's own handle (pys_c_bind: see stmt's defaults); only a GLUE module (lib/pyobj.py)
-    # calls its functions directly, libpython's ("python") and those of the C glue linked in ("")
+    # calls its functions directly, libpython's ("python") and those of the C glue linked in ("").
+    # With at, @f.<name>.at, which a call that passes a list as ffi.at(xs, k) calls (Gen.call_fn):
+    # after the arguments, an index for each list, checked as the call starts (pys_c_at), from which
+    # C gets the list's items
     self.line = f.node.line
     sym = f.csym[1:]
     direct = f.mod in GLUE
@@ -75,6 +152,7 @@ def gen_cextern(self, f: FnInfo) -> None:
     args: list[str] = []
     code: list[str] = []
     cts: list[str] = []
+    offs: list[str] = []
     for j in range(len(f.ptypes)):
         t = f.ptypes[j]
         ps.append(f"{lt(t)} %a{j}")
@@ -83,7 +161,12 @@ def gen_cextern(self, f: FnInfo) -> None:
             if c == "str":
                 self.runtime("pys_c_str")
                 code.append(f"  call void @pys_c_str(ptr %a{j})")
-            code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 16")  # (the bytes, after the length and dict hash: runtime.c's Str)
+            code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 24")  # (bytes after Str's byte length, hash and character-count cache)
+            cts.append("ptr")
+        elif (c == "list[float]" or c == "list[c_int64]") and at:
+            self.runtime("pys_c_at")
+            code.append(f"  %p{j} = call ptr @pys_c_at(ptr %a{j}, i64 %o{j})")
+            offs.append(f"i64 %o{j}")
             cts.append("ptr")
         elif c == "list[float]" or c == "list[c_int64]":
             code.append(f"  %l{j} = getelementptr inbounds {{i64, i64, ptr}}, ptr %a{j}, i64 0, i32 2")  # (List.a: runtime.c's {len, cap, a})
@@ -128,6 +211,9 @@ def gen_cextern(self, f: FnInfo) -> None:
             self.runtime("pys_c_check")
             code.append("  %y = call i64 @pys_c_check(i64 %x, i64 3)")
         code.append(f"  ret i64 {'%y' if k == '2' else '%x'}")
+    if at:
+        self.externs[f.ll + ".at"] = f"define internal {lt(f.ret)} {f.ll}.at({', '.join(ps + offs)}) {{\n" + "\n".join(code) + "\n}"
+        return  # (the C function's declaration and address are the stub's: see below)
     decl = f"declare {rr} {f.csym}({', '.join(cts)})"
     tys = [r.split(" ")[0]] + [x.split(" ")[0] for x in cts]
     if sym in RTSYM:
@@ -234,16 +320,20 @@ def gen_pyext(self) -> list[str]:
 
 def gen_dispatch(self, op: str) -> None:
     # pys_obj_<op>(class id, [op code,] a, b), called by the runtime for "O<id>" descriptors;
-    # pys_obj_eq(-1 - id, a, 0) is the hash of a, for "H<id>" (hcls: hash_helper). Only a
-    # class that a descriptor compares (ocmp) has @o.eq and @o.cmp
+    # pys_obj_eq(-1 - id, a, 0) is the hash of a, for "H<id>" (hcls: hash_helper),
+    # pys_obj_cmp(-1 - id, 0, a, b) is a != b, for a dynamic value's (one: pys_dyn_ne), and
+    # pys_obj_cmp(-1 - id, op, a, b), op 1 to 6, a's comparison with b, a dynamic value of another
+    # type (xobj: dyn_xhelper). Only a class that a descriptor compares (ocmp) has @o.eq and @o.cmp
     r = "ptr" if op == "repr" else "i64"
     hs = [c for c in self.hcls] if op == "eq" else []
+    ns = [c for c in self.one] + [c for c in self.xobj if c not in self.one] if op == "cmp" else []
     cs = [c for c in self.ocls if op == "repr" or c in self.ocmp]
     self.out.append(f"define {r} @pys_obj_{op}(i64 %c, {'i64 %op, ' if op == 'cmp' else ''}i64 %a, i64 %b) {{")
     self.out.append("entry:")
     self.out.append("  %pa = inttoptr i64 %a to ptr")
     self.out.append("  %pb = inttoptr i64 %b to ptr")
     cases = [f"i64 {self.ocls[c]}, label %k{self.ocls[c]}" for c in cs] + [f"i64 {-1 - self.ocls[c]}, label %h{self.ocls[c]}" for c in hs]
+    cases += [f"i64 {-1 - self.ocls[c]}, label %n{self.ocls[c]}" for c in ns]
     self.out.append(f"  switch i64 %c, label %none [{' '.join(cases)}]")
     for c in cs:
         i = self.ocls[c]
@@ -260,6 +350,22 @@ def gen_dispatch(self, op: str) -> None:
         self.out.append(f"h{i}:")
         self.out.append(f"  %x{i} = call i64 @o.hash.{c}(ptr %pa)")
         self.out.append(f"  ret i64 %x{i}")
+    for c in ns:
+        i = self.ocls[c]
+        self.out.append(f"n{i}:")
+        if c in self.one and c in self.xobj:
+            self.out.append(f"  %q{i} = icmp eq i64 %op, 0")
+            self.out.append(f"  br i1 %q{i}, label %ne{i}, label %xc{i}")
+            self.out.append(f"ne{i}:")
+        if c in self.one:
+            self.out.append(f"  %y{i} = call i1 @o.ne.{c}(ptr %pa, ptr %pb)")
+            self.out.append(f"  %w{i} = zext i1 %y{i} to i64")
+            self.out.append(f"  ret i64 %w{i}")
+        if c in self.one and c in self.xobj:
+            self.out.append(f"xc{i}:")
+        if c in self.xobj:
+            self.out.append(f"  %u{i} = call i64 @o.x.{c}(i64 %op, ptr %pa, ptr %pb)")
+            self.out.append(f"  ret i64 %u{i}")
     self.out.append("none:")
     self.out.append("  unreachable")
     self.out.append("}")
@@ -314,10 +420,9 @@ def gen_lower_module(self) -> str:
             continue  # (a class template's objects are its specializations')
         if ci.name == RANGEC and not self.rangeused:
             continue  # (lib's class of range objects, which a program that may make one loads: of no code here)
-        ts = [lt(ci.ftypes[x]) for x in ci.fields]
-        for _ in range(ci.nflag):
-            ts.append("i1")
-        hdr.append(f"%C.{ci.name} = type {{{', '.join(ts)}}}")
+        if ci.name == OBJECTC and not self.objectused:
+            continue  # (and of object()'s objects)
+        hdr.append(f"%C.{ci.name} = type {{{', '.join(struct_types(ci))}}}")
     for g in self.globs:
         hdr.append(f"{g.v} = internal global {lt(g.t)} zeroinitializer")
     roots = ", ".join([f"ptr {g}" for g in self.gcroots])
@@ -326,9 +431,12 @@ def gen_lower_module(self) -> str:
     for d in self.consts:
         hdr.append(lower_data(d))
     hdr.extend(self.out)
+    hdr.extend(self.tbaa_nodes())  # (what the functions' loads and stores of fields name)
     for k in self.rtfns:
         if not (self.rtmode and self.rtfns[k].sym in self.rtdefs):
             hdr.append(runtime_decl(k))  # (runtime mode: what runtime.py defines is not declared)
+    for sym in self.rtdatas:
+        hdr.append(f"@{sym} = external constant {RTDATA[sym]}")  # (the runtime's data that dynamic values use)
     for x in self.externs.values():
         if x != "":
             hdr.append(x)

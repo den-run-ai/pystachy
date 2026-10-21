@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins
-from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, RAWR, RAWW, RUNTIME
+from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
 
 
@@ -154,6 +154,23 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if t == "" or t == "None" or t.startswith("*") or t == "#" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32", "%slot"]) or (t in ["T", "K", "V", "S"] and t not in self.classes):
                     self.bad_ir(fn, b, "select needs a native or machine scalar value type")
 
+            if i.op == "switch":
+                # (an int, then its cases, distinct int literals, with the default's label and then
+                # one for each case; a block that starts with a phi it reaches by one edge at
+                # most, as a phi has one entry for each block that branches there)
+                if len(i.a) < 2 or len(i.b) != len(i.a) or i.a[0].t != "int" or i.t != "" or i.s != "" or i.x != "" or i.k != 0:
+                    self.bad_ir(fn, b, "switch needs an int, its cases, and the default's label and theirs")
+                cases: dict[str, bool] = {}
+                for cv in i.a[1:]:
+                    if cv.t != "int" or not (cv.v[1:] if cv.v.startswith("-") else cv.v).isdigit() or cv.v in cases:
+                        self.bad_ir(fn, b, "switch needs distinct int literal cases")
+                    cases[cv.v] = True
+                edges: dict[str, int] = {}
+                for l in i.b:
+                    edges[l] = edges[l] + 1 if l in edges else 1
+                    if edges[l] == 2 and l in at and len(fn.blocks[at[l]].code) > 0 and fn.blocks[at[l]].code[0].op == "phi":
+                        self.bad_ir(fn, b, f"a switch reaches {l}, which starts with a phi, by more than one edge")
+
             if i.op == "mach.load" or i.op == "mach.store":
                 load = i.op == "mach.load"
                 if len(i.a) != (1 if load else 2) or i.x != "" or i.k != 0 or len(i.b) != 0:
@@ -194,7 +211,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values()):
                     self.bad_ir(fn, b, "field.addr needs a declared field or assignment flag index")
                 t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "bool"
-                if i.t != "*" + t:
+                if i.t != "*" + t and not (i.t == "*" + NONEVAR and lt(t) == "ptr"):
+                    # (but a field compiled while only None had been given to it: Gen.none_field)
                     self.bad_ir(fn, b, "field.addr result must address the declared member type")
             if i.op == "tuple.load" or i.op == "tuple.store":
                 if len(i.a) != (1 if i.op == "tuple.load" else 2) or i.x != "" or len(i.b) != 0:
@@ -250,6 +268,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                         self.bad_ir(fn, b, f"{i.op} needs distinct nonoptional union members")
                 if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or member")
+            if i.op == "dyn.type" or i.op == "dyn.payload":
+                if len(i.a) != 1 or i.a[0].t != "dyn" or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, f"{i.op} needs one dyn operand and no extra metadata")
+                if (i.op == "dyn.type" and (i.t != "dyntype" or i.s != "")) or (i.op == "dyn.payload" and (i.t != "%slot" or i.s == "" or i.s == "dyn" or i.s.startswith("%"))):
+                    self.bad_ir(fn, b, f"{i.op} has an invalid result type or payload type")
             if i.op.startswith("gen."):
                 self.verify_gen(fn, b, i, j)
             n = self.nums(i)
@@ -311,8 +334,10 @@ def gen_nums(self, i: Ins) -> int:
         return 3
     if i.op == "list.load":
         return 4
-    if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload" or i.op == "tuple.load":
+    if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload" or i.op == "tuple.load" or i.op == "dyn.payload":
         return 2
+    if i.op == "dyn.type":
+        return 1
     if i.op == "phi" or i.op == "select" or i.op == "list.len" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "union.tag" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "alloc.fixed" or i.op == "tuple.store" or i.op == "mem.load" or i.op == "int.ucmp" or i.op == "ptr.cmp" or i.op == "empty.kind":
         return 1
     if i.op == "gen.yield":
@@ -367,10 +392,13 @@ def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
     if i.op == "rt":
         # (an exception, E, may be an object of an exception class, whose __str__ and __repr__ run;
         # a key hashed by its class, H, runs __hash__ and __eq__, and one hashed by identity, P,
-        # its __repr__ where a KeyError names it)
+        # its __repr__ where a KeyError names it; a recursive alias's edge, R, lets a value nest
+        # past the depth guard of the runtime's descriptor walks)
         f = self.rtfns[i.s]
-        u = "O" in i.x or "H" in i.x or ("P" in i.x and f.fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
-        return FXALL if f.q and u else f.fx
+        # (and a dynamic value, A, may hold any of these: dynamic.py)
+        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x) else 0)
+        u = "O" in i.x or "H" in i.x or "A" in i.x or ("P" in i.x and fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
+        return FXALL if f.q and u else fx
     if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":
         st = i.op == "mem.store" or i.op == "mach.store"
         a = i.a[0].v

@@ -1,8 +1,10 @@
-# make lint's tools, and the one package outside the standard library that CPython imports when
-# tests/record.sh records the tests (and make check-recordings checks them): typing_extensions, which
-# tests/typevar_templates.py and tests/mods/generic.py import. For development and CI only (Pystachy
-# needs none of them to build or run):
+# make lint/typecheck's tools, make coverage's coverage.py, and the package outside the standard library that
+# CPython imports when tests/record.sh records the tests (and make check-recordings checks them):
+# typing_extensions, which tests/programs/generics/typevar_templates.py and tests/mods/generic.py
+# import. For development and CI only (Pystachy needs none of them to build or run):
 #   python3 -m pip install -r tools/requirements-dev.txt
+coverage==7.16.2
+mypy==2.4.0
 ruff==0.17.0
 shellcheck-py==0.11.0.1
 typing_extensions==4.16.0

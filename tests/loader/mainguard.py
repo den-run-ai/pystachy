@@ -1,5 +1,5 @@
 # An imported module's __name__ == "__main__" test is false, also inside and/or
-# (tests/fold_idioms.py).
+# (tests/programs/optimizations/fold_idioms.py).
 import sys
 
 v = 1

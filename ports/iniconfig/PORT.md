@@ -33,13 +33,13 @@ The retained parsing and string-access API follows upstream. Calls with unsuppor
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_iniconfig_parse.py
-./tests/run.sh ./pystachy "jit aot" tests/port_iniconfig_parse.py tests/port_iniconfig_api.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_iniconfig_parse.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_iniconfig_parse.py tests/programs/apps/port_iniconfig_api.py
 ```
 
 The differential programs adapt upstream’s parsing/API tests and compare printed results with CPython through JIT and AOT.
 
-Cases: [port_iniconfig_parse.py](../../tests/port_iniconfig_parse.py), [port_iniconfig_api.py](../../tests/port_iniconfig_api.py).
+Cases: [port_iniconfig_parse.py](../../tests/programs/apps/port_iniconfig_parse.py), [port_iniconfig_api.py](../../tests/programs/apps/port_iniconfig_api.py).
 
 <a id="the-edits-and-the-feature-each-one-stands-in-for"></a>
 

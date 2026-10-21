@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENSLOTS, GENSLOTSX, GENSTATE, ICMP, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_LEN
+from src.pystachy_compiler.lower_module import struct_types
+from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENSLOTS, GENSLOTSX, GENSTATE, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, is_dict, is_tuple, lt, selem, takes_self, targs
 
 
@@ -11,9 +12,19 @@ def gen_lower(self, fn: IFn) -> None:
     f = fn.f
     # a method's receiver is never None (callers check it)
     ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
+    # tupleret: a function that returns its tuple's slots by value (Gen.tuple_rets) is lowered as
+    # @v.<its symbol>, returning them as an LLVM aggregate, and its own symbol is a wrapper below
+    n = self.vrets.get(f.ll, 0)
+    agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
+    self.vtuples = fresh_rets(fn) if n > 0 else {}
+    self.vslots = {}
+    self.vaggs = {}
     # (a generator function is a coroutine that LLVM's coroutine passes split: see gen.start)
-    o.append(f"define {'' if f.export else 'internal '}{lt(f.ret)} {f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
+    # (a function that only raises is an error path: cold, and kept out of its callers, so that
+    # what it formats does not keep LLVM from inlining the checks that call it: raises_only)
+    o.append(f"define {'' if f.export else 'internal '}{agg if n > 0 else lt(f.ret)} {'@v.' + f.ll[1:] if n > 0 else f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' cold noinline' if raises_only(fn) else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
     o.append("entry:")
+    self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
     if fn.coro:
         o.append(f"  %coro.promise = alloca [{GENSLOTSX if self.gproto else GENSLOTS} x i64], align 8")
         self.coros = True
@@ -48,6 +59,109 @@ def gen_lower(self, fn: IFn) -> None:
         o.append("coro.unreach:")
         o.append("  unreachable")
     o.append("}")
+    if n > 0:
+        # its symbol, for every other use: the tuple, made from the slots the body returns
+        o.append(f"define internal ptr {f.ll}({', '.join(ps)}) {{")
+        o.append("entry:")
+        o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join([f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps])})")
+        o.append(f"  %p = call ptr @{self.rtfns['alloc'].sym}(i64 {8 * n})")
+        for k in range(n):
+            o.append(f"  %v{k} = extractvalue {agg} %v, {k}")
+            o.append(f"  %p{k} = getelementptr i64, ptr %p, i64 {k}")
+            o.append(f"  store i64 %v{k}, ptr %p{k}")
+        o.append("  ret ptr %p")
+        o.append("}")
+
+def gen_tuple_rets(self) -> None:
+    # tupleret: which functions return their fixed tuple's slots by value, and which calls take
+    # them so (Gen.vrets, Gen.vcalls), once the program's IR is final. Such a function returns,
+    # wherever it returns, a tuple that an alloc.fixed of the ret's block made, which nothing but
+    # that block's tuple.stores reach (fresh_rets): a new tuple, which no code could hold. Such
+    # a call's result is read by tuple.loads alone (an unpacking, a constant index, a loop over
+    # the tuple's slots): the tuple could not escape it either, so CPython's identity of it is
+    # never seen. A function that such a call calls is lowered to return the slots (gen_lower);
+    # the others are lowered as before
+    fns: dict[str, int] = {}
+    for fn in self.fns:
+        if len(fresh_rets(fn)) > 0:
+            fns[fn.f.ll] = len(targs(fn.f.ret))
+    for fn in self.fns:
+        calls: dict[str, str] = {}
+        used: dict[str, bool] = {}  # (values that an op reads other than as a tuple.load's tuple)
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op == "call" and i.s in fns and len(i.r) == 1:
+                    calls[f"%t{i.r[0]}"] = i.s
+                for j in range(len(i.a)):
+                    if i.op != "tuple.load" or j != 0:
+                        used[i.a[j].v] = True
+        for v in calls:
+            if v not in used:
+                self.vcalls[f"{fn.f.ll} {v}"] = True
+                self.vrets[calls[v]] = fns[calls[v]]
+
+def fresh_rets(fn: IFn) -> dict[str, bool]:
+    # the tuples that fn returns (tupleret), if each is made by an alloc.fixed of its ret's block,
+    # of fn's fixed tuple type, and nothing but tuple.stores and the ret reach it; else none. Not a
+    # generator's (its returns are gen.ret), nor an exported function's, whose ABI C or CPython use
+    t = fn.f.ret
+    if fn.coro or fn.f.export or fn.f.pyexport or not is_tuple(t) or not t.endswith("]") or len(targs(t)) == 0 or "..." in targs(t) or "" in targs(t):
+        return {}
+    rets: dict[str, bool] = {}
+    for b in fn.blocks:
+        made: dict[str, bool] = {}
+        for i in b.code:
+            if i.op == "alloc.fixed" and i.t == t:
+                made[f"%t{i.r[0]}"] = True
+            elif i.op == "ret.none" or (i.op == "ret" and (len(i.a) != 1 or i.a[0].v not in made)):
+                return {}
+            elif i.op == "ret":
+                rets[i.a[0].v] = True
+    for b in fn.blocks:
+        for i in b.code:
+            for j in range(len(i.a)):
+                if i.a[j].v in rets and i.op != "ret" and (i.op != "tuple.store" or j != 0):
+                    return {}
+    return rets
+
+def raises_only(fn: IFn) -> bool:
+    # whether no call of fn returns: it has no ret, and no branch back to a block before it (a
+    # loop, which might run until the program ends), so that every path raises or exits. Not a
+    # generator, nor a module's code, which runs once even where it ends raising (sys.exit())
+    if fn.coro or fn.f.name == "<module>":
+        return False
+    at: dict[str, int] = {}
+    for j in range(len(fn.blocks)):
+        at[fn.blocks[j].label] = j
+    for j in range(len(fn.blocks)):
+        for i in fn.blocks[j].code:
+            if i.op == "ret" or i.op == "ret.none":
+                return False
+            for lb in i.b:
+                if lb in at and at[lb] <= j:
+                    return False
+    return True
+
+def gen_field_tag(self, c: str, k: int) -> str:
+    # the TBAA of the loads and stores of field k of an object of class c (fieldtbaa): ", !tbaa !N"
+    # with the number of its access tag (from TBAA_FIELDS, as first asked for: lower_module prints
+    # them, Gen.tbaa_nodes), or "" where c's layout has a member of no known size. A derived
+    # class's struct begins with its base's, flags included (fl_fields): a field there is tagged
+    # as its base's, so that an access through either class has the same tag, and LLVM's
+    # struct-path TBAA tells apart only the fields of one class at different offsets and those
+    # of classes neither of which lays out the other's (Gen.disjoint's rule). The tags have a
+    # root of their own: no access of runtime.c's or of runtime.py's is told apart from them
+    ci = self.classes[c]
+    while ci.base in self.classes and k < len(self.classes[ci.base].fields) + self.classes[ci.base].nflag:
+        ci = self.classes[ci.base]
+    key = f"{ci.name} {k}"
+    if key not in self.tbaa:
+        if ci.name not in self.tbaacls:  # (once a class: its struct has as many members as fields)
+            self.tbaacls[ci.name] = len([t for t in struct_types(ci) if t not in TBAA_SIZES]) == 0
+        if not self.tbaacls[ci.name]:
+            return ""
+        self.tbaa[key] = TBAA_FIELDS + len(self.tbaa)
+    return f", !tbaa !{self.tbaa[key]}"
 
 def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     op = i.op
@@ -66,17 +180,26 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "mach.addr":
         o.append(f"  %t{i.r[0]} = getelementptr{' inbounds' if i.k == 1 else ''} {lt(i.s)}, ptr {i.a[0].v}, i64 {i.a[1].v}")
     elif op == "mem.load":
-        o.append(f"  %t{i.r[0]} = load {'ptr' if i.t == 'None' else lt(i.t)}, ptr {i.a[0].v}")
+        o.append(f"  %t{i.r[0]} = load {'ptr' if i.t == 'None' else lt(i.t)}, ptr {i.a[0].v}{self.ftags.get(i.a[0].v, '')}")
     elif op == "mem.store":
         v = i.a[1]
-        o.append(f"  store {'ptr' if v.t == 'None' else lt(v.t)} {v.v}, ptr {i.a[0].v}")
+        o.append(f"  store {'ptr' if v.t == 'None' else lt(v.t)} {v.v}, ptr {i.a[0].v}{self.ftags.get(i.a[0].v, '')}")
     elif op == "field.addr":
         self.rangeused = self.rangeused or i.a[0].t == RANGEC
+        self.objectused = self.objectused or i.a[0].t == OBJECTC
         o.append(f"  %t{i.r[0]} = getelementptr %C.{i.a[0].t}, ptr {i.a[0].v}, i32 0, i32 {i.k}")
+        if "fieldtbaa" in self.opts:
+            self.ftags[f"%t{i.r[0]}"] = self.field_tag(i.a[0].t, i.k)
     elif op == "alloc.fixed":
         self.rangeused = self.rangeused or i.t == RANGEC
+        self.objectused = self.objectused or i.t == OBJECTC
         size = str(8 * len(targs(i.t))) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
-        o.append(f"  %t{i.r[0]} = call ptr @{self.rtfns['alloc'].sym}(i64 {size})")
+        if f"%t{i.r[0]}" not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
+            o.append(f"  %t{i.r[0]} = call ptr @{self.rtfns['alloc'].sym}(i64 {size})")
+    elif op == "tuple.store" and i.a[0].v in self.vtuples:
+        self.vslots[f"{i.a[0].v} {i.k}"] = i.a[1].v  # (the slot its ret returns)
+    elif op == "tuple.load" and i.a[0].v in self.vaggs:
+        o.append(f"  %t{i.r[1]} = extractvalue {self.vaggs[i.a[0].v]} {i.a[0].v}, {i.k}")
     elif op == "tuple.load" or op == "tuple.store":
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 {i.k}")
         if op == "tuple.load":
@@ -105,13 +228,17 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  %t{i.r[0]} = icmp u{ICMP[i.s][1:]} i64 {i.a[0].v}, {i.a[1].v}")
     elif op == "ptr.cmp":
         o.append(f"  %t{i.r[0]} = icmp {ICMP[i.s]} ptr {i.a[0].v}, {i.a[1].v}")
-    elif op == "union.payload":
+    elif op == "union.payload" or op == "dyn.payload":
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 1")
         o.append(f"  %t{i.r[1]} = load i64, ptr %t{i.r[0]}")
+    elif op == "dyn.type":
+        o.append(f"  %t{i.r[0]} = load ptr, ptr {i.a[0].v}")
     elif op == "br":
         o.append(f"  br label %{i.b[0]}")
     elif op == "cbr":
         o.append(f"  br i1 {i.a[0].v}, label %{i.b[0]}, label %{i.b[1]}")
+    elif op == "switch":
+        o.append(f"  switch i64 {i.a[0].v}, label %{i.b[0]} [{' '.join([f'i64 {i.a[j].v}, label %{i.b[j]}' for j in range(1, len(i.a))])}]")
     elif op == "check":
         o.append(f"  br i1 {i.a[0].v}, label %{fn.cold[i.x if i.x != '' else i.s]}, label %{i.b[0]}")
     elif op == "phi":
@@ -125,10 +252,22 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         x = i.a[1]
         y = i.a[2]
         o.append(f"  %t{i.r[0]} = select i1 {i.a[0].v}, {lt(x.t)} {x.v}, {lt(y.t)} {y.v}")
+    elif op == "ret" and len(i.a) > 0 and i.a[0].v in self.vtuples:
+        # the tuple's slots, by value (tupleret): what its tuple.stores gave each, else the zero
+        # of the tuple that alloc.fixed would have made
+        n = len(targs(fn.f.ret))
+        agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
+        cur = "zeroinitializer"
+        for k in range(n):
+            s = self.vslots.get(i.a[0].v + " " + str(k), "0")
+            o.append(f"  {i.a[0].v}.v{k} = insertvalue {agg} {cur}, i64 {s}, {k}")
+            cur = f"{i.a[0].v}.v{k}"
+        o.append(f"  ret {agg} {cur}")
     elif op == "ret":
         o.append(f"  ret {lt(i.a[0].t)} {i.a[0].v}" if len(i.a) > 0 else "  ret void")
     elif op == "ret.none":
-        o.append("  ret void" if fn.f.ret == "None" else "  ret ptr null")
+        # (None: null, but a dynamic value's, which is its constant box: dynamic.py)
+        o.append("  ret void" if fn.f.ret == "None" else f"  ret ptr {self.rtdata('pys_dyn_none_box')}" if fn.f.ret == "dyn" else "  ret ptr null")
     elif op == "raise":
         o.append(f"  call void @pys_raise(ptr {i.a[0].v}, ptr {i.a[1].v})")
         o.append("  unreachable")
@@ -149,6 +288,12 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h)) if h != '' else '0'}"
         c = self.invoke(f"call {ll[0]} @{f.sym}({', '.join(vs)})", i)
         o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
+    elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} %t{i.r[0]}" in self.vcalls:
+        # the slots of the tuple a function returns, by value, to tuple.loads alone (tupleret)
+        agg = "{" + ", ".join(["i64" for _ in range(self.vrets[i.s])]) + "}"
+        args = ", ".join([lt(v.t) + " " + v.v for v in i.a])
+        o.append(f"  %t{i.r[0]} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
+        self.vaggs[f"%t{i.r[0]}"] = agg
     elif op == "call":
         c = self.invoke(f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
         o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")

@@ -42,6 +42,9 @@ class Mod:
         # the names only name = f(...) statements bind, with each f: a TypeVar if every f is typing's
         self.tvars: dict[str, list[Node]] = {}
         self.cbases: dict[str, Node] = {}
+        # its classes whose body binds __class_getitem__ = classmethod(X), with each X: subscripts of
+        # them are types where X is types.GenericAlias (Loader.generic_class)
+        self.cgetitem: dict[str, Node] = {}
         self.deftps: list[str] = []  # the type parameters of its generic defs, as Loader.qren names them: TypeVars
 
 

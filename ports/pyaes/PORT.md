@@ -26,7 +26,7 @@ print(cipher.decrypt(encrypted))
 ## Compatibility
 
 - The adapted constructor does not check that each integer is in 0..255. Values outside that range can produce upstream-style unusual results or overflow.
-- ASCII text can be converted with `ord()`; iterating non-ASCII text produces UTF-8 bytes rather than CPython characters.
+- Text converts with `ord()` one character at a time, as in CPython; only characters up to U+00FF give values a key or block can hold.
 
 <a id="tests"></a>
 
@@ -35,13 +35,13 @@ print(cipher.decrypt(encrypted))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_pyaes_cipher.py
-./tests/run.sh ./pystachy "jit aot" tests/port_pyaes_cipher.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_pyaes_cipher.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_pyaes_cipher.py
 ```
 
 The differential program checks FIPS-197, NIST SP 800-38A and OpenSSL IGE vectors, all key sizes, round keys, repeated round trips and invalid sizes.
 
-Cases: [port_pyaes_cipher.py](../../tests/port_pyaes_cipher.py).
+Cases: [port_pyaes_cipher.py](../../tests/programs/apps/port_pyaes_cipher.py).
 
 <a id="speed"></a>
 

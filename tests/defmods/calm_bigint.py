@@ -1,5 +1,5 @@
 # The same: CPython's int() makes an int beyond 64 bits, where Pystachy's raises OverflowError
-# (tests/deftime_class_raises.py)
+# (tests/programs/imports/deftime_class_raises.py)
 from typing import Iterable
 
 

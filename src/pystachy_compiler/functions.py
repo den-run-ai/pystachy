@@ -40,6 +40,7 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.ret = f.ret
     self.retann = f.node.kind == "def" and f.node.kids[1].kind != "noann"
     self.nn = {}
+    self.dynints = {}
     self.selfname = ""
     self.uflags = f.uflags
     self.lflag = {}
@@ -96,7 +97,28 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     self.building[f.ll] = True
     sel = self.selfcls
     self.selfcls = ""  # (its annotations name its class's types: f.cls's, see tvar)
+    ret = f.ret
+    noret = f.noret
+    asked = self.dyn_asked(f)
+    self.function_body(f, body)
+    while self.dyn_again(f, asked):
+        # (an Any value reached storage that its first value typed, in a module that compiles
+        # Any so: again, with that storage dynamic from the start, see dyn_widen)
+        f.ret = "dyn" if f.ll in self.dynrets else ret
+        f.noret = noret
+        asked = self.dyn_asked(f)
+        self.function_body(f, body)
+    del self.building[f.ll]
+    self.selfcls = sel
+    self.fn.n = self.n
+    self.fns.append(self.fn)
+
+def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
+    # one compilation of f's code into a new IFn (gen_function)
     self.enter(f, body)
+    if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
+        f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
+        self.ret = f.ret
     if takes_self(f):
         # callers check the receiver, so self is never None inside a method
         self.nn["%a0"] = True
@@ -130,7 +152,11 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
             self.nonevars[f.params[i]] = 0
             continue
         self.fn.ps.append(i)
-        self.mem_store(Val(self.alloca(t, f.params[i]), "*" + t), Val(f"%a{i}", t))
+        if self.dyn_widened(f.params[i]):
+            # (one that an Any value is assigned later: a dynamic slot from the start, dyn_widen)
+            self.mem_store(Val(self.alloca("dyn", f.params[i]), "*dyn"), self.dyn_box(Val(f"%a{i}", t)))
+        else:
+            self.mem_store(Val(self.alloca(t, f.params[i]), "*" + t), Val(f"%a{i}", t))
         if f.params[i] in self.lflag:
             self.mem_store(Val(self.lflag[f.params[i]], "*bool"), Val("true", "bool"))  # (a parameter that del unbinds)
     if f.clo >= 0:
@@ -217,6 +243,8 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         e = self.landing(hm, slot, mark)
         self.mem_store(Val(f"{f.ll}.done", "*bool"), Val("false", "bool"))
         self.throw(e)
+    if not self.term and f.ret == "dyn":
+        self.ret_(Val(self.rtdata("pys_dyn_none_box"), "dyn"))  # (None, as a dynamic value: dynamic.py)
     if not self.term:
         if f.ret == "None" or (f.infer and f.ret in self.classes) or is_opt(f.ret) or (self.retann and f.ret != "" and self.optional(f.ret) == f.ret and self.ann_none(f.node.kids[1], [])):
             # (a template's function that ends without a return, or one returning T | None: None;
@@ -253,10 +281,6 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
             # (the same LLVM types, but another layout: a tuple of two strs for one of three)
             self.err(f"{f.name}() is defined as {typestr(ts[0])}({', '.join([typestr(t) for t in ts[1:]])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], ts)} (RUNTIME's {RTSYM[f.ll[1:]]})")
         self.untold(f, ts, "defined")
-    del self.building[f.ll]
-    self.selfcls = sel
-    self.fn.n = self.n
-    self.fns.append(self.fn)
 
 def gen_extern_args(self, x: Node, more: bool) -> list[str]:
     # decorator x, @ffi.extern(lib, symbol=""): the library and the symbol ("" for the function's

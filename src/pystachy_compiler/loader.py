@@ -36,6 +36,7 @@ from src.pystachy_compiler.analysis import (
     module_reads,
     names_name,
     own_specials,
+    object_values,
     range_values,
     read_names,
     rebound,
@@ -48,7 +49,7 @@ from src.pystachy_compiler.analysis import (
     top_bindings,
     walrus_names,
 )
-from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, RAW, fail
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, LINES, MODDUNDERS, RAW, dynamic_pragma, fail
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
@@ -69,6 +70,7 @@ from src.pystachy_compiler.specs import (
     OSCONST,
     PLATFORM,
     PYBUILTINS,
+    OBJECTS,
     RANGES,
     STANDINS,
     TYPESMOD,
@@ -268,7 +270,8 @@ class Loader:
         # special_import() recognizes have surely bound where simplify() is
         self.fs = Mod("", "", "")
         self.fsure: dict[str, bool] = {}
-        self.unsure: dict[str, dict[str, bool]] = {}  # what each def reads before an import of it surely ran (import_reads())
+        self.unsure: dict[str, dict[str, bool]] = {}  # what the defs and generator expressions in each def read before an import of it surely ran (import_reads())
+        self.checked: dict[str, dict[str, bool]] = {}  # what each def itself reads so: its imports set a flag, which its reads check
         self.lazyann = False  # the module deftime() walks imports annotations from __future__
         self.tpnames: dict[str, bool] = {}  # the type parameters (def f[T], class C[T]) around what it reads
         self.called = 0  # and its code may have called a function by now (1), or imported a module (2)
@@ -285,6 +288,8 @@ class Loader:
     def program(self, path: str, src: str) -> list[Mod]:
         # the main program and the modules it imports, in the order their code may first run
         m = Mod("", path, "")
+        if dynamic_pragma(src):
+            DYNFILES[len(FILES)] = True
         FILES.append(path)
         m.body = Parser(Lexer(src, 1).file()).module()
         tb_import(m.body)
@@ -327,6 +332,10 @@ class Loader:
             # if the program calls them)
             self.load(RANGES, self.dirs[-1] + "/" + RANGES + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
+        if not self.rtmode and len(self.dirs) > 0 and OBJECTS not in self.mods and len([x for x in self.order if object_values(x.body) and module_reads(x.body, "object")]) > 0:
+            # object() makes an object of lib's class, whose module nothing imports (as range's)
+            self.load(OBJECTS, self.dirs[-1] + "/" + OBJECTS + ".py", "")
+            self.order = [self.order[-1]] + self.order[:-1]
         if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods and len([x for x in self.order if module_reads(x.body, "iter")]) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
             # nothing imports (it imports nothing either, so it comes first)
@@ -336,10 +345,12 @@ class Loader:
         self.submodules()
         more = True
         while more:
-            # (until no from-import of an alias is left to make one: an alias may be of one)
+            # (until no from-import of an alias is left to make one, nor an alias of a module's
+            # attribute: an alias may be of one)
+            made = False
             for x in self.order:
-                self.late_aliases(x)
-            more = self.late_takes(False)
+                made = self.late_aliases(x) or made
+            more = self.late_takes(False) or made
         self.late_takes(True)
         self.doccycles()
         for x in self.order:
@@ -483,8 +494,8 @@ class Loader:
             return self.dirs[-1] + "/" + STANDINS[name] + ".py"  # (lib's stand-in for a C module)
         if name in CBUILTIN:
             return ""  # a module built into CPython: no file on the path replaces it (find())
-        if name == ITERS or name == RANGES:
-            return ""  # (iter()'s classes and range's, which no program imports: see program)
+        if name == ITERS or name == RANGES or name == OBJECTS:
+            return ""  # (iter()'s classes, range's and object's, which no program imports: see program)
         return self.filepath(name)
 
     def filepath(self, name: str) -> str:
@@ -591,6 +602,8 @@ class Loader:
         f.close()
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
+        if dynamic_pragma(src):
+            DYNFILES[k] = True
         self.parsed[path] = Parser(Lexer(src, k * LINES + 1).file()).module()
         tb_import(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
@@ -612,6 +625,11 @@ class Loader:
                 m.kinds[st.s] = "f" if k == "def" else "c"
                 if k == "subclass" and (len(st.kids) == 2 or st.kids[1].kind == "typeparams") and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
                     m.cbases[st.s] = st.kids[1]
+                for x in st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids if k == "subclass" else []:
+                    if x.kind == "assign" and len(x.kids) == 2 and x.kids[0].kind == "name" and x.kids[0].s == "__class_getitem__":
+                        v = x.kids[1]
+                        if v.kind == "call" and len(v.kids) == 2 and v.kids[0].kind == "name" and v.kids[0].s == "classmethod":
+                            m.cgetitem[st.s] = v.kids[1]
                 for d in [st] if k == "def" else st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids:
                     if d.kind == "def":
                         ga: dict[str, bool] = {}
@@ -782,14 +800,38 @@ class Loader:
         info = mk("namedtuple", tn.s, line, [mk("tuple", "", line, [mk("str", nm, line, []) for nm in names]), mk("tuple", "", line, [clone(x) for x in dn.kids]), mn])
         return mk("subclass", name, line, [mk("class", name, line, [mk("block", "", line, [init])]), info])
 
-    def late_aliases(self, m: Mod) -> None:
+    def late_aliases(self, m: Mod) -> bool:
         # name = f where an import binds f (from m import f): an alias too, if nothing else binds
         # name; so are name = <a type> and name: TypeAlias = <a type> (type_value), type aliases,
-        # and name: TypeAlias = C of a def or class (as name = C)
+        # and name: TypeAlias = C of a def or class (as name = C). Did it make an alias of a
+        # module's attribute (name = m.C), which another such alias may name?
         count = top_bindings(m.body.kids)
         dm = self.dm
         self.dm = m
+        made = False
         for st in m.body.kids:
+            if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "attr":
+                # name = m.C of an imported module's class, or of an alias of one, that is no
+                # exception class (whose class object is a value already): an alias too, if nothing
+                # else binds name (#804). Its statement still reads m.C, as CPython's assignment
+                # does, which raises where m's code has not bound C yet (a circular import: Gen's
+                # "ready"). Not where m's C is an alias and m imports this module, itself or through
+                # others: m binds C where its statement runs, which may come after that import, and
+                # "ready" checks only the class. Nor where code may read name before the statement
+                # binds it (read_early)
+                nm = st.kids[0].s
+                t = self.attr_mod(st.kids[1].kids[0])
+                k = self.mods[t].kinds.get(st.kids[1].s, "") if t != "" and st.kids[1].s not in self.mods[t].amb else ""
+                if k.startswith("a:") and self.imports_mod(self.mods[t].body, m.name, {}, True):
+                    k = ""
+                q = k[2:] if k.startswith("a:") and self.class_alias(k) else self.mods[t].q + st.kids[1].s if k == "c" else ""
+                if q != "" and self.plain_class(q, 0) and m.kinds.get(nm, "") == "v" and count.get(nm, 0) == 1 and nm not in m.fnglobal and not self.read_early(m, st, nm):
+                    m.kinds[nm] = "a:" + q
+                    self.aliased[m.name + " " + nm] = st
+                    self.used_before(m, st)
+                    st.kind = "ready"
+                    made = True
+                    continue
             if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "name":
                 src = m.kinds.get(st.kids[1].s, "")
                 nm = st.kids[0].s
@@ -821,6 +863,68 @@ class Loader:
                 m.taliases[self.qual(m, nm)] = st
                 self.aliased[m.name + " " + nm] = st
         self.dm = dm
+        return made
+
+    def attr_mod(self, n: Node) -> str:
+        # the module that n, a name or an attribute of one in module dm's top-level code, denotes
+        # as qmod() finds it (a submodule that the package does not bind itself too), or "". Not
+        # a package's submodule that imports dm, itself or through other modules: in that circular
+        # import, CPython attaches the submodule to its package only once its code has run, so
+        # dm's code may find the package without it (AttributeError: cannot access submodule)
+        if n.kind == "name":
+            k = self.dm.kinds.get(n.s, "")
+            return k[2:] if k.startswith("m:") and k[2:] in self.mods else ""
+        base = self.attr_mod(n.kids[0]) if n.kind == "attr" else ""
+        if base == "" or n.s in self.mods[base].amb:
+            return ""
+        k = self.mods[base].kinds.get(n.s, "")
+        if k.startswith("m:"):
+            return k[2:] if k[2:] in self.mods else ""
+        sub = base + "." + n.s
+        return sub if k == "" and sub in self.mods and not self.imports_mod(self.mods[sub].body, self.dm.name, {}, True) else ""
+
+    def plain_class(self, q: str, depth: int) -> bool:
+        # is the class of qualified name q surely no exception class, and the only thing its
+        # module binds to its name (not class C: ... C = C(), a singleton, nor a decorated class,
+        # which its decorator may replace: @object.__new__): its class statement names no base, or
+        # object, or only classes that are such classes too, by name or through a module's
+        # attribute (base_class; late_aliases)
+        for x in self.order:
+            if depth > 64 or not q.startswith(x.q) or "$" in q[len(x.q) :]:
+                continue
+            if top_bindings(x.body.kids).get(q[len(x.q) :], 0) != 1 or q[len(x.q) :] in x.fnglobal:
+                return False
+            for st in x.body.kids:
+                if (st.kind != "class" and st.kind != "subclass") or st.s != q[len(x.q) :]:
+                    continue
+                for d in st.kids if st.kind == "class" else st.kids[0].kids:
+                    if d.kind == "deco":
+                        return False
+                for base in st.kids[1:] if st.kind == "subclass" else st.kids[:0]:
+                    if base.kind == "typeparams" or (base.kind == "name" and base.s == "object" and x.kinds.get("object", "") == ""):
+                        continue
+                    b = self.base_class(x, base)
+                    if b == "" or not self.plain_class(b, depth + 1):
+                        return False
+                return True
+            return False
+        return False
+
+    def base_class(self, x: Mod, base: Node) -> str:
+        # the qualified name of the class, or alias of one, that base, a base of a class statement
+        # of module x, names: by name, or through a module's attribute as attr_mod resolves it in
+        # x's code (class D(m.B)); else "" (plain_class)
+        if base.kind == "name":
+            k = x.kinds.get(base.s, "")
+            return x.q + base.s if k == "c" else k[2:] if k.startswith("a:") else ""
+        if base.kind != "attr":
+            return ""
+        dm = self.dm
+        self.dm = x
+        t = self.attr_mod(base.kids[0])
+        self.dm = dm
+        k = self.mods[t].kinds.get(base.s, "") if t != "" and base.s not in self.mods[t].amb else ""
+        return self.mods[t].q + base.s if k == "c" else k[2:] if k.startswith("a:") else ""
 
     def type_value(self, e: Node, top: bool) -> bool:
         # does e, a value that module dm's top-level code assigns, surely evaluate to a type that
@@ -934,6 +1038,21 @@ class Loader:
             changed = True
         return changed
 
+    def read_early(self, m: Mod, al: Node, nm: str) -> bool:
+        # may code read nm before alias statement al of module m binds it, where CPython raises
+        # NameError or AttributeError while an alias names the class for all of the program's code
+        # (late_aliases)? A statement before al that names nm, also in a function, class or lambda
+        # it defines, which a call may run then; or one that imports, at the top level, itself or
+        # through other modules, a module whose code imports m back: in that import cycle, the
+        # other module's code runs before al and may read m.nm. (As for Gen's import components,
+        # imports in functions are not followed: #814)
+        for st in m.body.kids:
+            if st is al:
+                return False
+            if names_name(st, nm) or self.imports_mod(st, m.name, {}, False):
+                return True
+        return False
+
     def used_before(self, m: Mod, al: Node) -> None:
         # an alias (name = f) binds name for all of the module's code; module-level code that runs
         # before it would see name unbound in CPython (but not a type statement's value, which is
@@ -1040,8 +1159,8 @@ class Loader:
                             names.append(nm)
                 elif (k == "annassign" and i == 1) or k == "global" or k == "nonlocal":
                     continue
-                elif ((k == "assign" or k == "pass") and i < len(st.kids) - 1) or ((k == "annassign" or k == "for") and i == 0):
-                    names_in(x, names if k != "for" and (k != "annassign" or len(st.kids) == 3) else tgt)  # (an alias is a "pass")
+                elif ((k == "assign" or k == "pass" or k == "ready") and i < len(st.kids) - 1) or ((k == "annassign" or k == "for") and i == 0):
+                    names_in(x, names if k != "for" and (k != "annassign" or len(st.kids) == 3) else tgt)  # (an alias is a "pass", or "ready")
                 elif k == "import":
                     names.extend([x.s] if x.kids[0].s != "builtins." + x.s else [])  # (from builtins import len rebinds nothing)
                 elif k == "del":
@@ -1157,9 +1276,20 @@ class Loader:
             return True  # (a builtin module may lack the attribute)
         return k not in ANNKINDS or (self.kind_of(b) == "v" and not (top and k == "name") and not (k == "name" and self.typevar(e))) or (k == "index" and self.kind_of(b) == "" and b.s in PYBUILTINS and b.kind == "name" and b.s not in GENERICS)
 
+    def galias_of(self, m: Mod, x: Node) -> bool:
+        # is x (a name or a module's attribute, in module m) types.GenericAlias
+        k = ""
+        if x.kind == "name":
+            k = m.kinds.get(x.s, "")
+        elif x.kind == "attr" and x.kids[0].kind == "name":
+            b = m.kinds.get(x.kids[0].s, "")
+            k = self.mods[b[2:]].kinds.get(x.s, "") if b.startswith("m:") and b[2:] in self.mods else ""
+        return k == "b:" + TYPESMOD + ".GenericAlias"
+
     def generic_class(self, b: Node) -> bool:
         # is b (a name, an alias such as an imported class's, or a user module's attribute, that
-        # names a class) a class whose one base is typing.Generic[...]
+        # names a class) a class whose one base is typing.Generic[...], or whose body binds
+        # __class_getitem__ = classmethod(GenericAlias), which makes its subscripts types too
         m = self.dm
         name = b.s
         k = self.kind_of(b)
@@ -1174,6 +1304,8 @@ class Loader:
         elif b.kind == "attr":
             k = self.kind_of(b.kids[0])
             m = self.mods[k[2:]] if k.startswith("m:") and k[2:] in self.mods else self.dm
+        if name in m.cgetitem and self.galias_of(m, m.cgetitem[name]):
+            return True  # (CPython's idiom for a generic class, __class_getitem__ = classmethod(GenericAlias))
         base = m.cbases.get(name, None)
         if base is not None and base.kind == "typeparams":
             return True  # (class C[T])
@@ -1339,11 +1471,19 @@ class Loader:
         d.kids[2].kids = [pre[len(pre) - 1 - i] for i in range(len(pre))] + d.kids[2].kids
         early: dict[str, bool] = {}
         user: dict[str, bool] = {}
-        import_reads(d.kids[2], {}, early, user)
+        closed: dict[str, bool] = {}
+        import_reads(d.kids[2], {}, early, user, closed)
         self.unsure[str(d.line)] = {}
-        for nm in early:
+        self.checked[str(d.line)] = {}
+        for nm in closed:
             if nm in user:
                 self.unsure[str(d.line)][nm] = True
+        for nm in early:
+            if nm in user and nm not in closed:
+                # (an import that may not have run before the read: as for one in a try, the import
+                # sets a flag, and where it is not set the read raises CPython's UnboundLocalError, a
+                # lambda's its NameError)
+                self.checked[str(d.line)][nm] = True
 
     def static_if(self, m: Mod, st: Node, scope: dict[str, bool], out: list[Node]) -> bool:
         # an if statement CPython decides at import time, as Pystachy does at compile time: a test of
@@ -2364,14 +2504,15 @@ class Loader:
     def import_binds(self, m: Mod, name: str, infn: bool) -> str:
         # Module imports bind only where they run: an earlier read, a skipped branch or a call
         # during another module's initialization may find the name unbound. Every module binding
-        # gets a flag. A function's imports need one where a try may skip or fail the import;
-        # other early local reads are rejected by import_reads().
+        # gets a flag. A function's imports need one where a try may skip or fail the import, or
+        # where the function reads the name where the import may not have run (checked: one in a
+        # branch, a loop); a closure's early reads are rejected (import_reads(), unsure).
         if self.rtmode and not infn:
             return ""  # runtime mode accepts only unconditional module imports
         key = f"{m.name} {self.curdef if infn else ''} {name}"
         if not infn:
             self.fragile[key] = m.q + name
-        elif self.intry == 0:
+        elif self.intry == 0 and name not in self.checked.get(self.curdef, {}):
             self.solid[key] = True
         elif key not in self.solid:
             self.fragile[key] = name if infn else m.q + name
@@ -2575,13 +2716,19 @@ class Loader:
             return s
         if s in self.qren:
             return self.qren[s]
-        k = self.kind(m, s)
-        if k.startswith("b:builtins.") and is_excname(k[11:]) and s not in self.fk:
+        return self.qbound(m, s, self.kind(m, s), s in self.fk)
+
+    def qbound(self, m: Mod, s: str, k: str, infn: bool) -> str:
+        # the qualified name of s, which m binds as k says (infn: an import in the function being
+        # qualified binds it)
+        if k.startswith("b:builtins.") and is_excname(k[11:]) and not infn:
             return k[11:]  # (a builtin exception class by another name: from builtins import RuntimeError as error)
         if k == "f" or k == "c" or k == "v" or k.startswith("b:"):
             if m.name == "" and s in PYBUILTINS:
                 return "__main__$" + s  # (other modules' code still sees the builtin)
             return m.q + s
+        if k.startswith("a:") and k[2:] in PYBUILTINS:
+            return "__main__$" + k[2:]  # (an alias of the main program's def or class that has a builtin's name, L = len)
         if k.startswith("a:") or k.startswith("t:"):
             return k[2:]
         if k == "" and m.name != "" and s not in PYBUILTINS and not s.startswith("__"):
@@ -2630,8 +2777,9 @@ class Loader:
             n.kind = "badattr"
             n.s = k[2:]
         else:
+            # t's own binding: no import or type parameter of the code being qualified stands for it
             n.kind = "name"
-            n.s = self.qname(t, n.s, {})
+            n.s = self.qbound(t, n.s, k, False)
         n.kids = []
         return ""
 
@@ -2678,6 +2826,8 @@ class Loader:
                 n.kind = "badattr"
                 n.s = f"module '{mod}' cannot be used as a value"
                 n.kids = []
+            elif k == "attr" and n.kind == "name":
+                pass  # (qmod() named the module's own binding, which no name here stands for)
             elif n.kind == "name" and n.s not in loc and self.kind(m, n.s).startswith("x:"):
                 n.kind = "badattr"
                 n.s = self.kind(m, n.s)[2:]

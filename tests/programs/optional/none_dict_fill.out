@@ -1,0 +1,4 @@
+{'us-ascii': None, 'utf-8': 'utf-8'} None y
+{1: None, 2: None, 3: [1, 2]} None [1, 2]
+1.5 {'a': None, 'b': 1.5}
+[exit 0]

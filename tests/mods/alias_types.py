@@ -1,4 +1,4 @@
-"""Type aliases, a TypeVar and a PEP 695 generic class for tests/type_alias_imports.py."""
+"""Type aliases, a TypeVar and a PEP 695 generic class for tests/programs/reflection/type_alias_imports.py."""
 from typing import Callable, TypeVar
 
 T = TypeVar("T")

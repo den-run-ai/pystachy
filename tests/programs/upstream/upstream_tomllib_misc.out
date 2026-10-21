@@ -1,0 +1,10 @@
+test_error: 4 of 5 (test_invalid_parse_float: lib_tomllib_dynamic.py)
+{'val': 'F0.1', 'biggest1': 'Finf', 'biggest2': 'F+inf', 'smallest': 'F-inf', 'notnum1': 'Fnan', 'notnum2': 'F-nan', 'notnum3': 'F+nan'}
+{'bliibaa': {'diibaa': {'offsettime': [datetime.datetime(1979, 5, 27, 0, 32, 0, 999999, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=61200)))]}}}
+[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+40
+1000
+1
+101
+RecursionError: TOML key has more than the allowed 1000 parts
+[exit 0]

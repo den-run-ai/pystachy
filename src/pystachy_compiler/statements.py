@@ -1,7 +1,7 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union
-from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names
+from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val
 from src.pystachy_compiler.names import owner, short
@@ -14,6 +14,7 @@ from src.pystachy_compiler.specs import (
     FXBIT,
     GLUE,
     MODULES,
+    NONE_ITEM,
     NONEVAR,
     OPTTYPES,
     ORDOP,
@@ -24,6 +25,7 @@ from src.pystachy_compiler.specs import (
     IOMOD,
     TYPING,
     UNSUPPORTED,
+    is_excname,
 )
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.utils import (
@@ -81,9 +83,10 @@ def gen_callable_guard(self, st: Node, f: FnInfo) -> str:
     return c.kids[1].s
 
 def gen_obj_helpers(self, c: str, which: list[int]) -> None:
-    # @o.eq/cmp/repr.<class>: what the runtime's generic ==, ordering and repr do with objects
-    # of class c, those which picks (0 eq, 1 cmp, 2 repr): @o.eq and @o.cmp only for a class that
-    # a descriptor compares (ocmp), so printing a container compiles no comparison. They are
+    # @o.eq/cmp/repr/ne.<class>: what the runtime's generic ==, ordering, repr and a dynamic
+    # value's != do with objects of class c, those which picks (0 eq, 1 cmp, 2 repr, 3 ne): @o.eq
+    # and @o.cmp only for a class that a descriptor compares (ocmp), so printing a container
+    # compiles no comparison, and @o.ne for one whose != pys_dyn_ne runs (one). They are
     # compiled leniently: an operation the class does not support raises TypeError when it
     # runs rather than failing the compilation.
     line = self.classes[c].node.line
@@ -96,8 +99,9 @@ def gen_obj_helpers(self, c: str, which: list[int]) -> None:
         cmp.append(mk("if", "", line, [mk("cmp", "==", line, [op, mk("int", str(ORDOP[o]), line, [])]), hit, mk("block", "", line, [])]))
     cmp.append(mk("return", "", line, [mk("cmp", ">=", line, [a, b])]))
     bodies = [[mk("return", "", line, [mk("cmp", "==", line, [a, b])])], cmp,
-              [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_repr", line, []), a])])]]
-    ops = ["eq", "cmp", "repr"]
+              [mk("return", "", line, [mk("call", "", line, [mk("name", "__pys_repr", line, []), a])])],
+              [mk("return", "", line, [mk("cmp", "!=", line, [a, b])])]]
+    ops = ["eq", "cmp", "repr", "ne"]
     self.lenient = True
     for i in which:
         f = FnInfo(ops[i], f"@o.{ops[i]}.{c}", self.classes[c].node, "")
@@ -279,9 +283,9 @@ def gen_hoist(self, f: FnInfo) -> None:
 def gen_default_problem(self, e: Node, t: str) -> str:
     # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
     # as its form shows, or ""
-    if e.kind == "name" and e.s in self.classes:
+    if e.kind == "name" and e.s in self.classes and self.classes[e.s].exc == "":
         return f"class '{short(e.s)}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
-    if e.kind == "name" and e.s in PYBUILTINS and "$" not in e.s and not e.s[0].islower():
+    if e.kind == "name" and e.s in PYBUILTINS and "$" not in e.s and not e.s[0].islower() and not is_excname(e.s):
         return f"the builtin '{e.s}' cannot be used as a value (not supported)"
     if t == "" and (e.kind == "list" or e.kind == "dict") and len(e.kids) == 0:
         return f"cannot infer the type of an empty {e.kind} as a default value; annotate the parameter"
@@ -497,12 +501,15 @@ def gen_cm_exits(self) -> bool:
 
 def gen_suppress_item(self, e: Node) -> bool:
     # is e, a with statement's item, a call of contextlib.suppress (lib/contextlib.py) with
-    # exception classes, which the statement compiles as an except clause that catches them
+    # exception classes named, which the statement compiles as an except clause that catches
+    # them (with other arguments, class objects, it is lib's class, as elsewhere)
     if e.kind != "call" or e.kids[0].kind != "name" or e.kids[0].s != "contextlib$suppress":
         return False
     for a in e.kids[1:]:
-        if a.kind == "kw" or a.kind == "starred" or not self.exc_classes(a):
-            self.err("contextlib.suppress() is supported with exception classes, named, as a with statement's item")
+        if a.kind != "kw" and (a.kind == "starred" or self.exc_dynamic(a)):
+            return False
+        if a.kind == "kw" or not self.exc_classes(a):
+            self.err("contextlib.suppress() is supported with exception classes, as a with statement's item")
     return True
 
 def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
@@ -510,7 +517,7 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
     # x, then body runs as the body of a try statement whose except clause takes every exception
     # e to __exit__(type(e), e, tb), which suppresses it if it returns a true value (else e goes
     # on); its else block, and a break, continue or return out of body (an exit like a finally
-    # block's), call __exit__(None, None, None) instead. type(e) is e itself, as an exctype; tb is
+    # block's), call __exit__(None, None, None) instead. type(e) is its class's class object; tb is
     # None, or an object of TracebackType (lib/_pystachy_types.py) where __exit__ declares that type
     c = m.t
     ms = self.classes[c].methods
@@ -548,6 +555,10 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
 def gen_stmt(self, n: Node) -> None:
     self.line = n.line
     k = n.kind
+    if len(self.dmemo) > 0:
+        # (the dry-run types of the display items of the statement before, see dyn_dry)
+        self.dmemo = []
+        self.dmemot = []
     if self.curfn.vararg >= 0 and self.stack_ok(self.curfn):
         self.keep_stack(n)
     if k == "expr":
@@ -558,6 +569,10 @@ def gen_stmt(self, n: Node) -> None:
             self.expr(n.kids[0], "")  # (a string or ... alone does nothing)
     elif k == "gendrop":
         self.gen_drop(self.expr(n.kids[0], ""))  # (a generator a loop owns: owned_loop)
+    elif k == "dynbody":
+        self.dyn_body(n.s)  # (a dispatcher of dynamic values: dynamic.py)
+    elif k == "dynx":
+        self.dyn_xbody(n.s)  # (a class's comparisons with dynamic values of other types: dynamic.py)
     elif (k == "assign" or k == "annassign") and n.kids[-1].kind == "yield" and n.kids[-1].s == "from" and (k == "annassign" or len(n.kids) == 2):
         # r = yield from g(): what the generator g() makes returns
         v = self.yield_from(n.kids[-1].kids[0])
@@ -583,6 +598,8 @@ def gen_stmt(self, n: Node) -> None:
             self.str_append(t0, val.kids[1], "")
         elif len(n.kids) == 2 and t0.kind == "name" and ekind != "" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty(ekind, t0.s))
+        elif len(n.kids) == 2 and t0.kind == "name" and none_display(val) != "" and self.target_type(t0) == "" and (t0.s not in self.gtypes and t0.s not in self.noneglobals if self.is_global(t0.s) else t0.s not in self.ltype):
+            self.assign(t0, self.none_container(val))  # ([None] * n: its first fill types it)
         elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "call" and len(val.kids) == 2 and val.kids[0].kind == "name" and val.kids[0].s == "dict" and not self.bound("dict") and val.kids[1].kind == "name" and self.static_type(val.kids[1]) == "kw[]" and (self.target_type(t0) == "" or "?" in self.target_type(t0)):
             self.assign(t0, self.empty("dict", t0.s))  # (d = dict(kwargs) of a call without extra keywords: d = {})
         elif len(n.kids) == 2 and t0.kind == "name" and val.kind == "name" and self.is_global(t0.s) and (t0.s not in self.gtypes or self.twin_of.get(t0.s, "-") == self.twin_of.get(val.s, "")) and t0.s not in self.noneglobals and not self.copying and self.globread(val.s) and "?" in self.gtypes.get(val.s, ""):
@@ -610,11 +627,16 @@ def gen_stmt(self, n: Node) -> None:
                 v = self.consume(val, "")  # (a, *b = range(n): UNPACK_EX takes every item first)
             else:
                 v = self.expr(val, self.target_type(t0))
+            src = self.joinsrc
             if n.s == "local-retype":
+                self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
                 self.store_name(t0.s, v, True)
             else:
                 for i in range(len(n.kids) - 1):
-                    self.assign(n.kids[i], v)
+                    tgt = n.kids[i]
+                    self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
+                    self.assign(tgt, v)
+            self.joinsrc = src
         self.copying = False
     elif k == "annassign" and self.tmpl_ann(n.kids[1]):
         # an annotation that names a class template types nothing: x: Box = v is x = v
@@ -736,6 +758,9 @@ def gen_stmt(self, n: Node) -> None:
                 self.add(Ins("ret.none", "", ""))
             else:
                 self.ret_(v)
+        elif len(n.kids) == 0 and self.ret == "dyn":
+            if not self.leave(0):
+                self.ret_(Val(self.rtdata("pys_dyn_none_box"), "dyn"))  # (None, as a dynamic value: dynamic.py)
         elif len(n.kids) == 0 or (self.ret == "None" and n.kids[0].kind == "None"):
             if self.ret != "None" and self.curfn.infer and self.optional(self.ret) != self.ret and self.optional(self.ret) != "":
                 self.reopt(self.optional(self.ret))  # a template's function returns T, and None: T | None
@@ -764,7 +789,16 @@ def gen_stmt(self, n: Node) -> None:
             if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret):
                 if v.t == "None":
                     self.err(self.nonemix(self.curfn, self.ret))
-                self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
+                if v.t != "dyn" or not self.dyn_widen("", self.ret):  # (an Any value: compiled again returning Any)
+                    was = self.join_at("return", f"{self.fnkey(self.curfn)}|return", self.ret)
+                    src = self.joinsrc
+                    self.joinsrc = n.kids[0]  # (a call's fresh result: see join_hint)
+                    joined = self.join_hint(self.ret, v.t)  # (it returns both: their union, see join_hint)
+                    self.joinsrc = src
+                    self.join_at(was[0], was[1], was[2])
+                    if not joined:
+                        self.err(f"{short(self.curfn.name)}() returns both {typestr(self.ret)} and {typestr(v.t)} (each function has one return type)")
+                    v = Val("undef", self.ret)
             v = self.coerce(v, self.ret, f"the value {short(self.curfn.name)}() returns ({typestr(self.ret)})" if is_opt(v.t) else "")
             self.carried = v  # (the value first: a finally block runs after it is computed)
             ended = self.leave(0)
@@ -831,7 +865,9 @@ def gen_stmt(self, n: Node) -> None:
                 continue
             o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
             nodel = "TypeError: 'NoneType' object does not support item deletion"
-            if is_list(unopt(o.t)):
+            if o.t == "dyn":
+                self.dyn_delitem(o, self.expr(dt.kids[1], "dyn"))  # (by its box's type: dynamic.py)
+            elif is_list(unopt(o.t)):
                 ix = self.ival(dt.kids[1])
                 self.rt("pys_list_del", "void", [f"ptr {self.unwrap(o, nodel).v}", f"i64 {ix.v}"])
             elif is_dict(unopt(o.t)):
@@ -847,7 +883,7 @@ def gen_stmt(self, n: Node) -> None:
                 if bool_for_int(kval.t, kt):
                     self.bool_find(o.v, kval, key)
                 fx = self.key_fx(kt)
-                self.nonekey(kx, "", "pys_dict_del" if "H" in fx else "pys_dict_pop", [f"ptr {o.v}", "i64 " + key], fx)
+                self.nonekey(kx, "", "pys_dict_del" if "H" in fx or "A" in fx else "pys_dict_pop", [f"ptr {o.v}", "i64 " + key], fx)
             elif o.t in self.classes:
                 # del o[k]: o.__delitem__(k)
                 ik = self.expr(dt.kids[1], self.argtype(o.t, "__delitem__", 1, f"'{tname(o.t)}' object doesn't support item deletion"))
@@ -1000,6 +1036,10 @@ def gen_stmt(self, n: Node) -> None:
                 self.mstore('bool', 'false', f'@init.{x.s}.guard')
             else:
                 self.add(Ins("init", "", x.s))
+    elif k == "ready":
+        # name = m.C, an alias of class m.C (Loader.late_aliases): its read of m.C, as CPython's
+        # assignment does, which raises AttributeError where m's code has not bound C yet
+        self.class_ready(n.kids[-1])
     elif k == "bound":
         # an import has bound these names, which an import in a try statement may leave unbound
         self.modchk(n)  # a from-import must read an existing source-module attribute first
@@ -1081,9 +1121,12 @@ def gen_augassign(self, n: Node) -> None:
         v = self.expr(n.kids[1], "")
         if not is_list(v.t):
             self.err(f"cannot extend a list with {v.t}")
+        nones = NONE_ITEM in cur.t
         self.refine(t.s, v.t)
+        if nones:
+            self.none_extend(t.s)
         self.rt("pys_list_extend", "void", [f"ptr {cur.v}", f"ptr {v.v}"])
-        self.store_name(t.s, Val(cur.v, v.t))  # (the right operand may have rebound the name)
+        self.store_name(t.s, Val(cur.v, self.qtype(t.s)))  # (the right operand may have rebound the name; a list of None's items are optional)
     elif t.kind == "name" and op == "|" and is_set(self.rtype(t.s)) and "?" in self.qtype(t.s):
         # s |= t on an empty set without a type
         self.allowq = True
@@ -1108,6 +1151,9 @@ def gen_augassign(self, n: Node) -> None:
         self.class_store(ci, t.s, self.inplace(op, self.class_attr(t.kids[0], t.s), n.kids[1]))
     elif t.kind == "attr":
         o = self.expr(t.kids[0], "")
+        if o.t == "dyn":
+            self.dyn_setattr(o, t.s, self.inplace(op, self.dyn_getattr(o, t.s), n.kids[1]))  # (dynamic.py)
+            return
         if self.is_prop(o.t, t.s):
             # o.x op= v of a property x: its getter, then its setter
             self.prop_store(o, t.s, self.inplace(op, self.method_value(o, t.s), n.kids[1]))
@@ -1136,6 +1182,10 @@ def gen_augassign(self, n: Node) -> None:
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
         sub = "TypeError: 'NoneType' object is not subscriptable"
+        if o.t == "dyn":
+            k = self.dyn_box(self.expr(t.kids[1], "dyn"))  # (o[k] op= v, k evaluated once: dynamic.py)
+            self.dyn_setitem(o, k, self.inplace(op, self.dyn_getitem(o, k), n.kids[1]))
+            return
         if is_list(unopt(o.t)):
             et = elem(unopt(o.t))
             i = self.ival(t.kids[1])
@@ -1173,8 +1223,13 @@ def gen_augassign(self, n: Node) -> None:
             r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
             self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(r)], self.key_fx(kv[0]))
         elif o.t in self.classes:
-            # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once
-            ik = self.expr(t.kids[1], self.argtype(o.t, "__getitem__", 1, f"'{tname(o.t)}' object is not subscriptable"))
+            # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once (a tuple
+            # display k in the frame where both only read it: stack_key)
+            keyt = self.argtype(o.t, "__getitem__", 1, f"'{tname(o.t)}' object is not subscriptable")
+            if self.lookup_key(t.kids[1]) and self.stack_key(o.t, ["__getitem__", "__setitem__"]):
+                self.stkkey = t.kids[1]
+            ik = self.expr(t.kids[1], keyt)
+            self.stkkey = self.nokey
             self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment")
             self.notnone(o, sub)
             cur = self.protocol(o, "__getitem__", [ik])
@@ -1228,6 +1283,8 @@ def gen_may_change(self, b0: Blk, x0: int, n0: int) -> bool:
 def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
     # the new value of cur op= rhs: lists change in place (+= extends, *= repeats), objects
     # use __iadd__ & co when they define them, anything else is cur op rhs
+    if cur.t == "dyn":
+        return self.dyn_arith(op, cur, self.expr(rhs, "dyn"), True)  # (in place where its box's type is: dynamic.py)
     if is_list(unopt(cur.t)) and op == "+":
         b = self.expr(rhs, cur.t)
         if is_opt(cur.t) or is_opt(b.t):
@@ -1467,6 +1524,8 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             else:
                 v = self.method(o, m, [])
                 own = 0
+                if v.t == "dyn":
+                    v = self.iterable(v)  # (a dynamic value's method's result: dynamic.py)
                 if v.t in self.classes:
                     # (an object it returns is iterated as any other: iter() calls its __iter__,
                     # a comprehension's iter() its iterator's again, as below; an __iter__ that
@@ -1512,7 +1571,10 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
 def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not iterable") -> Val:
     # what a for loop steps through (for_seq): a tuple as it is, whose items must then share
     # one type (with PYSTACHY_OPT=-tupleiter, a list of them), an object the list its __iter__
-    # steps through or the iterator object it returns (obj_iterator); None raises msg
+    # steps through or the iterator object it returns (obj_iterator); None raises msg; a dynamic
+    # value the runtime's iterator over it (dyniter: dynamic.py)
+    if v.t == "dyn":
+        return Val(self.rt("pys_dyn_iter", "ptr", [f"ptr {v.v}"]), "dyniter")
     v = self.unwrap(v, msg)
     if is_kw(v.t):
         return self.kw_list(v)  # (iterating **kwargs gives the names)
@@ -1689,6 +1751,11 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
             j = self.rt("pys_file_readline", "ptr", [f"ptr {s.v}"])
             ok = self.num_cmp('!=', Val(self.mload('int', j), "int"), Val('0', "int")).v
             nx = ""
+        elif s.t == "dyniter":
+            # a dynamic value's next item, null at its end (dynamic.py)
+            j = self.rt("pys_dyn_next", "ptr", [f"ptr {s.v}"])
+            ok = self.ptr_cmp('!=', Val(j, "dyn"), Val('null', 'None')).v
+            nx = ""
         elif is_gen(s.t):
             # a generator runs to its next yield (the address of its promise, which holds the value)
             j = self.gen_next(s, le)
@@ -1712,6 +1779,13 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
             # (item i of a range object, while i is below its count, which is unsigned)
             j = i
             ok = self.int_ucmp('<', Val(i, "int"), Val(st[k], "int")).v
+        elif s.t == "str" and not self.rtmode:
+            # The loop counter counts characters (enumerate/zip), while each string owns a
+            # byte cursor. Decode each character once instead of rescanning from its start.
+            j = self.mload('int', st[k])
+            if mode == "reversed":
+                j = self.rt("pys_text_prev", "i64", [f"ptr {s.v}", f"i64 {j}"])
+            ok = self.int_ucmp('<', Val(j, "int"), Val(used[k], "int")).v
         elif mode == "reversed":
             j = self.scalar('sub', [Val(self.scalar('sub', [Val(st[k], 'int'), Val('1', 'int')]), 'int'), Val(i, 'int')])
             # 0 <= j < the current length, as CPython's reversed iterator checks
@@ -1726,6 +1800,9 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
         lp.tests.append(go)
         lp.idx.append(j)
         if is_dict(s.t) or is_set(s.t):
+            self.mstore('int', nx, st[k])
+        elif s.t == "str" and not self.rtmode:
+            nx = j if mode == "reversed" else self.rt("pys_text_next", "i64", [f"ptr {s.v}", f"i64 {j}"])
             self.mstore('int', nx, st[k])
         at.append(j)
         if now:
@@ -1762,11 +1839,17 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     if is_tuple(s.t):
         return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), targs(s.t)[0])]
     if s.t == "str":
-        return [Val(self.rt("pys_str_get", "ptr", [f"ptr {s.v}", f"i64 {j}"]), "str")]
+        return [Val(self.rt("pys_str_get" if self.rtmode else "pys_text_at", "ptr", [f"ptr {s.v}", f"i64 {j}"]), "str")]
     if s.t == "bytes":
-        return [Val(self.rt("pys_bytes_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), "int")]
+        if "listget" not in self.opts:
+            return [Val(self.rt("pys_bytes_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), "int")]
+        # (for_seq has tested j against the length, which a bytes never changes: an inline load)
+        p = self.maddr('%byte', s.v, self.scalar('add', [Val(j, 'int'), Val('24', 'int')]))
+        return [Val(self.scalar_cast('zext', Val(self.mload('%byte', p), '%byte'), 'int'), "int")]
     if s.t == "file":
         return [Val(j, "str")]
+    if s.t == "dyniter":
+        return [Val(j, "dyn")]
     if is_gen(s.t):
         return [self.from_slot(self.mload('int', j), gelem(s.t))]  # (j: its promise, gen_next)
     if is_set(s.t):
@@ -1791,7 +1874,7 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         self.err(f"'{tname(s.t)}' object is not reversible")
     if is_gen(s.t) and mode == "reversed":
         self.err("'generator' object is not reversible")
-    if self.is_iterator(s.t) and mode != "reversed":
+    if (self.is_iterator(s.t) or s.t == "dyniter") and mode != "reversed":
         made.st.append("")
         made.used.append("")
         return
@@ -1809,7 +1892,11 @@ def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
         return
     n0 = self.mload('int', s.v) if not is_tuple(s.t) else str(len(targs(s.t)))
     made.used.append(n0)
-    if is_dict(s.t) or is_set(s.t):
+    if s.t == "str" and not self.rtmode:
+        pos = self.alloca("int", "")
+        self.mstore('int', n0 if mode == "reversed" else "0", pos)
+        made.st.append(pos)
+    elif is_dict(s.t) or is_set(s.t):
         pos = self.alloca("int", "")
         p0 = "0"
         if mode == "reversed":

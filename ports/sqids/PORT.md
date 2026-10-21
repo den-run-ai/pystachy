@@ -35,13 +35,13 @@ print(identifier, sqids.decode(identifier))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_sqids_encode.py
-./tests/run.sh ./pystachy "jit aot" tests/port_sqids_encode.py tests/port_sqids_blocklist.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_sqids_encode.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_sqids_encode.py tests/programs/apps/port_sqids_blocklist.py
 ```
 
 The differential tests cover upstream vectors, round trips through 64-bit limits, alphabet/minimum-length errors, blocklist filtering and blocked-ID retries.
 
-Cases: [port_sqids_encode.py](../../tests/port_sqids_encode.py), [port_sqids_blocklist.py](../../tests/port_sqids_blocklist.py).
+Cases: [port_sqids_encode.py](../../tests/programs/apps/port_sqids_encode.py), [port_sqids_blocklist.py](../../tests/programs/apps/port_sqids_blocklist.py).
 
 <a id="speed"></a>
 

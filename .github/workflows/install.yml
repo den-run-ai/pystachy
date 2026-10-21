@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    paths-ignore:   # documentation-only pull requests
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
@@ -19,7 +22,7 @@ jobs:
   smoke:
     name: Install (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -33,16 +36,8 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: LLVM 18 (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang-18 llvm-18 llvm-18-runtime
-
-      - name: LLVM 20 (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install llvm@20
+      - name: LLVM toolchain (install only when missing)
+        run: tools/setup.sh --minimal
 
       - name: Check dependencies and installer
         run: |

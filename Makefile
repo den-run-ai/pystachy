@@ -20,7 +20,7 @@ pystachy: $(COMPILER_SOURCES) runtime.c runtime.py
 	@echo "fixed point: runtime.py's IR, rt1 == rt2 == rt3 ($$(wc -l < build/rt1.ll) lines)"
 	cp build/pystachy2 pystachy
 
-# FILES: only these cases, e.g. make test FILES="tests/str_*.py tests/errors/rtmode_*.py"
+# FILES: only these cases, e.g. make test FILES="tests/programs/strings/str_*.py tests/errors/runtime/rtmode_*.py"
 test: pystachy
 	tests/run.sh ./pystachy "jit aot" $(FILES)
 
@@ -29,6 +29,26 @@ test: pystachy
 test-py:
 	$(PY) -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
 	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
+
+# the statements and branches of the compiler's own source (src/pystachy_compiler/) that the corpus, the
+# FFI and runtime-cache suites, the IR checks and the compiler's unit tests run (or FILES of the corpus
+# alone), measured in the CPython-hosted compiler as test-py runs it (tools/coverage.sh, .coveragerc):
+# report only, in build/coverage/; $(PY) needs coverage.py (tools/requirements-dev.txt)
+coverage:
+	PY="$(PY)" tools/coverage.sh $(FILES)
+
+# the lines and branches of the native runtime's C code (runtime.c, pyembed.c, pyext.c) that the corpus's
+# programs (or FILES) and the FFI suite run, built with clang's source-based coverage
+# (tools/runtime_coverage.sh): report only, in build/runtime-coverage/; needs clang's profile runtime
+# (Ubuntu's libclang-rt-18-dev, which tools/setup.sh installs)
+runtime-coverage: pystachy
+	PY="$(PY)" tools/runtime_coverage.sh $(FILES)
+
+# the corpus (or FILES), JIT and AOT, in configurations that verify does not test (tools/variants.sh):
+# the IR passes off in a covering array of their pairs (PYSTACHY_OPT), the runtime and AOT programs
+# built at -O0 (PYSTACHY_CFLAGS); VARIANTS="opt-1 cflags-O0" selects some; logs in build/variants/
+variants: pystachy
+	PY="$(PY)" tools/variants.sh $(FILES)
 
 # the cached runtime's rules (tests/cache.sh: when it is used, built again, and what it is keyed by),
 # with the native compiler, then the CPython-hosted one ($(PY) loads the extension modules)
@@ -62,6 +82,21 @@ bench-extended-check: $(BENCH_COMPILER)
 bench-pyperformance: $(BENCH_COMPILER)
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
 
+# The optional cblas_dgemm adapter (examples/ndarray/README.md) and nanoGPT's fused-bias linear:
+# correctness only, no timings. Needs an LP64 libblas.so.3 (Ubuntu: libopenblas0-pthread or libblas3;
+# LD_LIBRARY_PATH=<its directory> selects one) and, for check_blas.py's reference, NumPy in $(PY). Each
+# runs under CPython (tools/rt_cpython's FFI twin), JIT, AOT and with a collection at every allocation.
+BLAS_PATH = $(CURDIR)/examples/nanogpt:$(CURDIR)/examples/ndarray
+blas-check: $(BENCH_COMPILER)
+	$(PY) examples/ndarray/check_blas.py --compiler "$(BENCH_COMPILER)" --stress 1
+	mkdir -p build
+	PYTHONPATH="$(CURDIR)/tools/rt_cpython:$(BLAS_PATH)" $(PY) examples/nanogpt/blas_parity.py
+	PYSTACHY_PATH="$(BLAS_PATH)" $(BENCH_COMPILER) run examples/nanogpt/blas_parity.py
+	PYSTACHY_PATH="$(BLAS_PATH)" PYSTACHY_GC_STRESS_PROGRAM=1 $(BENCH_COMPILER) run examples/nanogpt/blas_parity.py
+	PYSTACHY_PATH="$(BLAS_PATH)" $(BENCH_COMPILER) build examples/nanogpt/blas_parity.py -o build/blas_parity
+	build/blas_parity
+	PYSTACHY_GC_STRESS=1 build/blas_parity
+
 bench-pyperformance-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_bench_pyperformance.py
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" --smoke --json build/pyperformance-smoke.json
@@ -80,7 +115,10 @@ dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	build/dictprobe
 	PYSTACHY_GC_STRESS=1 build/dictprobe --hash-cache
 
-# Empty lists release historical backing; range-list backing is pointer-free and safely mutable.
+# Empty lists release historical backing; range-list backing is pointer-free and safely mutable;
+# dropped pointer-free large arrays that are most of what is allocated run a collection every
+# 4 MiB of them; small objects, large arrays among more small objects and arrays of pointers,
+# every 32 MiB.
 listprobe: tools/listprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/listprobe-rt.ll
@@ -112,6 +150,36 @@ fileprobe: tools/fileprobe.c runtime.c runtime.py pystachy
 	build/fileprobe --lib
 	PYSTACHY_GC_STRESS=1 build/fileprobe
 
+# POSIX select prototype: real pipes, signal interruptions and timeout deadlines.
+selectprobe: tools/selectprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/selectprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/selectprobe.c -o build/selectprobe.ll
+	$(LLVMBIN)llvm-link build/selectprobe-rt.ll build/selectprobe.ll -o build/selectprobe.bc
+	$(LLVMBIN)clang -O2 build/selectprobe.bc -o build/selectprobe -lm
+	build/selectprobe
+	PYSTACHY_GC_STRESS=1 build/selectprobe
+
+# Real weak references: no strong target edge, cleared before reuse, dead handles pruned.
+weakrefprobe: tools/weakrefprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/weakrefprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/weakrefprobe.c -o build/weakrefprobe.ll
+	$(LLVMBIN)llvm-link build/weakrefprobe-rt.ll build/weakrefprobe.ll -o build/weakrefprobe.bc
+	$(LLVMBIN)clang -O2 build/weakrefprobe.bc -o build/weakrefprobe -lm
+	build/weakrefprobe
+	PYSTACHY_GC_STRESS=1 build/weakrefprobe
+
+# Any and union boxes take exact 16-byte slots: a pointer to a box's payload keeps it, one past its end does not.
+boxprobe: tools/boxprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/boxprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/boxprobe.c -o build/boxprobe.ll
+	$(LLVMBIN)llvm-link build/boxprobe-rt.ll build/boxprobe.ll -o build/boxprobe.bc
+	$(LLVMBIN)clang -O2 build/boxprobe.bc -o build/boxprobe -lm
+	build/boxprobe
+	PYSTACHY_GC_STRESS=1 build/boxprobe
+
 # sum(), min() and max() of generators and range() stream: 10^8 items in 64 MiB (AOT).
 streamprobe: pystachy
 	$(PY) tools/streamprobe.py
@@ -123,6 +191,16 @@ jitprobe: pystachy
 # Opt-in Unicode porting checks, including cache reuse and GC-stress exception paths.
 unicode-audit: pystachy
 	$(PY) tools/unicode_audit.py
+
+# Code-point caches survive owned appends and GC; raw-byte joins invalidate unsafe counts.
+unicodeprobe: tools/unicodeprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/unicodeprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/unicodeprobe.c -o build/unicodeprobe.ll
+	$(LLVMBIN)llvm-link build/unicodeprobe-rt.ll build/unicodeprobe.ll -o build/unicodeprobe.bc
+	$(LLVMBIN)clang -O2 build/unicodeprobe.bc -o build/unicodeprobe -lm
+	build/unicodeprobe
+	PYSTACHY_GC_STRESS=1 build/unicodeprobe
 
 # Full verification (bootstrap, both compilers, the runtime cache, Python-free stage, UBSan, GC stress, IR check,
 # benchmarks, dict probes, scaling) -> build/verification.json
@@ -185,7 +263,7 @@ port-check:
 # These files also belong to the normal corpus, so every existing CI configuration runs them.
 CPYTHON_SUBSET_COMPILER ?= ./pystachy
 test-cpython-subset: $(CPYTHON_SUBSET_COMPILER)
-	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/upstream_fnmatch.py tests/upstream_textwrap_wrap.py tests/upstream_textwrap_layout.py tests/upstream_textwrap_indent.py tests/upstream_functools_cache.py tests/deviations/upstream_textwrap_unicode.py tests/errors/upstream_textwrap_field_rebind.py
+	tests/run.sh "$(CPYTHON_SUBSET_COMPILER)" "jit aot" tests/programs/upstream/upstream_fnmatch.py tests/programs/upstream/upstream_textwrap_wrap.py tests/programs/upstream/upstream_textwrap_layout.py tests/programs/upstream/upstream_textwrap_indent.py tests/programs/upstream/upstream_functools_cache.py tests/programs/upstream/upstream_textwrap_unicode.py tests/programs/upstream/upstream_textwrap_field_rebind.py
 
 # Large upstream regex cases with normal GC, outside the collect-at-every-allocation corpus.
 # Reuse a verified compiler by setting PORT_COMPILER; the default bootstraps one.
@@ -200,6 +278,14 @@ RE_FUZZ ?=
 re-fuzz:
 	$(PY) tools/re_fuzz.py $(RE_FUZZ)
 
+# dynamic Any: seeded programs that apply operators, comparisons and builtins to Any values must
+# print what CPython prints, but for the documented deviations, and keep its identity and
+# containment invariants (tools/dynany_fuzz.py, #802; deterministic: 3 programs of 150 cases, JIT;
+# e.g. make dynany-fuzz DYNANY_FUZZ="--aot 10 300")
+DYNANY_FUZZ ?=
+dynany-fuzz: pystachy
+	$(PY) tools/dynany_fuzz.py $(DYNANY_FUZZ)
+
 # lib/re, run by CPython, must enter its matcher and make contexts no more often than fixed limits
 # allow for textwrap's patterns, with CPython's results (tools/re_probe.py: deterministic counts);
 # RE_PROBE="--time ./pystachy" also times tools/re_bench.py compiled and under CPython
@@ -207,12 +293,23 @@ RE_PROBE ?=
 re-probe:
 	$(PY) tools/re_probe.py $(RE_PROBE)
 
+# matchers that tools/re_specialize.py generates for random patterns, run by lib/re on CPython, must
+# match as CPython's re does (deterministic: N=400 patterns, SEED=1, e.g. make re-specialize-check
+# RE_SPECIALIZE="4000 7"; tools/test_re_specialize.py, which Lint runs, checks 300)
+RE_SPECIALIZE ?=
+re-specialize-check:
+	$(PY) tools/re_specialize.py check $(RE_SPECIALIZE)
+
+# Hosted compiler type checks, using the pinned development tools; no LLVM needed.
+typecheck:
+	mypy --config-file mypy.ini
+
 # ruff (findings only, ruff.toml), shellcheck of the scripts as POSIX sh, and clang's warnings on the C
 # sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
 lint:
 	ruff check
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
-	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c pyext.c pyembed.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 
 clean:
@@ -229,4 +326,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py test-cache test-ffi bench bench-extended bench-extended-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe streamprobe jitprobe unicode-audit verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz re-probe re-specialize-check typecheck lint clean install uninstall test-install

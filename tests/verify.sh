@@ -46,19 +46,29 @@
 #                  with the results of CPython's re
 #   rt-abi         tools/rtabi.py: each function runtime.py defines or declares has the same LLVM
 #                  signature in runtime.py, runtime.c and every program of the corpus
-#   inherited-ast tools/inheritprobe.py: unused inherited methods retain linear AST storage
+#   inherited-ast tools/inheritprobe.py: unused inherited methods retain linear AST storage, and
+#                  comparisons of a base's values compile to IR linear in its subclasses
 #   streaming      tools/streamprobe.py: sum(), min() and max() of range() and of generator expressions
 #                  take the items as they come: 100,000,000 of them in 64 MiB, AOT
 #   ffi            tests/ffi/run.sh with the stage-2 compiler: @ffi.extern's C calls and the FFI's
 #                  compile-time errors, then, with $PY's libpython, lib/pyobj.py embedding CPython and
 #                  pystachy ext's extension modules, against the twins in tools/rt_cpython (docs/ffi.md)
 #   list-storage   tools/listprobe.c: cleared reachable lists release backing capacity and live bytes;
-#                  empty operations/reuse preserve sort's sentinel, without allocation in clear
+#                  empty operations/reuse preserve sort's sentinel, without allocation in clear;
+#                  dropped pointer-free large arrays, when most of what is allocated, run
+#                  collections every max(4 MiB, live bytes) of them; small objects and arrays
+#                  of pointers keep the 32 MiB window
 #   container-eq   tools/eqprobe.c: shared DAG comparisons stop within a fixed comparison budget,
 #                  including ordering and list searches, normally and with GC stress
+#   weakrefs       tools/weakrefprobe.c: true weak targets and dead registry entries are cleared
+#                  before sweeping, including cycles, large objects and allocation stress
+#   box-slots      tools/boxprobe.c: Any and union boxes take exact 16-byte slots of the right kind;
+#                  a pointer to a box's payload keeps it, one past its end does not, with GC stress too
 #   file-buffers   tools/fileprobe.c: writable files' malloc'd buffers count as heap bytes, so files
 #                  dropped without close() run collections; every close takes back exactly what was
 #                  counted, a standard stream's are never counted (deterministic counts, no RSS)
+#   select-io      tools/selectprobe.c: real pipe readiness, duplicate descriptors, EOF and EINTR
+#                  timeout-deadline/blocking retries, normally and with GC stress
 #   dict-probes    tools/dictprobe.c: dict lookups visit few table slots for keys that defeat a weak
 #                  hash or probe sequence (deterministic counts against a fixed limit, no timings);
 #                  the collector scans the key tables of strs and tuples, and none of ints
@@ -70,7 +80,8 @@
 #                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
 #                  execute as in CPython, with both compilers
 #   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
-#                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers
+#                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
+#                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
 #   scaling-0/-1   tools/scaling.py --check: both compilers compile its generated programs (500 and 1000
 #                  functions, globals, classes, modules, chained imports, breaks, elifs, ...), and the
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
@@ -79,7 +90,9 @@
 # A step that runs tests/run.sh over the suite passes only with as many passes as the checks the suite
 # holds, counted from its files (checks): a run that covered fewer cases fails.
 # usage: tests/verify.sh [GROUP]   (make verify runs all)   env: PY (default python3), PYSTACHY_LLVM (LLVM 18 bin dir)
+# CI may set VERIFY_BOOTSTRAP_DIR to a verified bundle from this run; local runs build afresh.
 cd "$(dirname "$0")/.." || exit 1
+. tests/corpus.sh
 # shellcheck disable=SC3045 # (ulimit -c is not POSIX, but dash, bash, ksh and busybox have it)
 ulimit -c 0 2> /dev/null  # (no core file of a crashing compiler or test program in the tree)
 ROOT=$(pwd)
@@ -87,7 +100,8 @@ ROOT=$(pwd)
 # --list exposes the same plan to the final CI report gate, which rejects missing groups/steps.
 plan() {
   case $1 in
-    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    bootstrap) echo 'bootstrap' ;;
+    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted-0) echo 'bootstrap tests-cpython-0' ;;
     hosted-1) echo 'bootstrap tests-cpython-1' ;;
     hosted-2) echo 'bootstrap tests-cpython-2' ;;
@@ -116,7 +130,7 @@ plan() {
     gc-aot) echo 'bootstrap gc-aot-0 gc-aot-1 gc-aot-2' ;;
     gc-stress) echo 'bootstrap gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
     runtime-cache) echo 'bootstrap runtime-cache' ;;
-    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq file-buffers dict-probes compile-limits jit-dead-code unicode-audit' ;;
+    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks scaling-0' ;;
     scaling-1) echo 'bootstrap scaling-1' ;;
     scaling) echo 'bootstrap scaling-0 scaling-1' ;; # local alias
@@ -126,12 +140,15 @@ plan() {
 [ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted-0|hosted-1|hosted-2|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all hosted-0 hosted-1 hosted-2 native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache contracts benchmarks scaling-1; do
+  for g in all bootstrap hosted-0 hosted-1 hosted-2 native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache contracts benchmarks scaling-1; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
 fi
 SELECTED=$(plan "$GROUP") || exit 2
+# a test outside the corpus's areas would be in no step's count (tests/corpus.sh)
+strays=$(corpus_strays)
+[ -z "$strays" ] || { printf 'tests/verify.sh: no step tests these files, outside the corpus'"'"'s areas:\n%s\n' "$strays" >&2; exit 2; }
 want() { case " $SELECTED " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 expected=0
 for x in $SELECTED; do expected=$((expected + 1)); done
@@ -172,23 +189,27 @@ step() {
 # checks MODES [FILE...]: checks tests/run.sh makes of these files (default: whole suite) in MODES,
 # counted from the files as
 # its loops make them: each program and each deviation once per mode, each rejection once, and one
-# "pystachy check" more of each syntax_*.py program and of each syntax_*.py rejection whose error is
+# "pystachy check" more of each program syntax_*.py and of each rejection syntax_*.py whose error is
 # in its own file
 checks() {
   c=0; m=0
   for x in $1; do m=$((m + 1)); done
   shift
-  [ $# != 0 ] || set -- tests/*.py tests/deviations/*.py tests/errors/*.py
+  if [ $# = 0 ]; then
+    corpus > "$V/corpus.list"
+    while IFS= read -r f; do set -- "$@" "$f"; done < "$V/corpus.list"
+  fi
   for f; do
     [ -f "$f" ] || continue
+    n=${f##*/}
     case $f in
-      tests/errors/*) c=$((c + 1)) ;;
+      tests/errors/*/*) c=$((c + 1)) ;;
       *) c=$((c + m)) ;;
     esac
-    case $f in
-      tests/syntax_*.py) c=$((c + 1)) ;;
-      tests/errors/syntax_*.py)
-        n=${f##*/}; case $(head -1 "$f") in "# error: ${n%.py}.py:"*) c=$((c + 1)) ;; esac ;;
+    case $f:$n in
+      tests/programs/*:syntax_*.py) c=$((c + 1)) ;;
+      tests/errors/*/*:syntax_*.py)
+        case $(head -1 "$f") in "# error: ${n%.py}.py:"*) c=$((c + 1)) ;; esac ;;
     esac
   done
   echo $c
@@ -202,11 +223,12 @@ shard_cases() {
   (
     export LC_ALL=C
     case_index=0
-    for f in tests/*.py tests/deviations/*.py tests/errors/*.py; do
-      [ -f "$f" ] || continue
+    corpus > "$3.all"
+    while IFS= read -r f; do
       [ $((case_index % $2)) != "$1" ] || printf '%s\n' "$f"
       case_index=$((case_index + 1))
-    done
+    done < "$3.all"
+    rm -f "$3.all"
   ) > "$3"
 }
 # tests N LOG...: JSON counts summed over tests/run.sh outputs (the "N passed, M failed" line ends
@@ -227,6 +249,18 @@ tests() {
 
 # ---- bootstrap: fixed point of the self-hosting compiler
 L=$V/bootstrap.log; s=$(now); r=fail
+if [ -n "${VERIFY_BOOTSTRAP_DIR:-}" ]; then
+  # Never fall back silently: a corrupt or stale bundle is a verification failure.
+  [ "$GROUP" != bootstrap ] && [ "$GROUP" != all ] || {
+    echo 'verify: bootstrap and all must build their own fixed point' >&2; exit 2;
+  }
+  if ! $PY tools/verification_bootstrap.py restore "$VERIFY_BOOTSTRAP_DIR" > "$V/bootstrap-restore.log" 2>&1; then
+    cat "$V/bootstrap-restore.log" >&2
+    exit 1
+  fi
+  x=$($PY -c 'import json,sys; d=json.load(open(sys.argv[1])); print(", " + json.dumps(d)[1:-1])' "$V/bootstrap-reuse.json") || exit 1
+  step bootstrap pass "$s" "$V/bootstrap-restore.log" "$x"
+else
 {
   $PY pystachy.py build pystachy.py -o "$V/pystachy1" &&
     "$V/pystachy1" build pystachy.py -o "$V/pystachy2" &&
@@ -243,6 +277,7 @@ x=""
 [ $r = pass ] && x=$(printf ', "ir_identical": true, "ir_lines": %s, "ir_sha256": "%s", "native_compiler_bytes": %s, "cpython_self_compile_seconds": %s, "native_self_compile_seconds": %s' \
   "$(lines "$V/stage1.ll")" "$(sha "$V/stage1.ll")" "$(wc -c < "$V/pystachy2" | tr -d ' ')" "$(secs "$t0" "$t1")" "$(secs "$t2" "$t3")")
 step bootstrap $r "$s" "$L" "$x"
+fi
 
 # Self-compilation has its own CI runner; all/local runs can overlap earlier checks.
 # Bound it separately from the CI job,
@@ -326,13 +361,14 @@ for shard in 0 1; do
 done
 
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
-# whose checks are 58 with the native compiler and 60 with CPython's, including component edits)
+# whose checks are 65 with the native compiler and 67 with CPython's, including component edits and,
+# on Linux, which verification runs on, the JIT tier's shared library)
 if want runtime-cache; then
 L=$V/runtime-cache.log; s=$(now)
 PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1
 tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
 for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
-x=$(tests $((58 + 60)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
+x=$(tests $((65 + 67)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
 step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
 fi
 
@@ -552,14 +588,15 @@ PY=$PY tests/ffi/run.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
 step ffi $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) passed, \([0-9]*\) failed.*$/, "passed": \1, "failed": \2/p' "$L")"
 fi
 
-# ---- list-storage: deterministic capacity and live-byte checks for reachable empty lists
+# ---- list-storage: deterministic capacity and live-byte checks for reachable empty lists, and
+# collection counts for dropped large arrays
 if want list-storage; then
 L=$V/list-storage.log; s=$(now); r=fail
 { "${LLVM}clang" -O2 -S -emit-llvm tools/listprobe.c -o "$V/listprobe.ll" &&
   "${LLVM}llvm-link" "$V/rt1.ll" "$V/listprobe.ll" -o "$V/listprobe.bc" &&
   "${LLVM}clang" -O2 "$V/listprobe.bc" -o "$V/listprobe" -lm &&
   "$V/listprobe" && PYSTACHY_GC_STRESS=1 "$V/listprobe" && r=pass; } > "$L" 2>&1
-step list-storage $r "$s" "$L" ', "lists": 64, "historical_slots_per_list": 65536, "live_byte_limit": 1048576'
+step list-storage $r "$s" "$L" ', "lists": 64, "historical_slots_per_list": 65536, "live_byte_limit": 1048576, "large_object_budget": 4194304'
 fi
 
 # ---- container-eq: bounded comparisons for small DAGs with exponentially many logical leaves
@@ -572,6 +609,26 @@ L=$V/container-eq.log; s=$(now); r=fail
 step container-eq $r "$s" "$L" ', "shared_levels": 32, "comparison_limit": 64'
 fi
 
+# ---- weakrefs: handles do not keep targets alive and are pruned before their storage is reclaimed
+if want weakrefs; then
+L=$V/weakrefs.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/weakrefprobe.c -o "$V/weakrefprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/weakrefprobe.ll" -o "$V/weakrefprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/weakrefprobe.bc" -o "$V/weakrefprobe" -lm &&
+  "$V/weakrefprobe" && PYSTACHY_GC_STRESS=1 "$V/weakrefprobe" && r=pass; } > "$L" 2>&1
+step weakrefs $r "$s" "$L" ', "referents": 2, "churned_handles": 1000'
+fi
+
+# ---- box-slots: boxes take 16-byte slots; a payload pointer keeps a box, one past its end does not
+if want box-slots; then
+L=$V/box-slots.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/boxprobe.c -o "$V/boxprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/boxprobe.ll" -o "$V/boxprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/boxprobe.bc" -o "$V/boxprobe" -lm &&
+  "$V/boxprobe" && PYSTACHY_GC_STRESS=1 "$V/boxprobe" && r=pass; } > "$L" 2>&1
+step box-slots $r "$s" "$L" ', "box_bytes": 16'
+fi
+
 # ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts
 if want file-buffers; then
 L=$V/file-buffers.log; s=$(now); r=fail
@@ -580,6 +637,16 @@ L=$V/file-buffers.log; s=$(now); r=fail
   "${LLVM}clang" -O2 "$V/fileprobe.bc" -o "$V/fileprobe" -lm &&
   "$V/fileprobe" && "$V/fileprobe" --lib && PYSTACHY_GC_STRESS=1 "$V/fileprobe" && r=pass; } > "$L" 2>&1
 step file-buffers $r "$s" "$L" ', "dropped_files": 128, "buffer_bytes": 136314880, "outstanding_limit": 41975808'
+fi
+
+# ---- select-io: real descriptors, signal interruptions and readiness loops
+if want select-io; then
+L=$V/select-io.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/selectprobe.c -o "$V/selectprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/selectprobe.ll" -o "$V/selectprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/selectprobe.bc" -o "$V/selectprobe" -lm &&
+  "$V/selectprobe" && PYSTACHY_GC_STRESS=1 "$V/selectprobe" && r=pass; } > "$L" 2>&1
+step select-io $r "$s" "$L" ''
 fi
 
 # ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
@@ -605,11 +672,15 @@ $PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L
 step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
 fi
 
-# ---- Unicode audit: opt-in checks persist in AOT and do not affect runtime-cache semantics
+# ---- Unicode audit: opt-in checks, code-point cache/locality and mutation/GC invalidation
 if want unicode-audit; then
 L=$V/unicode-audit.log; s=$(now); r=fail
-$PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
-step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"]'
+{ $PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" &&
+  "${LLVM}clang" -O2 -S -emit-llvm tools/unicodeprobe.c -o "$V/unicodeprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt2.ll" "$V/unicodeprobe.ll" -o "$V/unicodeprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/unicodeprobe.bc" -o "$V/unicodeprobe" -lm &&
+  "$V/unicodeprobe" && PYSTACHY_GC_STRESS=1 "$V/unicodeprobe" && r=pass; } > "$L" 2>&1
+step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"], "codepoint_probe_gc_modes": ["normal", "stress"]'
 fi
 
 # ---- scaling: compile time grows linearly with generated programs (counts need Python 3.12+)
@@ -655,8 +726,8 @@ sources = {str(p): {"lines": p.read_bytes().count(b"\n"),
 # (suite_checks: the checks of the whole corpus in JIT and AOT, which the shards of each such suite
 # make together; mode_checks: its checks in one mode, which the shards of each GC suite make, and
 # the UBSan thirds once in each mode)
-sources.update(test_programs=len(list(Path("tests").glob("*.py"))),
-               rejection_tests=len(list(Path("tests/errors").glob("*.py"))),
+sources.update(test_programs=len(list(Path("tests/programs").glob("*/*.py"))),
+               rejection_tests=len(list(Path("tests/errors").glob("*/*.py"))),
                suite_checks=int(os.environ["SUITE_CHECKS"]), mode_checks=int(os.environ["MODE_CHECKS"]))
 print('  "sources": ' + json.dumps(sources, sort_keys=True) + ',')
 PY

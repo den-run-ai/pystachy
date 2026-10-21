@@ -3,7 +3,8 @@ defines or declares (pys_* exports, `def f(...) -> T: ...` externs) must have on
 everywhere it appears, in runtime.c's IR (clang) and in the IR of every program of the corpus.
 llvm-link accepts a mismatch without a word (a bool would be i1 on one side and i64 on the
 other), so this is checked here. Attributes and parameter names are ignored. Each extern must be
-a function runtime.c defines.
+a function runtime.c defines. Str's header layout must also agree in compiler-emitted literals,
+runtime.c and the CPython glue; matching pointer signatures alone cannot catch a shifted payload.
 
 usage: python3 tools/rtabi.py [COMPILER]   (default ./pystachy; PYSTACHY_LLVM for clang)
 """
@@ -38,8 +39,20 @@ def sigs(ir):
     return out
 
 
+def str_layout(ir):
+    m = re.search(r"^%struct\.Str = type \{(.*)\}$", ir, re.M)
+    return re.sub(r"\s+", "", m.group(1)) if m else ""
+
+
+def literal_str_layouts(ir):
+    return {re.sub(r"\s+", "", re.sub(r"\[\d+ x i8\]", "[0 x i8]", m))
+            for m in re.findall(r"^@[sb]\.\d+ = private unnamed_addr global \{([^{}]+)\}", ir, re.M)}
+
+
 # what clang writes for a C bool or char return, and for an allocator's
 assert sigs("declare zeroext i1 @f(i64 noundef)\ndefine dso_local noalias nonnull ptr @g(i64 noundef %0) #0 {") == {"f": "i1(i64)", "g": "ptr(i64)"}
+assert str_layout("%struct.Str = type { i64, i64, i64, [0 x i8] }") == "i64,i64,i64,[0xi8]"
+assert literal_str_layouts('@s.0 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1}') == {"i64,i64,i64,[0xi8]"}
 
 
 def run(cmd):
@@ -56,7 +69,7 @@ code, c_ir, err = run([CLANG, "-O0", "-S", "-emit-llvm", "runtime.c", "-o", "-"]
 if code != 0:
     sys.exit(f"cannot compile runtime.c: {err.strip()}")
 seen = {"runtime.c": sigs(c_ir)}
-progs = [f for f in ["pystachy.py"] + sorted(glob.glob("tests/*.py") + glob.glob("tests/deviations/*.py") + glob.glob("bench/*.py") + glob.glob("bench/pyperformance/*.py") + glob.glob("tests/ir/*.py"))]
+progs = [f for f in ["pystachy.py"] + sorted(glob.glob("tests/programs/*/*.py") + glob.glob("tests/deviations/*.py") + glob.glob("bench/*.py") + glob.glob("bench/pyperformance/*.py") + glob.glob("tests/ir/*.py"))]
 
 
 def program(f):
@@ -72,6 +85,10 @@ with concurrent.futures.ThreadPoolExecutor(os.cpu_count() or 1) as ex:
         seen[f] = s
 bad = 0
 uses = 0
+layout = str_layout(c_ir)
+if not layout or literal_str_layouts(rt_ir) != {layout}:
+    bad += 1
+    print(f"MISMATCH Str layout: runtime.c {layout!r}, compiler literals {sorted(literal_str_layouts(rt_ir))}")
 for name in externs:
     if not re.search(rf"^define .*@{name}\(", c_ir, re.M):
         bad += 1
@@ -89,6 +106,9 @@ for src, flags in [("pyext.c", []), ("pyext.c", ["-DPYX_ABI3T"]), ("pyembed.c", 
     code, g_ir, err = run([CLANG, "-O0", "-S", "-emit-llvm", src, "-o", "-"] + flags)
     if code != 0:
         sys.exit(f"cannot compile {src}: {err.strip()}")
+    if str_layout(g_ir) != layout:
+        bad += 1
+        print(f"MISMATCH Str layout: {src} {' '.join(flags)} {str_layout(g_ir)!r}, runtime.c {layout!r}")
     rc = seen["runtime.c"]
     for name, got in sigs(g_ir).items():
         if name.startswith("pys_") and re.search(rf"^declare .*@{name}\(", g_ir, re.M):

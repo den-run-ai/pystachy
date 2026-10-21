@@ -26,6 +26,36 @@ MODDUNDERS = "__file__ __doc__ __spec__ __loader__ __package__ __builtins__"  # 
 RAW = "latin-1" if len("\xe9") == 1 else "utf-8"
 
 
+# the files of the modules that compile typing.Any as a dynamic type (docs/dynamic-any.md), by
+# their index in FILES: those whose lines before their first line of code hold DYNPRAGMA
+DYNFILES: dict[int, bool] = {}
+DYNPRAGMA = "# pystachy: dynamic-any"
+
+
+def dynamic_pragma(src: str) -> bool:
+    # does source src opt in: a comment line DYNPRAGMA (spaces around it allowed) among the
+    # comment and blank lines it starts with (after a byte order mark)
+    at = 3 if src.startswith(chr(239) + chr(187) + chr(191)) else 0
+    while at < len(src):
+        e = src.find("\n", at)
+        ln = (src[at:] if e < 0 else src[at:e]).strip()
+        if ln != "" and not ln.startswith("#"):
+            return False
+        if ln == DYNPRAGMA:
+            return True
+        at = len(src) if e < 0 else e + 1
+    return False
+
+
+def dynamic_file(k: int) -> bool:
+    return k in DYNFILES
+
+
+def dynamic_program() -> bool:
+    # does a module of the program opt in, so that values may be dynamic (dyn)
+    return len(DYNFILES) > 0
+
+
 def shown(s: str) -> str:
     # a name as Python spells it: the "$" of a qualified name (heapq$heappush) between two
     # identifier characters is the "." of a module attribute; the main program's names are
@@ -53,6 +83,13 @@ def where(line: int) -> str:
 def fail(msg: str, line: int) -> None:
     print(f"{where(line)}: error: {shown(msg)}", file=sys.stderr)
     sys.exit(1)
+
+
+class Rejoin(Exception):
+    # a value that a location (a variable, a field, a function's result) does not take, the type
+    # of which was inferred: Gen.newhints has the location's join, the union of both types, and
+    # the driver compiles the program again with it, as if annotated (see Gen.join_hint)
+    pass
 
 
 # ---------------------------------------------------------------- lexer

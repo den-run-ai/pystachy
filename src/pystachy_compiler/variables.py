@@ -25,7 +25,7 @@ from src.pystachy_compiler.analysis import (
 from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, where
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import owner, short
-from src.pystachy_compiler.specs import INERT_DECOS, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED
+from src.pystachy_compiler.specs import INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
@@ -41,6 +41,7 @@ from src.pystachy_compiler.utils import (
     is_list,
     is_opt,
     is_set,
+    is_sopt,
     is_tuple,
     is_vtuple,
     lt,
@@ -90,6 +91,8 @@ def gen_no_type(self, name: str) -> None:
     src = name
     while src in self.origin and name not in self.ltype:
         src = self.origin[src]
+    if NONE_ITEM in t:
+        self.err(f"cannot infer the type of '{short(name)}', a {tname(t)} of None so far: annotate it{self.where_def(src)} ({short(src)}: {'list[T | None]' if is_list(t) else 'dict[K, V | None]'} = ...)")
     self.err(f"cannot infer the type of '{short(name)}', an empty {tname(t)} so far: annotate it{self.where_def(src)} ({short(src)}: {empty_ann(t)})")
 
 def gen_load_name(self, name: str) -> Val:
@@ -115,12 +118,16 @@ def gen_load_name(self, name: str) -> Val:
         r = self.mem_load(Val(self.lreg[name], "*" + t)).v
         if name == self.selfname and name not in self.compvars:
             self.nn[r] = True
-        if name in self.narrowed and (is_opt(t) or is_union(t) or t in self.classes) and t != NONEVAR:
+        if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
             return self.narrow_val(Val(r, t), self.narrowed[name])  # known not to be None here, or a member
         return Val(r, t)
     self.read_ahead(name)
     if name in self.gtypes:
         t = self.gtypes[name]
+        if t == NONEVAR:
+            t = self.none_global(name)
+            if t == "None":
+                return Val("null", "None")
         r = self.mem_load(Val(f"@g.{name}", "*" + t)).v
         if is_opt(t) or is_union(t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
@@ -131,6 +138,8 @@ def gen_load_name(self, name: str) -> Val:
         return self.modattr(self.aliases[name])
     if name in self.funcs:
         return self.fn_value(name)
+    if name in self.classes and self.classes[name].exc != "":
+        return self.exc_class_value(name)  # (an exception class: its class object)
     if name in self.classes:
         self.err(f"class '{name}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)")
     if name in self.fglobals:
@@ -149,6 +158,8 @@ def gen_load_name(self, name: str) -> Val:
         self.err(self.unsupported[name])
     if name in PYBUILTINS and name[0].islower():
         return Val("null", f"fn[b:{name}]")  # (a builtin function, or a class such as int: calling it calls it)
+    if is_excname(name):
+        return self.exc_class_value(name)  # (a builtin exception class: its class object)
     if name in PYBUILTINS:
         self.err(f"the builtin '{name}' cannot be used as a value (not supported)")
     if name == "__doc__":
@@ -537,8 +548,114 @@ def gen_none_type(self, name: str) -> str:
             if t != "None" and t != "" and "?" not in t and t != NONEVAR:
                 if self.optional(t) == "":
                     self.err(f"'{name}' is assigned None and {typestr(t)}, and None/Optional is only supported for {OPTTYPES}")
+                if t == "dyn":
+                    self.dyn_none_first(name)  # (where it holds None as a null pointer: dynamic.py)
                 return self.optional(t)
     return ""
+
+def gen_none_global(self, name: str) -> str:
+    # the type of module global name, which only None has been given so far, read here: T |
+    # None for the first value of another type that this function's code gives it and that can
+    # be typed here (none_type), or its module's code, or else a function that assigns it, which
+    # is compiled now if it is no template (as early compiles one); None where no code of the
+    # program gives it another value; NONEVAR, still unknown, for a comparison with None (see
+    # nonecmp); else an error
+    key = "g:" + name
+    t = self.none_type(name)
+    if t == "":
+        t = self.none_arms(name)
+    if t != "":
+        self.gtypes[name] = t
+        return t
+    if key not in self.fieldbusy:
+        self.fieldbusy[key] = True  # (the function compiled for its type reads it too)
+        if owner(name) in self.inits and self.curfn is not self.inits[owner(name)]:
+            fr = self.modframe(owner(name), self.line)
+            t = self.none_type(name)
+            if t == "":
+                t = self.none_arms(name)
+            self.restore(fr)
+        if t != "" and self.gtypes[name] == NONEVAR:
+            self.gtypes[name] = t
+        fs = self.global_setters(name)
+        for f in fs:
+            if self.gtypes[name] != NONEVAR:
+                break
+            if f.generic or f.bad != "" or f.ll in self.compiled or self.unready(f.node.kids[2], f.mod, {}):
+                continue
+            self.making.append(f"compiling {f.name if f.cls == '' else f.cls + '.' + f.name}() for the type of '{short(name)}' at {where(self.line)}")
+            fr = self.save()
+            cmps = [self.nonecmp, self.fieldcmp]
+            cmpnode = self.cmpnode
+            self.nonecmp = False  # (the read being compiled may be compared with None, not that function's)
+            self.fieldcmp = False
+            self.cmpnode = self.nokey
+            self.modlevel = False
+            self.lenient = False
+            self.function(f, f.node.kids[2].kids)
+            self.restore(fr)
+            self.nonecmp = cmps[0]
+            self.fieldcmp = cmps[1]
+            self.cmpnode = cmpnode
+            self.making.pop()
+        del self.fieldbusy[key]
+        if self.gtypes[name] != NONEVAR:
+            return self.gtypes[name]
+        body = self.inits[owner(name)].node.kids
+        gone: dict[str, bool] = {}
+        deleted(body, gone)
+        if len(fs) == 0 and (only_none(body, name) or (bind_count(body, name) == 1 and name not in gone)):
+            # (None wherever its module's code binds it, or its one binding there, compiled
+            # already, gave it a value of type None: x = setup(), as for a local)
+            self.nonereads[key] = where(self.line)
+            return "None"
+    if self.nonecmp:
+        return NONEVAR
+    self.err(f"cannot infer the type of '{short(name)}' from None here, before a value of another type is assigned to it; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
+    return ""
+
+def gen_none_arms(self, name: str) -> str:
+    # T | None for an arm of a value (a if c else b, a or b) that the code of this function (or
+    # module) assigns variable name, first given None, where none_type cannot type the value as
+    # a whole (it reads name: count = 1 if count is None else count + 1): the first arm that can
+    # be typed here; "" if there is none
+    found: list[Node] = []
+    for st in self.nonesites.get(name, []):
+        self.none_values(st, name, found)
+    for e in found:
+        for x in e.kids[1:] if e.kind == "ifexp" else e.kids if e.kind == "boolop" else e.kids[:0]:
+            if x.kind != "None" and not empty_display(x) and self.typed_now(x) and not self.calls_open(x, {}):
+                t = self.dry(x)
+                if t != "None" and t != "" and "?" not in t and t != NONEVAR and self.optional(t) != "":
+                    if t == "dyn":
+                        self.dyn_none_first(name)  # (where it holds None as a null pointer: dynamic.py)
+                    return self.optional(t)
+    return ""
+
+def gen_global_setters(self, name: str) -> list[FnInfo]:
+    # the functions and methods (no templates' specializations) that may assign module global
+    # name (see sets)
+    fs: list[FnInfo] = [f for f in self.funcs.values()]
+    for ci in self.classes.values():
+        if ci.name not in self.tmpl and ci.origin == "":
+            fs.extend([m for m in ci.methods.values() if m.cls == ci.name])
+    return [f for f in fs if f.node.kind == "def" and self.sets(f, [name])]
+
+def gen_none_global_store(self, name: str, v: Val) -> str:
+    # name = v, of a module global that only None has been given so far: v's type gives it its
+    # type from here on, T | None, as a local's first value of another type does
+    key = "g:" + name
+    if key in self.nonereads:
+        self.err(f"'{short(name)}' was read as None at {self.nonereads[key]}, where nothing seemed to give it another value; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
+    if "?" in v.t:
+        self.err(f"cannot infer the type of '{short(name)}' from None and an empty container; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
+    if v.t == "dyn":
+        self.dyn_none_first(name)  # (the None it holds is a null pointer: dynamic.py)
+    t = self.optional(v.t)
+    if t == "":
+        self.err(f"'{short(name)}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
+    self.gtypes[name] = t
+    return t
 
 def gen_none_values(self, st: Node, name: str, out: list[Node]) -> None:
     # the values that statement st itself (not its blocks: see none_sites) assigns to variable
@@ -581,6 +698,8 @@ def gen_read(self, n: Node) -> Val:
         # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
         # folds the identity operation to a literal for opcode dispatch and other arithmetic.
         return Val(self.scalar('add', [Val(self.intglobals[name], 'int'), Val('0', 'int')]), "int")
+    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and self.classes[name].exc != "":
+        self.class_ready(n)  # (an exception class as a value, where its class statement may not have run yet)
     return self.load_name(name)
 
 def gen_modchk(self, n: Node) -> None:
@@ -987,9 +1106,30 @@ def gen_empty(self, kind: str, name: str) -> Val:
         self.lkk[name] = self.lkk.get(name, "") + f" {i.k}"
     return Val(f"%t{i.r[0]}", i.t)
 
+def gen_none_extend(self, name: str) -> None:
+    # name, a list of None so far, extended by the items of another list, which keeps them as
+    # they are: T | None of an int, float or bool is a box, not its value (see is_sopt)
+    if is_sopt(elem(self.qtype(name))):
+        self.err(f"cannot infer the type of '{short(name)}', a list of None so far, from the {typestr(unopt(elem(self.qtype(name))))} items of another list, which would need boxes: annotate it ({short(name)}: list[{typestr(unopt(elem(self.qtype(name))))} | None] = ...)")
+
 def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
     # the variable holding an empty list or dict gets the type its first use shows (the module
     # global name if glob), and so do its twins
+    cur = self.ltype[name] if name in self.ltype and not glob else self.gtypes.get(name, "")
+    if NONE_ITEM in cur:
+        # one of None items (none_container): T | None for the T of its first item of another
+        # type, of keys of the type it has
+        if (is_list(t) and elem(t) == "None") or (is_dict(t) and targs(t)[1] == "None"):
+            return  # (another None)
+        it = elem(t) if is_list(t) else targs(t)[1] if is_dict(t) else ""
+        if it == "dyn":
+            # (its None items are null pointers, not boxes of None as an Any value's are: dynamic.py)
+            self.err(f"'{short(name)}' holds None items until it is given an Any value here; annotate it ({short(name)}: {'list[Any]' if is_list(cur) else 'dict[' + typestr(targs(cur)[0]) + ', Any]'} = ...)")
+        if "?" not in it and it != "" and self.optional(it) == "":
+            self.err(f"'{short(name)}' holds None and {typestr(it)}, and None/Optional is only supported for {OPTTYPES}")
+        if is_dict(t) and targs(t)[0] != targs(cur)[0] and not self.widens(targs(t)[0], targs(cur)[0]):
+            self.err(f"expected {typestr(targs(cur)[0])}, got {typestr(targs(t)[0])}")
+        t = self.ctype("list", [self.optional(it)]) if is_list(cur) else self.ctype("dict", [targs(cur)[0], self.optional(it)]) if "?" not in it and it != "" else t
     if "?" in t or "None" in targs(t):
         self.err(f"cannot infer the type of '{name}' from this use; annotate it")
     if is_dict(t):
@@ -1138,6 +1278,13 @@ def gen_adopt(self, t: str) -> None:
     # type (see retval), returns t: the containers it returned have that type too
     if self.curfn.ll in self.qused and self.qused[self.curfn.ll] != t:
         self.err(f"cannot infer what {short(self.curfn.name)}() returns: it calls itself before a use shows what the {tname(t)} it returns holds; annotate its return type")
+    if self.curfn.ll in self.qroot:
+        # it also returns, as t, the open results of those it forwards (qchain): those still
+        # being compiled can then return only t
+        for g in self.qchain(self.qroot[self.curfn.ll]):
+            if g.ll in self.building and g.ll != self.curfn.ll:
+                old = self.qused.get(g.ll, t)
+                self.qused[g.ll] = t if old == t else "?"
     self.ret = t
     self.curfn.ret = t
     for nm in self.qret[self.curfn.ll].split():
@@ -1147,6 +1294,28 @@ def gen_adopt(self, t: str) -> None:
         self.holes[h] = t
         if is_dict(t) or is_set(t):
             self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+    for k in self.qroot:
+        # a function that returns this one's open result unchanged (qchain) stores the key
+        # layout of what it returns as the call returns (typed_empty), before its own finally
+        # blocks run: t's, not the int's an open hole stores
+        if k != self.curfn.ll and k in self.qholes:
+            for g in self.qchain(self.qroot[k]):
+                if g.ll == self.curfn.ll:
+                    for h in self.qholes[k]:
+                        self.holes[h] = t
+                    if is_dict(t) or is_set(t):
+                        self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+
+def gen_qchain(self, f: FnInfo) -> list[FnInfo]:
+    # f, and the functions whose open empty result it returns unchanged, through those it
+    # forwards (qroot): a call cycle's, so that what one of them returns, they all do
+    out = [f]
+    seen = {f.ll: True}
+    while out[len(out) - 1].ll in self.qroot and self.qroot[out[len(out) - 1].ll].ll not in seen:
+        g = self.qroot[out[len(out) - 1].ll]
+        seen[g.ll] = True
+        out.append(g)
+    return out
 
 def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
     # the empty list or dict a template's function f returns (see retval): the type the call's
@@ -1158,6 +1327,15 @@ def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
         # concrete return fix this call's key layout without changing its callee.
         self.qret[self.curfn.ll] = self.qret.get(self.curfn.ll, "")
         self.qforward[self.curfn.ll] = True
+        if (f.ll in self.building or f.ll in self.qroot) and f.ll != self.curfn.ll:
+            # the open result of a call cycle's function still being compiled, or of one that
+            # returns such a result unchanged, which this one returns: a use of what this one
+            # returns uses theirs (qchain, see call_fn)
+            if self.curfn.ll in self.qroot and self.qroot[self.curfn.ll].ll != f.ll:
+                # it returns the results of two: none of their functions can take a type now
+                for g in self.qchain(self.qroot[self.curfn.ll]) + self.qchain(f):
+                    self.qused[g.ll] = "?"
+            self.qroot[self.curfn.ll] = f
         if is_dict(v.t) or is_set(v.t):
             i = Ins("empty.kind", "", "")
             i.a = [v]
@@ -1338,12 +1516,19 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
             args = [self.mapgen(args[0])]
         if m == "extend" and args[0].kind == "listcomp" and args[0].s == "gen":
             # (item by item, as bmethod's)
+            if NONE_ITEM in o.t:
+                self.err(f"cannot infer the type of '{short(name)}', a list of None so far, from the items of a generator: annotate it ({short(name)}: list[T | None] = ...)")
             self.refine(name, self.listcomp(args[0], "", "", o.v).t)
             return Val("null", "None")
         v = self.as_list(self.consume(args[-1], ""), "extend") if m == "extend" else self.expr(args[-1], "")
         if m == "extend" and not is_list(v.t):
             self.err(f"cannot extend a list with {v.t}")
+        nones = NONE_ITEM in o.t
         self.refine(name, v.t if m == "extend" else self.ctype("list", [v.t]))
+        if nones and m == "extend":
+            self.none_extend(name)
+        if nones and m != "extend":
+            v = self.coerce(v, elem(self.qtype(name)))  # (into a list of None: T | None)
         if m == "append":
             self.rt("pys_list_append", "void", [f"ptr {o.v}", "i64 " + self.to_slot(v)])
         elif m == "insert":
@@ -1389,6 +1574,8 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
         k = self.expr(args[0], "")
         v = self.expr(args[1], want if "?" not in want else "")
         self.refine(name, self.ctype("dict", [k.t, v.t]))
+        if NONE_ITEM in o.t:
+            v = self.coerce(v, targs(self.qtype(name))[1])  # (into a dict of None values: T | None)
         return self.from_slot(self.rt(f"pys_dict_{m}", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(k), "i64 " + self.to_slot(v)], self.key_fx(targs(self.qtype(name))[0])), v.t)
     # any other method: the type a later use shows (or an error), then the method as usual
     return self.method(self.load_name(name), m, args)
@@ -1411,6 +1598,8 @@ def gen_default_want(self, r: Node, m: str, args: list[Node], vt: str) -> str:
     return ""
 
 def gen_new_global(self, name: str, t: str) -> None:
+    if len(self.hints) > 0 and "global:" + name in self.hints:
+        t = self.hints["global:" + name]  # (a join's type: as if annotated, see join_hint)
     self.gtypes[name] = t
     self.global_var(f"@g.{name}", t)
     if name in self.gflag:
@@ -1426,7 +1615,7 @@ def gen_declare(self, name: str, t: str) -> None:
     else:
         self.alloca(t, name)
         old = t
-    if old != t:
+    if old != t and self.hints.get("global:" + name, "") != old:
         self.err(f"'{name}' was declared as {old}, not {t}")
 
 def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
@@ -1442,17 +1631,31 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.err(f"assigning '{owner(name)}.{short(name)}' anything but the literal {lit} is not supported: its module assigns it {lit} once, so its tests of it are decided at compile time")
         if name not in self.gtypes:
             t0 = self.none_type(name) if v.t == "None" and self.modlevel else ""
+            if v.t == "None" and t0 == "" and self.dyn_global_ahead(name, "None"):
+                t0 = "dyn"  # (module code assigns it an Any value later: dynamic.py)
             if v.t == "None" and t0 == "":
-                # (module code's other values for it are typed here, as far as they can be)
-                self.err(f"cannot infer the type of '{name}' from None; annotate it ({name}: T | None = None)")
+                # None so far (module code's other values for it are typed here, as far as they
+                # can be): the first value of another type the program gives it gives it its
+                # type, T | None, as for a local (see none_global)
+                t0 = NONEVAR
             if v.t == "":
                 self.err(f"cannot infer the type of '{name}'; add a type annotation")
-            self.declare(name, t0 if t0 != "" else v.t)
+            t0 = t0 if t0 != "" else v.t
+            if t0 != "dyn" and self.dyn_global_ahead(name, t0):
+                t0 = "dyn"  # (module code assigns it an Any value later: dynamic.py)
+            self.declare(name, t0)
         t = self.gtypes[name]
+        if t == NONEVAR and v.t != "None" and v.t != NONEVAR:
+            t = self.none_global_store(name, v)
+        if NONE_ITEM in t and same_kind(t, v.t) and "?" not in v.t:
+            self.err(f"cannot infer the type of '{short(name)}' from a {tname(t)} of None and a {typestr(v.t)}; annotate it ({short(name)}: {'list[T | None]' if is_list(t) else 'dict[K, V | None]'} = ...)")
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:
             self.refine(name, v.t)
             t = v.t
-        self.mem_store(Val(f"@g.{name}", "*" + t), self.coerce(v, t, self.assigned_to(v, t, name)))
+        was = self.join_at("global", name, t)  # (a value it does not take may widen it: join_hint)
+        cv = self.coerce(v, t, self.assigned_to(v, t, name))
+        self.join_at(was[0], was[1], was[2])
+        self.mem_store(Val(f"@g.{name}", "*" + t), cv)
         if name in self.gflag:
             self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))
     else:
@@ -1468,7 +1671,7 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             if self.branch > 0:
                 self.err(f"'{name}' is None here, and giving it a {v.t if '?' not in v.t else v.t[: v.t.find('[')]} inside an if branch or a loop is not supported")
             self.nonevars[name] = self.line
-        if retype and name in self.ltype and name not in self.nonevars:
+        if retype and name in self.ltype and name not in self.nonevars and self.local_hint(name) == "":
             old = self.ltype[name]
             # A None/empty binding still needs the existing inference machinery.
             # Compatible stores retain their slot, including optional boxing and
@@ -1478,7 +1681,11 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
                 if name in self.narrowed:
                     del self.narrowed[name]
                 self.lkk.pop(name, "")
-        if name not in self.ltype and v.t == "None":
+        if name not in self.ltype and self.dyn_widened(name):
+            self.alloca("dyn", name)  # (one that an Any value is assigned later: dyn_widen)
+        elif name not in self.ltype and self.local_hint(name) != "":
+            self.alloca(self.local_hint(name), name)  # (a join's type: as if annotated, see join_hint)
+        elif name not in self.ltype and v.t == "None":
             # first None: T | None, typed by the first store of another value, or by a read
             # that needs the type before it (see none_read)
             self.alloca(NONEVAR, name)
@@ -1486,14 +1693,23 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.alloca(v.t, name)
         t = self.ltype[name]
         if t == NONEVAR and v.t != "None":
+            if v.t == "dyn":
+                self.dyn_none_first(name)  # (the None it holds is a null pointer: dynamic.py)
             if self.optional(v.t) == "":
                 self.err(f"'{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
             t = self.optional(v.t)
             self.ltype[name] = t
+        if NONE_ITEM in t and same_kind(t, v.t) and "?" not in v.t:
+            self.err(f"cannot infer the type of '{short(name)}' from a {tname(t)} of None and a {typestr(v.t)}; annotate it ({short(name)}: {'list[T | None]' if is_list(t) else 'dict[K, V | None]'} = ...)")
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:
             self.refine(name, v.t)
             t = v.t
-        self.mem_store(Val(self.lreg[name], "*" + t), self.coerce(v, t, self.assigned_to(v, t, name)))
+        if v.t == "dyn" and t != "dyn":
+            self.dyn_widen(name, t)  # (an Any value: the next compilation makes the variable dynamic)
+        was = self.join_at("local", name, t)  # (a value it does not take may widen it: join_hint)
+        cv = self.coerce(v, t, self.assigned_to(v, t, name))
+        self.join_at(was[0], was[1], was[2])
+        self.mem_store(Val(self.lreg[name], "*" + t), cv)
         if name in self.lflag and name not in self.compvars:
             self.mem_store(Val(self.lflag[name], "*bool"), Val("true", "bool"))
         if name in self.owned:
@@ -1517,15 +1733,20 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
     # name is only read, so in a function it can be a module-level variable
     if n.kind == "name":
         if base and n.s in self.narrowed and self.narrowable(n.s):
-            return self.narrowed[n.s]
+            return self.narrowed[n.s] if self.narrowed[n.s] != "dyn[int]" else "dyn"
         if base and n.s not in self.ltype and (n.s not in self.assigned or n.s in self.gdecl):
             return self.gtypes.get(n.s, "")
+        if len(self.hints) > 0 and n.s not in self.ltype and n.s not in self.gtypes:
+            # (a join's type of a variable not yet bound, as an annotation: see join_hint)
+            return self.hints.get("global:" + n.s, "") if self.is_global(n.s) else self.local_hint(n.s)
         return self.ltype.get(n.s, self.gtypes.get(n.s, "") if self.is_global(n.s) else "")
     if n.kind == "slice":
         t = unopt(self.target_type(n.kids[0], True))
         return t if is_list(t) else ""
     if n.kind == "attr" or n.kind == "index":
         t = self.target_type(n.kids[0], True)
+        if t == "dyn":
+            return "dyn"  # (an Any value's item or attribute: a display stored there holds Any values, cont[k] = {})
         if n.kind == "attr" and self.is_prop(t, n.s):
             ms = self.classes[t].methods
             s = n.s + ".setter"
@@ -1538,6 +1759,37 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
             return targs(t)[1]
         if n.kind == "index" and t in self.classes and "__setitem__" in self.classes[t].methods and len(self.classes[t].methods["__setitem__"].ptypes) > 2:
             return self.classes[t].methods["__setitem__"].ptypes[2]
+        if base and n.kind == "index" and is_tuple(t) and self.dyn_policy(n.line):
+            # (a tuple's Any item, at a constant index as the tuple's subscript takes one, -1 and
+            # True too: pair[1][k] = {}, pair[-1][k] = {})
+            k = n.kids[1]
+            neg = k.kind == "unary" and k.s == "-" and k.kids[0].kind == "int"
+            d = k.kids[0].s if neg else k.s if k.kind == "int" else "1" if k.kind == "True" else "0" if k.kind == "False" else ""
+            if not d.isdigit() or len(d) > 3:
+                return ""
+            ts = targs(t)
+            j = -int(d) if neg else int(d)
+            if j < 0:
+                j += len(ts)
+            return "dyn" if 0 <= j < len(ts) and ts[j] == "dyn" else ""
+    if base and n.kind == "call" and self.dyn_policy(n.line):
+        # (a call's Any value, in a module that compiles Any so: f()[k] = {}, o.f().x = []. CPython
+        # calls it after it evaluates the value stored, so nothing is compiled ahead: a call is
+        # Any where its function, not a local of that name, is declared to return Any, or where
+        # it calls through an Any value)
+        c = n.kids[0]
+        if c.kind == "name" and c.s in self.funcs and c.s not in self.ltype and c.s not in self.assigned:
+            f = self.funcs[c.s]
+            return "dyn" if not f.generic and f.ret == "dyn" else ""
+        if c.kind != "attr":
+            return "dyn" if self.target_type(c, True) == "dyn" else ""
+        t = self.target_type(c.kids[0], True)
+        if t in self.classes and c.s in self.classes[t].methods:
+            m = self.classes[t].methods[c.s]
+            return "dyn" if not m.generic and not m.prop and m.ret == "dyn" else ""
+        return "dyn" if t == "dyn" else ""
+    if base and n.kind == "ifexp" and self.dyn_policy(n.line):
+        return "dyn" if self.target_type(n.kids[1], True) == "dyn" and self.target_type(n.kids[2], True) == "dyn" else ""  # (Any either way)
     return ""
 
 def gen_assign(self, t: Node, v: Val) -> None:
@@ -1552,14 +1804,20 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.store_name(t.s, v)
     elif k == "attr" and self.dotted(t) != "":
         self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
+    elif k == "attr" and t.s == "__module__" and t.kids[0].kind == "name" and t.kids[0].s in self.xmods and t.kids[0].s not in self.ltype:
+        self.exc_set_module(t.kids[0], v)
     elif k == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes and t.kids[0].s not in self.ltype:
         self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
     elif k == "attr":
         o = self.expr(t.kids[0], "")
+        if o.t == "dyn":
+            self.dyn_setattr(o, t.s, v)  # (a field of its box's class: dynamic.py)
+            return
         if self.is_prop(o.t, t.s):
             self.prop_store(o, t.s, v)
             return
         self.glue_field(o, t.s)
+        self.none_field_store(o, t.s, v)
         p = self.field(o, t.s, True)
         self.frozen(o.t, t.s)
         if not self.frozen_store(o, t.s):
@@ -1572,14 +1830,21 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if is_dict(o.t):
             kval = self.expr(t.kids[1], "")
             self.refine(t.kids[0].s, self.ctype("dict", [kval.t, v.t]))
+            if NONE_ITEM in o.t:
+                v = self.coerce(v, targs(self.qtype(t.kids[0].s))[1])  # (into a dict of None values: T | None)
             self.rt("pys_dict_set", "void", [f"ptr {o.v}", "i64 " + self.to_slot(kval), "i64 " + self.to_slot(v)], self.key_fx(targs(self.qtype(t.kids[0].s))[0]))
         else:
             ix = self.ival(t.kids[1])
             self.refine(t.kids[0].s, self.ctype("list", [v.t]))
+            if NONE_ITEM in o.t:
+                v = self.coerce(v, elem(self.qtype(t.kids[0].s)))  # (into a list of None: T | None)
             self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {ix.v}", "i64 " + self.to_slot(v)])
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
         nosub = "TypeError: 'NoneType' object does not support item assignment"
+        if o.t == "dyn":
+            self.dyn_setitem(o, self.expr(t.kids[1], "dyn"), v)  # (by its box's type: dynamic.py)
+            return
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1])
             o = self.unwrap(o, nosub)
@@ -1591,8 +1856,13 @@ def gen_assign(self, t: Node, v: Val) -> None:
             o = self.unwrap(o, nosub)
             self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(self.coerce(v, kv[1]))], self.key_fx(kv[0]))
         elif o.t in self.classes:
-            # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated
-            ik = self.expr(t.kids[1], self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment"))
+            # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated (a tuple display k in
+            # the frame where __setitem__ only reads it: stack_key)
+            keyt = self.argtype(o.t, "__setitem__", 1, f"'{tname(o.t)}' object does not support item assignment")
+            if self.lookup_key(t.kids[1]) and self.stack_key(o.t, ["__setitem__"]):
+                self.stkkey = t.kids[1]
+            ik = self.expr(t.kids[1], keyt)
+            self.stkkey = self.nokey
             self.notnone(o, nosub)
             self.protocol(o, "__setitem__", [ik, v])
         elif is_kw(o.t):
@@ -1603,6 +1873,12 @@ def gen_assign(self, t: Node, v: Val) -> None:
         bnd: list[str] = []
         o = self.slice_target(t, bnd, "TypeError: 'NoneType' object does not support item assignment")
         self.slice_store(o, bnd, v)
+    elif (k == "tuple" or k == "list") and v.t == "dyn" and not starred_target(t):
+        # a, b = x: x's items, all taken (as CPython does) before the first is stored
+        u = Val(self.rt("pys_dyn_unpack", "ptr", [f"ptr {v.v}", f"i64 {len(t.kids)}"]), "vtuple[dyn]")
+        items: list[Val] = [self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {u.v}", f"i64 {i}"]), "dyn") for i in range(len(t.kids))]
+        for i in range(len(t.kids)):
+            self.assign(t.kids[i], items[i])
     elif k == "tuple" and is_opt(v.t):
         self.assign(t, self.unwrap(v, "TypeError: cannot unpack non-iterable NoneType object"))
     elif k == "tuple" and is_vtuple(v.t):
@@ -1613,9 +1889,10 @@ def gen_assign(self, t: Node, v: Val) -> None:
         # xs, a __setitem__ that empties it, or a nested target whose item's __iter__ does), the
         # items are all read first; a store to a plain name runs no code, so with only those
         # each item is read within the length checked (list_slot)
-        self.rt("pys_unpack_check", "void", [f"i64 {self.mload('int', v.v)}", f"i64 {len(t.kids)}"])
+        size = self.rt("pys_text_len", "i64", [f"ptr {v.v}"]) if v.t == "str" and not self.rtmode else self.mload('int', v.v)
+        self.rt("pys_unpack_check", "void", [f"i64 {size}", f"i64 {len(t.kids)}"])
         first = v.t != "str" and not name_targets(t)
-        items: list[Val] = []
+        items = []
         for i in range(len(t.kids)):
             if v.t == "str":
                 self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
@@ -1662,11 +1939,13 @@ def gen_slice_target(self, t: Node, bnd: list[str], nosub: str) -> Val:
     # bnd: start, stop and step, see Gen.slice_bound), are evaluated, and xs being None raises
     # nosub. Strs and tuples cannot change, and Pystachy has no slice objects for __setitem__
     o = self.expr(t.kids[0], "")
-    bnd.append(self.slice_bound(t.kids[1]))
-    bnd.append(self.slice_bound(t.kids[2]))
-    bnd.append(self.slice_step(t.kids[3]) if len(t.kids) == 4 else "1")
+    dvs: list[Val] = []
+    bnd.append(self.slice_bound(t.kids[1], dvs))
+    bnd.append(self.slice_bound(t.kids[2], dvs))
+    bnd.append(self.slice_step(t.kids[3], dvs) if len(t.kids) == 4 else "1")
     o = self.unwrap(o, nosub)
     if is_list(o.t):
+        self.slice_dyn(bnd, dvs)  # (bounds that are Any values: converted now, as CPython does)
         return o
     what = "deletion" if "deletion" in nosub else "assignment"
     m = "__delitem__" if what == "deletion" else "__setitem__"

@@ -1,0 +1,9 @@
+2 ab (2, 'ab') str
+4 True (4, True) bool
+9 None (9, None) NoneType
+1 2.5 (1, 2.5) float
+2 [1, 'x'] (2, [1, 'x']) list
+3 (1, 'y') (3, (1, 'y')) tuple
+[('a', 1), ('b', [1, 'x'])]
+('k', 1.5, True) ('j', {'n': 1}, False)
+[exit 0]

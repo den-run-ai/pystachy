@@ -1,0 +1,170 @@
+ai *
+0:1 '!','','' 0:1 '!','',''
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCDE','' 0:6 'AbCDE!','AbCDE',''
+4:5 '!','','' None
+2:4 'B!','B','' None
+2:7 'AbCD!','AbCD','' None
+ai +
+None None
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCDE','' 0:6 'AbCDE!','AbCDE',''
+None None
+2:4 'B!','B','' None
+2:7 'AbCD!','AbCD','' None
+ai {2,4}
+None None
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCD','E' 0:6 'AbCDE!','AbCD','E'
+None None
+None None
+2:7 'AbCD!','AbCD','' None
+ai {2,4}?
+None None
+0:5 'AbCD!','AbC','D' 0:5 'AbCD!','AbC','D'
+0:6 'AbCDE!','AbCD','E' 0:6 'AbCDE!','AbCD','E'
+None None
+None None
+2:7 'AbCD!','AbC','D' None
+ai {2,4}+
+None None
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCD','E' 0:6 'AbCDE!','AbCD','E'
+None None
+None None
+2:7 'AbCD!','AbCD','' None
+ai ++
+None None
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCDE','' 0:6 'AbCDE!','AbCDE',''
+None None
+2:4 'B!','B','' None
+2:7 'AbCD!','AbCD','' None
+ui *
+0:1 '!','','' 0:1 '!','',''
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCDE','' 0:6 'AbCDE!','AbCDE',''
+0:5 'ſİıK!','ſİıK','' 0:5 'ſİıK!','ſİıK',''
+0:4 'aKB!','aKB','' 0:4 'aKB!','aKB',''
+2:7 'AbCD!','AbCD','' None
+ui +
+None None
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCDE','' 0:6 'AbCDE!','AbCDE',''
+0:5 'ſİıK!','ſİıK','' 0:5 'ſİıK!','ſİıK',''
+0:4 'aKB!','aKB','' 0:4 'aKB!','aKB',''
+2:7 'AbCD!','AbCD','' None
+ui {2,4}
+None None
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCD','E' 0:6 'AbCDE!','AbCD','E'
+0:5 'ſİıK!','ſİıK','' 0:5 'ſİıK!','ſİıK',''
+0:4 'aKB!','aKB','' 0:4 'aKB!','aKB',''
+2:7 'AbCD!','AbCD','' None
+ui {2,4}?
+None None
+0:5 'AbCD!','AbC','D' 0:5 'AbCD!','AbC','D'
+0:6 'AbCDE!','AbCD','E' 0:6 'AbCDE!','AbCD','E'
+0:5 'ſİıK!','ſİıK','' 0:5 'ſİıK!','ſİıK',''
+0:4 'aKB!','aK','B' 0:4 'aKB!','aK','B'
+2:7 'AbCD!','AbC','D' None
+ui {2,4}+
+None None
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCD','E' 0:6 'AbCDE!','AbCD','E'
+0:5 'ſİıK!','ſİıK','' 0:5 'ſİıK!','ſİıK',''
+0:4 'aKB!','aKB','' 0:4 'aKB!','aKB',''
+2:7 'AbCD!','AbCD','' None
+ui ++
+None None
+0:5 'AbCD!','AbCD','' 0:5 'AbCD!','AbCD',''
+0:6 'AbCDE!','AbCDE','' 0:6 'AbCDE!','AbCDE',''
+0:5 'ſİıK!','ſİıK','' 0:5 'ſİıK!','ſİıK',''
+0:4 'aKB!','aKB','' 0:4 'aKB!','aKB',''
+2:7 'AbCD!','AbCD','' None
+(?i:([^a-c!]+))!
+None
+0:4 'σςΣ!','σςΣ'
+1:6 'ĀāȀȁ!','ĀāȀȁ'
+0:5 '𐐀𐐨𐐁𐐩!','𐐀𐐨𐐁𐐩'
+5:7 'D!','D'
+(?i:([σ]+))!
+None
+0:4 'σςΣ!','σςΣ'
+None
+None
+None
+(?i:([a\u0100\u0200\u0300\u0400\u0500]+))!
+None
+None
+0:6 'aĀāȀȁ!','aĀāȀȁ'
+None
+None
+(?i:([\U00010400-\U00010427]+))!
+None
+None
+None
+0:5 '𐐀𐐨𐐁𐐩!','𐐀𐐨𐐁𐐩'
+None
+(?i:(?<=[a-z])[a-z]{2,4})(?-i:([A-Z]+))!
+1:7 'BcABC!','C'
+None
+None
+None
+3:7 'bCD!','D'
+(?i:((?:[a-z]{1,3})+?))\1!
+None
+None
+None
+None
+None
+(?i:([a-z]+))(?=!)
+0:6 'aBcABC','aBcABC'
+None
+None
+None
+2:6 'AbCD','AbCD'
+(?i:[a-z]*?)(?=!)
+0:6 'aBcABC'
+3:3 ''
+5:5 ''
+4:4 ''
+2:6 'AbCD'
+0 0 None None
+0 5 2:5 'Aſİ','Aſİ' None
+2 8 2:8 'AſİıKz','AſİıKz' 2:8 'AſİıKz','AſİıKz'
+3 7 3:7 'ſİıK','ſİıK' 3:7 'ſİıK','ſİıK'
+6 4 None None
+8 20 None None
+-5 100 2:8 'AſİıKz','AſİıKz' None
+(?i:([a-z]+))! None
+(?i:([a-z]+))! 20:23 'Aa!','Aa'
+(?i:([a-z]+))! 20:26 'AſİıK!','AſİıK'
+(?ai:([a-z]+))! None
+(?ai:([a-z]+))! 20:23 'Aa!','Aa'
+(?ai:([a-z]+))! None
+(?i:(a+))! None
+(?i:(a+))! 20:23 'Aa!','Aa'
+(?i:(a+))! None
+(?ai:(a+))! None
+(?ai:(a+))! 20:23 'Aa!','Aa'
+(?ai:(a+))! None
+(?i:([a-z]{1,3}?))! None
+(?i:([a-z]{1,3}?))! 20:23 'Aa!','Aa'
+(?i:([a-z]{1,3}?))! 22:26 'İıK!','İıK'
+(?i:([a-z]++))! None
+(?i:([a-z]++))! 20:23 'Aa!','Aa'
+(?i:([a-z]++))! 20:26 'AſİıK!','AſİıK'
+(?i:[a-z]*) 00 ["0:0 ''", "1:1 ''", "2:2 ''"]
+(?i:[a-z]*) Aa ["0:2 'Aa'", "2:2 ''"]
+(?i:[a-z]*) 0ſA! ["0:0 ''", "1:3 'ſA'", "3:3 ''", "4:4 ''"]
+(?ai:a*?) 00 ["0:0 ''", "1:1 ''", "2:2 ''"]
+(?ai:a*?) Aa ["0:0 ''", "0:1 'A'", "1:1 ''", "1:2 'a'", "2:2 ''"]
+(?ai:a*?) 0ſA! ["0:0 ''", "1:1 ''", "2:2 ''", "2:3 'A'", "3:3 ''", "4:4 ''"]
+(?i:[a-z]{0,2}) 00 ["0:0 ''", "1:1 ''", "2:2 ''"]
+(?i:[a-z]{0,2}) Aa ["0:2 'Aa'", "2:2 ''"]
+(?i:[a-z]{0,2}) 0ſA! ["0:0 ''", "1:3 'ſA'", "3:3 ''", "4:4 ''"]
+(?i:[a-z]*?) 00 ["0:0 ''", "1:1 ''", "2:2 ''"]
+(?i:[a-z]*?) Aa ["0:0 ''", "0:1 'A'", "1:1 ''", "1:2 'a'", "2:2 ''"]
+(?i:[a-z]*?) 0ſA! ["0:0 ''", "1:1 ''", "1:2 'ſ'", "2:2 ''", "2:3 'A'", "3:3 ''", "4:4 ''"]
+[exit 0]

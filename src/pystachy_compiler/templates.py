@@ -61,6 +61,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     s = ClassInfo(name, t.node)
     s.mod = t.mod
     s.origin = c
+    s.speckey = doing
     s.slots = t.slots
     s.slotlimit = t.slotlimit
     s.fields = [x for x in t.fields]  # (its class attributes, which its specializations share)
@@ -335,6 +336,8 @@ def gen_generic_ann(self, c: str, a: Node) -> str:
     # variables are bound to X and Y, which the call c[X, Y](...), or c(...) where its context
     # expects that type, makes objects of; or "!" and why not. Its fields are typed by
     # __init__'s annotations (see named_params)
+    if c in self.unsupported:
+        return "!" + self.unsupported[c]  # (an imported module's class that cannot be declared)
     tvs = self.tparams[c]
     xs = a.kids if a.kind == "tuple" else [a]
     if c in self.tmpl and "__init__" not in self.classes[c].methods:
@@ -617,6 +620,9 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
                 self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
         if g.ll in self.building:
             self.retseen[g.ll] = True  # (a return of None can no longer make it T | None)
+            if g.ll != self.curfn.ll:
+                self.dynseen[g.ll] = True  # (nor compiling it again change what it returns: dyn_again)
+        f.lastikey = key
         return g
     if f.bad != "":
         self.err(f.bad)
@@ -661,6 +667,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.rsoft = resultsoft and want != ""
     g.rlocals = locals if want != "" else []
     g.inst = True
+    g.ikey = key
     g.npos = f.npos
     g.posonly = f.posonly
     g.vararg = f.vararg
@@ -688,6 +695,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
         self.err(f"{f.name} must return {ret}, and {shown(f.cls)}.{f.name}() returns {typestr(g.ret)}")
     self.making.pop()
     self.template_bytes -= size
+    f.lastikey = key
     return g
 
 # ---- classes that specialize on literal arguments

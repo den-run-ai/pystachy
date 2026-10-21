@@ -54,7 +54,7 @@ class NoRawIRTests(unittest.TestCase):
                  "tuple_runtime_operations.py", "tuples_and_classes.py")
         with patch.object(Gen, "lower", capture):
             for case in cases:
-                path = root / "tests" / case
+                path = next((root / "tests").glob(f"programs/*/{case}"))
                 Gen().program(Loader([]).program(str(path), path.read_text()))
         self.assertTrue({"slot.pack", "slot.unpack", "mem.load", "mem.store",
                          "field.addr", "alloc.fixed", "ovf"}.issubset(seen), seen)

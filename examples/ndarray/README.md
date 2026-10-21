@@ -45,12 +45,13 @@ shape; it is not NumPy's format.
 [`ndarray_blas.py`](ndarray_blas.py) adds a separate, opt-in matrix product:
 
 ```python
-from ndarray import array2
-from ndarray_blas import matmul
+from ndarray import array, array2
+from ndarray_blas import linear, matmul
 
 x = array2([[1.0, 2.0], [3.0, 4.0]])
 weight = array2([[5.0, 6.0], [7.0, 8.0], [9.0, 10.0]])
 y = matmul(x, weight.T)
+z = linear(x, weight, array([0.5, -0.5, 1.0]))   # x @ weight.T + bias, in one call
 ```
 
 The compiled program calls `libblas.so.3`'s `cblas_dgemm` directly using the
@@ -68,21 +69,46 @@ symbol successfully, or multiplying small matrices, cannot establish its
 integer ABI. Use a provider documented to supply LP64 `libblas.so.3`. For the
 validation host, that name resolves to the reference BLAS
 `blas/libblas.so.3.12.0`, package `libblas3` version `3.12.0-3build1.1`; its
-exported `cblas_dgemm` uses 32-bit dimensions. An optimized provider such as
-OpenBLAS is a separate deployment choice, not a property of this adapter.
+exported `cblas_dgemm` uses 32-bit dimensions.
+
+Prefer OpenBLAS. On Debian and Ubuntu, `libblas.so.3` is the reference BLAS
+until an optimized provider is installed. `apt install libopenblas0-pthread`
+registers OpenBLAS's own LP64 `libblas.so.3` at a higher alternatives priority
+(100 against 10), so this binding uses it without any change. On nanoGPT's
+benchmark model, BLAS AOT inference took 2.28 ms with the reference BLAS and
+0.92 ms with Ubuntu's OpenBLAS 0.3.26 ([recorded data](../nanogpt/results/blas-providers.json)).
+OpenBLAS starts a thread per core by default; at these sizes more threads did
+not help, so small products can run with `OPENBLAS_NUM_THREADS=1`.
 
 The adapter checks shapes, strides, addressable byte extents and all referenced
 storage before passing pointers to C. It always creates fresh output, so the
 operands may share storage without output aliasing. Empty dimensions return
-correctly shaped zeros without calling BLAS. Zero-offset row-major arrays and
-their transposes, including padded rows, borrow their existing data. Thus
-`matmul(x, weight.T)` needs no transposed-weight copy. Other views, including
-nonzero offsets, reversed axes and broadcast strides, are packed in logical
-row-major order; that copying is part of a call's cost. Inputs are read afresh
-on every call, so weight updates need no cache invalidation.
+correctly shaped zeros without calling BLAS. Row-major arrays and their
+transposes, including padded rows and views at an offset (attention's per-head
+views of the packed QKV matrix), borrow their existing data from the view's
+first item (`ffi.at`). Thus `matmul(x, weight.T)` needs no transposed-weight
+copy. Other views, with reversed axes, broadcast strides or no unit stride, are
+packed in logical row-major order, a slice per row where the rows have unit
+stride; that copying is part of a call's cost. Inputs are read afresh on every
+call, so weight updates need no cache invalidation.
+
+`linear(x, weight, bias)` computes PyTorch's `Linear`, `x @ weight.T + bias`,
+with one `cblas_dgemm` call. Its result starts as the bias repeated for every
+row, and BLAS adds the product into it (`beta=1`). That replaces zero-filling
+the output and a second pass adding the bias. The operands follow `matmul`'s
+rules, the bias may be any 1-D view with one value per output feature, and it
+is also read afresh on every call. BLAS adds its partial sums to the bias in its
+own order: a library that splits the inner dimension can round differently from
+a separate addition, so agreement is within the BLAS tolerance below, not bit
+for bit. At nanoGPT's benchmark shapes, the reference BLAS and OpenBLAS 0.3.31
+gave the same bits either way. Without a bias, `linear` is `matmul(x, weight.T)`.
 
 Validation is optional because the normal test suite does not require a BLAS
-installation. From this directory:
+installation. `make blas-check` runs the checks below, then nanoGPT's BLAS
+parity check ([`blas_parity.py`](../nanogpt/blas_parity.py)). CI runs that target
+in its `benchmarks` group twice, with NumPy as the reference: once against
+Ubuntu's OpenBLAS on one thread and once against the reference BLAS, selecting
+each one's `libblas.so.3` through `LD_LIBRARY_PATH`. From this directory:
 
 ```sh
 pystachy run blas_cases.py
@@ -92,11 +118,13 @@ python3 check_blas.py --compiler ../../pystachy --stress 1
 ```
 
 The last command requires NumPy in the checking interpreter. It verifies all
-elements of 24 matrix cases against both the existing scalar product and
-NumPy, plus 15 invalid-input rejections, under CPython, JIT, AOT and native GC
-stress. Cases include padded transposes, negative and zero strides, nonzero
+elements of 24 matrix cases and 15 `linear` cases against both the existing
+scalar product (plus the bias) and NumPy, plus 32 invalid-input rejections,
+under CPython, JIT, AOT and native GC stress. Cases include padded transposes, negative and zero strides, nonzero
 offsets, singleton strides, shared operands, repeated calls after mutation,
-empty products and integer-limit guards. The CPython FFI twin copies lists
+empty products and integer-limit guards; for `linear`, also reversed/broadcast biases, a
+bias sharing the weight's storage, no bias, and rejection of malformed bias
+strides, offsets and backing storage before any native call. The CPython FFI twin copies lists
 into C arrays; it is a correctness oracle and is not a measure of the native
 borrowed-buffer overhead. No speedup is claimed by these checks. BLAS may use
 a different accumulation order, so finite results use `1e-12` tolerances.
@@ -114,7 +142,7 @@ operation here fixes its order:
 | `sum_axis()` | Pairwise along the fastest axis (absolute strides, ignoring singleton axes); otherwise the lines across it one after another, into one result, as NumPy adds them | Equal |
 | `lazy`'s `sum()` | Python's `sum()` of floats: in order, with Neumaier's compensation | Equal to `sum()` of the items; within 1e-12 of `np.sum` on random data |
 | `dot()` | `total(a * b)` | Equal to `np.sum(a * b)`; within 1e-12 of `np.dot`, which calls BLAS |
-| `matmul()`, `@` | Row by row | Within 1e-12 of BLAS |
+| `matmul()`, `@` | Each item in order along the shared axis, from 0.0, for every layout of the operands | Within 1e-12 of BLAS |
 
 An ill-conditioned sum shows how much the order matters. `[1e16] + [1.0] * 100 + [-1e16]` sums to:
 - 84.0 pairwise (`total()`, `np.sum`);
@@ -136,9 +164,9 @@ These counts are results on the inputs the script generates, not a promise for e
 - Additional regression checks cover reversed and strided axis sums and empty reshapes with unrepresentable byte extents; these pass against NumPy 2.3.5 too.
 - **Self-checks first:** the script confirms that its comparisons reject a NaN against a number, lists of different lengths, and an infinity against a large number.
 - **Error messages:** broadcasting, `out=` shapes, `reshape`, indexing and `matmul` errors are checked against NumPy's messages.
-- **Compiled tests:** `tests/example_ndarray.py` carries representative NumPy results into the tests that run under the JIT and as an executable.
+- **Compiled tests:** `tests/programs/apps/example_ndarray.py` carries representative NumPy results into the tests that run under the JIT and as an executable.
 
-NumPy's own test suite is the second source of expected results. `tests/example_ndarray_upstream.py` adapts the cases of NumPy 2.5.3's tests that this array can express: 432 assertions on broadcasting, reshape, transpose and ravel, 0-d subscripts, creation limits, means, 2-D matrix products, sums of strided and reversed views, division and indexing errors. Its header names each upstream test, the source file's SHA-256, the adaptations and what it leaves out (other dtypes, `order='F'` results, fancy indexing, stacked `matmul`, warnings). It runs compiled like the other tests, and
+NumPy's own test suite is the second source of expected results. `tests/programs/apps/example_ndarray_upstream.py` adapts the cases of NumPy 2.5.3's tests that this array can express: 432 assertions on broadcasting, reshape, transpose and ravel, 0-d subscripts, creation limits, means, 2-D matrix products, sums of strided and reversed views, division and indexing errors. Its header names each upstream test, the source file's SHA-256, the adaptations and what it leaves out (other dtypes, `order='F'` results, fancy indexing, stacked `matmul`, warnings). It runs compiled like the other tests, and
 
 ```sh
 python3 check_upstream.py
@@ -153,46 +181,56 @@ python3 -I bench.py pystachy
 ```
 
 The run:
-- **Machine:** a single run on a shared 4-vCPU x86-64 VM (Xeon, 2.8 GHz).
-- **Versions:** compiler at [`2379159`](https://github.com/den-run-ai/pystachy/commit/2379159), LLVM 18.1.3, CPython 3.13.16, NumPy 2.5.3.
+- **Machine:** a shared 4-vCPU x86-64 VM (Xeon, 2.1 GHz), pinned to one CPU.
+- **Versions:** compiler at [`d97a60c`](https://github.com/den-run-ai/pystachy/commit/d97a60c4aceb43f6e510a0673167b1a0386b3f58), LLVM 18.1.3, CPython 3.13.16, NumPy 2.5.4.
 - **Threads:** NumPy single-threaded (`OPENBLAS_NUM_THREADS=1`), as Pystachy is.
-- **Timing:** best of five inside each process, in milliseconds, so the JIT's numbers exclude its compilation.
+- **Timing:** best of five inside each process, in milliseconds, so the JIT's numbers exclude its
+  compilation; the median of six such runs ([recorded data](results/bench-2026-10-19.json)).
 - **Data:** `a` and `b` have 4,000,000 items.
 - **Rows:** "into `out`" writes into an array made once; "loop" is the reduction written by hand as one loop.
 
 | Workload | AOT | JIT | NumPy |
 |---|---:|---:|---:|
-| `a + b` | 34.2 | 39.8 | 8.8 |
-| `a + b`, into `out` | 10.5 | 17.7 | 10.0 |
-| `a * 1.5` | 25.3 | 27.6 | 5.8 |
-| `a * b + a` | 53.7 | 63.4 | 23.9 |
-| `a * b + a`, into `out` | 20.8 | 34.9 | 15.7 |
-| `a * b + a`, lazy | 31.2 | 38.1 | — |
-| `a * b + a`, lazy into `out` | 13.4 | 23.3 | — |
-| `sum(a)` | 5.0 | 8.1 | 3.6 |
-| `sum((a - b) * (a - b))` | 80.9 | 117.9 | 40.0 |
-| `sum((a - b) * (a - b))`, lazy | 9.7 | 31.6 | — |
-| `sum((a - b) * (a - b))`, loop | 7.4 | 6.8 | — |
-| `m + row`, 1000×1000 | 7.6 | 10.2 | 0.8 |
-| `m.T + m`, 1000×1000 | 9.5 | 13.8 | 1.5 |
-| `sum(m, axis=0)`, 1000×1000 | 1.3 | 3.8 | 0.3 |
-| `p @ q`, 256×256 | 15.1 | 59.1 | 0.6 |
+| `a + b` | 20.5 | 34.4 | 7.0 |
+| `a + b`, into `out` | 9.2 | 19.6 | 10.5 |
+| `a * 1.5` | 10.0 | 14.9 | 2.9 |
+| `a * b + a` | 24.1 | 47.8 | 20.1 |
+| `a * b + a`, into `out` | 16.1 | 41.4 | 7.0 |
+| `a * b + a`, lazy | 15.7 | 45.4 | — |
+| `a * b + a`, lazy into `out` | 12.4 | 39.2 | — |
+| `sum(a)` | 3.4 | 12.4 | 1.3 |
+| `sum((a - b) * (a - b))` | 47.5 | 98.1 | 35.2 |
+| `sum((a - b) * (a - b))`, lazy | 9.8 | 46.1 | — |
+| `sum((a - b) * (a - b))`, loop | 5.1 | 7.5 | — |
+| `m + row`, 1000×1000 | 2.8 | 10.9 | 0.8 |
+| `m.T + m`, 1000×1000 | 4.8 | 13.0 | 1.5 |
+| `sum(m, axis=0)`, 1000×1000 | 1.3 | 6.9 | 0.3 |
+| `p @ q`, 256×256 | 8.8 | 12.6 | 0.5 |
 
-- **New arrays are most of the cost.** Writing into an array made once brings `a + b` from 34.2 ms
-  to 10.5, about NumPy's 10.0 into `out`. NumPy's 8.8 for a new array reuses freed memory, while a
+- **New arrays still cost the most.** Writing into an array made once brings `a + b` from 20.5 ms
+  to 9.2, about NumPy's 10.5 into `out`. NumPy's 7.0 for a new array reuses freed memory, while a
   new numeric list here takes fresh memory that the collector then scans
   ([#210](https://github.com/den-run-ai/pystachy/issues/210)).
-- **Fusion removes temporaries.** The lazy sum of `(a - b) * (a - b)`, compensated, takes 9.7 ms
-  against NumPy's 40.0 for the eager expression; a hand-written loop, uncompensated, takes 7.4.
-  The lazy `a * b + a` into `out` takes 13.4, NumPy's two passes into `out` 15.7.
-- **Strided loops are slower.** Broadcast and strided loops, and the axis sum, take 5 to 9 times
-  NumPy's time: they index through strides with a bounds check per item.
+- **Fusion removes temporaries.** The lazy sum of `(a - b) * (a - b)`, compensated, takes 9.8 ms
+  against NumPy's 35.2 for the eager expression; a hand-written loop, uncompensated, takes 5.1.
+  The lazy `a * b + a` into `out` takes 12.4, NumPy's two passes into `out` 7.0.
+- **Strided loops are slower.** Broadcast and strided loops, and the axis sum, take 3 to 4.5 times
+  NumPy's time. A row broadcast has its own loop; the others index through strides with a bounds
+  check per item.
 - **The JIT inlines less** than the executable's whole-program `-O2`
   ([#209](https://github.com/den-run-ai/pystachy/issues/209)).
-- **Matrix products need BLAS.** The compiled loop reaches about 2 GFLOP/s, NumPy's OpenBLAS 52.
+- **Matrix products need BLAS.** The compiled loop reaches about 3.8 GFLOP/s (2.7 in the JIT),
+  NumPy's OpenBLAS about 67.
 - **One call per loop.** Each of `lazy`'s loops calls an expression's `at()` from one place: LLVM
   did not inline it from several, and the compensated sum ran at 6.2 ns per item with two calls
   against 2.4 with one.
+- **Against earlier builds** on the same host, alternating with this one: main as #642 merged
+  it, without #657, took 37.8 ms (AOT) for `a + b`, 35.2 for `a * 1.5`, 103.5 for the eager sum
+  and 14.6 (JIT 67.4) for `p @ q`. Main just before #681 merged
+  ([`0c8b442`](https://github.com/den-run-ai/pystachy/commit/0c8b4427f069d1fd86625ee82548a0b656fa53ef))
+  already took 21.1, 12.4 and 46.7 for the first three, the span where list repetition and the
+  collection budget for large arrays (#657, #658) landed. `p @ q` took 18.9 there (JIT 92.8)
+  and gained from #691's dot-product loop.
 
 ## What the subset cannot express yet
 

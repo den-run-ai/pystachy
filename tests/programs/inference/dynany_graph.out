@@ -1,0 +1,9 @@
+True
+@0:Node(root @1:{'seed':3,'counter':@2:Counter('many'),'flags':@3:[True,False,None,],} @4:[@5:Node(c0 @6:[3,'shared',1.5,] @7:[@8:Leaf(0),@9:Pair(#5 #2),] ^#0),@10:Node(c1 @11:(1,'1',None,) @12:[@13:Leaf(3),@14:Pair(#10 #2),] ^#0),@15:Node(c2 #6 @16:[@17:Leaf(6),@18:Pair(#15 #2),] ^#0),@19:Pair(#6 #6),@20:Registry(@21:{@22:('child',0,):#5,0.0:@23:Event(made @24:['c0',0,True,]),@25:('child',1,):#10
+False False True True
+True True
+True True Event
+3 4 4
+many many 2.5
+2824049
+[exit 0]

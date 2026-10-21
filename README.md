@@ -2,8 +2,13 @@
 
 **Typed Python in, fast native code out.**
 
-[![CI](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml/badge.svg)](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml)
+[![CI](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/den-run-ai/pystachy/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![Installation](https://github.com/den-run-ai/pystachy/actions/workflows/install.yml/badge.svg?branch=main&event=push)](https://github.com/den-run-ai/pystachy/actions/workflows/install.yml?query=branch%3Amain+event%3Apush)
+[![Lint](https://github.com/den-run-ai/pystachy/actions/workflows/lint.yml/badge.svg?branch=main&event=push)](https://github.com/den-run-ai/pystachy/actions/workflows/lint.yml?query=branch%3Amain+event%3Apush)
+[![Release](https://img.shields.io/github/v/release/den-run-ai/pystachy?include_prereleases)](https://github.com/den-run-ai/pystachy/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Hosted compiler coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fden-run-ai%2Fpystachy%2Fbadges%2Fcoverage.json)](docs/testing.md#compiler-coverage)
+[![Native runtime coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fden-run-ai%2Fpystachy%2Fbadges%2Fruntime-coverage.json)](docs/testing.md#native-runtime-coverage)
 
 Pystachy compiles a statically typed subset of Python to native code, retaining Python
 readability and reusing existing CPython library code. It targets CPU-intensive workloads
@@ -23,7 +28,12 @@ produce byte-identical LLVM IR.
 - **Native machine learning:** an adapted microGPT trains and generates text with scalar
   autograd, without a tensor library or embedded Python; measured AOT training is **16.9×
   faster** than the original CPython program over 100 steps ([results](bench/microgpt/README.md)).
-- **1,200+ differential programs** checked against CPython, plus **1,600+ rejection tests**,
+- **Native nanoGPT:** inference and training run without CPython, NumPy or PyTorch. On a small
+  108K-parameter float64 model with OpenBLAS on one thread, AOT inference is **faster than
+  CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster than
+  the same model in pure Python on CPython; results match PyTorch within 1.4e-14
+  ([example](examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)).
+- **1,400+ differential programs** checked against CPython, plus **1,700+ rejection tests**,
   with JIT/AOT, self-hosting, sanitizer and garbage-collection stress coverage
   ([verification](docs/testing.md)).
 - **Python and C interoperability:** call C libraries, build CPython extensions, or explicitly
@@ -55,8 +65,9 @@ typed control loop, native tool calls and file edits in a standalone executable.
 
 ## Quick start
 
-Use a [native release package or Docker image](docs/install.md) to skip bootstrapping.
-Release packages require LLVM; the image includes it. For a source build:
+Use a [native release package or Docker image](docs/install.md) to skip bootstrapping
+(releases lag behind `main`). Release packages require LLVM; the image includes it.
+For a source build:
 
 Install LLVM, **Python 3.11+** and `make` with your package manager.
 On Ubuntu 24.04:
@@ -114,8 +125,14 @@ CPython as a second baseline.
 
 Across [18 adapted pyperformance workloads](docs/pyperformance.md), the historical AOT
 snapshot was **1.5–84× faster** for 14, **2.5–2.7× slower** for three regex workloads;
-one optimized-away workload has no meaningful AOT ratio. These are workload-specific
-measurements on adapted sources, not official pyperformance scores or a general Python speedup.
+one optimized-away workload has no meaningful AOT ratio. The regex workloads have improved
+since: after the [repeat-matcher](docs/pyperformance.md#regex-repeat-rerun),
+[class-loop and prefilter](docs/pyperformance.md#regex-class-loop-and-prefilter-rerun) and
+[in-place subject](docs/pyperformance.md#regex-in-place-subject-rerun) changes, their timed
+loops took **0.32×** (`regex_dna`), **0.44×** (`regex_effbot`) and **0.82×** (`regex_v8`)
+CPython's time AOT, and 0.33×, 0.55× and 0.99× JIT, in a paired rerun on 2026-10-19.
+These are workload-specific measurements on adapted sources, not official
+pyperformance scores or a general Python speedup.
 JIT compiles each run; AOT builds once. See [performance](docs/performance.md) for startup,
 memory trade-offs and reproduction details, and the [caching guide](docs/caching.md) for text workloads.
 
@@ -124,14 +141,16 @@ memory trade-offs and reproduction details, and the [caching guide](docs/caching
 Pystachy supports typed containers, classes and dataclasses, exceptions, functions as values,
 closures, decorators, generators (`send` / `throw` / `close`), context managers and generic typing.
 Unannotated functions and supported `Any` annotations specialize to concrete types;
-`Any` does not introduce dynamically typed storage. See the
+`Any` adds dynamically typed storage only in modules that opt in to the experimental
+[dynamic `Any`](docs/dynamic-any.md). See the
 [typing rules](docs/language/typing.md#function-and-method-templates).
 
 Some standard-library modules compile unchanged. Others, including `fnmatch`, `textwrap`,
 `difflib`, `statistics` and `random`, use localized adaptations marked `# Pystachy port:`.
 The adapted code remains valid Python and can be diffed against upstream.
-The library also includes `re`, `itertools`, Unicode normalization, `functools.cache` /
-`lru_cache`, `collections.namedtuple`, and in-memory binary I/O with `io.BytesIO`.
+The library also includes `re`, `itertools`, Unicode normalization, a bounded native `json`,
+`tomllib.loads()`, `functools.cache` / `lru_cache`, `collections.namedtuple`, and in-memory
+binary I/O with `io.BytesIO`.
 See [library coverage and port notes](lib/README.md) for supported APIs and remaining limits.
 There are also [15 third-party ports](ports/README.md), with scoped APIs and documented adaptations.
 The [compatibility audit](docs/reports/compatibility-updates.md) records measured coverage and blockers.
@@ -151,11 +170,11 @@ for locked installs, the ports wheel and standalone executables.
 Pystachy is experimental and supports a subset of Python. It is a good fit for typed,
 algorithmic code; broad compatibility with arbitrary PyPI packages is still limited.
 
-- Ordinary single inheritance is supported; multiple inheritance, `async`,
+- Ordinary single inheritance is supported; multiple inheritance, `async`, `match`,
   native `bytearray` and binary filesystem I/O remain unsupported. `io.BytesIO` is supported.
   See the [class rules](docs/language/typing.md#single-inheritance).
 - Integers are checked 64-bit values; overflow raises `OverflowError`.
-- Strings store UTF-8 bytes, so indexing and length differ from CPython for non-ASCII text.
+- Strings store UTF-8 with code-point lengths, indexing, slicing and search offsets; Unicode case mapping remains incomplete.
   Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)
   to flag byte-oriented operations on non-ASCII input.
 - Many unsupported constructs produce compile-time diagnostics; this is not a complete

@@ -21,6 +21,7 @@ observable contract.
 | `_markupbase` | `Lib/_markupbase.py` | `cb14dd6f2e2439eb70b806cd49d19911363d424c2b6b9f4b73c9c08022d47030` |
 | `difflib` | `Lib/difflib.py` | `1593ae08143632f4f81fea3beeeb279d803f8a9be922b12fe79664d78bba879d` |
 | `getopt` | `Lib/getopt.py` | `0ce875700c8798193b8e2748f7a27fc542cc4d525a1e6fc403767450ec92be99` |
+| `gettext` | `Lib/gettext.py` | `7178d6ebdd0647b003da0ccdffb9431bc5fcf5c3822a247b578fdb745162865d` |
 | `heapq` | `Lib/heapq.py` | `6d43277e5c76fc0f073cd388fcff852d14d068f6bb6d4886c340f8b75a1229a9` |
 | `fnmatch` | `Lib/fnmatch.py` | `95391dac2ce9f60084d65eba2f4b9d9735e28136d55b684e1fde7d6342555963` |
 | `textwrap` | `Lib/textwrap.py` | `30f3d833950d53e168cc021961574b553f56aed84458712b2eb29c6495843d46` |
@@ -37,8 +38,19 @@ observable contract.
 | `random` | `Lib/random.py` | `fb2625eb54412c880e8f1af449785a74e125556159fc7997814e51dd054cc5da` |
 | `datetime` | `Lib/_pydatetime.py` | `9a6652ecbdc8bcb9774136febc36b13f99aa926c7b42c19ac77e6c84128560a4` |
 | `codecs` | `Lib/codecs.py` | `2f278497548b8313580b247a1097a0a304e5087a355ebb11a92ec685fa9e63ff` |
+| `weakref` | `Lib/weakref.py` | `56f8d313fb74019e53eb9287400702fbce788b7fe30e097b0b6e06296f3f080c` |
+| `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
+| `opcode` | `Lib/opcode.py` | `aaf8e6e0291b6ff439c27ad1657d5b1d2fc738f961bee3fa4863a51e494dc843` |
+| `tomllib._parser` | `Lib/tomllib/_parser.py` | `82591be9349687b88926a7b1a28b0f892a132e4043cb249bd1bd1594bdd721e3` |
+| `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
+| `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
 
 `heapq` adapts its top-k routines while retaining the other upstream code.
+`tomllib`'s package file, `Lib/tomllib/__init__.py`, is unchanged (lib/README.md); its other
+modules opt in to dynamic `Any` and carry the edits lib/compatibility.md lists. The files and the
+test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from the
+`Python-3.13.16.tgz` release (SHA-256
+`cfac63bddf956deafb1172ca131ae5dcaafd6f95056086e233fca205593ed427`).
 `datetime` is `_pydatetime`, which CPython's `Lib/datetime.py` re-exports when its C
 accelerator is missing. Where CPython's accelerator behaves differently, the edits follow
 `Modules/_datetimemodule.c` (SHA-256
@@ -61,8 +73,8 @@ CPython runs the source.
 
 | Module | Upstream reference | Implementation |
 |---|---|---|
-| `io` | `Modules/_io/stringio.c`, `Modules/_io/bytesio.c`, `Modules/_io/textio.c` | Typed `StringIO` and `BytesIO`, with append chunks joined when read; `TextIOWrapper`, generic over its buffer's class, with the C type's chunks, decoders and messages |
-| `types` (`_pystachy_types`) | `Lib/types.py` (SHA-256 `3a289bc5366e96d01017038870b5b8861b87305d351b99c688bcc681d908fa7d`) | The module's docstring and its names: `TracebackType`, as `from types import TracebackType` imports it for `__exit__`'s annotation, and the others, of which the compiler supports `GenericAlias` in `__class_getitem__ = classmethod(GenericAlias)` |
+| `io` | `Modules/_io/stringio.c`, `Modules/_io/bytesio.c`, `Modules/_io/textio.c`, `Modules/_io/_iomodule.c` | Typed `StringIO` and `BytesIO`, with append chunks joined when read; `TextIOWrapper`, generic over its buffer's class, with the C type's chunks, decoders and messages; `IncrementalNewlineDecoder` without a decoder and `text_encoding()` |
+| `types` (`_pystachy_types`, `_pystachy_mappingproxy`) | `Lib/types.py` (SHA-256 `3a289bc5366e96d01017038870b5b8861b87305d351b99c688bcc681d908fa7d`), `Objects/descrobject.c` | The module's docstring and its names: `TracebackType`, as `from types import TracebackType` imports it for `__exit__`'s annotation, `MappingProxyType`, the C type `mappingproxy` of a dict, with its docstrings and messages, and the others, of which the compiler supports `GenericAlias` in `__class_getitem__ = classmethod(GenericAlias)` |
 | `csv` | `Modules/_csv.c`, `Lib/csv.py` | Reader state machine, writer and dialect APIs |
 | `collections.deque` | `Modules/_collectionsmodule.c` | Typed two-list queue with CPython comparison-state checks |
 | `collections.defaultdict` | `Modules/_collectionsmodule.c` | Typed dict wrapper with the C type's factory, repr and `\|` |
@@ -90,7 +102,7 @@ These are substantial subset ports, rather than unchanged Python files.
 
 ## What the checks establish
 
-`tests/lib_*.py` compares supported compiled paths with CPython through JIT and
+`tests/programs/library/lib_*.py` compares supported compiled paths with CPython through JIT and
 AOT. `tests/errors/` checks unsupported inputs; `tests/deviations/` checks
 intentional differences. Running an adapted module under CPython separately
 checks that it remains compatible Python, including paths Pystachy does not use.
@@ -128,10 +140,10 @@ The deque and defaultdict reference at the same pinned CPython commit,
 `f1bcb4869aeb72253315fcf04646eb3a87e7140afec65bda6500aa609fc2f641`, and
 `Objects/odictobject.c` has
 `bc7d7009221eed5d7be4124bfd5f9ff9cd05650a543fdc56e0a1da3bc330714a`.
-`tests/lib_collections.py` and `tests/lib_collections_mutation.py` exercise compiled
+`tests/programs/library/lib_collections.py` and `tests/programs/library/lib_collections_mutation.py` exercise compiled
 queue operations, callback mutation and bounded repetition;
-`tests/lib_collections_counter.py`, `_defaultdict.py`, `_ordereddict.py` and
-`_reversed.py` the mappings and `reversed()`; `tests/lib_collections_namedtuple.py`,
+`tests/programs/library/lib_collections_counter.py`, `_defaultdict.py`, `_ordereddict.py` and
+`_reversed.py` the mappings and `reversed()`; `tests/programs/library/lib_collections_namedtuple.py`,
 `_methods.py` and `_mod.py` the namedtuple classes. Shlex's differential
 upstream selection retains its three split/join table methods; HTML retains both
 upstream methods, and keyword retains nine methods while excluding dynamic `exec`.
@@ -182,7 +194,7 @@ its twenty functions, over inputs that log their reads: the errors of the calls,
 errors as they are taken one at a time (interleaving `tee()`'s iterators and `groupby()`'s
 groups), and the order in which the inputs are read, but for the reads that CPython's iterators
 make after their inputs' end (`tests/deviations/lib_itertools_ended.py`).
-`tests/upstream_itertools.py` adapts `Lib/test/test_itertools.py` (SHA-256
+`tests/programs/upstream/upstream_itertools.py` adapts `Lib/test/test_itertools.py` (SHA-256
 `b356e71312eaac265c7104c32176c5150ab06433754bcb25d6e0013f321ca1c9`); its header lists the
 adopted and excluded cases.
 `tools/thread_check.py` runs `lib/_pystachy_thread.py` on CPython and compares it with the C
@@ -214,10 +226,41 @@ sequence and derived name, and of 4,000 malformed ones; `normalize()` and `is_no
 50,000 random strings in the four forms of both versions; and the functions' signatures and
 docstrings: 3,515,917 checks.
 
-Regex validation also includes `tests/upstream_re_*.py`, deterministic
+`tools/io_check.py` runs `lib/io.py`'s `IncrementalNewlineDecoder` and `text_encoding()` on CPython
+and compares them with the C module's (`Modules/_io/textio.c`, SHA-256
+`10d6112b4ac53914b8731c9f551a46526a2ce9fceecd604536f2ef754ba73b44`, and `Modules/_io/_iomodule.c`,
+SHA-256 `7112503c877d5a4ece90994e9a4d02d2e3339f797d4ddb240ec2c687de716fa1`): 20,000 random sequences of
+`decode()`, `getstate()`, `setstate()` and `reset()` calls over text whose newlines fall anywhere, a
+`\r\n` split between two calls included, with each truth value of `translate` and `final`, the
+newlines after each call, `text_encoding()` of names, of `None` in and out of UTF-8 mode and of
+`stacklevel`s beyond a C int, `_pystachy__io.py`'s names, and the signatures and docstrings:
+200,769 checks.
+
+`tools/opcode_tables.py` reads CPython 3.13.16's `Include/opcode_ids.h` (SHA-256
+`e30e7b48f764be2bf4530a931ea5a120d4d91d1427a31c5979206a98fa672ca1`) and
+`Include/internal/pycore_opcode_metadata.h`
+(`d2c33fe54ba2416e5badcfc95a940dd1be0be09e27f21756f7009ba630776cce`), which CPython's
+`Tools/cases_generator` makes from `Python/bytecodes.c`, and writes `lib/_pystachy_opcode_db.py`
+once `lib/_pystachy_opcode.py` on those tables gives what CPython's `_opcode` gives: every predicate of
+every opcode, and `stack_effect()` of every real opcode for each `jump`, over 4,000 opargs at the edges
+of a C int and between them (2,708,100 checks). `tools/opcode_check.py` runs `lib/_pystachy_opcode.py`
+on CPython and compares it with the C module (`Modules/_opcode.c`, SHA-256
+`eeb27e6027d9afd5d66aad063f2e080bdbf9fc09187a66385fcbd4d1b1bf1c6f`, whose `stack_effect()` and
+predicates are those of `Python/compile.c`, SHA-256
+`1ac4e5a70e82d97a56cbb6d6b9ae1e40102f9c9b4f0f0615b4ec5823f8b98ea0`, and whose intrinsics' names are
+`Python/intrinsics.c`'s, SHA-256 `f99dd40886e0abec7f3fb8caa151933959a65cca1ba1ff0249d179abff6886b4`):
+the predicates of every number from -1,100 to 1,100 and at the edges of a C int, `stack_effect()` of
+every opcode below 600 for each `jump` over opargs at the edges of a C int and a C long, 200,000 random
+calls, the lists of operators and intrinsics, `get_executor()` of objects that are not code objects,
+and the functions' signatures, docstrings and names: 1,431,973 checks.
+`tests/programs/upstream/upstream_opcode.py` adapts every test of `Lib/test/test__opcode.py` (SHA-256
+`26d8f889040bbd9416970111df4e784a7f1047901428f9e1758bfa6b96c23a60`); its header lists the
+adaptations and the excluded checks.
+
+Regex validation also includes `tests/programs/upstream/upstream_re_*.py`, deterministic
 `tools/re_fuzz.py` comparisons against CPython, and `tools/re_probe.py` checks of
 matcher-entry/context counts. Cache, Unicode-range, whitespace and character-class
-regressions have dedicated `tests/lib_*` cases. Time measurements are advisory;
+regressions have dedicated `tests/programs/library/lib_*` cases. Time measurements are advisory;
 see [caching measurements](../docs/caching.md).
 
 CPython-derived code and docstrings are used under the PSF License Version 2.
@@ -225,8 +268,8 @@ See [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES).
 
 
 The HTML parser probe pins CPython commit `cbc944f4bc59639a444dd971c737788ba2283a91`.
-`tests/upstream_html_parser.py` retains complete assertion sets from 45 upstream
+`tests/programs/upstream/upstream_html_parser.py` retains complete assertion sets from 45 upstream
 methods, with helper/type adaptations and excluded methods disclosed in its header.
-`tests/lib_html_parser.py` adds RAWTEXT/RCDATA, buffering, lifecycle and inheritance
+`tests/programs/library/lib_html_parser.py` adds RAWTEXT/RCDATA, buffering, lifecycle and inheritance
 checks. Native results must be reported separately from CPython-hosted checks;
 see [the probe record](../docs/html-parser-probe.md).

@@ -1,6 +1,6 @@
 """Ir component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.specs import FXALL
+from src.pystachy_compiler.specs import FXALL, VALUE_AT
 from src.pystachy_compiler.syntax import Node
 
 
@@ -45,6 +45,10 @@ class Reduce:
         self.comp = ""  # a float sum's compensation, as runtime.c's fsum keeps it (Neumaier's)
         self.first = ""  # no item yet: min and max, and a float sum from an int start
         self.collect = False  # min() or max() of items runtime.c compares (pys_list_minmax)
+        # a sum of a union's numbers (Gen.sum_union_item): acc the int sum, facc the float sum,
+        # isf whether a float came (CPython's float phase, which comp compensates)
+        self.facc = ""
+        self.isf = ""
 
 
 class SetArg:
@@ -112,6 +116,8 @@ class FnInfo:
         self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
+        self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
+        self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
         self.kwarg = -1  # the position of its **kwargs parameter, which a template's call gives a record of the extra keyword arguments (kw[...])
@@ -119,6 +125,7 @@ class FnInfo:
         self.vartup = ""  # *args: *Ts, of a specialization of a generic class: the tuple type args is (each call passes its items)
         self.stk = -1  # 1: a call may make its *args tuple in the caller's frame (Gen.stack_ok); -1 not yet known
         self.stknames: dict[str, bool] = {}  # then *args and the locals assigned it, which may hold that tuple
+        self.keyread = -1  # 1: it only reads its index key (Gen.key_read): o[i, j] may make that tuple in its frame; -1 not yet known
         self.export = False  # runtime mode: a pys_* function defined under its C name, for runtime.c and programs
         self.extern = False  # runtime mode: a function whose body is `...`, declared under its C name and defined in C
         self.lib = ""  # @ffi.extern's library ("" the process's own)
@@ -200,6 +207,8 @@ class Ins:
         # the opaque eight-byte container payload. Only LLVM lowering chooses its bitcast.
         # union.tag reads a nonoptional union's tag; union.payload reads its member's
         # opaque slot (s: member type, r: address then payload). Narrowing proves those reads safe.
+        # dyn.type reads a dynamic value's DynType pointer and dyn.payload its slot (s: the type
+        # a test proved it holds, r: address then payload); the box never changes (dynamic.py).
         # num.cast promotes one numeric operand; num.cmp records the source comparison
         # in s and compares two operands of the same native numeric type.
         # empty.kind fixes a fresh dict/set result's key layout, using its typed
@@ -357,11 +366,12 @@ class Values:
             code = fn.blocks[j].code
             for x in range(len(code)):
                 i = code[x]
-                if (i.op == "select" or i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp" or i.op == "rt" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "mach.load" or i.op == "mach.addr" or i.op == "mem.load" or i.op == "field.addr" or i.op == "int.ucmp" or i.op == "ptr.cmp") and len(i.r) == 1:
+                how = VALUE_AT.get(i.op, 0)
+                if how == 1 and len(i.r) == 1:
                     self.at[i.r[0]] = j * self.stride + x
-                elif i.op == "union.payload" and len(i.r) == 2:
+                elif how == 2 and len(i.r) == 2:
                     self.at[i.r[1]] = j * self.stride + x
-                elif i.op == "tuple.load" or i.op == "tuple.store":
+                elif how == 3:
                     for r in i.r:
                         self.at[r] = j * self.stride + x
 
@@ -406,6 +416,7 @@ class Frame:
         self.ret = ""
         self.retann = False
         self.nn: dict[str, bool] = {}
+        self.dynints: dict[str, bool] = {}
         self.selfname = ""
         self.uflags: dict[str, bool] = {}
         self.lflag: dict[str, str] = {}
@@ -436,6 +447,8 @@ class ClassInfo:
         self.fpos: dict[str, int] = {}  # field -> its index in fields (and in the struct)
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
+        self.fnone: dict[str, Node] = {}  # field -> the value of __init__ that gave it its first value, None (Gen.none_field)
+        self.fguess: dict[str, bool] = {}  # the fields whose type __init__'s values gave them (not annotations: Gen.join_hint)
         self.slots: list[str] = []  # literal __slots__, including inherited slots
         self.slotlimit = False  # every ordinary base and this class omit an instance dict
         self.fglob: dict[str, str] = {}
@@ -465,6 +478,7 @@ class ClassInfo:
         self.specs: dict[str, str] = {}
         self.nspec = 0  # (the names it has given: one each, also to those found to be one already made)
         self.origin = ""
+        self.speckey = ""  # (a specialization: the types of the call that made it, see Gen.stable)
         # a specialization of a generic class (Gen.tparams): the types its type variables are bound
         # to, by the call that made it (Gen.bind); a TypeVarTuple's is a tuple type of its types
         self.tvars: dict[str, str] = {}

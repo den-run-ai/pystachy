@@ -47,7 +47,18 @@ ABSTRACT_DECOS: dict[str, str] = {"abc$abstractmethod": "", "abc$abstractpropert
 # that file as the module (Loader.modpath), where CPython imports its C module
 STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pystachy_codecs", "atexit": "_pystachy_atexit",
                             "abc": "_pystachy_abc", "_struct": "_pystachy_struct", "_thread": "_pystachy_thread",
-                            "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools"}
+                            "_imp": "_pystachy_imp", "_io": "_pystachy__io", "_opcode": "_pystachy_opcode",
+                            "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
+                            "_ast": "_pystachy_ast", "_weakref": "_pystachy_weakref"}
+# the stand-ins whose objects have no attributes in CPython (a weak reference's C struct, and a
+# mapping proxy's, whose dict code given only the proxy must not reach): their classes' fields
+# are the module's own, which a program can neither read, assign, find by hasattr() nor reflect
+# over, and a call of __init__ on an object cannot initialize it again
+OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True}
+# the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
+# not the module's own: weakref.ReferenceType, ast.Constant, _io.StringIO (every class that lib's
+# io defines is the C module _io's in CPython), and mappingproxy, a builtin type
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast", "io": "_io", "_pystachy_mappingproxy": "builtins"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
@@ -61,6 +72,7 @@ HEX = "0123456789ABCDEF"
 # the type of a local that only None has been assigned so far (see none_type): a pointer, which
 # only comparisons with None may read until a binding of another value types it
 NONEVAR = "opt[None]"
+NONE_ITEM = "opt[?]"  # the item type of a container that holds only None so far (Gen.none_container)
 IOPS: dict[str, str] = {"&": "and", "|": "or", "^": "xor"}
 CHECKED: dict[str, str] = {"+": "sadd", "-": "ssub", "*": "smul"}  # llvm.*.with.overflow
 IRT: dict[str, str] = {"//": "pys_floordiv", "%": "pys_mod", "**": "pys_pow", "<<": "pys_shl", ">>": "pys_shr"}
@@ -139,6 +151,13 @@ RTL: dict[str, str] = {
 TBAA_LEN = 3
 TBAA_BYTES = 4
 STRLEN_RANGE = 5  # !range of a str's length in runtime mode: 0 to 2**63 - 18 (_rt.str_new's limit)
+# a program's TBAA of object fields (fieldtbaa): its access tags are numbered from here, in the order
+# lowering first tags each field, and the type nodes they name follow them (lower_module); the
+# members a class's struct may have, each with its size, which is its alignment too, and the name
+# of its scalar type node
+TBAA_FIELDS = 16
+TBAA_SIZES: dict[str, int] = {"i1": 1, "i8": 1, "i32": 4, "i64": 8, "double": 8, "ptr": 8}
+TBAA_NAMES: dict[str, str] = {"i1": "bool", "i8": "byte", "i32": "i32", "i64": "int", "double": "float", "ptr": "pointer"}
 # the errno module: the platform's error numbers (runtime.c's table)
 ERRNO: dict[str, bool] = {}
 for _k in ("EPERM ENOENT ESRCH EINTR EIO ENXIO E2BIG ENOEXEC EBADF ECHILD EAGAIN ENOMEM EACCES EFAULT ENOTBLK EBUSY EEXIST EXDEV ENODEV "
@@ -173,7 +192,7 @@ MODFUNCS: dict[str, bool] = {}
 for _k in CALLS:
     if "." in _k[: _k.find("(")]:
         MODFUNCS[_k[: _k.find("(")]] = True
-for _k in "os.path.join os.path.normcase os.fspath sys.exit math.fsum math.prod math.isclose".split():
+for _k in "os.path.join os.path.normcase os.fspath sys.exit math.fsum math.prod math.isclose select.select".split():
     MODFUNCS[_k] = True
 # the modules a program may import; their functions and attributes are the CALLS entries and modattr()
 MODULES: dict[str, bool] = {}
@@ -187,10 +206,11 @@ LINKDL: list[str] = []  # not empty: the program looks C functions up at run tim
 # 0 C int, 1 C unsigned int, 2 an unsigned 64-bit argument (>= 0), 3 one's result (< 2**63)
 CTYPES: dict[str, str] = {"c_int": "i32 signext:0", "c_uint": "i32 zeroext:1", "c_int64": "i64:-1", "c_ssize_t": "i64:-1",
                           "c_uint64": "i64:2", "c_size_t": "i64:2", "c_void_p": "ptr:-1"}
-for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno ffi".split():
+for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins time errno ffi select".split():
     MODULES[_k] = True
 MODATTRS: dict[str, bool] = {}
-for _k in ("sys.argv sys.warnoptions sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder math.pi math.e math.inf math.tau math.nan "
+for _k in ("sys.argv sys.warnoptions sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder sys.prefix sys.base_prefix "
+           "sys.exec_prefix sys.base_exec_prefix math.pi math.e math.inf math.tau math.nan "
            "os.name os.sep os.curdir os.pardir os.extsep os.pathsep os.linesep os.devnull").split():
     MODATTRS[_k] = True
 # the os module's constants on POSIX systems
@@ -214,13 +234,14 @@ IMPLEMENTATION = "pystachy"
 MODATTRS["sys.implementation.name"] = True
 # Pystachy's own builtin module, which only lib/types.py imports (Loader.import_stmt): CPython
 # 3.13's names of types, which lib/types.py binds, but TracebackType (lib/_pystachy_types.py's
-# class, which a with statement passes to __exit__). GenericAlias is supported only as a class body's
+# class, which a with statement passes to __exit__) and MappingProxyType (lib/_pystachy_mappingproxy.py's
+# mappingproxy, a read-only view of a dict). GenericAlias is supported only as a class body's
 # __class_getitem__ = classmethod(GenericAlias), CPython's idiom for a generic class, which defines
 # nothing in Pystachy (Gen.generic_aliases()); any other use of these names is an error
 TYPESMOD = "_pystachy_typenames"
 for _k in ("AsyncGeneratorType BuiltinFunctionType BuiltinMethodType CapsuleType CellType ClassMethodDescriptorType CodeType "
            "CoroutineType DynamicClassAttribute EllipsisType FrameType FunctionType GeneratorType GenericAlias "
-           "GetSetDescriptorType LambdaType MappingProxyType MemberDescriptorType MethodDescriptorType MethodType "
+           "GetSetDescriptorType LambdaType MemberDescriptorType MethodDescriptorType MethodType "
            "MethodWrapperType ModuleType NoneType NotImplementedType SimpleNamespace UnionType "
            "WrapperDescriptorType _GeneratorWrapper _calculate_meta coroutine get_original_bases new_class prepare_class "
            "resolve_bases").split():
@@ -229,7 +250,7 @@ MODULES[TYPESMOD] = True
 MODULES[IOMOD] = True
 GALIAS = TYPESMOD + ".GenericAlias"
 GALIASUSE = "types.GenericAlias is supported only as a class body's __class_getitem__ = classmethod(GenericAlias), CPython's idiom for a generic class: Pystachy has no generic aliases"
-TYPESUSE = "types.NAME is not supported: of the types module, Pystachy has only GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)"
+TYPESUSE = "types.NAME is not supported: of the types module's names, Pystachy has MappingProxyType, TracebackType and GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)"
 GALIASSUB = "subscripting class 'NAME' at run time is not supported: CPython makes NAME[...] a types.GenericAlias (its __class_getitem__ = classmethod(GenericAlias)), and Pystachy has no generic aliases"
 for _k in FLOATINFO:
     MODATTRS[_k] = True
@@ -280,8 +301,11 @@ for _k in ("ABCMeta EllipsisType FunctionType GenericAlias _CallableGenericAlias
 ABCSOTHER = "collections.abc.NAME is not supported: Pystachy's collections.abc (which _collections_abc is too) has only the ABCs"
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
 ITERS = "_pystachy_iterators"  # lib's module of the iterator classes iter() makes objects of (Loader.program)
+TEXTVIEW = "re"  # lib's regex engine, which reads a str whose every byte is a code point in place (__pys_text_bytes)
 RANGES = "_pystachy_range"  # lib's module of the class of range objects, range() as a value (Loader.program)
 RANGEC = "_pystachy_range$range"  # (that class)
+OBJECTS = "_pystachy_object"  # lib's module of the class of the objects object() makes, sentinels (Loader.program)
+OBJECTC = "_pystachy_object$object"  # (that class)
 # the calls whose positional argument range(...) is no range object (analysis.range_values): the
 # consumers that take the numbers at once (1: the first, 2: the first that is the only one, 3:
 # each), of the builtins (fsum and prod also of math, as imported) and of methods (str.join(),
@@ -518,7 +542,7 @@ METHODS: dict[str, str] = {
     "dict.values": "list[V]:", "dict.items": "list[tuple[K,V]]:", "dict.clear": "None:", "dict.copy": "S:",
     "vtuple.index": "int:*T,#,int=0,int=9223372036854775807", "vtuple.count": "int:*T,#",
     "file.read": "str:int=-1", "file.readline": "str:", "file.readlines": "list[str]:", "file.write": "int:str",
-    "file.writelines": "None:list[str]", "file.close": "None:", "file.flush": "None:",
+    "file.writelines": "None:list[str]", "file.close": "None:", "file.flush": "None:", "file.fileno": "int:",
     "float.hex": "str:", "float.is_integer": "bool:", "int.bit_length": "int:", "int.bit_count": "int:",
     # bytes (runtime.py's pys_bytes_*: their RUNTIME entries take strs, the Strs a bytes is)
     "bytes.decode": "str:str=null,str=null", "bytes.hex": "str:", "bytes.join": "bytes:list[bytes]",
@@ -535,10 +559,19 @@ METHODS: dict[str, str] = {
     "bytes.removeprefix": "bytes:bytes", "bytes.removesuffix": "bytes:bytes", "bytes.splitlines": "list[bytes]:bool=0",
     "str.encode": "bytes:str=null,str=null",
 }
+# Public code-point operations; runtime.py retains its byte-oriented implementation primitives.
+TEXT_OPS: dict[str, str] = {
+    "pys_str_get": "pys_text_get", "pys_str_slice": "pys_text_slice",
+    "pys_str_slice_step": "pys_text_slice_step", "pys_str_list": "pys_text_list",
+    "pys_str_find": "pys_text_find", "pys_str_rfind": "pys_text_rfind",
+    "pys_str_index": "pys_text_index", "pys_str_rindex": "pys_text_rindex",
+    "pys_str_count": "pys_text_count", "pys_str_startswith": "pys_text_startswith",
+    "pys_str_endswith": "pys_text_endswith",
+}
 # Byte-oriented boundaries audited only in user/library code, not inside runtime.py.
-# These are conservative: even a byte-correct delimiter search is a porting audit hit.
-UNICODE_AUDIT: list[str] = ("get slice slice_step list find rfind index rindex count startswith endswith replace replace_count "
-                            "upper lower swapcase capitalize title casefold isdigit isalpha isalnum "
+# These are conservative: a call on any non-ASCII str is a porting audit hit, even where its
+# result is right.
+UNICODE_AUDIT: list[str] = ("upper lower swapcase capitalize title casefold isdigit isalpha isalnum "
                             "isupper islower istitle isdecimal isnumeric expandtabs").split()
 
 # the methods of frozenset (those that change nothing) and of set, which Gen.smethod compiles
@@ -548,7 +581,7 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 # a block; an rt op has its runtime function's effects (RUNTIME), a call or an init its callee's
 # summary (IFn.fx). Every instruction has typed operands; there is no text escape hatch.
 IROPS: dict[str, str] = {
-    "slot": "", "rt": "*", "call": "*", "icall": "*", "init": "*", "br": "T", "cbr": "T", "check": "T R",
+    "slot": "", "rt": "*", "call": "*", "icall": "*", "init": "*", "br": "T", "cbr": "T", "switch": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
     "list.load": "rL", "list.len": "rL",
     "alloc.fixed": "A",
@@ -561,6 +594,7 @@ IROPS: dict[str, str] = {
     "num.cast": "", "num.cmp": "", "int.ucmp": "", "ptr.cmp": "",
     "empty.kind": "wD",
     "union.tag": "rL rD rO", "union.payload": "rL rD rO",
+    "dyn.type": "", "dyn.payload": "",
     "landing": "T", "throw": "T R N", "exc.match": "",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
     # generator function's entry block (the frame, its promise and the initial suspend), gen.yield
@@ -599,8 +633,12 @@ GENCLOSEC = 2
 GENTHROWC = 3
 # the optimizations, passes over each IFn once the program is built (docs/typed-ir.md 7.1) and
 # tupleiter and listfast, choices of lowering (a tuple's slots in Gen.iterable, and checked
-# list[int] reads in Gen.list_read), which PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints"]
+# list[int] and bytes reads in Gen.list_read and Gen.bytes_read; listget also chooses the inline
+# byte reads of a loop over a bytes, in gen_seq_item), fieldtbaa, the TBAA tags that lowering
+# gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
+# functions return by value to the calls that only read their slots (Gen.tuple_rets), which
+# PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)
@@ -612,6 +650,12 @@ CANON_DEPTH = 1000
 JIT_INLINE = 20000
 REACH = 256
 LOOKUPS = 32
+# the ops whose values Values places, by the number each defines (its block and position there),
+# as how: 1, the value of one that defines one; 2, the payload of union.payload and dyn.payload,
+# their second; 3, each value of tuple.load and tuple.store
+VALUE_AT: dict[str, int] = {"select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
+                            "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
+                            "ptr.cmp": 1, "dyn.type": 1, "union.payload": 2, "dyn.payload": 2, "tuple.load": 3, "tuple.store": 3}
 # Types are serialized strings. Bound their size before joining children, and the active
 # template signatures before making keys or call contexts; a depth limit alone misses
 # exponential width growth such as f((x, x)). These are compiler resource limits.
@@ -623,13 +667,15 @@ TEMPLATE_INSTANCES = 4096
 # They keep their signatures too (key and parameter types, up to TYPE_SIZE per parameter),
 # which long types make hundreds of MiB under that count: bound their total, low enough that
 # a rejection fits tools/compilelimits.py's 256 MiB, hosted too (the corpus's largest total is
-# 4,736 bytes, tests/port_tomli_w_tables.py's 92 instances).
+# 4,736 bytes, tests/programs/apps/port_tomli_w_tables.py's 92 instances).
 TEMPLATE_RETAINED = 16777216
 # Effect letters: R may raise (in a program that has try or with, a raise allocates its exception, so a
 # collection may run before a handler takes it; if none does, the raise prints its message, flushes
 # stdout and exits); N never returns; A allocates on the way to returning (a collection may run, and
 # running out of memory ends the program); U may run user code, and so has every other letter (U?:
-# when the static type, the descriptor of a # parameter or a dict's keys, Ins.x, holds a class); I
+# when the static type, the descriptor of a # parameter or a dict's keys, Ins.x, holds a class; R?:
+# R when Ins.x holds a recursive alias's edge, R<n>:, of which runtime.c's descriptor walks follow
+# at most 512 before raising RecursionError, in rec_deep); I
 # does I/O, or uses the process or global runtime state; rL wL, rD wD, rO wO, rG wG, rF wF read or
 # write lists, dicts, objects' fields and flags, globals and their flags, files. Strings and tuples
 # are immutable, slots are never address-taken, dict keys are ints, strs, objects, or tuples of
@@ -656,11 +702,29 @@ for _j in range(len(FX)):
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
 # result too long in join and replace, where CPython raises OverflowError too
 RUNTIME: dict[str, str] = {
+    # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
+    # any type, so that an operation on one may run the program's code (an object's __repr__,
+    # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
+    # -5..256 are constants
+    "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A|",
+    "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
+    "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
+    "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
+    "dyn.binop": "%ptr:%ptr,%ptr,int|R A rL|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I rL wL rD|", "dyn.unary": "%ptr:%ptr,int|R A|",
+    "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
+    "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
+    "dyn.iter": "%ptr:%ptr|R A rD|", "dyn.next": "%ptr:%ptr|R A I rL rD|",
+    "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I rL rD|",
+    "dyn.slice": "%ptr:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
+    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I rL rD|", "dyn.strs": "list[str]:%ptr|R A I rL rD|", "dyn.id": "int:%ptr||",
+    # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE), as does
+    # the queue of the fire functions of references whose referents a collection found dead
+    "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",
     # homogeneous runtime-length tuples (immutable copied slots)
     "vtuple.new": "%ptr:list[T]|R A rL|", "vtuple.from": "%ptr:%ptr,int|R A|",
     "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A|", "vtuple.box": "%ptr:%ptr|R A|",
-    "vtuple.slice": "%ptr:%ptr,int,int,int|R A|",
-    "vtuple.index": "int:%ptr,*T,#,int,int|R rL rD U?|", "vtuple.count": "int:%ptr,*T,#|rL rD U?|",
+    "vtuple.slice": "%ptr:%ptr,int,int,int|R A|", "vtuple.concat": "%ptr:%ptr,%ptr|R A|",
+    "vtuple.index": "int:%ptr,*T,#,int,int|R rL rD U?|", "vtuple.count": "int:%ptr,*T,#|R? rL rD U?|",
     # lists
     "list.new": "list[T]:int|A|", "list.new_atomic": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
     "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
@@ -668,9 +732,9 @@ RUNTIME: dict[str, str] = {
     "list.slice_step": "S:S,int,int,int|R A rL|", "list.set_slice": "None:S,int,int,int,S|R A rL wL|",
     "list.del_slice": "None:S,int,int,int|R rL wL|",
     "list.copy": "S:S|A rL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
-    "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|rL rD U?|",
+    "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|R? rL rD U?|",
     "list.find_pair": "int:S,*T,%ptr,%ptr|rL rD U|",
-    "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
+    "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|R? rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
     "list.sort_r": "None:S,#,bool|R A I rL wL rD U?|", "list.minmax": "*T:S,#,bool|R rL rD U?|",
     "list.take": "S:S|A I rL wL|", "list.keyed": "%ptr:S,%ptr,bool|A rL wL|", "list.unkey": "None:S,%ptr|rL wL|",
     "list.give": "None:S|R I rL wL|",
@@ -682,32 +746,42 @@ RUNTIME: dict[str, str] = {
     # KeyError's message) without user code but an object's: U? holds where the op's Ins.x, the key
     # descriptor (Gen.key_fx), has H<id> (__hash__, __eq__), or P<id> and the op has R (the
     # KeyError's repr). That repr is runtime.c's, which can reach pys_repr_enter: I
-    "dict.new": "dict[K,V]:int,int|A|", "dict.new_atomic": "dict[K,V]:int,int|A|", "dict.has": "bool:S,*K|rD U?|", "dict.getitem": "*V:S,*K|R A I rD U?|",
-    "dict.get": "*V:S,*K,*V|rD U?|", "dict.set": "None:S,*K,*V|A rD wD U?|", "dict.pop": "*V:S,*K|R A I rD wD U?|",
+    "dict.new": "dict[K,V]:int,int|A|", "dict.new_atomic": "dict[K,V]:int,int|A|", "dict.has": "bool:S,*K|R? rD U?|", "dict.getitem": "*V:S,*K|R A I rD U?|",
+    "dict.get": "*V:S,*K,*V|R? rD U?|", "dict.set": "None:S,*K,*V|R? A rD wD U?|", "dict.pop": "*V:S,*K|R A I rD wD U?|",
     "dict.del": "*V:S,*K|R A I rD wD U?|", "dict.pop_default": "*V:S,*K,*V|R A I rD wD U?|", "dict.popitem": "tuple[K,V]:S|R A rD wD|",
-    "dict.setdefault": "*V:S,*K,*V|A rD wD U?|", "dict.clear": "None:S|wD|",
-    "dict.getbox": "*V:S,*K,*V|A rD U?|", "dict.popbox": "*V:S,*K,*V|R A I rD wD U?|",
-    "dict.copy": "S:S|A rD U?|", "dict.from": "S:S|A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
+    "dict.setdefault": "*V:S,*K,*V|R? A rD wD U?|", "dict.clear": "None:S|wD|",
+    "dict.getbox": "*V:S,*K,*V|R? A rD U?|", "dict.popbox": "*V:S,*K,*V|R A I rD wD U?|",
+    "dict.copy": "S:S|R? A rD U?|", "dict.from": "S:S|R? A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
     "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
-    "dict.find": "int:S,*K|rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
-    "dict.update": "None:S,S|A rD wD U?|", "dict.update_pairs": "None:S,list[T]|A rL rD wD U?|",
-    "dict.fromkeys": "dict[K,V]:int,list[T],*V|A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|A rD U?|",
+    "dict.find": "int:S,*K|R? rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
+    "dict.update": "None:S,S|R? A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
+    "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",
     # sets and frozensets (CPython's tables; Set.kind as Dict.kind): their elements are a dict's
     # keys, which hash, compare and print without user code but an object's (U?, as a dict's). A
     # set's memory counts as a dict's (rD wD: what changes a set may change a dict); what an
     # operation makes, it alone has seen
-    "set.new": "set[T]:int|A|", "set.add": "None:S,*T|A rD wD U?|", "set.has": "bool:S,*T|rD U?|", "set.discard": "None:S,*T|rD wD U?|",
+    "set.new": "set[T]:int|A|", "set.add": "None:S,*T|R? A rD wD U?|", "set.has": "bool:S,*T|R? rD U?|", "set.discard": "None:S,*T|R? rD wD U?|",
     "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|A rD|",
-    "set.update": "None:S,S|A rD wD U?|", "set.update_list": "None:S,list[T]|A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|A rD wD U?|",
-    "set.union_more": "None:S,S,S|A rD wD U?|", "set.or": "S:S,S|A rD U?|", "set.and": "S:S,S|A rD U?|", "set.and_list": "S:S,list[T]|A rL rD U?|",
-    "set.assign": "None:S,S|rD wD|", "set.isub": "None:S,S|A rD wD U?|", "set.isub_list": "None:S,list[T]|A rL rD wD U?|",
-    "set.sub": "S:S,S|A rD U?|", "set.sub_list": "S:S,list[T]|A rL rD U?|", "set.sub_dict": "S:S,dict[T,V]|A rD U?|",
-    "set.xor": "S:S,S|A rD U?|", "set.xor_list": "S:S,list[T]|A rL rD U?|", "set.xor_dict": "S:S,dict[T,V]|A rD U?|",
-    "set.ixor": "None:S,S|A rD wD U?|", "set.ixor_list": "None:S,list[T]|A rL rD wD U?|", "set.ixor_dict": "None:S,dict[T,V]|A rD wD U?|",
-    "set.cmp": "int:S,S,int|rD U?|", "set.le_list": "bool:S,list[T]|A rL rD U?|", "set.ge_list": "bool:S,list[T]|rL rD U?|",
-    "set.isdisjoint": "bool:S,S|rD U?|", "set.isdisjoint_list": "bool:S,list[T]|rL rD U?|", "set.next": "int:S,int,int|R rD|",
+    "set.update": "None:S,S|R? A rD wD U?|", "set.update_list": "None:S,list[T]|R? A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|R? A rD wD U?|",
+    "set.union_more": "None:S,S,S|R? A rD wD U?|", "set.or": "S:S,S|R? A rD U?|", "set.and": "S:S,S|R? A rD U?|", "set.and_list": "S:S,list[T]|R? A rL rD U?|",
+    "set.assign": "None:S,S|rD wD|", "set.isub": "None:S,S|R? A rD wD U?|", "set.isub_list": "None:S,list[T]|R? A rL rD wD U?|",
+    "set.sub": "S:S,S|R? A rD U?|", "set.sub_list": "S:S,list[T]|R? A rL rD U?|", "set.sub_dict": "S:S,dict[T,V]|R? A rD U?|",
+    "set.xor": "S:S,S|R? A rD U?|", "set.xor_list": "S:S,list[T]|R? A rL rD U?|", "set.xor_dict": "S:S,dict[T,V]|R? A rD U?|",
+    "set.ixor": "None:S,S|R? A rD wD U?|", "set.ixor_list": "None:S,list[T]|R? A rL rD wD U?|", "set.ixor_dict": "None:S,dict[T,V]|R? A rD wD U?|",
+    "set.cmp": "int:S,S,int|R? rD U?|", "set.le_list": "bool:S,list[T]|R? A rL rD U?|", "set.ge_list": "bool:S,list[T]|R? rL rD U?|",
+    "set.isdisjoint": "bool:S,S|R? rD U?|", "set.isdisjoint_list": "bool:S,list[T]|R? rL rD U?|", "set.next": "int:S,int,int|R rD|",
     "set.key": "*T:S,int|rD|", "set.list": "list[T]:S|A rD|",
+    # Public Unicode operations over UTF-8 storage, separate from runtime.py's raw byte helpers.
+    "text.len": "int:str||", "text.chr": "str:int|R A|",
+    "text.get": "str:str,int|R A|", "text.at": "str:str,int|R A|",
+    "text.next": "int:str,int|R|", "text.prev": "int:str,int|R|",
+    "text.slice": "str:str,int,int|A|", "text.slice_step": "str:str,int,int,int|R A|",
+    "text.list": "list[str]:str|R A|",
+    "text.find": "int:str,str,int,int|R|", "text.rfind": "int:str,str,int,int|R|",
+    "text.index": "int:str,str,int,int|R|", "text.rindex": "int:str,str,int,int|R|",
+    "text.count": "int:str,str,int,int|R|",
+    "text.startswith": "bool:str,str,int,int|R|", "text.endswith": "bool:str,str,int,int|R|",
     # strings
     "str.audit": "None:str,str|R|",
     "str.get": "str:S,int|R A|", "str.slice": "str:S,int,int|A|", "str.slice_step": "str:S,int,int,int|R A|", "str.add": "str:S,str|A|", "str.mul": "str:S,int|R A|",
@@ -770,11 +844,11 @@ RUNTIME: dict[str, str] = {
     "m.ldexp": "float:float,int|R|", "m.frexp": "tuple[float,int]:float|A|", "m.modf": "tuple[float,float]:float|A|",
     "m.nextafter": "float:float,float||", "m.ulp": "float:float||", "m.remainder": "float:float,float|R|",
     "m.fma": "float:float,float,float|R|", "m.fsum": "float:list[float]|R A rL|", "m.prod_int": "int:list[T],int|R rL|",
-    "m.prod_float": "float:list[float],float|rL|", "m.floats": "list[float]:list[T]|A rL|",
+    "m.prod_float": "float:list[float],float|rL|", "m.floats": "list[float]:list[T]|A rL|", "m.ufloats": "list[float]:list[T],#|A rL|",
     "m.dist": "float:list[float],list[float]|R A rL|", "m.hypot_list": "float:list[float]|A rL|",
     "m.isclose": "bool:float,float,float,float|R|", "m.gamma": "float:float|R|", "m.lgamma": "float:float|R|",
     # any type, by its descriptor
-    "eq": "bool:*T,*T,#|rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|A I rL rD U?|",
+    "eq": "bool:*T,*T,#|R? rL rD U?|", "cmpop": "int:*T,*T,#,int|R rL rD U?|", "repr": "str:*T,#|R? A I rL rD U?|",
     "eq.pair": "bool:*T,*T,%ptr,%ptr|rL rD U|",  # conservative: dict lookup's call graph reaches user equality
     "hash": "int:*T,#|U?|", "hash.id": "int:%ptr||",
     "format": "str:*T,#,str|R A I rL rD U?|", "default_repr": "str:str,%ptr|A|", "repr_enter": "bool:%ptr|I|",
@@ -788,6 +862,7 @@ RUNTIME: dict[str, str] = {
     "getsize": "int:str|R A I|", "getmtime": "float:str|R A I|", "getctime": "float:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
+    "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
     # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it
     # closes with-files (which may raise) and gives a list being sorted its items back. str() and
@@ -798,6 +873,9 @@ RUNTIME: dict[str, str] = {
     "exc.user": "exc:%ptr|A|", "exc.obj": "%ptr:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
     "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.type": "str:exc|A|",
     "exc.setcause": "None:exc,exc|wO|", "exc.cause": "exc:exc|rO|", "exc.errcls": "str:int|A|",
+    # exception classes as values: class objects (runtime.c's exceptions)
+    "exc.proto": "exc:str,%ptr|A I|", "exc.canon": "exc:exc|A I|", "exc.sub": "int:exc,exc,str||", "exc.module": "str:exc|A|", "exc.setmodule": "None:%ptr,str|R I|",
+    "exc.ctor": "%ptr:exc,%ptr||", "exc.make": "exc:exc,int,str,str,int,int|R A|",
     "reraise": "None:|R N|", "unwind_file": "None:file|I|", "unwind_pop": "None:|I|",
     # generators: the unwind actions a suspended generator sets aside (gen.leave) and takes up
     # again when it resumes (gen.enter, which returns their depth below them); the reports of a
@@ -810,19 +888,27 @@ RUNTIME: dict[str, str] = {
     # files and the standard streams
     "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
     "file.read": "str:S,int|R A I rF wF|", "file.readline": "str:S|R A I rF wF|", "file.readlines": "list[str]:S|R A I rF wF|",
-    "file.write": "int:S,str|R A I rF wF|", "file.writelines": "None:S,list[str]|R A I rL rF wF|",
+    "file.write": "int:S,str|R A I rF wF|", "file.put": "None:S,str|R A I rF wF|",
+    "file.writelines": "None:S,list[str]|R A I rL rF wF|",
     "file.flush": "None:S|R I rF wF|", "file.close": "None:S|R I rF wF|", "file.drop": "None:S|R I rF wF|",
-    "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|",
+    "file.closed": "bool:S|rF|", "file.name": "str:S|A rF|", "file.mode": "str:S|A rF|", "file.fileno": "int:S|R I rF|",
     # lib/io.py's TextIOWrapper (IOMOD): its default and "locale" encodings, io.UnsupportedOperation
     "io.defenc": "str:|A I|", "io.locenc": "str:|A I|", "io.unsupported": "None:str|R N|",
     # runtime mode's primitives (Gen.primitive): a new str's memory, and the C library's searches
     # and copy, over the bytes of strs (a str that _rt.str_new made is written only before
     # _rt.str_done hands it out, so these need no letter either)
-    "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R I|", "c_str": "None:str|R|", "string_at": "str:int,int|R A|", "track": "int:%ptr,int,int|A I|", "c_bind": "None:%ptr,%ptr,%ptr|R A I|", "untrack": "None:int|I|", "collected": "int:|I|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
+    "alloc_atomic": "%ptr:int|A|", "init_lib": "None:%ptr,int|A I|", "cstr": "opt[str]:%ptr,int|R A|", "c_check": "int:int,int|R I|", "c_str": "None:str|R|", "c_at": "%ptr:%ptr,int|R|", "string_at": "str:int,int|R A|", "track": "int:%ptr,int,int|A I|", "c_bind": "None:%ptr,%ptr,%ptr|R A I|", "untrack": "None:int|I|", "collected": "int:|I|", "memchr": "%ptr:%ptr,%i32,int||memchr", "memcmp": "%i32:%ptr,%ptr,int||memcmp",
     "memmem": "%ptr:%ptr,int,%ptr,int||memmem", "memmove": "None:%ptr,%ptr,int,%i1||llvm.memmove.p0.p0.i64",
 }
 # LLVM symbol -> RUNTIME key (spelt out here as rtsym does: module code calls no function before
 # the last def has run, which spares the compiled functions a check that each callee is defined)
+# the runtime's data that programs name (docs/dynamic-any.md): the DynTypes of the builtin types
+# and the constant boxes of None, True and False, with their LLVM types; a module declares those
+# it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
+DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64}"
+RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
+for _k in "none bool int float str list dict tuple".split():
+    RTDATA["pys_dyntype_" + _k] = DYNTYPE_LL
 RTSYM: dict[str, str] = {}
 for _k in RUNTIME:
     _s = RUNTIME[_k][RUNTIME[_k].rfind("|") + 1 :]

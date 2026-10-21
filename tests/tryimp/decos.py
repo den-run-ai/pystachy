@@ -1,4 +1,4 @@
-# Decorators for tests/import_try_decorator.py
+# Decorators for tests/programs/imports/import_try_decorator.py
 from typing import Callable
 
 

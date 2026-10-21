@@ -1,4 +1,4 @@
-# The same for int() of a float (tests/deftime_class_raises.py)
+# The same for int() of a float (tests/programs/imports/deftime_class_raises.py)
 from typing import Iterable
 
 

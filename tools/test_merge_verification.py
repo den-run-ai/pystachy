@@ -15,6 +15,7 @@ opt-off-0 bootstrap tests-opt-off-0
 contracts bootstrap check-ir
 """
 COMMIT = "a" * 40
+BUNDLE = "d" * 64
 
 
 def report(group, steps):
@@ -23,7 +24,9 @@ def report(group, steps):
         step = {"name": name, "result": "pass", "seconds": 2.0,
                 "log": f"build/verify/{name}.log"}
         if name == "bootstrap":
-            step.update(ir_identical=True, ir_sha256="b" * 64)
+            step.update(ir_identical=True, ir_sha256="b" * 64, bootstrap_bundle_id=BUNDLE)
+            if group != "bootstrap":
+                step["bootstrap_reused"] = True
         if name in merge.SUITE_STEPS:
             step.update(passed=10, failed=0, expected=10, failures=[])
         if name in ("tests-native-0", "tests-native-1", "tests-opt-off-0", "tests-opt-off-1", "gc-jit-0", "gc-jit-1"):
@@ -69,6 +72,10 @@ class ContractTests(unittest.TestCase):
             self.assertEqual(groups["native-" + shard], ["bootstrap", "tests-native-" + shard])
             self.assertEqual(groups["opt-off-" + shard], ["bootstrap", "tests-opt-off-" + shard])
         self.assertEqual(groups["benchmarks"], ["bootstrap", "benchmarks", "scaling-0"])
+        for group in ("all", "contracts"):
+            self.assertIn("select-io", groups[group])
+            self.assertIn("weakrefs", groups[group])
+            self.assertIn("box-slots", groups[group])
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
             for group, steps in groups.items():
@@ -334,6 +341,94 @@ class ReportTests(unittest.TestCase):
             status = merge.main([str(self.directory), "-o", str(output)])
         self.assertEqual(status, 1)
         self.assertEqual(json.loads(output.read_text())["result"], "fail")
+
+
+class SharedBootstrapTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.directory = Path(self.temp.name)
+        # Deliberately list the producer last: its real proof must win deduplication anyway.
+        self.groups = merge.parse_groups(CONTRACT + "bootstrap bootstrap\n")
+        self.reports = {group: report(group, steps) for group, steps in self.groups.items() if group != "all"}
+
+    def merged(self):
+        for group, data in self.reports.items():
+            path = self.directory / f"verification-{group}" / "verification.json"
+            path.parent.mkdir(exist_ok=True)
+            path.write_text(json.dumps(data))
+        return merge.merge_reports(self.directory, self.groups, COMMIT)
+
+    def test_shared_bootstrap_preserves_producer_and_counts_serial_work_once(self):
+        self.reports["bootstrap"]["summary"]["seconds"] = 10.0
+        self.reports["bootstrap"]["steps"][0]["seconds"] = 10.0
+        self.reports["contracts"]["summary"]["seconds"] = 9.0
+        result = self.merged()
+        self.assertEqual(result["steps"][0]["ci_group"], "bootstrap")
+        self.assertEqual(result["steps"][0]["seconds"], 10.0)
+        self.assertNotIn("bootstrap_reused", result["steps"][0])
+        self.assertEqual(result["summary"]["seconds"], 19.0)
+        self.assertEqual(result["ci"]["critical_path_seconds"], 19.0)
+        self.assertEqual(result["ci"]["max_group_seconds"], 10.0)
+        self.assertEqual(result["ci"]["runner_seconds"], 25.0)
+        self.assertIn("bootstrap then parallel groups", result["ci"]["timing_scope"])
+
+    def test_missing_producer_is_rejected(self):
+        del self.reports["bootstrap"]
+        with self.assertRaisesRegex(ValueError, "missing report groups.*bootstrap"):
+            self.merged()
+
+    def test_missing_changed_or_malformed_bundle_identity_is_rejected(self):
+        for group in self.reports:
+            original = copy.deepcopy(self.reports[group])
+            for value in (None, "", "e" * 64, "D" * 64, True, 123):
+                if group == "bootstrap" and value == "e" * 64:
+                    continue  # Valid producer identity, but mismatched consumers, covered below.
+                self.reports[group] = copy.deepcopy(original)
+                bootstrap = self.reports[group]["steps"][0]
+                if value is None:
+                    bootstrap.pop("bootstrap_bundle_id")
+                else:
+                    bootstrap["bootstrap_bundle_id"] = value
+                with self.subTest(group=group, value=value), self.assertRaisesRegex(ValueError, "bundle identity"):
+                    self.merged()
+            self.reports[group] = original
+        self.reports["bootstrap"]["steps"][0]["bootstrap_bundle_id"] = "e" * 64
+        with self.assertRaisesRegex(ValueError, "bundle identity differs from producer"):
+            self.merged()
+
+    def test_producer_cannot_reuse_and_consumers_must_reuse(self):
+        for group in self.reports:
+            original = copy.deepcopy(self.reports[group])
+            values = (True, 0, 1, "false", None) if group == "bootstrap" else (False, 0, 1, "true", None)
+            for value in values:
+                self.reports[group] = copy.deepcopy(original)
+                self.reports[group]["steps"][0]["bootstrap_reused"] = value
+                with self.subTest(group=group, value=value), self.assertRaises(ValueError):
+                    self.merged()
+            self.reports[group] = original
+            if group != "bootstrap":
+                self.reports[group] = copy.deepcopy(original)
+                del self.reports[group]["steps"][0]["bootstrap_reused"]
+                with self.subTest(group=group, missing=True), self.assertRaises(ValueError):
+                    self.merged()
+                self.reports[group] = original
+        self.reports["bootstrap"]["steps"][0]["bootstrap_reused"] = False
+        self.merged()
+
+    def test_producer_commit_and_failed_fixed_point_are_rejected(self):
+        original = copy.deepcopy(self.reports["bootstrap"])
+        self.reports["bootstrap"]["git"]["commit"] = "f" * 40
+        with self.assertRaisesRegex(ValueError, "differs from checkout"):
+            self.merged()
+        self.reports["bootstrap"] = original
+        self.reports["bootstrap"]["steps"][0]["ir_identical"] = False
+        with self.assertRaisesRegex(ValueError, "bootstrap IR identity"):
+            self.merged()
+
+    def test_producer_cannot_claim_other_stages(self):
+        with self.assertRaisesRegex(ValueError, "producer must run only bootstrap"):
+            merge.parse_groups(CONTRACT.replace("contracts bootstrap check-ir", "bootstrap bootstrap check-ir"))
 
 
 if __name__ == "__main__":

@@ -42,11 +42,6 @@ show("name None", lambda: repr(timezone(timedelta(hours=1), None)))
 # (CPython: '<' not supported between instances of 'datetime.date' and 'datetime.datetime').
 show("date < datetime", lambda: str(date(2024, 1, 1) < datetime(2024, 1, 1)))
 
-# Strings are UTF-8 bytes: fromisoformat() reads the byte after the separator's first byte, so
-# a non-ASCII separator is invalid (CPython: datetime.datetime(2024, 2, 29, 12, 0)).
-show("separator", lambda: repr(datetime.fromisoformat("2024-02-29é12:00")))
-
-
 # A subclass of date: objects have no __class__, so repr() names date, and the results of
 # arithmetic and replace() are dates (CPython: MyDate(2024, 2, 29) True True).
 class MyDate(date):

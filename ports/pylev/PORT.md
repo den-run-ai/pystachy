@@ -24,7 +24,7 @@ print(damerau_levenshtein("ab", "ba"))
 
 ## Compatibility
 
-- String distances count UTF-8 bytes: `levenshtein("café", "cafe")` is 2, where CPython’s character distance is 1. ASCII strings and word/integer sequences agree.
+- String distances count characters, as in CPython: `levenshtein("café", "cafe")` is 1.
 - Recursive variants are limited by the native stack. Use the iterative variant for long inputs.
 - List comparisons involving a shared NaN can differ from CPython’s object-identity shortcut.
 
@@ -35,13 +35,13 @@ print(damerau_levenshtein("ab", "ba"))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_pylev_strings.py
-./tests/run.sh ./pystachy "jit aot" tests/port_pylev_strings.py tests/port_pylev_sequences.py tests/port_pylev_imports.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_pylev_strings.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_pylev_strings.py tests/programs/apps/port_pylev_sequences.py tests/programs/apps/port_pylev_imports.py
 ```
 
 The tests cover upstream pairs, aliases/import forms, empty inputs, transpositions, explicit recursion arguments and list sequences.
 
-Cases: [port_pylev_strings.py](../../tests/port_pylev_strings.py), [port_pylev_sequences.py](../../tests/port_pylev_sequences.py), [port_pylev_imports.py](../../tests/port_pylev_imports.py).
+Cases: [port_pylev_strings.py](../../tests/programs/apps/port_pylev_strings.py), [port_pylev_sequences.py](../../tests/programs/apps/port_pylev_sequences.py), [port_pylev_imports.py](../../tests/programs/apps/port_pylev_imports.py).
 
 <a id="speed"></a>
 

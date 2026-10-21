@@ -1,5 +1,5 @@
 # Operations Pystachy computes otherwise than CPython, or rejects, are not evaluated
-# (tests/deftime_class_raises.py): Pystachy's int ** negative int is a ValueError
+# (tests/programs/imports/deftime_class_raises.py): Pystachy's int ** negative int is a ValueError
 from typing import Iterable
 
 

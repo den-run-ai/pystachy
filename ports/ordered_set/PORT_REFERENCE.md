@@ -31,7 +31,7 @@ Archive SHA-256: `694a8e44c87657c59292ede72891eb91d34131f6531463aab3009191c77364
 
 ## Validation snapshot
 
-`tests/port_ordered_set_api.py` runs the cases of ordered-set's own test suite
+`tests/programs/apps/port_ordered_set_api.py` runs the cases of ordered-set's own test suite
 (`test/test_ordered_set.py` of the sdist, run under pytest there) and the examples of its
 docstrings as a program, with `str` items: order, `!=`, the set algebra as methods (`&` as
 `__and__()`), copies and identity, `index()` and its `KeyError`, `get_loc()` and
@@ -44,7 +44,7 @@ pairs of 20 pseudo-random items (a linear congruential generator in place of
 leaves out (pickling, slices, fancy indexing, tuple items, `remove()`, the operators, and
 comparisons with lists, tuples, deques, sets, dicts and iterators).
 
-`tests/port_ordered_set_edges.py` takes the edge cases that the evaluation of this port met and
+`tests/programs/apps/port_ordered_set_edges.py` takes the edge cases that the evaluation of this port met and
 that its independent check added: the empty set (each lookup and its error, the set algebra);
 quotes, escapes, 2-, 3- and 4-byte UTF-8, NUL, DEL, a zero-width space and the empty string as
 items, in the repr and as `KeyError`s; indices out of range by one and at 2**63 - 1,

@@ -30,13 +30,13 @@ Propagate Earth-satellite orbits from two-line element sets with the pure-Python
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_sgp4_verify.py
-./tests/run.sh ./pystachy "jit aot" tests/port_sgp4_verify.py tests/port_sgp4_api.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_sgp4_verify.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_sgp4_verify.py tests/programs/apps/port_sgp4_api.py
 ```
 
 Committed tests embed selected official Vallado verification vectors, covering SGP4, resonant/deep-space orbits and error cases; API tests add malformed TLEs and numeric boundaries. A separate historical probe reproduced all 700 official output lines.
 
-Cases: [port_sgp4_verify.py](../../tests/port_sgp4_verify.py), [port_sgp4_api.py](../../tests/port_sgp4_api.py).
+Cases: [port_sgp4_verify.py](../../tests/programs/apps/port_sgp4_verify.py), [port_sgp4_api.py](../../tests/programs/apps/port_sgp4_api.py).
 
 <a id="speed"></a>
 

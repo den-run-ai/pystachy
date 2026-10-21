@@ -29,8 +29,8 @@ print(wcwidth("中"), wcswidth("中文"))
 ## Compatibility
 
 - `wcswidth()` splits well-formed UTF-8 sequences before measuring characters, so literals and `n=` match the tested CPython widths.
-- A caller’s own `len()`, slicing or iteration still counts bytes: `wcswidth("中文", len("中"))` measures both characters in Pystachy, while CPython measures one.
-- Raw bytes produced by `chr()` or incomplete text slices have the documented byte-decoding behavior; boolean width/count arguments are outside the typed API.
+- A caller’s own `len()`, slicing and iteration count characters, as in CPython: `wcswidth("中文", len("中"))` measures one character.
+- Boolean width/count arguments are outside the typed API.
 
 <a id="tests"></a>
 
@@ -39,14 +39,14 @@ print(wcwidth("中"), wcswidth("中文"))
 From the repository root, after building the compiler:
 
 ```sh
-PYSTACHY_PATH=ports ./pystachy run tests/port_wcwidth_core.py
-./tests/run.sh ./pystachy "jit aot" tests/port_wcwidth_core.py tests/port_wcwidth_edges.py
+PYSTACHY_PATH=ports ./pystachy run tests/programs/apps/port_wcwidth_core.py
+./tests/run.sh ./pystachy "jit aot" tests/programs/apps/port_wcwidth_core.py tests/programs/apps/port_wcwidth_edges.py
 ```
 
 The tests adapt upstream core/emoji/ambiguous-width cases and add table boundaries, controls, UTF-8/raw-byte edges and character-count limits.
 
-Cases: [port_wcwidth_core.py](../../tests/port_wcwidth_core.py), [port_wcwidth_edges.py](../../tests/port_wcwidth_edges.py),
-[port_wcwidth_cache.py](../../tests/port_wcwidth_cache.py). The cache case checks warm hits,
+Cases: [port_wcwidth_core.py](../../tests/programs/apps/port_wcwidth_core.py), [port_wcwidth_edges.py](../../tests/programs/apps/port_wcwidth_edges.py),
+[port_wcwidth_cache.py](../../tests/programs/apps/port_wcwidth_cache.py). The cache case checks warm hits,
 default/keyword keys, clearing, error misses and eviction while retaining Unicode width results.
 
 <a id="speed"></a>

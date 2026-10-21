@@ -24,6 +24,12 @@ In these cases a program can compile but behave differently from CPython.
   `0 ** -1` raises CPython's `ZeroDivisionError`), and so is a negative float to a
   fractional power (CPython returns a complex).
 
+- The native JSON prototype also rejects integer tokens outside signed 64-bit
+  range with `OverflowError`. Its decoder and encoder allow at most 256 nested
+  containers, then raise `RecursionError`, independently of CPython's recursion
+  limit ([deviation](../../tests/deviations/json_limits.py),
+  [API scope](../../lib/compatibility.md#json)).
+
 - Floats are unboxed, so a NaN has no identity: `nan in [nan]` is `False`, and lists or
   tuples holding the same NaN object compare, and sort, as if they held different ones.
   Scalar union boxes retain this rule; a shared box does not give its NaN payload identity. The
@@ -32,22 +38,30 @@ In these cases a program can compile but behave differently from CPython.
 
 ### Text and file positions
 
-- `str` is a byte string holding UTF-8: `len`, indexing, slicing, iteration, `find`/`index`
-  and `write()`'s result (but a Latin-1 file's) count bytes (a slice's step selects bytes too:
-  `s[::-1]` of non-ASCII text reverses its bytes, as `"".join(reversed(s))` does), case
-  mapping and the `is*()` tests but `isspace()` know only ASCII, `replace("", s)`'s gaps are
-  bytes, and `chr(i)` for `i < 256` is that byte (above, its UTF-8; `"%c" % i` is the
-  character's UTF-8 for every `i`).
-  ASCII behaves exactly like CPython; escapes such as `\xe9` and `€` produce UTF-8, and
+- `str` stores UTF-8, but `len`, indexing, slicing (including negative steps), iteration,
+  `list`/`tuple` conversion, search offsets and bounds (`find`, `rfind`, `index`, `rindex`,
+  `count`, `startswith`, `endswith`) and the gaps that `replace("", s)` fills count Unicode
+  code points, as CPython does. `chr()` produces the code point's UTF-8 at every value,
+  including U+0080–U+00FF. Combining marks count separately: these are code points, not
+  displayed characters or grapheme clusters.
+  A lazy character-count cache preserves the ASCII fast path; non-ASCII random indexing
+  scans from the start, while ordinary forward iteration uses a byte cursor. No per-string
+  index table is retained yet.
+  Case mapping and the `is*()` tests but `isspace()` and `isascii()` still know only ASCII,
+  a follow-up to [#120](https://github.com/den-run-ai/pystachy/issues/120).
+  Escapes such as `\xe9` and `€` produce UTF-8, and
   format widths, `center`/`ljust`/`rjust`/`zfill`, `repr()`'s escapes, `read(n)` and
   `ord()` count characters, as `strip()` (also of given characters), `split()`,
   `rsplit()`, `splitlines()` and `isspace()` read them (CPython's Unicode whitespace and
   line breaks). A UTF-8 file holds a str's bytes, read and written without checking them
-  (invalid UTF-8 is read as it is, where CPython raises `UnicodeDecodeError`). A Latin-1
-  file's bytes are its characters, as in CPython: the str read holds each as UTF-8, as a
-  literal does (from U+0080 on, two bytes, which `len()` and indexing count), and a write
-  gives each character as its byte (a byte `chr()` makes is one, but `chr()` bytes that
-  together are UTF-8, `chr(195) + chr(169)`, are the one character they encode) and returns
+  (invalid UTF-8 is read as it is, where CPython raises `UnicodeDecodeError`). A byte of it
+  that begins no character is one character, in `len()` and in widths, padding, precision
+  and `expandtabs()` alike, as CPython counts a byte that `surrogateescape` decodes. `read(n)`
+  of such a file still counts each byte that does not continue a sequence as a character, so it
+  can return text that `len()` counts as longer than `n`. `write()` returns the number of
+  characters it writes, as `len()` counts them, in a UTF-8 file as in a Latin-1 one.
+  A Latin-1 file's bytes are its characters, as in CPython: the str read holds each as
+  UTF-8, and a write gives each character as its byte and returns
   the number of characters, or raises CPython's `UnicodeEncodeError` for one above U+00FF
   before any of the text reaches the file. Any other `encoding=` computed at run time raises
   `NotImplementedError` when the file opens. A surrogate (`chr(0xD800)` to `chr(0xDFFF)`) is
@@ -68,20 +82,20 @@ In these cases a program can compile but behave differently from CPython.
 To find byte-oriented operations while porting, compile with
 `PYSTACHY_UNICODE_AUDIT=1 ./pystachy run app.py` or
 `PYSTACHY_UNICODE_AUDIT=1 ./pystachy build app.py -o app`. The generated code raises
-`NotImplementedError: Unicode audit: ...` when a non-ASCII string reaches `len`,
-indexing/iteration (including `list`, `tuple`, `zip`, `enumerate` and `reversed`), slicing,
-search/count/bounded prefix methods, replacement, case mapping, ASCII character tests,
-or `expandtabs`. Checks apply to imported Python library code too. A built executable
+`NotImplementedError: Unicode audit: ...` when a non-ASCII string reaches case mapping,
+ASCII character tests, or `expandtabs`. Code-point length, indexing, iteration, slicing,
+searches, replacement and `chr()` remain usable with auditing enabled.
+Checks apply to imported Python library code too. A built executable
 keeps its checks; setting the variable only when running an existing executable does
 not add or remove checks. The shared runtime cache is independent of this setting.
 
-This is a conservative porting aid, not Unicode semantics: even a byte-correct delimiter
-search or copy may be flagged. Printing, equality, concatenation and character-aware
-runtime operations such as whitespace splitting remain usable. `chr(128..255)`, file
-write counts, invalid UTF-8 input and other unlisted boundaries are not audited.
-Each check scans the string until the first non-ASCII byte; repeated ASCII indexing can
-be quadratic in audit builds. Default builds retain their existing behavior and cost.
-A cached ASCII flag and code-point operations remain follow-ups to #120.
+This remains a conservative porting aid: a listed operation is flagged for any non-ASCII
+string, even where its result matches CPython's. Printing, equality, concatenation and
+character-aware runtime operations such as whitespace splitting remain usable. File write
+counts, invalid UTF-8 input and other unlisted boundaries are not audited. Each remaining
+audit check scans the string until the first non-ASCII byte; default builds omit those checks.
+Strict invalid-byte decoding remains a separate follow-up; the code-point guarantees
+above apply to well-formed text (with the surrogate exception described above).
 
 - In `"+"` modes, a write after reads goes where CPython's text layer stopped reading ahead,
   which Pystachy models in 8 KiB chunks. After `read(n)` for an `n` above that, CPython has
@@ -206,7 +220,15 @@ A cached ASCII flag and code-point operations remain follow-ups to #120.
   `__repr__` raises makes the call of the exception class (`raise KeyError(obj)`) raise that
   exception instead, so that an `except KeyError` does not run. The `KeyError` of a dict or set
   lookup that misses an object key runs the key's `__repr__` as it is raised, likewise, where
-  CPython runs it only when the error is printed.
+  CPython runs it only when the error is printed. A `SyntaxError`, `IndentationError` or
+  `TabError` made of one argument also tests that argument's truth as it is made (its `__bool__`
+  or `__len__` runs then), for the `<no detail available>` of its traceback line, where CPython
+  tests it only when it prints that line; no other exception class tests it
+  (`tests/deviations/exc_syntax_error_truth.py`).
+
+- `E.__module__ = "builtins"` of an exception class raises `NotImplementedError`, where CPython
+  assigns it and its uncaught exceptions' line names the class alone; other names are assigned
+  as in CPython (`tests/deviations/exc_class_module_builtins.py`).
 
 - An `__exit__` whose traceback parameter is not annotated `TracebackType | None` (from `types`)
   is given `None` for it where CPython passes the exception's traceback (`tb is None` is true);
@@ -248,6 +270,12 @@ A cached ASCII flag and code-point operations remain follow-ups to #120.
 - `sys.warnoptions` is `[]`, CPython's for a program run without `-W` options, also where the
   environment sets `PYTHONWARNINGS` or `PYTHONDEVMODE`: CPython adds their options to it, and
   Pystachy does not read them.
+
+- `sys.prefix`, `sys.base_prefix`, `sys.exec_prefix` and `sys.base_exec_prefix` are one
+  absolute directory, the Pystachy home that compiled the program (whose `lib/` it loads), where
+  CPython's are the installation whose `Lib` it loads (and a virtual environment's). An executable
+  keeps the directory it was built with. `gettext` makes its default locale directory of
+  `sys.base_prefix`, which holds no catalog of Pystachy's.
 
 - `sys.version_info` is a tuple of its items, CPython 3.13.16's: comparisons, indexing,
   slicing and unpacking work as on CPython's, and its attributes are read as
@@ -306,6 +334,21 @@ A cached ASCII flag and code-point operations remain follow-ups to #120.
   `enumerate()`, `zip()` or `reversed()` there checks its arguments (a zero step), and a dict's or
   set's iterator records its size, when the generator first runs, not where it is made.
 
+### Dynamic `Any` (opt-in prototype)
+
+- In a module whose leading comments hold `# pystachy: dynamic-any`, `Any` values are
+  runtime-typed boxes ([dynamic `Any`](../dynamic-any.md)). A concrete annotation, or storage
+  that keeps its first type, that receives an `Any` value of another type raises `TypeError`
+  where CPython, which does not check annotations, goes on
+  (`tests/deviations/dynany_annotation_check.py`), also an item of a tuple that a typed tuple
+  receives (`tests/deviations/dynany_tuple_item_check.py`). A comparison method annotated with a
+  class does not run with a value of another type, and the comparison is identity's (or
+  `TypeError` for an ordering) where CPython runs the method
+  (`tests/deviations/dynany_eq_annotated_body.py`). The prototype's other differences, such as
+  `in` of an `Any` item in a typed container and function values printing as `<function>`, are
+  listed in its
+  [deviations](../dynamic-any.md#deviations).
+
 ## Rejected rather than miscompiled
 
 CPython can execute these constructs, often raising a runtime error. Pystachy instead rejects
@@ -342,13 +385,9 @@ supported alternatives.
 
 - a `with` item whose value is neither a file nor an object of a class of the program that
   defines `__enter__` and `__exit__` (a union of such classes, a class without `__exit__`: CPython's
-  `TypeError` message), and `with suppress(...) as x` or `suppress()` with something other than
-  exception classes named (`contextlib.suppress` is compiled as an except clause) or used outside
-  a `with` statement's item
-- an exception class as a value (`cm.__exit__(KeyError, None, None)`, `issubclass(t, cls)` of a
-  variable `cls`), `type(e)` of an exception object that may be `None` (but for
-  `type(e).__name__`, which is `NoneType` for `None`), attributes of an exception's class other
-  than `__name__`, and a `nullcontext(None)` that is not `nullcontext()`
+  `TypeError` message), and `with suppress(...) as x`
+- attributes of an exception class's class object other than `__name__`, `__qualname__` and
+  `__module__`, and a `nullcontext(None)` that is not `nullcontext()`
 - `contextlib`'s `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir`, `aclosing`,
   `asynccontextmanager` and `AsyncExitStack` (not ported: `lib/compatibility.md`)
 
@@ -391,8 +430,9 @@ supported alternatives.
 
 ### Modules and imports
 
-- a read in a function of a name that its import of a Python module binds, where Pystachy cannot
-  tell that the import has run (after a loop that imports it, say)
+- a read in a nested `def`'s body or a generator expression of a name that the enclosing
+  function's import of a Python module binds, where Pystachy cannot tell that the import has
+  run before (after a branch or a loop that imports it, say)
 - a read of a global that only a template's function assigns, compiled before a call compiles
   that function (declare it at module level: `x: T`)
 - `from m import x` of a global that only m's functions assign (read it as `m.x`, or declare it
@@ -419,7 +459,12 @@ supported alternatives.
   two it is depends on when the submodule is first imported
 - an alias (`f = g`) that module-level code uses before its assignment, and an alias of a
   from-imported function or class that another module from-imports, in an import cycle, before
-  the alias's assignment has run (CPython raises `ImportError`)
+  the alias's assignment has run (CPython raises `ImportError`). Not caught: a function that reads
+  an alias of a function or a from-imported class and runs before its assignment, and another
+  module's read of an alias as an attribute (`m.A`) in an import cycle before then, which use its
+  target where CPython raises `NameError` or `AttributeError` (#814). An alias of a class through
+  a module's attribute (`A = m.C`) is not made where either may happen, but for reads through
+  imports in functions ([module scope](modules.md#module-scope))
 - `__all__` changed other than by `+=`, `append` and `extend`, for `import *`
 - `from <builtin module> import *`
 - `del` of another module's attribute, an assignment of another module's `__doc__`, and `del`
@@ -466,9 +511,15 @@ supported alternatives.
 - an empty list or dict that a template's function returns empty, used where the `list[int]` /
   `dict[int, int]` guess does not fit and the context gives no type (`xs: list[str] = collect()`
   gives one)
-- a template whose returns have different types (or `None` and an empty `[]` or `{}` that it does
-  not fill), or that calls itself before a return statement decides its type (or, after a return of
-  a `T`, before a return of `None` makes it return `T | None`)
+- a template whose returns have different types that do not
+  [join](typing.md#inferred-unions) (or `None` and an empty `[]` or `{}` that it does not fill),
+  or that calls itself before a return statement decides its type (or, after a return of a `T`,
+  before a return of `None` makes it return `T | None`)
+- a variable, field or return given values of types that do not [join](typing.md#inferred-unions)
+  (a list and a `str`, objects of two classes, a `list[str]` variable stored where a
+  `list[int]` is kept), a joined value used where its union is not accepted (an `int | str`
+  returned by a function annotated `-> int`, as CPython would for some inputs), and a program
+  whose joins need more than eight compilation passes
 - in a template's function, a use of a parameter whose argument is `None` as a value (`s.upper()`,
   `xs[0]`; `len()`, `int()`, `float()` and `ord()` of it raise CPython's error when they run), also
   in a branch that does not run for that call, and in a `try` whose clause would catch CPython's
@@ -645,12 +696,16 @@ supported alternatives.
 - a read that needs the type of a local that only `None` has been assigned so far, where no other
   value assigned to it can be typed yet and the context expects none (annotate it:
   `x: T | None = None`)
-- an empty `[]` or `{}` assigned to a local first assigned `None`, a list display of only `None`
-  items (`[None] * n`, `print([None])`) or a dict display of only `None` values that no annotation
-  or other operand gives a type, and an empty list that `append(None)` fills first (annotate them)
-- a module global first assigned `None` whose other values in module code cannot be typed where it
-  is first assigned (`for w in ws: last = w`), or that only functions or other modules give another
-  value (annotate it at module level: `last: str | None = None`)
+- an empty `[]` or `{}` assigned to a local first assigned `None`; a list display of only `None`
+  items (`print([None])`) or a dict display of only `None` values that is no variable's value and
+  that no annotation or other operand gives a type; a variable's such display that nothing fills
+  where it is read, or that `extend()` or `+=` gives `int`, `float` or `bool` items; and an empty
+  list that `append(None)` fills first (annotate them)
+- a read that needs the type of a module global or a field that only `None` has been given so
+  far, where the value of another type that it is given cannot be typed there yet: only a
+  template's function or method (a parameter without an annotation) gives it one, or module-level
+  code does so after the read is compiled to an object made after it too (annotate it:
+  `last: str | None = None`, `self.next: Node | None = None`)
 
 ### Dict keys, set elements and `bool` values
 
@@ -688,7 +743,8 @@ supported alternatives.
 - typing's names in a function's local variable annotations that are not imported (CPython never
   evaluates those)
 - a type alias used other than by annotations (`print(Row)`, `Row()`, `del Row`, `Row.__value__`,
-  `isinstance(x, Num)`), but an alias of `int`, `float`, `str` or `bool`; a recursive type alias;
+  `isinstance(x, Num)`), but an alias of `int`, `float`, `str` or `bool`; a recursive type alias
+  outside the [bounded value-union form](typing.md#recursive-value-aliases-prototype);
   a `type` statement other than at a module's top level, or for a name that another statement
   binds too; a generic `type` statement's alias named without its type arguments, and type
   arguments for a type alias with a `TypeVarTuple` or `ParamSpec` parameter; in an assigned
@@ -697,11 +753,26 @@ supported alternatives.
   (`Generic[T]`, `Concatenate[...]`), also where no annotation names the alias; a `type`
   statement's string value that is not an expression, also where nothing evaluates it; an
   annotation whose type aliases expand to more than 65,536 nodes
+- in a module that opts in to [dynamic `Any`](../dynamic-any.md): a typed mutable container
+  (`list[int]`, `dict[str, int]`, a set) that would become an `Any` value, an operation on `Any`
+  values that the prototype does not implement, keyword or unpacked arguments in a call of an
+  `Any` value or its method, and storage that holds `None` before an `Any` value but cannot be
+  made `Any` from its first store: a generator's or closure's local, a module variable that a
+  function gives the `Any` value, a field that code outside its class's methods gives it, a
+  display of `None` items (`tests/errors/inference/dynany_*.py`)
 
 ### Exceptions and exception classes
 
-- `raise` of anything but an exception
-- an `except` clause that names something other than exception classes (a variable), and `except*`
+- `raise` of anything but an exception or an exception class
+- an `except` clause that names something other than exception classes (a variable, also one
+  holding a class object), and `except*`
+- a call of an exception class's class object (`c(...)`, `type(e)(...)`) with more than one
+  argument or with keyword arguments, and `==` between a class object and an object of a class
+  of the program (whose `__eq__` CPython would call). A call of one of a class of the program
+  whose `__init__` takes another type than the argument's raises `TypeError` where CPython makes
+  the object ([deviation test](../../tests/deviations/exc_class_call_init_type.py)), and so does a
+  call of `NoneType`'s class object, `type(x)` of an exception `x` that is `None`, where CPython
+  returns `None` ([deviation test](../../tests/deviations/exc_class_call_nonetype.py))
 - `except ... as x` in a function where `x` is a global (the end of the clause deletes it, as `del`
   would), and at a module's top level where `x` is a global of another type that a function reads
   (the function would not see the exception)
@@ -765,6 +836,15 @@ supported alternatives.
   and indexing, `index()` and `count()` of other than an int (CPython takes a bool as an int, and
   compares other values with the items); `==` with a value that may be `None` but is not a range;
   `dir()` and `vars()`
+- `object()` with arguments (CPython's `TypeError`), assigning an attribute of an object it
+  makes (CPython's `AttributeError`), `==` and `!=` between such an object and an object of a
+  class or an exception, and a variable, return value or `dict.get()` default that would hold
+  either such an object or a value of another type: no union holds one yet (#251); a call of
+  `object` by another name (`builtins.object()`, an alias), and `type(x) is object`, in a program
+  none of whose modules calls `object()`: see [sentinels](semantics.md#sentinels)
+- a program's own module named `_pystachy_iterators`, `_pystachy_range` or `_pystachy_object`, the
+  names of the `lib/` modules that the compiler loads itself (iterators, range objects and
+  `object()`'s sentinels): an import of it is not found
 - a keyword argument Pystachy does not take (`os.path.realpath(p, strict=True)`)
 - a `key=` that may be `None` (`Callable | None`) of items that have no order without a key (a
   closed union, functions)
@@ -796,8 +876,9 @@ supported alternatives.
 
 The [reflection rules](semantics.md#reflection) list what is supported; these are rejected:
 
-- `type(x)` as a value (a class object, #7), `type(e)` of an exception other than
-  `type(e).__name__`, and `type(x).__name__` of a function, file or callable
+- `type(x)` as a value (a class object, #7) but of an exception ([exception classes as
+  values](semantics.md#exception-classes-as-values)), and `type(x).__name__` of a function, file
+  or callable
 - `getattr()` of a name only the run time knows whose value is used (kept, passed on, called,
   compared, a sort key: `attrgetter(input())`), its text with a format spec, and its text for a
   dataclass, a generic class, a class with annotated class attributes or a builtin value (#487,

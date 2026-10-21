@@ -1,10 +1,11 @@
-# make lint: ruff (findings only), shellcheck of the scripts as POSIX sh, and clang's warnings on
+# make typecheck (mypy), then make lint: ruff, shellcheck of the scripts as POSIX sh, and clang's warnings on
 # runtime.c and tools/dictprobe.c, with the versions of tools/requirements-dev.txt; then make
 # check-recordings (tests/record.sh --check): the CPython of .python-version, which recorded the
 # tests' expected output (with the typing_extensions of tools/requirements-dev.txt), still prints
 # every recording, every deviation still deviates from it, lib/'s copies are its files, and no
 # *.rej, *.orig or core file lies in the tree. A minute or two, beside CI's make verify, on the same
-# events: pull requests (forks too), pushes to main, and on demand.
+# events: pull requests (forks too, and documentation-only ones, which skip CI), pushes to main,
+# and on demand.
 name: Lint
 
 on:
@@ -35,8 +36,13 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version-file: .python-version   # the CPython the tests' expected output was recorded with
+          cache: pip
+          cache-dependency-path: tools/requirements-dev.txt
 
       - run: python3 -m pip install -r tools/requirements-dev.txt
+
+      - name: Type-check the compiler (mypy)
+        run: make typecheck
 
       - run: make lint
 
@@ -49,8 +55,14 @@ jobs:
       - name: pyperformance runner and port record tests
         run: python3 -m unittest discover -s tools -p test_bench_pyperformance.py
 
+      - name: nanoGPT parity checker contract tests
+        run: python3 -m unittest discover -s tools -p test_check_nanogpt.py
+
       - name: Import sweep provenance and argument tests
         run: python3 -m unittest discover -s tools -p test_import_sweep.py
+
+      - name: Dynamic Any fuzzer generator and comparison tests
+        run: python3 -m unittest discover -s tools -p test_dynany_fuzz.py
 
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py
@@ -60,5 +72,23 @@ jobs:
 
       - name: Typed IR tests
         run: python3 -m unittest discover -s tools -p 'test_typed*.py'
+
+      - name: JSON benchmark evidence tests
+        run: python3 -m unittest discover -s tools -p test_bench_json.py
+
+      - name: DCO certification check tests
+        run: python3 -m unittest discover -s tools -p test_dco_check.py
+
+      - name: Coverage report checks tests
+        run: python3 -m unittest discover -s tools -p test_coverage_report.py
+
+      - name: Workflow job time limits (at most 15 minutes)
+        run: python3 -m unittest discover -s tools -p test_workflow_limits.py
+
+      - name: Generated regex matcher tests
+        run: python3 -m unittest discover -s tools -p test_re_specialize.py
+
+      - name: Concurrency contract probes (docs/concurrency.md)
+        run: python3 -m unittest discover -s tools -p test_concurrency_contract.py
 
       - run: make check-recordings

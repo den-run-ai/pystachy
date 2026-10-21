@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import DUNDER, NONEVAR, REFL
+from src.pystachy_compiler.specs import DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.utils import (
     elem,
     is_callable,
@@ -36,6 +36,9 @@ def gen_to_slot(self, v: Val) -> str:
     return f"%t{i.r[0]}"
 
 def gen_from_slot(self, s: str, t: str) -> Val:
+    # Recursive container slots hold the existing union-box pointer. Expose one
+    # layer of its finite named type graph when reading the value.
+    t = self.rec_type(t)
     if t == "int":
         return Val(s, t)
     i = Ins("slot.unpack", t, "")
@@ -100,6 +103,12 @@ def gen_floats(self, v: Val) -> Val:
         return Val(self.rt("pys_m_floats", "ptr", [f"ptr {v.v}"]), "list[float]")
     return self.as_float(v)
 
+def gen_ufloats(self, v: Val) -> Val:
+    # a list of a union's numbers as floats, as math.fsum() and math.dist() make them (each item's
+    # own number: an int's float, by its tag)
+    d = self.sconst(self.desc(elem(v.t), "=="))
+    return Val(self.rt("pys_m_ufloats", "ptr", [f"ptr {v.v}", f"ptr {d}"]), "list[float]")
+
 def gen_is_dc(self, t: str) -> bool:
     return t in self.classes and (len(self.classes[t].node.kids) > 1 or t in self.nts)
 
@@ -111,12 +120,21 @@ def gen_isref(self, t: str) -> bool:
 
 def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     # v as a value of type t; what names v for the error when v may be None and t may not
+    if t.startswith("rec["):
+        x = self.coerce(Val(v.v, self.rec_type(v.t)), self.rec_type(t), what)
+        return Val(x.v, t)
+    if v.t.startswith("rec["):
+        v = Val(v.v, self.rec_type(v.t))
     if self.term and v.v == "undef":
         # Numeric union dispatch can prove that every tag raises. Its placeholder
         # never reaches the annotated return or assignment, so needs no conversion.
         return Val("undef", t)
     if v.t == t:
         return v
+    if t == "dyn":
+        return self.dyn_box(v)  # (into dynamic storage: dynamic.py)
+    if v.t == "dyn":
+        return self.dyn_unbox(v, t, what)  # (out of it, where a concrete type is expected)
     if is_vtuple(unopt(t)) and is_tuple(v.t):
         et = targs(unopt(t))[0]
         vals = [self.coerce(self.tget(v, i), et) for i in range(len(targs(v.t)))]
@@ -147,6 +165,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
+    if self.join_hint(t, v.t):
+        return Val("undef", t)  # (a store a join drops: the next pass compiles it, see join_hint)
     if is_opt(v.t) and self.widens(unopt(v.t), t):
         # (CPython would pass the None on: there is nothing here that could hold it)
         if what == "":
@@ -163,8 +183,16 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     return v
 
 def gen_desc(self, t: str, use: str) -> str:
+    if "rec[" in t:
+        return gen_rec_desc(self, t, use, {}, 0)
+    return gen_plain_desc(self, t, use)
+
+
+def gen_plain_desc(self, t: str, use: str) -> str:
+    # (t's own constructor is no recursive alias's, though its parts may hold one: see gen_rec_desc)
     if is_union(unopt(t)):
-        if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t))):
+        # (a union of numbers also orders, as runtime.c's opv compares its members' values)
+        if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t)) or (self.num_union(unopt(t)) and all([op in ORDOP or op == "==" for op in use.split()]))):
             self.err("closed union operations require narrowing with isinstance() first")
         members = umembers(unopt(t))
         d = "U" + str(len(members)) + ":"
@@ -173,6 +201,8 @@ def gen_desc(self, t: str, use: str) -> str:
         return ("?" if is_opt(t) else "") + d
     # type descriptor for the runtime's generic repr (use "repr"), equality ("==") or ordering
     # ("<", ">", ...; a list or tuple compares its items with == first)
+    if t == "dyn":
+        return "A"  # (a dynamic value's box, walked by its own DynType's descriptor)
     if t == "int":
         return "i"
     if t == "float":
@@ -205,6 +235,8 @@ def gen_desc(self, t: str, use: str) -> str:
         return "T" + str(len(a)) + "".join([self.desc(x, sub) for x in a])
     if t == "exc":
         return "E"  # (repr: pys_exc_repr; equality: identity)
+    if t == "exctype":
+        return "C"  # (an exception class's class object: repr pys_exc_type; equality and hash: identity)
     if t in self.classes:
         # O<id>: the runtime calls back into pys_obj_eq/cmp/repr, which dispatch on the id, and
         # so the methods of use (a < b: __lt__, else the reflected __gt__) with objects of
@@ -217,6 +249,7 @@ def gen_desc(self, t: str, use: str) -> str:
             m = DUNDER[REFL[op]] if m not in ms and op in REFL else m
             f = ms[m] if m in ms else None
             takes = f is None or op == "repr" or f.ptypes[1] == t or f.ptypes[1] == "" or (f.ptypes[1] in self.classes and self.derives(t, f.ptypes[1]))
+            takes = takes or (f is not None and f.ptypes[1] == "dyn" and self.dyn_boxable(t) == "")  # (an Any parameter: the object boxed)
             if f is not None and (f.bad != "" or not takes):
                 self.err(f.bad if f.bad != "" else f"comparing {shown(t)} objects (in a list, tuple, in, count, index, sort, min or max) calls {m}() with a {shown(t)}, but it takes a {typestr(f.ptypes[1])}")
             # (and between the subclasses' objects a t-typed value may hold, compared by their
@@ -257,5 +290,53 @@ def gen_desc(self, t: str, use: str) -> str:
         self.err(f"printing or comparing **kwargs inside a container is not supported: make it a dict first, dict(kwargs) ({typestr(t)})")
     self.err(f"{tname(t)} values cannot be compared or printed")
     return ""
+
+
+def gen_rec_desc(self, t: str, use: str, active: dict[str, int], offset: int) -> str:
+    # A finite descriptor graph encoded inside one immutable string. R<n>:
+    # refers n bytes backwards from the R to an enclosing alias's descriptor.
+    # References are leaves for skip(), and followed only while reading a value.
+    # Thus neither descriptor construction nor skipping expands a recursive type.
+    name = self.rec_fold(t)
+    if name.startswith("rec["):
+        if name in active:
+            return "R" + str(offset - active[name]) + ":"
+        active[name] = offset
+        out = gen_rec_desc_body(self, self.rec_type(name), use, active, offset)
+        del active[name]
+        return out
+    return gen_rec_desc_body(self, t, use, active, offset)
+
+
+def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: int) -> str:
+    if is_opt(t):
+        return "?" + gen_rec_desc_body(self, unopt(t), use, active, offset + 1)
+    if is_union(t):
+        if use != "repr" and use != "==":
+            self.err("recursive value ordering requires narrowing with isinstance() first")
+        # (as gen_desc's unions: the runtime compares and prints only these members by descriptor)
+        if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t))):
+            self.err("closed union operations require narrowing with isinstance() first")
+        ms = umembers(t)
+        out = "U" + str(len(ms)) + ":"
+        for m in ms:
+            out += str(self.utag(m)) + ":"
+            out += gen_rec_desc(self, m, use, active, offset + len(out))
+        return out
+    if is_list(t):
+        return "L" + gen_rec_desc(self, elem(t), use, active, offset + 1)
+    if is_dict(t):
+        ts = targs(t)
+        out = "D" + gen_rec_desc(self, ts[0], use, active, offset + 1)
+        return out + gen_rec_desc(self, ts[1], use, active, offset + len(out))
+    if is_tuple(t):
+        ts = targs(t)
+        if len(ts) > 9:
+            self.err("tuples are limited to 9 elements")
+        out = "T" + str(len(ts))
+        for m in ts:
+            out += gen_rec_desc(self, m, use, active, offset + len(out))
+        return out
+    return gen_plain_desc(self, t, use)  # (not self.desc, which would hand t back here)
 
 # ---- types and declarations

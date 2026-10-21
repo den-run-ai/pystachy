@@ -1,0 +1,4 @@
+ValueError('w') None
+ValueError('w') KeyError('k')
+ValueError('w') OSError('o')
+[exit 0]

@@ -1,5 +1,6 @@
-# Every original verification stage runs on every commit, in independent groups. Each group
-# builds and checks its own bootstrap fixed point; no compiler/runtime cache crosses a run.
+# Every original verification stage runs on every commit, in independent groups; pull requests
+# that change only Markdown or docs/ skip this workflow, and Lint checks them. One producer checks
+# the bootstrap fixed point; groups validate its same-run artifact. No runtime cache is shared.
 # The final gate retains the required check name and rejects missing, failed or cancelled groups.
 name: CI
 
@@ -7,6 +8,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    paths-ignore:   # documentation-only pull requests
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
@@ -17,8 +21,46 @@ permissions:
   contents: read
 
 jobs:
+  bootstrap:
+    name: verify (bootstrap)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version-file: .python-version
+      - run: tools/setup.sh --minimal
+      - name: Verify compiler and runtime fixed points
+        run: tests/verify.sh bootstrap
+      - name: Package verified bootstrap
+        run: python3 tools/verification_bootstrap.py export build/ci-bootstrap
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: verified-bootstrap
+          path: build/ci-bootstrap/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true  # allow a producer rerun; consumers still validate this run and commit
+      - name: Upload bootstrap report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: verification-bootstrap
+          path: |
+            build/verification.json
+            build/verify/bootstrap.log
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
   verification:
     name: verify (${{ matrix.group }})
+    needs: bootstrap
     runs-on: ubuntu-24.04
     # Target <10 minutes of work per group; retain headroom for runner variation
     # and failure diagnostics. GC self-compilation has its own 10-minute bound.
@@ -41,11 +83,28 @@ jobs:
           python-version-file: .python-version
 
       - name: LLVM 18 toolchain
-        run: tools/setup.sh
+        env:
+          VERIFY_GROUP: ${{ matrix.group }}
+        # Only the sanitizer and BLAS jobs need the extra verification packages.
+        # New groups keep the full setup until their dependencies have been checked.
+        run: |
+          case "$VERIFY_GROUP" in
+            hosted-[012]|native-[01]|opt-off-[01]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|contracts|scaling-1)
+              tools/setup.sh --minimal ;;
+            *) tools/setup.sh --verify ;;
+          esac
+
+      # No run-id or token: download-artifact can only select this workflow run here.
+      - name: Download verified bootstrap
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: verified-bootstrap
+          path: build/ci-bootstrap
 
       - name: Verify group
         env:
           VERIFY_GROUP: ${{ matrix.group }}
+          VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
         run: tests/verify.sh "$VERIFY_GROUP"
 
       - name: Extended subset benchmark correctness
@@ -53,6 +112,19 @@ jobs:
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
+
+      # tools/setup.sh installs both of Ubuntu's LP64 libblas.so.3 providers: OpenBLAS
+      # (libopenblas0-pthread), checked on one thread, and the reference BLAS (libblas3).
+      # LD_LIBRARY_PATH selects each in turn; NumPy is check_blas.py's reference
+      - name: Optional BLAS adapter and nanoGPT fused-linear correctness
+        if: matrix.group == 'benchmarks'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: |
+          python3 -m pip install numpy==2.5.4
+          OPENBLAS_NUM_THREADS=1 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/openblas-pthread \
+            make blas-check BENCH_COMPILER=build/verify/pystachy2
+          LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/blas make blas-check BENCH_COMPILER=build/verify/pystachy2
 
       - name: Upload group report
         if: always()
@@ -65,6 +137,7 @@ jobs:
             build/verify/*.log
           if-no-files-found: error
           retention-days: 7
+          overwrite: true
 
   port-check:
     name: upstream port preservation (CPython)
@@ -100,7 +173,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version-file: .python-version
-      - run: tools/setup.sh
+      - run: tools/setup.sh --minimal
       - run: make port-check-large
 
   verify:
@@ -108,7 +181,7 @@ jobs:
     # Report dependency failures, but release the PR concurrency slot on cancellation.
     # always() keeps obsolete summary jobs queued and blocks the replacement run.
     if: ${{ !cancelled() }}
-    needs: [verification, port-check, upstream-large]
+    needs: [bootstrap, verification, port-check, upstream-large]
     runs-on: ubuntu-24.04
     # Artifact downloads alone have exceeded three minutes on otherwise green runs.
     timeout-minutes: 10
@@ -134,10 +207,12 @@ jobs:
       - name: Require every verification group
         if: always()
         env:
+          BOOTSTRAP_RESULT: ${{ needs.bootstrap.result }}
           GROUP_RESULT: ${{ needs.verification.result }}
           PORT_RESULT: ${{ needs.port-check.result }}
           LARGE_RESULT: ${{ needs.upstream-large.result }}
         run: |
+          test "$BOOTSTRAP_RESULT" = success
           test "$GROUP_RESULT" = success
           test "$PORT_RESULT" = success
           test "$LARGE_RESULT" = success
@@ -150,3 +225,4 @@ jobs:
           path: build/verification.json
           if-no-files-found: warn
           retention-days: 7
+          overwrite: true

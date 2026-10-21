@@ -9,7 +9,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import ClassInfo, FnInfo, IFn, Ins, Val, Values
+from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, Val, Values
 from src.pystachy_compiler.loader import Loader
 from src.pystachy_compiler.syntax import Node
 
@@ -27,6 +27,32 @@ def unsigned(predicate="<"):
     i.r = [1]
     return i
 
+def switch(cases=("1", "3"), labels=("L1", "L2"), other="L3"):
+    i = Ins("switch", "", "")
+    i.a = [Val("%a0", "int")] + [Val(c, "int") for c in cases]
+    i.b = [other] + list(labels)
+    return i
+
+
+def function_switching(i, phi=""):
+    # i ends the entry block; each block it goes to returns, and block phi starts with a phi of
+    # one entry, from the entry block
+    fn = IFn(FnInfo("compare", "@compare", Node("def", "compare", 1), ""))
+    fn.n = 5
+    fn.blocks[0].code = [i]
+    for label in sorted(set(i.b)):
+        b = Blk(label)
+        if label == phi:
+            p = Ins("phi", "int", "")
+            p.a = [Val("0", "int")]
+            p.b = ["entry"]
+            p.r = [4]
+            b.code.append(p)
+        b.code.append(Ins("ret.none", "", ""))
+        fn.blocks.append(b)
+    return fn
+
+
 def reference(predicate="==", left="opt[str]", right="None"):
     i = Ins("ptr.cmp", "bool", predicate)
     i.a = [Val("%a0", left), Val("null" if right == "None" else "%a1", right)]
@@ -41,6 +67,73 @@ class TypedComparisonTests(unittest.TestCase):
             Gen().verify(function_with(i), False)
         self.assertIn("bad IR", error.getvalue())
         self.assertIn(i.op, error.getvalue())
+
+    def assert_bad_switch(self, i, phi=""):
+        error = StringIO()
+        with redirect_stderr(error), self.assertRaises(SystemExit):
+            Gen().verify(function_switching(i, phi), False)
+        self.assertIn("bad IR", error.getvalue())
+
+    def test_switch_is_a_pure_terminator_and_lowers_to_one_llvm_switch(self):
+        for labels, llvm in ((("L1", "L2"), "i64 1, label %L1 i64 3, label %L2"),
+                             (("L1", "L1"), "i64 1, label %L1 i64 3, label %L1")):
+            with self.subTest(labels=labels):
+                g = Gen()
+                i = switch(labels=labels)
+                g.verify(function_switching(i), False)
+                self.assertEqual(g.nums(i), 0)
+                self.assertEqual(g.opfx(i, {}), 0)
+                g.lower_ins(function_switching(i), i)
+                self.assertEqual(g.out, [f"  switch i64 %a0, label %L3 [{llvm}]"])
+
+    def test_switch_verifier_rejects_other_operands_cases_and_labels(self):
+        for t in ("", "bool", "float", "str", "opt[int]", "%ptr", "%slot", "union[int,str]"):
+            with self.subTest(type=t):
+                i = switch()
+                i.a[0].t = t
+                self.assert_bad_switch(i)
+        for cases in (("1", "1"), ("1", "%a1"), ("1", "x"), ("1", "")):
+            with self.subTest(cases=cases):
+                self.assert_bad_switch(switch(cases=cases))
+        i = switch()
+        i.a[2].t = "bool"
+        self.assert_bad_switch(i)
+        for field, value in (("a", [Val("%a0", "int")]), ("b", ["L3", "L1"]),
+                             ("b", ["L3", "L1", "L2", "L1"]), ("t", "int"), ("s", "eq"),
+                             ("x", "int"), ("k", 1), ("r", [1])):
+            with self.subTest(field=field, value=value):
+                i = switch()
+                setattr(i, field, value)
+                self.assert_bad_switch(i)
+        fn = function_switching(switch())
+        fn.blocks = fn.blocks[:2]  # (L2 and L3 are no blocks of it)
+        error = StringIO()
+        with redirect_stderr(error), self.assertRaises(SystemExit):
+            Gen().verify(fn, False)
+        self.assertIn("which is no block of it", error.getvalue())
+
+    def test_switch_reaches_a_phi_by_one_edge_at_most(self):
+        Gen().verify(function_switching(switch(), "L1"), False)
+        self.assert_bad_switch(switch(labels=("L1", "L1")), "L1")
+        self.assert_bad_switch(switch(labels=("L1", "L2"), other="L1"), "L1")
+
+    def test_source_class_tag_dispatch_switches_on_the_tag(self):
+        root = Path(__file__).resolve().parent.parent
+        source = next((root / "tests").glob("programs/*/inheritance_compare_pairs.py")).read_text()
+        lower = Gen.lower
+        captured = []
+
+        def capture(g, fn):
+            g.verify(fn, False)
+            captured.extend(i for b in fn.blocks for i in b.code if i.op == "switch")
+            lower(g, fn)
+
+        with patch.object(Gen, "lower", capture):
+            Gen().program(Loader([]).program("inheritance_compare_pairs.py", source))
+        self.assertTrue(len(captured) > 0)
+        for i in captured:
+            self.assertEqual(i.a[0].t, "int")
+            self.assertEqual(len(i.b), len(i.a))
 
     def test_reference_identity_and_null_comparisons_are_typed_and_pure(self):
         for t in ("str", "bytes", "file", "exc", "list[int]", "dict[str,float]",
@@ -192,7 +285,7 @@ def changed(d: dict[str, int], k: str) -> int:
 
         with patch.object(Gen, "lower", capture):
             for name in ("typed_ir_numeric.py", "scalar_union_optional_narrowing.py", "opt_dictfuse.py"):
-                Gen().program(Loader([str(root / "lib")]).program(name, (root / "tests" / name).read_text()))
+                Gen().program(Loader([str(root / "lib")]).program(name, next((root / "tests").glob(f"programs/*/{name}")).read_text()))
         self.assertTrue(any(i.op == "int.ucmp" for i in captured))
         self.assertTrue(any(i.op == "num.cmp" for i in captured))
         self.assertFalse(any(i.op == "raw" and "icmp " in i.s and " i64 " in i.s for i in captured))

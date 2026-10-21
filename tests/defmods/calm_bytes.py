@@ -1,4 +1,4 @@
-# The same: Pystachy's str indexes count bytes, so WORD[0] is not "é" (tests/deftime_class_raises.py)
+# The same: Pystachy's str indexes count bytes, so WORD[0] is not "é" (tests/programs/imports/deftime_class_raises.py)
 from typing import Iterable
 
 WORD = "é"

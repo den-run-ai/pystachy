@@ -1,9 +1,10 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.analysis import none_display
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import ITERS, NONEVAR, OPTTYPES
+from src.pystachy_compiler.specs import ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     atomic_list,
@@ -32,6 +33,50 @@ from src.pystachy_compiler.utils import (
     unopt,
 )
 
+
+def repr_name(c: str) -> str:
+    # the name object.__repr__ shows for an object of class c: <__main__.Name object at 0x...>,
+    # <module.Name object at 0x...>, of the module CPython's type names (<ast.Constant ...>), and
+    # <list_iterator object at 0x...> of a builtin type's, whose module is builtins
+    if c.startswith(ITERS + "$") or c == OBJECTC:
+        return short(c)
+    q = shown(c) if "$" in c and not c.startswith("__main__$") else "__main__." + short(c)
+    m = q[: q.rfind(".")]
+    return TYPEMODS[m] + q[q.rfind(".") :] if m in TYPEMODS else q
+
+
+def gen_none_container(self, e: Node) -> Val:
+    # a display of None items (none_display) assigned to a variable without a type: a list (a
+    # dict of the keys' type) of NONE_ITEM, T | None for the T its first fill gives it, as an
+    # empty one's gives it its type (see refine); its slots hold null pointers, None of any T | None
+    if e.kind == "binop":
+        left = none_display(e.kids[0]) == "list"  # (the operand that is the list: [None] * n, n * [None], [None] * 2 * 3)
+        first = self.none_container(e.kids[0]) if left else self.expr(e.kids[0], "")
+        second = self.expr(e.kids[1], "") if left else self.none_container(e.kids[1])
+        xs = first if left else second
+        n = self.as_int(second if left else first)
+        if n.t != "int":
+            self.err(f"can't multiply sequence by non-int of type '{tname(n.t)}'")
+        return Val(self.rt("pys_list_mul", "ptr", [f"ptr {xs.v}", f"i64 {n.v}"]), xs.t)
+    if e.kind == "list":
+        r = self.rt("pys_list_new", "ptr", [f"i64 {len(e.kids)}"])
+        for _ in e.kids:
+            self.rt("pys_list_append", "void", [f"ptr {r}", "i64 0"])
+        return Val(r, self.ctype("list", [NONE_ITEM]))
+    ks: list[Val] = []
+    kt = ""
+    for i in range(0, len(e.kids), 2):
+        k = self.expr(e.kids[i], kt)
+        if kt != "" and k.t != kt and not self.widens(k.t, kt):
+            self.err(f"expected {typestr(kt)} keys, got {typestr(k.t)}; this dict of None values needs an annotation (d: dict[K, V | None] = ...)")
+        kt = k.t if kt == "" else kt
+        ks.append(k)
+    if self.key_problem(kt) != "":
+        self.err(self.key_problem(kt))
+    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt)}", f"i64 {len(ks)}"])
+    for k in ks:
+        self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(k, kt)), "i64 0"], self.key_fx(kt))
+    return Val(r, self.ctype("dict", [kt, NONE_ITEM]))
 
 def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = False, resultsoft: bool = False) -> Val:
     # {a, b, ...}: the items, evaluated in order, inserted into a new set (BUILD_SET). One of
@@ -178,7 +223,7 @@ def gen_star_display(self, n: Node, want: str) -> Val:
             self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.coerce(parts[i], et))])
     if n.kind == "list":
         return Val(r, self.ctype("list", [et]))
-    if unopt(et) not in ["int", "float", "bool", "str"]:
+    if unopt(et) not in ["int", "float", "bool", "str", "dyn"]:
         self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
     return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {r}"]), self.ctype("vtuple", [et]))
 
@@ -553,16 +598,18 @@ def gen_key_class(self, t: str) -> bool:
 
 def gen_key_items(self, t: str) -> bool:
     # are the items of tuple t a key's: int, bool, str, objects (key_class), str or an object
-    # that may be None, and such tuples (utils.key_items, objects too)
+    # that may be None, class objects of exception classes, and such tuples (utils.key_items,
+    # objects too)
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
             return False
     return True
 
 def gen_key_problem(self, t: str) -> str:
-    # why t cannot be a dict's key type, or "" (utils.key_problem): objects too
-    if self.key_class(t) or (is_tuple(t) and self.key_items(t)):
+    # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
+    # (hashed by their types at run time: TypeError: unhashable type)
+    if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
         return ""
     if t in self.nts:
         return key_problem(t) + " (a NamedTuple, which CPython hashes as the tuple of its fields)"
@@ -618,9 +665,9 @@ def gen_hash_desc(self, t: str) -> str:
 def gen_key_fx(self, kt: str) -> str:
     # Ins.x of a dict or set op on keys or elements of type kt: their descriptor where it holds an
     # object whose class's __hash__ and __eq__ run (H), or whose __repr__ a KeyError runs (P),
-    # which RUNTIME's U? stands for; else ""
+    # which RUNTIME's U? stands for, or a recursive alias's edge (R, RUNTIME's R?); else ""
     d = self.hash_desc(kt) if kt != "int" and kt != "str" and kt != "bytes" else ""
-    return d if "H" in d or ("P" in d and self.key_repr(kt)) else ""
+    return d if "H" in d or "R" in d or "A" in d or ("P" in d and self.key_repr(kt)) else ""
 
 def gen_key_repr(self, t: str) -> bool:
     # may repr() of a key of type t run a __repr__ of the program (a KeyError's message)
@@ -715,6 +762,8 @@ def gen_none_arg(self, m: str, k: int) -> str:
 
 def gen_to_str(self, v: Val) -> Val:
     t = v.t
+    if t == "dyn":
+        return self.dyn_str(v)  # (by its box's type: dynamic.py)
     if is_union(unopt(t)):
         return self.uop(v, "str")
     if t == "str":
@@ -786,8 +835,7 @@ def gen_obj_str(self, v: Val, m: str) -> Val:
             if method in c.methods:
                 r = self.call_fn(c.methods[method], [Val(v.v, c.name)], [], direct=True)
             else:
-                qn = shown(c.name) if "$" in c.name and not c.name.startswith("__main__$") else "__main__." + short(c.name)
-                r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(qn)}", f"ptr {v.v}"]), "str")
+                r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(repr_name(c.name))}", f"ptr {v.v}"]), "str")
             if not self.term:
                 self.incoming(ph, r.v, self.cur)
                 self.br(end)
@@ -818,10 +866,7 @@ def gen_obj_str(self, v: Val, m: str) -> Val:
     elif m in ms:
         r = self.call_fn(ms[m], [v], [])
     else:
-        # object.__repr__: <__main__.Name object at 0x...>, <module.Name object at 0x...>
-        # (<list_iterator object at 0x...> of a builtin type's, whose module is builtins)
-        qn = short(v.t) if v.t.startswith(ITERS + "$") else shown(v.t) if "$" in v.t and not v.t.startswith("__main__$") else "__main__." + short(v.t)
-        r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(qn)}", f"ptr {v.v}"]), "str")
+        r = Val(self.rt("pys_default_repr", "ptr", [f"ptr {self.sconst(repr_name(v.t))}", f"ptr {v.v}"]), "str")
     e2 = self.cur
     self.br(l3)
     self.place(l3)
@@ -878,6 +923,8 @@ def gen_hash_value(self, v: Val) -> Val:
     # tuple's of such items: runtime.c's hitem), a str's (and a bytes's) the dict's hash of it;
     # TypeError for an unhashable type, as CPython's
     t = v.t
+    if t == "dyn":
+        return self.dyn_hash(v)  # (by its box's type: dynamic.py)
     if self.key_class(t):
         return self.obj_hash(v)
     if t == "None":
@@ -885,8 +932,12 @@ def gen_hash_value(self, v: Val) -> Val:
     if is_list(t) or is_dict(t) or (is_set(t) and not is_fset(t)):
         self.raise_("TypeError", self.sconst(f"unhashable type: '{tname(t)}'"))
         return Val("0", "int")
-    if t in self.nts and "__eq__" not in self.classes[t].methods and "__hash__" not in self.classes[t].methods:
-        return self.hash_value(self.ntup(v))  # (a NamedTuple's: tuple's __hash__ of its fields)
+    if t in self.nts and "__hash__" not in self.classes[t].methods:
+        # (a NamedTuple's: tuple's __hash__ of its fields, also where its class defines __eq__,
+        # which typing.NamedTuple sets after it makes the class, so that __hash__ stays tuple's)
+        return self.hash_value(self.ntup(v))
+    if t in self.nts:
+        return self.obj_hash(v)  # (its class's own __hash__)
     if not self.hashable(t):
         self.err(f"hash() of {typestr(t)} is not supported")
     return Val(self.rt("pys_hash", "i64", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.hash_desc(t))}"]), "int")
@@ -895,7 +946,7 @@ def gen_hashable(self, t: str) -> bool:
     # can hash() take a value of type t (but an object's, obj_hash): a number, a str, None, an
     # object, a tuple of such items, or one of these that may be None
     u = unopt(t)
-    if u == "int" or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or self.key_class(u):
+    if u == "int" or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
         return True
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 

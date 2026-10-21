@@ -136,6 +136,14 @@ def linear(x: NDArray, weight: NDArray, bias: NDArray | None, matmul_fn) -> NDAr
     return result
 
 
+def _project(x: NDArray, weight: NDArray, bias: NDArray | None, matmul_fn, linear_fn) -> NDArray:
+    # A backend's linear_fn(x, weight, bias) may fold the bias into its matrix
+    # product (ndarray_blas.linear); without one, the product is followed by the bias.
+    if linear_fn is None:
+        return linear(x, weight, bias, matmul_fn)
+    return linear_fn(x, weight, bias)
+
+
 def layer_norm(x: NDArray, weight: NDArray, bias: NDArray | None) -> NDArray:
     """Normalize the last dimension with population variance and epsilon 1e-5."""
     if x.ndim != 2 or weight.shape != [x.shape[1]]:
@@ -172,6 +180,13 @@ def gelu(x: NDArray) -> NDArray:
     return NDArray(data, [len(data)], [1], 0).reshape(x.shape)
 
 
+def _product(a: NDArray, rows: int, columns: int) -> NDArray:
+    # a backend's product of the expected shape, which the loops after it index through its data
+    if a.shape != [rows, columns] or len(a.strides) != 2:
+        raise ValueError(f"matrix backend returned shape {a.shape}, expected {[rows, columns]}")
+    return a
+
+
 def causal_attention(qkv: NDArray, batch: int, length: int, heads: int, matmul_fn) -> NDArray:
     """Scaled dot-product attention on packed Q/K/V, with no attention dropout."""
     if qkv.ndim != 2 or qkv.shape[0] != batch * length or qkv.shape[1] % 3 != 0:
@@ -189,24 +204,32 @@ def causal_attention(qkv: NDArray, batch: int, length: int, heads: int, matmul_f
             query = NDArray(qkv.data, [length, depth], strides, offset)
             key = NDArray(qkv.data, [length, depth], strides, offset + width * qkv.strides[1])
             value = NDArray(qkv.data, [length, depth], strides, offset + 2 * width * qkv.strides[1])
-            scores = matmul_fn(query, key.T)
+            scores = _product(matmul_fn(query, key.T), length, length)
             probabilities = zeros([length, length])
+            # (scores, context and the embeddings are read through their data and strides, as
+            # layer_norm reads x: a[i, j] costs several times as much in these loops, #660)
+            sd = scores.data
+            s1 = scores.strides[1]
             for row in range(length):
-                maximum = scores[row, 0] * scale
+                sb = scores.offset + row * scores.strides[0]
+                maximum = sd[sb] * scale
                 for column in range(1, row + 1):
-                    maximum = max(maximum, scores[row, column] * scale)
+                    maximum = max(maximum, sd[sb + column * s1] * scale)
                 denominator = 0.0
                 for column in range(row + 1):
-                    probability = math.exp(scores[row, column] * scale - maximum)
+                    probability = math.exp(sd[sb + column * s1] * scale - maximum)
                     probabilities.data[row * length + column] = probability
                     denominator += probability
                 for column in range(row + 1):
                     probabilities.data[row * length + column] /= denominator
-            context = matmul_fn(probabilities, value)
+            context = _product(matmul_fn(probabilities, value), length, depth)
+            cd = context.data
+            c1 = context.strides[1]
             for row in range(length):
                 base = (b * length + row) * width + h * depth
+                cb = context.offset + row * context.strides[0]
                 for j in range(depth):
-                    out.data[base + j] = context[row, j]
+                    out.data[base + j] = cd[cb + j * c1]
     return out
 
 
@@ -217,13 +240,17 @@ def embedding(model: GPT, tokens: list[int], batch: int, length: int) -> NDArray
     token_weight = model.parameters["transformer.wte.weight"]
     position_weight = model.parameters["transformer.wpe.weight"]
     out = zeros([batch * length, config.n_embd])
+    t1 = token_weight.strides[1]
+    p1 = position_weight.strides[1]
     for row in range(batch * length):
         token = tokens[row]
         if token < 0 or token >= config.vocab_size:
             raise ValueError("token outside vocabulary")
         position = row % length
+        tb = token_weight.offset + token * token_weight.strides[0]
+        pb = position_weight.offset + position * position_weight.strides[0]
         for j in range(config.n_embd):
-            out.data[row * config.n_embd + j] = token_weight[token, j] + position_weight[position, j]
+            out.data[row * config.n_embd + j] = token_weight.data[tb + j * t1] + position_weight.data[pb + j * p1]
     return out
 
 
@@ -233,8 +260,14 @@ def _cache(cache: dict[str, NDArray] | None, name: str, value: NDArray) -> None:
 
 
 def forward_hidden_with_backend(model: GPT, tokens: list[int], batch: int, length: int,
-                                matmul_fn, cache: dict[str, NDArray] | None = None) -> NDArray:
-    """Shared architecture; optional training cache retains pre-projection activations."""
+                                matmul_fn, cache: dict[str, NDArray] | None = None,
+                                linear_fn=None) -> NDArray:
+    """Shared architecture; optional training cache retains pre-projection activations.
+
+    linear_fn(x, weight, bias), when given, computes the four biased projections of
+    each block (ndarray_blas.linear folds the bias into the BLAS product); the
+    attention and output products still use matmul_fn.
+    """
     x = embedding(model, tokens, batch, length)
     parameters = model.parameters
     for i in range(model.config.n_layer):
@@ -243,19 +276,19 @@ def forward_hidden_with_backend(model: GPT, tokens: list[int], batch: int, lengt
         _cache(cache, key + ".input", x)
         norm1 = layer_norm(x, parameters[prefix + "ln_1.weight"], parameters.get(prefix + "ln_1.bias"))
         _cache(cache, key + ".norm1", norm1)
-        qkv = linear(norm1, parameters[prefix + "attn.c_attn.weight"], parameters.get(prefix + "attn.c_attn.bias"), matmul_fn)
+        qkv = _project(norm1, parameters[prefix + "attn.c_attn.weight"], parameters.get(prefix + "attn.c_attn.bias"), matmul_fn, linear_fn)
         _cache(cache, key + ".qkv", qkv)
         attention = causal_attention(qkv, batch, length, model.config.n_head, matmul_fn)
         _cache(cache, key + ".attention", attention)
-        x = x + linear(attention, parameters[prefix + "attn.c_proj.weight"], parameters.get(prefix + "attn.c_proj.bias"), matmul_fn)
+        x = x + _project(attention, parameters[prefix + "attn.c_proj.weight"], parameters.get(prefix + "attn.c_proj.bias"), matmul_fn, linear_fn)
         _cache(cache, key + ".residual", x)
         norm2 = layer_norm(x, parameters[prefix + "ln_2.weight"], parameters.get(prefix + "ln_2.bias"))
         _cache(cache, key + ".norm2", norm2)
-        fc = linear(norm2, parameters[prefix + "mlp.c_fc.weight"], parameters.get(prefix + "mlp.c_fc.bias"), matmul_fn)
+        fc = _project(norm2, parameters[prefix + "mlp.c_fc.weight"], parameters.get(prefix + "mlp.c_fc.bias"), matmul_fn, linear_fn)
         _cache(cache, key + ".fc", fc)
         activated = gelu(fc)
         _cache(cache, key + ".gelu", activated)
-        x = x + linear(activated, parameters[prefix + "mlp.c_proj.weight"], parameters.get(prefix + "mlp.c_proj.bias"), matmul_fn)
+        x = x + _project(activated, parameters[prefix + "mlp.c_proj.weight"], parameters.get(prefix + "mlp.c_proj.bias"), matmul_fn, linear_fn)
     _cache(cache, "final_input", x)
     result = layer_norm(x, parameters["transformer.ln_f.weight"], parameters.get("transformer.ln_f.bias"))
     _cache(cache, "final_norm", result)
@@ -273,9 +306,12 @@ def output_projection(model: GPT, hidden: NDArray, batch: int, length: int,
 
 
 def forward_with_backend(model: GPT, tokens: list[int], batch: int, length: int,
-                         matmul_fn, last_only: bool = False) -> NDArray:
-    """Use a nonmutating matrix backend with fresh results; last_only matches inference."""
-    hidden = forward_hidden_with_backend(model, tokens, batch, length, matmul_fn)
+                         matmul_fn, last_only: bool = False, linear_fn=None) -> NDArray:
+    """Use a nonmutating matrix backend with fresh results; last_only matches inference.
+
+    An optional linear_fn(x, weight, bias) computes the biased projections.
+    """
+    hidden = forward_hidden_with_backend(model, tokens, batch, length, matmul_fn, None, linear_fn)
     return output_projection(model, hidden, batch, length, matmul_fn, last_only)
 
 
@@ -289,6 +325,8 @@ def cross_entropy(logits: NDArray, targets: list[int], ignore_index: int = -1) -
         raise ValueError("targets must match the batch and time dimensions of logits")
     width = logits.shape[2]
     rows = logits.reshape([-1, width])
+    rd = rows.data
+    r1 = rows.strides[1]
     loss = 0.0
     count = 0
     for row in range(len(targets)):
@@ -297,12 +335,13 @@ def cross_entropy(logits: NDArray, targets: list[int], ignore_index: int = -1) -
             continue
         if target < 0 or target >= width:
             raise ValueError("target outside vocabulary")
-        maximum = rows[row, 0]
+        rb = rows.offset + row * rows.strides[0]
+        maximum = rd[rb]
         for j in range(1, width):
-            maximum = max(maximum, rows[row, j])
+            maximum = max(maximum, rd[rb + j * r1])
         denominator = 0.0
         for j in range(width):
-            denominator += math.exp(rows[row, j] - maximum)
-        loss += math.log(denominator) - (rows[row, target] - maximum)
+            denominator += math.exp(rd[rb + j * r1] - maximum)
+        loss += math.log(denominator) - (rd[rb + target * r1] - maximum)
         count += 1
     return loss / float(count) if count > 0 else math.nan

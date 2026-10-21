@@ -1,4 +1,4 @@
-"""check_upstream: tests/example_ndarray_upstream.py, NumPy's own tests adapted to ndarray, run by
+"""check_upstream: tests/programs/apps/example_ndarray_upstream.py, NumPy's own tests adapted to ndarray, run by
 CPython against NumPy itself.
 
 usage: python3 check_upstream.py
@@ -8,7 +8,7 @@ wraps a float64 view of a flat buffer, with ndarray's data, strides and offset i
 module stands in for ndarray while the test runs. Every assertion must hold for NumPy too: that
 checks the adaptations (the views built from strides for x[::-1] and x[1::3], order='F', the
 written-out random inputs, the expected values) against NumPy's own behavior. It prints what the
-test prints, which tests/example_ndarray_upstream.out records for ndarray.
+test prints, which tests/programs/apps/example_ndarray_upstream.out records for ndarray.
 """
 import os
 import sys
@@ -118,7 +118,7 @@ def matmul(a, b):
 
 
 sys.modules["ndarray"] = sys.modules[__name__]  # (the test's `from ndarray import ...` finds these)
-path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tests", "example_ndarray_upstream.py")
+path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tests", "programs", "apps", "example_ndarray_upstream.py")
 with open(path) as f:
     exec(compile(f.read(), path, "exec"), {"__name__": "example_ndarray_upstream"})
 print(f"(numpy {np.__version__}: the adapted assertions hold for NumPy itself)")

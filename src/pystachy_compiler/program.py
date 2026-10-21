@@ -4,7 +4,7 @@ import os
 import sys
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
-from src.pystachy_compiler.diagnostics import fail, shown
+from src.pystachy_compiler.diagnostics import Rejoin, fail, shown
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
@@ -20,6 +20,7 @@ from src.pystachy_compiler.specs import (
     is_excname,
     ITERS,
     MODATTRS,
+    OBJECTS,
     PURE,
     PYBUILTINS,
     RAISERS,
@@ -229,8 +230,8 @@ def gen_init_template(self, st: Node) -> bool:
             ps = d.kids[0].kids
             for i in range(1, len(ps)):
                 a = ps[i].kids[0]
-                if a.kind == "noann" or self.any_in([a]) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
-                    return True  # (also *args or **kwargs without an annotation)
+                if a.kind == "noann" or (self.any_in([a]) and (not self.dyn_policy(d.line) or ps[i].kind != "param")) or (ps[i].kind == "param" and ((a.kind == "name" and a.s == "object") or self.tmpl_ann(a))):
+                    return True  # (also *args or **kwargs without an annotation, or with Any, which only a template takes)
                 if st.s in self.tparams and self.names_tv(ps[i].kids[0], self.tparams[st.s]):
                     return True  # (a generic class whose objects bind its type variables, see bind)
             if self.makes_tmpl(d.kids[2]):
@@ -722,9 +723,9 @@ def gen_abc_class(self, c: str) -> bool:
 
 def gen_program(self, mods: list[Mod]) -> str:
     self.opts = optimizations()
-    # (lib's module of range objects binds no global of another module: the names it binds do not
-    # keep a global of the program from being constant)
-    own = [m for m in mods if m.name != RANGES]
+    # (lib's modules of range objects and of object()'s bind no global of another module: the
+    # names they bind do not keep a global of the program from being constant)
+    own = [m for m in mods if m.name != RANGES and m.name != OBJECTS]
     if "moduleints" in self.opts:
         self.intglobals = module_ints(own, self.intat)
     self.strglobals = module_strs(own, self.strtuples)
@@ -790,6 +791,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             self.line = self.taliases[q].line
             self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates this type alias's value when the assignment runs)")
     if len(self.taliases) > 0:
+        self.recursive_aliases()
         # an annotation that names a type alias is its value (unalias)
         for m in mods:
             self.unalias_all(m.body)
@@ -1020,9 +1022,9 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.err(f"cannot infer the initial optional type of '{short(name)}'; annotate its later assignment")
                 self.declare(name, t)
     for i in range(len(mods)):
-        if mods[i].name != ITERS and mods[i].name != RANGES:
-            # (lib's modules of iter()'s classes and of range's run no code: nothing imports them,
-            # see Loader.program)
+        if mods[i].name != ITERS and mods[i].name != RANGES and mods[i].name != OBJECTS:
+            # (lib's modules of iter()'s classes, of range's and of object's run no code: nothing
+            # imports them, see Loader.program)
             self.function(self.inits[mods[i].name], tops[i])
         self.inited[mods[i].name] = True
     self.modlevel = False
@@ -1075,8 +1077,10 @@ def gen_program(self, mods: list[Mod]) -> str:
     cmped: dict[str, bool] = {}
     hashed: dict[str, bool] = {}
     xmade: dict[str, bool] = {}
+    ned: dict[str, bool] = {}
+    xed: dict[str, bool] = {}
     while True:
-        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade)
+        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors)
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
@@ -1089,6 +1093,14 @@ def gen_program(self, mods: list[Mod]) -> str:
             if c not in cmped:
                 cmped[c] = True
                 self.obj_helpers(c, [0, 1])
+        for c in [x for x in self.one]:
+            if c not in ned:
+                ned[c] = True
+                self.obj_helpers(c, [3])
+        for c in [x for x in self.xobj]:
+            if c not in xed:
+                xed[c] = True
+                self.dyn_xhelper(c)  # (its comparisons with dynamic values of other types: dynamic.py)
         for c in [x for x in self.hcls]:
             if c not in hashed:
                 hashed[c] = True
@@ -1097,6 +1109,7 @@ def gen_program(self, mods: list[Mod]) -> str:
             if c not in xmade:
                 xmade[c] = True
                 self.exc_helpers(c)
+        self.exc_ctors()  # (calls of class objects: the functions that make objects of the program's classes)
         at = -1
         later: list[int] = []
         while len(self.wake) > 0:
@@ -1110,11 +1123,15 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.function(lz[i], lz[i].node.kids[2].kids)
         for i in later:
             hpush(self.wake, i)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) == before:
+        # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) == before and not self.dyn_dispatchers():
             break
+    self.exc_tables()
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)
+    if len(self.newhints) > 0 and not self.final:
+        raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
     # the whole program is built: its functions are printed in the order they were completed
     for j in range(len(self.fns)):
         self.fll[self.fns[j].f.ll] = j
@@ -1149,6 +1166,8 @@ def gen_program(self, mods: list[Mod]) -> str:
     if dump:
         for fn in self.fns:
             print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
+    if "tupleret" in on:
+        self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
     for fn in self.fns:
         self.lower(fn)
         # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)

@@ -2,19 +2,24 @@
 
 CPython's io is a C module (Modules/_io); this one has StringIO, after Modules/_io/stringio.c of
 CPython 3.13.16: the same reads, writes, seeks, newline translation and errors, on a str buffer
-(lib/README.md). Positions and sizes count a str's bytes past ASCII, as len() and slicing do.
+(lib/README.md). Positions and sizes count Unicode code points, as len() and slicing do.
 BytesIO follows Modules/_io/bytesio.c in the same way, on a bytes buffer.
 TextIOWrapper, after Modules/_io/textio.c, is the text layer over a binary stream; its sizes count
-characters, as CPython's do.
+characters, as CPython's do. IncrementalNewlineDecoder, from the same file, is its newline
+decoder for str input, and text_encoding(), of Modules/_io/_iomodule.c, names the encoding that
+an encoding=None argument stands for.
 """
 
+from builtins import open, BlockingIOError
 from typing import Self
 
-__all__ = ["StringIO", "BytesIO", "TextIOWrapper", "SEEK_SET", "SEEK_CUR", "SEEK_END"]
+__all__ = ["StringIO", "BytesIO", "TextIOWrapper", "IncrementalNewlineDecoder", "text_encoding", "open",
+           "BlockingIOError", "DEFAULT_BUFFER_SIZE", "SEEK_SET", "SEEK_CUR", "SEEK_END"]
 
 SEEK_SET = 0
 SEEK_CUR = 1
 SEEK_END = 2
+DEFAULT_BUFFER_SIZE = 8192  # (CPython 3.13's)
 # the largest Py_ssize_t (PY_SSIZE_T_MAX), which bounds BytesIO's positions and size
 _SSIZE_MAX = 9223372036854775807
 
@@ -518,28 +523,6 @@ def _unsupported(message: str) -> None:
     unsupported(message)
 
 
-def _nchars(s: str, i: int, j: int) -> int:
-    # the number of characters of s[i:j], a str holding UTF-8: its bytes that continue no sequence,
-    # as the runtime counts them (len() counts bytes)
-    n = 0
-    while i < j:
-        if ord(s[i]) & 0xC0 != 0x80:
-            n += 1
-        i += 1
-    return n
-
-
-def _skip(s: str, i: int, n: int) -> int:
-    # the offset of s n characters after offset i, or its end
-    end = len(s)
-    while n > 0 and i < end:
-        i += 1
-        while i < end and ord(s[i]) & 0xC0 == 0x80:
-            i += 1
-        n -= 1
-    return i
-
-
 def _utf8_tail(data: bytes) -> int:
     # the number of bytes at data's end that begin a UTF-8 sequence without ending it, which the
     # incremental decoder keeps for more data (lib/_pystachy_codecs.py's, after CPython's
@@ -576,6 +559,104 @@ def _codec(encoding: str) -> int:
     if not known:
         raise NotImplementedError(f"TextIOWrapper supports only the UTF-8, Latin-1 and ASCII encodings, not '{encoding}'")
     return 0 if len(e) == 2 else 1 if e == b"\xe9" else 2
+
+
+def text_encoding(encoding: str | None, stacklevel: int = 2, /) -> str:
+    """A helper function to choose the text encoding.
+
+    When encoding is not None, this function returns it.
+    Otherwise, this function returns the default text encoding
+    (i.e. "locale" or "utf-8" depends on UTF-8 mode).
+
+    This function emits an EncodingWarning if encoding is None and
+    sys.flags.warn_default_encoding is true.
+
+    This can be used in APIs with an encoding=None parameter.
+    However, please consider using encoding="utf-8" for new APIs."""
+    if stacklevel < -2147483648 or stacklevel > 2147483647:
+        raise OverflowError("Python int too large to convert to C int")  # (a C int, as the C function takes)
+    if encoding is not None:
+        return encoding
+    # UTF-8 mode's "utf-8" where the C and POSIX locales turn it on, as the runtime opens a file
+    # without encoding= in "utf-8" exactly then, else "locale"; Pystachy has no warn_default_encoding
+    # (-X warn_default_encoding, PYTHONWARNDEFAULTENCODING), so no EncodingWarning
+    from _pystachy_io import default_encoding
+    return "utf-8" if default_encoding() == "utf-8" else "locale"
+
+
+class IncrementalNewlineDecoder:
+    r"""Codec used when reading a file in universal newlines mode.
+
+    It wraps another incremental decoder, translating \r\n and \r into \n.
+    It also records the types of newlines encountered.  When used with
+    translate=False, it ensures that the newline sequence is returned in
+    one piece. When used with decoder=None, it expects unicode strings as
+    decode input and translates newlines without first invoking an external
+    decoder."""
+
+    # Modules/_io/textio.c's, with decoder None: decode() takes the str itself. Another decoder,
+    # whose decode() CPython's calls first, raises NotImplementedError. A \r at the end of what a
+    # call decodes waits in _pendingcr for the \n that may follow it; _seennl records the newlines
+    # decoded (1 \r, 2 \n, 4 \r\n). translate and final are tested for truth, as CPython's are;
+    # errors, which it only keeps, is not kept.
+    def __init__(self, decoder, translate, errors="strict") -> None:
+        if decoder is not None:
+            raise NotImplementedError("IncrementalNewlineDecoder supports only decoder=None, which decodes str input")
+        self._translate: bool = bool(translate)
+        self._pendingcr: bool = False
+        self._seennl: int = 0
+
+    def decode(self, input: str, final=False) -> str:
+        last = bool(final)
+        output = input
+        if self._pendingcr and (last or output != ""):
+            output = "\r" + output
+            self._pendingcr = False
+        if not last and output.endswith("\r"):
+            # (retained, so that readline() gets a \r\n in one piece)
+            output = output[:-1]
+            self._pendingcr = True
+        if output == "":
+            return output
+        seen = self._seennl
+        crlf = "\r\n" in output
+        if crlf:
+            seen |= 4
+        if "\r" in output:
+            single = output.replace("\r\n", "") if crlf else output
+            if "\r" in single:
+                seen |= 1
+            if "\n" in single:
+                seen |= 2
+            if self._translate:
+                output = output.replace("\r\n", "\n").replace("\r", "\n")
+        elif "\n" in output:
+            seen |= 2
+        self._seennl = seen
+        return output
+
+    def getstate(self) -> tuple[bytes, int]:
+        # (no decoder: its buffer and flag are b"" and 0, and the flag's lowest bit is the \r)
+        return (b"", 1 if self._pendingcr else 0)
+
+    def setstate(self, state: tuple[bytes, int], /) -> None:
+        self._pendingcr = state[1] & 1 != 0
+
+    def reset(self) -> None:
+        self._seennl = 0
+        self._pendingcr = False
+
+    @property
+    def newlines(self) -> str | None:
+        if self._seennl == 0:
+            return None
+        if self._seennl == 1:
+            return "\r"
+        if self._seennl == 2:
+            return "\n"
+        if self._seennl == 4:
+            return "\r\n"
+        raise NotImplementedError("IncrementalNewlineDecoder.newlines is a tuple once more than one kind of newline has been decoded, which is not supported")
 
 
 # The buffer's methods that a TextIOWrapper may not need, called where CPython calls them: an
@@ -655,7 +736,7 @@ class TextIOWrapper[B]:
     # The decoder is the codec's incremental one (UTF-8's keeps a sequence a chunk ends without
     # completing in _dpending), within IncrementalNewlineDecoder for newline None or "" (a final
     # \r waits in _pendingcr for the \n that may follow; _seennl, the newlines read). Positions in
-    # _decoded are offsets of its bytes; the sizes given count characters, as CPython's do.
+    # _decoded and the sizes given both count Unicode code points, as CPython's do.
 
     def __init__(self, buffer: B, encoding: str | None = None, errors: str | None = None, newline: str | None = None,
                  line_buffering: bool = False, write_through: bool = False) -> None:
@@ -690,7 +771,6 @@ class TextIOWrapper[B]:
         self._buffer = buffer
         self._decoded: str = ""  # decoded_chars: what reads take from, from _used on
         self._used: int = 0
-        self._dascii: bool = True  # (_decoded is ASCII: an offset is its characters' count)
         self._dpending: bytes = b""  # the UTF-8 decoder's bytes of an incomplete sequence
         self._pendingcr: bool = False
         self._seennl: int = 0  # 1 \r, 2 \n, 4 \r\n
@@ -789,18 +869,15 @@ class TextIOWrapper[B]:
     def _set_decoded(self, s: str) -> None:
         self._decoded = s
         self._used = 0
-        self._dascii = s.isascii()
 
     def _take(self, n: int) -> str:
         # textiowrapper_get_decoded_chars: n characters of _decoded (n < 0: all that is left)
         d = self._decoded
         start = self._used
-        if n < 0 or start + n >= len(d):
+        if n < 0 or n >= len(d) - start:
             end = len(d)
-        elif self._dascii:
-            end = start + n
         else:
-            end = _skip(d, start, n)
+            end = start + n
         self._used = end
         return d if start == 0 and end == len(d) else d[start:end]
 
@@ -867,7 +944,7 @@ class TextIOWrapper[B]:
         nbytes = len(data)
         decoded = self._decode(data, nbytes == 0)
         self._set_decoded(decoded)
-        nchars = len(decoded) if self._dascii else _nchars(decoded, 0, len(decoded))
+        nchars = len(decoded)
         self._b2cratio = nbytes / nchars if nchars > 0 else 0.0
         if self._telling:
             self._snapshot = True
@@ -886,7 +963,7 @@ class TextIOWrapper[B]:
         self._check_closed()
         if not self._writable:
             _unsupported("not writable")
-        n = len(text) if text.isascii() else _nchars(text, 0, len(text))
+        n = len(text)
         haslf = (self._writenl != "" or self._line_buffering) and "\n" in text
         if haslf and self._writenl != "":
             text = text.replace("\n", self._writenl)
@@ -934,12 +1011,12 @@ class TextIOWrapper[B]:
                 self._snapshot = False
             return result
         result = self._take(n)
-        remaining = n - (len(result) if self._dascii else _nchars(result, 0, len(result)))
+        remaining = n - len(result)
         while remaining > 0:
             if not self._read_chunk(remaining):
                 break
             more = self._take(remaining)
-            remaining -= len(more) if self._dascii else _nchars(more, 0, len(more))
+            remaining -= len(more)
             result = result + more
         return result
 
@@ -974,7 +1051,7 @@ class TextIOWrapper[B]:
         have = False
         start = 0
         endpos = 0
-        offset = 0  # (the bytes of remaining that begin line)
+        offset = 0  # (the characters of remaining that begin line)
         while True:
             more = True
             while self._decoded == "":
@@ -997,18 +1074,18 @@ class TextIOWrapper[B]:
             have = True
             endpos = self._line_end(line, start)
             if endpos >= 0:
-                if limit >= 0 and _nchars(line, start, endpos) + chunked >= limit:
-                    endpos = _skip(line, start, limit - chunked)
+                if limit >= 0 and endpos - start + chunked >= limit:
+                    endpos = start + limit - chunked
                 break
             endpos = -1 - endpos
-            if limit >= 0 and _nchars(line, start, endpos) + chunked >= limit:
-                endpos = _skip(line, start, limit - chunked)
+            if limit >= 0 and endpos - start + chunked >= limit:
+                endpos = start + limit - chunked
                 break
             if endpos > start:
                 s = line[start:endpos]
                 chunks.append(s)
                 if limit >= 0:
-                    chunked += _nchars(s, 0, len(s))
+                    chunked += len(s)
             if endpos < len(line):
                 remaining = line[endpos:]
             have = False
@@ -1043,7 +1120,7 @@ class TextIOWrapper[B]:
         for line in self:
             lines.append(line)
             if h > 0:
-                n = len(line) if line.isascii() else _nchars(line, 0, len(line))
+                n = len(line)
                 if n > h - length:
                     break
                 length += n

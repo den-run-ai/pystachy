@@ -1,4 +1,4 @@
-"""Module for tests/deftime_later.py."""
+"""Module for tests/programs/imports/deftime_later.py."""
 
 
 def check(x, fs=(LATER, 1j)):

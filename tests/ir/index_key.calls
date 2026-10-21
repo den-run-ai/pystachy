@@ -1,0 +1,13 @@
+@main.init: pys_alloc pys_alloc pys_str_float pys_write pys_write pys_str_int pys_write pys_write
+@f.total: pys_raise
+@f.fill: pys_raise
+@f.keep: pys_alloc pys_raise pys_raise
+@m.Grid.__init__: pys_list_new_atomic pys_list_append pys_list_mul pys_raise
+@m.Grid.__getitem__: pys_list_get pys_raise
+@m.Grid.__setitem__: pys_list_set pys_raise
+@m.Keep.__init__: pys_list_new
+@m.Keep.__getitem__: pys_list_append
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

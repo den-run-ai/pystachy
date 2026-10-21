@@ -67,6 +67,23 @@ class ParityContractTests(unittest.TestCase):
                 self.assertEqual("training" in imports, steps > 0)
                 self.assertIn("ndarray" if backend == "scalar" else "ndarray_blas", imports)
 
+    def test_blas_runner_folds_every_projection_bias(self):
+        # Every forward and training call of the BLAS runner passes ndarray_blas.linear;
+        # the scalar runner never names it, so it keeps the matmul-then-bias default.
+        for backend in ("scalar", "blas"):
+            for steps in (0, 2):
+                tree = ast.parse(BENCH.runner_source(backend, steps))
+                calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                         and isinstance(node.func, ast.Name) and node.func.id.endswith("_with_backend")]
+                self.assertEqual(len(calls), 6 if steps else 5)
+                names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+                if backend == "scalar":
+                    self.assertNotIn("linear", names)
+                    continue
+                for call in calls:
+                    self.assertIsInstance(call.args[-1], ast.Name)
+                    self.assertEqual(call.args[-1].id, "linear")
+
     def test_export_preserves_names_shapes_and_float64_values(self):
         class Tensor:
             shape = (1, 2)

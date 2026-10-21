@@ -4,10 +4,15 @@ on:
   push:
     branches: [main]
   pull_request:
+    paths-ignore:   # documentation-only pull requests
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
+# One group per main commit, as in CI, Installation and Lint: the release gate requires each
+# commit's own run, and a shared main group cancelled a pending run when a later push queued.
 concurrency:
-  group: packages-${{ github.event.pull_request.number || github.ref }}
+  group: packages-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || (github.ref == 'refs/heads/main' && github.sha || github.ref) }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:

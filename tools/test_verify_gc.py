@@ -12,8 +12,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 TIMEOUT = shutil.which("timeout")
-CASES = ["tests/example.py", "tests/syntax_example.py", "tests/deviations/example.py",
-         "tests/errors/example.py", "tests/errors/syntax_example.py"]
+CASES = ["tests/programs/x/example.py", "tests/programs/x/syntax_example.py", "tests/deviations/example.py",
+         "tests/errors/x/example.py", "tests/errors/x/syntax_example.py"]
 GC_STEPS = ["gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"]
 SUITES = [("gc-jit-0", "jit", 4), ("gc-jit-1", "jit", 3), ("gc-aot-0", "aot", 2), ("gc-aot-1", "aot", 4),
           ("gc-aot-2", "aot", 1)]
@@ -25,14 +25,16 @@ class GCVerificationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        for name in ("tests", "tests/deviations", "tests/errors", "src", "lib", "ryu", "bin"):
+        for name in ("tests", "tests/programs", "tests/programs/x", "tests/deviations", "tests/errors",
+                     "tests/errors/x", "src", "lib", "ryu", "bin"):
             (self.root / name).mkdir()
-        shutil.copy(ROOT / "tests/verify.sh", self.root / "tests/verify.sh")
-        for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/example.py",
-                     "tests/syntax_example.py", "tests/deviations/example.py"):
+        for name in ("tests/verify.sh", "tests/corpus.sh"):
+            shutil.copy(ROOT / name, self.root / name)
+        for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py",
+                     "tests/programs/x/syntax_example.py", "tests/deviations/example.py"):
             (self.root / name).write_text("# fixture\n")
-        (self.root / "tests/errors/example.py").write_text("# error: mock rejection\n")
-        (self.root / "tests/errors/syntax_example.py").write_text("# error: syntax_example.py: mock syntax\n")
+        (self.root / "tests/errors/x/example.py").write_text("# error: mock rejection\n")
+        (self.root / "tests/errors/x/syntax_example.py").write_text("# error: syntax_example.py: mock syntax\n")
         compiler = self.root / "bin/compiler"
         compiler.write_text(f"#!{sys.executable}\n" + '''import os
 import signal
@@ -81,18 +83,18 @@ echo "suite mode: $mode"
 case "$mode" in
   jit)
     [ "$LC_ALL" = C.UTF-8 ] && [ $# -gt 0 ] || exit 9
-    case "$1" in tests/example.py) group=jit-0 ;; tests/syntax_example.py) group=jit-1 ;; *) exit 9 ;; esac ;;
+    case "$1" in tests/programs/x/example.py) group=jit-0 ;; tests/programs/x/syntax_example.py) group=jit-1 ;; *) exit 9 ;; esac ;;
   aot)
     [ "$LC_ALL" = C.UTF-8 ] && [ $# -gt 0 ] || exit 9
-    case "$1" in tests/example.py) group=aot-0 ;; tests/syntax_example.py) group=aot-1 ;; tests/deviations/example.py) group=aot-2 ;; *) exit 9 ;; esac ;;
+    case "$1" in tests/programs/x/example.py) group=aot-0 ;; tests/programs/x/syntax_example.py) group=aot-1 ;; tests/deviations/example.py) group=aot-2 ;; *) exit 9 ;; esac ;;
   *) echo "invalid mode: $mode"; exit 9 ;;
 esac
 checks=0
 for file; do
   echo "selected: $file"
   case "$file" in
-    tests/example.py|tests/deviations/example.py|tests/errors/example.py) checks=$((checks + 1)) ;;
-    tests/syntax_example.py|tests/errors/syntax_example.py) checks=$((checks + 2)) ;;
+    tests/programs/x/example.py|tests/deviations/example.py|tests/errors/x/example.py) checks=$((checks + 1)) ;;
+    tests/programs/x/syntax_example.py|tests/errors/x/syntax_example.py) checks=$((checks + 2)) ;;
     *) exit 9 ;;
   esac
 done

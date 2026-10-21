@@ -43,7 +43,7 @@ of unknown words grows; the executable uses about 3× peak memory.
 
 ## Checks and reproduction
 
-`tests/example_suggest.py` compares tokenization, generated vocabularies/text,
+`tests/programs/apps/example_suggest.py` compares tokenization, generated vocabularies/text,
 small cases, options and errors with CPython.
 
 ```sh

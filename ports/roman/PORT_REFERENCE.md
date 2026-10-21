@@ -28,7 +28,7 @@ Archive SHA-256: `275fe9f46290f7d0ffaea1c33251b92b8e463ace23660508ceef522e7587cb
 
 ## Validation snapshot
 
-`tests/port_roman_convert.py` runs the cases of roman's own test suite (`src/tests.py` in the
+`tests/programs/apps/port_roman_convert.py` runs the cases of roman's own test suite (`src/tests.py` in the
 sdist) as a program: the 20 pairs of its `TEST_MAP` both ways and in lower case, and its errors
 (100000 out of range, `''` and `'Q12'` invalid, `'n'` with `special_case=False`). Then it runs
 the range's edges (-1, 5000, 2**63 - 1, -(2**63 - 1), -2**63), `N` and `n` and `'N\n'` with
@@ -38,7 +38,7 @@ there and back, in upper and lower case, other call forms (`import roman as rm`,
 `toRoman as to_roman`, every argument by keyword and in either order), `__author__`,
 `__copyright__` and the uses of `romanNumeralMap` that compile, and last an `OutOfRangeError`
 that escapes, whose report must match CPython's last line of stderr.
-`tests/port_roman_validate.py` runs the validation that `romanNumeralPattern` makes: 59 strings at the
+`tests/programs/apps/port_roman_validate.py` runs the validation that `romanNumeralPattern` makes: 59 strings at the
 pattern's edges (a group's alternative followed by the letter another one would leave, as in
 `CMCM`, `CDC`, `XCX` and `IXI`; too many letters of a kind; `$` before a final newline and not
 before two, before `\r\n` or before another line break such as `\r`, `\x0b`, `\x85` and
