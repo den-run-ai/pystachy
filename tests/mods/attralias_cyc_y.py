@@ -1,6 +1,6 @@
-import mods.attralias_cyc_x
+import mods.attralias_cyc_x as cx
 
-A = mods.attralias_cyc_x.K
+A = cx.K
 
 
 def make() -> A:

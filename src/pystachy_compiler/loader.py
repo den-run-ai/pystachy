@@ -862,7 +862,10 @@ class Loader:
 
     def attr_mod(self, n: Node) -> str:
         # the module that n, a name or an attribute of one in module dm's top-level code, denotes
-        # as qmod() finds it (a submodule that the package does not bind itself too), or ""
+        # as qmod() finds it (a submodule that the package does not bind itself too), or "". Not
+        # a package's submodule that imports dm, itself or through other modules: in that circular
+        # import, CPython attaches the submodule to its package only once its code has run, so
+        # dm's code may find the package without it (AttributeError: cannot access submodule)
         if n.kind == "name":
             k = self.dm.kinds.get(n.s, "")
             return k[2:] if k.startswith("m:") and k[2:] in self.mods else ""
@@ -872,7 +875,8 @@ class Loader:
         k = self.mods[base].kinds.get(n.s, "")
         if k.startswith("m:"):
             return k[2:] if k[2:] in self.mods else ""
-        return base + "." + n.s if k == "" and base + "." + n.s in self.mods else ""
+        sub = base + "." + n.s
+        return sub if k == "" and sub in self.mods and not self.imports_mod(self.mods[sub].body, self.dm.name, {}, True) else ""
 
     def plain_class(self, q: str, depth: int) -> bool:
         # is the class of qualified name q surely no exception class, and the only thing its
