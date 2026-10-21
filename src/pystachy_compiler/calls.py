@@ -188,6 +188,7 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
     # only print() takes: a sole star's once the keywords are evaluated, as CPython unpacks it)
     f = n.kids[0]
     args = n.kids[1:]
+    receiver = Val("", "")
     if f.kind == "attr" and not self.static_callee(f) and f.kids[0].kind != "val":
         receiver = self.expr(f.kids[0], "")
         if self.reference_union(receiver.t):
@@ -197,6 +198,31 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
         f = mk("attr", f.s, f.line, [self.vnode(receiver)])
     elif f.kind != "attr" and f.kind != "val" and not self.static_callee(f):
         f = self.vnode(self.expr(f, ""))
+    dynh = Val("", "")
+    if f.kind == "attr" and receiver.t == "dyn":
+        # (o.m(*t, **d) of an Any o: the method is found first, as CPython's LOAD_ATTR finds it,
+        # with the call's shape, which the displays, tuples and **kwargs that the stars unpack
+        # give without evaluating them; then the arguments: dyn_method_found)
+        npos = 0
+        names: list[str] = []
+        known = True
+        for a in args:
+            if a.kind == "kw":
+                names.append(a.s)
+            elif a.kind == "dstar" and a.kids[0].kind == "dict" and len([i for i in range(0, len(a.kids[0].kids), 2) if a.kids[0].kids[i].kind != "str"]) == 0:
+                names = names + [a.kids[0].kids[i].s for i in range(0, len(a.kids[0].kids), 2)]
+            elif a.kind == "dstar" and is_kw(self.dry(a.kids[0])):
+                names = names + kw_names(self.dry(a.kids[0]))
+            elif a.kind == "starred" and (a.kids[0].kind == "list" or a.kids[0].kind == "tuple") and len([x for x in a.kids[0].kids if x.kind == "starred"]) == 0:
+                npos += len(a.kids[0].kids)
+            elif a.kind == "starred" and is_tuple(unopt(self.dry(a.kids[0]))):
+                npos += len(targs(unopt(self.dry(a.kids[0]))))
+            elif a.kind == "starred" or a.kind == "dstar":
+                known = False
+            else:
+                npos += 1
+        if known:
+            dynh = self.dyn_call(self.dyn_dispatcher(f"has.{f.s}.{npos}" + "".join(["-" + x for x in names]), ["dyn"], "dyn", f.s), [receiver])
     printing = f.kind == "name" and f.s == "print" and not self.bound("print")
     sole = len([a for a in args if a.kind != "kw" and a.kind != "dstar"]) == 1
     who = self.star_who(f)
@@ -246,6 +272,8 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
     out = pos + kws
     if printing and len([a for a in out if a.kind == "starred"]) > 0:
         return self.print_star(n, out)
+    if dynh.v != "":
+        return self.dyn_method_found(receiver, f.s, out, dynh)
     return self.call(mk("call", n.s, n.line, [f] + out), want, resultsoft, typeargs)
 
 def gen_static_callee(self, f: Node) -> bool:

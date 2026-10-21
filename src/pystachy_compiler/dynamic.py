@@ -1529,6 +1529,16 @@ def gen_dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
     # read now as LOAD_ATTR reads it, which callv.<shape> calls although an argument assigns the
     # field anew
     h = self.dyn_call(self.dyn_dispatcher(f"has.{m}.{call_shape(args)}", [DYN], DYN, m), [o])
+    return self.dyn_method_found(o, m, args, h)
+
+
+def gen_dyn_method_found(self, o: Val, m: str, args: list[Node], h: Val) -> Val:
+    # o.m(args) for a dyn o whose lookup (has.<m>.<shape>) gave h: null for a method, which
+    # call.<m>.<shape> calls with the arguments, evaluated now, or a field's value, which
+    # callv.<shape> calls (the lookup comes first, also where a star's items are the arguments:
+    # star_call)
+    vs = [a.kids[0] if a.kind == "kw" else a for a in args]
+    call = self.dyn_dispatcher(f"call.{m}.{call_shape(args)}", [DYN] * (len(args) + 1), DYN, m)
     vals = [self.dyn_box(self.expr(a, DYN)) for a in vs]
     fld = self.label()
     meth = self.label()

@@ -72,6 +72,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_items_ahead as dynamic_dyn_items_ahead,
     gen_dyn_len as dynamic_dyn_len,
     gen_dyn_method as dynamic_dyn_method,
+    gen_dyn_method_found as dynamic_dyn_method_found,
     gen_dyn_mixed as dynamic_dyn_mixed,
     gen_dyn_narrow_type as dynamic_dyn_narrow_type,
     gen_dyn_narrowed as dynamic_dyn_narrowed,
@@ -1630,6 +1631,9 @@ class Gen:
 
     def dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
         return dynamic_dyn_method(self, o, m, args)
+
+    def dyn_method_found(self, o: Val, m: str, args: list[Node], h: Val) -> Val:
+        return dynamic_dyn_method_found(self, o, m, args, h)
 
     def dyn_format(self, v: Val, spec: Val) -> Val:
         return dynamic_dyn_format(self, v, spec)
