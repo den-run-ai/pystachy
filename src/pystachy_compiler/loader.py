@@ -815,10 +815,14 @@ class Loader:
                 # exception class (whose class object is a value already): an alias too, if nothing
                 # else binds name (#804). Its statement still reads m.C, as CPython's assignment
                 # does, which raises where m's code has not bound C yet (a circular import: Gen's
-                # "ready")
+                # "ready"). Not where m's C is an alias and m imports this module, itself or through
+                # others: m binds C where its statement runs, which may come after that import, and
+                # "ready" checks only the class
                 nm = st.kids[0].s
                 t = self.attr_mod(st.kids[1].kids[0])
                 k = self.mods[t].kinds.get(st.kids[1].s, "") if t != "" and st.kids[1].s not in self.mods[t].amb else ""
+                if k.startswith("a:") and self.imports_mod(self.mods[t].body, m.name, {}, True):
+                    k = ""
                 q = k[2:] if k.startswith("a:") and self.class_alias(k) else self.mods[t].q + st.kids[1].s if k == "c" else ""
                 if q != "" and self.plain_class(q, 0) and m.kinds.get(nm, "") == "v" and count.get(nm, 0) == 1 and nm not in m.fnglobal:
                     m.kinds[nm] = "a:" + q
