@@ -94,6 +94,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 Python tooling dependency maintenance (#668), **partial** | `f4b93961`; packaging/dependency configuration after #825 | The new packaging manifest preserves all three pins, the Dependabot pip block has the intended monthly/grouped scope, and the merged tree passes `make check-fast`, actionlint and four workflow-limit tests. The implementation head's 32 workflow jobs, including package smoke, pass. No dependency version or compatibility surface changes. [Evidence](compatibility-2026-10-21-python-tooling-dependencies-partial.json). |
 | 2026-10-21 dynamic `Any` container layouts (#821), **partial with blocker** | `18584979`; compiler/tests/docs after #668 | Four retained programs newly emit hosted IR and all seven new CPython recordings match, but fresh typed consumers of `dict[str, Any].keys()` and `.items()` regress from accepted on #668 to layout-mismatch rejections. The pinned import sweep is byte-identical at 148/460. Native local evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-any-layout-partial.json). |
 | 2026-10-21 compiler-state contracts (#818), bounded tooling evaluation complete | `d7e331dd`; research/tooling/tests after #821 | The structural contract and 31/31 mechanism tests pass. The real nested-boundary probe reproduces all eight known entry leaks and caller-restoration changes at depths 1–3; strict mode therefore exits 1 by design. Main accepts the new one-read `None` control that #824 rejects. No production or import surface changed, and no compatibility gain is claimed. [Evidence](compatibility-2026-10-21-compiler-state-contracts.json). |
+| 2026-10-21 dynamic `Any` dictionary views (#829), **partial** | `bd0eb909`; compiler/tests after #818 | The 75-program dynamic-`Any` corpus improves **73→75 hosted compilations** with no loss: direct typed consumers of `dict[str, Any].keys()` and `.items()` recover. Pinned imports remain 148/460. Saved-bound and unbound `dict.keys`/`values`/`items` spellings still reject; existing #777 and the acknowledged follow-up retain that gap. [Evidence](compatibility-2026-10-21-dynamic-views-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -6293,4 +6294,66 @@ hosted IR, but no fresh local native rebuild, JIT/AOT, GC stress, full
 `make verify`, upstream suite or CPython regrtest completed. Exact-final-tree CI
 supplies the native matrix externally. This bounded tooling evaluation does not
 advance the latest fully evaluated main, which remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #829: typed dynamic-`Any` dictionary views
+
+Inspected [main `bd0eb909eac0dd059570c307b49d2663425de1f2`](https://github.com/den-run-ai/pystachy/commit/bd0eb909eac0dd059570c307b49d2663425de1f2)
+after [#829](https://github.com/den-run-ai/pystachy/pull/829) merged at
+2026-10-21 20:03:44 UTC. Fresh first-parent history establishes it as the only
+merge after #818. Merged main has tree
+`4c40005e0a0562d5115da3b2321e44826fcd5922`; implementation head `4cea9e7c`
+has tree `c5a84de4b525a0199a066c8f02616b6110e8015d` because it was based on #821.
+Head workflows and fresh merged-tree checks are therefore kept distinct.
+
+#829 restores requested typed-list conversion for direct `keys()`, `values()`
+and `items()` calls on dynamic-layout dictionaries. `typed_list` also unboxes
+tuple members whose source entries are `Any`. Two compiler files and two new
+source/recording pairs change; runtime, libraries and ports do not.
+
+[Machine-readable evidence](compatibility-2026-10-21-dynamic-views-partial.json)
+retains exact revisions, trees, changed-file hashes, commands, import metadata,
+hosted results, external workflow jobs, attributed native evidence and limits.
+
+| Fresh merged-tree measurement | Result and boundary |
+|---|---|
+| Dynamic-`Any` hosted corpus | All **75/75** programs emit IR, up from **73/75** on #818. The two gains are `dynany_layout_keys_view.py` and `dynany_layout_items_view.py`; there are no losses. Of 73 common successes, **72 are byte-identical** and only the expected direct-`keys()` program changes. |
+| New references | Both new recordings match under available CPython **3.12.14**, with empty stderr. The PR separately records the same two matches under pinned CPython 3.13.16. |
+| Pinned isolated imports | The CPython **3.13.16** source inventory remains **148/460** included imports, with 62 overlay exclusions, 312 errors and no timeout. After checkout and inventory roots are normalized, #821 and #829 have no new/lost success and no first-error change. |
+| Fast hosted checks | `make check-fast` passes Ruff, mypy on **45/45** files, seven effect-summary and 84 typed-IR tests. All **53/53** verifier-tool tests, four workflow-limit tests, actionlint and `git diff --check` pass. |
+| Remaining alternate-call boundary | Direct `d.keys()`, `d.values()` and `d.items()` typed consumers compile. All six retained saved-bound-method and unbound `dict.keys/values/items(d)` forms still reject with dynamic-layout-to-typed-layout mismatches. |
+
+The two recovered programs are exactly the typed-view regressions discovered at
+#821: `list[str] = d.keys()` and `list[tuple[str, Any]] = d.items()` for
+`d: dict[str, Any]`. This is a real but bounded compatibility recovery, not an
+import-count or general package-compatibility gain.
+
+Codex's P2 review on #829 correctly identified that `gen_unbound_call` and saved
+bound methods do not forward the requested result type. The maintainer
+acknowledged the finding, merged the direct-call recovery, and reserved the
+alternate forms for follow-up branch
+`claude/festive-einstein-8ucfv8-keysfix2`. Fresh probes confirm that the same
+boundary covers `values()` as well as `keys()` and `items()`. Existing
+[#777](https://github.com/den-run-ai/pystachy/issues/777) remains the appropriate
+tracker; no duplicate issue was filed.
+
+The implementation head's external workflows all succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39651909784) has
+**27/27 successful jobs**, [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39651909825)
+has **3/3**, and [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39651909749)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39651909943)
+each have **1/1**. These 32 jobs cover head tree `c5a84de4`; they are not
+relabeled as exact merged-tree jobs. The PR additionally attributes compiler and
+runtime fixed points of 639,315 and 18,709 IR lines; four JIT/AOT plus four
+GC-stress passes for the two new cases; 224 passes across 117 selected cases;
+1,692 fast/recording/IR checks; and only three differences among 3,459 `irsame`
+inputs (the two new status gains plus the intended `dynany_layout_keys` change).
+Those are attributed head results, not fresh local native measurements.
+
+Pinned CPython 3.13.16 and LLVM 18 executables were unavailable locally. No
+fresh local native fixed-point build, JIT/AOT execution, GC stress, full
+`make verify`, port, package, upstream suite, CPython regrtest or performance
+and memory run completed. Hosted IR emission does not substitute for those
+checks. Because merged-tree native evaluation remains incomplete and the
+alternate call forms remain open, the latest fully evaluated main stays
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

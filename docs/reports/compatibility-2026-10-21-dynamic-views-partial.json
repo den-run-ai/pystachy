@@ -1,0 +1,172 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 dynamic Any dictionary views (partial)",
+  "event": {
+    "pull_request": 829,
+    "merge_sha": "bd0eb909eac0dd059570c307b49d2663425de1f2",
+    "source_sha": "bd0eb909eac0dd059570c307b49d2663425de1f2",
+    "source_tree": "4c40005e0a0562d5115da3b2321e44826fcd5922",
+    "implementation_head_sha": "4cea9e7c491c3d68d4fbee778ddfe67474d6605c",
+    "implementation_head_tree": "c5a84de4b525a0199a066c8f02616b6110e8015d",
+    "previous_source_sha": "d7e331dda7d896a244a345d66d00f3a7a8fc48fa",
+    "previous_source_tree": "009bcba6b8cc031aa177d88b4599851263a279de",
+    "merged_at_utc": "2026-10-21T20:03:44Z",
+    "first_parent_merges_since_previous": [829]
+  },
+  "changed_scope": {
+    "files": 6,
+    "compiler_files": 2,
+    "differential_programs": 2,
+    "differential_recordings": 2,
+    "runtime_library_ports_changed": false,
+    "summary": "convert direct dict[str, Any] keys(), values() and items() views to a requested typed list layout"
+  },
+  "changed_sha256": {
+    "src/pystachy_compiler/builtins.py": "2a8def88e3d00135b2a47615584c7fb2da037d2c60fa102b0d387d55de52fb2b",
+    "src/pystachy_compiler/calls.py": "34bede13e710504582dceea0b8f26ee736a26fb2d87a17fca957c9611a07ce80",
+    "tests/programs/inference/dynany_layout_items_view.out": "7eed4999b23f39ef528881b3b9dcae668b9f269362740eefb18dd1c0e9c74a0c",
+    "tests/programs/inference/dynany_layout_items_view.py": "16cdeac4005b9dbe84be69019dad57c26402104ebd7f94bf0532b382a4e8ce61",
+    "tests/programs/inference/dynany_layout_keys_view.out": "a2857cf0f6bfd77a825c99021e4d241458e0568610316f7fc9a045ff03059a1f",
+    "tests/programs/inference/dynany_layout_keys_view.py": "079a434ccd1d628cc474e8e7f8cccf66224f2be2a6dd691d49ef3f92916ea8e6"
+  },
+  "environment": {
+    "available_python": "CPython 3.12.14",
+    "pinned_cpython_inventory": "CPython 3.13.16 source Lib",
+    "pinned_cpython_inventory_revision": "cbc944f4bc59639a444dd971c737788ba2283a91",
+    "pinned_cpython_inventory_tag": "v3.13.16",
+    "mypy": "2.4.0 (compiled: yes)",
+    "actionlint": "1.7.12",
+    "llvm_18": "unavailable locally",
+    "pinned_cpython_3_13_16_executable": "unavailable locally"
+  },
+  "fresh_local_results": {
+    "recordings": {
+      "command": "python3 tests/programs/inference/dynany_layout_{keys,items}_view.py; require adjacent .out equality and empty stderr",
+      "python": "CPython 3.12.14",
+      "matched": 2,
+      "total": 2,
+      "stderr_bytes": 0,
+      "recording_sha256": {
+        "dynany_layout_keys_view.out": "a2857cf0f6bfd77a825c99021e4d241458e0568610316f7fc9a045ff03059a1f",
+        "dynany_layout_items_view.out": "7eed4999b23f39ef528881b3b9dcae668b9f269362740eefb18dd1c0e9c74a0c"
+      },
+      "pinned_attribution": "the PR reports the same two recordings matching under CPython 3.13.16; that is attributed, not a fresh local run"
+    },
+    "hosted_dynamic_any_corpus": {
+      "command": "for each tests/programs/inference/dynany_*.py, honor adjacent .path and emit IR with the previous and current compilers",
+      "programs": 75,
+      "previous_success": 73,
+      "current_success": 75,
+      "new_successes": [
+        "dynany_layout_keys_view.py",
+        "dynany_layout_items_view.py"
+      ],
+      "lost_successes": [],
+      "common_successes": 73,
+      "common_byte_identical_ir": 72,
+      "common_ir_deltas": ["dynany_layout_keys.py"],
+      "duration_seconds_shared_host": 23.878,
+      "boundary": "hosted compiler emission; emitted IR was not executed locally"
+    },
+    "pinned_import_sweep": {
+      "command": "PYSTACHY_HOME=<main> python3 tools/import_sweep.py -j 8 --metadata <meta.json> <current-wrapper> <cpython-v3.13.16-source>/Lib <result.json>",
+      "inventory_total": 522,
+      "overlay_exclusions": 62,
+      "included": 460,
+      "successful": 148,
+      "errors": 312,
+      "timeouts": 0,
+      "new_successes_vs_821": [],
+      "lost_successes_vs_821": [],
+      "normalized_first_error_changes_vs_821": 0,
+      "result_sha256": "bf002ad321a52fd1559293c7128d1fbb5ff17be251a7dbaa5668f3fce984937b",
+      "metadata_sha256": "6b3936bce04bfbd2806c8115bffe40cc0ef3d38f853e19c8b013c2e98c5ff742",
+      "duration_seconds": 49.185,
+      "normalization": "replace the old and current checkout roots and both CPython Lib roots before comparing diagnostics",
+      "scope": "isolated imports to hosted IR; not runtime or full module compatibility"
+    },
+    "fast_checks": {
+      "command": "PATH=<pinned-tool-venv>/bin:$PATH make check-fast",
+      "ruff": "all checks passed",
+      "mypy_files": 45,
+      "mypy_errors": 0,
+      "effect_summary_tests": {"passed": 7, "failed": 0},
+      "typed_ir_tests": {"passed": 84, "failed": 0}
+    },
+    "workflow_limits": {
+      "command": "python3 -m unittest discover -s tools -p test_workflow_limits.py",
+      "passed": 4,
+      "failed": 0
+    },
+    "verifier_tools": {
+      "command": "python3 -m unittest discover -s tools -p 'test_*verif*.py'",
+      "passed": 53,
+      "failed": 0
+    },
+    "workflow_lint": {
+      "command": "actionlint -pyflakes=",
+      "result": "pass"
+    },
+    "diff_check": {
+      "command": "git diff --check d7e331dda7d896a244a345d66d00f3a7a8fc48fa..bd0eb909eac0dd059570c307b49d2663425de1f2",
+      "result": "pass"
+    }
+  },
+  "remaining_alternate_call_gap": {
+    "direct_forms": {
+      "keys": "accepted",
+      "items": "accepted",
+      "values": "accepted"
+    },
+    "saved_bound_method_forms": {
+      "d.keys; f() to list[str]": "rejects: expected list[str], got list[Any]",
+      "d.items; f() to list[tuple[str, Any]]": "rejects: expected list[tuple[str,Any]], got list[tuple[Any,Any]]",
+      "d.values; f() to list[int]": "rejects: expected list[int], got list[Any]"
+    },
+    "unbound_forms": {
+      "dict.keys(d) to list[str]": "rejects: expected list[str], got list[Any]",
+      "dict.items(d) to list[tuple[str, Any]]": "rejects: expected list[tuple[str,Any]], got list[tuple[Any,Any]]",
+      "dict.values(d) to list[int]": "rejects: expected list[int], got list[Any]"
+    },
+    "review": "Codex P2 finding on PR #829; acknowledged as valid and deferred to a separate follow-up",
+    "reused_issue": 777,
+    "new_issue": null,
+    "implementation_follow_up_branch": "claude/festive-einstein-8ucfv8-keysfix2"
+  },
+  "implementation_head_workflows": [
+    {"name": "CI", "run_id": 39651909784, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39651909784", "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+    {"name": "Installation", "run_id": 39651909825, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39651909825", "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39651909749, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39651909749", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Packages", "run_id": 39651909943, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39651909943", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+  ],
+  "workflow_summary": {
+    "tree": "c5a84de4b525a0199a066c8f02616b6110e8015d",
+    "successful_jobs": 32,
+    "total_jobs": 32,
+    "failed_or_cancelled_jobs": 0,
+    "merged_tree_caveat": "workflows cover the implementation-head tree based on #821; fresh local hosted checks cover merged tree 4c40005e0a0562d5115da3b2321e44826fcd5922, which also contains #818"
+  },
+  "attributed_native_results": {
+    "fixed_point_ir_lines": {"compiler": 639315, "runtime": 18709},
+    "new_program_jit_aot_passes": 4,
+    "new_program_gc_stress_passes": 4,
+    "selected_cases": 117,
+    "selected_jit_aot_passes": 224,
+    "make_check_fast_and_recordings_and_ir_passes": 1692,
+    "irsame": {"programs": 3459, "differing": 3, "difference_scope": "two new status gains and dynany_layout_keys expected conversion"},
+    "scope": "PR-attributed implementation-head results and CI, not fresh local merged-tree native execution"
+  },
+  "compatibility_assessment": {
+    "measured_gain": "direct keys() and items() views from dict[str, Any] again convert to declared typed-list consumers; the two retained regressions from #821 recover",
+    "partial_boundary": "saved bound methods and unbound dict.keys/values/items calls do not receive the requested result type and still reject",
+    "imports": "unchanged 148/460 on the pinned CPython 3.13.16 source inventory and overlay",
+    "generalization_limit": "dictionary-view conversion does not establish general Python package, NumPy or PyPI compatibility"
+  },
+  "limitations": [
+    "Pinned CPython 3.13.16 and LLVM 18 executables were unavailable locally.",
+    "The implementation-head native and workflow evidence is not exact merged-tree evidence because #829's head was based on #821 while merged main also contains #818.",
+    "Hosted IR emission does not execute JIT/AOT code and cannot replace native or GC-stress validation.",
+    "No fresh local fixed-point native build, JIT/AOT execution, GC stress, full make verify, port, package, upstream-suite, CPython regrtest or performance/memory run completed."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

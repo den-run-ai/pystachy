@@ -649,6 +649,10 @@ def gen_open_(self, args: list[Node]) -> Val:
                                            f"i64 {vals['buffering']}"]), "file")
 
 def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsoft: bool = False) -> Val:
+    if (m == "keys" or m == "values" or m == "items") and len(args) == 0 and want != "" and is_dict(unopt(o.t)):
+        # (the new list of a dict's keys, values or items, which a typed list expected of it takes
+        # with its items unboxed where the dict holds boxes, as list(d) does: typed_list)
+        return self.typed_list(gen_method(self, o, m, args, "", resultsoft), want)
     if o.t == "fn[b:bytes]" and m == "maketrans":
         return self.bytes_method(o, m, args)  # (the static method, of the class)
     if o.t == "fn[b:bytes]" and m == "fromhex":

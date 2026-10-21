@@ -1553,16 +1553,25 @@ def gen_consume(self, n: Node, want: str, arg: IterArg | None = None, resultsoft
     return self.listcomp(mk("listcomp", "", n.line, [it, made_var("__item", n.line), n]), want, "", "", arg, resultsoft=resultsoft)
 
 def gen_typed_list(self, v: Val, want: str) -> Val:
-    # v, a new list of Any items that list() or sorted() made, where want is a list of typed items:
-    # a list of the items unboxed, as such a list's items are (dyn_unbox), so that list(d) of a
-    # dict[str, Any] is the list[str] a return annotation expects. Nothing else holds v yet, and
-    # CPython's list() makes a new list either way
+    # v, a new list of Any items that list() or sorted() made, or a dict's keys() or values(),
+    # where want is a list of typed items: a list of the items unboxed, as such a list's items are
+    # (dyn_unbox), so that list(d) or d.keys() of a dict[str, Any] is the list[str] a return
+    # annotation expects; and of tuples that hold Any items (a dict's items(), list() or sorted()
+    # of them), a list of the tuples of their items unboxed, the list[tuple[str, Any]] expected
+    # of d.items(). Nothing else holds v yet, and CPython's list() makes a new list either way
     w = unopt(want)
-    if not is_list(v.t) or elem(v.t) != "dyn" or not is_list(w) or elem(w) == "dyn" or "?" in w:
+    if not is_list(v.t) or not is_list(w) or elem(v.t) == elem(w) or "?" in w:
         return v
     line = self.line
-    item = mk("name", "__item", line, [])
-    return self.listcomp(mk("listcomp", "", line, [item, made_var("__item", line), self.vnode(v)]), w)
+    if elem(v.t) == "dyn":
+        item = mk("name", "__item", line, [])
+        return self.listcomp(mk("listcomp", "", line, [item, made_var("__item", line), self.vnode(v)]), w)
+    if is_tuple(elem(v.t)) and is_tuple(elem(w)) and len(targs(elem(v.t))) == len(targs(elem(w))) and "dyn" in targs(elem(v.t)):
+        names = ["__item" + str(i) for i in range(len(targs(elem(v.t))))]
+        target = mk("tuple", "", line, [made_var(x, line) for x in names])
+        target.made = True
+        return self.listcomp(mk("listcomp", "", line, [mk("tuple", "", line, [mk("name", x, line, []) for x in names]), target, self.vnode(v)]), w)
+    return v
 
 def gen_as_list(self, v: Val, name: str) -> Val:
     # sorted(d), max(t), ...: a dict's keys, or the items of a tuple (or NamedTuple) of one item
