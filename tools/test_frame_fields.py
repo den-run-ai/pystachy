@@ -190,9 +190,26 @@ def stores(d: ast.FunctionDef) -> list:
     return sorted(out, key=lambda s: s[1].lineno)
 
 
+def exits(d: ast.FunctionDef) -> list:
+    """the return and raise statements of def d, in the order of the source, outside the functions,
+    lambdas and classes it defines"""
+    out = []
+    todo = list(d.body)
+    while todo:
+        n = todo.pop()
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
+            continue
+        if isinstance(n, (ast.Return, ast.Raise)):
+            out.append(n)
+        todo.extend(ast.iter_child_nodes(n))
+    return sorted(out, key=lambda n: n.lineno)
+
+
 def unconditional(d: ast.FunctionDef, label: str, path: str, problems: list) -> None:
     """record each field that def d (list label, in path) assigns only inside a block (an if, a loop, a
-    try or a with), where the assignment may not run: it initializes or resets the field on no path"""
+    try or a with), where the assignment may not run: it initializes or resets the field on no path;
+    and each return or raise before its last assignment at the top level, after which the
+    assignments may not run either (#819's review)"""
     me = d.args.args[0].arg
     top = {attr(t, me) for st in d.body for t in targets(st)}
     seen: set = set()
@@ -201,6 +218,12 @@ def unconditional(d: ast.FunctionDef, label: str, path: str, problems: list) -> 
             seen.add(x)
             problems.append(f"{label} ({path}:{st.lineno}) assigns '{x}' only inside a block, which may not run: "
                             "assign it at the function's top level, where it runs on every path")
+    last = max([st.lineno for st in d.body if any(attr(t, me) != "" for t in targets(st))], default=0)
+    for e in exits(d):
+        if e.lineno < last:
+            problems.append(f"{label} ({path}:{e.lineno}) may {'return' if isinstance(e, ast.Return) else 'raise'} "
+                            f"before it assigns its fields (the last at line {last}), which then run on no path: "
+                            "assign them all first")
 
 
 def join(words: list) -> str:
@@ -253,6 +276,10 @@ def saved(d: ast.FunctionDef, params: list, pfields: dict, problems: list) -> di
         else:
             problems.append(f"{where}: `{ast.unparse(st)}` is not {fr or 'fr'}.X = {me}.X, the only copy "
                             "the check reads there")
+    if not returned:
+        # (without it, save() returns None, which restore() cannot restore: #819's review)
+        problems.append(f"gen_save ({EMISSION}:{d.lineno}) does not end with `return {fr or 'fr'}`: it returns its "
+                        "Frame after every copy")
     return out
 
 
@@ -509,6 +536,29 @@ class NegativeControlTests(unittest.TestCase):
         moved = text.replace("\n    return fr\n", "\n", 1).replace(frame + "\n", frame + "\n    return fr\n", 1)
         problems = check({**self.src, EMISSION: moved})
         self.assertTrue(any("follows `return fr`, so it never runs" in p for p in problems), report(problems))
+
+    def test_no_return_of_the_frame(self):
+        # (#819's review: with no `return fr`, save() returns None, and every copy is still there)
+        text = self.src[EMISSION]
+        self.assertEqual(text.count("\n    return fr\n"), 1)
+        problems = check({**self.src, EMISSION: text.replace("\n    return fr\n", "\n", 1)})
+        self.assertEqual(len(problems), 1, report(problems))
+        self.assertIn("does not end with `return fr`", problems[0])
+
+    def test_an_exit_before_the_assignments(self):
+        # (#819's review: a return before the first assignment skips them all on its path, although
+        # each is at the top level)
+        for label in ["Gen.__init__", "Frame.__init__", "gen_enter"]:
+            for code in ["return", "raise ValueError"]:
+                with self.subTest(label=label, code=code):
+                    path, d = parsed(self.src, label)
+                    me = d.args.args[0].arg
+                    st = next(s for s in statements(d) if any(attr(t, me) != "" for t in targets(s)))
+                    problems = check({**self.src, path: splice(self.src[path], st, ["if False:", "    " + code], True)})
+                    self.assertEqual(len(problems), 1, report(problems))
+                    self.assertTrue(problems[0].startswith(f"{label} ({path}:{st.lineno + 1}) may "
+                                                           f"{code.split()[0]} before it assigns its fields"),
+                                    problems[0])
 
     def test_a_field_only_gen_init_has(self):
         # (#819's review: the most complete omission, a function-scoped field that no Frame list holds)
