@@ -947,7 +947,7 @@ def gen_exc_object(self, c: str, args: list[Node]) -> Val:
     self.class_defaults(o)
     self.line = line
     if init is not None:
-        self.call_fn(init, [o] + vals, kws)
+        self.init_result(self.call_fn(init, [o] + vals, kws))
     return o
 
 def gen_class_defaults(self, o: Val) -> None:

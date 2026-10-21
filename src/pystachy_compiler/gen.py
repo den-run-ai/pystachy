@@ -302,6 +302,7 @@ from src.pystachy_compiler.calls import (
     gen_kw_type as calls_kw_type,
     gen_method as calls_method,
     gen_method_value as calls_method_value,
+    gen_init_result as calls_init_result,
     gen_new_obj as calls_new_obj,
     gen_not_callable as calls_not_callable,
     gen_obj_call as calls_obj_call,
@@ -3864,6 +3865,9 @@ class Gen:
 
     def new_obj(self, c: str) -> Val:
         return calls_new_obj(self, c)
+
+    def init_result(self, v: Val) -> None:
+        calls_init_result(self, v)
 
     def pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return calls_pcoerce(self, v, t, f, j)
