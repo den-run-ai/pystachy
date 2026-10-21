@@ -1036,6 +1036,10 @@ def gen_stmt(self, n: Node) -> None:
                 self.mstore('bool', 'false', f'@init.{x.s}.guard')
             else:
                 self.add(Ins("init", "", x.s))
+    elif k == "ready":
+        # name = m.C, an alias of class m.C (Loader.late_aliases): its read of m.C, as CPython's
+        # assignment does, which raises AttributeError where m's code has not bound C yet
+        self.class_ready(n.kids[-1])
     elif k == "bound":
         # an import has bound these names, which an import in a try statement may leave unbound
         self.modchk(n)  # a from-import must read an existing source-module attribute first

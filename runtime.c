@@ -1708,6 +1708,8 @@ I pys_dyn_eq(Dyn *a, Dyn *b);
 I pys_dyn_cmp(Dyn *a, Dyn *b, I op);
 I pys_dyn_hash(Dyn *x);
 static int dyn_eqitem(Dyn *a, Dyn *b);
+static int dyn_keyeq(Dyn *a, Dyn *b);
+static uint64_t hdyn(Dyn *x);
 DynIter *pys_dyn_iter(Dyn *o);
 Dyn *pys_dyn_next(DynIter *it);
 static I ocls(const char *d) {   /* three digits, then those of an id of 1000 or more */
@@ -2793,9 +2795,13 @@ List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic 
    each step mixes five more of its bits in (perturb), so keys whose hashes share their low
    bits part after a few steps instead of piling up in one cluster. Unlike a linear probe's,
    its second slot is in another cache line, which tables larger than the cache pay for.
-   tools/dictprobe.c counts the slots that lookups visit (DICT_PROBE). */
+   tools/dictprobe.c counts the slots that lookups visit (DICT_PROBE), and the keys that dkeyeq
+   compares (DICT_KEYEQ). */
 #ifndef DICT_PROBE
 #define DICT_PROBE()
+#endif
+#ifndef DICT_KEYEQ
+#define DICT_KEYEQ()
 #endif
 I pys_hash_str(Str *s);                  /* the hash functions are in runtime.py */
 I pys_hash_int(I k);
@@ -2839,7 +2845,10 @@ static uint64_t hval(I k, const char *d) {
 /* CPython's hash of a key whose descriptor d holds an H<id>; a call of its own, which keeps hsh as
    small as the lookups of int and str keys need */
 __attribute__((noinline)) static uint64_t hcls(I k, const char *d) { return (uint64_t)hitem(k, d); }
-static uint64_t hkey(I k, const char *d) { uint64_t h = hval(k, d); return h ? h : hcls(k, d); }   /* a tuple or object key's */
+static uint64_t hkey(I k, const char *d) {   /* a tuple or object key's, or an Any key's (hdyn) */
+  if (*d == 'A' && !d[1]) return hdyn((Dyn *)k);
+  uint64_t h = hval(k, d); return h ? h : hcls(k, d);
+}
 static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? h : 1; }   /* an int key's: 0 marks a hole */
 static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple or object key's descriptor */
   return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? hkey(k, kdesc(d->kind)) : hint1(k);
@@ -2871,6 +2880,7 @@ static I *keymem(I kind, I n) {      /* the key array of a dict or set of this k
    or that entry, after which CPython's lookdict starts again. Out of dfind's loop, which compares
    tuples of ints, bools and strs in place (keq's pure), and keeps the lookup's state in registers */
 __attribute__((noinline)) static int dkeyeq(Dict *d, I e, I x, I k) {
+  DICT_KEYEQ();
   int32_t *ix = d->idx; int eq = keyeq(x, k, kdesc(d->kind));
   return d->idx != ix || d->keys[e] != x ? -1 : eq;
 }
@@ -2879,9 +2889,10 @@ static I dempty(Dict *d, uint64_t h);
 /* the probes for key k, whose hash is h, over idx's m + 1 slots: k's idx slot or -1, and *free
    where to insert it (the first hole or empty slot they met; after an __eq__, which may have
    filled that hole, the one dempty finds then, as CPython's insertdict takes find_empty_slot's);
-   objs: d's keys may be tuples or objects (kind > 1, compared by keq or dkeyeq), else they are
-   ints or strs; 2: they are hashed by CPython's hash (KTAG), so a key is found as itself before
-   its hash is compared, as compare_generic does, whatever the hash its __hash__ gives now */
+   objs: d's keys may be tuples or objects (kind > 1, compared by keq or dkeyeq, an Any key's by
+   dyn_keyeq first), else they are ints or strs; 2: they are hashed by CPython's hash (KTAG), so a
+   key is found as itself before its hash is compared, as compare_generic does, whatever the hash
+   its __hash__ gives now */
 static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I *free, uint64_t m, int objs) {
   I f = -1; int ran = 0;
   for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
@@ -2895,7 +2906,7 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
       if (x == k || (d->kind == 1 && pys_str_eq((Str *)x, (Str *)k))) return i;
       if (objs && d->kind > 1) {
         const char *s = kdesc(d->kind);
-        int eq = *s == 'T' ? keq(x, k, s, 1) : 2;
+        int eq = *s == 'T' ? keq(x, k, s, 1) : *s == 'A' && !s[1] ? dyn_keyeq((Dyn *)x, (Dyn *)k) : 2;
         if (eq == 2) { eq = dkeyeq(d, e - 1, x, k); ran = 1; }
         if (eq < 0) return dfind(d, k, h, free);
         if (eq) return i;
@@ -3344,6 +3355,14 @@ I pys_dyn_ne(Dyn *a, Dyn *b) {
 /* the items of a container: identity first, as CPython's PyObject_RichCompareBool (a float box
    is a float object here, so a NaN equals itself in a list) */
 static int dyn_eqitem(Dyn *a, Dyn *b) { return a == b || (DKIND(a) != DK_FLOAT && a->t == b->t && a->v == b->v) || pys_dyn_eq(a, b); }
+/* two keys of an Any-keyed dict whose comparison runs no code (dlook, #780): 1 or 0 for boxes of
+   one type that compares by payload, a str by its bytes and an int or a bool by its value; else 2,
+   for dkeyeq to compare as dyn_eqitem does (1, 1.0 and True are one key; a NaN; objects) */
+static int dyn_keyeq(Dyn *a, Dyn *b) {
+  if (a->t != b->t) return 2;
+  int k = DKIND(a);
+  return k == DK_STR ? a->v == b->v || pys_str_eq((Str *)a->v, (Str *)b->v) : k == DK_INT || k == DK_BOOL ? a->v == b->v : 2;
+}
 static _Noreturn void dyn_noorder(Dyn *a, Dyn *b, I op) {
   failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", DNAME(a), DNAME(b));
 }
@@ -3368,6 +3387,8 @@ I pys_dyn_cmp(Dyn *a, Dyn *b, I op) {   /* a OP b, op 0..3: < <= > >= */
   if (ka != kb || (ka != DK_STR && ka != DK_LIST && ka != DK_TUPLE)) dyn_noorder(a, b, op);
   return opv(a->v, b->v, a->t->desc->s, op);
 }
+/* an Any key's hash (hkey): a str's cached one in one call, else pys_dyn_hash's, which is the same */
+static uint64_t hdyn(Dyn *x) { return (uint64_t)(DKIND(x) == DK_STR ? hstr((Str *)x->v) : pys_dyn_hash(x)); }
 I pys_dyn_hash(Dyn *x) {
   switch (DKIND(x)) {
   case DK_NONE: return NONE_HASH;
