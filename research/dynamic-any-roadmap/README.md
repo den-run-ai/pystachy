@@ -73,16 +73,16 @@ and the descriptor walks of containers.
 
 **Measured costs** (method under [Reproduce](#reproduce)):
 
-| # | Measurement | Result |
-|---|---|---|
-| M1 | Instructions per `obj.f0` read through `Any` (the sum it feeds allocates a box each time), receiver of the last class in the chain | 106 with 2 boxed classes, 155 with 16, **493 with 128**: about 3 more per class ahead of it in the chain |
-| M2 | Dispatcher IR, 64 classes × 32 shared field names | 34 dispatchers, **29,240 of the program's 53,179 IR lines** (about 14 per class and attribute). At 32 × 32 they are 14,904 of 27,035 lines: the other 12,131 alone stay under `PYSTACHY_JIT_INLINE`'s 20,000, so the dispatchers make `run` skip inlining for the whole program ([driver.py#L741-L751][inline]) |
-| M3 | Heap slot of a box | 24 bytes for 16 of payload, for `Any` boxes and closed-union boxes (`pys_ubox`) alike: the collector adds one byte of slack to every request ([runtime.c#L193][cls], [#L396-L402][alloc]) |
-| M4 | Compile time with K comparison methods whose body does not compile for an `Any` operand (300 other functions; `pystachy ir`, best of 5) | K = 0, 1, 4, 16: **65, 104, 234, 824 ms**; each declined method costs one more whole-program pass ([driver.py#L71-L103][passes]) |
-| M5 | `x.m(f(i))` through `Any` | two class dispatches, `dyn.has.m.1` then `dyn.call.m.1` (or `dyn.callv.1` for a field), per call ([dynamic.py#L1448-L1479][method]) |
-| M6 | `a: Any = 1000`, `b: Any = int("1000")`, `print(a is b, id(a) == id(b))` | Pystachy `True False` in JIT and AOT; CPython `False False`. `is` compares ints by value ([dynamic.py#L936-L952][ident]) while `id()` gives the box's address ([runtime.c#L3659][id]) |
-| M7 | Seeded differential fuzz, 3 × 150 expressions over 37 values, 21 binary operators and 11 unary operators and builtins, JIT | one undocumented mismatch class: a `**` `TypeError` says `for **:` where CPython says `for ** or pow():` ([runtime.c#L3385-L3388][dops]); the rest are documented (`%` of an `Any` str, 64-bit overflow) or not comparable (str hashes, which CPython randomizes) |
-| M8 | In-place operators on `Any` values that do not support them (`probes/opmsg.py`), JIT and AOT | every one names the binary operator: `for +:` where CPython says `for +=:`, `for **:` for `**=`. `pys_dyn_inplace` falls back to `pys_dyn_binop`, whose message knows only the binary symbol ([runtime.c#L3454-L3470][inplace]) |
+| # | Measurement | Result | Issue |
+|---|---|---|---|
+| M1 | Instructions per `obj.f0` read through `Any` (the sum it feeds allocates a box each time), receiver of the last class in the chain | 106 with 2 boxed classes, 155 with 16, **493 with 128**: about 3 more per class ahead of it in the chain | #799 |
+| M2 | Dispatcher IR, 64 classes × 32 shared field names | 34 dispatchers, **29,240 of the program's 53,179 IR lines** (about 14 per class and attribute). At 32 × 32 they are 14,904 of 27,035 lines: the other 12,131 alone stay under `PYSTACHY_JIT_INLINE`'s 20,000, so the dispatchers make `run` skip inlining for the whole program ([driver.py#L741-L751][inline]) | #799 |
+| M3 | Heap slot of a box | 24 bytes for 16 of payload, for `Any` boxes and closed-union boxes (`pys_ubox`) alike: the collector adds one byte of slack to every request ([runtime.c#L193][cls], [#L396-L402][alloc]) | #800 |
+| M4 | Compile time with K comparison methods whose body does not compile for an `Any` operand (300 other functions; `pystachy ir`, best of 5) | K = 0, 1, 4, 16: **65, 104, 234, 824 ms**; each declined method costs one more whole-program pass ([driver.py#L71-L103][passes]) | #801 |
+| M5 | `x.m(f(i))` through `Any` | two class dispatches, `dyn.has.m.1` then `dyn.call.m.1` (or `dyn.callv.1` for a field), per call ([dynamic.py#L1448-L1479][method]) | #799 |
+| M6 | `a: Any = 1000`, `b: Any = int("1000")`, `print(a is b, id(a) == id(b))` | Pystachy `True False` in JIT and AOT; CPython `False False`. `is` compares ints by value ([dynamic.py#L936-L952][ident]) while `id()` gives the box's address ([runtime.c#L3659][id]) | #797 |
+| M7 | Seeded differential fuzz, 3 × 150 expressions over 37 values, 21 binary operators and 11 unary operators and builtins, JIT | one undocumented mismatch class: a `**` `TypeError` says `for **:` where CPython says `for ** or pow():` ([runtime.c#L3385-L3388][dops]); the rest are documented (`%` of an `Any` str, 64-bit overflow) or not comparable (str hashes, which CPython randomizes) | #798 |
+| M8 | In-place operators on `Any` values that do not support them (`probes/opmsg.py`), JIT and AOT | every one names the binary operator: `for +:` where CPython says `for +=:`, `for **:` for `**=`. `pys_dyn_inplace` falls back to `pys_dyn_binop`, whose message knows only the binary symbol ([runtime.c#L3454-L3470][inplace]) | #798 |
 
 From #780 and #784 (compiler `ad19255e`): on 100,000 mixed JSONL events, AOT processing takes 1.6×
 CPython's time; about half of its instructions are `Any`-keyed dict lookups and hashing, a quarter
@@ -148,7 +148,7 @@ Where this proposal departs from the general advice in the research it builds on
 
 ### A. Robustness: make the semantics hard to break
 
-**A1. A conformance harness for `Any`.**
+**A1. A conformance harness for `Any`** (#802).
 - A seeded differential fuzzer (`make dyn-fuzz`, as `make re-fuzz` is for `lib/re`) over a value
   pool (int boundaries, `-0.0`, NaN, inf, bool, None, str, list, dict, tuple, objects whose
   dunders are defined, missing, reflected, inherited, or mutate the container mid-operation, #554)
@@ -166,7 +166,7 @@ Where this proposal departs from the general advice in the research it builds on
 Gate: the fuzzer is a `make verify` group with a fixed seed budget, as `re-fuzz` is; the sweep's
 exception list only shrinks.
 
-**A2. One definition per operation: slots in the `DynType`.** Give each boxed class's `DynType`
+**A2. One definition per operation: slots in the `DynType`** (#803). Give each boxed class's `DynType`
 a constant slot table (CPython's `tp_*`, Go's itab, #488's tables): `eq`, `ne`, `cmp`, `hash`,
 `repr`, `str`, `format`, `truth`, `len`, `iter`, `next`, `getitem`, `setitem`, `delitem`,
 `contains`, `call`, each a boxed entry compiled once per class, or null for "not defined".
@@ -206,7 +206,7 @@ heap cell keeps its precise type and dynamic writes are checked against it. In o
    `isinstance(x, list)` proves a list, not `list[Any]`'s layout: narrowing to `list[Any]` must
    test the `DynType` itself, and other layouts stay on the generic path.
 
-**A5. Compile time that stays linear.**
+**A5. Compile time that stays linear** (declined methods: #801).
 - Find the comparison methods whose bodies do not compile for an `Any` operand in one pass, not
   one whole-program pass each (M4). After the first such failure the pass's output is discarded
   anyway, so it can catch the error at the `@o.x.<class>` helper, record the method, restore the
@@ -217,7 +217,7 @@ heap cell keeps its precise type and dynamic writes are checked against it. In o
   only the dispatchers whose class set changed.
 - The superlinear residue of #781 that #790 records (a 199-deep dict display: 442 ms).
 
-**A6. One identity rule for numbers.** `is` compares ints by value while `id()` gives the box's
+**A6. One identity rule for numbers** (#797). `is` compares ints by value while `id()` gives the box's
 address (M6). Choose one rule under which `a is b` holds exactly when `id(a) == id(b)`, and
 document it. One that fits B4: value identity for ints in the 63-bit range, whose `id()` is the odd
 number `2v + 1` (the tagged word itself, which no aligned address equals), and box identity for
@@ -227,7 +227,7 @@ for it to be settled first.
 
 ### B. The data path: the measured three quarters
 
-**B1. Boxes in exact 16-byte slots.** Allocate boxes from a 16-byte size class without the slack
+**B1. Boxes in exact 16-byte slots** (#800). Allocate boxes from a 16-byte size class without the slack
 byte (a `pys_alloc_box`). The slack byte keeps an object alive through a pointer one past its end,
 which loops over arrays form; a box is immutable and read only at offsets 0 and 8, so no code forms
 one. The same holds for closed-union boxes (`pys_ubox`, 16 bytes of `{tag, payload}`).
@@ -299,10 +299,12 @@ pointer comparisons with one `switch` on it, which LLVM can lower to a jump tabl
 | 128 | 493 | 108 |
 
 (instructions per field read; the probes' outputs are identical). Arms are exact-type tests, so
-their order never mattered and the change is semantics-preserving. Gate: the dispatchers' IR tests
-and `dynany_*` cases, JIT and AOT.
+their order never mattered and the change is semantics-preserving. Built natively in its own
+worktree from `cb512cf3` plus the patch, the prototype reached the compiler and runtime fixed
+points, and the 74 `dynany_*` and `tomllib` cases passed (138 checks, JIT and AOT, 0 failed), as on
+main. Gate: the dispatchers' IR tests and `dynany_*` cases, JIT and AOT (#799).
 
-**C2. Fields through tables.** For `get.<a>`/`set.<a>`, look up the receiver's class id in a
+**C2. Fields through tables** (#799). For `get.<a>`/`set.<a>`, look up the receiver's class id in a
 per-selector table of field entries (byte offset, assigned-flag offset, descriptor), taken from
 the reflection records' field tables ([internals.md#reflection][refl]), then load and box by the
 descriptor (`dyn_of` already boxes a slot by its descriptor, [runtime.c#L3560-L3576][dynof]; it
@@ -344,18 +346,18 @@ measurements call for one.
 
 ## 5. Order of work
 
-Each step stands alone and has its own gate; numbers name existing issues.
+Each step stands alone and has its own gate. #797 to #803 were filed from this record; the other numbers are existing issues.
 
 | Step | Items | Why now | Issues |
 |---|---|---|---|
-| 1 | A1 fuzzer, metamorphic oracle, invariants, opt-in sweep check | finds silent wrong results before users do; M6 to M8 came from probes | #782, #772 |
-| 2 | B1 exact box slots; M7's and M8's messages; A6 identity rule | small, measured, independent | new |
+| 1 | A1 fuzzer, metamorphic oracle, invariants, opt-in sweep check | finds silent wrong results before users do; M6 to M8 came from probes | #802, #782 |
+| 2 | B1 exact box slots; M7's and M8's messages; A6 identity rule | small, measured, independent | #800, #798, #797 |
 | 3 | B2 `Any`-keyed dict fast paths and literal boxes | half of a dynamic-heavy workload | #780 |
-| 4 | C1 `switch` dispatch; A5 single restart for declined methods | mechanical; removes O(classes) and O(declines) costs | new |
+| 4 | C1 `switch` dispatch; A5 single restart for declined methods | mechanical; removes O(classes) and O(declines) costs | #799, #801 |
 | 5 | A4 container crossings (allocation-site selection first) | the first failure users of `tomllib`-style code meet | #777, #487 |
-| 6 | A2 slots, then A3 boxed calling convention | one definition per operation; keywords and builtins as values | #108, #774 |
+| 6 | A2 slots, then A3 boxed calling convention | one definition per operation; keywords and builtins as values | #803, #108, #774 |
 | 7 | B3 split `dyn` locals | numeric accumulators and counters | #780, #742 |
-| 8 | C2 field tables, C4 type flow | code size and unboxed results at scale | #488, #489 |
+| 8 | C2 field tables, C4 type flow | code size and unboxed results at scale | #799, #488, #489 |
 | 9 | B4 tagging, B5 strategies, C3 global table, D1, D2 | only if the measurements after steps 1-8 still point there | #392 |
 
 ## 6. Risks and non-goals
