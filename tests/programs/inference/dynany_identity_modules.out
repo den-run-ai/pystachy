@@ -1,0 +1,7 @@
+mods: init mods
+mods.shapes: init mods.shapes
+one module: True False True
+two modules: False True False
+two modules' functions: False True False
+main and a module: False True False
+[exit 0]

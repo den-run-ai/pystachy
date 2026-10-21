@@ -241,10 +241,11 @@ def gen_dyn_box(self, v: Val) -> Val:
     if t == "bool":
         return Val(self.select(v.v, Val(self.rtdata("pys_dyn_true_box"), DYN), Val(self.rtdata("pys_dyn_false_box"), DYN)), DYN)
     if t == "int" and v.lit and (int(v.v) < -5 or int(v.v) > 256):
-        # an int literal's box is a constant, one per value, as a module's equal constants are one
-        # object in CPython: a is b where both hold 1000, which identity tells apart (dyn_identity).
-        # Not a value only the compiler knows (struct.calcsize("300x")), which CPython computes
-        g = "@dbi." + v.v.replace("-", "m")
+        # an int literal's box is a constant, one per value in each module (its functions' code
+        # included), as a module's equal constants are one object in CPython, and another module's
+        # another: a is b where both hold 1000, which identity tells apart (dyn_identity). Not a
+        # value only the compiler knows (struct.calcsize("300x")), which CPython computes
+        g = "@dbi." + self.curfn.mod + "$" + v.v.replace("-", "m")
         if g not in self.dynboxes:
             self.dynboxes[g] = True
             d = Data("dynint", g)

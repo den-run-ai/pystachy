@@ -107,7 +107,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   an alias a second layout.
 - **`None` is the constant box `pys_dyn_none_box`, never null.** Null is an unbound variable's
   slot, and the existing "is assigned" flags still tell unbound reads apart. `True`, `False`,
-  the ints from -5 to 256 and the program's int literals are constant boxes too, one per value.
+  the ints from -5 to 256 and the program's int literals are constant boxes too, one per value
+  (a literal's in each module).
   Other numbers' boxes are atomic
   allocations, which the collector does not scan; a reference's box is a scanned allocation,
   so the box keeps its payload alive. DynTypes are constants outside the heap. Dynamic locals,
@@ -127,11 +128,12 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
 - **Identity**: two `Any` values are one object, for `is`, exactly where their `id()`s are equal
   (#797). `None`, a bool and a reference are their payload's object. An int, a float and a
   bound method are their box, as an int or float object is in CPython. An int from -5 to 256
-  and an int literal have one constant box per value, as CPython caches the former and makes
-  equal constants one object; an int computed at run time gets a new box, as
-  `int("1000") is int("1000")` is `False` in CPython
-  (`tests/programs/inference/dynany_identity.py`). Where typed code's numbers cross into `Any`,
-  see the [deviations](#deviations).
+  has one constant box per value, and an int literal one per value in each module, its
+  functions included, as CPython caches the former and makes a module's equal constants one
+  object, and another module's another; an int computed at run time gets a new box, as
+  `int("1000") is int("1000")` is `False` in CPython (`tests/programs/inference/dynany_identity.py`
+  and `dynany_identity_modules.py`). Where typed code's numbers cross into `Any`, see the
+  [deviations](#deviations).
 
 Two typed IR operations read a box: `dyn.type` its DynType pointer and `dyn.payload` its
 payload, declaring the type a test proved it holds. Neither has a memory effect: a box never
