@@ -211,6 +211,7 @@ class Loader:
         self.optry = False  # (in the body of one whose clauses may catch ImportError: not an optional import)
         self.fragile: dict[str, str] = {}
         self.solid: dict[str, bool] = {}
+        self.first_import: dict[str, bool] = {}  # first local import site's need for a binding flag
         # the submodules that imports in try statements run, which their package has as an attribute
         # only once an import of them has run to its end (Gen.modchk), and the reads through such an
         # attribute that qmod() found in the expression being qualified (Node.mchk)
@@ -354,6 +355,16 @@ class Loader:
                 made = self.late_aliases(x) or made
             more = self.late_takes(False) or made
         self.late_takes(True)
+        for i in range(len(self.vtaken)):
+            n = self.vtaken[i]
+            if n.kids[2].kind == "bound" and not n.kids[4].s.startswith("@"):
+                # Alias discovery may visit imports out of order. The first lexical binding
+                # determines whether every successful import must set a local flag.
+                key = f"{self.vtakem[i].name} {n.kids[4].s} {n.s}"
+                if self.first_import[key]:
+                    self.fragile[key] = n.s
+                else:
+                    self.fragile.pop(key, "")
         for x in self.order if not self.rtmode else []:
             for nm in x.kinds:
                 if x.kinds[nm].startswith("a:") and x.name + " " + nm in self.aliased:
@@ -2358,6 +2369,10 @@ class Loader:
         # once the code of its own modules has run (the uimport is split there), in a from-import
         # once that of all of them has, in the order of its names, among the copies
         line = st.line
+        for a in st.kids if infn else []:
+            key = f"{m.name} {self.curdef} {a.s}"
+            if key not in self.first_import:
+                self.first_import[key] = self.intry > 0 or a.s in self.checked.get(self.curdef, {})
         keep = mk("import", st.s, line, [])
         inits = mk("uimport", "", line, [])
         copies: list[Node] = []
@@ -2540,7 +2555,8 @@ class Loader:
             self.solid[key] = True
         elif key not in self.solid:
             self.fragile[key] = name if infn else m.q + name
-        return self.fragile.get(key, "")
+        # Retain local import sites until late_takes has restored their lexical flag decision.
+        return "?" + self.curdef + " " + name if infn else self.fragile.get(key, "")
 
     def chain(self, path: str, inits: Node) -> None:
         # the modules import path initializes: a, a.b, a.b.c
@@ -3020,10 +3036,13 @@ class Loader:
                 st.s = m.q + nm
                 st.mchk = v.mchk if k != "ready" else ""
                 st.kids = [mk("ready", "", st.line, [v])] if k == "ready" else []
-            elif k == "bound" and st.mchk.startswith("?"):
-                source = st.mchk[1:].split(" ")
-                key = source[0] + "  " + source[1]
-                st.mchk = f"{self.fragile[key]} {source[1]} I" if key in self.fragile else ""
+            elif k == "bound":
+                if st.s.startswith("?"):
+                    st.s = self.fragile.get(m.name + " " + st.s[1:], "")
+                if st.mchk.startswith("?"):
+                    source = st.mchk[1:].split(" ")
+                    key = source[0] + "  " + source[1]
+                    st.mchk = f"{self.fragile[key]} {source[1]} I" if key in self.fragile else ""
             elif k == "def":
                 if not cls:
                     st.s = self.qname(m, st.s, loc)
