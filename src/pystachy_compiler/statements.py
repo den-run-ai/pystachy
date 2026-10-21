@@ -632,6 +632,9 @@ def gen_stmt(self, n: Node) -> None:
                 self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
                 self.store_name(t0.s, v, True)
             else:
+                if len(n.kids) > 2 and (v.t == "int" or v.t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit and self.dyn_policy(n.line):
+                    # (x = y = f(): one object, whose box each target's binding holds: dyn_id_store)
+                    v.idfrom = self.dyn_box(v).v
                 for i in range(len(n.kids) - 1):
                     tgt = n.kids[i]
                     self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))

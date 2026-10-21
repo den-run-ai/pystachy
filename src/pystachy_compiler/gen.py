@@ -1155,10 +1155,11 @@ class Gen:
         # object (dyn_box, #797)
         self.idbox: dict[str, str] = {}
         self.gidbox: dict[str, str] = {}
-        # the number of stores into each such slot (a new binding) that the compiler has emitted:
-        # a value read before one crosses with the box its slot held at the read (dyn_id_held). It
-        # only grows, and no save, restore or speculative compilation (dry) undoes it: what they
-        # emit can only make a read's count stale, which takes the read-time box
+        # the number of stores into each such slot (a new binding) that the compiler has emitted in
+        # the function being compiled: a value read before one crosses with the box its slot held
+        # at the read (dyn_id_held). It only grows there, and speculative compilation (dry) does not
+        # undo it; Frame keeps a function's counts while it compiles another, whose slots' names
+        # may repeat its own (#807)
         self.idstores: dict[str, int] = {}
         # the flags of the names that imports in try statements bind (imp_flag): module code's
         # globals defined so far, and the function's own, each name's slot or cell

@@ -66,6 +66,7 @@ def gen_save(self) -> Frame:
     fr.appends = self.appends
     fr.owned = self.owned
     fr.idbox = self.idbox
+    fr.idstores = self.idstores
     fr.cells = self.cells
     fr.nlw = self.nlw
     fr.nonevars = self.nonevars
@@ -110,6 +111,7 @@ def gen_restore(self, fr: Frame) -> None:
     self.appends = fr.appends
     self.owned = fr.owned
     self.idbox = fr.idbox
+    self.idstores = fr.idstores
     self.cells = fr.cells
     self.nlw = fr.nlw
     self.nonevars = fr.nonevars

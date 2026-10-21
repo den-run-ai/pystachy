@@ -429,6 +429,7 @@ class Frame:
         self.appends: dict[str, bool] = {}
         self.owned: dict[str, str] = {}
         self.idbox: dict[str, str] = {}
+        self.idstores: dict[str, int] = {}
         self.cells: dict[str, str] = {}
         self.nlw: dict[str, bool] = {}
         self.nonevars: dict[str, int] = {}
