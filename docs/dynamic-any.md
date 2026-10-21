@@ -116,7 +116,9 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   hashed by CPython's numeric hash so that `1`, `1.0` and `True` are one key) and tuples of
   boxes (`VA`). Descriptor `A` is a box in a slot: runtime.c's generic `repr`, `==`, ordering,
   hashing, sorting, searching and `KeyError` messages follow it through the box's own DynType,
-  so every existing list and dict operation works on containers of `Any` values. `Z` is a
+  so every existing list and dict operation works on containers of `Any` values. A dict with
+  `Any` keys compares two boxed strs by their bytes, and two boxed ints or bools by value,
+  without that generic path, and hashes a boxed str in one call (#780). `Z` is a
   boxed function, which prints as `<function>` and equals a box of the same function with the
   same object (a bound method's) or env (a closure's), as CPython's methods compare. A bound
   method's box is its own identity for `is` and `id()`, as each evaluation of `o.m` makes a new

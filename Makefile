@@ -268,6 +268,14 @@ RE_FUZZ ?=
 re-fuzz:
 	$(PY) tools/re_fuzz.py $(RE_FUZZ)
 
+# dynamic Any: seeded programs that apply operators, comparisons and builtins to Any values must
+# print what CPython prints, but for the documented deviations, and keep its identity and
+# containment invariants (tools/dynany_fuzz.py, #802; deterministic: 3 programs of 150 cases, JIT;
+# e.g. make dynany-fuzz DYNANY_FUZZ="--aot 10 300")
+DYNANY_FUZZ ?=
+dynany-fuzz: pystachy
+	$(PY) tools/dynany_fuzz.py $(DYNANY_FUZZ)
+
 # lib/re, run by CPython, must enter its matcher and make contexts no more often than fixed limits
 # allow for textwrap's patterns, with CPython's results (tools/re_probe.py: deterministic counts);
 # RE_PROBE="--time ./pystachy" also times tools/re_bench.py compiled and under CPython
@@ -304,4 +312,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz re-probe re-specialize-check lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz re-probe re-specialize-check lint clean install uninstall test-install
