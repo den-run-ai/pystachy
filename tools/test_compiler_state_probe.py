@@ -159,7 +159,7 @@ probe("research/compiler-state-767/dry_template.py")
         self.assertIn("successful dry changed saved emission: ['line']", result.stderr)
 
     def test_global_inference_reproducer_keeps_valid_method(self):
-        case = "research/compiler-state-767/global_inference.py"
+        case = "tests/programs/inference/dynany_eq_restart_global.py"
         observed = self.run_probe(case)
         self.assertEqual(observed["ir_sha256"], self.run_probe(case, True)["ir_sha256"])
         self.assertGreater(len(observed["passes"]), 1)

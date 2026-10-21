@@ -22,7 +22,7 @@ compiler's restart and decline decisions.
 
 | Mechanism | Prototype contract | What remains unproven |
 |---|---|---|
-| `Frame` | AST check of initialization, exact save/restore mappings, constructor wiring, duplicate and missing fields, unconditional transfers | Whether a new `Gen` field omitted from every Frame list should have been function-scoped |
+| `Frame` | AST check of direct, valued initialization in both Gen and Frame, exact save/restore mappings, constructor wiring, duplicate and missing fields, unconditional transfers | Whether a new `Gen` field omitted from every Frame list should have been function-scoped |
 | Successful `dry()` | Original block, block list, loop list, cursor, terminator, line and `drying` restored, including identity and nested contents | Which other effects are semantically safe to retain across every input |
 | Retained state | Hosted observer records changes throughout `Gen`'s reachable objects; catches same-key changes, aliases and nested changes | No whitelist of safe semantic effects; observations are not rollback approval |
 | Failed compilation | Real driver's `Rejoin` path uses a fresh `Gen`, carries hints/declines, rewinds the five known globals | Exhaustive discovery of all mutable process globals or reentrant compiler services |
@@ -47,7 +47,7 @@ The earlier issue's field counts are historical.
 
 | Input | Observed result |
 |---|---|
-| `global_inference.py` | Two passes. First aborts with `xs: list[int]` and decline `A.__eq__`; final pass has `xs: list[str]`, and keeps `B.__eq__` eligible. CPython 3.12.14 prints `True`. |
+| `tests/programs/inference/dynany_eq_restart_global.py` | Two passes. First aborts with `xs: list[int]` and decline `A.__eq__`; final pass has `xs: list[str]`, and keeps `B.__eq__` eligible. CPython 3.13.16 prints `True`. |
 | `dry_template.py` | One successful dry call retains changes to `called`, `carried`, `compiled`, `fns`, `funcs`, `n`, `retainers`, `template_instances`, `template_retained`; saved emission is restored. |
 | Existing `dynany_eq_template.py` | Four passes and eight successful dry calls; those calls retain register numbering (`n`). |
 
@@ -57,9 +57,10 @@ transparency, not native execution, full-corpus parity or allocation neutrality
 of a future refactor. Raw observations and input/source hashes are in
 [`results.json`](results.json).
 
-Local: Linux x86-64, CPython 3.12.14 (supported bootstrap interpreter).
-**22 unit tests passed**, including controls that deliberately break constructor
-initialization, field membership, transfer mappings, dry restoration, and each of
+Local: Linux x86-64, CPython 3.13.16 (the pinned recording interpreter).
+**25 unit tests passed**, including controls that deliberately break constructor
+initialization (including annotation-only and conditional Gen assignments), field
+membership, transfer mappings, dry restoration, and each of
 the five global rewinds. The controls also detect same-size dictionary/list
 changes, nested function-record changes and alias replacement.
 Ruff 0.17.0, four workflow-limit tests and `git diff --check` also pass.
@@ -70,16 +71,28 @@ Run from the repository root:
 python3 tools/compiler_state_contract.py
 python3 -m unittest discover -s tools -p 'test_compiler_state*.py'
 python3 tools/compiler_state_probe.py research/compiler-state-767/dry_template.py
-python3 tools/compiler_state_probe.py research/compiler-state-767/global_inference.py
-python3 tools/compiler_state_probe.py research/compiler-state-767/global_inference.py --baseline
+python3 tools/compiler_state_probe.py tests/programs/inference/dynany_eq_restart_global.py
+python3 tools/compiler_state_probe.py tests/programs/inference/dynany_eq_restart_global.py --baseline
 ```
 
-The tests are registered in Lint. Local `tools/setup.sh --check` fails because
-Clang/LLVM is unavailable; full `make lint`, native build/JIT/AOT, `make verify`,
-`make irsame` and GC stress were not run locally. The pinned recording interpreter
-is 3.13.16; these standalone research fixtures add no corpus recordings. No claim
-is made here about native Pystachy output for the new fixture. CI evidence belongs
-to the PR's exact head and is reported separately there.
+The unit tests are registered in Lint. The global-inference fixture now lives in
+`tests/programs/inference/dynany_eq_restart_global.py`, with its adjacent `.out`
+recorded using `PYTHON=python3.13 tests/record.sh` under CPython 3.13.16. The normal
+corpus discovery includes it in native JIT/AOT and GC configurations. Its hosted
+probe continues to use the same file; there is no duplicate research copy.
+
+The checker review at `572bb658` found that the Gen initialization scan counted
+annotations without values and assignments under `if False`. Both false positives
+were reproduced before the fix. Only direct assignments with values now satisfy
+the declared Frame contract; the three new negative controls cover both Gen cases
+and an annotation-only Frame field.
+
+Local `tools/setup.sh --check` still fails because Clang/LLVM is unavailable.
+`tools/setup.sh --minimal` could not install it: apt's permission setup failed
+(`setgroups`/`setegid`/`seteuid`, HTTPS method exit 112). No sandbox settings were
+changed. Full `make lint`, native build/JIT/AOT, `make verify`, full-corpus
+`make irsame` and GC stress were not run locally. New-head CI execution evidence
+is reported separately in the PR; corpus registration alone is not a passing run.
 
 ## Small follow-up changes, in order
 

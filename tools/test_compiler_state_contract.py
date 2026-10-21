@@ -51,7 +51,7 @@ class FrameContractTests(unittest.TestCase):
         before, frame = sources[1].split("class Frame:", 1)
         sources[1] = before + "class Frame:" + frame.replace("self.fn = fn", "self.extra_state = 0\n        self.fn = fn", 1)
         errors = validate_sources(*sources)
-        self.assertIn("Frame field extra_state is absent from Gen.__init__", errors)
+        self.assertIn("Frame field extra_state requires an unconditional valued assignment in Gen.__init__", errors)
         self.assertIn("gen_save is missing extra_state", errors)
         self.assertIn("gen_restore is missing extra_state", errors)
 
@@ -76,6 +76,24 @@ class FrameContractTests(unittest.TestCase):
             "        self.line = 0", "        if False:\n            self.line = 0", 1)
         self.assertIn("Frame initialization must use unconditional direct assignments",
                       validate_sources(*sources))
+
+    def test_annotation_only_frame_initialization(self):
+        sources = list(self.sources)
+        before, frame = sources[1].split("class Frame:", 1)
+        sources[1] = before + "class Frame:" + frame.replace(
+            "        self.ltype: dict[str, str] = {}", "        self.ltype: dict[str, str]", 1)
+        self.assertIn("Frame initialization must use unconditional direct assignments",
+                      validate_sources(*sources))
+
+    def test_annotation_only_gen_initialization(self):
+        errors = self.changed(0, "        self.ltype: dict[str, str] = {}",
+                              "        self.ltype: dict[str, str]")
+        self.assertIn("Frame field ltype requires an unconditional valued assignment in Gen.__init__", errors)
+
+    def test_conditional_gen_initialization(self):
+        errors = self.changed(0, "        self.ltype: dict[str, str] = {}",
+                              "        if False:\n            self.ltype: dict[str, str] = {}")
+        self.assertIn("Frame field ltype requires an unconditional valued assignment in Gen.__init__", errors)
 
     def test_new_gen_only_field_is_outside_contract(self):
         sources = list(self.sources)

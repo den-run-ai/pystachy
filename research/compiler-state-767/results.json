@@ -1,11 +1,12 @@
 {
   "base_commit": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
-  "python": "3.12.14",
+  "audit_parent_commit": "572bb6581c0ee9e1ffa2d39352dbc635fb14defa",
+  "python": "3.13.16",
   "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
-  "scope": "Hosted audit only; IR hashes include checkout paths. Native execution not tested locally.",
+  "scope": "Hosted audit only; IR hashes include checkout paths. Differential fixture recorded with pinned CPython; native coverage registered, local execution blocked by LLVM setup.",
   "cases": [
     {
-      "case": "research/compiler-state-767/global_inference.py",
+      "case": "tests/programs/inference/dynany_eq_restart_global.py",
       "observed": true,
       "ir_sha256": "6572af07f880de6fe43c7de6ba01b37b83a63c1d09821087c4dc3a0d3b6196bc",
       "passes": [
@@ -290,9 +291,12 @@
     "src/pystachy_compiler/variables.py": "918da0967618327c31c0b542536b43f03c8036e286b4697e57c7e205549f86ec"
   },
   "audit_sha256": {
-    "tools/compiler_state_contract.py": "57948363a68a4832dca72d4caedde26f3f895007c980b50531bddc1ab7394181",
+    "tools/compiler_state_contract.py": "6d9f063876e834bb962ee925d4601cceb80d68a8737852fda652b8e0a92c0b68",
     "tools/compiler_state_probe.py": "2b91f6e1959f46418b9a93e3b50ad6bc4c63aa70edc1d16a225c6e2c86ded8c5",
-    "tools/test_compiler_state_contract.py": "519e4f1cfcfea44cd3e300b8865ebd100f3e245451cb50e191bb400f6460ac15",
-    "tools/test_compiler_state_probe.py": "801982a26662f5925aed93e13ffae6e0430e356afc3ccc74fac6b0454194947f"
+    "tools/test_compiler_state_contract.py": "5f1054669dd71662bcd06cc7ea05a58c566eabc2b9118eae22c19ece5a2ac47b",
+    "tools/test_compiler_state_probe.py": "d6dd1f68274ffad373d7d6010374a11cb9a3d2a73d4f13c890e10262017a25c6"
+  },
+  "recording_sha256": {
+    "tests/programs/inference/dynany_eq_restart_global.out": "7c134b6362a917acfd0f500e1a1247be78785c9bc7a52f54dcac0a420e1538bd"
   }
 }

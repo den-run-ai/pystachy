@@ -24,10 +24,13 @@ def attribute(node, owner):
     return None
 
 
-def assignments(fn, owner):
-    """List every direct attribute assignment, retaining duplicates and its RHS."""
+def assignments(fn, owner, *, direct=False):
+    """List attribute assignments, retaining duplicates and annotation-only RHSs.
+
+    direct=True restricts the scan to unconditional statements in the function body.
+    """
     result = []
-    for node in ast.walk(fn):
+    for node in fn.body if direct else ast.walk(fn):
         targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) else []
         for target in targets:
             field = attribute(target, owner)
@@ -47,7 +50,8 @@ def validate_sources(gen, ir, emission):
     except (ValueError, SyntaxError) as exc:
         return [str(exc)]
     errors = []
-    gen_fields = {name for name, _ in assignments(gen_init, "self")}
+    gen_fields = {name for name, value in assignments(gen_init, "self", direct=True)
+                  if value is not None}
     frame = assignments(frame_init, "self")
     frame_fields = {name for name, _ in frame}
     if not all(isinstance(n, (ast.Assign, ast.AnnAssign))
@@ -59,7 +63,7 @@ def validate_sources(gen, ir, emission):
         if count != 1:
             errors.append(f"Frame initializes {name} {count} times")
     for name in sorted(frame_fields - gen_fields):
-        errors.append(f"Frame field {name} is absent from Gen.__init__")
+        errors.append(f"Frame field {name} requires an unconditional valued assignment in Gen.__init__")
 
     # These three fields are transferred by construction; all others by assignment.
     seeds = ["curfn", "fn", "blk"]
