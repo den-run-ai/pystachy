@@ -16,7 +16,14 @@ then fr.X = self.X) exactly the fields Frame.__init__ assigns and gen_restore co
 back (self.X = fr.X); Gen.__init__ initializes each of them and each that gen_enter assigns;
 gen_enter assigns each field Frame holds, except those NOT_RESET lists; and Frame holds each field
 gen_enter assigns, except those NOT_SAVED lists. Each exception gives its reason. A statement of
-another form in gen_save or gen_restore fails the test too: it reads only those copies.
+another form in gen_save or gen_restore fails the test too: it reads only those copies. So does an
+assignment of a field that Gen.__init__, Frame.__init__ or gen_enter makes only inside a block (an
+if, a loop, a try or a with), where it may not run: each assigns its fields at its top level.
+
+Every other field of Gen.__init__ must be classified: PROGRAM lists the program's state, SCOPED
+that of a module, of one lowering or of one operation, each with its reason, and LEAKS those of
+SCOPED that a nested compile wrongly sees or changes today (#822). So a new field that only
+Gen.__init__ initializes fails the test until it is put in Frame's lists or classified.
 PYSTACHY_SRC names another checkout to read (default: the one that holds this file).
 
 Run with python3 -m unittest discover -s tools -p test_frame_fields.py.
@@ -45,6 +52,84 @@ NOT_RESET = {
     "modlevel": "each caller of save() sets it for what it compiles, module code or a function; gen_enter reads it",
     "lenient": "set around helpers compiled leniently (obj_helpers, dyn_xhelper); save()'s callers that compile clear it",
 }
+
+# Gen's fields that hold the program's state (#767): each nested compile reads and extends them,
+# and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
+PROGRAM = """
+    classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
+    consts bconsts strs bstrs strvals vnodes cmexit rtfns opfxs out fns fll summaries xcls xvals
+    xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
+    xobj impg wide nokey nonereads attrvals attrown hints newhints final xnot newx retseen
+    template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised
+    noneglobals intglobals rangeused objectused intat strglobals strtuples abstracts abcmeta
+    constflags late ext libdir prefix csyms csymline cdirect extvars unicode_audit rtmode rtdefs
+    rtcache externs deps comp flowctx closures clokeys adapters adrets ncv cacheforms decorated
+    decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls vrets vcalls
+    gkk holes twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
+    inited guessed galias nts cnts ntdflts hasfrozen cvars typevars tvtuples tvdefaults tparams
+    pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
+    dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen
+""".split()
+# Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
+# sets and then restores or clears: a nested compile that starts inside the operation sees them.
+# Each with its reason, in one line.
+SCOPED = {
+    "flowmod": "the module flow analyses: flow_program sets it per module, materialize saves and restores it",
+    "fvars": "the module's variables its code has made functions so far: flow_program empties it per module",
+    "flowlater": "module code's lambdas whose flow waits for the module: emptied at each module's end",
+    "anyopt": "an optional, union or class local exists: alloca sets it, never reset, its conservative value",
+    "stmtexpr": "the expression statement being compiled: gen_stmt sets it for each statement",
+    "lowblk": "lowering: the block being lowered (gen_lower, which never nests)",
+    "ftags": "lowering: the function's field TBAA tags, which gen_lower sets per function",
+    "vtuples": "lowering: tuples the function returns by value, which gen_lower sets per function",
+    "vslots": "lowering: the slots of those tuples' stores, per function",
+    "vaggs": "lowering: results of calls that take slots, per function",
+    "dmemo": "a statement's memo of display items' dry-run types (#781): gen_stmt empties it per statement",
+    "dmemot": "the types of dmemo's items, with it",
+    "specing": "specializations in progress: a recursion guard, which a nested compile must see",
+    "selfcls": "the class whose methods and fields are declared: gen_function saves, clears and restores it",
+    "compshare": "names a comprehension's for clauses share: listcomp, hidden_loop and compfor save and restore it",
+    "drying": "dry()'s depth: it adds and removes 1 around a speculative compile",
+    "carried": "a return's value while leave() compiles the finally blocks it leaves",
+    "fchk": "records whose fields plain_desc checks: a recursion guard, around code that compiles nothing",
+    "appending": "set around str_append's read of an owned str local, which compiles nothing",
+    "nonecmp": "the read compiled is the operand of a comparison with None: compare sets and clears it",
+    "building": "functions being compiled: a recursion guard, which a nested compile must see",
+    "soft": "the display operand of a comparison, matched by identity at that node",
+    "stkkey": "the tuple display a lookup makes in the frame as its key, matched by identity",
+    "cmpnode": "the operand of 'x is None' being compiled: compare sets and resets it",
+    "fieldcmp": "the field read compiled is the operand of 'is None': expr sets and clears it",
+    "fieldbusy": "fields and globals that none_field and none_global search: a recursion guard",
+    "xtry": "the comparison method whose call with an Any value dyn_xbody compiles: set around it",
+    "joinkind": "the location a store's coerce may widen: join_at saves, sets and restores it",
+    "joinname": "its name, with joinkind",
+    "jointype": "its type, with joinkind",
+    "joinsrc": "the value being assigned: stmt saves, sets and restores it around the store",
+    "making": "the nested compiles in progress (messages, the depth limit), which a nested compile must see",
+    "template_bytes": "bytes of the active instances' signatures: a limit, which a nested compile must see",
+    "lib": "declaring an imported module's function, whose errors wait for its calls: set around declare_fn",
+    "gencall": "the generator a generator function's last call made: call_fn sets it, its consumer clears it",
+    "gencallf": "that call's function, with gencall",
+    "mcall": "the call o.m(...) whose method Gen.method compiles: set right before method()",
+    "elsekids": "the body of the for or while loop with an else being compiled: saved and restored around it",
+    "elsebrk": "the label after that loop's else block, with elsekids",
+    "brks": "what narrowed holds at the breaks of each loop being compiled: pushed and popped",
+    "elsebrks": "the breaks of the else loop that gen_loop leaves for gen_stmt to read right after",
+    "allowq": "the read compiled may see an empty container's open type: set around such reads",
+    "busy": "globals that ahead() types: a recursion guard",
+    "copying": "compiling a from-import of a global its module may leave unbound: set for the statement",
+    "live": "fills() skips loops over the empty tuple: set around fills()",
+    "dead": "fills() found a fill in code the types leave out: reset before it, read right after",
+    "whole": "static() for the if at this line (fills): static_whole saves, sets and restores it",
+    "unsure": "a type not known yet left static_whole's test undecided: read right after",
+    "scanning": "properties whose setters scan_fields scans: a recursion guard",
+    "resolving": "aliases that alias_ann expands: a cycle check, pushed and popped",
+    "unaliased": "the node count of the annotation unalias expands: reset per expansion",
+    "reflcopies": "copies of the code compiled that unrolled loops make: each saves, multiplies and restores it",
+}
+# those of SCOPED that a nested compile wrongly sees or changes today, each with a reproducer in
+# #822: a fix saves and resets each as Frame and gen_enter do, and moves it out of SCOPED
+LEAKS = ["drying", "carried", "nonecmp", "stkkey", "cmpnode", "fieldcmp", "reflcopies", "stmtexpr"]
 
 FOOTER = (f"A function-scoped field of Gen is listed in four places, which must agree: Gen.__init__ ({GEN}), "
           f"Frame.__init__ ({IR}), gen_save and gen_restore ({EMISSION}); and gen_enter ({FUNCTIONS}) assigns "
@@ -113,6 +198,19 @@ def stores(d: ast.FunctionDef) -> list:
     return sorted(out, key=lambda s: s[1].lineno)
 
 
+def unconditional(d: ast.FunctionDef, label: str, path: str, problems: list) -> None:
+    """record each field that def d (list label, in path) assigns only inside a block (an if, a loop, a
+    try or a with), where the assignment may not run: it initializes or resets the field on no path"""
+    me = d.args.args[0].arg
+    top = {attr(t, me) for st in d.body for t in targets(st)}
+    seen: set = set()
+    for x, st in stores(d):
+        if x not in top and x not in seen:
+            seen.add(x)
+            problems.append(f"{label} ({path}:{st.lineno}) assigns '{x}' only inside a block, which may not run: "
+                            "assign it at the function's top level, where it runs on every path")
+
+
 def join(words: list) -> str:
     return words[0] if len(words) == 1 else ", ".join(words[:-1]) + " and " + words[-1]
 
@@ -177,11 +275,15 @@ def restored(d: ast.FunctionDef, problems: list) -> dict:
     return out
 
 
-def check(sources: dict, not_saved=None, not_reset=None) -> list:
+def check(sources: dict, not_saved=None, not_reset=None, program=None, scoped=None, leaks=None) -> list:
     """the problems of the lists in sources ({path: its text}), with exceptions not_saved and not_reset
-    (default: NOT_SAVED and NOT_RESET); [] if they agree"""
+    and the classified fields program, scoped and leaks (default: NOT_SAVED, NOT_RESET, PROGRAM,
+    SCOPED and LEAKS); [] if they agree"""
     not_saved = NOT_SAVED if not_saved is None else not_saved
     not_reset = NOT_RESET if not_reset is None else not_reset
+    program = PROGRAM if program is None else program
+    scoped = SCOPED if scoped is None else scoped
+    leaks = LEAKS if leaks is None else leaks
     problems: list = []
     trees: dict = {}
     defs: dict = {}
@@ -206,6 +308,9 @@ def check(sources: dict, not_saved=None, not_reset=None) -> list:
             pfields[st.value.id] = x
     if len(frame) == 0:
         problems.append(f"Frame.__init__ ({IR}:{fdef.lineno}) assigns no field: nothing to compare")
+    for label, path, _, _ in LISTS:
+        if label not in ["gen_save", "gen_restore"]:  # (which statements of the form above make)
+            unconditional(defs[label], label, path, problems)
     has = {"Gen.__init__": {x for x, _ in stores(defs["Gen.__init__"])}, "Frame.__init__": set(frame),
            "gen_save": set(saved(defs["gen_save"], params, pfields, problems)),
            "gen_restore": set(restored(defs["gen_restore"], problems)),
@@ -231,6 +336,23 @@ def check(sources: dict, not_saved=None, not_reset=None) -> list:
         if len(missing) > 0:
             present = [label for label, _, _, _ in LISTS if x in has[label]]
             problems.append(f"'{x}' is missing from {join(missing)}; it is in {join(present)}")
+    framed = has["Frame.__init__"] | has["gen_save"] | has["gen_restore"] | has["gen_enter"]
+    for x in sorted(has["Gen.__init__"] - framed):
+        if x not in program and x not in scoped:
+            problems.append(f"'{x}' is initialized by {where['Gen.__init__']} and in no other list: put it in "
+                            "Frame.__init__, gen_save, gen_restore and gen_enter if it is a function's state, else "
+                            "in PROGRAM (the program's) or SCOPED (a module's or one operation's, with its reason)")
+    for name, group in [("PROGRAM", list(program)), ("SCOPED", list(scoped))]:
+        for x in sorted(group):
+            if x not in has["Gen.__init__"]:
+                problems.append(f"{name} lists '{x}', which Gen.__init__ ({GEN}) does not assign: remove it")
+            elif x in framed:
+                problems.append(f"{name} lists '{x}', which Frame's lists hold: remove it there or here")
+    for x in sorted(set(program) & set(scoped)):
+        problems.append(f"PROGRAM and SCOPED both list '{x}': keep it in one")
+    for x in sorted(leaks):
+        if x not in scoped:
+            problems.append(f"LEAKS lists '{x}', which SCOPED does not: remove it, or classify it in SCOPED")
     return problems
 
 
@@ -254,8 +376,12 @@ class AgreementTests(unittest.TestCase):
             self.fail(report(problems))
 
     def test_each_exception_gives_its_reason(self):
-        for x, why in list(NOT_SAVED.items()) + list(NOT_RESET.items()):
+        for x, why in list(NOT_SAVED.items()) + list(NOT_RESET.items()) + list(SCOPED.items()):
             self.assertTrue(why.strip() != "" and "\n" not in why, x)
+
+    def test_each_field_is_classified_once(self):
+        self.assertEqual(len(PROGRAM), len(set(PROGRAM)))
+        self.assertEqual(len(LEAKS), len(set(LEAKS)))
 
 
 # negative controls: the sources changed in each way the lists can disagree
@@ -362,6 +488,41 @@ class NegativeControlTests(unittest.TestCase):
                 self.assertEqual(len(problems), 1, report(problems))
                 self.assertIn(f"{label} ({path}:{a.lineno}): `{code}` copies `{ast.unparse(b.value)}` into the "
                               f"place of '{a.targets[0].attr}'", problems[0])
+
+    def test_a_field_assigned_only_inside_a_block(self):
+        # (an assignment that may not run initializes or resets nothing: #819's review)
+        for label in ["Gen.__init__", "Frame.__init__", "gen_enter"]:
+            with self.subTest(label=label):
+                path, d = parsed(self.src, label)
+                me = d.args.args[0].arg
+                st = next(s for s in statements(d) if len([t for t in targets(s) if attr(t, me) != ""]) == 1)
+                x = next(attr(t, me) for t in targets(st) if attr(t, me) != "")
+                problems = check({**self.src, path: splice(self.src[path], st, ["if False:", "    " + ast.unparse(st)])})
+                self.assertEqual(len(problems), 1, report(problems))
+                self.assertTrue(problems[0].startswith(f"{label} ({path}:{st.lineno + 1}) assigns '{x}' only inside "
+                                                       "a block"), problems[0])
+
+    def test_a_field_only_gen_init_has(self):
+        # (#819's review: the most complete omission, a function-scoped field that no Frame list holds)
+        src = add_field(self.src, "Gen.__init__")
+        problems = check(src)
+        self.assertEqual(len(problems), 1, report(problems))
+        self.assertTrue(problems[0].startswith(f"'{FIELD}' is initialized by Gen.__init__ ("), problems[0])
+        self.assertEqual(check(src, program=PROGRAM + [FIELD]), [])
+        self.assertEqual(check(src, scoped={**SCOPED, FIELD: "a reason"}), [])
+
+    def test_stale_classifications(self):
+        x = self.field()
+        cases = [({"program": PROGRAM + [FIELD]}, f"PROGRAM lists '{FIELD}', which Gen.__init__"),
+                 ({"program": PROGRAM + [x]}, f"PROGRAM lists '{x}', which Frame's lists hold"),
+                 ({"scoped": {**SCOPED, FIELD: "r"}}, f"SCOPED lists '{FIELD}', which Gen.__init__"),
+                 ({"program": PROGRAM + ["drying"]}, "PROGRAM and SCOPED both list 'drying'"),
+                 ({"leaks": LEAKS + ["classes"]}, "LEAKS lists 'classes', which SCOPED does not")]
+        for kw, start in cases:
+            with self.subTest(start=start):
+                problems = check(self.src, **kw)
+                self.assertEqual(len(problems), 1, report(problems))
+                self.assertTrue(problems[0].startswith(start), problems[0])
 
     def test_frame_arguments_swapped(self):
         path, d = parsed(self.src, "gen_save")
