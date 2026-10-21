@@ -240,6 +240,36 @@ def gen_dyn_box(self, v: Val) -> Val:
         return Val(self.rtdata("pys_dyn_none_box"), DYN)
     if t == "bool":
         return Val(self.select(v.v, Val(self.rtdata("pys_dyn_true_box"), DYN), Val(self.rtdata("pys_dyn_false_box"), DYN)), DYN)
+    if (t == "int" or t == "float") and v.idfrom != "":
+        return Val(v.idfrom, DYN)  # (the Any value's object it was read from: dyn_unbox, dyn_narrowed)
+    if (t == "int" or t == "float") and v.idslot != "":
+        # a variable's value: the box its binding has, where that holds this value of this type,
+        # else a new box, which the binding keeps (idbox), so that each crossing of one binding
+        # into Any gives one object, as CPython's name holds one (#797)
+        slot = Val(v.idslot, "*" + DYN)
+        b = self.mem_load(slot)
+        chk = self.label()
+        hit = self.label()
+        miss = self.label()
+        end = self.label()
+        self.cbr(self.ptr_cmp("!=", b, Val("null", DYN)).v, chk, miss)
+        self.place(chk)
+        typ = Val(self.rtdata("pys_dyntype_int" if t == "int" else "pys_dyntype_float"), "dyntype")
+        st = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), typ).v
+        sp = self.num_cmp("==", Val(self.to_slot(self.dyn_payload(b, "int")), "int"), Val(self.to_slot(v), "int")).v
+        self.cbr(self.scalar("and", [Val(st, "bool"), Val(sp, "bool")]), hit, miss)
+        self.place(hit)
+        self.br(end)
+        self.place(miss)
+        nb = self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]) if t == "int" else self.rt("pys_dyn_float", "ptr", [f"double {v.v}"])
+        self.mem_store(slot, Val(nb, DYN))
+        got = self.cur
+        self.br(end)
+        self.place(end)
+        ph = Ins("phi", DYN, "")
+        self.incoming(ph, b.v, hit)
+        self.incoming(ph, nb, got)
+        return Val(self.phi(ph), DYN)
     if t == "int" and v.lit and (int(v.v) < -5 or int(v.v) > 256):
         # an int literal's box is a constant, one per value in each module (its functions' code
         # included), as a module's equal constants are one object in CPython, and another module's
@@ -290,6 +320,23 @@ def gen_dyn_box(self, v: Val) -> Val:
     if is_fn(t) or is_callable(t):
         return self.dyn_fn_box(v)
     return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.dyn_type(t)}", f"ptr {v.v}"]), DYN)
+
+
+def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
+    # the box that an int or float variable's binding has as an Any value, where store_name gives
+    # it v (its box slot, idbox): the box of the Any value it unboxes, the box of the binding it
+    # copies, an int literal's constant box, else none yet, a new object that its first crossing
+    # boxes (dyn_box)
+    b = "null"
+    if v.t == DYN or v.t == DYNINT:
+        b = v.v
+    elif v.idfrom != "":
+        b = v.idfrom
+    elif v.idslot != "":
+        b = self.mem_load(Val(v.idslot, "*" + DYN)).v
+    elif v.lit and t == "int" and (int(v.v) < -5 or int(v.v) > 256):
+        b = self.dyn_box(v).v
+    self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
 
 
 def gen_dyn_union_box(self, v: Val) -> Val:
@@ -430,7 +477,10 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
         return Val(self.phi(ph), t)
     if t in BUILTIN:
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_type(t)}"])
-        return self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
+        x = self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
+        if t == "int" or t == "float":
+            x.idfrom = v.v  # (a box of exactly type t: pys_dyn_unbox)
+        return x
     if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
         return self.from_slot(self.to_slot(Val(r, "int")), t)
@@ -619,7 +669,10 @@ def gen_dyn_narrowed(self, v: Val, nt: str) -> Val:
     if nt == DYNINT:
         self.dynints[v.v] = True
         return v
-    return self.dyn_payload(v, nt)
+    x = self.dyn_payload(v, nt)
+    if nt == "float":
+        x.idfrom = v.v  # (its object, as an Any value again: dyn_box)
+    return x
 
 
 def gen_dyn_proven_int(self, v: Val) -> Val:

@@ -1,0 +1,30 @@
+mods: init mods
+mods.shapes: init mods.shapes
+an int module variable at module level, twice True False True
+an int variable, twice True False True
+a float variable, twice True False True
+Any, int, Any True False True
+Any, float, Any True False True
+an Any float that isinstance() narrows True False True
+narrowed to float, float, Any True False True
+an Any int that isinstance() narrows True False True
+narrowed to int, int, Any True False True
+a copy of a variable that became Any True False True
+a literal in an int variable, the literal True False True
+two int variables of one value False True False
+an int variable's id, after allocations True
+a float variable's id, after allocations True
+a loop's value 0 True False
+a loop's value 1 True False
+a loop's value 2 True False
+an int variable, a sum assigned to it False True False
+an int parameter, twice True False True
+a float parameter, twice True False True
+an int module variable, twice True False True
+a float module variable, twice True False True
+a module constant, its literal True False True
+an int module variable's id, after allocations True
+another module's int variable, twice True False True
+another module's float variable, twice True False True
+a generator's int variable, across a yield [True, True]
+[exit 0]

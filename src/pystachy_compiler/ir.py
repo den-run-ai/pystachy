@@ -10,6 +10,8 @@ class Val:
         self.t = t
         self.infer_from = ""  # direct recursive call whose inferred return still defaults to None
         self.lit = False  # an int literal's own value, as gen_expr made it (dyn_box: its constant box)
+        self.idslot = ""  # the box slot of the int or float variable it was read from (dyn_box: idbox)
+        self.idfrom = ""  # the box of the Any value that an int or float was read from (dyn_box)
 
 
 class Data:
@@ -424,6 +426,7 @@ class Frame:
         self.iflag: dict[str, str] = {}
         self.appends: dict[str, bool] = {}
         self.owned: dict[str, str] = {}
+        self.idbox: dict[str, str] = {}
         self.cells: dict[str, str] = {}
         self.nlw: dict[str, bool] = {}
         self.nonevars: dict[str, int] = {}
