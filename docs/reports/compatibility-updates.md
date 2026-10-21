@@ -5844,3 +5844,75 @@ pinned JIT/AOT, GC-stress, fixed-point build, full `make verify`, package/port,
 performance, memory, upstream-suite or CPython regrtest run completed. The latest
 fully evaluated main remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #815: exact 16-byte dynamic Any and union box slots
+
+Inspected [main `617c7ec06aef0f50d255d84bc44a477c80e609b3`](https://github.com/den-run-ai/pystachy/commit/617c7ec06aef0f50d255d84bc44a477c80e609b3)
+after [#815](https://github.com/den-run-ai/pystachy/pull/815) merged at
+2026-10-21 13:22:26 UTC. Fresh first-parent history establishes it as the only
+merge after #813. Merged main and final implementation head `c4b845c0` share
+tree `31f4d7ca8cbf1028a5d393d3172006d50203bc95`.
+
+#815 gives two-word dynamic `Any` and closed-union boxes their exact 16-byte
+allocation class instead of the normal 24-byte class produced by the collector's
+one-byte end slack. Integer and float boxes are atomic; reference and union boxes
+remain scanned. Other 16-byte objects keep the slack. The contract is deliberately
+narrow: no code may walk a box or retain only a one-past-end pointer across an
+allocation. A `sizeof(Dyn) == 16` assertion prevents silent layout growth, and the
+new `box-slots` verification stage checks slot kind and size, payload-word
+interior-pointer liveness, and a one-past-end negative control.
+
+[Machine-readable evidence](compatibility-2026-10-21-box-slots-partial.json)
+retains exact source/tree identities, changed-file hashes, commands, focused
+positive and negative controls, workflow jobs, attributed measurements, review
+state and limitations.
+
+| Fresh local measurement | Result and boundary |
+|---|---|
+| Focused runtime box probe | GCC 13 builds the real merged runtime with section GC. Normal and `PYSTACHY_GC_STRESS=1` runs both pass exact slot size/kind, payload-word liveness and one-past-end death. |
+| Previous-runtime negative control | The identical current probe linked against `89646780` exits **1** in both modes at `an int's box is not in an atomic 16-byte slot`. This independently proves the probe distinguishes the old allocation class. |
+| Verification harness contract | **53/53** `test_*verif*.py` tests pass; `tests/verify.sh --list` places `box-slots` in both `all` and `contracts`. |
+| Compiler/library identity | `pystachy.py`, `src/`, `lib/` and `runtime.py` are byte-identical to #813. Program IR is therefore unchanged; the changed `runtime.c` is linked after program IR generation. |
+
+Exact-final-tree external workflows succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39576050732) has
+**27/27 successful jobs**, including bootstrap, hosted/native, JIT/AOT GC,
+UBSan, Python-free, optimization-off, runtime-cache, benchmarks, the contracts
+shard with `box-slots`, and final `make verify`;
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39576050741)
+has **3/3** successful platform jobs; [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39576050747)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39576050593)
+each succeeded. The final Lint job includes `make lint`, verification/report
+gate tests and `check-recordings`.
+
+The PR reports **118** selected dynamic-`Any`/union programs producing **226**
+passing JIT+AOT checks in each of normal, GC-stressed and UBSan configurations.
+Its deterministic allocation measurements report four million dynamic/union
+boxes reducing heap peak **125.4→97.2 MiB** and peak RSS about **126→95 MiB**
+with three collections in both variants; the generic one-million workload falls
+from **55.2→39.1 MiB** of heap and **56.3→40.2 MiB** RSS. Those are attributed
+exact-tree results, not locally repeated measurements. Timings came from seven
+alternating, single-core runs on a shared host, and the PR treats differences
+under about 20% as noise; this checkpoint therefore makes no timing-regression
+claim.
+
+Codex reviewed implementation commit `18d6b2d4` and found no major issues; no
+review threads exist. Final head `c4b845c0` later merged #813's adjacent
+`pys_dyn_int` change, retaining both fixes, and passed the exact-final-tree
+workflows above. No uncovered wrong result or memory-safety failure was confirmed,
+so no new issue was filed. The broader #800/#796 allocation roadmap, #780
+dictionary/set work and #761 allocation-overflow work remain separate.
+
+Isolated import compilation was not rerun: #815 changes `runtime.c`, verification
+tooling and documentation, while compiler, library, overlay and inventory inputs
+are unchanged, and the sweep neither executes nor embeds `runtime.c`. The fresh
+#809 hosted result remains **141/441** on CPython 3.12.14, separately from its
+attributed pinned result of **149/457**. Neither count is a #815 gain.
+
+Pinned CPython **3.13.16** and LLVM 18 were unavailable locally. The focused
+native control used GCC 13 and directly exercised the real runtime/collector;
+it is not relabeled as a Pystachy JIT/AOT build. No fresh local pinned fixed-point
+build, full native matrix, import sweep, benchmark, package/port suite, FFI/cache
+suite or CPython regrtest completed. Exact-tree CI supplies the missing native
+matrix, while the benchmark figures remain attributed. The latest fully evaluated
+main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

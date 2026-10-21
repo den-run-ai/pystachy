@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 exact dynamic Any and union box slots (partial)",
+  "event": {
+    "pull_request": 815,
+    "merge_sha": "617c7ec06aef0f50d255d84bc44a477c80e609b3",
+    "source_sha": "617c7ec06aef0f50d255d84bc44a477c80e609b3",
+    "source_tree": "31f4d7ca8cbf1028a5d393d3172006d50203bc95",
+    "implementation_head_sha": "c4b845c0b7dae8c49ec41ee700dff5715d0e606e",
+    "implementation_head_tree": "31f4d7ca8cbf1028a5d393d3172006d50203bc95",
+    "previous_source_sha": "896467802db0baa461ec187ea0497223bfe63e0a",
+    "previous_source_tree": "5dee8d7f3dc3e50852c0c7dcd8606335f89ff92e",
+    "merged_at_utc": "2026-10-21T13:22:26Z",
+    "first_parent_merges_since_previous": [815]
+  },
+  "changed_scope": {
+    "files": 7,
+    "paths": [
+      {"path": "Makefile", "sha256": "2c0ecdfa27e452c61f03d96ee6557191bad303d7e5df7db60196e10217fc30d5"},
+      {"path": "docs/dynamic-any.md", "sha256": "7be2164878462b5620ff22057ee6727898b972c35f0ab0abcce5cc81f1fa1262"},
+      {"path": "docs/union-value-costs.md", "sha256": "8820e058c5afd551ceb6e2d8299f098d30c7b88ab5bf6789859023466c5fe95a"},
+      {"path": "runtime.c", "previous_sha256": "c551a0df4d620a33825842b3eab15cddb4c7dadffc5c1396bd9c6b2dafe0decc", "sha256": "2438d21f732f0e30a2fc26104378a5bfc62951ee8bf9f1c9a48ff3a66b46d481"},
+      {"path": "tests/verify.sh", "sha256": "c03ffc35e551f94a0e075ac23f187f0ca33859c2becf3fa5d0ade534587d0b72"},
+      {"path": "tools/boxprobe.c", "sha256": "eeef703d9615ca540399623f7cafefa62ab2f0f26d08aee43e579b9345b7b657"},
+      {"path": "tools/test_merge_verification.py", "sha256": "4ef0f56f9c60836255488b9c43ca0cf0a2e48814d3810b1f66afc66c888a449d"}
+    ],
+    "compiler_library_ports_changed": false,
+    "runtime_or_verification_changed": true
+  },
+  "environment": {
+    "hosted_python": "CPython 3.12.14",
+    "hosted_python_path": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "focused_native_toolchain": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+    "pinned_cpython_3_13_16_available": false,
+    "llvm_18_available": false,
+    "source_snapshot_clean_before_and_after": true
+  },
+  "fresh_local_results": {
+    "boxprobe": {
+      "scope": "tools/boxprobe.c includes the real runtime; GCC section GC removes unrelated program-provided helpers",
+      "cflags": "-O2 -ffunction-sections -fdata-sections",
+      "ldflags": "-Wl,--gc-sections -lm -ldl",
+      "current_normal": {"exit": 0, "result": "16-byte box slots, payload-word interior-pointer liveness and one-past-end negative control passed"},
+      "current_gc_stress": {"exit": 0, "result": "same focused contract passed with PYSTACHY_GC_STRESS=1"},
+      "previous_normal": {"exit": 1, "stderr": "boxprobe: an int's box is not in an atomic 16-byte slot"},
+      "previous_gc_stress": {"exit": 1, "stderr": "boxprobe: an int's box is not in an atomic 16-byte slot"}
+    },
+    "verification_harness": {
+      "unit_command": "python3 -m unittest discover -s tools -p 'test_*verif*.py'",
+      "unit_result": "53 tests passed",
+      "plan_command": "tests/verify.sh --list",
+      "plan_result": "box-slots is present in both all and contracts"
+    },
+    "source_identity": {
+      "command": "git diff --exit-code 89646780..617c7ec0 -- pystachy.py src lib runtime.py",
+      "result": "compiler, lib and runtime.py inputs are byte-identical; runtime.c is linked after program IR generation"
+    }
+  },
+  "carried_forward_results": {
+    "import_sweep": {
+      "rerun": false,
+      "reason": "#815 changes runtime.c, verification tooling and documentation only; isolated import compilation does not execute or embed runtime.c, while compiler, library, overlay and inventory inputs are byte-identical to #809",
+      "fresh_hosted_checkpoint_809": "141/441 on CPython 3.12.14",
+      "attributed_pinned_checkpoint_809": "149/457 on CPython 3.13.16",
+      "compatibility_gain_claimed": false
+    },
+    "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+  },
+  "implementation_workflows": [
+    {"name": "CI", "run_id": 39576050732, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39576050732", "successful_jobs": 27, "total_jobs": 27, "conclusion": "success", "notable": ["verify contracts with box-slots", "native", "hosted", "GC stress", "UBSan", "Python-free", "optimization off", "runtime cache", "benchmarks", "final make verify"]},
+    {"name": "Installation", "run_id": 39576050741, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39576050741", "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39576050747, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39576050747", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success", "notable": ["make lint", "CI verification harness and report gates", "check-recordings"]},
+    {"name": "Packages", "run_id": 39576050593, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39576050593", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+  ],
+  "attributed_final_tree_results": {
+    "source": "#815 PR body at implementation head c4b845c0; exact-tree workflows above were independently read",
+    "selected_dynamic_any_and_union_cases": "118 source cases / 226 JIT+AOT checks pass in each of normal, GC-stressed and UBSan configurations",
+    "fixed_points": "compiler 637,246 lines; runtime 18,709 lines",
+    "memory": {
+      "four_million_dynamic_or_union_boxes": "heap peak 125.4 to 97.2 MiB; peak RSS about 126 to 95 MiB; three collections in each variant",
+      "one_million_generic": "heap peak 55.2 to 39.1 MiB; peak RSS 56.3 to 40.2 MiB"
+    },
+    "timing_caveat": "seven alternating runs pinned to one core on a shared host; the PR treats differences below about 20% as noise, so this audit does not infer a timing regression"
+  },
+  "review": {
+    "resolved_threads": 0,
+    "unresolved_threads": 0,
+    "reviewed_sha": "18d6b2d4e36291069911d9f52858ea0720980925",
+    "result": "completed with no findings",
+    "final_head_note": "c4b845c0 subsequently merged #813 into the implementation branch; exact-final-tree workflows passed"
+  },
+  "commands": [
+    "gcc -O2 -ffunction-sections -fdata-sections tools/boxprobe.c -Wl,--gc-sections -o <current> -lm -ldl",
+    "<current>; PYSTACHY_GC_STRESS=1 <current>",
+    "cp <current>/tools/boxprobe.c <previous>/tools/boxprobe.c",
+    "gcc -O2 -ffunction-sections -fdata-sections tools/boxprobe.c -Wl,--gc-sections -o <previous> -lm -ldl",
+    "<previous>; PYSTACHY_GC_STRESS=1 <previous>",
+    "python3 -m unittest discover -s tools -p 'test_*verif*.py'",
+    "tests/verify.sh --list",
+    "git diff --exit-code 89646780..617c7ec0 -- pystachy.py src lib runtime.py"
+  ],
+  "issue_state": {
+    "800": "partially addressed by exact 16-byte dynamic Any and union boxes; broader roadmap scope remains in its linked work",
+    "796": "the measured dynamic Any roadmap remains broader than this allocation-class change",
+    "761": "existing tuple and allocation-overflow work remains separate",
+    "780": "dictionary/set and decoded-key optimization scope remains separate"
+  },
+  "limitations": [
+    "Pinned CPython 3.13.16 and LLVM 18 were unavailable locally. The independent focused native control used GCC 13, while Pystachy's exact final implementation workflows used the pinned toolchain.",
+    "The local boxprobe directly exercises the real runtime and collector but is not a Pystachy JIT/AOT program build. Native JIT/AOT, full GC matrices and full make verify are exact-tree workflow evidence and are not relabeled local.",
+    "Import totals are carried forward by unchanged compiler/library/inventory identity, not freshly rerun. A runtime allocation-class reduction does not establish a new import, API, package or port success.",
+    "The performance and memory figures are attributed PR measurements. This audit independently reproduced the allocation/liveness contract, not the benchmark suite.",
+    "No full CPython regrtest was run and no broad Python, PyPI or NumPy compatibility claim follows."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

@@ -170,6 +170,16 @@ weakrefprobe: tools/weakrefprobe.c runtime.c runtime.py pystachy
 	build/weakrefprobe
 	PYSTACHY_GC_STRESS=1 build/weakrefprobe
 
+# Any and union boxes take exact 16-byte slots: a pointer to a box's payload keeps it, one past its end does not.
+boxprobe: tools/boxprobe.c runtime.c runtime.py pystachy
+	mkdir -p build
+	./pystachy rt runtime.py -o build/boxprobe-rt.ll
+	$(LLVMBIN)clang -O2 -S -emit-llvm tools/boxprobe.c -o build/boxprobe.ll
+	$(LLVMBIN)llvm-link build/boxprobe-rt.ll build/boxprobe.ll -o build/boxprobe.bc
+	$(LLVMBIN)clang -O2 build/boxprobe.bc -o build/boxprobe -lm
+	build/boxprobe
+	PYSTACHY_GC_STRESS=1 build/boxprobe
+
 # sum(), min() and max() of generators and range() stream: 10^8 items in 64 MiB (AOT).
 streamprobe: pystachy
 	$(PY) tools/streamprobe.py
@@ -295,7 +305,7 @@ re-specialize-check:
 lint:
 	ruff check
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
-	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/unicodeprobe.c pyext.c pyembed.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
 
 clean:
@@ -312,4 +322,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz re-probe re-specialize-check lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz re-probe re-specialize-check lint clean install uninstall test-install
