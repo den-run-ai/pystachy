@@ -125,7 +125,7 @@ self-compilation with a ten-minute bound: fix compiler cost, not its timeout
 - Check for a shallow clone (`git rev-parse --is-shallow-repository`); deepen before
   `make irsame`, merge-base checks or history searches (`git fetch --deepen=200 origin main`).
 - Use pinned development tools, not whatever the container preinstalls. Package smoke
-  needs the uv/setuptools pins in `packages.yml`. If `/usr/bin/time` or `perf` is absent,
+  needs `tools/requirements-packaging.txt`. If `/usr/bin/time` or `perf` is absent,
   use `/proc/PID/status`'s `VmHWM` for peak memory and callgrind for profiling.
 - Builds can exceed a shell tool's default timeout (Claude Code commonly defaults to
   two minutes). Use the harness's background mode with logs and completion notices.
