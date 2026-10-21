@@ -1,0 +1,13 @@
+mods: init mods
+mods.shapes: init mods.shapes
+Box Box 1 True False True
+Crate Crate 20 True True True
+Again Box 3 True False True
+B2 Box 4 True False True
+B3 Box 5 True False True
+made Box 6 True False True
+Box Crate Box Box box crate box
+True lock
+caught Oops
+<missing> Missing
+[exit 0]
