@@ -61,8 +61,10 @@ Measurements cited from issues keep their own revisions.
 7. **Library reach is not what dynamic `Any` buys today:** with the comment in every stdlib module,
    150 of 457 modules import instead of 149: outside `Any` annotations and displays of mixed items,
    the comment leaves unannotated code as it was. C modules (220 modules, #491) and the class model
-   (#7) block far more; classes and builtin functions as `Any` values would remove the first
-   blocker of 32. See [Library reach](#library-reach) and group E.
+   (#7) block far more. 32 modules stop at three lines that use a class as a value: two aliases
+   (`Charset = _charset.Charset`), which a loader change admits with no `Any` at all (#804), and
+   `copyreg`'s table keyed by types, which needs classes as values (#805). See [Library
+   reach](#library-reach) and group E.
 
 ## 1. Where dynamic `Any` stands at `1cf6a676`
 
@@ -228,8 +230,8 @@ display of different functions becomes a dict of `Any` values. First blockers wi
 | First blocker | Modules | Tracked in | What dynamic `Any` could do |
 |---|---:|---|---|
 | a module that CPython builds in from C: `_warnings` (56), `_socket` (44), `_signal` (27), ... | 220 | #491, #128 | nothing |
-| a class used as a value: `_thread.lock` in `threading`, `email.charset.Charset`, ... | 24 | #7 | E1: classes as `Any` values |
-| a dict keyed by builtin functions or types: `copyreg`'s `{complex: ...}`, which `copy`, `pickle`, `shelve` and `xml.dom.minidom` import | 8 | none found | E1 |
+| a class used as a value: two module-level aliases, `Charset = _charset.Charset` (`email/header.py:21`, 15 modules) and `_LockType = _thread.LockType` (`threading.py:38`, 9) | 24 | #804, #7 | nothing needed: an alias through a module attribute, as `X = C` after a from-import already is (E1) |
+| a dict keyed by builtin functions or types: `copyreg`'s `dispatch_table[ob_type] = pickle_function`, which `copy`, `pickle`, `shelve` and `xml.dom.minidom` import | 8 | #805, #774 | classes as `Any` values, in an opted-in overlay (E1) |
 | a class feature: enum bases, generic inheritance, other bases | 22 | #7, #610 | nothing |
 | another feature: module attributes, redefinitions, `None` where an `int` was inferred, ... | 34 | | E4, for the 4 that are inference failures |
 
@@ -669,13 +671,18 @@ The sweep under [Library reach](#library-reach) puts C modules (#491) and the cl
 of `Any` as what keeps the standard library out. Group E is dynamic `Any`'s share, and the
 measurement that keeps it honest.
 
-**E1. Classes, builtin functions and types as `Any` values.** A class, `int`, `complex` or `len`
-read as a value in a module that opts in becomes a constant box whose `DynType` is that class's or
-function's own: equal and hashed by identity, callable through A3's boxed convention (calling a
-class constructs), and accepted as `isinstance()`'s second argument. It is #7's general class
-values restricted to `Any` storage, and it would remove the first blocker of 32 stdlib modules in
-the opt-in sweep (`threading`'s `_thread.lock`, `copyreg`'s dispatch table); what blocks them next
-is not measured.
+**E1. Class values: aliases first, `Any` boxes where code keys or stores them.** The 32 stdlib
+modules that stop at a class or builtin used as a value stop at three lines. Two are module-level
+aliases through a module attribute (`Charset = _charset.Charset`, `_LockType = _thread.LockType`,
+24 modules), which the loader can treat as it treats `X = C` after `from m import C`: no opt-in,
+no run-time value, only programs rejected today change (#804). The third is `copyreg`'s table keyed
+by types whose values are different functions, the idiom of `copy`'s and `pickle`'s dispatch
+tables too (8 modules, #805). Dynamic `Any` fits it: a class or builtin type read as a value
+becomes a constant box whose `DynType` is the class's own, equal and hashed by identity, the value
+`type(x)` gives, and callable through A3's convention, while storage given different functions
+widens to `Any` as storage given an `Any` value does. Since CPython's modules do not carry the
+comment, that needs an opted-in `lib/` overlay of `copyreg`; #7's general class values are the
+alternative that needs no opt-in. What blocks the 32 modules next is not measured.
 
 **E2. The gaps that library-style code meets in a module that opts in**, all filed: calls through
 `Any` with keywords, `*` unpacking or builtin functions (#774); builtins and `math` given `Any`
@@ -696,7 +703,8 @@ blocker is such a failure.
 
 ## 5. Order of work
 
-Each step stands alone and has its own gate. #797 to #803 were filed from this record; the other numbers are existing issues.
+Each step stands alone and has its own gate. #797 to #805 were filed from this record; the other
+numbers are existing issues.
 
 | Step | Items | Why now | Issues |
 |---|---|---|---|
@@ -709,7 +717,7 @@ Each step stands alone and has its own gate. #797 to #803 were filed from this r
 | 7 | B3 split `dyn` locals | numeric accumulators and counters | #780, #742 |
 | 8 | C2 field tables, C4 type flow | code size and unboxed results at scale | #799, #488, #489 |
 | 9 | B4 tagging, B5 strategies, C3 global table, D1, D2 | only if the measurements after steps 1-8 still point there | #392 |
-| 10 | E3's sweep beside step 1's checks; E2's filed gaps; E1 once A2 and A3 give class values a `DynType` and a calling convention | library reach: dynamic `Any`'s share, after C modules (#491) and the class model (#7) | #774, #775, #778, #779, #7 |
+| 10 | #804's aliases at any time; E3's sweep beside step 1's checks; E2's filed gaps; E1's type-keyed tables once A2 and A3 give class values a `DynType` and a calling convention | library reach: dynamic `Any`'s share, after C modules (#491) and the class model (#7) | #804, #805, #774, #775, #778, #779, #7 |
 
 ## 6. Risks and non-goals
 
@@ -782,7 +790,8 @@ python3 $D/probes/sweep_blockers.py $T/base.json $T/dyn.json $T/stdlib-dyn
   in), #392 (specialization evidence), #487 (boxes and the mutation contract), #488 (interface
   tables), #489 (run-time attribute names), #742 (union slots), #761 and #790 (dynamic `Any`),
   #772, #774, #775, #777-#782 (gaps), #784 (study records, with [the pipeline][pipeline] and
-  [the `tomllib` benchmark][tomlbench]).
+  [the `tomllib` benchmark][tomlbench]), #804 and #805 (class values among the stdlib's first
+  blockers).
 - Julia: [isbits union optimizations][julia-unions]; [union-splitting][julia-split].
 - Dart: [AOT dispatch table generator][dart-table]; [Introduction to Dart VM][dart-vm] (switchable
   calls in AOT).
