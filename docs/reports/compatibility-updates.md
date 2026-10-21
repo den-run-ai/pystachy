@@ -95,6 +95,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 dynamic `Any` container layouts (#821), **partial with blocker** | `18584979`; compiler/tests/docs after #668 | Four retained programs newly emit hosted IR and all seven new CPython recordings match, but fresh typed consumers of `dict[str, Any].keys()` and `.items()` regress from accepted on #668 to layout-mismatch rejections. The pinned import sweep is byte-identical at 148/460. Native local evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-any-layout-partial.json). |
 | 2026-10-21 compiler-state contracts (#818), bounded tooling evaluation complete | `d7e331dd`; research/tooling/tests after #821 | The structural contract and 31/31 mechanism tests pass. The real nested-boundary probe reproduces all eight known entry leaks and caller-restoration changes at depths 1–3; strict mode therefore exits 1 by design. Main accepts the new one-read `None` control that #824 rejects. No production or import surface changed, and no compatibility gain is claimed. [Evidence](compatibility-2026-10-21-compiler-state-contracts.json). |
 | 2026-10-21 dynamic `Any` dictionary views (#829), **partial** | `bd0eb909`; compiler/tests after #818 | The 75-program dynamic-`Any` corpus improves **73→75 hosted compilations** with no loss: direct typed consumers of `dict[str, Any].keys()` and `.items()` recover. Pinned imports remain 148/460. Saved-bound and unbound `dict.keys`/`values`/`items` spellings still reject; existing #777 and the acknowledged follow-up retain that gap. [Evidence](compatibility-2026-10-21-dynamic-views-partial.json). |
+| 2026-10-21 nested compiler-state isolation (#819), **partial** | `4046df59`; compiler/tests/tooling after #832 | All eight new nested-compilation regressions emit checked hosted IR: four previous rejections become accepted and four accepted cases change IR. The structural guard passes 18/18 tests; all 31 retained state tests pass. Caller restoration has no observed change at depths 1–3, while the intentional `nonecmp` inheritance and its known multi-iteration miscompile remain under #822. Pinned imports remain 148/460. [Evidence](compatibility-2026-10-21-nested-compiler-state-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -6476,4 +6477,64 @@ native build, JIT/AOT execution or GC-stress run. Exact-tree implementation CI
 supplies the native matrix separately. No local full `make verify`, broad port or
 package suite, CPython regrtest, performance or memory comparison completed.
 The latest fully evaluated main therefore remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #819: nested compiler-state isolation
+
+Inspected [main `4046df597cc41faa382c5012d233b73c4f56c095`](https://github.com/den-run-ai/pystachy/commit/4046df597cc41faa382c5012d233b73c4f56c095)
+after [#819](https://github.com/den-run-ai/pystachy/pull/819) merged at
+2026-10-21 22:33:52 UTC. It is the sole first-parent merge after evaluated source
+`11722f0c`; the landed tree is
+`b87fe4ddfb86cd8a07df64aaeae62f4d4b63d97a`.
+
+#819 moves ten function-scoped compiler fields into the `Frame` save/restore
+contract and resets nine of them when compiling a nested function. `nonecmp` is
+saved and restored but deliberately inherited: resetting it would reject the
+previously accepted one-read control from #818. The merge also adds an AST-based
+guard that keeps `Gen.__init__`, `Frame.__init__`, `gen_save`, `gen_restore` and
+`gen_enter` aligned, including classifications and fail-closed negative controls.
+
+[Machine-readable evidence](compatibility-2026-10-21-nested-compiler-state-partial.json)
+retains exact source/tree identities, changed-file hashes, commands, hosted IR
+hashes, import metadata, review/workflow evidence and limits.
+
+| Fresh merged-tree measurement | Result and boundary |
+|---|---|
+| CPython recordings | Pinned CPython **3.13.16** validates all **1,558 recordings**, 95 deviations and 12 pinned library files with zero failures, including all **8/8** new nested-state recordings. |
+| Structural and mechanism guards | The new frame-field suite passes **18/18** tests, the retained compiler-state suite passes **31/31**, and the frame contract reports exact initialization/save/restore mappings. |
+| Nested boundary probe | Across six boundaries at depths 1–3, caller-restoration changes fall from **48 to 0**. Entry-leak observations fall from **48 to 6**: one inherited `nonecmp` at each boundary. Strict mode therefore still exits 1 by design; this is the known #822 residual, not a harness failure. |
+| Focused hosted comparison | All **8/8** new regressions emit checked IR. Four move from rejection to acceptance; the four previously accepted cases all change IR. The retained one-read control stays accepted and byte-identical at `8eadb90a`. Hosted emission does not execute IR. |
+| Retained class/exception/Dynamic-`Any` selection | Both compilers accept **314/314** selected programs. **313** outcomes are byte-identical; only the new carried-state fixture changes. This bounded selection is not the complete corpus. |
+| Pinned isolated imports | The fresh `--metadata` sweep remains **148/460** included CPython 3.13.16 imports, with 62 overlay exclusions, 312 errors and no timeout. After checkout paths are normalized, every result equals #832: no new/lost success or first-error change. |
+| Fast hosted/tooling checks | `make check-fast` passes Ruff, mypy on **45/45** files, seven effect-summary and **88/88** typed-IR tests. All **53/53** verifier-tool tests, four workflow-limit tests, actionlint 1.7.12 and `git diff --check` pass. |
+
+The three silent wrong-output fixtures (`drying`, `fieldcmp`, `stkkey`), the
+invalid-IR `carried` fixture and the four unsupported-rejection fixtures now have
+passing CPython recordings and accepted hosted IR. Native execution is attributed
+to the external matrix below, not to these local hosted checks.
+
+The deliberately retained `nonecmp` inheritance is still a real limitation. A
+fresh three-iteration reproduction prints `falsy, truthy, truthy` under CPython,
+but the previous and current hosted compilers emit byte-identical IR
+(`99c353e3...`) whose truth-test phi is false on both incoming edges. Existing
+[#822](https://github.com/den-run-ai/pystachy/issues/822) already records the
+required join/restart fix, so no duplicate issue was filed. The one-iteration
+control remains accepted and byte-identical, preventing the rejected-program
+regression found in the earlier #824 revision.
+
+The implementation head's external workflows all succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39685274766) has
+**27/27 successful jobs**, [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39685274713)
+has **3/3**, and [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39685274709)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39685274666)
+each have **1/1**. The final automated review reports no finding; all six earlier
+review threads are resolved. The preceding audit-head
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39683932832) also passed.
+
+LLVM 18 remains unavailable locally, so there is no fresh local native build,
+JIT/AOT execution or GC-stress run. The external 32-job matrix supplies native
+coverage separately. No local full `make verify`, broad port/package/upstream
+suite, CPython regrtest, performance or memory comparison completed. These are
+compiler-correctness gains, not a new stdlib import, package-support or
+performance claim. The latest fully evaluated main therefore remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
