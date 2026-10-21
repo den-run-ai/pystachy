@@ -6357,3 +6357,68 @@ and memory run completed. Hosted IR emission does not substitute for those
 checks. Because merged-tree native evaluation remains incomplete and the
 alternate call forms remain open, the latest fully evaluated main stays
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #831 and #830: constructor results and complete dynamic views
+
+Inspected [main `90156da26d83121f7584373cd15496e346e69361`](https://github.com/den-run-ai/pystachy/commit/90156da26d83121f7584373cd15496e346e69361)
+after [#831](https://github.com/den-run-ai/pystachy/pull/831) and
+[#830](https://github.com/den-run-ai/pystachy/pull/830) merged at
+2026-10-21 20:43:44 and 20:46:28 UTC. Fresh first-parent history is
+`bd0eb909` → #831 `0099d47d` → #830 `90156da2`; current main has tree
+`acb6abf538952bd4763acb9fb05de614310aca5d`.
+
+#831 checks the result of ordinary, inherited, templated, callable,
+exception and `dataclasses.replace` construction after `__init__` executes.
+Non-`None` results now raise `TypeError` with CPython's ordering: arguments and
+initializer side effects run first, and initializer exceptions propagate.
+Explicit, saved, unbound and `super().__init__` calls remain ordinary calls and
+retain their return values. #830 then completes #829's typed dynamic-dictionary
+view work for `dict.keys(d)` and saved bound methods as well as direct calls,
+while keeping a comparison's result-type hint soft.
+
+[Machine-readable evidence](compatibility-2026-10-21-constructor-views-partial.json)
+retains exact revisions, trees, selected changed-file hashes, commands, import
+metadata, hosted results, external workflow jobs and limitations.
+
+| Fresh integrated-tree measurement | Result and boundary |
+|---|---|
+| CPython references | All **8/8** new constructor recordings and both modified dict-view recordings match pinned CPython **3.13.16**, with empty stderr. |
+| Affected hosted corpus | Current main emits IR for **313/313** class, exception and dynamic-`Any` programs. The #829 compiler emits **311/313** on those current sources. **303** outcomes are byte-identical; the ten differences are exactly the eight constructor fixtures and two expanded view fixtures. Hosted emission does not execute IR. |
+| Alternate dict-view forms | All **6/6** previously rejected saved-bound and unbound `keys`/`values`/`items` typed-list probes now compile. A direct-values control also compiles. Direct, saved and unbound soft comparison controls all retain compile-time `list[str] == list[dyn]` rejection instead of unboxing and raising at runtime. |
+| Pinned isolated imports | **148/460** included CPython 3.13.16 imports, with 62 overlay exclusions, 312 errors and no timeout. After checkout roots are normalized, every result equals the #831 sweep: no new/lost success or first-error change. |
+| Fast hosted checks | `make check-fast` passes Ruff, mypy on **45/45** files, seven effect-summary tests and **88/88** typed-IR tests. All **53/53** verifier-tool tests, four workflow-limit tests, actionlint 1.7.12 and `git diff --check` pass. |
+
+The constructor change resolves the measured correctness gap covered by existing
+[#64](https://github.com/den-run-ai/pystachy/issues/64). The view change resolves
+the six retained alternate-call blockers recorded at #829 under existing
+[#777](https://github.com/den-run-ai/pystachy/issues/777). #830's final revision
+also fixes its review-discovered regression: a soft comparison such as
+`["1"] == d.keys()` for an integer-keyed dynamic dictionary remains rejected,
+rather than using the other operand as a hard unboxing request. No new issue was
+needed.
+
+Both implementation heads have green external matrices. For #831,
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39670280205) has
+**27/27** successful jobs,
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39670280606)
+has **3/3**, and
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39670279965) and
+[Packages](https://github.com/den-run-ai/pystachy/actions/runs/39670280328)
+each have **1/1**. #830 likewise has **27/27**
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39670655001), **3/3**
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39670655242),
+and **1/1** each for
+[Lint](https://github.com/den-run-ai/pystachy/actions/runs/39670655201) and
+[Packages](https://github.com/den-run-ai/pystachy/actions/runs/39670655196).
+These are 32/32 successes for each implementation head. #831's head is the
+intermediate main tree; #830's head was based on #829, so neither matrix is
+relabeled as validation of the final integrated tree. The previous audit-head
+[Lint run](https://github.com/den-run-ai/pystachy/actions/runs/39668296333) also
+completed successfully.
+
+LLVM 18 was unavailable locally. No fresh native fixed-point build, JIT/AOT or
+GC execution, full `make verify`, port, package, upstream suite, CPython
+regrtest, performance or memory run completed for the integrated tree. The
+implementation-head CI matrices supply separately attributable native evidence;
+hosted IR emission is not a substitute. The latest fully evaluated main
+therefore remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

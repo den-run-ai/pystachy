@@ -1,0 +1,8 @@
+made 0
+TypeError __init__() should return None, not 'int'
+explicit 0 1
+saved 0 3
+several made 0
+TypeError __init__() should return None, not 'int'
+TypeError __init__() should return None, not 'str'
+[exit 0]

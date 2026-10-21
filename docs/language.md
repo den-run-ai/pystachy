@@ -119,6 +119,11 @@ the options `init`, `repr`, `eq`, `order`, `unsafe_hash`, `frozen`, `match_args`
 `is_dataclass()` (see [reflection](language/semantics.md#reflection)); `slots=True` is not
 supported.
 
+Construction requires `__init__` to return `None`. A different result raises a catchable
+`TypeError` after the initializer runs, including for inherited initializers, exception
+classes and `dataclasses.replace()`. Explicit method calls such as `obj.__init__()` or
+`super().__init__()` return the method's result normally.
+
 Literal `__slots__` strings, tuples and lists restrict instance field writes when every
 base also declares slots. A subclass without slots, or with an unslotted base, may add
 fields. Dynamic slots, private slot names, `__dict__` and `__weakref__` slots are

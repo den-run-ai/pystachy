@@ -1,0 +1,10 @@
+error init 1
+TypeError __init__() should return None, not 'int'
+error init 2
+TypeError __init__() should return None, not 'int'
+error init 3
+TypeError __init__() should return None, not 'int'
+error init 4
+TypeError __init__() should return None, not 'int'
+TypeError __init__() should return None, not 'ValueError'
+[exit 0]
