@@ -307,6 +307,11 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   typed code reports at compile time, where CPython binds them (`s.split(sep=",")`). So does a
   call with keyword arguments of a function value whose type is a `Callable`, which has no
   parameter names (`tests/deviations/dynany_builtin_keywords.py`).
+- `sorted()`, `list.sort()`, `min()` and `max()` of objects with a `key` that is an `Any` value
+  holding `None` call it, and raise `TypeError`, where CPython orders the objects themselves:
+  ordering them without a key would compile their class's comparison methods, which the keyed
+  call never needs. Typed code rejects a `Callable | None` key over objects at compile time
+  (`tests/deviations/dynany_key_none_objects.py`).
 - A builtin type's method that typed code does not support either (`int.to_bytes()`,
   `int.as_integer_ratio()`) raises `AttributeError` where it is called through an `Any` value;
   typed code rejects it at compile time. So does a builtin type's method called through an
