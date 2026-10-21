@@ -345,10 +345,12 @@ class Loader:
         self.submodules()
         more = True
         while more:
-            # (until no from-import of an alias is left to make one: an alias may be of one)
+            # (until no from-import of an alias is left to make one, nor an alias of a module's
+            # attribute: an alias may be of one)
+            made = False
             for x in self.order:
-                self.late_aliases(x)
-            more = self.late_takes(False)
+                made = self.late_aliases(x) or made
+            more = self.late_takes(False) or made
         self.late_takes(True)
         self.doccycles()
         for x in self.order:
@@ -798,14 +800,38 @@ class Loader:
         info = mk("namedtuple", tn.s, line, [mk("tuple", "", line, [mk("str", nm, line, []) for nm in names]), mk("tuple", "", line, [clone(x) for x in dn.kids]), mn])
         return mk("subclass", name, line, [mk("class", name, line, [mk("block", "", line, [init])]), info])
 
-    def late_aliases(self, m: Mod) -> None:
+    def late_aliases(self, m: Mod) -> bool:
         # name = f where an import binds f (from m import f): an alias too, if nothing else binds
         # name; so are name = <a type> and name: TypeAlias = <a type> (type_value), type aliases,
-        # and name: TypeAlias = C of a def or class (as name = C)
+        # and name: TypeAlias = C of a def or class (as name = C). Did it make an alias of a
+        # module's attribute (name = m.C), which another such alias may name?
         count = top_bindings(m.body.kids)
         dm = self.dm
         self.dm = m
+        made = False
         for st in m.body.kids:
+            if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "attr":
+                # name = m.C of an imported module's class, or of an alias of one, that is no
+                # exception class (whose class object is a value already): an alias too, if nothing
+                # else binds name (#804). Its statement still reads m.C, as CPython's assignment
+                # does, which raises where m's code has not bound C yet (a circular import: Gen's
+                # "ready"). Not where m's C is an alias and m imports this module, itself or through
+                # others: m binds C where its statement runs, which may come after that import, and
+                # "ready" checks only the class. Nor where code may read name before the statement
+                # binds it (read_early)
+                nm = st.kids[0].s
+                t = self.attr_mod(st.kids[1].kids[0])
+                k = self.mods[t].kinds.get(st.kids[1].s, "") if t != "" and st.kids[1].s not in self.mods[t].amb else ""
+                if k.startswith("a:") and self.imports_mod(self.mods[t].body, m.name, {}, True):
+                    k = ""
+                q = k[2:] if k.startswith("a:") and self.class_alias(k) else self.mods[t].q + st.kids[1].s if k == "c" else ""
+                if q != "" and self.plain_class(q, 0) and m.kinds.get(nm, "") == "v" and count.get(nm, 0) == 1 and nm not in m.fnglobal and not self.read_early(m, st, nm):
+                    m.kinds[nm] = "a:" + q
+                    self.aliased[m.name + " " + nm] = st
+                    self.used_before(m, st)
+                    st.kind = "ready"
+                    made = True
+                    continue
             if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "name":
                 src = m.kinds.get(st.kids[1].s, "")
                 nm = st.kids[0].s
@@ -837,6 +863,68 @@ class Loader:
                 m.taliases[self.qual(m, nm)] = st
                 self.aliased[m.name + " " + nm] = st
         self.dm = dm
+        return made
+
+    def attr_mod(self, n: Node) -> str:
+        # the module that n, a name or an attribute of one in module dm's top-level code, denotes
+        # as qmod() finds it (a submodule that the package does not bind itself too), or "". Not
+        # a package's submodule that imports dm, itself or through other modules: in that circular
+        # import, CPython attaches the submodule to its package only once its code has run, so
+        # dm's code may find the package without it (AttributeError: cannot access submodule)
+        if n.kind == "name":
+            k = self.dm.kinds.get(n.s, "")
+            return k[2:] if k.startswith("m:") and k[2:] in self.mods else ""
+        base = self.attr_mod(n.kids[0]) if n.kind == "attr" else ""
+        if base == "" or n.s in self.mods[base].amb:
+            return ""
+        k = self.mods[base].kinds.get(n.s, "")
+        if k.startswith("m:"):
+            return k[2:] if k[2:] in self.mods else ""
+        sub = base + "." + n.s
+        return sub if k == "" and sub in self.mods and not self.imports_mod(self.mods[sub].body, self.dm.name, {}, True) else ""
+
+    def plain_class(self, q: str, depth: int) -> bool:
+        # is the class of qualified name q surely no exception class, and the only thing its
+        # module binds to its name (not class C: ... C = C(), a singleton, nor a decorated class,
+        # which its decorator may replace: @object.__new__): its class statement names no base, or
+        # object, or only classes that are such classes too, by name or through a module's
+        # attribute (base_class; late_aliases)
+        for x in self.order:
+            if depth > 64 or not q.startswith(x.q) or "$" in q[len(x.q) :]:
+                continue
+            if top_bindings(x.body.kids).get(q[len(x.q) :], 0) != 1 or q[len(x.q) :] in x.fnglobal:
+                return False
+            for st in x.body.kids:
+                if (st.kind != "class" and st.kind != "subclass") or st.s != q[len(x.q) :]:
+                    continue
+                for d in st.kids if st.kind == "class" else st.kids[0].kids:
+                    if d.kind == "deco":
+                        return False
+                for base in st.kids[1:] if st.kind == "subclass" else st.kids[:0]:
+                    if base.kind == "typeparams" or (base.kind == "name" and base.s == "object" and x.kinds.get("object", "") == ""):
+                        continue
+                    b = self.base_class(x, base)
+                    if b == "" or not self.plain_class(b, depth + 1):
+                        return False
+                return True
+            return False
+        return False
+
+    def base_class(self, x: Mod, base: Node) -> str:
+        # the qualified name of the class, or alias of one, that base, a base of a class statement
+        # of module x, names: by name, or through a module's attribute as attr_mod resolves it in
+        # x's code (class D(m.B)); else "" (plain_class)
+        if base.kind == "name":
+            k = x.kinds.get(base.s, "")
+            return x.q + base.s if k == "c" else k[2:] if k.startswith("a:") else ""
+        if base.kind != "attr":
+            return ""
+        dm = self.dm
+        self.dm = x
+        t = self.attr_mod(base.kids[0])
+        self.dm = dm
+        k = self.mods[t].kinds.get(base.s, "") if t != "" and base.s not in self.mods[t].amb else ""
+        return self.mods[t].q + base.s if k == "c" else k[2:] if k.startswith("a:") else ""
 
     def type_value(self, e: Node, top: bool) -> bool:
         # does e, a value that module dm's top-level code assigns, surely evaluate to a type that
@@ -950,6 +1038,21 @@ class Loader:
             changed = True
         return changed
 
+    def read_early(self, m: Mod, al: Node, nm: str) -> bool:
+        # may code read nm before alias statement al of module m binds it, where CPython raises
+        # NameError or AttributeError while an alias names the class for all of the program's code
+        # (late_aliases)? A statement before al that names nm, also in a function, class or lambda
+        # it defines, which a call may run then; or one that imports, at the top level, itself or
+        # through other modules, a module whose code imports m back: in that import cycle, the
+        # other module's code runs before al and may read m.nm. (As for Gen's import components,
+        # imports in functions are not followed: #814)
+        for st in m.body.kids:
+            if st is al:
+                return False
+            if names_name(st, nm) or self.imports_mod(st, m.name, {}, False):
+                return True
+        return False
+
     def used_before(self, m: Mod, al: Node) -> None:
         # an alias (name = f) binds name for all of the module's code; module-level code that runs
         # before it would see name unbound in CPython (but not a type statement's value, which is
@@ -1056,8 +1159,8 @@ class Loader:
                             names.append(nm)
                 elif (k == "annassign" and i == 1) or k == "global" or k == "nonlocal":
                     continue
-                elif ((k == "assign" or k == "pass") and i < len(st.kids) - 1) or ((k == "annassign" or k == "for") and i == 0):
-                    names_in(x, names if k != "for" and (k != "annassign" or len(st.kids) == 3) else tgt)  # (an alias is a "pass")
+                elif ((k == "assign" or k == "pass" or k == "ready") and i < len(st.kids) - 1) or ((k == "annassign" or k == "for") and i == 0):
+                    names_in(x, names if k != "for" and (k != "annassign" or len(st.kids) == 3) else tgt)  # (an alias is a "pass", or "ready")
                 elif k == "import":
                     names.extend([x.s] if x.kids[0].s != "builtins." + x.s else [])  # (from builtins import len rebinds nothing)
                 elif k == "del":

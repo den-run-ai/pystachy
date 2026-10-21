@@ -1,0 +1,4 @@
+mods: init mods
+mods.shapes: init mods.shapes
+D derived 4 8 True D
+[exit 0]
