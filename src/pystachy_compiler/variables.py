@@ -1759,6 +1759,8 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
             return targs(t)[1]
         if n.kind == "index" and t in self.classes and "__setitem__" in self.classes[t].methods and len(self.classes[t].methods["__setitem__"].ptypes) > 2:
             return self.classes[t].methods["__setitem__"].ptypes[2]
+    if base and n.kind != "name" and self.dyn_policy(n.line) and self.dry(n) == "dyn":
+        return "dyn"  # (another expression's Any value, in a module that compiles Any so: f()[k] = {}, f().x = [])
     return ""
 
 def gen_assign(self, t: Node, v: Val) -> None:

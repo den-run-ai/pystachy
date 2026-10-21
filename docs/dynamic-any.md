@@ -143,8 +143,9 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   not scan, or have to be copied (breaking identity). The compiler rejects the crossing and says
   to make the container a `list[Any]` from the start; a display that flows into `Any` storage is
   made one automatically, an empty one too: also one stored into an `Any` value's item or
-  attribute (`cont[k] = {}`, `o.kids = [1, 2]`: `tests/programs/inference/dynany_store_display.py`),
-  which a field or `__setitem__` parameter of typed items then rejects at compile time
+  attribute (`cont[k] = {}`, `o.kids = [1, 2]`, and in a module that opts in `f()[k] = {}` where
+  `f()` returns `Any`: `tests/programs/inference/dynany_store_display.py`), which a field or
+  `__setitem__` parameter of typed items then rejects at compile time
   (`tests/errors/inference/dynany_store_display_typed.py`). Fresh lists that a builtin method returns
   (`str.split()`, `dict.items()` of an `Any` dict) are converted, since nothing else refers to
   them yet.

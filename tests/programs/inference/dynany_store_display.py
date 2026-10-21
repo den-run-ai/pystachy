@@ -1,6 +1,7 @@
 # pystachy: dynamic-any
 # A display stored into an Any value's item or attribute holds Any values, as a CPython container
-# does whatever is stored into it later (#777): an empty one too, and one of typed items
+# does whatever is stored into it later (#777): an empty one too, and one of typed items, also
+# where the Any value is a call's result
 from typing import Any
 
 
@@ -53,3 +54,20 @@ cont["sq"] = [i * i for i in range(3)]
 cont["sq"].append("x")
 cont["l"] += [3]
 print(cont["f"], cont["p"], cont["q"], cont["sq"], cont["l"])
+
+
+def get() -> Any:
+    return cont
+
+
+def node() -> Any:
+    return o
+
+
+get()["g"] = {}
+get()["g"]["h"] = [1, 2]
+node().kids = [{}]
+node().kids[0]["leaf"] = False
+o.kids[0]["more"] = [None]
+(cont if len(cont) > 0 else lst)["c"] = []
+print(cont["g"], o.kids, cont["c"])
