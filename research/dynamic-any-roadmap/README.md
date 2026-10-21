@@ -52,6 +52,17 @@ Measurements cited from issues keep their own revisions.
    build modes and the runtime, the four dispatch levels of an operation on an `Any` value and the
    layout of a `dyn` value are under [Design at a
    glance](#design-at-a-glance-compiler-runtime-aot-and-jit).
+6. **Against CPython 3.13:** typed loops run 4 to 71 times as fast as CPython, and most single
+   operations through `Any` still run faster (a field read 21×, a method call 4×, an int sum 3.5×);
+   `tomllib` parses 2.7× as fast. CPython wins where an `Any` loop hashes and compares keys parsed
+   from data and boxes new numbers: it processes #780's record pipeline 1.57× as fast, although
+   Pystachy's faster decoding makes the whole AOT run 1.24× as fast. Peak RSS is 2.0 to 2.6 times
+   CPython's. See [Against CPython](#against-cpython).
+7. **Library reach is not what dynamic `Any` buys today:** with the comment in every stdlib module,
+   150 of 457 modules import instead of 149: outside `Any` annotations and displays of mixed items,
+   the comment leaves unannotated code as it was. C modules (220 modules, #491) and the class model
+   (#7) block far more; classes and builtin functions as `Any` values would remove the first
+   blocker of 32. See [Library reach](#library-reach) and group E.
 
 ## 1. Where dynamic `Any` stands at `1cf6a676`
 
@@ -150,16 +161,83 @@ flowchart TB
 | M7 | Seeded differential fuzz, 3 × 150 expressions over 37 values, 21 binary operators and 11 unary operators and builtins, JIT | one undocumented mismatch class: a `**` `TypeError` says `for **:` where CPython says `for ** or pow():` ([runtime.c#L3385-L3388][dops]); the rest are documented (`%` of an `Any` str, 64-bit overflow) or not comparable (str hashes, which CPython randomizes) | #798 |
 | M8 | In-place operators on `Any` values that do not support them (`probes/opmsg.py`), JIT and AOT | every one names the binary operator: `for +:` where CPython says `for +=:`, `for **:` for `**=`. `pys_dyn_inplace` falls back to `pys_dyn_binop`, whose message knows only the binary symbol ([runtime.c#L3454-L3470][inplace]) | #798 |
 
-From #780 and #784 (compiler `ad19255e`): on 100,000 mixed JSONL events, AOT processing takes 1.6×
-CPython's time; about half of its instructions are `Any`-keyed dict lookups and hashing, a quarter
-box allocation and collection, and a tenth dispatchers and boxing. A five-line `dlook` fast path
-for two boxed strs removed 16% of the instructions. `tomllib`, whose scanner is typed and whose
-results are `Any`, parses 2.0× as fast as CPython runs it, at 2.5× CPython's peak RSS.
-
 **Robustness record.** #772 (silent wrong comparisons through `Any`) and #781 (compile time
 doubling with display depth) were found by probes after #761 merged, not by its tests, and fixed
 in #790; 5 of #782's 15 opt-in regressions remain, and #790 notes compile time still grows faster
 than linearly with display depth. M6, M7 and M8 are three more findings of the same kind.
+
+### Against CPython
+
+`1cf6a676` against CPython 3.13.16 on the host above (an Intel Xeon at 2.10 GHz): medians of 7
+interleaved processes pinned to one core, every checksum and output equal to CPython's
+([`results/cpython-comparison.txt`](results/cpython-comparison.txt) has the commands and the raw
+output). Typed code runs 4 to 71 times as fast as CPython on these loops (`str.split()` aside).
+Through `Any`, most single operations are still faster; CPython wins where a loop hashes and
+compares keys parsed from data and boxes new numbers:
+
+| Workload | CPython | Pystachy | Result |
+|---|---:|---:|---|
+| #780's record pipeline, 100,000 mixed JSONL events: processing, the `Any`-heavy loop | 102 ms | 160 ms | CPython 1.57× as fast (#780: 101 against 165 ms) |
+| the same: decoding (`json.loads()` and the copy into `Any` storage) | 599 ms | 363 ms | AOT 1.65× as fast |
+| the same: one pass end to end, with start-up and compilation | 755 ms | 607 ms (AOT), 957 ms (JIT) | AOT 1.24× as fast, JIT 0.79× |
+| the same: peak RSS | 136 MiB | 269 MiB (AOT), 329 MiB (JIT) | 2.0× and 2.4× CPython's |
+| `tomllib.loads()` of #784's 526 KB document | 187 ms | 70 ms | AOT 2.66× as fast (#784: 2.0×), at 41 against 16 MiB peak RSS |
+| `tools/dynany_bench.py graph`: 2,000 object graphs deep-copied and checked through `Any` | 147 ms | 27 ms | AOT 5.5× as fast |
+| `tools/dynany_bench.py generic`: 1,000,000 ints in a `list[Any]` summed into an `Any` | 25.1 ms | 16.7 ms | AOT 1.5× as fast |
+
+One operation, in nanoseconds (`probes/hot.py`, AOT; the JIT's times for the `Any` loops are within
+8% of these):
+
+| Through `Any` | CPython | Pystachy | Result | The same loop typed |
+|---|---:|---:|---|---:|
+| field read `x.v`, 4 classes | 60.4 | 2.8 | 21× as fast | 1.1 |
+| method call `x.m(i)` | 115.4 | 28.3 | 4.1× as fast | 1.8 |
+| `acc = acc + x`, ints | 26.2 | 7.6 | 3.5× as fast | 0.37 |
+| two reads of a record dict and a compare, the stored keys being the lookups' literals | 87.1 | 60.9 | 1.4× as fast | 11.1 |
+| the same, keys built at run time, as parsed keys are | 92.2 | 96.8 | 0.95× | |
+| `counts[w] = counts.get(w, 0) + 1` | 59.7 | 53.1 | 1.1× as fast | 14.6 |
+| `acc = acc * 0.5 + x`, floats | 21.2 | 24.4 | 0.87× | 2.5 |
+| `len(s.split())` | 186.7 | 223.9 | 0.83× | 163.3 |
+
+The pipeline loses where the kernels win because its keys and numbers come from data. Its
+processing runs 7,912 instructions per event (#780: 7,870; callgrind, 6 rounds less 1 over 10,000
+events): 45% in `Any`-keyed dict lookups and key comparison, 14% in hashing, about 18% in
+allocation and collection and 6% in `str.split()` and slicing; the handlers, dispatchers and boxing
+take the rest. A key parsed from JSON is another str than the literal that looks it up, so a hit
+compares two boxes through `dfindc`, `eqv`, `dkeyeq`, `pys_dyn_eq` and `memcmp`, where a CPython
+dict whose keys are all strs compares them in one specialized loop (the kernel above drops from 1.4×
+to 0.95× with such keys). Every count above 256, token sum and float stored into `Any` storage takes
+a new box, and each collection scans the live heap: 11 collections took 154 ms of one pass with
+135 MiB live (`PYSTACHY_GC=stats`), while the kernels' 25 took 3.2 ms. CPython frees short-lived
+numbers by reference count. B2, B1 and B3 address these, in that order; the dispatchers that C1 and
+C2 change are a tenth of this workload.
+
+### Library reach
+
+The comment makes `Any` annotations dynamic, turns a display whose items have no one type into a
+container of `Any` values, and widens storage that later receives an `Any` value
+([docs/dynamic-any.md][dynstorage]). Other unannotated code keeps its static types and per-call
+templates, and making `Any` the default for it is a non-goal (section 6). The standard library is
+unannotated, so opting all of it in moves little: at `1cf6a676`, `tools/import_sweep.py` compiles
+`import M` for 149 of the 457 stdlib modules it tries (62 more are `lib/`'s own) and for 150 with
+the comment as every module's first line, as #784 found at `ad19255e` (149 and 150 of 461, before
+`lib/` took over `tomllib`'s 4 modules). The one module is `xml.etree.ElementPath`, whose dict
+display of different functions becomes a dict of `Any` values. First blockers without the comment
+([`results/stdlib-optin-sweep.txt`](results/stdlib-optin-sweep.txt) lists the modules):
+
+| First blocker | Modules | Tracked in | What dynamic `Any` could do |
+|---|---:|---|---|
+| a module that CPython builds in from C: `_warnings` (56), `_socket` (44), `_signal` (27), ... | 220 | #491, #128 | nothing |
+| a class used as a value: `_thread.lock` in `threading`, `email.charset.Charset`, ... | 24 | #7 | E1: classes as `Any` values |
+| a dict keyed by builtin functions or types: `copyreg`'s `{complex: ...}`, which `copy`, `pickle`, `shelve` and `xml.dom.minidom` import | 8 | none found | E1 |
+| a class feature: enum bases, generic inheritance, other bases | 22 | #7, #610 | nothing |
+| another feature: module attributes, redefinitions, `None` where an `int` was inferred, ... | 34 | | E4, for the 4 that are inference failures |
+
+#784's nine JSON and data packages also stopped at the same place with and without the comment
+(at `ad19255e`), and none at an `Any` gap: `inspect` (`_warnings`), `copy` (`copyreg`, above),
+`six`, a namedtuple field given `None`, and `types.MappingProxyType`, which #794 has added since.
+Dynamic `Any` pays off for library code written around it: `tomllib` (#795) and #784's 34 of 60
+everyday idioms.
 
 ## 2. What transfers, and what does not
 
@@ -585,6 +663,37 @@ needs in-process code loading, #707/#704, and a code cache, #104), NaN-boxing, a
 hidden-class transitions, and an interpreter tier (#108's candidate B) unless start-up
 measurements call for one.
 
+### E. Library reach: what dynamic `Any` would need to carry library code
+
+The sweep under [Library reach](#library-reach) puts C modules (#491) and the class model (#7) ahead
+of `Any` as what keeps the standard library out. Group E is dynamic `Any`'s share, and the
+measurement that keeps it honest.
+
+**E1. Classes, builtin functions and types as `Any` values.** A class, `int`, `complex` or `len`
+read as a value in a module that opts in becomes a constant box whose `DynType` is that class's or
+function's own: equal and hashed by identity, callable through A3's boxed convention (calling a
+class constructs), and accepted as `isinstance()`'s second argument. It is #7's general class
+values restricted to `Any` storage, and it would remove the first blocker of 32 stdlib modules in
+the opt-in sweep (`threading`'s `_thread.lock`, `copyreg`'s dispatch table); what blocks them next
+is not measured.
+
+**E2. The gaps that library-style code meets in a module that opts in**, all filed: calls through
+`Any` with keywords, `*` unpacking or builtin functions (#774); builtins and `math` given `Any`
+arguments, and sets, bytes and exceptions as `Any` values (#775); `object` and bare `Mapping`
+annotations and `isinstance()` with `collections.abc` classes (#778); typed containers crossing
+into `Any` (#777, A4); and `json.loads()` building `Any` storage itself (#779), which would also
+remove the pipeline's copy.
+
+**E3. Library reach as a measured gate.** Run the opt-in stdlib sweep (`probes/optin_stdlib.py`,
+`tools/import_sweep.py`, `probes/sweep_blockers.py`, 22 s each) and #784's package probes with A1's
+corpus sweep, and record the modules and packages each E item moves.
+
+**E4. An open question, not a proposal:** in a module that opts in, should a name whose type
+inference cannot settle become `dyn` instead of a compile-time error? It would admit unannotated
+library code that needs annotations today, but it is section 6's non-goal in a narrower form, and
+it would make slow paths silent. Its stdlib payoff today is bounded by the 4 modules whose first
+blocker is such a failure.
+
 ## 5. Order of work
 
 Each step stands alone and has its own gate. #797 to #803 were filed from this record; the other numbers are existing issues.
@@ -600,6 +709,7 @@ Each step stands alone and has its own gate. #797 to #803 were filed from this r
 | 7 | B3 split `dyn` locals | numeric accumulators and counters | #780, #742 |
 | 8 | C2 field tables, C4 type flow | code size and unboxed results at scale | #799, #488, #489 |
 | 9 | B4 tagging, B5 strategies, C3 global table, D1, D2 | only if the measurements after steps 1-8 still point there | #392 |
+| 10 | E3's sweep beside step 1's checks; E2's filed gaps; E1 once A2 and A3 give class values a `DynType` and a calling convention | library reach: dynamic `Any`'s share, after C modules (#491) and the class model (#7) | #774, #775, #778, #779, #7 |
 
 ## 6. Risks and non-goals
 
@@ -615,7 +725,7 @@ Each step stands alone and has its own gate. #797 to #803 were filed from this r
 - **Code size.** D1 duplicates arms; tables and slots keep methods alive. Emit them only for classes
   that reach `Any` storage, and record AOT binary sizes.
 - **Non-goals:** changing programs that do not opt in; making `Any` the default for unannotated
-  code; online compilation.
+  code (E4 asks about a narrower form); online compilation.
 
 ## Reproduce
 
@@ -646,13 +756,33 @@ python3 $D/probes/gen_decline.py 16 300 > $T/decline_16.py && time ./pystachy ir
 python3.13 $D/probes/ident.py; ./pystachy run $D/probes/ident.py
 python3 $D/probes/gen_fuzz.py 1 150 > $T/fuzz1.py && python3.13 $T/fuzz1.py > $T/c.txt; ./pystachy run $T/fuzz1.py > $T/p.txt; diff $T/c.txt $T/p.txt
 python3.13 $D/probes/opmsg.py; ./pystachy run $D/probes/opmsg.py
+# Against CPython: hot paths and tools/dynany_bench.py
+./pystachy build $D/probes/hot.py -o $T/hot
+python3 $D/probes/runhot.py 7 4 "aot=$T/hot" "jit=./pystachy run $D/probes/hot.py" "cpython=python3.13 -I $D/probes/hot.py"
+./pystachy build tools/dynany_bench.py -o $T/dynb && python3.13 $D/probes/rundyn.py 7 $T/dynb tools/dynany_bench.py
+# Against CPython: #780's pipeline and #784's tomllib benchmark, from that study's branch
+for f in pipeline/pipeline.py pipeline/gen_events.py pipeline/controller2.py bench/bench_tomllib.py bench/gen_records.py bench/controller.py; do
+  git show 4d61e4ce:research/dynamic-any/$f > $T/$(basename $f); done
+(cd $T && python3.13 gen_events.py 100000 > big.jsonl && python3.13 gen_records.py)
+./pystachy build $T/pipeline.py -o $T/pipeline && ./pystachy build $T/bench_tomllib.py -o $T/tomllib
+python3.13 $T/controller2.py 7 "$T/big.jsonl 3" "aot=$T/pipeline" "cpython=python3.13 -I $T/pipeline.py"
+python3 $D/probes/e2e.py 5 "jit=./pystachy run $T/pipeline.py $T/big.jsonl 1" "aot=$T/pipeline $T/big.jsonl 1" "cpython=python3.13 -I $T/pipeline.py $T/big.jsonl 1"
+PYSTACHY_GC=stats $T/pipeline $T/big.jsonl 1
+python3.13 $T/controller.py 7 "$T/records.toml 5" "aot=$T/tomllib" "cpython=python3.13 -I $T/bench_tomllib.py"
+# Library reach: the stdlib sweep without and with the comment in every module
+python3.13 tools/import_sweep.py -j 3 ./pystachy /usr/lib/python3.13 $T/base.json
+python3 $D/probes/optin_stdlib.py /usr/lib/python3.13 $T/stdlib-dyn
+python3.13 tools/import_sweep.py -j 3 ./pystachy $T/stdlib-dyn $T/dyn.json
+python3 $D/probes/sweep_blockers.py $T/base.json $T/dyn.json $T/stdlib-dyn
 ```
 
 ## References
 
-- Pystachy: #108 (dynamic-mode contract), #392 (specialization evidence), #487 (boxes and the
-  mutation contract), #488 (interface tables), #489 (run-time attribute names), #742 (union slots),
-  #761 and #790 (dynamic `Any`), #772, #777-#782 (gaps), #784 (study records).
+- Pystachy: #7 (class values), #108 (dynamic-mode contract), #128 and #491 (modules CPython builds
+  in), #392 (specialization evidence), #487 (boxes and the mutation contract), #488 (interface
+  tables), #489 (run-time attribute names), #742 (union slots), #761 and #790 (dynamic `Any`),
+  #772, #774, #775, #777-#782 (gaps), #784 (study records, with [the pipeline][pipeline] and
+  [the `tomllib` benchmark][tomlbench]).
 - Julia: [isbits union optimizations][julia-unions]; [union-splitting][julia-split].
 - Dart: [AOT dispatch table generator][dart-table]; [Introduction to Dart VM][dart-vm] (switchable
   calls in AOT).
@@ -681,6 +811,9 @@ python3.13 $D/probes/opmsg.py; ./pystachy run $D/probes/opmsg.py
 [passes]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/driver.py#L71-L103
 [inline]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/driver.py#L741-L751
 [refl]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/docs/internals.md#reflection
+[dynstorage]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/docs/dynamic-any.md#selecting-dynamic-storage
+[pipeline]: https://github.com/den-run-ai/pystachy/tree/4d61e4ce2824ae2f2a0046bfb66cf1ef2d9db868/research/dynamic-any/pipeline
+[tomlbench]: https://github.com/den-run-ai/pystachy/tree/4d61e4ce2824ae2f2a0046bfb66cf1ef2d9db868/research/dynamic-any/bench
 [julia-unions]: https://docs.julialang.org/en/v1/devdocs/isbitsunionarrays/
 [julia-split]: https://julialang.org/blog/2018/08/union-splitting/
 [dart-table]: https://dart.googlesource.com/sdk/+/stable/runtime/vm/compiler/aot/dispatch_table_generator.h
