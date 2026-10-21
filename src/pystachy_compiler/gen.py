@@ -227,6 +227,7 @@ from src.pystachy_compiler.reflection import (
 from src.pystachy_compiler.builtins import (
     gen_anyall as builtins_anyall,
     gen_as_list as builtins_as_list,
+    gen_typed_list as builtins_typed_list,
     gen_bmethod as builtins_bmethod,
     gen_tmethod as builtins_tmethod,
     gen_dict_pairs as builtins_dict_pairs,
@@ -2094,8 +2095,8 @@ class Gen:
     def desc(self, t: str, use: str) -> str:
         return conversions_desc(self, t, use)
 
-    def ctype(self, base: str, ts: list[str]) -> str:
-        return declarations_ctype(self, base, ts)
+    def ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
+        return declarations_ctype(self, base, ts, canon)
 
     def none_items(self, t: str) -> str:
         return declarations_none_items(self, t)
@@ -2262,7 +2263,7 @@ class Gen:
     def iter_ann(self, n: Node) -> str:
         return declarations_iter_ann(self, n)
 
-    def iter_item(self, n: Node) -> Node:
+    def iter_item(self, n: Node) -> Node | None:
         return declarations_iter_item(self, n)
 
     def exc_attr(self, ci: ClassInfo, name: str) -> None:
@@ -4060,6 +4061,9 @@ class Gen:
 
     def as_list(self, v: Val, name: str) -> Val:
         return builtins_as_list(self, v, name)
+
+    def typed_list(self, v: Val, want: str) -> Val:
+        return builtins_typed_list(self, v, want)
 
     def reverse_arg(self, n: Node, name: str) -> str:
         return builtins_reverse_arg(self, n, name)

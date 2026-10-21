@@ -294,6 +294,17 @@ def gen_dyn_box(self, v: Val) -> Val:
         return Val(self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]), DYN)
     if t == "float":
         return Val(self.rt("pys_dyn_float", "ptr", [f"double {v.v}"]), DYN)
+    if t == "str" and v.v.startswith("@s."):
+        # a str constant's box is a constant too, one per constant, as a str is its payload's
+        # object: so a literal key of a dict[str, Any], whose keys are boxes (#777), allocates
+        # nothing, and is the very box that a display or a store of that literal put there
+        g = "@dbs." + v.v[3:]
+        if g not in self.dynboxes:
+            self.dynboxes[g] = True
+            d = Data("dynbox", g)
+            d.refs = [self.dyn_type("str"), v.v]
+            self.consts.append(d)
+        return Val(g, DYN)
     why = self.dyn_boxable(t)
     if why != "":
         self.err(why)

@@ -210,6 +210,8 @@ def gen_star_display(self, n: Node, want: str) -> Val:
             et = j
     if et == "" or et == "None":
         self.err("cannot infer the type of this display's items; annotate it")
+    if n.kind == "list" and self.ctype("list", [et]) == "list[dyn]":
+        et = "dyn"  # (where the items are Any values or containers: ctype)
     for i in range(len(parts)):
         if lists[i] and elem(parts[i].t) != et:
             # (a list of other items, an int's where they are int | str: each converted)
@@ -553,6 +555,15 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
     V = v.t if V == "" else V
     v = self.coerce(v, V)
     t = self.ctype("dict", [K, V])
+    if t == "dict[dyn,dyn]" and (K != "dyn" or V != "dyn"):
+        # (a dict of Any containers holds boxes, keys too, ctype: the keys and the value boxed first)
+        if is_dict(xs.t):
+            xs = self.as_list(xs, "fromkeys")
+        if elem(xs.t) != "dyn":
+            item = made_var("__item", self.line)
+            xs = self.listcomp(mk("listcomp", "", self.line, [mk("name", "__item", self.line, []), item, self.vnode(xs)]), "list[dyn]")
+        K = "dyn"
+        v = self.coerce(v, "dyn")
     if is_dict(xs.t):
         return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
     return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)

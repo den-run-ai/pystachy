@@ -1,5 +1,5 @@
-# Monthly, one grouped pull request for the actions CI uses (pinned by commit, with the version in a
-# comment, which Dependabot updates too)
+# Monthly grouped updates keep routine CI churn small; security updates are enabled separately.
+# Actions stay pinned by commit, with version comments updated by Dependabot.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -8,4 +8,12 @@ updates:
       interval: monthly
     groups:
       actions:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /tools
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      python-tools:
         patterns: ["*"]

@@ -1,0 +1,22 @@
+displays [{'a': 7}, {'a': 7}] [{'a': 7}] [[7]] [[{'a': 7}]] [[7, 's'], [7, 's']]
+dicts {'k': {'a': 7}} {'k': [7]} {'k': 7} {1: 7} {'n': {'m': [7, 's']}}
+unpacked [{'a': 7}, {'a': 7}] [{'a': 7}, {'a': 7}] [7, 's', 7, 's'] [{'a': 7}, 7, 's'] {'a': 7, 'b': [7]} {'z': 1, 'a': 7}
+lists [{'a': 7}, {'a': 7}] [{'a': 7}, {'a': 7}] [[7], ['s']]
+dicts {'0': {'a': 7}, '1': {'a': 7}} {'a': 7, 'b': 7} {7: [7], 's': ['s']}
+nested [[{'a': 7}, {'b': [7]}], [{'a': 7}, {'b': [7]}]] {'a': [7]}
+rows [{'n': 7, 'tags': [7, '7', 'more']}, {'n': 7, 'tags': [7, '7']}] [7, 7]
+first stores [{'a': 7}] [{'a': 7}, {'a': 7}, {'a': 7}] {'a': {'a': 7}, 'b': {'a': 7}} [{'a': 7}]
+setdefault {'all': [{'a': 7, 'seen': True}, {'b': [7]}]} {'a': 7, 'seen': True}
+list [{'a': 7, 'seen': True}, {'a': 7, 'seen': True}] [{'a': 7, 'seen': True}, {'a': 7, 'seen': True}] [[7, 's'], [7, 's']] [7, 7] [{'a': 7, 'seen': True}]
+dict {'a': {'a': 7, 'seen': True}} {'a': {'a': 7, 'seen': True}} {'a': {'a': 7, 'seen': True}, 'b': {'a': 7, 'seen': True}} {'a': 7, 'seen': True} {'a': 7, 'seen': True}
+iterators [{'a': 7, 'seen': True}] [{'a': 7, 'seen': True}, {'a': 7, 'seen': True}] [{'a': 7, 'seen': True}, {'b': [7]}, {'a': 7, 'seen': True}, {'b': [7]}]
+views [7, True] [('a', 7), ('seen', True)] ['a', 'seen']
+tuples [(0, {'a': 7, 'seen': True})] [({'a': 7, 'seen': True}, [7, 's'])]
+sorted [{'b': [7]}, {'a': 7, 'seen': True}] [{'b': [7]}, {'a': 7, 'seen': True}] {'a': 7, 'seen': True}
+slices [{'a': 7, 'seen': True}] [{'b': [7]}, {'a': 7, 'seen': True}] [{'a': 7, 'seen': True}, {'b': [7]}] [{'a': 7, 'seen': True}, {'b': [7]}] [{'a': 7, 'seen': True}, {'b': [7]}, {'a': 7, 'seen': True}, {'b': [7]}]
+unpacking {'a': 7, 'seen': True} [{'b': [7]}] 3 [{'a': 7, 'seen': True}]
+fields [{'a': 7, 'seen': True}, {'z': 7}] {'k': [{'a': 7, 'seen': True}, {'z': 7}]}
+returns [{'m': 7}] [{'i': 7}] [{'a': 7, 'seen': True}, {'g': 7}]
+default [{'a': 7, 'seen': True}, {'b': [7]}]
+annotated [['changed', 7], [7, 7]] {'o': {'p': 7, 'q': [7]}}
+[exit 0]

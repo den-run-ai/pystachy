@@ -1,0 +1,11 @@
+{'a': 1}
+['a', 'b']
+1
+[{'id': 1, 'seen': True, 'n': 1}, {'id': 2, 'n': 6, 'seen': True}, {'id': 3}]
+True 3 True
+{'id': 1, 'seen': True, 'n': 1, 'x': 'y'} True
+[1, 2, 3] 6
+id 2
+n 6
+seen True
+[exit 0]
