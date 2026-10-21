@@ -1,0 +1,16 @@
+A 1 4
+B 20 AttributeError: 'B' object has no attribute 'm'
+C 3 9
+D 4 7
+E -5 3
+AttributeError: 'int' object has no attribute 'f'
+AttributeError: 'str' object has no attribute 'f'
+AttributeError: 'NoneType' object has no attribute 'f'
+AttributeError: 'list' object has no attribute 'f'
+AttributeError: 'dict' object has no attribute 'f'
+AttributeError: 'float' object has no attribute 'f'
+116 5 -25
+-100
+Late 105 102
+517
+[exit 0]
