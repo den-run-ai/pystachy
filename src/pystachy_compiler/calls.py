@@ -981,11 +981,13 @@ def gen_asdict(self, o: Val, args: list[Node]) -> Val:
         vt = self.wider(vt, ci.ftypes[fl])
         if vt == "":
             self.err(f"_asdict() of a NamedTuple whose fields have different types is not supported (a dict's values have one type): {short(o.t)}")
-    r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", ["str", vt])) else "pys_dict_new", "ptr", [f"i64 {self.key_kind('str')}", f"i64 {len(ci.fields)}"])
+    dt = self.ctype("dict", ["str", vt])
+    kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers, which a dict of them holds as boxes, keys too: ctype)
+    r = self.rt("pys_dict_new_atomic" if atomic_dict(dt) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", f"i64 {len(ci.fields)}"])
     for fl in ci.fields:
-        v = self.coerce(self.getfield(o, self.field(o, fl), fl), vt)
-        self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(Val(self.sconst(fl), "str")), "i64 " + self.to_slot(v)])
-    return Val(r, self.ctype("dict", ["str", vt]))
+        v = self.coerce(self.getfield(o, self.field(o, fl), fl), kv[1])
+        self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
+    return Val(r, dt)
 
 def gen_new_obj(self, c: str) -> Val:
     # a new object of class c, which its __init__ initializes: it holds its class-body defaults

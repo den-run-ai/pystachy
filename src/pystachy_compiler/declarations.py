@@ -46,6 +46,7 @@ from src.pystachy_compiler.utils import (
     elem,
     empty_display,
     gelem,
+    any_item,
     gsend,
     is_callable,
     is_const,
@@ -72,11 +73,20 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_ctype(self, base: str, ts: list[str]) -> str:
+def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
     # A composite type, checking its serialized size before join copies any children.
     # In a recursive template, a two-item tuple may double this on every instance.
     # Recursive value aliases have finite self edges in mutable storage. Only
     # fold the exact element/value type; never widen an existing container.
+    if canon and base == "list" and len(ts) == 1 and any_item(ts[0]):
+        # a list of Any values or Any containers is a list[Any], whose items are boxes, and so is a
+        # dict's of them a dict[Any, Any], keys boxed too: so it becomes an Any value, and an Any
+        # value becomes one, as the same object, and both see it change (#777). A container of
+        # tuples or typed items keeps its layout, and so does (canon False) one that holds None
+        # items before its first value types it, whose None is a null pointer (refine)
+        ts = ["dyn"]
+    elif canon and base == "dict" and len(ts) == 2 and any_item(ts[1]) and self.dyn_boxable(ts[0]) == "":
+        ts = ["dyn", "dyn"]
     if base == "list" and len(ts) == 1:
         ts = [self.rec_fold(ts[0])]
     elif base == "dict" and len(ts) == 2:

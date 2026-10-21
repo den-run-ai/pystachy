@@ -92,6 +92,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 hosted mypy gate (#820), **partial** | `0536d1a8`; compiler annotations and tooling after #817 | Pinned mypy 2.4.0 accepts 45/45 source files; 84 typed-IR, seven effect-summary and four workflow-limit tests pass. A 22-program hosted oracle is byte-identical to #817. Exact-tree CI is green; no language/library gain is claimed. [Evidence](compatibility-2026-10-21-mypy-gate-partial.json). |
 | 2026-10-21 fast hosted tooling (#825), **partial** | `10aa4175`; workflows/lint/tool tests after #820 | `make check-fast` passes Ruff, mypy on 45 files, seven effect-summary and 84 typed-IR tests; actionlint accepts all eight workflows and four workflow-limit tests pass. Exact-tree CI is green; no language/library gain is claimed. [Evidence](compatibility-2026-10-21-fast-tooling-partial.json). |
 | 2026-10-21 Python tooling dependency maintenance (#668), **partial** | `f4b93961`; packaging/dependency configuration after #825 | The new packaging manifest preserves all three pins, the Dependabot pip block has the intended monthly/grouped scope, and the merged tree passes `make check-fast`, actionlint and four workflow-limit tests. The implementation head's 32 workflow jobs, including package smoke, pass. No dependency version or compatibility surface changes. [Evidence](compatibility-2026-10-21-python-tooling-dependencies-partial.json). |
+| 2026-10-21 dynamic `Any` container layouts (#821), **partial with blocker** | `18584979`; compiler/tests/docs after #668 | Four retained programs newly emit hosted IR and all seven new CPython recordings match, but fresh typed consumers of `dict[str, Any].keys()` and `.items()` regress from accepted on #668 to layout-mismatch rejections. The pinned import sweep is byte-identical at 148/460. Native local evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-any-layout-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -6157,3 +6158,74 @@ execution. #817's hosted **141/441** import result remains the latest local
 count. No fresh native rebuild, JIT/AOT, GC, FFI, upstream suite or CPython
 regrtest was run for this configuration-only merge. The latest fully evaluated
 main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #821: dynamic `Any` container layouts
+
+Inspected [main `185849790523815d0f63ab1a8b33c17549bf31b4`](https://github.com/den-run-ai/pystachy/commit/185849790523815d0f63ab1a8b33c17549bf31b4)
+after [#821](https://github.com/den-run-ai/pystachy/pull/821) merged at
+2026-10-21 17:17:28 UTC. Fresh ancestry confirms #821 follows #668 directly.
+Merged main has tree `fccdde295970fa62c1095d2a7201585b32c43701`; the
+implementation head `2e9b3a1bcd8a5d3b1ed766e38ebdcbbac90c87a0` has tree
+`ed6071c1cd8321295b087a0d3331d17a0e64fe0f`. External head workflows and
+fresh merged-tree checks are kept distinct.
+
+#821 canonicalizes containers whose element, key or value type is `Any` to the
+dynamic container layout. Builders box entries, nested typed declarations such
+as `list[dict[str, Any]]` preserve that layout, and crossing such a container to
+`Any` preserves object identity. Twelve compiler files, documentation and seven
+new differential source/recording pairs change; runtime, libraries and ports do
+not.
+
+[Machine-readable evidence](compatibility-2026-10-21-dynamic-any-layout-partial.json)
+retains exact source/tree identities, selected changed-file hashes, commands,
+hosted and import results, external workflows, performance scope, blocker
+reproductions and limitations.
+
+| Fresh merged-tree measurement | Result and boundary |
+|---|---|
+| New CPython references | All **7/7** `dynany_layout*` programs match their recordings under CPython **3.13.16**, with empty stderr. |
+| Hosted affected corpus | **129/129** positive/deviation programs emit IR and **11/11** expected rejections remain rejected. Against #668, four programs newly compile, none is lost, and rejection diagnostics are unchanged. Among 125 common successes, 68 have byte-identical IR and 57 change in the intended dynamic-container/`tomllib` surface. Hosted emission does not execute the IR. |
+| Pinned isolated imports | Both #668 and merged main compile **148/460** included CPython 3.13.16 imports, with 62 overlay exclusions, 312 errors and no timeout. The normalized result JSON is byte-identical (SHA-256 `17ba2445…`): no new/lost success and no first-error change. |
+| Fast hosted checks | `make check-fast` passes Ruff, mypy on **45/45** files, seven effect-summary tests and 84 typed-IR tests. All **53/53** verifier-tool tests pass. |
+| Newly exposed typed-view blocker | #668 accepts fresh `list[str] = d.keys()` and `list[tuple[str, Any]] = d.items()` consumers for `d: dict[str, Any]`; merged main rejects them as `list[Any]` and `list[tuple[Any,Any]]`. CPython 3.13.16 executes both controls. |
+
+The four newly compiling retained programs are `dynany_layout`,
+`dynany_layout_drain`, `dynany_layout_forms` and `dynany_layout_kw`. This is a
+real, bounded compatibility gain for identity-preserving `Any` containers, not
+general NumPy/PyPI or import compatibility.
+
+The typed-view regression is independently reproduced outside the repository:
+the previous compiler accepts both programs, while current main reports
+`expected list[str], got list[Any]` and
+`expected list[tuple[str,Any]], got list[tuple[Any,Any]]`. It confirms the late
+[P1 review finding](https://github.com/den-run-ai/pystachy/pull/821#pullrequestreview-5603548430).
+The reproduction is recorded on existing
+[#777](https://github.com/den-run-ai/pystachy/issues/777#issuecomment-6322166347);
+no duplicate issue was filed.
+
+The implementation head's external workflows all succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39633068623) has
+**27/27 successful jobs**, [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39633068542)
+has **3/3**, and [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39633068492)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39633069112)
+each have **1/1**. These 32 jobs cover implementation tree `ed6071c1`; they are
+not relabeled as exact merged-tree jobs. The PR-attributed native report further
+records 140 selected programs producing 269 JIT/AOT passes, 77 dynamic programs
+producing 154 per-allocation GC passes, and the seven new programs producing 14
+JIT/AOT passes. Those are attributed head results, not fresh local native runs.
+
+The PR's bounded `tomllib` workload reports 148.6M versus 149.6M instructions
+for three parses of a 42 KB input with matching checksums, and 36.4 versus
+35.4 MiB heap at 20 parses. Its typed `list[dict[str, Any]]` microbenchmark
+reports 8.2M versus 4.4M instructions (about 1.9x). These are workload-specific,
+PR-attributed measurements; this audit does not infer a general performance or
+memory regression from them.
+
+The fresh local native command selected all seven new cases, but all 14 JIT/AOT
+setups failed before compilation because `clang`/LLVM 18 is absent. These are
+toolchain failures, not program failures. No fresh local native rebuild,
+JIT/AOT execution, GC stress, fixed-point build, full `make verify`, port,
+package, upstream-suite or CPython regrtest completed. Because the exact merged
+tree lacks a local native matrix and has a confirmed typed-view blocker, the
+latest fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

@@ -1524,11 +1524,13 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
         if m == "extend" and not is_list(v.t):
             self.err(f"cannot extend a list with {v.t}")
         nones = NONE_ITEM in o.t
-        self.refine(name, v.t if m == "extend" else self.ctype("list", [v.t]))
+        self.refine(name, v.t if m == "extend" else self.ctype("list", [v.t], not nones))
         if nones and m == "extend":
             self.none_extend(name)
         if nones and m != "extend":
             v = self.coerce(v, elem(self.qtype(name)))  # (into a list of None: T | None)
+        elif m != "extend" and self.qtype(name) == "list[dyn]":
+            v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
         if m == "append":
             self.rt("pys_list_append", "void", [f"ptr {o.v}", "i64 " + self.to_slot(v)])
         elif m == "insert":
@@ -1573,9 +1575,12 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
             self.no_type(name)
         k = self.expr(args[0], "")
         v = self.expr(args[1], want if "?" not in want else "")
-        self.refine(name, self.ctype("dict", [k.t, v.t]))
+        self.refine(name, self.ctype("dict", [k.t, v.t], NONE_ITEM not in o.t))
         if NONE_ITEM in o.t:
             v = self.coerce(v, targs(self.qtype(name))[1])  # (into a dict of None values: T | None)
+        elif self.qtype(name) == "dict[dyn,dyn]":
+            k = self.store_key(k, "dyn")  # (a dict of Any containers holds boxes, keys too: ctype)
+            v = self.coerce(v, "dyn")
         return self.from_slot(self.rt(f"pys_dict_{m}", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(k), "i64 " + self.to_slot(v)], self.key_fx(targs(self.qtype(name))[0])), v.t)
     # any other method: the type a later use shows (or an error), then the method as usual
     return self.method(self.load_name(name), m, args)
@@ -1829,15 +1834,20 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.allowq = False
         if is_dict(o.t):
             kval = self.expr(t.kids[1], "")
-            self.refine(t.kids[0].s, self.ctype("dict", [kval.t, v.t]))
+            self.refine(t.kids[0].s, self.ctype("dict", [kval.t, v.t], NONE_ITEM not in o.t))
             if NONE_ITEM in o.t:
                 v = self.coerce(v, targs(self.qtype(t.kids[0].s))[1])  # (into a dict of None values: T | None)
+            elif self.qtype(t.kids[0].s) == "dict[dyn,dyn]":
+                kval = self.store_key(kval, "dyn")  # (a dict of Any containers holds boxes, keys too: ctype)
+                v = self.coerce(v, "dyn")
             self.rt("pys_dict_set", "void", [f"ptr {o.v}", "i64 " + self.to_slot(kval), "i64 " + self.to_slot(v)], self.key_fx(targs(self.qtype(t.kids[0].s))[0]))
         else:
             ix = self.ival(t.kids[1])
-            self.refine(t.kids[0].s, self.ctype("list", [v.t]))
+            self.refine(t.kids[0].s, self.ctype("list", [v.t], NONE_ITEM not in o.t))
             if NONE_ITEM in o.t:
                 v = self.coerce(v, elem(self.qtype(t.kids[0].s)))  # (into a list of None: T | None)
+            elif self.qtype(t.kids[0].s) == "list[dyn]":
+                v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
             self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {ix.v}", "i64 " + self.to_slot(v)])
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
