@@ -108,3 +108,25 @@ def json_payload() -> Any:
 
 print(json.dumps(obj=json_payload()))
 print(json.dumps(sort_keys=True, obj={2: "y", 1: "x"}))
+
+
+# a default() callback that adds or deletes an entry of the dict being written: the added one is
+# written after the others and the deleted one skipped, as CPython's encoder walks the dict (#823)
+ins_doc: dict[str, Any] = {"a": LiveDefault(), "b": 0}
+
+
+def ins_default(o: Any) -> Any:
+    ins_doc["c"] = 3
+    return 1
+
+
+del_doc: dict[str, Any] = {"a": LiveDefault(), "b": 0}
+
+
+def del_default(o: Any) -> Any:
+    del del_doc["b"]
+    return 1
+
+
+print(json.dumps(ins_doc, default=ins_default))
+print(json.dumps(del_doc, default=del_default))

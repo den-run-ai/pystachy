@@ -134,6 +134,7 @@ class _Writer:
         self.key_separator = key_separator
         self.default = default
         self.out: list[str] = []
+        self.calls = 0  # (default() calls so far: where one ran, a dict being written may have changed)
         self.open: list[Any] = []  # (the containers being written, for check_circular)
 
     def enter(self, value: Any, depth: int) -> None:
@@ -199,15 +200,26 @@ class _Writer:
                     if self.entry(k, v, first, depth):
                         first = False
             else:
-                # each value is read when its key is reached, as CPython's encoder reads it, so a
-                # default() callback's change to a later entry is seen
-                for k, v in value.items():
-                    if self.entry(k, v, first, depth):
+                # as CPython's encoder walks a dict (PyDict_Next): each value is read when its key is
+                # reached, so a default() callback's change to a later entry is seen, a key it
+                # deletes is skipped and one it adds is written after the others (where no callback
+                # ran, the dict is as it was)
+                keys = list(value)
+                calls = self.calls
+                i = 0
+                while i < len(keys):
+                    k = keys[i]
+                    i += 1
+                    if (self.calls == calls or k in value) and self.entry(k, value[k], first, depth):
                         first = False
+                    if i == len(keys) and self.calls != calls:
+                        seen = {x: True for x in keys}
+                        keys.extend([x for x in value if x not in seen])
             out.append("}")
             self.open.pop()
         elif self.default is not None:
             self.enter(value, depth)
+            self.calls += 1
             self.write(self.default(value), depth + 1)
             self.open.pop()
         else:
