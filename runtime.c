@@ -78,7 +78,8 @@ static TextHint text_hints[64];
    Layout. A request for n bytes gets n + 1 (one byte of slack, so a pointer one past the
    end still points into the object), rounded up to one of 40 size classes up to 8200
    bytes: 16..136 in steps of 8, then four per power of two, each 8 bytes above a multiple
-   of a power of two so that 2^k-byte arrays fit tightly. Small objects live in 64 KiB
+   of a power of two so that 2^k-byte arrays fit tightly. A box takes 16 bytes exactly
+   (gc_box: code reads a box's two words and walks none). Small objects live in 64 KiB
    chunks of one class each, carved from 1 MiB calloc'd arenas (big enough for malloc to map
    fresh memory, which comes zeroed at no cost); larger objects get a calloc'd block each.
    Every chunk and large object starts with a Seg header on a page boundary, and a two-level
@@ -402,6 +403,12 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
+/* A box, a dynamic value's DynType and payload or a closed union's tag and payload: 16 bytes in a
+   16-byte slot (the class for 15 bytes and the byte of slack). The slack keeps an object alive
+   through a pointer one past its end, which code walking the object leaves; code reads a box's two
+   words from the box's address and walks none, so no such pointer is ever the only one to a box
+   (#800) */
+static inline void *gc_box(int atomic) { return atomic ? pys_alloc_atomic(15) : pys_alloc(15); }
 /* Experimental weak references. A handle's pointers live in atomic memory: neither the target,
    nor the next registry entry, nor the fire function is a strong edge. The registry itself is
    NOT a collector root. Prune dead handles before sweeping their storage, and clear surviving
@@ -1703,6 +1710,7 @@ Str *pys_obj_repr(I c, I a, I b);
 typedef struct DynType DynType;   /* (see dynamic values) */
 struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; };
 typedef struct { const DynType *t; I v; } Dyn;
+_Static_assert(sizeof(Dyn) == 16, "a dynamic value's box is gc_box's 16 bytes");
 typedef struct DynIter DynIter;
 I pys_dyn_eq(Dyn *a, Dyn *b);
 I pys_dyn_cmp(Dyn *a, Dyn *b, I op);
@@ -1736,7 +1744,7 @@ void pys_repr_leave(void *p) { unbusy(p); if (eh) unwind_pop(); }
 void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
 /* Closed union: a program-wide tag and the value's 8-byte slot. The collector
    scans the box for str, container or native reference payloads. None remains null. */
-void *pys_ubox(I tag, I v) { I *p = pys_alloc(16); p[0] = tag; p[1] = v; return p; }
+void *pys_ubox(I tag, I v) { I *p = gc_box(0); p[0] = tag; p[1] = v; return p; }
 void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
 
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
@@ -3253,14 +3261,14 @@ static const Dyn smallint[262] = {DI4(-5), DI(-1), DI64(0), DI64(64), DI64(128),
 static int dnum(const Dyn *x) { return DKIND(x) == DK_INT || DKIND(x) == DK_BOOL; }   /* an int or a bool: its value is v */
 Dyn *pys_dyn_int(I v) {
   if ((uint64_t)v + 5 < 262) return (Dyn *)&smallint[v + 5];   /* (unsigned: v + 5 overflows from INT64_MAX - 4) */
-  Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_int; d->v = v; return d;
+  Dyn *d = gc_box(1); d->t = &pys_dyntype_int; d->v = v; return d;
 }
-Dyn *pys_dyn_float(double x) { Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
+Dyn *pys_dyn_float(double x) { Dyn *d = gc_box(1); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
 static Dyn *dbool(I b) { return (Dyn *)(b ? &pys_dyn_true_box : &pys_dyn_false_box); }
 /* a reference of type t: None where it is null (an object of a class type may be None) */
 Dyn *pys_dyn_ref(const DynType *t, void *p) {
   if (!p) return DNONE;
-  Dyn *d = pys_alloc(sizeof(Dyn)); d->t = t; d->v = (I)p; return d;
+  Dyn *d = gc_box(0); d->t = t; d->v = (I)p; return d;
 }
 static Dyn *dlist(List *l) { return pys_dyn_ref(&pys_dyntype_list, l); }
 static Dyn *dstr(Str *s) { return pys_dyn_ref(&pys_dyntype_str, s); }
