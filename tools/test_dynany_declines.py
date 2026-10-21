@@ -16,12 +16,16 @@ sys.path.insert(0, str(ROOT))
 
 from src.pystachy_compiler import diagnostics, driver  # noqa: E402
 from src.pystachy_compiler.gen import Gen  # noqa: E402
+from src.pystachy_compiler.ir import ClassInfo, FnInfo  # noqa: E402
 
-# Gen's tables that a failed call may add to: what the functions it compiled entered, which only
-# its pass sees, and the methods that pass declines (newx)
+# Gen's tables that a failed call may add entries to, changing none it found: what the functions
+# it compiled entered, which only its pass sees, and the methods that pass declines (newx)
 GROWS = {"building", "called", "compiled", "dynfns", "dynkeys", "dynlines", "holes", "newx", "vnodes", "wide"}
-# and the nodes Gen keeps of the last method call, display and expression statement it compiled
+# the nodes Gen keeps of the last method call, display and expression statement it compiled
 MARKS = {"mcall", "soft", "stmtexpr"}
+# and a template's instances (FnInfo.insts), where the one the failed call made stays, half
+# compiled: a later call with its types fails as the failed call did, in a pass that compiles it
+INSTS = "insts"
 
 
 def declining(k: int) -> str:
@@ -126,16 +130,66 @@ print([v == v for v in vals], vals[7] == five, vals[6] < vals[6])
 '''
 
 
-def snapshot(g: Gen) -> dict:
-    out = {}
+def sig(v) -> tuple:
+    if v is None or isinstance(v, (bool, int, float, str)):
+        return ("value", v)
+    if isinstance(v, (list, dict)):
+        return ("table", id(v), len(v))
+    return ("object", id(v))
+
+
+def entries(v) -> list:
+    return list(v.items()) if isinstance(v, dict) else list(enumerate(v)) if isinstance(v, list) else []
+
+
+def snapshot(g: Gen) -> tuple[dict, dict]:
+    # Gen's attributes and their tables' entries, and the fields of every FnInfo and ClassInfo
+    # that they hold (also through those objects' own fields and tables) and their tables'
+    # entries: where -> what is there (a value, or a table's or object's identity, and a table's
+    # size); and each object's name, for messages
+    out: dict[tuple, tuple] = {}
+    names: dict[int, str] = {}
+    todo = []
     for k, v in vars(g).items():
-        if v is None or isinstance(v, (bool, int, float, str)):
-            out[k] = ("value", v)
-        elif isinstance(v, (list, dict)):
-            out[k] = ("table", id(v), len(v))
+        out[("gen", k)] = sig(v)
+        todo.append(v)
+        for kk, vv in entries(v):
+            out[("gen", k, kk)] = sig(vv)
+            todo.append(vv)
+    while todo:
+        o = todo.pop()
+        if not isinstance(o, (FnInfo, ClassInfo)) or id(o) in names:
+            continue
+        names[id(o)] = f"{type(o).__name__} {getattr(o, 'll', '') or getattr(o, 'name', '')}"
+        for k, v in vars(o).items():
+            out[("obj", id(o), k)] = sig(v)
+            todo.append(v)
+            for kk, vv in entries(v):
+                out[("obj", id(o), k, kk)] = sig(vv)
+                todo.append(vv)
+    return out, names
+
+
+def changes(before: tuple[dict, dict], after: tuple[dict, dict]) -> list[str]:
+    # what a failed call changed of Gen's state that it may not: anything but new entries of
+    # GROWS's tables and of a template's instances, the objects it made, and MARKS
+    (b0, names0), (a0, _) = before, after
+    out = []
+    for w in set(b0) | set(a0):
+        b, a = b0.get(w), a0.get(w)
+        if b == a:
+            continue
+        grown = b is not None and a is not None and b[0] == a[0] == "table" and b[1] == a[1] and a[2] >= b[2]
+        if w[0] == "gen":
+            if w[1] in MARKS or (w[1] in GROWS and (len(w) == 3 and b is None or len(w) == 2 and grown)):
+                continue
+            where = f"Gen.{w[1]}" + (f"[{w[2]!r}]" if len(w) == 3 else "")
         else:
-            out[k] = ("object", id(v))
-    return out
+            if w[1] not in names0 or (w[2] == INSTS and (len(w) == 4 and b is None or len(w) == 3 and grown)):
+                continue  # (an object the failed call made, or a template's new instance)
+            where = f"{names0[w[1]]}.{w[2]}" + (f"[{w[3]!r}]" if len(w) == 4 else "")
+        out.append(f"{where}: {b} -> {a}")
+    return sorted(out)
 
 
 class DeclineTests(unittest.TestCase):
@@ -158,14 +212,7 @@ class DeclineTests(unittest.TestCase):
             r = xcall(g, *args)
             if r == "":
                 failed.append(1)
-                after = snapshot(g)
-                for k in sorted(set(before) | set(after)):
-                    b, a = before.get(k), after.get(k)
-                    if b == a or k in MARKS:
-                        continue
-                    if k in GROWS and b is not None and a is not None and b[:2] == a[:2]:
-                        continue
-                    left.append(f"{k}: {b} -> {a}")
+                left.extend(changes(before, snapshot(g)))
             return r
 
         made_gen, saved = driver.Gen, diagnostics.SRC

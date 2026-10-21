@@ -238,10 +238,11 @@ def gen_dyn_xcall(self, c: str, m: str, a: Val, b: Val, line: int) -> str:
     # driver drops, goes on to find the other methods to decline, so that one more pass declines
     # them all (#801). What the failed call left is undone: the helper's frame (its register
     # count among it) and what the call added to the helper's code and tables, and the state the
-    # functions it was compiling set for their own time (tools/test_dynany_declines.py checks
-    # that nothing else of Gen's changes). A function it left half compiled stays so: a later call
-    # of it fails as this one did in a pass that compiles it, or compiles here, which costs at
-    # most a pass more: no method is declined that the next pass would compile
+    # functions it was compiling set for their own time, the template budget's tallies among it
+    # (tools/test_dynany_declines.py checks that nothing else of Gen's changes but its tables'
+    # new entries). A function it left half compiled stays so, a template's instance among them:
+    # a later call of it fails as this one did in a pass that compiles it, or compiles here,
+    # which costs at most a pass more: no method is declined that the next pass would compile
     key = f"{c}.{m}"
     f = self.fn
     fr = self.save()
@@ -259,6 +260,9 @@ def gen_dyn_xcall(self, c: str, m: str, a: Val, b: Val, line: int) -> str:
     tbytes = self.template_bytes
     tinstances = self.template_instances
     tretained = self.template_retained
+    retainers: dict[str, int] = {}
+    for k in self.retainers:
+        retainers[k] = self.retainers[k]
     self.xtry = key
     try:
         r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
@@ -289,6 +293,11 @@ def gen_dyn_xcall(self, c: str, m: str, a: Val, b: Val, line: int) -> str:
         self.template_bytes = tbytes
         self.template_instances = tinstances
         self.template_retained = tretained
+        for k in [k for k in self.retainers]:
+            if k in retainers:
+                self.retainers[k] = retainers[k]
+            else:
+                del self.retainers[k]
         r = ""
     self.xtry = ""
     return r
