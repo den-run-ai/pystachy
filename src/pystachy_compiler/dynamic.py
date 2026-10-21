@@ -243,11 +243,12 @@ def gen_dyn_box(self, v: Val) -> Val:
     if (t == "int" or t == "float") and v.idfrom != "":
         return Val(v.idfrom, DYN)  # (the Any value's object it was read from: dyn_unbox, dyn_narrowed)
     if (t == "int" or t == "float") and v.idslot != "":
-        # a variable's value: the box its binding has, where that holds this value of this type,
-        # else a new box, which the binding keeps (idbox), so that each crossing of one binding
-        # into Any gives one object, as CPython's name holds one (#797)
-        slot = Val(v.idslot, "*" + DYN)
-        b = self.mem_load(slot)
+        # a variable's value: the box of its object (dyn_id_held), where that holds this value of
+        # this type, else a new box, which the binding keeps (idbox) where it has none and has not
+        # changed since the read, so that each crossing of one binding into Any gives one object,
+        # as CPython's name holds one (#797)
+        kept = self.idstores.get(v.idslot, 0) == v.idgen
+        b = self.dyn_id_held(v)
         chk = self.label()
         hit = self.label()
         miss = self.label()
@@ -262,13 +263,19 @@ def gen_dyn_box(self, v: Val) -> Val:
         self.br(end)
         self.place(miss)
         nb = self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]) if t == "int" else self.rt("pys_dyn_float", "ptr", [f"double {v.v}"])
-        self.mem_store(slot, Val(nb, DYN))
-        got = self.cur
-        self.br(end)
-        self.place(end)
         ph = Ins("phi", DYN, "")
         self.incoming(ph, b.v, hit)
-        self.incoming(ph, nb, got)
+        self.incoming(ph, nb, self.cur)
+        if kept:
+            # (not over a box: that is another object's, as where a call has given a module
+            # variable a new binding since the read)
+            keep = self.label()
+            self.cbr(self.ptr_cmp("==", b, Val("null", DYN)).v, keep, end)
+            self.place(keep)
+            self.mem_store(Val(v.idslot, "*" + DYN), Val(nb, DYN))
+            self.incoming(ph, nb, keep)
+        self.br(end)
+        self.place(end)
         return Val(self.phi(ph), DYN)
     if t == "int" and v.lit and (int(v.v) < -5 or int(v.v) > 256):
         # an int literal's box is a constant, one per value in each module (its functions' code
@@ -333,10 +340,32 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     elif v.idfrom != "":
         b = v.idfrom
     elif v.idslot != "":
-        b = self.mem_load(Val(v.idslot, "*" + DYN)).v
+        b = self.dyn_id_held(v).v
     elif v.lit and t == "int" and (int(v.v) < -5 or int(v.v) > 256):
         b = self.dyn_box(v).v
     self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+    self.idstores[slot] = self.idstores.get(slot, 0) + 1
+
+
+def gen_dyn_id_read(self, v: Val, slot: str) -> None:
+    # v, read from an int or float variable whose box slot is slot (idbox): it keeps the slot, the
+    # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
+    # far (dyn_id_held)
+    v.idslot = slot
+    v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
+    v.idgen = self.idstores.get(slot, 0)
+
+
+def gen_dyn_id_held(self, v: Val) -> Val:
+    # the box of the object that v, an int or float variable's value (dyn_id_read), is, null where
+    # it has none yet: the box its slot held at the read, else, where no store has given the
+    # variable a new binding since, the box a crossing of the object has given it since ([x, x]).
+    # Not after one (x, y = y, x), whose box is another object's
+    b = Val(v.idheld, DYN)
+    if self.idstores.get(v.idslot, 0) != v.idgen:
+        return b
+    now = self.mem_load(Val(v.idslot, "*" + DYN))
+    return Val(self.select(self.ptr_cmp("!=", b, Val("null", DYN)).v, b, now), DYN)
 
 
 def gen_dyn_union_box(self, v: Val) -> Val:

@@ -139,7 +139,9 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   holds one object, as CPython's name does. Beside it is a box
   slot, null until the variable has a box. Each time the variable becomes an `Any` value, it
   gives the slot's box where that box holds its value, else a new box, which the slot then
-  holds. A store gives the slot the box of the `Any` value it unboxes, the slot's box of the
+  holds. A value read before a store gives the variable a new binding (`x, y = y, x`) keeps the
+  object it read: the box the slot held at the read, else a new one that the slot does not take.
+  A store gives the slot the box of the `Any` value it unboxes, the slot's box of the
   variable it copies, or an int literal's constant box; any other value, such as an int computed
   there, is a new object, which its first crossing boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
@@ -310,6 +312,11 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
   literal `1000` there), and a float literal at each evaluation, where CPython's equal
   constants are one object (`tests/deviations/dynany_identity_boundary.py`).
+- A module's int or float variable that has no box yet, read in an expression that then calls a
+  function which rebinds the variable to an equal value, can give the new binding the box that
+  the read value gets where it becomes an `Any` value: `[G, rebind()][0] is G` is `True`, where
+  CPython holds two objects (`tests/deviations/dynany_identity_boundary.py`). The compiler sees
+  a store between the read and the crossing in the function itself, not in the call.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional arguments only; keywords and

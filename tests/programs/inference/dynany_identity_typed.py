@@ -3,7 +3,8 @@
 # review): each time it becomes an Any value, it gives that object. A typed variable that is
 # assigned an Any value holds the Any value's object, a copy of a variable holds its object, and
 # an int literal stored in one is the module's constant. A value computed at run time is a new
-# object, also where it is equal to another.
+# object, also where it is equal to another. A value read before a store gives its variable a new
+# binding (x, y = y, x) is the object it read, not the new binding's.
 from typing import Any, Iterator
 
 import mods.dyntyped_vars as tv
@@ -135,6 +136,55 @@ def run() -> None:
     both("an int variable, a sum assigned to it", a, v)
 
 
+G3: int = int("3000")
+H3: int = int("3000")
+
+
+def rebind() -> int:
+    global G3
+    G3 = int("3000")
+    return 0
+
+
+def between() -> None:
+    # stores between a read of a variable and its crossing (#807's review)
+    x: int = int("1000")
+    y: int = int("1000")
+    a: Any = x
+    b: Any = y
+    x, y = y, x
+    c: Any = x
+    d: Any = y
+    both("a swap, the first variable", c, b)
+    both("a swap, the second variable", d, a)
+    both("a swap, both variables", c, d)
+    s: int = int("1000")
+    t: int = int("1000")
+    e: Any = t
+    s, f = t, s
+    g: Any = s
+    both("a value read before its variable's new binding", f, e)
+    both("the variable's new binding", g, e)
+    # (one variable's reads that cross after one another: the second finds the first's box)
+    p: int = int("1000")
+    both("one variable, both arguments", p, p)
+    q: int = int("1000")
+    l: list[Any] = [q, q]
+    both("one variable, twice in a display", l[0], l[1])
+    h: Any = None
+    r: int = int("1000")
+    h, k = r, r
+    m: Any = k
+    both("an Any target, then a copy, of one variable", h, m)
+    ga: Any = G3
+    gl: list[Any] = [G3, rebind()]
+    gs: Any = G3
+    both("a module variable read before a call rebinds it", gl[0], ga)
+    both("its new binding", gl[0], gs)
+    hl: list[Any] = [H3, H3]
+    both("a module variable, twice in a display", hl[0], hl[1])
+
+
 M: int = int("7000")
 ma: Any = M
 mb: Any = M
@@ -144,3 +194,13 @@ param(int("4000"), float("4.5"))
 module_vars()
 other_module()
 print("a generator's int variable, across a yield", list(gen()))
+between()
+X1: int = int("1000")
+X2: int = int("1000")
+xa: Any = X1
+xb: Any = X2
+X1, X2 = X2, X1
+xc: Any = X1
+xd: Any = X2
+both("a swap of module variables, the first", xc, xb)
+both("a swap of module variables, the second", xd, xa)

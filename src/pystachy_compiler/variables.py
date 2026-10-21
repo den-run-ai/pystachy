@@ -122,7 +122,7 @@ def gen_load_name(self, name: str) -> Val:
             return self.narrow_val(Val(r, t), self.narrowed[name])  # known not to be None here, or a member
         val = Val(r, t)
         if name in self.idbox and name not in self.compvars and (t == "int" or t == "float"):
-            val.idslot = self.idbox[name]  # (its binding's object, as an Any value: dyn_box)
+            self.dyn_id_read(val, self.idbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
     self.read_ahead(name)
     if name in self.gtypes:
@@ -136,7 +136,7 @@ def gen_load_name(self, name: str) -> Val:
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
         val = Val(r, t)
         if name in self.gidbox and (t == "int" or t == "float"):
-            val.idslot = self.gidbox[name]
+            self.dyn_id_read(val, self.gidbox[name])
         return val
     if name == "__name__":
         return Val(self.sconst("__main__"), "str")
@@ -705,7 +705,7 @@ def gen_read(self, n: Node) -> Val:
         # folds the identity operation to a literal for opcode dispatch and other arithmetic.
         val = Val(self.scalar('add', [Val(self.intglobals[name], 'int'), Val('0', 'int')]), "int")
         if name in self.gidbox:
-            val.idslot = self.gidbox[name]  # (its binding's object, as an Any value: dyn_box)
+            self.dyn_id_read(val, self.gidbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
     if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and self.classes[name].exc != "":
         self.class_ready(n)  # (an exception class as a value, where its class statement may not have run yet)

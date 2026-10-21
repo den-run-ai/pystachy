@@ -27,4 +27,17 @@ an int module variable's id, after allocations True
 another module's int variable, twice True False True
 another module's float variable, twice True False True
 a generator's int variable, across a yield [True, True]
+a swap, the first variable True False True
+a swap, the second variable True False True
+a swap, both variables False True False
+a value read before its variable's new binding False True False
+the variable's new binding True False True
+one variable, both arguments True False True
+one variable, twice in a display True False True
+an Any target, then a copy, of one variable True False True
+a module variable read before a call rebinds it True False True
+its new binding False True False
+a module variable, twice in a display True False True
+a swap of module variables, the first True False True
+a swap of module variables, the second True False True
 [exit 0]

@@ -7,7 +7,9 @@
 # CPython's names, containers and classes hold one (it prints True for each). So is the value of
 # an expression of literals, which CPython's compiler folds into one constant (999 + 1 is 1000
 # there), and a float literal, where CPython's equal constants are one object. `is` and id() still
-# agree.
+# agree. The other way round, a module variable that has no box yet, read in an expression that
+# then calls a function which rebinds it to an equal value, gives the new binding the read value's
+# box: one object where CPython has two (it prints False there).
 # pystachy: dynamic-any
 from typing import Any
 
@@ -36,6 +38,21 @@ def dflt(a: Any, n: int = 1000) -> None:
 def give(a: Any) -> int:
     n: int = a
     return n
+
+
+G = int("1000")
+
+
+def rebind() -> int:
+    global G
+    G = int("1000")
+    return 0
+
+
+def rebound() -> None:
+    a: list[Any] = [G, rebind()]
+    b: Any = G
+    print("a module variable that a call rebinds", a[0] is b, id(a[0]) == id(b))
 
 
 def run() -> None:
@@ -72,6 +89,8 @@ def run() -> None:
 
 
 run()
+rebind()
+rebound()
 k: Any = 1000
 m: Any = 999 + 1
 print("a folded constant", k is m, id(k) == id(m))
