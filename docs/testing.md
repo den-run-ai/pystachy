@@ -367,6 +367,11 @@ other shape of `tools/scaling.py` (its `-x`), so a new shape is checked as well;
 the two to check every shape once. Locally, `scaling` runs both.
 The final report job allows ten minutes for artifact downloads and validation.
 
+The compiler state research controls (`python3 -m unittest discover -s tools -p
+'test_compiler_state*.py'`) run in Lint. They check declared Frame mappings,
+successful dry emission restoration and known restart rewinds; see the
+[prototype's guarantees and limits](../research/compiler-state-767/README.md).
+
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: lint, report-gate tests
 and recording checks use the pinned CPython and require no compiler bootstrap.
 

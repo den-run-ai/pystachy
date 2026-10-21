@@ -67,6 +67,9 @@ jobs:
       - name: Compiler effect summary tests
         run: python3 -m unittest discover -s tools -p test_function_summaries.py
 
+      - name: Compiler state contract research controls
+        run: python3 -m unittest discover -s tools -p 'test_compiler_state*.py'
+
       - name: Typed IR tests
         run: python3 -m unittest discover -s tools -p 'test_typed*.py'
 

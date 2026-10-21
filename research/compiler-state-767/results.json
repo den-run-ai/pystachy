@@ -1,0 +1,298 @@
+{
+  "base_commit": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
+  "python": "3.12.14",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "scope": "Hosted audit only; IR hashes include checkout paths. Native execution not tested locally.",
+  "cases": [
+    {
+      "case": "research/compiler-state-767/global_inference.py",
+      "observed": true,
+      "ir_sha256": "6572af07f880de6fe43c7de6ba01b37b83a63c1d09821087c4dc3a0d3b6196bc",
+      "passes": [
+        {
+          "declined_in": [],
+          "outcome": "aborted",
+          "new_declines": [
+            "A.__eq__"
+          ],
+          "global_types": {
+            "xs": "list[int]",
+            "a": "dyn",
+            "b": "dyn",
+            "s": "dyn"
+          }
+        },
+        {
+          "declined_in": [
+            "A.__eq__"
+          ],
+          "outcome": "returned",
+          "new_declines": [],
+          "global_types": {
+            "xs": "list[str]",
+            "a": "dyn",
+            "b": "dyn",
+            "s": "dyn"
+          }
+        }
+      ],
+      "dry_calls": [],
+      "baseline_ir_sha256": "6572af07f880de6fe43c7de6ba01b37b83a63c1d09821087c4dc3a0d3b6196bc",
+      "input_sha256": "538d77d7fde2d61907193110eabf057a8bb72ba8d4269b8eb5afe80705fc0eac"
+    },
+    {
+      "case": "research/compiler-state-767/dry_template.py",
+      "observed": true,
+      "ir_sha256": "d78d631d9ff78aefc99690660837538e722e27ea4cf89d1d542f420fbce74af0",
+      "passes": [
+        {
+          "declined_in": [],
+          "outcome": "returned",
+          "new_declines": [],
+          "global_types": {
+            "values": "dict[int,list[int]]"
+          }
+        }
+      ],
+      "dry_calls": [
+        {
+          "line": 7,
+          "depth": 0,
+          "outcome": "returned",
+          "result": "int",
+          "retained": [
+            "called",
+            "carried",
+            "compiled",
+            "fns",
+            "funcs",
+            "n",
+            "retainers",
+            "template_instances",
+            "template_retained"
+          ]
+        }
+      ],
+      "baseline_ir_sha256": "d78d631d9ff78aefc99690660837538e722e27ea4cf89d1d542f420fbce74af0",
+      "input_sha256": "0313b1cdaa180bdd3e8451638c1d6c6306a05f6d3ca738b82db861a329b9b6fa"
+    },
+    {
+      "case": "tests/programs/inference/dynany_eq_template.py",
+      "observed": true,
+      "ir_sha256": "5fa76023d6ce8d529e0e399a6b0a5df5f2d7729fd9628ff7c9ce3476ae6f8c7c",
+      "passes": [
+        {
+          "declined_in": [],
+          "outcome": "aborted",
+          "new_declines": [
+            "Bag.__eq__"
+          ],
+          "global_types": {
+            "x": "dyn",
+            "y": "dyn",
+            "z": "dyn",
+            "v1": "dyn",
+            "v2": "dyn",
+            "g1": "dyn",
+            "g2": "dyn",
+            "five": "dyn",
+            "m": "dyn",
+            "n": "dyn"
+          }
+        },
+        {
+          "declined_in": [
+            "Bag.__eq__"
+          ],
+          "outcome": "aborted",
+          "new_declines": [
+            "Ver.__lt__"
+          ],
+          "global_types": {
+            "x": "dyn",
+            "y": "dyn",
+            "z": "dyn",
+            "v1": "dyn",
+            "v2": "dyn",
+            "g1": "dyn",
+            "g2": "dyn",
+            "five": "dyn",
+            "m": "dyn",
+            "n": "dyn"
+          }
+        },
+        {
+          "declined_in": [
+            "Bag.__eq__",
+            "Ver.__lt__"
+          ],
+          "outcome": "aborted",
+          "new_declines": [
+            "G.__eq__"
+          ],
+          "global_types": {
+            "x": "dyn",
+            "y": "dyn",
+            "z": "dyn",
+            "v1": "dyn",
+            "v2": "dyn",
+            "g1": "dyn",
+            "g2": "dyn",
+            "five": "dyn",
+            "m": "dyn",
+            "n": "dyn"
+          }
+        },
+        {
+          "declined_in": [
+            "Bag.__eq__",
+            "G.__eq__",
+            "Ver.__lt__"
+          ],
+          "outcome": "returned",
+          "new_declines": [],
+          "global_types": {
+            "x": "dyn",
+            "y": "dyn",
+            "z": "dyn",
+            "v1": "dyn",
+            "v2": "dyn",
+            "g1": "dyn",
+            "g2": "dyn",
+            "five": "dyn",
+            "m": "dyn",
+            "n": "dyn"
+          }
+        }
+      ],
+      "dry_calls": [
+        {
+          "line": 50,
+          "depth": 0,
+          "outcome": "returned",
+          "result": "dyn",
+          "retained": [
+            "n"
+          ]
+        },
+        {
+          "line": 50,
+          "depth": 0,
+          "outcome": "returned",
+          "result": "dyn",
+          "retained": [
+            "n"
+          ]
+        },
+        {
+          "line": 50,
+          "depth": 0,
+          "outcome": "returned",
+          "result": "dyn",
+          "retained": [
+            "n"
+          ]
+        },
+        {
+          "line": 50,
+          "depth": 0,
+          "outcome": "returned",
+          "result": "dyn",
+          "retained": [
+            "n"
+          ]
+        },
+        {
+          "line": 50,
+          "depth": 0,
+          "outcome": "returned",
+          "result": "dyn",
+          "retained": [
+            "n"
+          ]
+        },
+        {
+          "line": 50,
+          "depth": 0,
+          "outcome": "returned",
+          "result": "dyn",
+          "retained": [
+            "n"
+          ]
+        },
+        {
+          "line": 50,
+          "depth": 0,
+          "outcome": "returned",
+          "result": "dyn",
+          "retained": [
+            "n"
+          ]
+        },
+        {
+          "line": 50,
+          "depth": 0,
+          "outcome": "returned",
+          "result": "dyn",
+          "retained": [
+            "n"
+          ]
+        }
+      ],
+      "baseline_ir_sha256": "5fa76023d6ce8d529e0e399a6b0a5df5f2d7729fd9628ff7c9ce3476ae6f8c7c",
+      "input_sha256": "dd98123362d3e35dcabe498622722bfd6c739b51b2b495a10f12eb3598deedc1"
+    }
+  ],
+  "source_sha256": {
+    "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+    "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+    "src/pystachy_compiler/analysis.py": "0baaaf4aa9b4b12c6f6421cde0723ece5bba33d534701a9da74a91d8cc8edd33",
+    "src/pystachy_compiler/builtins.py": "b185d374e6fe5147436351fcbc4db13ebf14a66afe3a1bd0a0d90407feb92573",
+    "src/pystachy_compiler/calls.py": "bbd5051a5007056d765e80b77113c5df7bbcb35db58ef6a3e6e4c24937d99e4e",
+    "src/pystachy_compiler/containers.py": "b934cde4c77c751dd3713a0eacbfa3ad29c727a70004ecf426d7cc3757bfa1c7",
+    "src/pystachy_compiler/conversions.py": "93117a3d871998186a22ed0cabf202abd7b421b1a882ef111857dcdcda5c4d50",
+    "src/pystachy_compiler/declarations.py": "cdc53366c5c6e27064cc73054ca86d78c285fd9a416e4676f97cc99a705d2271",
+    "src/pystachy_compiler/diagnostics.py": "2c83b75d8a88a2cf89a7e4e5b44fd263c135a7c41c7923cc709d725148132a1e",
+    "src/pystachy_compiler/driver.py": "c455ddcfcad9bf138e453fad4c098d090cef8c9d59af19cde25e9e1f363a0aa4",
+    "src/pystachy_compiler/dynamic.py": "3d6771b257fb94000d269fe60ba5b743c47cee33d44b45ded48661d06b5bbbbf",
+    "src/pystachy_compiler/emission.py": "30795f0b3b32baa5eda5501938cb132d6044ee0a420b377c320f79eeca9095c6",
+    "src/pystachy_compiler/exceptions.py": "236f12919960ffa2ad7e83ff6d98314087b36248d8c1e33dcfb980fac6265eb3",
+    "src/pystachy_compiler/expressions.py": "f2d05679aa7756cbacc30bd243230b0643d0e527fedceae7943d42af15460811",
+    "src/pystachy_compiler/flow.py": "d1f2e8261822c45cb366e72ea6c0af1f3d54f81d802c3456bf26d1a080c4e581",
+    "src/pystachy_compiler/functions.py": "4cd3b38ecf2bedb3a02a551c27e5546c82f413173f5e9ef64cf44885c1aba872",
+    "src/pystachy_compiler/generators.py": "e6a58fabf7d14341f682011afa919fff7e046d6bb9a92cb69e1eeaa28999347c",
+    "src/pystachy_compiler/gen.py": "19285b710b950257c3518655c7b7afd315d7d2991538896e45064da5ebc8f961",
+    "src/pystachy_compiler/ir.py": "672ad966771244a2393d046dcf8ef95227c1934b56e52692f8d5e54d91235081",
+    "src/pystachy_compiler/ircheck.py": "f551a37635a7ed87d36c5c7587a876db21f6822c685c578430847d934463e33e",
+    "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+    "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+    "src/pystachy_compiler/loader.py": "99e8c89b87ed839a5eefd01ad9dce14548001c773705030ec15efc753a6e2514",
+    "src/pystachy_compiler/local_versions.py": "84911a4de75a7b48e5a37f86ccdfb08620fd4f24153692970e925c32d8e201a2",
+    "src/pystachy_compiler/lower_module.py": "ff7fe53d36fc4b6ec7263905cd788a382a479b959041ebbb6e6ff9b5893d6ded",
+    "src/pystachy_compiler/lowering.py": "93292a0a6cf5f1bc653b6913fb8503d074bb7aa8cf4659be59475e2b48540715",
+    "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+    "src/pystachy_compiler/module.py": "64bb4ab4a01e5ecc297e9ae3b236c5cc385b55814d6b88dca37541edcf1a8ff0",
+    "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+    "src/pystachy_compiler/optimizations.py": "82816ae95b82911d2da1794385ea7e7784f342af8dda74fbfd209634de0cba7a",
+    "src/pystachy_compiler/parser.py": "60a9b7136b8909cf1bbb1d38a12cba4c82f826af3db8430d4ec7d99478f6a8aa",
+    "src/pystachy_compiler/program.py": "eae4f7fbc7d112f15511dc1e461635b04fd0e99b491d7db7b5d541150a04e482",
+    "src/pystachy_compiler/reflection.py": "58cee509c4a28b848686de1b57d8bcfea94dfd466c27d7b80f1fffbaac37860d",
+    "src/pystachy_compiler/scalar_ir.py": "8e44332fd31080e4cf89a312c61dc2c573cbdd880551ba1f7069560594abeabe",
+    "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+    "src/pystachy_compiler/specs.py": "8597cc7fb284e71926c53a3221a2221190505b1bd41431fac629b4da43348c86",
+    "src/pystachy_compiler/statements.py": "5fbe4bd75cfe34efd1d32d4d38bf0684061196cd95c6c7baa1f891801984a3b9",
+    "src/pystachy_compiler/structs.py": "28059d45e787161fb565cb03e2b855c8d358d4c0a19ad7db64c599b29f576280",
+    "src/pystachy_compiler/syntax.py": "5f118fe97f82e35fb9d846a6d7eddf863838665baac0e6459c0653a0fda9d9ac",
+    "src/pystachy_compiler/templates.py": "23d4728b9ff7c89ae104c91dfafdd1e3ff98963773e9f2bbd899844b240dbf2e",
+    "src/pystachy_compiler/union_arithmetic.py": "fc6e1a74768a95e651fdd4c6cc798fdecee9106e4e07211c65ec7c9a1607e209",
+    "src/pystachy_compiler/unions.py": "e3120fc06a378a4ece650dbe270758b52c275b889a71287a43f97c5153f4ad40",
+    "src/pystachy_compiler/utils.py": "227383a94655f742ea8dce43ad515a79ab15588a595274ad90b446cddd5ac1b3",
+    "src/pystachy_compiler/variables.py": "918da0967618327c31c0b542536b43f03c8036e286b4697e57c7e205549f86ec"
+  },
+  "audit_sha256": {
+    "tools/compiler_state_contract.py": "57948363a68a4832dca72d4caedde26f3f895007c980b50531bddc1ab7394181",
+    "tools/compiler_state_probe.py": "2b91f6e1959f46418b9a93e3b50ad6bc4c63aa70edc1d16a225c6e2c86ded8c5",
+    "tools/test_compiler_state_contract.py": "519e4f1cfcfea44cd3e300b8865ebd100f3e245451cb50e191bb400f6460ac15",
+    "tools/test_compiler_state_probe.py": "801982a26662f5925aed93e13ffae6e0430e356afc3ccc74fac6b0454194947f"
+  }
+}
