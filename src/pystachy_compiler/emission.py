@@ -82,6 +82,8 @@ def gen_save(self) -> Frame:
     fr.stkkey = self.stkkey
     fr.reflcopies = self.reflcopies
     fr.stmtexpr = self.stmtexpr
+    fr.dmemo = self.dmemo
+    fr.dmemot = self.dmemot
     fr.n = self.n
     fr.cur = self.cur
     fr.term = self.term
@@ -133,6 +135,8 @@ def gen_restore(self, fr: Frame) -> None:
     self.stkkey = fr.stkkey
     self.reflcopies = fr.reflcopies
     self.stmtexpr = fr.stmtexpr
+    self.dmemo = fr.dmemo
+    self.dmemot = fr.dmemot
     self.n = fr.n
     self.cur = fr.cur
     self.term = fr.term

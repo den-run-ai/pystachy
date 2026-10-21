@@ -444,6 +444,8 @@ class Frame:
         self.stkkey = Node("", "", 0)
         self.reflcopies = 1
         self.stmtexpr: Node | None = None
+        self.dmemo: list[Node] = []
+        self.dmemot: list[str] = []
         self.n = 0
         self.cur = ""
         self.term = False

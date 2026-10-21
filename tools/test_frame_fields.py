@@ -84,8 +84,6 @@ SCOPED = {
     "vtuples": "lowering: tuples the function returns by value, which gen_lower sets per function",
     "vslots": "lowering: the slots of those tuples' stores, per function",
     "vaggs": "lowering: results of calls that take slots, per function",
-    "dmemo": "a statement's memo of display items' dry-run types (#781): gen_stmt empties it per statement",
-    "dmemot": "the types of dmemo's items, with it",
     "specing": "specializations in progress: a recursion guard, which a nested compile must see",
     "selfcls": "the class whose methods and fields are declared: gen_function saves, clears and restores it",
     "compshare": "names a comprehension's for clauses share: listcomp, hidden_loop and compfor save and restore it",

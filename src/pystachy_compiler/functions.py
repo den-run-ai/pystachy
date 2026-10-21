@@ -65,6 +65,8 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.stkkey = self.nokey
     self.reflcopies = 1
     self.stmtexpr = None
+    self.dmemo = []
+    self.dmemot = []
     self.curfn = f
     self.line = f.node.line
     if not self.modlevel:
