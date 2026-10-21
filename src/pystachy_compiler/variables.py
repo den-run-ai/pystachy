@@ -1876,7 +1876,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
     elif (k == "tuple" or k == "list") and v.t == "dyn" and not starred_target(t):
         # a, b = x: x's items, all taken (as CPython does) before the first is stored
         u = Val(self.rt("pys_dyn_unpack", "ptr", [f"ptr {v.v}", f"i64 {len(t.kids)}"]), "vtuple[dyn]")
-        items = [self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {u.v}", f"i64 {i}"]), "dyn") for i in range(len(t.kids))]
+        items: list[Val] = [self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {u.v}", f"i64 {i}"]), "dyn") for i in range(len(t.kids))]
         for i in range(len(t.kids)):
             self.assign(t.kids[i], items[i])
     elif k == "tuple" and is_opt(v.t):
@@ -1892,7 +1892,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
         size = self.rt("pys_text_len", "i64", [f"ptr {v.v}"]) if v.t == "str" and not self.rtmode else self.mload('int', v.v)
         self.rt("pys_unpack_check", "void", [f"i64 {size}", f"i64 {len(t.kids)}"])
         first = v.t != "str" and not name_targets(t)
-        items: list[Val] = []
+        items = []
         for i in range(len(t.kids)):
             if v.t == "str":
                 self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
