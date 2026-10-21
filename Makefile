@@ -300,14 +300,23 @@ RE_SPECIALIZE ?=
 re-specialize-check:
 	$(PY) tools/re_specialize.py check $(RE_SPECIALIZE)
 
-# Hosted compiler type checks, using the pinned development tools; no LLVM needed.
+# Hosted checks use the pinned development tools; no LLVM or bootstrap needed.
 typecheck:
+	@command -v mypy >/dev/null || { echo "mypy is required: install tools/requirements-dev.txt and activate its environment" >&2; exit 1; }
 	mypy --config-file mypy.ini
+
+lint-python:
+	@command -v ruff >/dev/null || { echo "ruff is required: install tools/requirements-dev.txt and activate its environment" >&2; exit 1; }
+	ruff check
+
+# Fast feedback for compiler edits; full native/runtime validation remains in verify.
+check-fast: lint-python typecheck
+	$(PY) -m unittest discover -s tools -p test_function_summaries.py
+	$(PY) -m unittest discover -s tools -p 'test_typed*.py'
 
 # ruff (findings only, ruff.toml), shellcheck of the scripts as POSIX sh, and clang's warnings on the C
 # sources; pip install -r tools/requirements-dev.txt gives the versions CI uses
-lint:
-	ruff check
+lint: lint-python
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
@@ -326,4 +335,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz re-probe re-specialize-check typecheck lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz re-probe re-specialize-check typecheck lint-python check-fast lint clean install uninstall test-install
