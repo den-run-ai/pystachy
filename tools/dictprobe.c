@@ -17,18 +17,23 @@
    after the deletions, at the fullest table (a third of the slots in use). The times
    (nanoseconds per insertion or hit, best of three) are for information only.
    The string-cache check counts calls/bytes through the real runtime.py hash, so repeated
-   lookups must not rescan bytes. The storage check reads the kinds of the tables from the page
+   lookups must not rescan bytes. The Any-keys check counts the keys that dkeyeq compares
+   (DICT_KEYEQ): a dict[Any, ...] finds a boxed str or int key through another box of an equal
+   value without it, hashing each probe str once (#780), while 1.0 and True, equal to a key 1 of
+   another type, still take it. The storage check reads the kinds of the tables from the page
    map: the collector never scans the key arrays of dicts and sets of ints, and scans those of
    strs, tuples and objects (P000: hashed by identity; H000: by their class, whose dicts have
    CPython's index, KTAG) and every dict's values, and the 8 slots of a new set whatever its kind
    (the compiler may change the kind of an empty set); so ints that are the addresses of strs
    nothing else holds keep none of them alive (#210), and objects that are keys or elements stay.
-   --hash-cache runs only these two checks, also under GC stress.
+   --hash-cache runs only these checks, also under GC stress.
    runtime.c's dict hash functions are in runtime.py, so the build links its IR (pystachy rt).
    usage: make dictprobe   (build/dictprobe [N...] or build/dictprobe --hash-cache) */
 #include <time.h>
 static long long dict_slots;          /* (not a name the runtime's code uses: the set's lookups have a local probes) */
 #define DICT_PROBE() (dict_slots++)
+static long long dict_keyeqs;
+#define DICT_KEYEQ() (dict_keyeqs++)
 #define pys_hash_str counted_hash_str
 #include "../runtime.c"
 #undef pys_hash_str
@@ -125,6 +130,27 @@ static void hash_cache(void) {
   hash_count(69, bytes + 11);
   zero_hash_key = 0;
   printf("string cache: one hash per string, cached hits/misses/tuples, zero hash normalized\n");
+}
+
+/* dict[Any, ...] (descriptor A): its keys are boxes, each probe here a new box of a new str or of
+   an int above the small ints, so none is found as itself */
+static _Noreturn void any_bad(const char *what) { fprintf(stderr, "dictprobe: Any keys: %s\n", what); exit(1); }
+static Str *any_str(I i) { char s[24]; I n = snprintf(s, sizeof s, "any-%lld", (long long)i); return pys_str(s, n); }
+static void any_keys(void) {
+  dict = pys_dict_new((I)cstr("A"), 0);
+  for (I i = 0; i < 64; i++) { pys_dict_set(dict, (I)dstr(any_str(i)), i); pys_dict_set(dict, (I)pys_dyn_int(1000 + i), 100 + i); }
+  if (!(dict->kind & KTAG) || dict->len != 128) any_bad("the table");
+  dict_keyeqs = 0; hash_calls = 0;
+  for (I r = 0; r < 2; r++)
+    for (I i = 0; i < 64; i++)
+      if (pys_dict_get(dict, (I)dstr(any_str(i)), -1) != i || pys_dict_get(dict, (I)pys_dyn_int(1000 + i), -1) != 100 + i ||
+          pys_dict_has(dict, (I)dstr(any_str(64 + i))) || pys_dict_has(dict, (I)pys_dyn_int(2000 + i))) any_bad("a lookup");
+  if (dict_keyeqs) any_bad("a boxed str or int key was compared by dkeyeq");
+  if (hash_calls != 4 * 64) any_bad("a probe str was hashed more than once");
+  pys_dict_set(dict, (I)pys_dyn_int(1), 1);
+  if (pys_dict_get(dict, (I)pys_dyn_float(1.0), -1) != 1 || pys_dict_get(dict, (I)dbool(1), -1) != 1) any_bad("1.0 or True");
+  if (!dict_keyeqs) any_bad("1.0 and True were not compared by dkeyeq");
+  printf("Any keys: boxed strs and ints found without dkeyeq, one hash per probe str; 1.0 and True take it\n");
 }
 
 #define MIB ((I)1 << 20)
@@ -328,6 +354,7 @@ static void tally(long long c[4], I n) {   /* the limit applies to hits, misses 
 int main(int argc, char **argv) {
   gc_init(__builtin_frame_address(0), roots, 2);
   hash_cache();
+  any_keys();
   storage();
   values();
   if (argc == 2 && !strcmp(argv[1], "--hash-cache")) return 0;
