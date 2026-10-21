@@ -27,4 +27,6 @@ loop Circular reference detected
 '{"a" 1}' Expecting ':' delimiter 5 1 6
 '' Expecting value 0 1 1
 '[1] x' Extra data 4 1 5
+{"a": 1, "b": 2}
+{"a": 1, "b": 0}
 [exit 0]

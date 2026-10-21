@@ -79,3 +79,23 @@ cases()
 shared()
 keys_and_tuples()
 errors()
+
+
+# a default() callback that changes a later entry of the dict being written: the entry's value
+# is read when its key is reached, as CPython's encoder reads it; with sort_keys, the items are
+# a list sorted before the callback runs, as CPython's are (#823)
+class LiveDefault:
+    pass
+
+
+live_doc: dict[str, Any] = {"a": LiveDefault(), "b": 0}
+
+
+def live_default(o: Any) -> Any:
+    live_doc["b"] = 2
+    return 1
+
+
+print(json.dumps(live_doc, default=live_default))
+live_doc["b"] = 0
+print(json.dumps(live_doc, default=live_default, sort_keys=True))

@@ -191,18 +191,19 @@ class _Writer:
         elif isinstance(value, dict):
             self.enter(value, depth)
             out.append("{")
-            items = sorted(value.items()) if self.sort_keys else list(value.items())
             first = True
-            for k, v in items:
-                if k is not None and not isinstance(k, (str, int, float)) and self.skipkeys:
-                    continue
-                s = self.key(k)
-                if not first:
-                    out.append(self.item_separator)
-                first = False
-                _quote(out, s, self.ascii)
-                out.append(self.key_separator)
-                self.write(v, depth + 1)
+            if self.sort_keys:
+                # (CPython sorts a list of the items first: a default() callback's change to a
+                # value is not seen)
+                for k, v in sorted(value.items()):
+                    if self.entry(k, v, first, depth):
+                        first = False
+            else:
+                # each value is read when its key is reached, as CPython's encoder reads it, so a
+                # default() callback's change to a later entry is seen
+                for k, v in value.items():
+                    if self.entry(k, v, first, depth):
+                        first = False
             out.append("}")
             self.open.pop()
         elif self.default is not None:
@@ -211,6 +212,20 @@ class _Writer:
             self.open.pop()
         else:
             raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+    def entry(self, k: Any, v: Any, first: bool, depth: int) -> bool:
+        # writes k: v of a dict, after an item separator unless first; False where skipkeys
+        # skips k, which writes nothing
+        out = self.out
+        if k is not None and not isinstance(k, (str, int, float)) and self.skipkeys:
+            return False
+        s = self.key(k)
+        if not first:
+            out.append(self.item_separator)
+        _quote(out, s, self.ascii)
+        out.append(self.key_separator)
+        self.write(v, depth + 1)
+        return True
 
 
 def dumps(obj: Any, *, skipkeys: bool = False, ensure_ascii: bool = True, check_circular: bool = True,
