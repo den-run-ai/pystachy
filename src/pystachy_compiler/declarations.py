@@ -2546,19 +2546,11 @@ def gen_field_early(self, root: ClassInfo, name: str) -> str:
         if len([i for i in range(1, len(found), 2) if found[i].kind != "None" and not empty_display(found[i]) and not (found[i - 1].kind == "name" and found[i - 1].s == me)]) == 0 or self.unready(m.node.kids[2], m.mod, {}):
             continue
         self.making.append(f"compiling {short(m.name) if m.cls == '' else short(m.cls) + '.' + m.name}() for the type of field '{name}' at {where(self.line)}")
-        fr = self.save()
-        cmps = [self.nonecmp, self.fieldcmp]
-        cmpnode = self.cmpnode
-        self.nonecmp = False  # (the read being compiled may be compared with None, not that function's)
-        self.fieldcmp = False
-        self.cmpnode = self.nokey
+        fr = self.save()  # (the read being compiled may be compared with None, not that function's: Frame)
         self.modlevel = False
         self.lenient = False
         self.function(m, m.node.kids[2].kids)
         self.restore(fr)
-        self.nonecmp = cmps[0]
-        self.fieldcmp = cmps[1]
-        self.cmpnode = cmpnode
         self.making.pop()
     return root.ftypes[name] if root.ftypes[name] != NONEVAR else ""
 

@@ -78,7 +78,6 @@ SCOPED = {
     "fvars": "the module's variables its code has made functions so far: flow_program empties it per module",
     "flowlater": "module code's lambdas whose flow waits for the module: emptied at each module's end",
     "anyopt": "an optional, union or class local exists: alloca sets it, never reset, its conservative value",
-    "stmtexpr": "the expression statement being compiled: gen_stmt sets it for each statement",
     "lowblk": "lowering: the block being lowered (gen_lower, which never nests)",
     "ftags": "lowering: the function's field TBAA tags, which gen_lower sets per function",
     "vtuples": "lowering: tuples the function returns by value, which gen_lower sets per function",
@@ -89,16 +88,10 @@ SCOPED = {
     "specing": "specializations in progress: a recursion guard, which a nested compile must see",
     "selfcls": "the class whose methods and fields are declared: gen_function saves, clears and restores it",
     "compshare": "names a comprehension's for clauses share: listcomp, hidden_loop and compfor save and restore it",
-    "drying": "dry()'s depth: it adds and removes 1 around a speculative compile",
-    "carried": "a return's value while leave() compiles the finally blocks it leaves",
     "fchk": "records whose fields plain_desc checks: a recursion guard, around code that compiles nothing",
     "appending": "set around str_append's read of an owned str local, which compiles nothing",
-    "nonecmp": "the read compiled is the operand of a comparison with None: compare sets and clears it",
     "building": "functions being compiled: a recursion guard, which a nested compile must see",
     "soft": "the display operand of a comparison, matched by identity at that node",
-    "stkkey": "the tuple display a lookup makes in the frame as its key, matched by identity",
-    "cmpnode": "the operand of 'x is None' being compiled: compare sets and resets it",
-    "fieldcmp": "the field read compiled is the operand of 'is None': expr sets and clears it",
     "fieldbusy": "fields and globals that none_field and none_global search: a recursion guard",
     "xtry": "the comparison method whose call with an Any value dyn_xbody compiles: set around it",
     "joinkind": "the location a store's coerce may widen: join_at saves, sets and restores it",
@@ -125,11 +118,11 @@ SCOPED = {
     "scanning": "properties whose setters scan_fields scans: a recursion guard",
     "resolving": "aliases that alias_ann expands: a cycle check, pushed and popped",
     "unaliased": "the node count of the annotation unalias expands: reset per expansion",
-    "reflcopies": "copies of the code compiled that unrolled loops make: each saves, multiplies and restores it",
 }
-# those of SCOPED that a nested compile wrongly sees or changes today, each with a reproducer in
-# #822: a fix saves and resets each as Frame and gen_enter do, and moves it out of SCOPED
-LEAKS = ["drying", "carried", "nonecmp", "stkkey", "cmpnode", "fieldcmp", "reflcopies", "stmtexpr"]
+# those of SCOPED that a nested compile wrongly sees or changes today, each with its reproducer: a
+# fix saves and resets each as Frame and gen_enter do, and moves it out of SCOPED (as #822's
+# fields were)
+LEAKS: list = []
 
 FOOTER = (f"A function-scoped field of Gen is listed in four places, which must agree: Gen.__init__ ({GEN}), "
           f"Frame.__init__ ({IR}), gen_save and gen_restore ({EMISSION}); and gen_enter ({FUNCTIONS}) assigns "
@@ -516,7 +509,7 @@ class NegativeControlTests(unittest.TestCase):
         cases = [({"program": PROGRAM + [FIELD]}, f"PROGRAM lists '{FIELD}', which Gen.__init__"),
                  ({"program": PROGRAM + [x]}, f"PROGRAM lists '{x}', which Frame's lists hold"),
                  ({"scoped": {**SCOPED, FIELD: "r"}}, f"SCOPED lists '{FIELD}', which Gen.__init__"),
-                 ({"program": PROGRAM + ["drying"]}, "PROGRAM and SCOPED both list 'drying'"),
+                 ({"program": PROGRAM + ["xtry"]}, "PROGRAM and SCOPED both list 'xtry'"),
                  ({"leaks": LEAKS + ["classes"]}, "LEAKS lists 'classes', which SCOPED does not")]
         for kw, start in cases:
             with self.subTest(start=start):
