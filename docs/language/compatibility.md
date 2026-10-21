@@ -459,7 +459,10 @@ supported alternatives.
   two it is depends on when the submodule is first imported
 - an alias (`f = g`) that module-level code uses before its assignment, and an alias of a
   from-imported function or class that another module from-imports, in an import cycle, before
-  the alias's assignment has run (CPython raises `ImportError`)
+  the alias's assignment has run (CPython raises `ImportError`). Not caught: a function that reads
+  an alias and runs before its assignment, and another module's read of it as an attribute
+  (`m.A`) in an import cycle before then, which use its target where CPython raises `NameError`
+  or `AttributeError` (#814)
 - `__all__` changed other than by `+=`, `append` and `extend`, for `import *`
 - `from <builtin module> import *`
 - `del` of another module's attribute, an assignment of another module's `__doc__`, and `del`
