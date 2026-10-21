@@ -315,10 +315,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp "docs/releases/$RELEASE_VERSION.md" release-notes.md
-          printf '\n## Release assets\n\nNative compiler packages for Linux x86-64 and macOS arm64/x86-64.\n\n' >> release-notes.md
-          printf 'Docker image: `%s:%s` (linux/amd64, LLVM 18 included).\n\n' "$DOCKER_IMAGE" "$RELEASE_VERSION" >> release-notes.md
-          printf 'Binary packages require LLVM 18 on Linux or LLVM 20 on macOS. See [installation instructions](https://github.com/%s/blob/%s/docs/install.md).\n\nSource commit: `%s`.\n' \
-            "$GITHUB_REPOSITORY" "$RELEASE_COMMIT" "$RELEASE_COMMIT" >> release-notes.md
+          # Markdown backticks are literal text, not command substitutions.
+          # shellcheck disable=SC2016
+          {
+            printf '\n## Release assets\n\nNative compiler packages for Linux x86-64 and macOS arm64/x86-64.\n\n'
+            printf 'Docker image: `%s:%s` (linux/amd64, LLVM 18 included).\n\n' "$DOCKER_IMAGE" "$RELEASE_VERSION"
+            printf 'Binary packages require LLVM 18 on Linux or LLVM 20 on macOS. See [installation instructions](https://github.com/%s/blob/%s/docs/install.md).\n\nSource commit: `%s`.\n' \
+              "$GITHUB_REPOSITORY" "$RELEASE_COMMIT" "$RELEASE_COMMIT"
+          } >> release-notes.md
           if ! gh release view "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
               --draft --title "Pystachy $RELEASE_VERSION" --notes-file release-notes.md

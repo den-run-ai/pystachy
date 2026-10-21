@@ -211,7 +211,7 @@ def gen_flow_program(self, top: list[Node], mod: str, mfns: list[FnInfo], mcls: 
             # assigns it as a global, else at its decorated def)
             ln = bind_line(top, nm)
             for f in fns:
-                ga: dict[str, bool] = {}
+                ga = {}
                 if ln < 0 and not f.pending:
                     global_assigns(f.node.kids[2].kids, ga)
                 if nm in ga:
@@ -800,7 +800,7 @@ def gen_fl_stmt(self, fl: Flow, n: Node) -> None:
             fl.drop(nm)
             fl.unb.append(nm)  # (a break out of the statement runs the finally block first)
         mark = len(fl.log)
-        bdels: dict[str, bool] = {}
+        bdels = {}
         deleted(n.kids[0].kids, bdels)
         self.fl_stmts(fl, n.kids[0].kids)
         self.fl_stmts(fl, orelse)
@@ -825,7 +825,7 @@ def gen_fl_stmt(self, fl: Flow, n: Node) -> None:
         if hasfin:
             st = fl.since(mark)
             fl.undo(mark)
-            dels: dict[str, bool] = {}
+            dels = {}
             deleted([n], dels)
             for nm in dels:
                 fl.drop(nm)

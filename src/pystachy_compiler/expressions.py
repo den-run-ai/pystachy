@@ -910,8 +910,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     advice = typestr(hint).replace("float | int", "int | float")
                     numeric = "; for numeric promotion instead, write float literals or use float() on the integer items" if all(x.t in ["int", "float"] for x in items) else ""
                     self.err(f"expected {typestr(et)}, got {typestr(v.t)}; this list literal needs list[{advice}] to preserve its mixed item types (include enclosing containers in the annotation){numeric}")
-        items = [self.coerce(v, et) for v in items]
         lty = self.ctype("list", [et])
+        if lty == "list[dyn]":
+            et = "dyn"  # (where the items are Any values or containers: ctype)
+        items = [self.coerce(v, et) for v in items]
         r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
             self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(v)])
@@ -959,12 +961,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             kv[0] = self.none_items(kj)
         if self.dyn_policy(n.line) and ((not given and jt == "-" and not self.dyn_callables([b.t for b in vs])) or (not kgiven and kj == "-")):
             kv = ["dyn", "dyn"]  # (keys or values of no one type, in a module that compiles Any so: dynamic.py)
-        ks = [self.store_key(x, kv[0]) for x in ks]
         if given and soft:
             for b in vs:
                 kv[1] = self.wider(kv[1], b.t) or kv[1]
         if kv[0] == "" or kv[1] == "":
             self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation (d: dict[K, V] = {{}}, or -> dict[K, V] on a function returning the dict)")
+        if self.ctype("dict", kv) == "dict[dyn,dyn]":
+            kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
+        ks = [self.store_key(x, kv[0]) for x in ks]
         vs = [self.coerce(x, kv[1]) for x in vs]
         if self.key_problem(kv[0]) != "":
             self.err(self.key_problem(kv[0]))
@@ -1385,7 +1389,7 @@ def gen_format_args(self, fa: FmtArgs, args: list[Node]) -> bool:
                 if args[at].kind == "kw":
                     run.append(args[at])
                 at += 1
-            vals = [self.expr(k.kids[0], "") for k in run]
+            vals: list[Val] = [self.expr(k.kids[0], "") for k in run]
             for j in range(len(run)):
                 if not self.format_kw(fa, run[j].s, vals[j]):
                     return False
@@ -1393,7 +1397,7 @@ def gen_format_args(self, fa: FmtArgs, args: list[Node]) -> bool:
             # (**{"k": v}: its items, a later key's value replacing an earlier one's, as in the dict)
             d = a.kids[0]
             names: list[str] = []
-            vals: list[Val] = []
+            vals = []
             for i in range(0, len(d.kids), 2):
                 v = self.expr(d.kids[i + 1], "")
                 if d.kids[i].s in names:
@@ -2020,7 +2024,8 @@ def gen_unroll(self, g: Node, every: bool = False) -> list[Node] | None:
         e = bind_names(g.kids[0], env)
         if e is None:
             self.err("a comprehension over a tuple of items of different types cannot hold a lambda, comprehension or := expression")
-        out.append(e)
+        # self.err() exits; self stays untyped for self-hosted specialization.
+        out.append(e)  # type: ignore[arg-type]
     return out
 
 def gen_dict_merge(self, n: Node, want: str) -> Val:

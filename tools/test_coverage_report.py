@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import coverage_report  # noqa: E402
+import coverage_report
 
 
 def part(d, name, suite, shard=None, processes=10, data_files=None, commit="c0", data=True):
