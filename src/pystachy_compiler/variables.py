@@ -22,7 +22,7 @@ from src.pystachy_compiler.analysis import (
     typed_default,
     walrus_values,
 )
-from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, where
+from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, dynamic_program, where
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
@@ -120,7 +120,10 @@ def gen_load_name(self, name: str) -> Val:
             self.nn[r] = True
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
             return self.narrow_val(Val(r, t), self.narrowed[name])  # known not to be None here, or a member
-        return Val(r, t)
+        val = Val(r, t)
+        if name in self.idbox and name not in self.compvars and (t == "int" or t == "float"):
+            self.dyn_id_read(val, self.idbox[name])  # (its binding's object, as an Any value: dyn_box)
+        return val
     self.read_ahead(name)
     if name in self.gtypes:
         t = self.gtypes[name]
@@ -131,7 +134,10 @@ def gen_load_name(self, name: str) -> Val:
         r = self.mem_load(Val(f"@g.{name}", "*" + t)).v
         if is_opt(t) or is_union(t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
-        return Val(r, t)
+        val = Val(r, t)
+        if name in self.gidbox and (t == "int" or t == "float"):
+            self.dyn_id_read(val, self.gidbox[name])
+        return val
     if name == "__name__":
         return Val(self.sconst("__main__"), "str")
     if name in self.aliases:
@@ -690,7 +696,10 @@ def gen_read(self, n: Node) -> Val:
     if constant:
         # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
         # folds the identity operation to a literal for opcode dispatch and other arithmetic.
-        return Val(self.scalar('add', [Val(self.intglobals[name], 'int'), Val('0', 'int')]), "int")
+        val = Val(self.scalar('add', [Val(self.intglobals[name], 'int'), Val('0', 'int')]), "int")
+        if name in self.gidbox:
+            self.dyn_id_read(val, self.gidbox[name])  # (its binding's object, as an Any value: dyn_box)
+        return val
     if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and self.classes[name].exc != "":
         self.class_ready(n)  # (an exception class as a value, where its class statement may not have run yet)
     return self.load_name(name)
@@ -1602,6 +1611,11 @@ def gen_new_global(self, name: str, t: str) -> None:
     self.global_var(f"@g.{name}", t)
     if name in self.gflag:
         self.global_var(f"@g.{name}.def", "bool")
+    if (t == "int" or t == "float") and dynamic_program():
+        # (the box of its binding as an Any value, as a local's: alloca; a root, as a dyn global is.
+        # Every module's, as a module that compiles Any as dyn may read it)
+        self.gidbox[name] = f"@g.{name}.box"
+        self.global_var(self.gidbox[name], "dyn")
 
 def gen_declare(self, name: str, t: str) -> None:
     if self.is_global(name):
@@ -1656,6 +1670,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         self.mem_store(Val(f"@g.{name}", "*" + t), cv)
         if name in self.gflag:
             self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))
+        if name in self.gidbox and (t == "int" or t == "float"):
+            self.dyn_id_store(self.gidbox[name], v, t)  # (the object it now holds: dyn_box)
     else:
         if name in self.compshare and name in self.compvars and not self.widens(v.t, self.compshare[name]):
             # (a comprehension's for clause that binds it into an earlier clause's variable, which
@@ -1712,6 +1728,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.mem_store(Val(self.lflag[name], "*bool"), Val("true", "bool"))
         if name in self.owned:
             self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (a value others may hold: str_append)
+        if name in self.idbox and name not in self.compvars and (t == "int" or t == "float"):
+            self.dyn_id_store(self.idbox[name], v, t)  # (the object it now holds: dyn_box)
         # (a local a closure assigns (nonlocal) keeps its declared type: a call may run the
         # closure, as narrowable says)
         u = unopt(t)

@@ -47,6 +47,8 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.iflag = {}
     self.appends = {}
     self.owned = {}
+    self.idbox = {}
+    self.idstores = {}
     self.lcs = []
     self.lct = []
     self.lcsoft = []

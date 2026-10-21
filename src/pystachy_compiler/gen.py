@@ -62,6 +62,9 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_global_ahead as dynamic_dyn_global_ahead,
     gen_dyn_guessed as dynamic_dyn_guessed,
     gen_dyn_hash as dynamic_dyn_hash,
+    gen_dyn_id_held as dynamic_dyn_id_held,
+    gen_dyn_id_read as dynamic_dyn_id_read,
+    gen_dyn_id_store as dynamic_dyn_id_store,
     gen_dyn_identity as dynamic_dyn_identity,
     gen_dyn_int as dynamic_dyn_int,
     gen_dyn_isa as dynamic_dyn_isa,
@@ -1147,6 +1150,18 @@ class Gen:
         self.appends: dict[str, bool] = {}
         self.owned: dict[str, str] = {}
         self.appending = False
+        # the box slot of each int or float local of a module that compiles Any as dyn, and of each
+        # such module variable of a program that has one (gidbox), which holds the box its binding
+        # has as an Any value, null until it has one: every crossing of the binding gives that one
+        # object (dyn_box, #797)
+        self.idbox: dict[str, str] = {}
+        self.gidbox: dict[str, str] = {}
+        # the number of stores into each such slot (a new binding) that the compiler has emitted in
+        # the function being compiled: a value read before one crosses with the box its slot held
+        # at the read (dyn_id_held). It only grows there, and speculative compilation (dry) does not
+        # undo it; Frame keeps a function's counts while it compiles another, whose slots' names
+        # may repeat its own (#807)
+        self.idstores: dict[str, int] = {}
         # the flags of the names that imports in try statements bind (imp_flag): module code's
         # globals defined so far, and the function's own, each name's slot or cell
         self.impg: dict[str, bool] = {}
@@ -1419,6 +1434,15 @@ class Gen:
 
     def dyn_box(self, v: Val) -> Val:
         return dynamic_dyn_box(self, v)
+
+    def dyn_id_held(self, v: Val) -> Val:
+        return dynamic_dyn_id_held(self, v)
+
+    def dyn_id_read(self, v: Val, slot: str) -> None:
+        return dynamic_dyn_id_read(self, v, slot)
+
+    def dyn_id_store(self, slot: str, v: Val, t: str) -> None:
+        return dynamic_dyn_id_store(self, slot, v, t)
 
     def dyn_union_box(self, v: Val) -> Val:
         return dynamic_dyn_union_box(self, v)

@@ -240,6 +240,56 @@ def gen_dyn_box(self, v: Val) -> Val:
         return Val(self.rtdata("pys_dyn_none_box"), DYN)
     if t == "bool":
         return Val(self.select(v.v, Val(self.rtdata("pys_dyn_true_box"), DYN), Val(self.rtdata("pys_dyn_false_box"), DYN)), DYN)
+    if (t == "int" or t == "float") and v.idfrom != "":
+        return Val(v.idfrom, DYN)  # (the Any value's object it was read from: dyn_unbox, dyn_narrowed)
+    if (t == "int" or t == "float") and v.idslot != "":
+        # a variable's value: the box of its object (dyn_id_held), where that holds this value of
+        # this type, else a new box, which the binding keeps (idbox) where it has none and has not
+        # changed since the read, so that each crossing of one binding into Any gives one object,
+        # as CPython's name holds one (#797)
+        kept = self.idstores.get(v.idslot, 0) == v.idgen
+        b = self.dyn_id_held(v)
+        chk = self.label()
+        hit = self.label()
+        miss = self.label()
+        end = self.label()
+        self.cbr(self.ptr_cmp("!=", b, Val("null", DYN)).v, chk, miss)
+        self.place(chk)
+        typ = Val(self.rtdata("pys_dyntype_int" if t == "int" else "pys_dyntype_float"), "dyntype")
+        st = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), typ).v
+        sp = self.num_cmp("==", Val(self.to_slot(self.dyn_payload(b, "int")), "int"), Val(self.to_slot(v), "int")).v
+        self.cbr(self.scalar("and", [Val(st, "bool"), Val(sp, "bool")]), hit, miss)
+        self.place(hit)
+        self.br(end)
+        self.place(miss)
+        nb = self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]) if t == "int" else self.rt("pys_dyn_float", "ptr", [f"double {v.v}"])
+        ph = Ins("phi", DYN, "")
+        self.incoming(ph, b.v, hit)
+        self.incoming(ph, nb, self.cur)
+        if kept:
+            # (not over a box: that is another object's, as where a call has given a module
+            # variable a new binding since the read)
+            keep = self.label()
+            self.cbr(self.ptr_cmp("==", b, Val("null", DYN)).v, keep, end)
+            self.place(keep)
+            self.mem_store(Val(v.idslot, "*" + DYN), Val(nb, DYN))
+            self.incoming(ph, nb, keep)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), DYN)
+    if t == "int" and v.lit and (int(v.v) < -5 or int(v.v) > 256):
+        # an int literal's box is a constant, one per value in each module (its functions' code
+        # included), as a module's equal constants are one object in CPython, and another module's
+        # another: a is b where both hold 1000, which identity tells apart (dyn_identity). Not a
+        # value only the compiler knows (struct.calcsize("300x")), which CPython computes
+        g = "@dbi." + self.curfn.mod + "$" + v.v.replace("-", "m")
+        if g not in self.dynboxes:
+            self.dynboxes[g] = True
+            d = Data("dynint", g)
+            d.refs = [self.rtdata("pys_dyntype_int")]
+            d.items = [Val(v.v, "int")]
+            self.consts.append(d)
+        return Val(g, DYN)
     if t == "int":
         return Val(self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]), DYN)
     if t == "float":
@@ -288,6 +338,47 @@ def gen_dyn_box(self, v: Val) -> Val:
     if is_fn(t) or is_callable(t):
         return self.dyn_fn_box(v)
     return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.dyn_type(t)}", f"ptr {v.v}"]), DYN)
+
+
+def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
+    # the box that an int or float variable's binding has as an Any value, where store_name gives
+    # it v (its box slot, idbox): the box of the Any value it unboxes, the box of the binding it
+    # copies, an int literal's constant box, else none yet, a new object that its first crossing
+    # boxes (dyn_box)
+    if v.idslot == slot and self.idstores.get(slot, 0) == v.idgen:
+        return  # (x = x, x := x: the binding's own object, read with no store since, is no new binding)
+    b = "null"
+    if v.t == DYN or v.t == DYNINT:
+        b = v.v
+    elif v.idfrom != "":
+        b = v.idfrom
+    elif v.idslot != "":
+        b = self.dyn_id_held(v).v
+    elif v.lit and t == "int" and (int(v.v) < -5 or int(v.v) > 256):
+        b = self.dyn_box(v).v
+    self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+    self.idstores[slot] = self.idstores.get(slot, 0) + 1
+
+
+def gen_dyn_id_read(self, v: Val, slot: str) -> None:
+    # v, read from an int or float variable whose box slot is slot (idbox): it keeps the slot, the
+    # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
+    # far (dyn_id_held)
+    v.idslot = slot
+    v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
+    v.idgen = self.idstores.get(slot, 0)
+
+
+def gen_dyn_id_held(self, v: Val) -> Val:
+    # the box of the object that v, an int or float variable's value (dyn_id_read), is, null where
+    # it has none yet: the box its slot held at the read, else, where no store has given the
+    # variable a new binding since, the box a crossing of the object has given it since ([x, x]).
+    # Not after one (x, y = y, x), whose box is another object's
+    b = Val(v.idheld, DYN)
+    if self.idstores.get(v.idslot, 0) != v.idgen:
+        return b
+    now = self.mem_load(Val(v.idslot, "*" + DYN))
+    return Val(self.select(self.ptr_cmp("!=", b, Val("null", DYN)).v, b, now), DYN)
 
 
 def gen_dyn_union_box(self, v: Val) -> Val:
@@ -428,7 +519,10 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
         return Val(self.phi(ph), t)
     if t in BUILTIN:
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_type(t)}"])
-        return self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
+        x = self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
+        if t == "int" or t == "float":
+            x.idfrom = v.v  # (a box of exactly type t: pys_dyn_unbox)
+        return x
     if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
         return self.from_slot(self.to_slot(Val(r, "int")), t)
@@ -617,7 +711,10 @@ def gen_dyn_narrowed(self, v: Val, nt: str) -> Val:
     if nt == DYNINT:
         self.dynints[v.v] = True
         return v
-    return self.dyn_payload(v, nt)
+    x = self.dyn_payload(v, nt)
+    if nt == "float":
+        x.idfrom = v.v  # (its object, as an Any value again: dyn_box)
+    return x
 
 
 def gen_dyn_proven_int(self, v: Val) -> Val:
@@ -946,8 +1043,10 @@ def gen_dyn_cmp2(self, op: str, a: Val, b: Val) -> Val:
 
 def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     # a is b (op "is") or a is not b, where either is dyn: the same box, or the same type and
-    # payload but for floats and bound methods (whose box is their identity, as a float object's
-    # and a method object's is CPython's: DF_BOXID)
+    # payload but for ints, floats and bound methods, whose box is their identity, as an int's,
+    # a float's and a method object's is CPython's (DF_BOXID), so that a is b exactly where
+    # id(a) == id(b) (pys_dyn_id, #797). An int from -5 to 256 has one constant box, as CPython
+    # caches those, and so does an int literal (dyn_box)
     x = self.dyn_box(a)
     y = self.dyn_box(b)
     ta = Val(self.dyn_typeof(x), "dyntype")
@@ -955,9 +1054,10 @@ def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     st = self.ptr_cmp("==", ta, Val(self.dyn_typeof(y), "dyntype")).v
     sp = self.num_cmp("==", Val(self.to_slot(self.dyn_payload(x, "int")), "int"), Val(self.to_slot(self.dyn_payload(y, "int")), "int")).v
     nf = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_float"), "dyntype")).v
+    ni = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_int"), "dyntype")).v
     fl = self.mload("int", self.maddr("int", ta.v, "5"))  # (its DynType's flags)
     nb = self.num_cmp("==", Val(self.scalar("and", [Val(fl, "int"), Val(str(DF_BOXID), "int")]), "int"), Val("0", "int")).v
-    nf = self.scalar("and", [Val(nf, "bool"), Val(nb, "bool")])
+    nf = self.scalar("and", [Val(self.scalar("and", [Val(nf, "bool"), Val(ni, "bool")]), "bool"), Val(nb, "bool")])
     alike = self.scalar("and", [Val(st, "bool"), Val(self.scalar("and", [Val(sp, "bool"), Val(nf, "bool")]), "bool")])
     r = self.scalar("or", [Val(same, "bool"), Val(alike, "bool")])
     return Val(r if op == "is" else self.scalar("xor", [Val(r, "bool"), Val("true", "bool")]), "bool")
