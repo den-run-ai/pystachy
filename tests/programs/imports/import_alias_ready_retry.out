@@ -1,0 +1,10 @@
+mods: init mods
+mods.shapes: init mods.shapes
+mods.counter: init mods.counter
+attempt 1
+NameError name 'alias' is not defined
+ValueError retry
+attempt 2
+NameError name 'alias' is not defined
+10
+[exit 0]

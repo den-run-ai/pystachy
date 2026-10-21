@@ -29,6 +29,20 @@ of a compile error, and so are the displays among its items. Concrete annotation
 unannotated code keep their static types, layouts and templates: boxing is selective, at the
 boundary where a concrete value flows into `Any` storage.
 
+A list whose items are `Any` values or `Any`'s containers is a `list[Any]`, and a dict whose
+values are is a `dict[Any, Any]`: `dict[str, Any]`, `list[dict[str, Any]]`, `dict[str, list[Any]]`
+and the records and lists of records that JSON-like code annotates have the layout of `Any`'s
+containers, whose items, and keys, are boxes, however they are built (#777). So such a container
+becomes an `Any` value, and an `Any` value becomes one, as the same object, and typed and `Any`
+code see each other's changes (`tests/programs/inference/dynany_layout.py`,
+`tests/programs/inference/dynany_layout_forms.py`). Its items and keys are `Any` values to typed
+code too: a key of a `dict[str, Any]` is unboxed where code needs a `str`, and raises `TypeError`
+where it holds another type, as an annotation that receives an `Any` value does. `list()` and
+`sorted()` of its items give a list of them unboxed where a typed list is expected (`return
+list(d)` from a function declared `-> list[str]`). A container of tuples (`list[tuple[str,
+Any]]`) or of typed items (`dict[str, int]`), and one that holds `None` items before its first
+value types it (`ws = [None]`, then `ws[0] = {...}`), keep their typed layouts.
+
 Storage that an unannotated first value types, and that a later store gives an `Any` value, is
 `Any` from that first store, as a CPython variable holds whatever was assigned last
 (`tests/programs/inference/dynany_widen.py`):
@@ -107,9 +121,10 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   an alias a second layout.
 - **`None` is the constant box `pys_dyn_none_box`, never null.** Null is an unbound variable's
   slot, and the existing "is assigned" flags still tell unbound reads apart. `True`, `False`
-  and the ints from -5 to 256 are constant boxes too. Other numbers' boxes are atomic
-  allocations, which the collector does not scan; a reference's box is a scanned allocation,
-  so the box keeps its payload alive. DynTypes are constants outside the heap. Dynamic locals,
+  and the ints from -5 to 256 are constant boxes too, and so is each str constant's, whose
+  payload is that constant: a literal key of a `dict[str, Any]` allocates nothing (#777). Other
+  numbers' boxes are atomic allocations, which the collector does not scan; a reference's box is
+  a scanned allocation, so the box keeps its payload alive. DynTypes are constants outside the heap. Dynamic locals,
   arguments and closure cells are ordinary pointer slots, which the conservative collector
   scans; dynamic module variables are registered roots like every pointer-typed global.
 - **Containers of boxes**: `list[Any]` (descriptor `LA`), `dict[Any, Any]` (`DAA`, its keys
@@ -138,7 +153,8 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   `Any` items, tuples (made a tuple of boxes: only their identity differs), function values,
   bound methods, closures and `Callable` objects, and unions of these (boxed as the member the
   value's tag selects).
-- **Typed mutable containers never become `Any` values.** A `list[int]` boxed into `Any` would
+- **Mutable containers of typed items never become `Any` values** (a container whose items hold
+  `Any` values has `Any`'s layout: [above](#selecting-dynamic-storage)). A `list[int]` boxed into `Any` would
   either read boxes as ints through its typed aliases, store boxes into memory the collector does
   not scan, or have to be copied (breaking identity). The compiler rejects the crossing and says
   to make the container a `list[Any]` from the start; a display that flows into `Any` storage is

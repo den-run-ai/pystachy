@@ -874,7 +874,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_sort(Val(c, t), keyv, rev, False)
         elif name == "sorted":
             self.rt("pys_list_sort_r", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(elem(t), '<'))}", f"i64 {rev}"])
-        return Val(c, t)
+        return self.typed_list(Val(c, t), "" if resultsoft else want)
     elif name == "divmod" and len(vals) == 2 and self.isnum(t) and self.isnum(vals[1].t):
         dn = self.as_int(v)
         dd = self.as_int(vals[1])
@@ -896,7 +896,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # comparing keys hashed by their class (key_fx)
         return Val(self.rt("pys_dict_from", "ptr", [f"ptr {v.v}"], self.key_fx(targs(t)[0])), t)
     elif name == "list" and is_dict(t):
-        return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]]))
+        return self.typed_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]])), "" if resultsoft else want)
     elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":
         tuple_use = "tuple(), bytes(), " if name == "range" else "tuple() (with scalar or optional scalar items), bytes(), " if name == "reversed" else ""
         self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), {tuple_use}sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()")
@@ -1037,6 +1037,8 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
     k = self.call_key(key, item)
     if "?" in k.t:
         self.err(f"the key function returns an empty container whose type is not known here ({typestr(k.t)})")
+    if self.ctype("list", [k.t]) == "list[dyn]":
+        k = self.coerce(k, "dyn")  # (an Any container's box, which a list of them holds: ctype)
     self.rt("pys_list_append", "void", [f"ptr {ks}", "i64 " + self.to_slot(k)])
     self.mstore('int', f"{self.scalar('add', [Val(i, 'int'), Val('1', 'int')])}", ctr)
     self.br(lc)
@@ -1560,6 +1562,27 @@ def gen_consume(self, n: Node, want: str, arg: IterArg | None = None, resultsoft
     it = mk("name", "__item", n.line, [])
     return self.listcomp(mk("listcomp", "", n.line, [it, made_var("__item", n.line), n]), want, "", "", arg, resultsoft=resultsoft)
 
+def gen_typed_list(self, v: Val, want: str) -> Val:
+    # v, a new list of Any items that list() or sorted() made, or a dict's keys() or values(),
+    # where want is a list of typed items: a list of the items unboxed, as such a list's items are
+    # (dyn_unbox), so that list(d) or d.keys() of a dict[str, Any] is the list[str] a return
+    # annotation expects; and of tuples that hold Any items (a dict's items(), list() or sorted()
+    # of them), a list of the tuples of their items unboxed, the list[tuple[str, Any]] expected
+    # of d.items(). Nothing else holds v yet, and CPython's list() makes a new list either way
+    w = unopt(want)
+    if not is_list(v.t) or not is_list(w) or elem(v.t) == elem(w) or "?" in w:
+        return v
+    line = self.line
+    if elem(v.t) == "dyn":
+        item = mk("name", "__item", line, [])
+        return self.listcomp(mk("listcomp", "", line, [item, made_var("__item", line), self.vnode(v)]), w)
+    if is_tuple(elem(v.t)) and is_tuple(elem(w)) and len(targs(elem(v.t))) == len(targs(elem(w))) and "dyn" in targs(elem(v.t)):
+        names = ["__item" + str(i) for i in range(len(targs(elem(v.t))))]
+        target = mk("tuple", "", line, [made_var(x, line) for x in names])
+        target.made = True
+        return self.listcomp(mk("listcomp", "", line, [mk("tuple", "", line, [mk("name", x, line, []) for x in names]), target, self.vnode(v)]), w)
+    return v
+
 def gen_as_list(self, v: Val, name: str) -> Val:
     # sorted(d), max(t), ...: a dict's keys, or the items of a tuple (or NamedTuple) of one item
     # type, as a list, or the list an object's __iter__ steps through (which list() copies);
@@ -1618,6 +1641,8 @@ def gen_as_list(self, v: Val, name: str) -> Val:
         r = self.rt("pys_list_new_atomic" if atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"])
         for i in range(len(ts)):
             item = self.tget(v, i)
+            if self.ctype("list", [et]) == "list[dyn]":
+                item = self.coerce(item, "dyn")  # (an Any container's box, which a list of them holds: ctype)
             self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.as_float(item) if et == "float" else item)])
         return Val(r, self.ctype("list", [et]))
     if v.t == "str" and (name == "sorted" or name == "min" or name == "max" or name == "join"):
@@ -2500,6 +2525,11 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
     kv = targs(et)
     if self.key_problem(kv[0]) != "":
         self.err(self.key_problem(kv[0]))
+    if self.ctype("dict", kv) == "dict[dyn,dyn]" and kv != ["dyn", "dyn"]:
+        # (a dict of Any containers holds boxes, keys too, ctype: pairs of boxes made first)
+        item = made_var("__item", self.line)
+        v = self.listcomp(mk("listcomp", "", self.line, [mk("name", "__item", self.line, []), item, self.vnode(v)]), "list[tuple[dyn,dyn]]")
+        kv = ["dyn", "dyn"]
     d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", "i64 0"])
     self.rt("pys_dict_update_pairs", "void", [f"ptr {d}", f"ptr {v.v}"], self.key_fx(kv[0]))
     return Val(d, self.ctype("dict", kv))

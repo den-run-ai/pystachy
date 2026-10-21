@@ -994,12 +994,16 @@ def gen_stmt(self, n: Node) -> None:
             if self.key_problem(kv[0]) != "":
                 self.err(self.key_problem(kv[0]))
             self.lct[-1] = self.ctype("dict", kv)
+            if self.lct[-1] == "dict[dyn,dyn]":
+                kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
         self.rt("pys_dict_set", "void", [f"ptr {self.lcs[-1]}", "i64 " + self.to_slot(self.store_key(kx, kv[0])), "i64 " + self.to_slot(self.coerce(vx, kv[1]))], self.key_fx(kv[0]))
     elif k == "lcappend":
         et = self.lct[-1]
         v = self.expr(n.kids[0], et, resultsoft=self.lcsoft[-1])
         if et == "":
             self.lct[-1] = self.none_items(v.t) if n.s == "set" and is_tuple(v.t) else v.t
+            if n.s != "set" and n.s != "discard" and self.ctype("list", [v.t]) == "list[dyn]":
+                self.lct[-1] = "dyn"  # (where the items are Any values or containers: ctype)
             et = self.lct[-1]
             if n.s == "set" and self.elem_problem(et) != "":
                 self.err(self.elem_problem(et))
@@ -1041,8 +1045,10 @@ def gen_stmt(self, n: Node) -> None:
         # assignment does, which raises AttributeError where m's code has not bound C yet
         self.class_ready(n.kids[-1])
     elif k == "bound":
-        # an import has bound these names, which an import in a try statement may leave unbound
-        self.modchk(n)  # a from-import must read an existing source-module attribute first
+        # An import or alias assignment binds these names only after its source read succeeds.
+        self.modchk(n)
+        for source in n.kids:
+            self.stmt(source)
         for bn in n.s.split():
             self.mstore('bool', 'true', self.imp_flag(bn, self.modlevel))
     elif k == "def" and (n.s in self.decorated if self.modlevel else self.applies(n, False, self.scope_names())):
@@ -1971,11 +1977,14 @@ def gen_drain(self, it: Val) -> Val:
     if v.t == "None" or "?" in v.t:
         self.err(f"the items of {short(it.t)}'s __next__ ({typestr(v.t)}) cannot be a list's")
     self.place(self.label())
+    lt = self.ctype("list", [v.t])
+    if lt == "list[dyn]":
+        v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
     self.rt("pys_list_append", "void", [f"ptr {res}", "i64 " + self.to_slot(v)])
     self.br(lc)
     self.stop_landing(c, le)
     self.place(le)
-    self.holes[h.k] = self.ctype("list", [v.t])
-    return Val(res, self.ctype("list", [v.t]))
+    self.holes[h.k] = lt
+    return Val(res, lt)
 
 # ---- narrowing: optional locals known not to be None

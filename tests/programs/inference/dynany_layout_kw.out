@@ -1,0 +1,8 @@
+{'a': 1, 'b': [2], 'c': {'d': 3}, 'seen': 3} ['a', 'b', 'c', 'seen'] [2]
+added 5
+p(1, [2])
+1/p
+{'x': 1, 'y': None, 'label': 'p', 'z': 3.5} True
+{'x': 1, 'y': None, 'label': 'p', 'z': 3.5}
+Rec(name='a', meta={'k': [1, 2]}, tags=[{'k': [1, 2]}]) True
+[exit 0]

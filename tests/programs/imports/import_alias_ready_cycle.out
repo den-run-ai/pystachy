@@ -1,0 +1,12 @@
+mods: init mods
+mods.shapes: init mods.shapes
+AttributeError True
+AttributeError True
+AttributeError True
+NameError name 'Crate' is not defined
+AttributeError True
+NameError name 'plus' is not defined
+3 4 4
+5 6 6
+12 13 9
+[exit 0]

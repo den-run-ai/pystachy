@@ -228,6 +228,7 @@ from src.pystachy_compiler.reflection import (
 from src.pystachy_compiler.builtins import (
     gen_anyall as builtins_anyall,
     gen_as_list as builtins_as_list,
+    gen_typed_list as builtins_typed_list,
     gen_bmethod as builtins_bmethod,
     gen_tmethod as builtins_tmethod,
     gen_dict_pairs as builtins_dict_pairs,
@@ -306,6 +307,7 @@ from src.pystachy_compiler.calls import (
     gen_kw_type as calls_kw_type,
     gen_method as calls_method,
     gen_method_value as calls_method_value,
+    gen_init_result as calls_init_result,
     gen_new_obj as calls_new_obj,
     gen_not_callable as calls_not_callable,
     gen_obj_call as calls_obj_call,
@@ -2088,8 +2090,8 @@ class Gen:
     def desc(self, t: str, use: str) -> str:
         return conversions_desc(self, t, use)
 
-    def ctype(self, base: str, ts: list[str]) -> str:
-        return declarations_ctype(self, base, ts)
+    def ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
+        return declarations_ctype(self, base, ts, canon)
 
     def none_items(self, t: str) -> str:
         return declarations_none_items(self, t)
@@ -2256,7 +2258,7 @@ class Gen:
     def iter_ann(self, n: Node) -> str:
         return declarations_iter_ann(self, n)
 
-    def iter_item(self, n: Node) -> Node:
+    def iter_item(self, n: Node) -> Node | None:
         return declarations_iter_item(self, n)
 
     def exc_attr(self, ci: ClassInfo, name: str) -> None:
@@ -3839,8 +3841,8 @@ class Gen:
     def method(self, o: Val, m: str, args: list[Node], want: str='', resultsoft: bool = False) -> Val:
         return calls_method(self, o, m, args, want, resultsoft)
 
-    def unbound_call(self, tn: str, m: str, args: list[Node]) -> Val:
-        return calls_unbound_call(self, tn, m, args)
+    def unbound_call(self, tn: str, m: str, args: list[Node], want: str = "") -> Val:
+        return calls_unbound_call(self, tn, m, args, want)
 
     def kw_record(self, names: list[str], vals: list[Val]) -> Val:
         return calls_kw_record(self, names, vals)
@@ -3880,6 +3882,9 @@ class Gen:
 
     def new_obj(self, c: str) -> Val:
         return calls_new_obj(self, c)
+
+    def init_result(self, v: Val) -> None:
+        calls_init_result(self, v)
 
     def pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return calls_pcoerce(self, v, t, f, j)
@@ -4057,6 +4062,9 @@ class Gen:
 
     def as_list(self, v: Val, name: str) -> Val:
         return builtins_as_list(self, v, name)
+
+    def typed_list(self, v: Val, want: str) -> Val:
+        return builtins_typed_list(self, v, want)
 
     def reverse_arg(self, n: Node, name: str) -> str:
         return builtins_reverse_arg(self, n, name)

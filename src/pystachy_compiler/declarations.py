@@ -46,6 +46,7 @@ from src.pystachy_compiler.utils import (
     elem,
     empty_display,
     gelem,
+    any_item,
     gsend,
     is_callable,
     is_const,
@@ -72,11 +73,20 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_ctype(self, base: str, ts: list[str]) -> str:
+def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
     # A composite type, checking its serialized size before join copies any children.
     # In a recursive template, a two-item tuple may double this on every instance.
     # Recursive value aliases have finite self edges in mutable storage. Only
     # fold the exact element/value type; never widen an existing container.
+    if canon and base == "list" and len(ts) == 1 and any_item(ts[0]):
+        # a list of Any values or Any containers is a list[Any], whose items are boxes, and so is a
+        # dict's of them a dict[Any, Any], keys boxed too: so it becomes an Any value, and an Any
+        # value becomes one, as the same object, and both see it change (#777). A container of
+        # tuples or typed items keeps its layout, and so does (canon False) one that holds None
+        # items before its first value types it, whose None is a null pointer (refine)
+        ts = ["dyn"]
+    elif canon and base == "dict" and len(ts) == 2 and any_item(ts[1]) and self.dyn_boxable(ts[0]) == "":
+        ts = ["dyn", "dyn"]
     if base == "list" and len(ts) == 1:
         ts = [self.rec_fold(ts[0])]
     elif base == "dict" and len(ts) == 2:
@@ -181,7 +191,7 @@ def gen_ann(self, n: Node) -> str:
     elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
         return self.opt(self.ann(n.kids[1]), n.kids[1])  # None | T
     elif k == "binop" and n.s == "|":
-        ts = [self.ann(x) for x in self.union_members(n, [])]
+        ts: list[str] = [self.ann(x) for x in self.union_members(n, [])]
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -240,7 +250,7 @@ def gen_ann(self, n: Node) -> str:
             if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
                 return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
             return self.ctype("vtuple", [t])
-        ts: list[str] = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
+        ts = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -1371,7 +1381,7 @@ def gen_iter_ann(self, n: Node) -> str:
     t = self.iter_item(n)
     return self.ctype("list", [self.vtype(t)]) if t is not None else ""
 
-def gen_iter_item(self, n: Node) -> Node:
+def gen_iter_item(self, n: Node) -> Node | None:
     # T, of an __iter__'s return annotation Iterator[T] or Iterable[T]; else None
     if n.kind == "str":
         n = self.parse_expr(n.s)
@@ -2260,7 +2270,7 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if c in self.tmpl:
             # a class template's object: of the specialization its arguments' types pick, once
             # code is being compiled (a specialization compiles its special methods)
-            ts = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling else ["!"]
+            ts: list[str] = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling else ["!"]
             lits = self.literal_args(self.classes[c].methods["__init__"], e.kids[1:]) if self.literal_class(c) and "!" not in ts else {}
             return self.specialize(c, ts, {}, False, lits) if "!" not in ts else ""
         if c in self.classes or c in self.unsupported:
@@ -2279,7 +2289,7 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
                 args = e.kids[1:]
                 if c in f.params or c in assigned or len(args) > len(helper.params) or (helper.npos >= 0 and len(args) > helper.npos):
                     return ""
-                ts: list[str] = []
+                ts = []
                 for i in range(len(helper.params)):
                     if i < len(args):
                         arg = args[i]
