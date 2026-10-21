@@ -306,6 +306,9 @@ RANGES = "_pystachy_range"  # lib's module of the class of range objects, range(
 RANGEC = "_pystachy_range$range"  # (that class)
 OBJECTS = "_pystachy_object"  # lib's module of the class of the objects object() makes, sentinels (Loader.program)
 OBJECTC = "_pystachy_object$object"  # (that class)
+# lib's module of json.loads() and json.dumps() of Any values, for the modules that compile Any as
+# dynamic values (Loader.program, Gen.json_any: #779)
+JSONANY = "_pystachy_json_any"
 # the calls whose positional argument range(...) is no range object (analysis.range_values): the
 # consumers that take the numbers at once (1: the first, 2: the first that is the only one, 3:
 # each), of the builtins (fsum and prod also of math, as imported) and of methods (str.join(),

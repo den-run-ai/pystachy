@@ -100,6 +100,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             vals = [self.expr(a.kids[0] if a.kind == "kw" else a, "") for a in args[1:]]
             self.wrap_names(w, args[1:], vals, "update_wrapper")
             return w
+        if (f.s == "json$loads" or f.s == "json$dumps") and self.dyn_policy(n.line) and self.lib_fn(f, f.s):
+            r = self.json_any(f.s, args, want, resultsoft)  # (of Any values: #779)
+            if r is not None:
+                return r
         if f.s in self.funcs:
             return self.call_fn(self.funcs[f.s], [], args, want, resultsoft=resultsoft)
         if f.s in self.aliases and f.s not in self.gtypes:

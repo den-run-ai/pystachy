@@ -63,6 +63,7 @@ from src.pystachy_compiler.specs import (
     GENERICS,
     GLUE,
     ITERS,
+    JSONANY,
     MODNAMES,
     MODULES,
     NOCALL,
@@ -341,6 +342,15 @@ class Loader:
             # nothing imports (it imports nothing either, so it comes first)
             self.load(ITERS, self.dirs[-1] + "/" + ITERS + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
+        if not self.rtmode and len(self.dirs) > 0 and JSONANY not in self.mods and "json" in self.mods and len(DYNFILES) > 0:
+            # json.loads() and json.dumps() of Any values (#779), which the compiler calls in the
+            # modules that compile Any as dynamic values (Gen.json_any): lib's, whose module nothing
+            # imports, after json, whose parser it uses
+            jm = self.load(JSONANY, self.dirs[-1] + "/" + JSONANY + ".py", "")
+            at = 0
+            while self.order[at] is not self.mods["json"]:
+                at += 1
+            self.order = self.order[: at + 1] + [jm] + self.order[at + 1 : -1]
         self.guarded()
         self.submodules()
         more = True
@@ -494,8 +504,8 @@ class Loader:
             return self.dirs[-1] + "/" + STANDINS[name] + ".py"  # (lib's stand-in for a C module)
         if name in CBUILTIN:
             return ""  # a module built into CPython: no file on the path replaces it (find())
-        if name == ITERS or name == RANGES or name == OBJECTS:
-            return ""  # (iter()'s classes, range's and object's, which no program imports: see program)
+        if name == ITERS or name == RANGES or name == OBJECTS or name == JSONANY:
+            return ""  # (iter()'s classes, range's, object's and json's of Any values, which no program imports: see program)
         return self.filepath(name)
 
     def filepath(self, name: str) -> str:
