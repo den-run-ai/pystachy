@@ -5665,3 +5665,60 @@ unrelated first errors remain historical; a runtime dictionary optimization is
 not counted as a new library import. Complete this checkpoint after an authorized
 pinned rebuild, selected native parity and the retained import sweep. The latest
 fully evaluated main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #808: seeded dynamic Any differential fuzzer
+
+Inspected [main `4ef45ca0b3bb8b1cb99e3dcb55c15eda6030950c`](https://github.com/den-run-ai/pystachy/commit/4ef45ca0b3bb8b1cb99e3dcb55c15eda6030950c)
+after [#808](https://github.com/den-run-ai/pystachy/pull/808) merged at
+2026-10-21 08:06:20 UTC. Fresh first-parent history and ancestry checks establish
+it as the only merge after #812. The five landed #808 paths are byte-identical
+to implementation head `a7ad61e1d422d528192f1ca5738bb6aeb14c0d1e`;
+main additionally contains the disjoint #812 implementation.
+
+#808 adds `tools/dynany_fuzz.py`, its unit contract, a `make dynany-fuzz`
+target and Lint wiring. Seeded programs cover dynamic arithmetic, in-place and
+unary operations, comparison, identity, containment, indexing, slicing,
+formatting and selected builtins across builtin and user-defined values. The
+comparator requires ordered, exactly-once case output and fails closed on an
+unknown line. This is the first step of [#802](https://github.com/den-run-ai/pystachy/issues/802),
+not yet a `make verify` group.
+
+[Machine-readable evidence](compatibility-2026-10-21-dynamic-any-fuzzer-partial.json)
+retains exact source/tree identities, file hashes, commands, generated source/
+output manifest hashes, workflow runs, issue state and limitations.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| Fuzzer unit contract | **17/17** tests pass; both tool files also pass `py_compile`. |
+| Default generator budget | **3 programs / 450 cases** are deterministic and each CPython run exits cleanly with exactly one recognized line per case. |
+| Wider generator budget | **10 programs / 3,000 cases** satisfy the same deterministic framing contract. |
+| Fail-closed controls | One deliberately wrong value, reordered first two case lines and one orphan warning each produce exactly **one mismatch**. |
+| End-to-end local fuzzing | The stock CLI exits **2** as designed because hosted CPython is 3.12.14 rather than pinned 3.13.16. No local Pystachy result is counted. |
+
+The CPython-only generator runs establish determinism, executable generated
+syntax, case accounting and comparator behavior. They do not establish Pystachy
+semantic parity. Pinned CPython 3.13.16 and LLVM 18 were unavailable, so no fresh
+local JIT/AOT, GC-stress or native negative-control run completed.
+
+Pre-merge workflows on the final #808 head succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39562476810) has
+**27/27 successful jobs**, [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39562476842)
+has **3/3**, and [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39562476799)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39562476818)
+each succeeded. Lint includes the new unit contract. The live fuzzer is not yet
+part of `make verify`, so those green workflows must not be read as a zero-mismatch
+end-to-end fuzz run.
+
+Known findings remain explicit rather than being normalized away: open
+[#797](https://github.com/den-run-ai/pystachy/issues/797) makes the current
+default differential target fail on integer box identity, while wider budgets
+retain open [#810](https://github.com/den-run-ai/pystachy/issues/810)'s dynamic
+dict `|`/`|=` mismatch. #802 still requires the bounded verification group,
+typed-versus-`Any` oracle, negative controls against known regressions and the
+opt-in corpus sweep. No new uncovered mismatch was confirmed and no issue was filed.
+
+No compiler, runtime, library, port or retained compatibility-corpus source
+changed. Imports, API execution, adapted ports, packages, timings and memory were
+not rerun and no compatibility gain is claimed from adding the harness. The
+latest fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

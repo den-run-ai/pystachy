@@ -109,7 +109,9 @@ every program allocation. It also runs the contract checks below.
 
 The implementation and exact budgets live in `tests/verify.sh` and its named `tools/` probes.
 Useful individual checks include `make re-fuzz`, `make re-probe`, `make re-specialize-check`
-(matchers generated for random patterns, against CPython's `re`), `make dictprobe`,
+(matchers generated for random patterns, against CPython's `re`), `make dynany-fuzz`
+(seeded programs on [dynamic `Any`](dynamic-any.md) values against CPython, with identity and
+containment invariants; not yet a `make verify` group), `make dictprobe`,
 `make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe` and `make jitprobe`.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
