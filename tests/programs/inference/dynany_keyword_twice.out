@@ -18,4 +18,17 @@ TypeError list.append() got multiple values for keyword argument 'a'
 side 9
 side 10
 {'z': 0, 'e': 9, 'f': 10}
+side 11
+side 12
+TypeError __main__.g() got multiple values for keyword argument 'a'
+side 13
+side 14
+TypeError __main__.h() got multiple values for keyword argument 'a'
+side 15
+side 16
+TypeError __main__.C.m() got multiple values for keyword argument 'a'
+side 17
+side 18
+g ran
+2
 [exit 0]

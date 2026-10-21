@@ -1256,7 +1256,10 @@ def gen_dyn_arity(self, fm: FnInfo, own: int, nargs: int) -> str:
 def gen_dyn_bind(self, fm: FnInfo, own: int, key: str, an: list[Node]) -> str:
     # CPython's TypeError for call dispatcher key's case of method fm, with own values (its
     # object) and the arguments an, or "" where they fit its parameters: positional arguments as
-    # dyn_takes counts them, keyword arguments as a typed call binds them (arity_error)
+    # dyn_takes counts them, keyword arguments as a typed call binds them (arity_error), and a
+    # keyword argument named twice as CPython merges them first (dup_kw)
+    if dup_kw(key) != "":
+        return f"{fm.mod if fm.mod != '' else '__main__'}.{self.qualname(fm)}() got multiple values for keyword argument '{dup_kw(key)}'"
     if len(shape_kws(key)) == 0 or fm.bad != "" or len(fm.defaults) < len(fm.params):
         return "" if self.dyn_takes(fm, own, len(an)) else self.dyn_arity(fm, own, len(an))
     return self.arity_error(fm, own, an)
@@ -1346,16 +1349,14 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
     m = key[key.find(".") + 1 : key.rfind(".")]
     n = shape_npos(key)
     ks = shape_kws(key)
-    dup = [ks[j] for j in range(len(ks)) if ks[j] in ks[:j]]
+    dup = dup_kw(key)
     t = Val(self.dyn_typeof(o), "dyntype")
     line = self.line
     for bt in ["list[dyn]", "dict[dyn,dyn]", "str", "vtuple[dyn]", "int", "bool", "float"]:
-        # (with keyword arguments, which only list.sort() and dict.update() take, or a name twice,
-        # which ** brings, its method of that name whatever the positional ones: the call's case
-        # raises the TypeError once the arguments are evaluated, as CPython's binding does, or
-        # its merging of the keyword arguments before it)
-        kwerr = len(dup) > 0 or (len(ks) > 0 and not (bt == "list[dyn]" and m == "sort") and not (bt == "dict[dyn,dyn]" and m == "update"))
-        if not self.dyn_builtin_takes(bt, m, -1 if kwerr else n):
+        # (with keyword arguments, its method of that name whatever the positional ones: the
+        # call's case raises CPython's TypeError once the arguments are evaluated, as its merging
+        # of the keyword arguments does for a name twice, which ** brings, then its binding)
+        if not self.dyn_builtin_takes(bt, m, -1 if len(ks) > 0 else n):
             continue
         hit = self.label()
         nxt = self.label()
@@ -1363,8 +1364,12 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
         self.place(hit)
         if key.startswith("has."):
             self.ret_(Val("null", DYN))  # (a method, which call.<m>.<shape> calls)
-        elif len(dup) > 0:
-            self.raise_("TypeError", self.sconst(f"{tname('int' if bt == 'bool' else bt)}.{m}() got multiple values for keyword argument '{dup[0]}'"))
+        elif dup != "":
+            self.raise_("TypeError", self.sconst(f"{tname('int' if bt == 'bool' else bt)}.{m}() got multiple values for keyword argument '{dup}'"))
+        elif len(ks) > 0 and bt == "list[dyn]" and m == "sort" and n > 0:
+            self.raise_("TypeError", self.sconst("sort() takes no positional arguments"))  # (CPython's, before the keywords)
+        elif len(ks) > 0 and bt == "dict[dyn,dyn]" and m == "update" and n > 1:
+            self.raise_("TypeError", self.sconst(f"update expected at most 1 argument, got {n}"))
         elif len(ks) > 0 and bt == "list[dyn]" and m == "sort" and len([k for k in ks if k != "key" and k != "reverse"]) > 0:
             kx = [k for k in ks if k != "key" and k != "reverse"][0]
             self.raise_("TypeError", self.sconst(f"sort() got an unexpected keyword argument '{kx}'"))  # (CPython's, as typed code's)
@@ -1540,6 +1545,17 @@ def shape_kws(key: str) -> list[str]:
     for p in key[key.rfind(".") + 1 :].split("-")[1:]:
         out.append("".join([chr(int(p[i : i + 6], 16)) for i in range(1, len(p), 6)]) if p.startswith("$") else p)
     return out
+
+
+def dup_kw(key: str) -> str:
+    # the first keyword argument name that the calls of dispatcher key pass a second time (** of a
+    # display or of **kwargs brings it), or "": CPython raises TypeError for it as it merges the
+    # keyword arguments, once they are evaluated and before the call binds them
+    ks = shape_kws(key)
+    for j in range(len(ks)):
+        if ks[j] in ks[:j]:
+            return ks[j]
+    return ""
 
 
 def gen_dyn_lookup(self, o: Val, m: str, npos: int, names: list[str]) -> Val:
@@ -1757,6 +1773,9 @@ def gen_dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:
         own = 1 if f is not None and f.deco == "" else 0
     if f is None:
         return "TypeError: the function cannot be called with positional arguments only"
+    if dup_kw(key) != "":
+        # (a keyword argument named twice: CPython's TypeError, as it merges them before the call)
+        return f"TypeError: {f.mod if f.mod != '' else '__main__'}.{self.qualname(f)}() got multiple values for keyword argument '{dup_kw(key)}'"
     if f.bad == "" and len(f.defaults) >= len(f.params) and (len(shape_kws(key)) > 0 or k.startswith("c:")):
         # (keyword arguments as a typed call binds them, and a closure's by its qualified name, its
         # env not counted: arity_error)

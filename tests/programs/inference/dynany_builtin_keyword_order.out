@@ -4,4 +4,10 @@ TypeError
 evaluated get
 TypeError
 [] {}
+evaluated sort positional
+evaluated sort key
+TypeError sort() takes no positional arguments
+evaluated update
+TypeError update expected at most 1 argument, got 2
+[3, 1, 2] {}
 [exit 0]

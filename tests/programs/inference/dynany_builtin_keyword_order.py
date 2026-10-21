@@ -24,3 +24,15 @@ try:
 except TypeError:
     print("TypeError")
 print(x, d)
+# with a keyword argument it takes and positional arguments it does not: found, then the
+# arguments evaluated, then CPython's TypeError (#826)
+xs: Any = [3, 1, 2]
+try:
+    xs.sort(side("sort positional"), key=side("sort key"))
+except TypeError as e:
+    print("TypeError", e)
+try:
+    d.update({}, {}, a=side("update"))
+except TypeError as e:
+    print("TypeError", e)
+print(xs, d)
