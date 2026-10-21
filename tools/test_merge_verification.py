@@ -42,6 +42,8 @@ def report(group, steps):
             step.update(PYSTACHY_OPT=["-all"])
         if name == "gc-self":
             step.update(compiler_interval=5000, ir_identical=True)
+        if name == "dynany-fuzz":
+            step.update(programs=3, cases=450, modes=["jit"], mismatches=0)
         if name in merge.GC_STEPS:
             step.update(tests_compiler_interval=1000, tests_interval=1,
                         modes=["jit" if name.startswith("gc-jit") else "aot"])
@@ -76,6 +78,7 @@ class ContractTests(unittest.TestCase):
             self.assertIn("select-io", groups[group])
             self.assertIn("weakrefs", groups[group])
             self.assertIn("box-slots", groups[group])
+            self.assertIn("dynany-fuzz", groups[group])
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
             for group, steps in groups.items():
@@ -215,6 +218,22 @@ class ContractTests(unittest.TestCase):
                 mutate(data["steps"][-1])
                 with self.subTest(group=group, mutation=index), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
+
+    def test_dynany_fuzz_requires_full_jit_budget_and_zero_mismatches(self):
+        groups = merge.load_groups()
+        valid = report("contracts", groups["contracts"])
+        merge.validate_report(valid, "contracts", groups["contracts"])
+        for key, wrong in (("programs", 2), ("cases", 449), ("modes", ["aot"]),
+                           ("mismatches", 1), ("mismatches", False)):
+            for missing in (False, True):
+                data = copy.deepcopy(valid)
+                step = next(s for s in data["steps"] if s["name"] == "dynany-fuzz")
+                if missing:
+                    del step[key]
+                else:
+                    step[key] = wrong
+                with self.subTest(key=key, value=wrong, missing=missing), self.assertRaises(ValueError):
+                    merge.validate_report(data, "contracts", groups["contracts"])
 
     def test_reports_require_the_corpus_check_counts(self):
         groups = merge.load_groups()

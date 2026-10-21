@@ -41,6 +41,8 @@
 #   re-fuzz        tools/re_fuzz.py: lib/re, run by CPython, compiles random patterns to the code and
 #                  errors CPython's re does and matches, splits and substitutes as it does, on CPython's
 #                  strs and on Pystachy's UTF-8 ones, and so do test_re's cases too big for gc-stress
+#   dynany-fuzz    tools/dynany_fuzz.py: 3 seeded programs of 150 cases, native JIT against CPython;
+#                  operators, dispatch, identity and containment invariants (sources kept on failure)
 #   re-probe       tools/re_probe.py: lib/re, run by CPython, enters its matcher and makes contexts no
 #                  more often than fixed limits allow for textwrap's patterns (deterministic counts),
 #                  with the results of CPython's re
@@ -101,7 +103,7 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted-0) echo 'bootstrap tests-cpython-0' ;;
     hosted-1) echo 'bootstrap tests-cpython-1' ;;
     hosted-2) echo 'bootstrap tests-cpython-2' ;;
@@ -130,7 +132,7 @@ plan() {
     gc-aot) echo 'bootstrap gc-aot-0 gc-aot-1 gc-aot-2' ;;
     gc-stress) echo 'bootstrap gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
     runtime-cache) echo 'bootstrap runtime-cache' ;;
-    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
+    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks scaling-0' ;;
     scaling-1) echo 'bootstrap scaling-1' ;;
     scaling) echo 'bootstrap scaling-0 scaling-1' ;; # local alias
@@ -551,6 +553,14 @@ if want re-fuzz; then
 L=$V/re-fuzz.log; s=$(now); r=fail
 $PY tools/re_fuzz.py > "$L" 2>&1 && r=pass
 step re-fuzz $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) upstream cases and \([0-9]*\) patterns (\([0-9]*\) valid): \([0-9]*\) cases, \([0-9]*\) failed$/, "upstream_cases": \1, "patterns": \2, "valid": \3, "cases": \4, "failed": \5/p' "$L")"
+fi
+
+# ---- dynany-fuzz: three seeded programs of 150 cases, native JIT against CPython
+if want dynany-fuzz; then
+L=$V/dynany-fuzz.log; s=$(now); r=fail
+if $PY tools/dynany_fuzz.py --compiler "$V/pystachy2" --keep "$V/dynany-fuzz" 3 150 > "$L" 2>&1 &&
+    [ "$(tail -1 "$L")" = '3 programs, 450 cases (JIT): 0 mismatches' ]; then r=pass; fi
+step dynany-fuzz $r "$s" "$L" "$(tail -1 "$L" | sed -n 's/^\([0-9]*\) programs, \([0-9]*\) cases (JIT): \([0-9]*\) mismatches$/, "programs": \1, "cases": \2, "modes": ["jit"], "mismatches": \3/p')"
 fi
 
 # ---- re-probe: lib/re's matcher entries and contexts for textwrap's patterns, against fixed limits
