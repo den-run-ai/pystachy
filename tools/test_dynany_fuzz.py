@@ -127,6 +127,16 @@ class CompareTest(unittest.TestCase):
         self.assertTrue(fz.big_int("3 -9223372036854775809"))
         self.assertFalse(fz.big_int("3 9223372036854775807"))
         self.assertFalse(fz.big_int("3 1.5"))
+        # (past the 4,300 digits int() reads: 2 ** 63 to the 1000th power has 18,965)
+        self.assertTrue(fz.big_int("3 -1" + "0" * 18964))
+
+    def test_int_digits(self) -> None:
+        # (CPython prints an int of any number of digits, as Pystachy's OverflowError rule expects)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "big.py")
+            with open(path, "w") as f:
+                f.write("print(0, 10 ** 5000 + 1)\n")
+            self.assertEqual(fz.run(fz.CPYTHON + [path], d), (0, "0 1" + "0" * 4999 + "1\n"))
 
 
 if __name__ == "__main__":

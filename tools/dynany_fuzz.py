@@ -32,8 +32,10 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # CPython, as the programs run in it: isolated, and without the DeprecationWarning of ~ of a bool,
-# which Pystachy does not give (tests/programs/upstream/upstream_bool.py), for the same result
-CPYTHON = [sys.executable, "-I", "-W", "ignore:Bitwise inversion:DeprecationWarning"]
+# which Pystachy does not give (tests/programs/upstream/upstream_bool.py), for the same result;
+# and with no cap on the digits of an int it prints, so that an int past 64 bits shows as one
+# (big_int()), not as the ValueError of a conversion past 4,300 digits
+CPYTHON = [sys.executable, "-I", "-X", "int_max_str_digits=0", "-W", "ignore:Bitwise inversion:DeprecationWarning"]
 
 # The value pool: (source of the value, kind). A kind tells the generator what an operand is,
 # for the cases it leaves out (see allowed()).
@@ -233,9 +235,10 @@ def program(seed: int, n: int) -> tuple[str, list[tuple[str, str, str, str, str]
 
 
 def big_int(line: str) -> bool:
-    # does CPython's line show an int that 64 bits do not hold
-    m = re.fullmatch(r"\d+ (-?\d+)", line)
-    return m is not None and not -(2 ** 63) <= int(m.group(1)) < 2 ** 63
+    # does CPython's line show an int that 64 bits do not hold (one of more than 19 digits does,
+    # which int() would not read past 4,300)
+    m = re.fullmatch(r"\d+ (-?)(\d+)", line)
+    return m is not None and (len(m.group(2)) > 19 or not -(2 ** 63) <= int(m.group(1) + m.group(2)) < 2 ** 63)
 
 
 def type_name(src: str, kind: str) -> str:
