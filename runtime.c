@@ -78,7 +78,8 @@ static TextHint text_hints[64];
    Layout. A request for n bytes gets n + 1 (one byte of slack, so a pointer one past the
    end still points into the object), rounded up to one of 40 size classes up to 8200
    bytes: 16..136 in steps of 8, then four per power of two, each 8 bytes above a multiple
-   of a power of two so that 2^k-byte arrays fit tightly. Small objects live in 64 KiB
+   of a power of two so that 2^k-byte arrays fit tightly. A box takes 16 bytes exactly
+   (gc_box: code reads a box's two words and walks none). Small objects live in 64 KiB
    chunks of one class each, carved from 1 MiB calloc'd arenas (big enough for malloc to map
    fresh memory, which comes zeroed at no cost); larger objects get a calloc'd block each.
    Every chunk and large object starts with a Seg header on a page boundary, and a two-level
@@ -402,6 +403,12 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
 }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc(I n) { return gc_alloc(n, 0); }
 __attribute__((malloc, returns_nonnull)) void *pys_alloc_atomic(I n) { return gc_alloc(n, 1); }
+/* A box, a dynamic value's DynType and payload or a closed union's tag and payload: 16 bytes in a
+   16-byte slot (the class for 15 bytes and the byte of slack). The slack keeps an object alive
+   through a pointer one past its end, which code walking the object leaves; code reads a box's two
+   words from the box's address and walks none, so no such pointer is ever the only one to a box
+   (#800) */
+static inline void *gc_box(int atomic) { return atomic ? pys_alloc_atomic(15) : pys_alloc(15); }
 /* Experimental weak references. A handle's pointers live in atomic memory: neither the target,
    nor the next registry entry, nor the fire function is a strong edge. The registry itself is
    NOT a collector root. Prune dead handles before sweeping their storage, and clear surviving
@@ -1703,11 +1710,14 @@ Str *pys_obj_repr(I c, I a, I b);
 typedef struct DynType DynType;   /* (see dynamic values) */
 struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; };
 typedef struct { const DynType *t; I v; } Dyn;
+_Static_assert(sizeof(Dyn) == 16, "a dynamic value's box is gc_box's 16 bytes");
 typedef struct DynIter DynIter;
 I pys_dyn_eq(Dyn *a, Dyn *b);
 I pys_dyn_cmp(Dyn *a, Dyn *b, I op);
 I pys_dyn_hash(Dyn *x);
 static int dyn_eqitem(Dyn *a, Dyn *b);
+static int dyn_keyeq(Dyn *a, Dyn *b);
+static uint64_t hdyn(Dyn *x);
 DynIter *pys_dyn_iter(Dyn *o);
 Dyn *pys_dyn_next(DynIter *it);
 static I ocls(const char *d) {   /* three digits, then those of an id of 1000 or more */
@@ -1734,7 +1744,7 @@ void pys_repr_leave(void *p) { unbusy(p); if (eh) unwind_pop(); }
 void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
 /* Closed union: a program-wide tag and the value's 8-byte slot. The collector
    scans the box for str, container or native reference payloads. None remains null. */
-void *pys_ubox(I tag, I v) { I *p = pys_alloc(16); p[0] = tag; p[1] = v; return p; }
+void *pys_ubox(I tag, I v) { I *p = gc_box(0); p[0] = tag; p[1] = v; return p; }
 void *pys_ubox_opt(I tag, void *p, I deref) { return p ? pys_ubox(tag, deref ? *(I *)p : (I)p) : NULL; }
 
 static I unbox(I v, const char *d) { return *d == 'i' || *d == 'f' || *d == 'b' ? *(I *)v : v; }   /* the value of a ?d */
@@ -2793,9 +2803,13 @@ List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic 
    each step mixes five more of its bits in (perturb), so keys whose hashes share their low
    bits part after a few steps instead of piling up in one cluster. Unlike a linear probe's,
    its second slot is in another cache line, which tables larger than the cache pay for.
-   tools/dictprobe.c counts the slots that lookups visit (DICT_PROBE). */
+   tools/dictprobe.c counts the slots that lookups visit (DICT_PROBE), and the keys that dkeyeq
+   compares (DICT_KEYEQ). */
 #ifndef DICT_PROBE
 #define DICT_PROBE()
+#endif
+#ifndef DICT_KEYEQ
+#define DICT_KEYEQ()
 #endif
 I pys_hash_str(Str *s);                  /* the hash functions are in runtime.py */
 I pys_hash_int(I k);
@@ -2839,7 +2853,10 @@ static uint64_t hval(I k, const char *d) {
 /* CPython's hash of a key whose descriptor d holds an H<id>; a call of its own, which keeps hsh as
    small as the lookups of int and str keys need */
 __attribute__((noinline)) static uint64_t hcls(I k, const char *d) { return (uint64_t)hitem(k, d); }
-static uint64_t hkey(I k, const char *d) { uint64_t h = hval(k, d); return h ? h : hcls(k, d); }   /* a tuple or object key's */
+static uint64_t hkey(I k, const char *d) {   /* a tuple or object key's, or an Any key's (hdyn) */
+  if (*d == 'A' && !d[1]) return hdyn((Dyn *)k);
+  uint64_t h = hval(k, d); return h ? h : hcls(k, d);
+}
 static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? h : 1; }   /* an int key's: 0 marks a hole */
 static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple or object key's descriptor */
   return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? hkey(k, kdesc(d->kind)) : hint1(k);
@@ -2871,6 +2888,7 @@ static I *keymem(I kind, I n) {      /* the key array of a dict or set of this k
    or that entry, after which CPython's lookdict starts again. Out of dfind's loop, which compares
    tuples of ints, bools and strs in place (keq's pure), and keeps the lookup's state in registers */
 __attribute__((noinline)) static int dkeyeq(Dict *d, I e, I x, I k) {
+  DICT_KEYEQ();
   int32_t *ix = d->idx; int eq = keyeq(x, k, kdesc(d->kind));
   return d->idx != ix || d->keys[e] != x ? -1 : eq;
 }
@@ -2879,9 +2897,10 @@ static I dempty(Dict *d, uint64_t h);
 /* the probes for key k, whose hash is h, over idx's m + 1 slots: k's idx slot or -1, and *free
    where to insert it (the first hole or empty slot they met; after an __eq__, which may have
    filled that hole, the one dempty finds then, as CPython's insertdict takes find_empty_slot's);
-   objs: d's keys may be tuples or objects (kind > 1, compared by keq or dkeyeq), else they are
-   ints or strs; 2: they are hashed by CPython's hash (KTAG), so a key is found as itself before
-   its hash is compared, as compare_generic does, whatever the hash its __hash__ gives now */
+   objs: d's keys may be tuples or objects (kind > 1, compared by keq or dkeyeq, an Any key's by
+   dyn_keyeq first), else they are ints or strs; 2: they are hashed by CPython's hash (KTAG), so a
+   key is found as itself before its hash is compared, as compare_generic does, whatever the hash
+   its __hash__ gives now */
 static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I *free, uint64_t m, int objs) {
   I f = -1; int ran = 0;
   for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
@@ -2895,7 +2914,7 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
       if (x == k || (d->kind == 1 && pys_str_eq((Str *)x, (Str *)k))) return i;
       if (objs && d->kind > 1) {
         const char *s = kdesc(d->kind);
-        int eq = *s == 'T' ? keq(x, k, s, 1) : 2;
+        int eq = *s == 'T' ? keq(x, k, s, 1) : *s == 'A' && !s[1] ? dyn_keyeq((Dyn *)x, (Dyn *)k) : 2;
         if (eq == 2) { eq = dkeyeq(d, e - 1, x, k); ran = 1; }
         if (eq < 0) return dfind(d, k, h, free);
         if (eq) return i;
@@ -3244,14 +3263,14 @@ static const Dyn smallint[262] = {DI4(-5), DI(-1), DI64(0), DI64(64), DI64(128),
 static int dnum(const Dyn *x) { return DKIND(x) == DK_INT || DKIND(x) == DK_BOOL; }   /* an int or a bool: its value is v */
 Dyn *pys_dyn_int(I v) {
   if ((uint64_t)v + 5 < 262) return (Dyn *)&smallint[v + 5];   /* (unsigned: v + 5 overflows from INT64_MAX - 4) */
-  Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_int; d->v = v; return d;
+  Dyn *d = gc_box(1); d->t = &pys_dyntype_int; d->v = v; return d;
 }
-Dyn *pys_dyn_float(double x) { Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
+Dyn *pys_dyn_float(double x) { Dyn *d = gc_box(1); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
 static Dyn *dbool(I b) { return (Dyn *)(b ? &pys_dyn_true_box : &pys_dyn_false_box); }
 /* a reference of type t: None where it is null (an object of a class type may be None) */
 Dyn *pys_dyn_ref(const DynType *t, void *p) {
   if (!p) return DNONE;
-  Dyn *d = pys_alloc(sizeof(Dyn)); d->t = t; d->v = (I)p; return d;
+  Dyn *d = gc_box(0); d->t = t; d->v = (I)p; return d;
 }
 static Dyn *dlist(List *l) { return pys_dyn_ref(&pys_dyntype_list, l); }
 static Dyn *dstr(Str *s) { return pys_dyn_ref(&pys_dyntype_str, s); }
@@ -3346,6 +3365,14 @@ I pys_dyn_ne(Dyn *a, Dyn *b) {
 /* the items of a container: identity first, as CPython's PyObject_RichCompareBool (a float box
    is a float object here, so a NaN equals itself in a list) */
 static int dyn_eqitem(Dyn *a, Dyn *b) { return a == b || (DKIND(a) != DK_FLOAT && a->t == b->t && a->v == b->v) || pys_dyn_eq(a, b); }
+/* two keys of an Any-keyed dict whose comparison runs no code (dlook, #780): 1 or 0 for boxes of
+   one type that compares by payload, a str by its bytes and an int or a bool by its value; else 2,
+   for dkeyeq to compare as dyn_eqitem does (1, 1.0 and True are one key; a NaN; objects) */
+static int dyn_keyeq(Dyn *a, Dyn *b) {
+  if (a->t != b->t) return 2;
+  int k = DKIND(a);
+  return k == DK_STR ? a->v == b->v || pys_str_eq((Str *)a->v, (Str *)b->v) : k == DK_INT || k == DK_BOOL ? a->v == b->v : 2;
+}
 static _Noreturn void dyn_noorder(Dyn *a, Dyn *b, I op) {
   failf("TypeError: '%s' not supported between instances of '%s' and '%s'", op == 0 ? "<" : op == 1 ? "<=" : op == 2 ? ">" : ">=", DNAME(a), DNAME(b));
 }
@@ -3370,6 +3397,8 @@ I pys_dyn_cmp(Dyn *a, Dyn *b, I op) {   /* a OP b, op 0..3: < <= > >= */
   if (ka != kb || (ka != DK_STR && ka != DK_LIST && ka != DK_TUPLE)) dyn_noorder(a, b, op);
   return opv(a->v, b->v, a->t->desc->s, op);
 }
+/* an Any key's hash (hkey): a str's cached one in one call, else pys_dyn_hash's, which is the same */
+static uint64_t hdyn(Dyn *x) { return (uint64_t)(DKIND(x) == DK_STR ? hstr((Str *)x->v) : pys_dyn_hash(x)); }
 I pys_dyn_hash(Dyn *x) {
   switch (DKIND(x)) {
   case DK_NONE: return NONE_HASH;
@@ -3385,8 +3414,9 @@ I pys_dyn_hash(Dyn *x) {
 
 /* arithmetic: op 0..11 = + - * / // % ** << >> & | ^ (the program runs a class's dunders first) */
 static const char *const dops[] = {"+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"};
-static _Noreturn void dyn_unsupported(Dyn *a, Dyn *b, I op) {
-  failf("TypeError: unsupported operand type(s) for %s: '%s' and '%s'", dops[op], DNAME(a), DNAME(b));
+/* (CPython's text names an in-place operator by its own symbol, **= too, and ** as "** or pow()") */
+static _Noreturn void dyn_unsupported(Dyn *a, Dyn *b, I op, int inplace) {
+  failf("TypeError: unsupported operand type(s) for %s%s: '%s' and '%s'", dops[op], inplace ? "=" : op == 6 ? " or pow()" : "", DNAME(a), DNAME(b));
 }
 static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tuple and an int (or bool) */
   I k = n->v < 0 ? 0 : n->v;
@@ -3401,7 +3431,7 @@ static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tupl
   return dtuple(r);
 }
 static int dseq(const Dyn *x) { return DKIND(x) == DK_STR || DKIND(x) == DK_LIST || DKIND(x) == DK_TUPLE; }
-Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) {
+static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace) {   /* a OP b, or a's in-place fallback (inplace) */
   int ka = DKIND(a), kb = DKIND(b);
   if (dnum(a) && dnum(b)) {
     I x = a->v, y = b->v, r;
@@ -3444,13 +3474,17 @@ Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) {
     memcpy(r->a, x->a, x->len * sizeof(I)); memcpy(r->a + x->len, y->a, y->len * sizeof(I));
     return dtuple(r);
   }
+  if (inplace && op == 2 && (ka == DK_DICT || ka == DK_OBJ))
+    dyn_unsupported(a, b, op, inplace);   /* (CPython's *= repeats a sequence on the right only where the left operand's type has no
+                                             sequence methods: a dict's and an object's have them, though no repeat) */
   if (op == 2 && (dseq(a) || dseq(b))) {
     Dyn *s = dseq(a) ? a : b, *n = s == a ? b : a;
     if (!dnum(n)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(n));
     return dyn_repeat(s, n);
   }
-  dyn_unsupported(a, b, op);
+  dyn_unsupported(a, b, op, inplace);
 }
+Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) { return dyn_binop(a, b, op, 0); }
 /* a OP= b: a list extends or repeats itself in place, as list's __iadd__ and __imul__ do; other
    values have no in-place operation and make a new value */
 Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
@@ -3469,7 +3503,7 @@ Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
     pys_list_imul((List *)a->v, b->v < 0 ? 0 : b->v);
     return a;
   }
-  return pys_dyn_binop(a, b, op);
+  return dyn_binop(a, b, op, 1);
 }
 Dyn *pys_dyn_unary(Dyn *a, I op) {   /* op 0..2: - + ~ */
   if (dnum(a)) {

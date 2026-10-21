@@ -75,6 +75,7 @@ class ContractTests(unittest.TestCase):
         for group in ("all", "contracts"):
             self.assertIn("select-io", groups[group])
             self.assertIn("weakrefs", groups[group])
+            self.assertIn("box-slots", groups[group])
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
             for group, steps in groups.items():

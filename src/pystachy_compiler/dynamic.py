@@ -1110,12 +1110,19 @@ def gen_dyn_body(self, key: str) -> None:
     t = Val(self.dyn_typeof(o), "dyntype")
     arith = (key.startswith("op") or key.startswith("iop")) and dunder != ""
     r = "__r" + dunder[2:] if arith else ""
-    for c in [x for x in self.dynclasses]:
-        if not self.dyn_supports(c, key, dunder, len(ps) - 1):
-            continue
-        hit = self.label()
-        nxt = self.label()
-        self.cbr(self.ptr_cmp("==", t, Val(self.dyntypes[c], "dyntype")).v, hit, nxt)
+    # the case of the receiver's class, by one switch on its DynType's class id (word 3: a class's
+    # dense O<id>, which its DynType holds, or -1 for a builtin or function DynType, which takes
+    # the rest), which LLVM can make a jump table, rather than a comparison with each class's
+    # DynType in turn (#799). A subclass has a DynType of its own, so its case is exact too
+    arms = [x for x in self.dynclasses if self.dyn_supports(x, key, dunder, len(ps) - 1)]
+    labels = [self.label() for x in arms]
+    rest = self.label()
+    if len(arms) > 0:
+        cid = Val(self.mload("int", self.maddr("int", t.v, "3")), "int")
+        self.switch(cid, [str(self.ocls[x]) for x in arms], labels, rest)
+    for j in range(len(arms)):
+        c = arms[j]
+        hit = labels[j]
         self.place(hit)
         if arith and not (key.startswith("iop") and ("__i" + dunder[2:]) in self.classes[c].methods):
             # (CPython's binary_op1 runs first the reflected method of a right operand of a strict
@@ -1124,7 +1131,9 @@ def gen_dyn_body(self, key: str) -> None:
             for s in [x for x in self.dynclasses if x != c and self.derives(x, c) and r in self.classes[x].methods and (r not in cm or self.classes[x].methods[r] is not cm[r])]:
                 self.dyn_reflected(f, s, r, o, ps[1], "true")
         self.dyn_arm(f, key, dunder, self.dyn_payload(o, c), ps[1:])
-        self.place(nxt)
+        if not self.term:
+            self.br(rest)
+    self.place(rest)
     if arith:
         # the reflected operation of the right operand's class (b.__radd__(a)), where a's has
         # none and is of another type (not of the same class, nor str for %, which formats b)
