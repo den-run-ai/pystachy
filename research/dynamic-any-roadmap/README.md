@@ -48,6 +48,9 @@ Measurements cited from issues keep their own revisions.
      64-class, 32-field probe, and enough to push programs past the JIT's 20,000-line inlining
      threshold);
    - the `Any`-keyed dict fast paths of #780, plus constant boxes for literal keys.
+5. **Diagrams:** today's pipeline is in section 1, and the proposed design across the compiler, the
+   runtime and both build modes is under [Design at a
+   glance](#design-at-a-glance-compiler-runtime-aot-and-jit).
 
 ## 1. Where dynamic `Any` stands at `1cf6a676`
 
@@ -70,6 +73,42 @@ helpers through `pys_obj_eq`/`pys_obj_cmp`/`pys_obj_repr`, whose class-id argume
 the operation (`-1 - id`, op codes 1 to 6). So a dynamic operation's semantics live in four
 places: the compiler's dispatchers, the runtime's generic helpers, the program's `@o.*` helpers
 and the descriptor walks of containers.
+
+**The pipeline today.** Where `Any` is handled in the compiler, the two build modes and the runtime
+(the proposed design is under [Design at a
+glance](#design-at-a-glance-compiler-runtime-aot-and-jit)):
+
+```mermaid
+flowchart TD
+    src["A module whose first lines hold<br/>pystachy: dynamic-any"]
+    subgraph ct["Compile time: Gen types and builds IR in one walk per pass"]
+        typing["Any annotations become dyn,<br/>values are boxed where they flow into dyn storage"]
+        disp["One dispatcher per operation key (get.f, call.m.1, op0, ...):<br/>a chain of DynType pointer tests, one per boxed class.<br/>All are compiled again whenever more classes get boxed"]
+        helpers["Per-class helpers that the runtime calls back (o.eq, o.cmp, o.x).<br/>A comparison method that does not compile for an Any operand<br/>restarts the whole compilation (Rejoin), once per method"]
+        typing --> disp
+        typing --> helpers
+    end
+    subgraph build["Build: one typed IR for both modes"]
+        ir["Typed IR: dyn.type, dyn.payload,<br/>dispatcher calls, pys_dyn_* calls"]
+        aot["pystachy build: runtime bitcode linked in,<br/>clang -O2 across the runtime boundary"]
+        jit["pystachy run: lli (ORC) compiles the whole program<br/>at start-up, inlines only under 20,000 IR lines"]
+        ir --> aot
+        ir --> jit
+    end
+    subgraph run["Run time"]
+        code["Compiled program:<br/>dispatchers, helpers, user code"]
+        lib["runtime.c: boxes (16 bytes in a 24-byte slot),<br/>pys_dyn_eq, pys_dyn_hash, pys_dyn_binop, dict lookups"]
+        gc["Conservative, non-moving<br/>mark-and-sweep collector"]
+        code -->|"builtin types"| lib
+        lib -->|"pys_obj_eq, cmp, repr:<br/>the class id also encodes the operation"| code
+        lib --- gc
+    end
+    src --> typing
+    disp --> ir
+    helpers --> ir
+    aot --> code
+    jit --> code
+```
 
 **Measured costs** (method under [Reproduce](#reproduce)):
 
@@ -143,6 +182,85 @@ Where this proposal departs from the general advice in the research it builds on
   storage, as reflection records are emitted today ([internals.md#reflection][refl]).
 - **Evidence before speculation:** deterministic counters (instructions, boxes, dispatches) as
   guards, as `make re-probe` and `make eqprobe` do, then paired timings.
+
+## Design at a glance: compiler, runtime, AOT and JIT
+
+The same pipeline with the proposal applied; the labels (A2, B1, ...) name the items of section 4.
+`pystachy build` and `pystachy run` share everything up to the typed IR, and the whole runtime: they
+differ only in how LLVM IR becomes machine code, so every item applies to both.
+
+```mermaid
+flowchart TD
+    src["Program: modules that opt in, and modules that do not"]
+    prof["Optional profile: DynType counts per site,<br/>recorded under CPython with sys.monitoring,<br/>as tools/re_specialize.py records regexes"]
+    subgraph ct["Compile time: the frontend"]
+        infer["Inference: Any is dyn, the top of the lattice,<br/>never a reason to reject a program"]
+        flow["Type flow over the closed world (C4):<br/>the DynTypes that can reach each site"]
+        choose["Per site: direct call, union split,<br/>profile guard or generic path (C4, D1)"]
+        unbox["Box elimination in locals (B3):<br/>DynType and payload in two slots"]
+        tables["Per boxed class: DynType with an operation table (A2)<br/>and a field table (C2), one boxed entry per callable (A3)"]
+        infer --> flow
+        flow --> choose
+        choose --> unbox
+        flow --> tables
+    end
+    src --> infer
+    prof -.-> choose
+    subgraph build["Build: one typed IR for both modes"]
+        ir["Typed IR"]
+        aot["pystachy build: runtime bitcode linked in,<br/>clang -O2 inlines guards and arms<br/>across the runtime boundary"]
+        jit["pystachy run: lli (ORC) compiles the whole program<br/>at start-up: no tiering, no deoptimization"]
+        ir --> aot
+        ir --> jit
+    end
+    unbox --> ir
+    tables --> ir
+    subgraph run["Run time"]
+        code["Compiled program: guarded fast paths,<br/>switches on class ids (C1), generic calls"]
+        lib["runtime.c: generic helpers call through<br/>operation tables, Any-keyed dict fast paths (B2),<br/>boxes in 16-byte slots (B1)"]
+        gc["Conservative, non-moving collector:<br/>split slots and tagged ints need no stack maps"]
+        code -->|"builtin types"| lib
+        lib -->|"table entries"| code
+        lib --- gc
+    end
+    aot --> code
+    jit --> code
+```
+
+**One operation on an `Any` value.** The frontend picks the cheapest dispatch the closed world
+allows, and every path ends in the generic one. Every guard tests something that cannot change while
+the program runs (a `DynType` or a class id), so a failed guard takes the generic path before any
+effect and nothing is ever deoptimized:
+
+```mermaid
+flowchart TD
+    op["x.f, x + y, x == y or x.m(...), where x is Any"] --> q1{"Type flow: which classes<br/>can x hold here?"}
+    q1 -->|"one"| d1["Direct field load or call"]
+    q1 -->|"a few"| d2["Union split: a switch over them,<br/>each arm typed and inlinable"]
+    q1 -->|"many, or unknown"| q2{"Does a profile name<br/>a dominant DynType?"}
+    q2 -->|"yes"| d3["Guard: box.t == dominant,<br/>then that class's inlined arm"]
+    q2 -->|"no"| g["Generic path"]
+    d3 -->|"guard fails"| g
+    d2 -.->|"default arm"| g
+    g --> sw["switch on the class id (C1),<br/>or a selector table (C2, C3)"]
+    sw -->|"a class of the program"| e["That class's table entry (A2):<br/>the same code the runtime calls"]
+    sw -->|"a builtin type"| h["runtime.c's helper for that type"]
+    sw -->|"no such operation"| err["CPython's TypeError or AttributeError"]
+```
+
+**A `dyn` value.** Today's box and `DynType` (word 0 and its fields), with the proposed additions:
+
+```mermaid
+flowchart LR
+    w["A dyn value: one word"] -->|"low bit set (B4, optional)"| smi["A 63-bit int in the word:<br/>no allocation, identity by value"]
+    w -->|"otherwise a pointer"| box["Immutable box<br/>in a 16-byte slot (B1)"]
+    box -->|"word 0"| dt["DynType: kind, layout descriptor,<br/>name, class id, base, flags"]
+    box -->|"word 1"| p["Payload: int, float or bool bits,<br/>or the original pointer of a str, list,<br/>dict, tuple or object, never a copy"]
+    dt --> rec["Reflection record: the type's identity,<br/>its names and field table (C2)"]
+    dt --> ops["Operation table (A2): eq, ne, cmp, hash,<br/>repr, str, format, truth, len, iter, next,<br/>getitem, setitem, delitem, contains, call"]
+    lit["Str literals used as Any values:<br/>constant boxes, never allocated (B2)"] -.-> box
+    loc["Locals: DynType and payload in two slots,<br/>a box only where a value leaves (B3)"] -.-> box
+```
 
 ## 4. Proposal
 
