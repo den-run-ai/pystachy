@@ -121,7 +121,9 @@ through either shows through the other (`tests/programs/inference/dynany_json.py
 `dumps()` of `Any` values writes tuples as arrays, and int, float, bool and `None` keys as
 strings, and takes CPython's `skipkeys`, `check_circular` and `default` too. It raises CPython's
 `TypeError`s: `Object of type C is not JSON serializable` for a value JSON cannot hold, and `keys
-must be str, int, float, bool or None, not C`. Its other limits are the prototype's, above.
+must be str, int, float, bool or None, not C`. A `default` callback's result becomes an `Any` value,
+so the callback is declared `-> Any`: one declared `-> dict[str, int]` is rejected, as a typed
+container is wherever it would become an `Any` value. Its other limits are the prototype's, above.
 Elsewhere, including where the result has a typed or no annotation (`doc = json.loads(s)`),
 `json`'s own functions and `JSONValue` storage stay as they are.
 

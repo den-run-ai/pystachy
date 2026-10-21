@@ -147,6 +147,10 @@ class _Writer:
             raise RecursionError("maximum JSON nesting depth exceeded")
         self.open.append(value)
 
+    def skips(self, k: Any) -> bool:
+        # does skipkeys skip key k, which no JSON key spells
+        return self.skipkeys and k is not None and not isinstance(k, (str, int, float))
+
     def key(self, k: Any) -> str:
         # an object key as a string: CPython's conversions, or "" where skipkeys skips it
         if isinstance(k, str):
@@ -205,30 +209,40 @@ class _Writer:
                 # reached, so a default() callback's change to a later entry is seen, a key it
                 # deletes is skipped and one it adds is written after the others (where no callback
                 # ran, the dict is as it was)
+                # A key skipkeys skips is not looked up or hashed again: it writes nothing either way
                 keys = list(value)
                 calls = self.calls
                 i = 0
                 while i < len(keys):
                     k = keys[i]
                     i += 1
-                    if (self.calls == calls or k in value) and self.entry(k, value[k], first, depth):
+                    if not self.skips(k) and (self.calls == calls or k in value) and self.entry(k, value[k], first, depth):
                         first = False
                     if i == len(keys) and self.calls != calls:
-                        seen = {x: True for x in keys}
-                        keys.extend([x for x in value if x not in seen])
+                        seen = {x: True for x in keys if not self.skips(x)}
+                        keys.extend([x for x in value if not self.skips(x) and x not in seen])
             out.append("}")
             self.open.pop()
         elif self.default is not None:
-            # (only containers count against the nesting limit; a chain of default() calls is
-            # bounded as CPython's recursion bounds it)
-            self.enter(value, 0)
-            self.calls += 1
-            self.chain += 1
-            if self.chain > 1000:
-                raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
-            self.write(self.default(value), depth)
-            self.chain -= 1
-            self.open.pop()
+            # a chain of default() calls, each converting the value the one before returned, in a
+            # loop: each value is checked for a circular reference and held until the chain's last
+            # is written. Only containers count against the nesting limit; the chain is bounded as
+            # CPython 3.13's C recursion limit on Linux bounds its encoder (10,000 levels), whose
+            # call of default() is the one that raises
+            n = len(self.open)
+            while True:
+                self.enter(value, 0)
+                self.calls += 1
+                self.chain += 1
+                if self.chain + depth > 10000:
+                    raise RecursionError("maximum recursion depth exceeded")
+                value = self.default(value)
+                if value is None or isinstance(value, (str, int, float, list, tuple, dict)):
+                    break
+            self.write(value, depth)
+            self.chain -= len(self.open) - n
+            while len(self.open) > n:
+                self.open.pop()
         else:
             raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
@@ -236,7 +250,7 @@ class _Writer:
         # writes k: v of a dict, after an item separator unless first; False where skipkeys
         # skips k, which writes nothing
         out = self.out
-        if k is not None and not isinstance(k, (str, int, float)) and self.skipkeys:
+        if self.skips(k):
             return False
         s = self.key(k)
         if not first:

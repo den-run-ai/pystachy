@@ -144,3 +144,31 @@ def chain_default(o: Any) -> Any:
 
 
 print(json.dumps([Chain(300)], default=chain_default))
+print(json.dumps({"k": Chain(1500)}, default=chain_default))
+
+
+# skipkeys: a key it skips is not hashed again after a default() call, as CPython's walk of the
+# dict does not hash it (#823)
+class BadHash:
+    def __init__(self) -> None:
+        self.armed = False
+
+    def __hash__(self) -> int:
+        if self.armed:
+            raise RuntimeError("hashed again")
+        return 1
+
+    def __eq__(self, other: object) -> bool:
+        return self is other
+
+
+bad_key = BadHash()
+bad_doc: dict[Any, Any] = {"a": Chain(0), bad_key: 2, "c": 3}
+
+
+def arm_default(o: Any) -> Any:
+    bad_key.armed = True
+    return chain_default(o)
+
+
+print(json.dumps(bad_doc, skipkeys=True, default=arm_default))
