@@ -224,8 +224,14 @@ def saved(d: ast.FunctionDef, params: list, pfields: dict, problems: list) -> di
     me = d.args.args[0].arg
     out: dict = {}
     fr = ""
+    returned = False
     for st in statements(d):
         where = f"gen_save ({EMISSION}:{st.lineno})"
+        if returned:
+            # (a copy after the return never runs, and saves nothing: #819's review)
+            problems.append(f"{where}: `{ast.unparse(st)}` follows `return {fr}`, so it never runs: "
+                            "gen_save returns its Frame after every copy")
+            continue
         ts = targets(st)
         one = isinstance(st, ast.Assign) and len(ts) == 1
         if fr == "" and one and isinstance(ts[0], ast.Name) and isinstance(st.value, ast.Call) \
@@ -241,7 +247,7 @@ def saved(d: ast.FunctionDef, params: list, pfields: dict, problems: list) -> di
                     problems.append(f"{where}: Frame(...) passes `{ast.unparse(a)}` for no parameter that "
                                     "Frame.__init__ keeps in a field")
         elif fr != "" and isinstance(st, ast.Return) and isinstance(st.value, ast.Name) and st.value.id == fr:
-            continue
+            returned = True
         elif fr != "" and one and attr(ts[0], fr) != "" and attr(st.value, me) != "":
             note(out, attr(ts[0], fr), st.value, attr(st.value, me) == attr(ts[0], fr), st, where, problems)
         else:
@@ -493,6 +499,16 @@ class NegativeControlTests(unittest.TestCase):
                 self.assertEqual(len(problems), 1, report(problems))
                 self.assertTrue(problems[0].startswith(f"{label} ({path}:{st.lineno + 1}) assigns '{x}' only inside "
                                                        "a block"), problems[0])
+
+    def test_a_copy_after_the_return(self):
+        # (#819's review: with the return moved to just after Frame(...), the copies after it never
+        # run, and none of them may count as saving its field)
+        text = self.src[EMISSION]
+        self.assertEqual(text.count("\n    return fr\n"), 1)
+        frame = next(line for line in text.split("\n") if line.startswith("    fr = Frame("))
+        moved = text.replace("\n    return fr\n", "\n", 1).replace(frame + "\n", frame + "\n    return fr\n", 1)
+        problems = check({**self.src, EMISSION: moved})
+        self.assertTrue(any("follows `return fr`, so it never runs" in p for p in problems), report(problems))
 
     def test_a_field_only_gen_init_has(self):
         # (#819's review: the most complete omission, a function-scoped field that no Frame list holds)
