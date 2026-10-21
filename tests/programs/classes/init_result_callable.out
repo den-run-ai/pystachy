@@ -1,0 +1,3 @@
+TypeError __init__() should return None, not 'function'
+TypeError __init__() should return None, not 'generator'
+[exit 0]

@@ -125,10 +125,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 # a class template: the types of the arguments pick the specialization, whose
                 # object call_fn makes once it has them (in made[0])
                 made = [Val("", f.s)]
-                self.call_fn(self.classes[f.s].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs)
+                self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
                 return made[0]
             o = self.new_obj(f.s)
-            self.call_fn(self.classes[f.s].methods["__init__"], [o], args, direct=True)
+            self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], [o], args, direct=True))
             return o
         if f.s in self.mvars:
             self.not_callable(f.s, self.gtype(f.s))
@@ -961,7 +961,7 @@ def gen_dc_replace(self, args: list[Node]) -> Val:
             if "no-init" not in c.fopts[fl] and fl not in given:
                 kws.append(mk("kw", fl, self.line, [self.vnode(self.getfield(x, self.field(x, fl), fl))]))
         r = self.new_obj(c.name)
-        self.call_fn(c.methods["__init__"], [r], kws, direct=True)
+        self.init_result(self.call_fn(c.methods["__init__"], [r], kws, direct=True))
         if end != "" and not self.term:
             self.incoming(ph, r.v, self.cur)
             self.br(end)
@@ -992,6 +992,41 @@ def gen_asdict(self, o: Val, args: list[Node]) -> Val:
         v = self.coerce(self.getfield(o, self.field(o, fl), fl), kv[1])
         self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
     return Val(r, dt)
+
+def gen_init_result(self, v: Val) -> None:
+    # Construction requires None from __init__, after its side effects and exceptions. An
+    # explicit call of the method (including super().__init__) may return any value instead.
+    # Ordinary initializers emit no extra IR; a call that never returns has no value to check.
+    if v.t == "None" or self.term:
+        return
+    v = Val(v.v, self.rec_type(v.t))
+    if v.t == "dyn":
+        bad = self.label()
+        end = self.label()
+        self.cbr(self.cmp2("is", v, Val("null", "None")).v, end, bad)
+        self.place(bad)
+        msg = self.concat([Val(self.sconst("__init__() should return None, not '"), "str"), self.dyn_type_name(v), Val(self.sconst("'"), "str")])
+        self.raise_("TypeError", msg.v)
+        self.place(end)
+        return
+    # The actual type of a union member or returned subclass belongs in the error. Reuse
+    # reflection's guarded split, including its None arm, without requiring every value's
+    # type to support type(x).__name__ (functions, generators and files need only tname).
+    leaves = self.refl_split(v)
+    end = ""
+    for leaf in leaves:
+        self.place(leaf.label)
+        if leaf.c == "None":
+            end = self.label()
+            self.br(end)
+        elif leaf.c == "exc" or (leaf.c in self.classes and self.classes[leaf.c].exc != ""):
+            name = self.refl_type_attr(self.vnode(leaf.v), "__name__")
+            msg = self.concat([Val(self.sconst("__init__() should return None, not '"), "str"), name, Val(self.sconst("'"), "str")])
+            self.raise_("TypeError", msg.v)
+        else:
+            self.raise_("TypeError", self.sconst(f"__init__() should return None, not '{tname(leaf.c)}'"))
+    if end != "":
+        self.place(end)
 
 def gen_new_obj(self, c: str) -> Val:
     # a new object of class c, which its __init__ initializes: it holds its class-body defaults
