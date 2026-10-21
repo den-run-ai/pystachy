@@ -3446,7 +3446,7 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
 
 def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     if a.t == "dyn" or b.t == "dyn":
-        return self.dyn_arith(op, a, b)  # (a dynamic value's: dynamic.py)
+        return self.dyn_arith(op, a, b, shown == op + "=")  # (a dynamic value's, in place where shown is op=: dynamic.py)
     if is_union(unopt(a.t)) or is_union(unopt(b.t)):
         return self.unumeric(op, a, b, shown, False)
     du = self.dunder(op, a, b, shown)

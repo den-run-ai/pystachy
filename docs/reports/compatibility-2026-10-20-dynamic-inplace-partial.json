@@ -1,0 +1,154 @@
+{
+  "status": "partial-hosted-plus-identical-tree-ci",
+  "date": "2026-10-20",
+  "source_revision": "20d1aa299f99737447633b4f6bfae7c75be14774",
+  "previous_audit_source": "1cf6a676633a5d3e703648d26e3fe328d884b726",
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9",
+  "merged_prs": [
+    {
+      "number": 806,
+      "url": "https://github.com/den-run-ai/pystachy/pull/806",
+      "merge_commit": "20d1aa299f99737447633b4f6bfae7c75be14774",
+      "head": "4fd6775bcdbb3ff717d8fdfe8a8123c8b0d32b3a",
+      "tree": "3bfbdbbe436eb7c20b81ee489ffa4e34ab542803",
+      "head_is_ancestor_of_merge": true,
+      "head_tree_equals_merge_tree": true,
+      "merged_at_utc": "2026-10-21T06:30:53Z",
+      "scope": "dynamic Any in-place dispatch, unsupported-operator messages and two differential programs"
+    }
+  ],
+  "environment": {
+    "hosted_python": "CPython 3.12.14",
+    "hosted_python_executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "platform": "Linux 6.18.55 x86_64",
+    "pinned_python_3_13_16_available": false,
+    "llvm_18_toolchain_available": false,
+    "local_native_jit_aot_available": false
+  },
+  "source_scope": {
+    "first_parent_merges_since_previous_audit_source": [
+      806
+    ],
+    "diff": "6 files changed, 376 insertions(+), 6 deletions(-)",
+    "implementation_scope": "runtime.c and src/pystachy_compiler/expressions.py plus two new inference programs and recordings",
+    "key_sha256": {
+      "runtime.c": "8e275988eb9d2d03883cf188de5839b7e07e8026e24a678154467185ec3418f2",
+      "src/pystachy_compiler/expressions.py": "f2d05679aa7756cbacc30bd243230b0643d0e527fedceae7943d42af15460811",
+      "tests/programs/inference/dynany_inplace_typed.py": "a6140230ee4e2b330b806a36f9ee8417cc55f9c13fedd835fc6443126639d431",
+      "tests/programs/inference/dynany_inplace_typed.out": "c4be920f97feb3c8951f0157ab3e2ebe9f170054d0bcef4d88047d18d40916c7",
+      "tests/programs/inference/dynany_op_messages.py": "4b14f49bf2d9e3538a63181590841944494be2a391418c0bce949289bb8ec024",
+      "tests/programs/inference/dynany_op_messages.out": "588b1c31e789fc5c45e2b812a3f94279b41f257efe943ae228e8bd704549531d"
+    }
+  },
+  "commands": [
+    "git merge-base --is-ancestor 4fd6775bcdbb3ff717d8fdfe8a8123c8b0d32b3a 20d1aa299f99737447633b4f6bfae7c75be14774",
+    "env -i PATH=$PATH python3 -B PROGRAM.py; append [exit N] and compare stdout plus final stderr line with sidecars",
+    "PYSTACHY_IRCHECK=1 PYSTACHY_HOME= python3 -B -m pystachy ir FILE.py -o OUTPUT.ll",
+    "compile the same 66 current sources with source revisions 1cf6a676 and 20d1aa29; normalize equal-length absolute roots and compare hosted IR",
+    "python3 -B -m unittest tools.test_typed_comparisons -v"
+  ],
+  "measurements": {
+    "selected_programs": {
+      "total": 66,
+      "dynamic_any": 59,
+      "scalar_union_arithmetic": 2,
+      "tomllib": 5,
+      "new_in_pr_806": 2,
+      "retained_preexisting": 64
+    },
+    "reference_recordings": {
+      "result": "66/66 CPython 3.12.14 stdout, final stderr line and exit recordings matched",
+      "boundary": "The checked-in recordings were made for pinned CPython 3.13.16; this confirms the selected outputs also match hosted 3.12.14, not a pinned regeneration."
+    },
+    "hosted_ir": {
+      "result": "66/66 emitted checked hosted IR",
+      "boundary": "Hosted compilation is not native execution."
+    },
+    "before_after_ir": {
+      "previous_source": "1cf6a676633a5d3e703648d26e3fe328d884b726",
+      "current_source": "20d1aa299f99737447633b4f6bfae7c75be14774",
+      "retained_result": "64/64 retained programs emitted byte-identical hosted IR after equal-length checkout-root normalization",
+      "new_regressions": "both new programs compiled on both sources and changed in the intended in-place dynamic-dispatch sites",
+      "dynany_inplace_typed": {
+        "previous_ir_lines": 593,
+        "current_ir_lines": 633,
+        "transition": "three dyn.op/pys_dyn_binop sites become dyn.iop/pys_dyn_inplace; P.__ipow__ and subclass R.__iadd__ dispatch are emitted"
+      },
+      "dynany_op_messages": {
+        "previous_ir_lines": 1693,
+        "current_ir_lines": 1693,
+        "transition": "four annotated/attribute/item in-place call sites switch from dyn.op to dyn.iop; runtime.c supplies CPython operator names"
+      },
+      "boundary": "Raw LLVM-text lines describe emitted hosted IR, not runtime speed, compile time, binary size or memory."
+    },
+    "targeted_unit_tests": {
+      "command": "python3 -B -m unittest tools.test_typed_comparisons -v",
+      "result": "12/12 passed"
+    }
+  },
+  "historical_identical_tree_ci": {
+    "head": "4fd6775bcdbb3ff717d8fdfe8a8123c8b0d32b3a",
+    "tree": "3bfbdbbe436eb7c20b81ee489ffa4e34ab542803",
+    "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39552578062",
+    "ci_jobs": "27/27 successful",
+    "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39552578042",
+    "installation_jobs": "3/3 successful",
+    "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39552578043",
+    "lint_jobs": "1/1 successful",
+    "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39552578080",
+    "packages_jobs": "1/1 successful",
+    "all_workflows_success": true,
+    "boundary": "These workflows ran on the exact implementation tree, including native, hosted, GC, UBSan, Python-free, optimization-off, contracts, runtime-cache, benchmark and final make verify gates; they are not fresh local execution."
+  },
+  "pr_reported_local_validation": {
+    "environment": "CPython 3.13.16 and LLVM 18.1.3 on Linux x86-64 at final head 4fd6775b",
+    "results": [
+      "compiler and runtime fixed points held",
+      "140 selected dynamic-Any/scalar-union JIT and AOT checks passed",
+      "4/4 new-program JIT/AOT checks passed under PYSTACHY_GC_STRESS_PROGRAM=1",
+      "4/4 new-program CPython recordings passed",
+      "make lint, make check-runtime and make check-recordings passed"
+    ],
+    "irsame": "3429/3431 corpus programs were byte-identical after checkout-root normalization; the two intended differences were the new tests",
+    "boundary": "These are the implementation PR's retained local results, not independently rerun by this audit. Exact final-head CI is recorded separately."
+  },
+  "review": {
+    "first_reviewed_commit": "a85fe15737f17c3367b933282da875ddf3fc707b",
+    "first_result": "Codex found no major issues",
+    "final_head": "4fd6775bcdbb3ff717d8fdfe8a8123c8b0d32b3a",
+    "final_result": "second Codex review found no major issues",
+    "inline_threads": "0 total"
+  },
+  "observed_compatibility_changes": [
+    "A typed target with an Any operand now runs its run-time class's in-place dunder before the binary fallback; the selected P.__ipow__ and subclass R.__iadd__ cases change from a wrong new object to CPython's in-place result.",
+    "Unsupported dynamic arithmetic names all twelve in-place operators with OP=, names binary exponentiation as ** or pow(), and preserves sequence-specific error paths.",
+    "Dynamic *= with a dict or program-class object on the left now follows CPython's in-place number protocol and reports *= instead of incorrectly taking the binary sequence-repeat error path.",
+    "The 64 retained dynamic-Any, scalar-union and tomllib programs have unchanged hosted IR."
+  ],
+  "related_open_gaps": [
+    "Issue #798 remains the original tracker for this merged correction.",
+    "Issue #810 tracks the remaining dynamic dict | and |= case.",
+    "Issue #797 tracks the remaining dynamic is/id() mismatches found by the fuzzer.",
+    "No new uncovered correctness bug was confirmed, so no issue was filed."
+  ],
+  "setup_corrections": [
+    "The first reference comparison omitted the checked-in [exit N] marker and therefore falsely classified 0/66 recordings as matching; the corrected replay appended the exit marker and passed 66/66.",
+    "The first IR comparison used checkout roots of unequal length, so five tomllib outputs appeared different only in embedded path-string length constants; recompiling the previous source from an equal-length root made all 5/5 tomllib outputs byte-identical."
+  ],
+  "source_snapshots": {
+    "current_pre_run_tracked_untracked_ignored": "empty",
+    "current_post_run_tracked_untracked_ignored": "empty",
+    "previous_post_run_tracked_untracked_ignored": "empty",
+    "outputs": "written outside both checkouts; Python compiler invocations used -B"
+  },
+  "incomplete_attempts": [
+    "Pinned CPython 3.13.16 and LLVM 18 were not present in the audit environment, so no fresh local native JIT/AOT, GC-stress or fixed-point build ran.",
+    "The metadata-enabled isolated import sweep was not rerun because the retained pinned interpreter/inventory and LLVM 18 native compiler were unavailable; historical import totals are not presented as fresh.",
+    "Full make verify, test-ffi, test-cache and CPython regrtest were not run locally; exact-tree CI and the PR's reported local validation are retained separately."
+  ],
+  "limits": [
+    "This establishes the selected dynamic in-place dispatch and diagnostic corrections, not general dynamic Python or PyPI compatibility.",
+    "No runtime-speed, compile-time, binary-size or peak-memory measurement was made in this checkpoint.",
+    "The latest fully evaluated main marker remains 3c63613b9ad4748dfc030fc923f7704e26b21ba9."
+  ]
+}

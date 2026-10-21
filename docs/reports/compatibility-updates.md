@@ -82,6 +82,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 JIT landing pads and dynamic Any follow-up (#793/#790), **partial** | `3d48ce8c`; #793 intermediate `a79e6bbc`, both exact PR-head trees | 29/29 new CPython references, 31/31 new positive/deviation hosted compilations, one exact rejection, 19/19 targeted unit tests and six retained consumer compilations pass. The retained depth-199 compiler input finishes in 7.96s where `10097965` exceeds 20s. Exact-tree CI is green; local native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-dynamic-any-followup-partial.json). |
 | 2026-10-20 tomllib prerequisite blockers (#794), **partial** | `387059ba`; follows #793/#790 | 14/14 new positive CPython references, 17/17 positive/deviation hosted compilations, 6/6 changed rejections, 25/25 targeted unit tests and six retained consumer compilations pass. MappingProxyType and five compiler/runtime capabilities land; exact-tree CI is green. Local native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-tomllib-blockers-partial.json). |
 | 2026-10-20 `tomllib.loads()` port (#795), **partial** | `1cf6a676`; library/test/docs port on #794 | All five selected sources move from unsupported-module rejection to checked hosted IR; 5/5 CPython references match, including 62 upstream data documents (12 valid, 50 invalid). Exact-tree CI is green. Binary-file `load()`, local native/import evaluation and the full upstream suite remain incomplete. [Evidence](compatibility-2026-10-20-tomllib-port-partial.json). |
+| 2026-10-20 dynamic `Any` in-place dispatch (#806), **partial** | `20d1aa29`; compiler/runtime change after #795 | 66/66 selected CPython references and hosted compilations pass. All 64 retained inputs have byte-identical hosted IR; only the two new regression programs change, fixing typed `Any` operands' in-place dunder dispatch and CPython operator messages. Exact-tree CI is green; local pinned native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-dynamic-inplace-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5456,4 +5457,74 @@ Existing import totals and unrelated first errors remain historical. No broad
 PyPI, NumPy, runtime-speed or peak-memory claim follows. Complete this checkpoint
 after an authorized pinned rebuild, selected native parity and the retained import
 sweep. The latest fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-20 — #806: dynamic Any in-place dispatch and operator messages
+
+Inspected [main `20d1aa299f99737447633b4f6bfae7c75be14774`](https://github.com/den-run-ai/pystachy/commit/20d1aa299f99737447633b4f6bfae7c75be14774)
+after [#806](https://github.com/den-run-ai/pystachy/pull/806) merged at
+2026-10-21 06:30:53 UTC. Fresh first-parent history and ancestry checks establish
+it as the only merge after #795. Implementation head
+`4fd6775bcdbb3ff717d8fdfe8a8123c8b0d32b3a` is in main, and the head and merge
+share tree `3bfbdbbe436eb7c20b81ee489ffa4e34ab542803`.
+
+This merge fixes a silent wrong result as well as diagnostic text in modules that
+opt in to dynamic `Any`. When an annotated or otherwise typed target has an `Any`
+right operand, an in-place operation now keeps the in-place dispatcher: the
+selected `P.__ipow__` and subclass `R.__iadd__` cases mutate and retain the
+original object as CPython does, instead of running `__pow__`/the annotated base's
+`__add__` and producing a new object. Unsupported dynamic arithmetic also names
+all twelve `OP=` forms, binary exponentiation as `** or pow()`, and the special
+dict/object `*=` path as CPython does. [#798](https://github.com/den-run-ai/pystachy/issues/798)
+is the original tracker; no new issue was filed.
+
+[Machine-readable evidence](compatibility-2026-10-20-dynamic-inplace-partial.json)
+retains exact source/tree identities, commands, hashes, before/after results,
+workflow jobs, review state, setup corrections, environment and clean source
+snapshots.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| Selected references | **66/66** CPython 3.12.14 stdout, final stderr line and exit recordings match: 59 `dynany_*`, two scalar-union arithmetic and five `tomllib` programs. This is not a pinned-3.13 regeneration. |
+| Hosted compiler inputs | All **66/66** emit checked hosted IR. This is compilation, not native execution. |
+| Retained before/after oracle | All **64/64** pre-existing selected inputs emit byte-identical hosted IR after equal-length checkout-root normalization. |
+| New in-place regression | `dynany_inplace_typed` changes **593→633** raw IR lines; three binary-dispatch sites become in-place sites and emit `P.__ipow__` plus subclass `R.__iadd__`. |
+| New message regression | `dynany_op_messages` remains **1,693** raw IR lines while four typed/attribute/item call sites switch from `dyn.op` to `dyn.iop`; `runtime.c` provides the corrected operator text. |
+| Targeted unit tests | `tools.test_typed_comparisons`: **12/12** pass. |
+
+The two raw LLVM-text counts describe emitted IR, not runtime speed, compile time,
+binary size or memory. The first reference comparison omitted the checked-in
+`[exit N]` marker and therefore falsely classified all 66 recordings as different;
+the corrected replay appended the marker and passed 66/66. The first IR comparison
+also used unequal-length checkout roots, making five `tomllib` files look different
+only in embedded path-string lengths. Recompiling the prior source from an
+equal-length root made those five byte-identical. Both corrections and the failed
+attempts are retained in the JSON rather than silently discarded.
+
+Exact-final-tree external workflows succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39552578062) has
+**27/27 successful jobs**, including bootstrap, native/hosted, GC, UBSan,
+Python-free, optimization-off, contracts, runtime-cache, benchmarks and final
+`make verify`; [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39552578042)
+has **3/3** successful platform jobs; [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39552578043)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39552578080)
+each succeeded. These validate the identical implementation tree but are not
+relabeled as fresh local native execution. The implementation PR separately
+records a pinned CPython 3.13.16/LLVM 18.1.3 build, 140 selected JIT/AOT checks,
+four new-program GC-stressed JIT/AOT checks and a 3,429/3,431 byte-identical
+`irsame` result; those are retained as PR-reported evidence, not audit-local runs.
+
+Codex reviewed the first head and the final `4fd6775b` head and reported no major
+issues; there are no inline threads. The final exact tree has the green workflow
+set above. [#810](https://github.com/den-run-ai/pystachy/issues/810) remains the
+dynamic dict `|`/`|=` gap, and [#797](https://github.com/den-run-ai/pystachy/issues/797)
+tracks the remaining dynamic `is`/`id()` mismatches found by the fuzzer.
+
+Pinned CPython **3.13.16** and LLVM 18 were unavailable locally. Therefore no
+fresh local native JIT/AOT, fixed-point build, GC stress, metadata-enabled isolated
+import sweep, full `make verify`, FFI/cache suite or CPython regrtest completed.
+Existing import totals and unrelated first errors remain historical. No broad
+dynamic-Python, PyPI, runtime-speed or peak-memory claim follows. Complete this
+checkpoint after an authorized pinned rebuild, selected native parity and the
+retained import sweep. The latest fully evaluated main remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
