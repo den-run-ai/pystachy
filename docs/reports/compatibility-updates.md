@@ -87,6 +87,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 dynamic `Any` dictionary-key fast path (#812), **partial** | `838aff6d`; runtime/tests/docs change after #811 | 102/102 common selected inputs emit byte-identical hosted IR and 10/10 rejections retain exact diagnostics; the new regression compiles and its reference matches. The attributed bounded pipeline reports 29% fewer instructions/event, not independently rerun here. Exact-tree CI is green; local pinned native/import/performance evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-any-dict-partial.json). |
 | 2026-10-21 seeded dynamic `Any` differential fuzzer (#808), **partial** | `4ef45ca0`; tooling/tests/docs only after #812 | 17/17 unit tests pass; 450 default and 3,000 wider CPython-only generated cases satisfy deterministic framing, and three fail-closed controls detect their mismatch. No live local native fuzz run completed; no compatibility gain is claimed. [Evidence](compatibility-2026-10-21-dynamic-any-fuzzer-partial.json). |
 | 2026-10-21 module-attribute class aliases (#809), **partial** | `824dcca0`; compiler/tests/docs change after #808 | Two new alias programs emit hosted IR, nine rejection boundaries retain their contracts and 16 focused tooling tests pass. Fresh CPython 3.12.14 imports remain 141/441 with `email.header` advancing to its next blocker; the attributed pinned sweep remains 149/457 with all 24 affected modules reaching another blocker. [Evidence](compatibility-2026-10-21-module-class-alias-partial.json). |
+| 2026-10-21 dynamic `Any` integer small-box overflow (#813), **partial** | `89646780`; one runtime line and a differential test after #809 | A fresh GCC 13 UBSan negative control stops the previous runtime on `INT64_MAX + 5`; merged main boxes the same value and exits cleanly. The 10-line CPython reference matches and hosted IR emits. Exact-tree CI is green, including all three UBSan shards; pinned local LLVM 18 native evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-int-overflow-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5781,4 +5782,65 @@ native JIT/AOT, GC-stress, fixed-point build, full `make verify`, API execution,
 adapted port, benchmark, memory run, upstream suite or CPython regrtest completed.
 Removing a first error is not an import or API pass. No uncovered bug was found,
 so no new issue was filed. The latest fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #813: dynamic Any integer small-box overflow
+
+Inspected [main `896467802db0baa461ec187ea0497223bfe63e0a`](https://github.com/den-run-ai/pystachy/commit/896467802db0baa461ec187ea0497223bfe63e0a)
+after [#813](https://github.com/den-run-ai/pystachy/pull/813) merged at
+2026-10-21 09:03:04 UTC. Fresh first-parent history establishes it as the only
+merge after #809. Merged main and final implementation head `61750071` share
+tree `5dee8d7f3dc3e50852c0c7dcd8606335f89ff92e`.
+
+#813 changes `pys_dyn_int`'s small-integer test from `(uint64_t)(v + 5) < 262`
+to `(uint64_t)v + 5 < 262`. The previous expression performs signed addition
+before the cast and is undefined for values from `INT64_MAX - 4` through
+`INT64_MAX`. The replacement performs unsigned wrapping addition and is true
+exactly for signed values `-5..256`, so the guarded `smallint[v + 5]` index
+remains `0..261`. The other two changed files are its differential program and
+recording; compiler, library, port and tool sources are unchanged.
+
+[Machine-readable evidence](compatibility-2026-10-21-dynamic-int-overflow-partial.json)
+retains exact source/tree identities, file hashes, commands, results, workflow
+runs, setup failures, issue state and limitations.
+
+| Fresh local measurement | Result and boundary |
+|---|---|
+| Focused runtime UBSan control | With GCC 13 UBSan, the previous `824dcca0` runtime exits **1** on `pys_dyn_int(INT64_MAX)` with signed overflow at `runtime.c:3255`; merged main prints `boxed` and exits **0**. The external harness initializes the collector and links only reachable runtime sections. |
+| New differential reference | Hosted CPython **3.12.14** produces all **10/10** checked output lines exactly. This confirms the recording's values in the available interpreter; it is not a pinned-3.13 regeneration. |
+| Hosted compiler surface | The new program emits **314 IR lines**. Runtime C is not embedded in that program IR, so successful hosted emission does not exercise the fixed comparison. |
+
+Two failed setup attempts remain explicit. Linking the entire standalone runtime
+without section GC exposed the expected program-provided helper symbols and ran
+no probe. The first section-GC harness omitted `pys_init`: current main reached
+the allocator and segfaulted, while the previous runtime stopped earlier at
+UBSan. Adding collector initialization made current main pass while preserving
+the prior overflow failure. These were harness failures, not product results.
+
+The final implementation tree's external workflows all succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39571782695) has
+**27/27 successful jobs**, including all three UBSan shards, native/hosted,
+JIT/AOT GC, optimization-off and final `make verify`;
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39571782509)
+has **3/3**, while [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39571782619)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39571782778)
+each succeeded. The PR also reports **144** selected dynamic-`Any` checks passing
+in each of normal, GC-stressed and UBSan configurations. That selection is
+attributed exact-tree evidence rather than a fresh local pinned run.
+
+Isolated import compilation was not rerun: #813 changes only `runtime.c` and a
+test, while the compiler, libraries, overlay and inventories are byte-identical
+to #809, and the import sweep does not execute or embed the runtime. The fresh
+#809 hosted result therefore remains **141/441** on CPython 3.12.14, separately
+from its attributed pinned result of **149/457**. Neither count is a #813 gain.
+
+Open #797's dynamic-integer identity rule, #807's pending identity work and
+#815's adjacent box-layout work remain separate. #808's fuzzer contains
+`INT64_MAX`, so #813 removes this sanitizer stop without proving zero semantic
+mismatches. No new uncovered bug was found and no issue was filed.
+
+Pinned CPython 3.13.16 and LLVM 18 were unavailable locally. No fresh local
+pinned JIT/AOT, GC-stress, fixed-point build, full `make verify`, package/port,
+performance, memory, upstream-suite or CPython regrtest run completed. The latest
+fully evaluated main remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
