@@ -86,6 +86,7 @@
       "current_result_sha256": "17ba244567987d2f9a019915a8812fd121a96584bcf953e6aab4a5bcbcdf3f78",
       "base_metadata_sha256": "8a2a5720a918d7da1c9969d1a57780c5000c3eb55d9668bdaa1e5a0254908878",
       "current_metadata_sha256": "e6fe6cb7de8d39b07ff47465a62784a34e8ef5163a1a283a58c8d56c44451ac7",
+      "metadata_source_identity_caveat": "both wrapper metadata documents identify the current checkout because the wrapper does not expose its embedded compiler source; event.previous_source_sha and event.source_sha are the independently verified compiler revisions",
       "new_successes": [],
       "lost_successes": [],
       "first_error_changes": 0,

@@ -6189,6 +6189,12 @@ reproductions and limitations.
 | Fast hosted checks | `make check-fast` passes Ruff, mypy on **45/45** files, seven effect-summary tests and 84 typed-IR tests. All **53/53** verifier-tool tests pass. |
 | Newly exposed typed-view blocker | #668 accepts fresh `list[str] = d.keys()` and `list[tuple[str, Any]] = d.items()` consumers for `d: dict[str, Any]`; merged main rejects them as `list[Any]` and `list[tuple[Any,Any]]`. CPython 3.13.16 executes both controls. |
 
+The sweep metadata records the current checkout for both external compiler
+wrappers because the wrapper does not expose its embedded build source. The
+compiler identities are therefore retained separately and verified from git:
+#668 is `f4b9396167e41616707938ca34d99f359a706622`, and the evaluated source is
+`185849790523815d0f63ab1a8b33c17549bf31b4`.
+
 The four newly compiling retained programs are `dynany_layout`,
 `dynany_layout_drain`, `dynany_layout_forms` and `dynany_layout_kw`. This is a
 real, bounded compatibility gain for identity-preserving `Any` containers, not
