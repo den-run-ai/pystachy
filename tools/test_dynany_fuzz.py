@@ -122,6 +122,19 @@ class CompareTest(unittest.TestCase):
         extra = cp + "7 INVARIANT: is and id() disagree\n"
         self.assertEqual(len(fz.compare(1, self.cases, "jit", (0, cp), (0, extra))), 1)
 
+    def test_order(self) -> None:
+        # (each case's lines alike, but printed in another order, is a mismatch)
+        cp = "0 3\n1 'a1'\n2 18446744073709551614\n"
+        ps = "1 'a1'\n0 3\n2 18446744073709551614\n"
+        self.assertEqual(len(fz.compare(1, self.cases, "jit", (0, cp), (0, ps))), 1)
+
+    def test_compiler_cmd(self) -> None:
+        # (a word of --compiler that names a file is made absolute, as the programs run elsewhere;
+        # quoting as a shell does)
+        here = os.path.relpath(os.path.abspath(fz.__file__))
+        self.assertEqual(fz.compiler_cmd(f"python3 '{here}'"), ["python3", os.path.abspath(here)])
+        self.assertEqual(fz.compiler_cmd("no-such-compiler --flag"), ["no-such-compiler", "--flag"])
+
     def test_big_int(self) -> None:
         self.assertTrue(fz.big_int("3 9223372036854775808"))
         self.assertTrue(fz.big_int("3 -9223372036854775809"))

@@ -26,6 +26,7 @@ usage: python3 tools/dynany_fuzz.py [--aot] [--keep DIR] [--compiler CMD] [SEEDS
 import os
 import random
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -294,6 +295,11 @@ def by_case(out: str) -> tuple[dict[int, list[str]], list[str]]:
     return r, other
 
 
+def case_order(out: str) -> list[int]:
+    # the case numbers of out's lines, in the order the program printed them
+    return [int(h) for h in (line.split(" ", 1)[0] for line in out.splitlines()) if h.isdigit()]
+
+
 def compare(seed: int, cases: list[tuple[str, str, str, str, str]], mode: str, cp: tuple[int, str], ps: tuple[int, str]) -> list[str]:
     # the mismatches of Pystachy's output (mode) with CPython's, each a report line
     bad: list[str] = []
@@ -305,6 +311,11 @@ def compare(seed: int, cases: list[tuple[str, str, str, str, str]], mode: str, c
     b, bo = by_case(ps[1])
     if ao != bo:
         bad.append(f"seed {seed} {mode}: lines of no case differ\n    CPython:  {' | '.join(ao)}\n    Pystachy: {' | '.join(bo)}")
+    oa = case_order(cp[1])
+    ob = case_order(ps[1])
+    if oa != ob and sorted(oa) == sorted(ob):
+        # (the same lines in another order: lines that differ are reported below, case by case)
+        bad.append(f"seed {seed} {mode}: the cases' lines come in another order than CPython's")
     for k in sorted(set(range(len(cases))) | set(a) | set(b)):
         x = a.get(k, [])
         y = b.get(k, [])
@@ -315,6 +326,12 @@ def compare(seed: int, cases: list[tuple[str, str, str, str, str]], mode: str, c
             continue
         bad.append(f"seed {seed} {mode} case {k}: {c[0]}  (v = {c[3]})\n    CPython:  {' | '.join(x)}\n    Pystachy: {' | '.join(y)}")
     return bad
+
+
+def compiler_cmd(compiler: str) -> list[str]:
+    # the words of --compiler's CMD, split as a shell does, each that names a file made absolute, as
+    # the programs run in another directory ("python3 pystachy.py": the hosted compiler)
+    return [os.path.abspath(w) if os.path.exists(w) else w for w in shlex.split(compiler)]
 
 
 def main() -> int:
@@ -348,9 +365,7 @@ def main() -> int:
         return 2
     work = os.path.abspath(keep) if keep != "" else tempfile.mkdtemp(prefix="pystachy-dynany-fuzz.")
     os.makedirs(work, exist_ok=True)
-    cmd = compiler.split()
-    if os.path.exists(cmd[0]):
-        cmd[0] = os.path.abspath(cmd[0])  # (the programs run in work)
+    cmd = compiler_cmd(compiler)
     bad: list[str] = []
     total = 0
     for seed in range(1, seeds + 1):
