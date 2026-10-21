@@ -3404,8 +3404,9 @@ I pys_dyn_hash(Dyn *x) {
 
 /* arithmetic: op 0..11 = + - * / // % ** << >> & | ^ (the program runs a class's dunders first) */
 static const char *const dops[] = {"+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"};
-static _Noreturn void dyn_unsupported(Dyn *a, Dyn *b, I op) {
-  failf("TypeError: unsupported operand type(s) for %s: '%s' and '%s'", dops[op], DNAME(a), DNAME(b));
+/* (CPython's text names an in-place operator by its own symbol, **= too, and ** as "** or pow()") */
+static _Noreturn void dyn_unsupported(Dyn *a, Dyn *b, I op, int inplace) {
+  failf("TypeError: unsupported operand type(s) for %s%s: '%s' and '%s'", dops[op], inplace ? "=" : op == 6 ? " or pow()" : "", DNAME(a), DNAME(b));
 }
 static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tuple and an int (or bool) */
   I k = n->v < 0 ? 0 : n->v;
@@ -3420,7 +3421,7 @@ static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tupl
   return dtuple(r);
 }
 static int dseq(const Dyn *x) { return DKIND(x) == DK_STR || DKIND(x) == DK_LIST || DKIND(x) == DK_TUPLE; }
-Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) {
+static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace) {   /* a OP b, or a's in-place fallback (inplace) */
   int ka = DKIND(a), kb = DKIND(b);
   if (dnum(a) && dnum(b)) {
     I x = a->v, y = b->v, r;
@@ -3463,13 +3464,17 @@ Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) {
     memcpy(r->a, x->a, x->len * sizeof(I)); memcpy(r->a + x->len, y->a, y->len * sizeof(I));
     return dtuple(r);
   }
+  if (inplace && op == 2 && (ka == DK_DICT || ka == DK_OBJ))
+    dyn_unsupported(a, b, op, inplace);   /* (CPython's *= repeats a sequence on the right only where the left operand's type has no
+                                             sequence methods: a dict's and an object's have them, though no repeat) */
   if (op == 2 && (dseq(a) || dseq(b))) {
     Dyn *s = dseq(a) ? a : b, *n = s == a ? b : a;
     if (!dnum(n)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(n));
     return dyn_repeat(s, n);
   }
-  dyn_unsupported(a, b, op);
+  dyn_unsupported(a, b, op, inplace);
 }
+Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) { return dyn_binop(a, b, op, 0); }
 /* a OP= b: a list extends or repeats itself in place, as list's __iadd__ and __imul__ do; other
    values have no in-place operation and make a new value */
 Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
@@ -3488,7 +3493,7 @@ Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
     pys_list_imul((List *)a->v, b->v < 0 ? 0 : b->v);
     return a;
   }
-  return pys_dyn_binop(a, b, op);
+  return dyn_binop(a, b, op, 1);
 }
 Dyn *pys_dyn_unary(Dyn *a, I op) {   /* op 0..2: - + ~ */
   if (dnum(a)) {
