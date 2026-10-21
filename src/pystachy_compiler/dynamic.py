@@ -1335,13 +1335,15 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
     m = key[key.find(".") + 1 : key.rfind(".")]
     n = shape_npos(key)
     ks = shape_kws(key)
+    dup = [ks[j] for j in range(len(ks)) if ks[j] in ks[:j]]
     t = Val(self.dyn_typeof(o), "dyntype")
     line = self.line
     for bt in ["list[dyn]", "dict[dyn,dyn]", "str", "vtuple[dyn]", "int", "bool", "float"]:
-        # (with keyword arguments, which only list.sort() and dict.update() take, its method of
-        # that name whatever the positional ones: the call's case raises the TypeError once the
-        # arguments are evaluated, as CPython's binding does)
-        kwerr = len(ks) > 0 and not (bt == "list[dyn]" and m == "sort") and not (bt == "dict[dyn,dyn]" and m == "update")
+        # (with keyword arguments, which only list.sort() and dict.update() take, or a name twice,
+        # which ** brings, its method of that name whatever the positional ones: the call's case
+        # raises the TypeError once the arguments are evaluated, as CPython's binding does, or
+        # its merging of the keyword arguments before it)
+        kwerr = len(dup) > 0 or (len(ks) > 0 and not (bt == "list[dyn]" and m == "sort") and not (bt == "dict[dyn,dyn]" and m == "update"))
         if not self.dyn_builtin_takes(bt, m, -1 if kwerr else n):
             continue
         hit = self.label()
@@ -1350,6 +1352,8 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
         self.place(hit)
         if key.startswith("has."):
             self.ret_(Val("null", DYN))  # (a method, which call.<m>.<shape> calls)
+        elif len(dup) > 0:
+            self.raise_("TypeError", self.sconst(f"{tname('int' if bt == 'bool' else bt)}.{m}() got multiple values for keyword argument '{dup[0]}'"))
         elif len(ks) > 0 and bt == "list[dyn]" and m == "sort" and len([k for k in ks if k != "key" and k != "reverse"]) > 0:
             kx = [k for k in ks if k != "key" and k != "reverse"][0]
             self.raise_("TypeError", self.sconst(f"sort() got an unexpected keyword argument '{kx}'"))  # (CPython's, as typed code's)
@@ -1495,8 +1499,22 @@ def gen_dyn_setattr(self, o: Val, a: str, v: Val) -> None:
 
 def call_shape(args: list[Node]) -> str:
     # the arguments of a call as the key of its dispatcher ends with them (call.<m>.<shape>,
-    # callv.<shape>): how many are positional, then -<name> for each keyword argument, in order
-    return str(len([a for a in args if a.kind != "kw"])) + "".join(["-" + a.s for a in args if a.kind == "kw"])
+    # callv.<shape>): how many are positional, then each keyword argument's name, in order
+    return shape_of(len([a for a in args if a.kind != "kw"]), [a.s for a in args if a.kind == "kw"])
+
+
+def shape_of(npos: int, names: list[str]) -> str:
+    # call_shape's key of npos positional arguments and keyword arguments names: -<name> for each,
+    # or, for a name no ASCII identifier spells (a ** display's str key, "a-b"), -$ and its
+    # characters' code points in six hex digits each, so that the key stays one IR symbol and
+    # its names stay apart (shape_kws)
+    out = str(npos)
+    for s in names:
+        plain = s != "" and not ("0" <= s[0] and s[0] <= "9")
+        for c in s:
+            plain = plain and (c == "_" or ("a" <= c and c <= "z") or ("A" <= c and c <= "Z") or ("0" <= c and c <= "9"))
+        out += "-" + (s if plain else "$" + "".join([f"{ord(c):06x}" for c in s]))
+    return out
 
 
 def shape_npos(key: str) -> int:
@@ -1506,8 +1524,18 @@ def shape_npos(key: str) -> int:
 
 
 def shape_kws(key: str) -> list[str]:
-    # the names of the keyword arguments the calls of dispatcher key pass, in order (call_shape)
-    return key[key.rfind(".") + 1 :].split("-")[1:]
+    # the names of the keyword arguments the calls of dispatcher key pass, in order (shape_of)
+    out: list[str] = []
+    for p in key[key.rfind(".") + 1 :].split("-")[1:]:
+        out.append("".join([chr(int(p[i : i + 6], 16)) for i in range(1, len(p), 6)]) if p.startswith("$") else p)
+    return out
+
+
+def gen_dyn_lookup(self, o: Val, m: str, npos: int, names: list[str]) -> Val:
+    # o.m's lookup for a call of npos positional arguments and keyword arguments names, for a dyn
+    # o, as CPython's LOAD_ATTR finds it before the arguments are evaluated: null for a method,
+    # which call.<m>.<shape> then calls, or a field's value, which callv.<shape> calls
+    return self.dyn_call(self.dyn_dispatcher(f"has.{m}.{shape_of(npos, names)}", [DYN], DYN, m), [o])
 
 
 def gen_dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
@@ -1528,7 +1556,7 @@ def gen_dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
     # the lookup gives null for a method, which call.<m>.<shape> then calls, or a field's value,
     # read now as LOAD_ATTR reads it, which callv.<shape> calls although an argument assigns the
     # field anew
-    h = self.dyn_call(self.dyn_dispatcher(f"has.{m}.{call_shape(args)}", [DYN], DYN, m), [o])
+    h = self.dyn_lookup(o, m, len([a for a in args if a.kind != "kw"]), [a.s for a in args if a.kind == "kw"])
     return self.dyn_method_found(o, m, args, h)
 
 

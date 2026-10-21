@@ -71,6 +71,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_isinst_types as dynamic_dyn_isinst_types,
     gen_dyn_items_ahead as dynamic_dyn_items_ahead,
     gen_dyn_len as dynamic_dyn_len,
+    gen_dyn_lookup as dynamic_dyn_lookup,
     gen_dyn_method as dynamic_dyn_method,
     gen_dyn_method_found as dynamic_dyn_method_found,
     gen_dyn_mixed as dynamic_dyn_mixed,
@@ -1595,6 +1596,9 @@ class Gen:
 
     def dyn_call_args(self, key: str, args: list[Val]) -> list[Node]:
         return dynamic_dyn_call_args(self, key, args)
+
+    def dyn_lookup(self, o: Val, m: str, npos: int, names: list[str]) -> Val:
+        return dynamic_dyn_lookup(self, o, m, npos, names)
 
     def dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) -> None:
         return dynamic_dyn_reflected(self, f, c, r, a, b, ok)

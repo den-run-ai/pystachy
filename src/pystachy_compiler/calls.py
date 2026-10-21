@@ -222,7 +222,8 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
             else:
                 npos += 1
         if known:
-            dynh = self.dyn_call(self.dyn_dispatcher(f"has.{f.s}.{npos}" + "".join(["-" + x for x in names]), ["dyn"], "dyn", f.s), [receiver])
+            dynh = self.dyn_lookup(receiver, f.s, npos, names)
+    aw = "dyn" if dynh.v != "" else ""  # (an Any method's arguments are Any values: a display is Any's storage)
     printing = f.kind == "name" and f.s == "print" and not self.bound("print")
     sole = len([a for a in args if a.kind != "kw" and a.kind != "dstar"]) == 1
     who = self.star_who(f)
@@ -233,7 +234,7 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
             continue
         if a.kind == "starred" and (a.kids[0].kind == "list" or a.kids[0].kind == "tuple") and len([x for x in a.kids[0].kids if x.kind == "starred"]) == 0:
             for x in a.kids[0].kids:
-                pos.append(x if pure_arg(x) else self.vnode(self.expr(x, "")))  # (*[a, b] of a display: its items)
+                pos.append(x if pure_arg(x) else self.vnode(self.expr(x, aw)))  # (*[a, b] of a display: its items)
         elif a.kind == "starred":
             v = self.expr(a.kids[0], "")
             self.line = a.line
@@ -252,14 +253,14 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
             else:
                 self.err(f"unpacking a {typestr(v.t)} into the arguments of {who if who != '' else 'a function'} is not supported (a tuple's items are)")
         else:
-            pos.append(a if pure_arg(a) else self.vnode(self.expr(a, "")))
+            pos.append(a if pure_arg(a) else self.vnode(self.expr(a, aw)))
     for a in args:
         if a.kind == "kw":
-            kws.append(a if pure_arg(a.kids[0]) else mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], ""))]))
+            kws.append(a if pure_arg(a.kids[0]) else mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], aw))]))
         elif a.kind == "dstar" and a.kids[0].kind == "dict" and len([i for i in range(0, len(a.kids[0].kids), 2) if a.kids[0].kids[i].kind != "str"]) == 0:
             d = a.kids[0]
             for i in range(0, len(d.kids), 2):
-                kws.append(mk("kw", d.kids[i].s, a.line, [self.vnode(self.expr(d.kids[i + 1], ""))]))  # (**{"k": v}: its items)
+                kws.append(mk("kw", d.kids[i].s, a.line, [self.vnode(self.expr(d.kids[i + 1], aw))]))  # (**{"k": v}: its items)
         elif a.kind == "dstar":
             v = self.expr(a.kids[0], "")
             if not is_kw(v.t) and is_dict(v.t) and targs(v.t)[0] == "str" and n.kids[0].kind == "name" and self.aliases.get(n.kids[0].s, "") == "dataclasses.replace" and len(pos) == 1:
