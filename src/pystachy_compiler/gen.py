@@ -3824,8 +3824,8 @@ class Gen:
     def method(self, o: Val, m: str, args: list[Node], want: str='', resultsoft: bool = False) -> Val:
         return calls_method(self, o, m, args, want, resultsoft)
 
-    def unbound_call(self, tn: str, m: str, args: list[Node]) -> Val:
-        return calls_unbound_call(self, tn, m, args)
+    def unbound_call(self, tn: str, m: str, args: list[Node], want: str = "") -> Val:
+        return calls_unbound_call(self, tn, m, args, want)
 
     def kw_record(self, names: list[str], vals: list[Val]) -> Val:
         return calls_kw_record(self, names, vals)

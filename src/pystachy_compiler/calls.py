@@ -538,11 +538,12 @@ def gen_call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool =
     # is still the builtin)
     k = v.t[3:-1]
     if k.startswith("u:"):
-        return self.unbound_call(k[2 : k.find(".")], k[k.find(".") + 1 :], args)
+        return self.unbound_call(k[2 : k.find(".")], k[k.find(".") + 1 :], args, "" if resultsoft else want)
     if k.startswith("m:"):
         return self.method(Val(v.v, k[2 : k.rfind(".")]), k[k.rfind(".") + 1 :], args, want, resultsoft)  # (a bound method: o.name(args))
     if k.startswith("d:"):
-        return self.method(Val(v.v, k[k.find(":", 2) + 1 :]), k[2 : k.find(":", 2)], args)
+        mn = k[2 : k.find(":", 2)]
+        return self.method(Val(v.v, k[k.find(":", 2) + 1 :]), mn, args, want if (mn == "keys" or mn == "values" or mn == "items") and not resultsoft else "")
     if k.startswith("b:"):
         return self.builtin(k[2:], args, want, resultsoft)
     if k.startswith("c:"):
@@ -649,9 +650,10 @@ def gen_open_(self, args: list[Node]) -> Val:
                                            f"i64 {vals['buffering']}"]), "file")
 
 def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsoft: bool = False) -> Val:
-    if (m == "keys" or m == "values" or m == "items") and len(args) == 0 and want != "" and is_dict(unopt(o.t)):
+    if (m == "keys" or m == "values" or m == "items") and len(args) == 0 and want != "" and not resultsoft and is_dict(unopt(o.t)):
         # (the new list of a dict's keys, values or items, which a typed list expected of it takes
-        # with its items unboxed where the dict holds boxes, as list(d) does: typed_list)
+        # with its items unboxed where the dict holds boxes, as list(d) does: typed_list; not where
+        # want is only a hint, a comparison's other operand's type: resultsoft)
         return self.typed_list(gen_method(self, o, m, args, "", resultsoft), want)
     if o.t == "fn[b:bytes]" and m == "maketrans":
         return self.bytes_method(o, m, args)  # (the static method, of the class)
@@ -664,7 +666,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             self.err(f"fromhex() argument must be str, not {tname(s.t)}")
         return Val(self.rt("pys_bytes_fromhex", "ptr", [f"ptr {s.v}"]), "bytes")
     if (o.t == "fn[b:str]" or o.t == "fn[b:list]" or o.t == "fn[b:dict]") and (has_method(o.t[5:-1], m) or (o.t == "fn[b:str]" and (m == "format" or m == "format_map"))):
-        return self.unbound_call(o.t[5:-1], m, args)
+        return self.unbound_call(o.t[5:-1], m, args, "" if resultsoft else want)
     if is_kw(o.t):
         return self.kw_method(o, m, args)
     if o.t == "dyn":
@@ -743,7 +745,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         return self.call_fn(ci.methods[m], [o] if ci.methods[m].deco == "" else [], args, want, resultsoft=resultsoft)  # (a static or class method gets no o)
     return self.bmethod(o, m, args)
 
-def gen_unbound_call(self, tn: str, m: str, args: list[Node]) -> Val:
+def gen_unbound_call(self, tn: str, m: str, args: list[Node], want: str = "") -> Val:
     # T.m(o, args) of builtin type T (str.lower(s), list.append(xs, x)): o.m(args), where o must
     # be a T (CPython's TypeError otherwise: a compile error here, but for None)
     if len(args) == 0 or args[0].kind == "kw" or args[0].kind == "starred" or args[0].kind == "dstar":
@@ -757,7 +759,8 @@ def gen_unbound_call(self, tn: str, m: str, args: list[Node]) -> Val:
         # (an o that may be None raises once the other arguments are evaluated, as CPython's call does)
         rest = [mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], ""))]) if a.kind == "kw" else self.vnode(self.expr(a, "")) for a in rest]
     o = self.unwrap(o, f"TypeError: descriptor '{m}' for '{tn}' objects doesn't apply to a 'NoneType' object")
-    return self.method(o, m, rest)
+    # (want: the typed list expected of a dict's keys(), values() or items(), as o.keys() takes it)
+    return self.method(o, m, rest, want if m == "keys" or m == "values" or m == "items" else "")
 
 def gen_kw_record(self, names: list[str], vals: list[Val]) -> Val:
     # the **kwargs of a call: its extra keyword arguments, a tuple of the values typed by the
