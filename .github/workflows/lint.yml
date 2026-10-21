@@ -81,6 +81,9 @@ jobs:
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py
 
+      - name: Compiler state contract research controls
+        run: python3 -m unittest discover -s tools -p 'test_compiler_state*.py'
+
       - name: JSON benchmark evidence tests
         run: python3 -m unittest discover -s tools -p test_bench_json.py
 
