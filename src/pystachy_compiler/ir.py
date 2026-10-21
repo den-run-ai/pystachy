@@ -439,6 +439,43 @@ class Frame:
         self.curfn = curfn
 
 
+class Transient:
+    # Gen's state beside a function's (Frame) that code changes and changes back around what it
+    # compiles: a stack it pushes and pops (its depth here), a value it replaces and puts back, a
+    # flag it sets and resets, a count it raises and lowers, and what the last loop, call and
+    # statement left. An error raised in between leaves it changed: only dyn_xcall goes on
+    # compiling after one, and puts this back (tools/test_dynany_declines.py checks that Frame and
+    # this hold every such field of Gen's)
+    def __init__(self) -> None:
+        self.brks = 0
+        self.making = 0
+        self.resolving = 0
+        self.allowq = False
+        self.appending = False
+        self.carried = Val("", "")
+        self.cmpnode = Node("", "", 0)
+        self.compshare: dict[str, str] = {}
+        self.copying = False
+        self.drying = 0
+        self.elsebrk = ""
+        self.elsebrks: list[dict[str, str]] = []
+        self.elsekids: list[Node] = []
+        self.flowmod = ""
+        self.joinsrc = Node("", "", 0)
+        self.live = False
+        self.mcall: Node | None = None
+        self.nonecmp = False
+        self.reflcopies = 1
+        self.selfcls = ""
+        self.soft = Node("", "", 0)
+        self.stmtexpr: Node | None = None
+        self.whole = 0
+        self.template_bytes = 0
+        self.template_instances = 0
+        self.template_retained = 0
+        self.retainers: dict[str, int] = {}
+
+
 class ClassInfo:
     def __init__(self, name: str, node: Node):
         self.name = name

@@ -515,11 +515,13 @@ from src.pystachy_compiler.emission import (
     gen_put as emission_put,
     gen_reboxes as emission_reboxes,
     gen_restore as emission_restore,
+    gen_restore_transient as emission_restore_transient,
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
     gen_runtime as emission_runtime,
     gen_save as emission_save,
+    gen_save_transient as emission_save_transient,
     gen_sconst as emission_sconst,
     gen_bconst as emission_bconst,
     gen_select as emission_select,
@@ -801,6 +803,7 @@ from src.pystachy_compiler.ir import (
     SeqStart,
     SetArg,
     StopCatch,
+    Transient,
     Val,
     Values,
 )
@@ -1890,6 +1893,12 @@ class Gen:
 
     def restore(self, fr: Frame) -> None:
         return emission_restore(self, fr)
+
+    def save_transient(self) -> Transient:
+        return emission_save_transient(self)
+
+    def restore_transient(self, t: Transient) -> None:
+        return emission_restore_transient(self, t)
 
     def tmp(self) -> str:
         return emission_tmp(self)

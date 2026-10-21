@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.diagnostics import Rejoin, fail
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
+from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Transient, Val
 from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
@@ -125,6 +125,75 @@ def gen_restore(self, fr: Frame) -> None:
     self.cur = fr.cur
     self.term = fr.term
     self.line = fr.line
+
+def gen_save_transient(self) -> Transient:
+    # Gen's state that code puts back once it has compiled something (Transient)
+    t = Transient()
+    t.brks = len(self.brks)
+    t.making = len(self.making)
+    t.resolving = len(self.resolving)
+    t.allowq = self.allowq
+    t.appending = self.appending
+    t.carried = self.carried
+    t.cmpnode = self.cmpnode
+    t.compshare = self.compshare
+    t.copying = self.copying
+    t.drying = self.drying
+    t.elsebrk = self.elsebrk
+    t.elsebrks = self.elsebrks
+    t.elsekids = self.elsekids
+    t.flowmod = self.flowmod
+    t.joinsrc = self.joinsrc
+    t.live = self.live
+    t.mcall = self.mcall
+    t.nonecmp = self.nonecmp
+    t.reflcopies = self.reflcopies
+    t.selfcls = self.selfcls
+    t.soft = self.soft
+    t.stmtexpr = self.stmtexpr
+    t.whole = self.whole
+    t.template_bytes = self.template_bytes
+    t.template_instances = self.template_instances
+    t.template_retained = self.template_retained
+    for k in self.retainers:
+        t.retainers[k] = self.retainers[k]
+    return t
+
+def gen_restore_transient(self, t: Transient) -> None:
+    # put it back after an error, which skipped the code that puts it back (dyn_xcall)
+    while len(self.brks) > t.brks:
+        self.brks.pop()
+    while len(self.making) > t.making:
+        self.making.pop()
+    while len(self.resolving) > t.resolving:
+        self.resolving.pop()
+    self.allowq = t.allowq
+    self.appending = t.appending
+    self.carried = t.carried
+    self.cmpnode = t.cmpnode
+    self.compshare = t.compshare
+    self.copying = t.copying
+    self.drying = t.drying
+    self.elsebrk = t.elsebrk
+    self.elsebrks = t.elsebrks
+    self.elsekids = t.elsekids
+    self.flowmod = t.flowmod
+    self.joinsrc = t.joinsrc
+    self.live = t.live
+    self.mcall = t.mcall
+    self.nonecmp = t.nonecmp
+    self.reflcopies = t.reflcopies
+    self.selfcls = t.selfcls
+    self.soft = t.soft
+    self.stmtexpr = t.stmtexpr
+    self.whole = t.whole
+    self.template_bytes = t.template_bytes
+    self.template_instances = t.template_instances
+    self.template_retained = t.template_retained
+    for k in [k for k in self.retainers if k not in t.retainers]:
+        del self.retainers[k]
+    for k in t.retainers:
+        self.retainers[k] = t.retainers[k]
 
 def gen_tmp(self) -> str:
     self.n += 1
