@@ -38,9 +38,17 @@ class GeneratorTest(unittest.TestCase):
                 f.write(src)
             p = subprocess.run([sys.executable, "-I", path], capture_output=True, text=True, cwd=d)
         self.assertEqual(p.returncode, 0, p.stderr)
-        got = fz.by_case(p.stdout)
+        got, other = fz.by_case(p.stdout)
+        self.assertEqual(other, [])
         self.assertEqual(sorted(got), list(range(len(cases))))
         self.assertTrue(all(len(v) == 1 for v in got.values()), p.stdout)
+
+    def test_inplace_alias(self) -> None:
+        # (an in-place case checks its invariants against its left operand as it was)
+        src, cases = fz.program(3, 150)
+        k = [i for i, c in enumerate(cases) if c[1].endswith("=") and c[1] not in ("==", "!=", "<=", ">=")][0]
+        self.assertIn(f"    l{k}: Any = r{k}\n", src)
+        self.assertIn(f"    inv({k}, r{k}, l{k})\n", src)
 
 
 class CompareTest(unittest.TestCase):
@@ -62,6 +70,14 @@ class CompareTest(unittest.TestCase):
         self.assertEqual(len(bad), 1)
         self.assertIn("case 0: v1 + v2", bad[0])
         self.assertEqual(len(fz.compare(1, self.cases, "aot", (0, cp), (1, cp))), 1)
+
+    def test_fails_closed(self) -> None:
+        # (a line that names no case, or a case the program does not have, is a mismatch)
+        cp = "0 3\n1 'a1'\n2 18446744073709551614\n"
+        warn = "0 3\nruntime warning: something\n1 'a1'\n2 OverflowError: integer overflow\n"
+        self.assertEqual(len(fz.compare(1, self.cases, "jit", (0, cp), (0, warn))), 1)
+        extra = cp + "7 INVARIANT: is and id() disagree\n"
+        self.assertEqual(len(fz.compare(1, self.cases, "jit", (0, cp), (0, extra))), 1)
 
     def test_big_int(self) -> None:
         self.assertTrue(fz.big_int("3 9223372036854775808"))

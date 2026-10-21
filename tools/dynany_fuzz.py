@@ -213,8 +213,12 @@ def program(seed: int, n: int) -> tuple[str, list[tuple[str, str, str, str, str]
     for k, (expr, op, kind, src, left) in enumerate(cases):
         out.append("try:")
         if op.endswith("=") and op not in ("==", "!=", "<=", ">="):
+            # (the invariants compare the result with the left operand as it was: the same list
+            # after +=, a new int after +=)
             out.append(f"    r{k}: Any = {src}")
+            out.append(f"    l{k}: Any = r{k}")
             out.append(f"    r{k} {op} {expr.split(' ')[-1]}")
+            left = f"l{k}"
         else:
             out.append(f"    r{k}: Any = {expr}")
         out.append(f"    show({k}, r{k})")
@@ -247,13 +251,18 @@ def run(cmd: list[str], cwd: str) -> tuple[int, str]:
     return p.returncode, p.stdout
 
 
-def by_case(out: str) -> dict[int, list[str]]:
+def by_case(out: str) -> tuple[dict[int, list[str]], list[str]]:
+    # the lines of each case, by its number, and the lines that name no case, which compare()
+    # requires to be alike too (a warning or a sanitizer's report fails the comparison)
     r: dict[int, list[str]] = {}
+    other: list[str] = []
     for line in out.splitlines():
         head = line.split(" ", 1)[0]
         if head.isdigit():
             r.setdefault(int(head), []).append(line)
-    return r
+        else:
+            other.append(line)
+    return r, other
 
 
 def compare(seed: int, cases: list[tuple[str, str, str, str, str]], mode: str, cp: tuple[int, str], ps: tuple[int, str]) -> list[str]:
@@ -263,16 +272,19 @@ def compare(seed: int, cases: list[tuple[str, str, str, str, str]], mode: str, c
         return [f"seed {seed}: CPython exited {cp[0]}: {cp[1][-500:]}"]
     if ps[0] != 0:
         bad.append(f"seed {seed} {mode}: exit status {ps[0]}, CPython's 0: {ps[1][-800:]}")
-    a = by_case(cp[1])
-    b = by_case(ps[1])
-    for k in range(len(cases)):
+    a, ao = by_case(cp[1])
+    b, bo = by_case(ps[1])
+    if ao != bo:
+        bad.append(f"seed {seed} {mode}: lines of no case differ\n    CPython:  {' | '.join(ao)}\n    Pystachy: {' | '.join(bo)}")
+    for k in sorted(set(range(len(cases))) | set(a) | set(b)):
         x = a.get(k, [])
         y = b.get(k, [])
         if x == y:
             continue
-        if len(x) == 1 and len(y) == 1 and any(rule(cases[k], x[0], y[0]) for rule, _ in EXPECTED):
+        c = cases[k] if k < len(cases) else ("(no such case)", "", "", "", "")
+        if k < len(cases) and len(x) == 1 and len(y) == 1 and any(rule(c, x[0], y[0]) for rule, _ in EXPECTED):
             continue
-        bad.append(f"seed {seed} {mode} case {k}: {cases[k][0]}  (v = {cases[k][3]})\n    CPython:  {' | '.join(x)}\n    Pystachy: {' | '.join(y)}")
+        bad.append(f"seed {seed} {mode} case {k}: {c[0]}  (v = {c[3]})\n    CPython:  {' | '.join(x)}\n    Pystachy: {' | '.join(y)}")
     return bad
 
 
