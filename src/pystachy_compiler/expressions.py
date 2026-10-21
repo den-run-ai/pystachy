@@ -642,7 +642,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "int":
         if not int_fits(n.s):
             self.err("integer literal does not fit in 64 bits")
-        return Val(n.s, "int")
+        lit = Val(n.s, "int")
+        lit.lit = True
+        return lit
     if k == "float":
         return Val(fbits(n.s), "float")
     if k == "str":

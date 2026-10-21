@@ -9,6 +9,7 @@ class Val:
         self.v = v
         self.t = t
         self.infer_from = ""  # direct recursive call whose inferred return still defaults to None
+        self.lit = False  # an int literal's own value, as gen_expr made it (dyn_box: its constant box)
 
 
 class Data:

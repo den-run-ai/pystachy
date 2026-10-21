@@ -4,6 +4,7 @@ two computed ints False True False
 literal, literal True False True
 literal, another function's literal True False True
 literal, sum False True False
+two calls the compiler evaluates False True False
 small ints True False True
 -5 True False True
 256 True False True

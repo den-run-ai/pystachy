@@ -2,8 +2,10 @@
 # `is` and id() of Any values agree (#797): two values are one object exactly where their ids are
 # equal, as CPython's. An int is its own object: one per value from -5 to 256, as CPython caches
 # those, and one per value for an int literal, as CPython's equal constants are one object; an
-# int computed at run time is a new object, as int("1000") is in CPython. Floats, strs,
+# int computed at run time is a new object, as int("1000") is in CPython, also where the compiler
+# knows its value (struct.calcsize("300x"), #807's review). Floats, strs,
 # containers, objects and functions keep their identity.
+import struct
 from typing import Any
 
 
@@ -31,6 +33,7 @@ def run() -> None:
     both("literal, literal", a, 1000)
     both("literal, another function's literal", a, thousand())
     both("literal, sum", a, 999 + int("1"))
+    both("two calls the compiler evaluates", struct.calcsize("300x"), struct.calcsize("300x"))
     both("small ints", int("100"), int("100"))
     both("-5", int("-5"), -5)
     both("256", int("256"), 256)
