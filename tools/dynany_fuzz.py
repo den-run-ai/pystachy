@@ -238,13 +238,26 @@ def big_int(line: str) -> bool:
     return m is not None and not -(2 ** 63) <= int(m.group(1)) < 2 ** 63
 
 
+def type_name(src: str, kind: str) -> str:
+    # the name of the type of the pool's value SRC, of KIND, as CPython's messages show it
+    if kind in ("plain", "obj", "lawless"):
+        return src.split("(")[0]
+    return {"bigint": "int", "none": "NoneType"}.get(kind, kind)
+
+
+def right_type(c: tuple[str, str, str, str, str]) -> str:
+    # the type name of a binary or in-place case's right operand: the pool's value v<j> its
+    # expression ends with
+    return type_name(*POOL[int(c[0].split(" ")[-1][1:])])
+
+
 # Expected differences: (rule, reason). A rule takes the case and both lines (CPython's, then
 # Pystachy's) and says whether the difference is this one.
 EXPECTED = [
     (lambda c, cp, ps: big_int(cp) and ps.split(" ")[1:2] == ["OverflowError:"],
      "ints hold 64 bits: OverflowError where CPython's int grows (docs/language/compatibility.md)"),
     (lambda c, cp, ps: c[1] in ("%", "%=") and c[2] == "str"
-     and re.fullmatch(r"\d+ TypeError: unsupported operand type\(s\) for " + re.escape(c[1]) + r": 'str' and '[^']+'", ps) is not None,
+     and re.fullmatch(r"\d+ " + re.escape(f"TypeError: unsupported operand type(s) for {c[1]}: 'str' and '{right_type(c)}'"), ps) is not None,
      "% of an Any str: this TypeError, where CPython formats or raises its own (tests/deviations/dynany_str_mod.py)"),
     (lambda c, cp, ps: c[1] in ("**", "**=") and re.fullmatch(r"\d+ \(?[-+0-9.einfa]*j\)?", cp) is not None
      and ps.split(" ", 1)[1:] == ["ValueError: a negative number to a fractional power has a complex result (not supported)"],

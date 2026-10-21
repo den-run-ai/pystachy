@@ -81,6 +81,16 @@ class CompareTest(unittest.TestCase):
         c = [("v3 %= v4", "%=", "str", "'a'", "v3")]
         self.assertEqual(fz.compare(1, c, "jit", (0, "0 'a1'\n"), (0, "0 TypeError: unsupported operand type(s) for %=: 'str' and 'int'\n")), [])
         self.assertEqual(len(fz.compare(1, c, "jit", (0, "0 'a1'\n"), (0, "0 TypeError: unsupported operand type(s) for %: 'str' and 'int'\n"))), 1)
+        # (and it names the right operand's type: v4 holds an int)
+        wrong = "1 TypeError: unsupported operand type(s) for %: 'str' and 'dict'\n"
+        self.assertEqual(len(fz.compare(1, self.cases[:2], "jit", (0, "0 3\n" + own), (0, "0 3\n" + wrong))), 1)
+
+    def test_type_name(self) -> None:
+        # (the name of each pool value's type is CPython's)
+        ns: dict[str, object] = {}
+        exec(fz.PRELUDE, ns)
+        for src, kind in fz.POOL:
+            self.assertEqual(fz.type_name(src, kind), type(eval(src, ns)).__name__, src)
 
     def test_build_output(self) -> None:
         # (a build that succeeds and prints something is a mismatch; a failed one is compare()'s)
