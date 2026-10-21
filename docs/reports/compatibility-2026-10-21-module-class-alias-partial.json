@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 module-attribute class aliases (partial)",
+  "event": {
+    "pull_request": 809,
+    "merge_sha": "824dcca09a93f10b583e3ed166beac42bcbac376",
+    "source_sha": "824dcca09a93f10b583e3ed166beac42bcbac376",
+    "source_tree": "3e27f89b1a90e9a77f3fc70b7970421636751632",
+    "implementation_head_sha": "2a9c03014905d3e8fed034c296bf2a008d95bd39",
+    "implementation_head_tree": "3e27f89b1a90e9a77f3fc70b7970421636751632",
+    "previous_source_sha": "4ef45ca0b3bb8b1cb99e3dcb55c15eda6030950c",
+    "previous_source_tree": "6d69e103f2f4adde7aebfeec991c8734719a0df1",
+    "merged_at_utc": "2026-10-21T08:24:27Z",
+    "first_parent_merges_since_previous": [809]
+  },
+  "changed_scope": {
+    "files": 44,
+    "compiler": [
+      {"path": "src/pystachy_compiler/loader.py", "sha256": "99e8c89b87ed839a5eefd01ad9dce14548001c773705030ec15efc753a6e2514"},
+      {"path": "src/pystachy_compiler/statements.py", "sha256": "5fbe4bd75cfe34efd1d32d4d38bf0684061196cd95c6c7baa1f891801984a3b9"}
+    ],
+    "docs": ["docs/language/compatibility.md", "docs/language/modules.md"],
+    "tests_and_fixtures": 40,
+    "runtime_library_ports_or_tools_changed": false
+  },
+  "environment": {
+    "hosted_python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "hosted_python_path": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "hosted_stdlib": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12",
+    "pinned_cpython_3_13_16_available": false,
+    "llvm_18_available": false,
+    "native_compiler_available": false,
+    "source_snapshot_clean_before_and_after": true
+  },
+  "fresh_hosted_results": {
+    "positive_alias_programs": {
+      "compiled_current": 2,
+      "total": 2,
+      "compiled_previous": 0,
+      "previous_diagnostic": "unsupported type annotation",
+      "cpython_3_12_14_recordings_matched": 2,
+      "current_ir_sha256": {
+        "tests/programs/imports/import_attr_class_alias.py": "a53cffdf28cca5f71e4c78c3a579dbcf9750f4f141457009dd6ebb37c243edc3",
+        "tests/programs/imports/import_attr_class_alias_base.py": "3e66a3378571bf07c506fb5fbbec9e7dfc0286f760e17f131ec62ebe2ff6c069"
+      },
+      "cpython_stdout_sha256": {
+        "tests/programs/imports/import_attr_class_alias.py": "17aad34611bfccda29d6271caddf01f757a3799d684cc529736c207ad74450d5",
+        "tests/programs/imports/import_attr_class_alias_base.py": "cc5e9564cca661cbf5524c23d4d2ce2dd06c842eae1f1afe8afdfe250761bbef"
+      }
+    },
+    "negative_alias_boundaries": {
+      "rejected": 9,
+      "total": 9,
+      "recorded_diagnostic_prefix_contracts_matched": 9,
+      "coverage": ["import cycle", "decorated class", "function read before assignment", "from-import cycle", "global rebinding", "cross-module early read", "rebound name", "source-alias cycle", "package-submodule cycle"]
+    },
+    "tooling_unit_tests": {
+      "passed": 16,
+      "failed": 0,
+      "groups": {
+        "test_import_sweep.py": 10,
+        "test_typed_module_lowering.py": 3,
+        "test_typed_complete.py": 3
+      }
+    },
+    "import_sweep": {
+      "scope": "isolated compilation to hosted IR over the available CPython 3.12.14 stdlib inventory; no API execution",
+      "before": {"source_sha": "4ef45ca0b3bb8b1cb99e3dcb55c15eda6030950c", "ok": 141, "included": 441, "excluded": 62, "errors": 300, "timeouts": 0, "duration_s": 74.7130383650001},
+      "after": {"source_sha": "824dcca09a93f10b583e3ed166beac42bcbac376", "ok": 141, "included": 441, "excluded": 62, "errors": 300, "timeouts": 0, "duration_s": 76.09401016699849},
+      "new_successes": [],
+      "lost_successes": [],
+      "semantic_first_error_changes": {
+        "email.header": {
+          "before": "email/header.py:21: class 'email.charset.Charset' cannot be used as a value",
+          "after": "email/header.py:31: cannot infer the type of field 'input_charset'; annotate it"
+        }
+      },
+      "path_only_changes": ["optparse"],
+      "result_sha256": {
+        "before": "f6662522ff74a8218b3561dc068a15f822097c078dcdb32da80096a178526395",
+        "after": "460d3b1e16bd71d7234f03e5ea79aeddcc949378358ffbe61bd48f4b34a29b89",
+        "before_metadata": "2c78c911c0a46ca39cbab075111d9ac5bbbcea0cbab0c9e920c5b8889f4298ce",
+        "after_metadata": "6b698d56fb704f54f843c3bb7ba21368ba486190e3da87df0ee83cbd8598e050"
+      }
+    }
+  },
+  "attributed_pinned_results": {
+    "source": "#809 final review comment and merge comment; not independently rerun in this environment",
+    "cpython": "3.13.16",
+    "imports_before_and_after": "149/457",
+    "affected_modules": 24,
+    "result": "the class-alias first blocker is removed and each module advances to its next blocker; zero of the 24 becomes a successful isolated import",
+    "focused_native": "205 import/circular-deviation JIT+AOT checks and four GC-stressed alias checks reported passing on the final implementation"
+  },
+  "implementation_workflows": [
+    {"name": "CI", "run_id": 39567002536, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39567002536", "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+    {"name": "Installation", "run_id": 39567002400, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39567002400", "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39567002389, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39567002389", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Packages", "run_id": 39567002607, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39567002607", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+  ],
+  "review": {
+    "resolved_threads": 7,
+    "unresolved_threads": 0,
+    "final_no_findings_review_sha": "8a2ed20d689a5699fcc04ea8a69c9a3d9c54ea21",
+    "integration_head_caveat": "2a9c0301 only merges main 4ef45ca0 into the reviewed implementation; workflows validate its exact tree"
+  },
+  "commands": [
+    "PYSTACHY_HOME=<before> python3 tools/import_sweep.py -j 8 --metadata <before-meta.json> <before-hosted-wrapper> <python3.12-stdlib> <before.json>",
+    "PYSTACHY_HOME=<after> python3 tools/import_sweep.py -j 8 --metadata <after-meta.json> <after-hosted-wrapper> <python3.12-stdlib> <after.json>",
+    "PYSTACHY_HOME=<after> PYSTACHY_PATH=tests <after-hosted-wrapper> ir tests/programs/imports/import_attr_class_alias{,_base}.py -o <output.ll>",
+    "PYSTACHY_HOME=<after> PYSTACHY_PATH=tests <after-hosted-wrapper> ir tests/errors/imports/import_attr_class_alias*.py -o /dev/null",
+    "PYTHONPATH=tests python3 tests/programs/imports/import_attr_class_alias{,_base}.py",
+    "python3 -m unittest discover -s tools -p test_import_sweep.py",
+    "python3 -m unittest discover -s tools -p test_typed_module_lowering.py",
+    "python3 -m unittest discover -s tools -p test_typed_complete.py"
+  ],
+  "issue_state": {
+    "804": "open at measurement time; #809 satisfies the class-alias implementation but its acceptance requires recording next blockers, which this checkpoint preserves",
+    "814": "open; runtime alias-binding flags remain necessary for reads through functions or other modules that can execute before assignment"
+  },
+  "limitations": [
+    "The fresh local import sweep uses CPython 3.12.14, not the pinned 3.13.16 inventory, so its 141/441 count must not be combined with or substituted for the 149/457 pinned result.",
+    "LLVM 18 and a native compiler were unavailable locally; no fresh local JIT/AOT, GC-stress, fixed-point build or full make verify completed.",
+    "A removed first import blocker is not a successful import or working API. The fresh sweep gains zero successful imports and advances only email.header on the available inventory.",
+    "Exact-tree CI is external evidence. The PR-attributed 24-module pinned sweep and native focused checks were not relabeled as local runs.",
+    "No runtime speed, memory, package, adapted-port, upstream-suite or CPython regrtest claim follows."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

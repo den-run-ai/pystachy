@@ -84,6 +84,9 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 `tomllib.loads()` port (#795), **partial** | `1cf6a676`; library/test/docs port on #794 | All five selected sources move from unsupported-module rejection to checked hosted IR; 5/5 CPython references match, including 62 upstream data documents (12 valid, 50 invalid). Exact-tree CI is green. Binary-file `load()`, local native/import evaluation and the full upstream suite remain incomplete. [Evidence](compatibility-2026-10-20-tomllib-port-partial.json). |
 | 2026-10-20 dynamic `Any` in-place dispatch (#806), **partial** | `20d1aa29`; compiler/runtime change after #795 | 66/66 selected CPython references and hosted compilations pass. All 64 retained inputs have byte-identical hosted IR; only the two new regression programs change, fixing typed `Any` operands' in-place dunder dispatch and CPython operator messages. Exact-tree CI is green; local pinned native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-dynamic-inplace-partial.json). |
 | 2026-10-20 dynamic `Any` class-id dispatcher switch (#811), **partial** | `730886ea`; compiler/test change after #806 | 70/70 selected positive/deviation inputs emit hosted IR and 10/10 retained rejections remain exact. Of 69 common positive inputs, 57 change only inside `@dyn.*` dispatchers and 12 are byte-identical. Synthetic 2/16/128-class getters use one class-id switch with 2/16/128 cases; the 128-class dispatcher shrinks 1,809→1,429 IR lines. Exact-tree CI is green; local pinned native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-dynamic-dispatch-switch-partial.json). |
+| 2026-10-21 dynamic `Any` dictionary-key fast path (#812), **partial** | `838aff6d`; runtime/tests/docs change after #811 | 102/102 common selected inputs emit byte-identical hosted IR and 10/10 rejections retain exact diagnostics; the new regression compiles and its reference matches. The attributed bounded pipeline reports 29% fewer instructions/event, not independently rerun here. Exact-tree CI is green; local pinned native/import/performance evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-any-dict-partial.json). |
+| 2026-10-21 seeded dynamic `Any` differential fuzzer (#808), **partial** | `4ef45ca0`; tooling/tests/docs only after #812 | 17/17 unit tests pass; 450 default and 3,000 wider CPython-only generated cases satisfy deterministic framing, and three fail-closed controls detect their mismatch. No live local native fuzz run completed; no compatibility gain is claimed. [Evidence](compatibility-2026-10-21-dynamic-any-fuzzer-partial.json). |
+| 2026-10-21 module-attribute class aliases (#809), **partial** | `824dcca0`; compiler/tests/docs change after #808 | Two new alias programs emit hosted IR, nine rejection boundaries retain their contracts and 16 focused tooling tests pass. Fresh CPython 3.12.14 imports remain 141/441 with `email.header` advancing to its next blocker; the attributed pinned sweep remains 149/457 with all 24 affected modules reaching another blocker. [Evidence](compatibility-2026-10-21-module-class-alias-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5721,4 +5724,61 @@ No compiler, runtime, library, port or retained compatibility-corpus source
 changed. Imports, API execution, adapted ports, packages, timings and memory were
 not rerun and no compatibility gain is claimed from adding the harness. The
 latest fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #809: module-attribute class aliases
+
+Inspected [main `824dcca09a93f10b583e3ed166beac42bcbac376`](https://github.com/den-run-ai/pystachy/commit/824dcca09a93f10b583e3ed166beac42bcbac376)
+after [#809](https://github.com/den-run-ai/pystachy/pull/809) merged at
+2026-10-21 08:24:27 UTC. Fresh first-parent history and ancestry checks establish
+it as the only merge after #808. Implementation head `2a9c03014905d3e8fed034c296bf2a008d95bd39`
+and merged main share tree `3e27f89b1a90e9a77f3fc70b7970421636751632`.
+
+#809 makes a module-level `name = m.C` an alias of the class where the
+equivalent `name = C` after a from-import already works. It covers imported and
+aliased modules, package submodules, from-imported modules, aliases of aliases,
+qualified ordinary bases and `_thread.LockType`. The final design deliberately
+declines decorated classes, rebound/global names and aliases whose assignment may
+be observed early through same-module code or an import cycle. The remaining
+run-time alias-binding gap stays with open
+[#814](https://github.com/den-run-ai/pystachy/issues/814).
+
+[Machine-readable evidence](compatibility-2026-10-21-module-class-alias-partial.json)
+retains exact source/tree identities, commands, selected hashes, import results,
+workflow runs, review state and limitations.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| New positive alias programs | **2/2** emit hosted IR on #809 and both are rejected by `4ef45ca0`; their CPython 3.12.14 stdout matches the checked-in recordings. |
+| Rejection boundaries | **9/9** cycle/decorator/early-read/rebinding cases exit 1 and retain their recorded diagnostic-prefix contracts. |
+| Focused tooling tests | `test_import_sweep`, `test_typed_module_lowering` and `test_typed_complete`: **16/16 pass**. |
+| Fresh import sweep | On the available CPython **3.12.14** inventory, both revisions compile **141/441** isolated imports (62 overlay exclusions). There are no new or lost successes. `email.header` advances from the class-value rejection to `Charset.input_charset` field inference; `optparse` differs only by checkout path. |
+
+The local inventory is not the pinned one and is kept separate from the PR's
+attributed CPython 3.13.16 result. The final #809 review comment reports the
+pinned sweep staying **149/457**: the class-alias error is removed as the first
+blocker of 24 modules, but all 24 reach another blocker rather than becoming
+successful imports. That result is useful scope evidence, not an independent
+local rerun or 24-module compatibility gain.
+
+Exact-final-tree workflows succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39567002536) has
+**27/27 successful jobs**, [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39567002400)
+has **3/3**, and [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39567002389)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39567002607)
+each succeeded. The PR reports 205 import/circular-deviation JIT/AOT checks and
+four GC-stressed alias checks passing; those are attributed exact-tree evidence,
+not fresh local native execution.
+
+All seven review threads are resolved. Six findings produced boundary regressions;
+one claimed explicit-package-cycle bypass did not reproduce and was pinned with
+two order controls. The final no-findings Codex review covered `8a2ed20d`; final
+head `2a9c0301` only merges #808's main tree into it and has the green exact-tree
+workflow set above.
+
+Pinned CPython 3.13.16 and LLVM 18 were unavailable locally. No fresh local
+native JIT/AOT, GC-stress, fixed-point build, full `make verify`, API execution,
+adapted port, benchmark, memory run, upstream suite or CPython regrtest completed.
+Removing a first error is not an import or API pass. No uncovered bug was found,
+so no new issue was filed. The latest fully evaluated main remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
