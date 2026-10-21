@@ -21,3 +21,15 @@ ks = keys(doc)
 print(list(ks), len(ks), "a" in ks, sorted(ks))
 print(shout(keys(doc)))
 print(sum(ids({3: "x", 1: 2.5})))
+
+
+def keys_unbound(d: dict[str, Any]) -> list[str]:
+    return dict.keys(d)
+
+
+def keys_saved(d: dict[str, Any]) -> list[str]:
+    f = d.keys
+    return f()
+
+
+print(sorted(keys_unbound(doc)), sorted(keys_saved(doc)))
