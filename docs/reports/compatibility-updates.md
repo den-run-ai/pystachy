@@ -89,6 +89,9 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 module-attribute class aliases (#809), **partial** | `824dcca0`; compiler/tests/docs change after #808 | Two new alias programs emit hosted IR, nine rejection boundaries retain their contracts and 16 focused tooling tests pass. Fresh CPython 3.12.14 imports remain 141/441 with `email.header` advancing to its next blocker; the attributed pinned sweep remains 149/457 with all 24 affected modules reaching another blocker. [Evidence](compatibility-2026-10-21-module-class-alias-partial.json). |
 | 2026-10-21 dynamic `Any` integer small-box overflow (#813), **partial** | `89646780`; one runtime line and a differential test after #809 | A fresh GCC 13 UBSan negative control stops the previous runtime on `INT64_MAX + 5`; merged main boxes the same value and exits cleanly. The 10-line CPython reference matches and hosted IR emits. Exact-tree CI is green, including all three UBSan shards; pinned local LLVM 18 native evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-int-overflow-partial.json). |
 | 2026-10-21 dynamic `Any` display stores (#817), **partial** | `c5d7f9e8`; compiler/tests/docs change after #815 | Two new store programs move from empty-display rejection to hosted IR; the evaluation-order control is byte-identical and all 11 retained rejections remain rejections. The 70-input dynamic-`Any` positive/deviation corpus compiles, and the fresh import sweep stays 141/441 with no semantic first-error delta. Exact-tree CI is green; local pinned native evaluation remains incomplete. [Evidence](compatibility-2026-10-21-dynamic-any-store-partial.json). |
+| 2026-10-21 hosted mypy gate (#820), **partial** | `0536d1a8`; compiler annotations and tooling after #817 | Pinned mypy 2.4.0 accepts 45/45 source files; 84 typed-IR, seven effect-summary and four workflow-limit tests pass. A 22-program hosted oracle is byte-identical to #817. Exact-tree CI is green; no language/library gain is claimed. [Evidence](compatibility-2026-10-21-mypy-gate-partial.json). |
+| 2026-10-21 fast hosted tooling (#825), **partial** | `10aa4175`; workflows/lint/tool tests after #820 | `make check-fast` passes Ruff, mypy on 45 files, seven effect-summary and 84 typed-IR tests; actionlint accepts all eight workflows and four workflow-limit tests pass. Exact-tree CI is green; no language/library gain is claimed. [Evidence](compatibility-2026-10-21-fast-tooling-partial.json). |
+| 2026-10-21 Python tooling dependency maintenance (#668), **partial** | `f4b93961`; packaging/dependency configuration after #825 | The new packaging manifest preserves all three pins, the Dependabot pip block has the intended monthly/grouped scope, and the merged tree passes `make check-fast`, actionlint and four workflow-limit tests. The implementation head's 32 workflow jobs, including package smoke, pass. No dependency version or compatibility surface changes. [Evidence](compatibility-2026-10-21-python-tooling-dependencies-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -6102,3 +6105,55 @@ for bootstrap, native JIT/AOT, GC, runtime, FFI or recording verification.
 Exact-final-tree CI supplies that unchanged native matrix externally. The latest
 fully evaluated main remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #668: Python tooling dependency maintenance
+
+Inspected [main `f4b9396167e41616707938ca34d99f359a706622`](https://github.com/den-run-ai/pystachy/commit/f4b9396167e41616707938ca34d99f359a706622)
+after [#668](https://github.com/den-run-ai/pystachy/pull/668) merged at
+2026-10-21 16:55:37 UTC. Fresh first-parent history establishes it as the only
+merge after #825. Its tree `5f9968b68acb75deea657f047f10571e05703d54`
+combines #825 with implementation head `db656c92`; the implementation head's
+tree is `55781f9ba80a675fb7f139895301d8bb8ba427ad`, so head workflow results and
+fresh merged-tree checks are kept distinct below.
+
+#668 adds a monthly grouped Dependabot pip update block for `/tools`, capped at
+two open version-update PRs. It extracts the Packages workflow's existing
+`uv==0.12.23`, `setuptools==84.0.0` and `wheel==0.48.0` pins into
+`tools/requirements-packaging.txt`, then makes the workflow install that file.
+No dependency version changes. The remaining edits update one `AGENTS.md`
+instruction and the Dependabot comments; compiler, runtime, libraries, ports,
+tests and compatibility corpus inputs are unchanged.
+
+[Machine-readable evidence](compatibility-2026-10-21-python-tooling-dependencies-partial.json)
+retains exact source/tree identities, changed-file hashes, tool versions,
+commands, local results, implementation-head workflow jobs and limitations.
+
+| Fresh merged-tree measurement | Result and boundary |
+|---|---|
+| Packaging/Dependabot structure | PyYAML 6.0.3 parses the configuration; exactly one pip block targets `/tools`, runs monthly, groups `*` as `python-tools` and caps open updates at two. The three manifest pins exactly match their pre-#668 values, and Packages consumes the manifest. |
+| `make check-fast` under CPython 3.13.16 | Ruff clean; mypy **45/45 files**; effect summaries **7/7** and typed IR **84/84**. |
+| actionlint 1.7.12 | All **8/8 workflow files** pass with Pyflakes integration disabled, matching the repository's gate. |
+| Workflow limits | **4/4** tests pass. |
+
+The implementation head's external workflows all succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39635530466) has
+**27/27 successful jobs**, [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39635530238)
+has **3/3**, while [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39635530389)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39635530780)
+each have **1/1**. The Packages job installs the new manifest, builds, and runs
+both CPython and compiled package-smoke commands. These 32 jobs cover tree
+`55781f9b`; they are not relabeled as exact merged-tree jobs. The PR body also
+records a clean isolated trial merge with #825 and an expected same-repository
+DCO skip.
+
+No review threads exist, and Codex's final review of `db656c92` completed with
+no findings. This audit found no compatibility bug and filed no issue.
+
+This is dependency-maintenance coverage, not a language, runtime, library or
+package-API compatibility gain. Imports, APIs, adapted ports, performance and
+memory were not rerun. The package dependencies themselves are unchanged, and
+the implementation-head package-smoke job supplies the affected packaging
+execution. #817's hosted **141/441** import result remains the latest local
+count. No fresh native rebuild, JIT/AOT, GC, FFI, upstream suite or CPython
+regrtest was run for this configuration-only merge. The latest fully evaluated
+main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
