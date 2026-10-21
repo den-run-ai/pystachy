@@ -79,6 +79,14 @@ class CompareTest(unittest.TestCase):
         self.assertIn("case 0: v1 + v2", bad[0])
         self.assertEqual(len(fz.compare(1, self.cases, "aot", (0, cp), (1, cp))), 1)
 
+    def test_complex(self) -> None:
+        # (a negative number to a fractional power: CPython's complex result, Pystachy's ValueError)
+        c = [("v2 ** v19", "**", "int", "-1", "v2")]
+        cp = "0 (0.7071067811865477-0.7071067811865474j)\n"
+        ps = "0 ValueError: a negative number to a fractional power has a complex result (not supported)\n"
+        self.assertEqual(fz.compare(1, c, "jit", (0, cp), (0, ps)), [])
+        self.assertEqual(len(fz.compare(1, c, "jit", (0, "0 0.5\n"), (0, ps))), 1)
+
     def test_fails_closed(self) -> None:
         # (a line that names no case, or a case the program does not have, is a mismatch)
         cp = "0 3\n1 'a1'\n2 18446744073709551614\n"

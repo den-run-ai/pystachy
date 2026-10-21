@@ -245,6 +245,9 @@ EXPECTED = [
      "ints hold 64 bits: OverflowError where CPython's int grows (docs/language/compatibility.md)"),
     (lambda c, cp, ps: c[1] in ("%", "%=") and c[2] == "str" and ps.split(" ")[1:2] == ["TypeError:"],
      "% of an Any str (tests/deviations/dynany_str_mod.py)"),
+    (lambda c, cp, ps: c[1] in ("**", "**=") and re.fullmatch(r"\d+ \(?[-+0-9.einfa]*j\)?", cp) is not None
+     and ps.split(" ", 1)[1:] == ["ValueError: a negative number to a fractional power has a complex result (not supported)"],
+     "no complex numbers (tests/deviations/complex_pow.py)"),
 ]
 
 
