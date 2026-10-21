@@ -2239,7 +2239,7 @@ class Gen:
     def iter_ann(self, n: Node) -> str:
         return declarations_iter_ann(self, n)
 
-    def iter_item(self, n: Node) -> Node:
+    def iter_item(self, n: Node) -> Node | None:
         return declarations_iter_item(self, n)
 
     def exc_attr(self, ci: ClassInfo, name: str) -> None:

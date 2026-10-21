@@ -5993,3 +5993,60 @@ native JIT/AOT, fixed-point build, GC-stress matrix, `make verify`, package/port
 performance, memory, upstream-suite or CPython regrtest run completed. Exact-tree
 CI supplies the native matrix externally. The latest fully evaluated main remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #820: mypy gate for the hosted compiler
+
+Inspected [main `0536d1a8e009ed59fb6485dd09f2fdd4661bd68a`](https://github.com/den-run-ai/pystachy/commit/0536d1a8e009ed59fb6485dd09f2fdd4661bd68a)
+after [#820](https://github.com/den-run-ai/pystachy/pull/820) merged at
+2026-10-21 16:19:14 UTC. Fresh first-parent history establishes it as the only
+merge after #817. Merged main and final implementation head `5566cc31` share
+tree `2b788c79848a41cdeab6d081ae674762a6a0d9b1`.
+
+#820 adds pinned mypy 2.4.0, a `make typecheck` target and Lint enforcement for
+`pystachy.py` plus all of `src/` at the supported Python 3.11 bootstrap floor.
+It checks bodies without complete annotations and enables normal Optional/error
+categories, unused-ignore and redundant-cast warnings. The six compiler files
+only consolidate eight repeated local declarations, explicitly type selected
+locals and declare `gen_iter_item()` as returning `Node | None`; runtime,
+libraries, ports and the test corpus are unchanged. The gate is intentionally
+incremental because generic `gen_*` receivers remain unannotated.
+
+[Machine-readable evidence](compatibility-2026-10-21-mypy-gate-partial.json)
+retains exact source/tree identities, changed-file hashes, tool versions,
+commands, selected oracle results, workflow jobs and limitations.
+
+| Fresh local measurement | Result and boundary |
+|---|---|
+| Pinned mypy gate | mypy **2.4.0** reports **no issues in 45 source files** with the committed configuration. |
+| Focused tooling contracts | **84/84** typed-IR tests, **7/7** function-summary tests and **4/4** workflow-limit tests pass. |
+| Hosted compiler oracle | Under CPython **3.13.16**, all **22/22** selected self/runtime, reflection, formatting and unpack programs retain byte-identical IR, diagnostics and exit status against #817 while sharing the current `PYSTACHY_HOME`. |
+| Self compilation surface | Current `pystachy.py` emits **637,923 IR lines**, SHA-256 `3d1bb289…`; it is byte-identical to #817 in the oracle. This exercises annotation-sensitive self-hosting but does not execute native code. |
+
+Exact-final-tree external workflows succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39619157317) has
+**27/27 successful jobs**, [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39619157501)
+has **3/3**, and [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39619157366)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39619157315)
+each succeeded. Lint includes the new mypy step. The separate
+[Coverage workflow](https://github.com/den-run-ai/pystachy/actions/runs/39619157406)
+has **19 successful jobs** plus the expected skipped PR-only coverage-publication
+job. Across the five workflows that is **51 successes and one expected skip**;
+there are no failed or cancelled jobs.
+
+No review threads exist. The implementation PR's exact-tree report additionally
+attributes an all-identical 22-program oracle and a deliberately wrong shadow-file
+negative control that produces exactly one return-value diagnostic. Those claims
+are not relabeled as fresh local measurements. No uncovered compiler or runtime
+bug was confirmed, so no issue was filed.
+
+This is a developer-quality gain, not a Python/library compatibility gain. The
+#817 hosted import result remains **141/441** on the available CPython 3.12.14
+inventory; it was not rerun because the selected self-hosted compiler IR is
+byte-identical and no library, overlay or inventory changed. API execution,
+adapted ports, packages, performance and memory were likewise not rerun.
+
+Pinned CPython **3.13.16** was available for the hosted replay, but LLVM 18
+executables were unavailable locally. No fresh local native rebuild, JIT/AOT,
+GC-stress matrix, full `make verify`, upstream suite or CPython regrtest completed.
+Exact-tree CI supplies the native matrix externally. The latest fully evaluated
+main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

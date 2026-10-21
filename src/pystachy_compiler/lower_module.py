@@ -101,7 +101,7 @@ def lower_data(d: Data) -> str:
                 f"i64 {d.items[0].v}, i64 {d.items[1].v}, ptr {r[3]}, i64 {d.items[2].v}, ptr {r[4]}}}, align 8")
     if d.kind == "classnames":
         # the names a class's objects answer to, sorted by their bytes, each with its kind
-        es = ["{ptr, i64} {ptr " + d.refs[j] + ", i64 " + d.items[j].v + "}" for j in range(len(d.refs))]
+        es: list[str] = ["{ptr, i64} {ptr " + d.refs[j] + ", i64 " + d.items[j].v + "}" for j in range(len(d.refs))]
         return f"{d.name} = internal constant [{len(es)} x {{ptr, i64}}] [{', '.join(es)}], align 8"
     if d.kind == "dyntype":
         # a class's DynType (dynamic.py): kind, descriptor, name, O<id>, base's DynType, flags, as
@@ -116,7 +116,7 @@ def lower_data(d: Data) -> str:
     if d.kind == "classfields":
         # the fields of an object's __dict__ in their order: name, type descriptor, byte offset in
         # the class's layout (d.text) and that of its "is assigned" flag (-1: always assigned)
-        es: list[str] = []
+        es = []
         for j in range(len(d.refs) // 2):
             off = f"ptrtoint (ptr getelementptr ({d.text}, ptr null, i32 0, i32 {d.items[2 * j].v}) to i64)"
             fl = d.items[2 * j + 1].v
