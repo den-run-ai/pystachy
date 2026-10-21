@@ -12,7 +12,7 @@ for f in range(F):
 out += ["xs: list[Any] = []"]
 for k in range(K):
     out.append(f"xs.append(B{k}(1))")
-out += ["print(xs[0] == xs[0], len(xs))"]
+out += ["print(len(xs) > 0 and xs[0] == xs[0], len(xs))"]
 for f in range(F):
     out.append(f"print(filler{f}(3))")
 print("\n".join(out))

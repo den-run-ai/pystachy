@@ -1,17 +1,18 @@
 # Dynamic `Any`: a proposal to make it robust and make it scale (2026-10-21)
 
-A proposal, with the measurements behind it, for the dynamic `Any` that #761 merged and #790
-extended. It maps the reference systems (Julia, V8, Dart, PyPy, CPython, Truffle, .NET, Go,
-mypyc, gradual typing research) onto Pystachy's actual architecture and orders the work by what
-was measured. Nothing here changes the compiler, the runtime or `lib/`: the two patches in
-`patches/` are measurement experiments, not proposed code.
+A proposal, with the measurements behind it, for the dynamic `Any` that #761 merged, #790
+extended and #795 now ships `tomllib` with. It maps the reference systems (Julia, V8, Dart, PyPy,
+CPython, Truffle, .NET, Go, mypyc, gradual typing research) onto Pystachy's actual architecture
+and orders the work by what was measured. Nothing here changes the compiler, the runtime or
+`lib/`: the two patches in `patches/` are measurement experiments, not proposed code.
 
-Measured at main **`3d48ce8c`** (the merge of #790), built with `make PY=/usr/bin/python3.13`
-(fixed points: 633,208 lines of compiler IR, 18,709 of runtime IR), CPython 3.13.16, clang/LLVM
-18.1.3, on a shared 4-vCPU Linux container. Instruction counts come from callgrind and do not
-depend on the host's load; timings are medians of interleaved, core-pinned processes, and on this
-host differences under about 20% are noise. Earlier measurements cited from issues keep their own
-revisions.
+Measured at main **`1cf6a676`** (the merge of #795), built with `make PY=/usr/bin/python3.13`
+(fixed points: 635,685 lines of compiler IR, 18,709 of runtime IR), CPython 3.13.16, clang/LLVM
+18.1.3, on a shared 4-vCPU Linux container. The same measurements at `3d48ce8c` (the merge of
+#790), before #794 and #795, gave the same instruction counts, IR sizes and findings. Instruction
+counts come from callgrind and do not depend on the host's load; timings are medians of
+interleaved, core-pinned processes, and on this host differences under about 20% are noise.
+Measurements cited from issues keep their own revisions.
 
 ## Summary
 
@@ -36,9 +37,9 @@ revisions.
 4. **Five cheap steps with measured or well-bounded payoff:**
    - a differential and metamorphic fuzzer for `Any` operations, and #784's opt-in sweep as a CI
      check (a 450-expression sample already finds one undocumented mismatch class);
-   - `Any` boxes in exact 16-byte slots: today each 16-byte box takes a 24-byte slot, and the
-     experiment cut the construction time of a million boxed ints by 28% and `generic`'s heap
-     peak from 55.2 to 39.1 MiB;
+   - `Any` boxes, and closed-union boxes, in exact 16-byte slots: today each 16-byte box takes a
+     24-byte slot, and the experiment cut the time to build a million boxed values by 26% to 43%
+     and `generic`'s heap peak from 55.2 to 39.1 MiB;
    - dispatchers that `switch` on the dense class id every `DynType` already holds, instead of a
      chain of pointer comparisons: reading a field of the 128th boxed class drops from 493 to
      108 instructions, about its cost with 2 boxed classes (104 to 106);
@@ -48,10 +49,10 @@ revisions.
      threshold);
    - the `Any`-keyed dict fast paths of #780, plus constant boxes for literal keys.
 
-## 1. Where dynamic `Any` stands at `3d48ce8c`
+## 1. Where dynamic `Any` stands at `1cf6a676`
 
 **Representation.** An `Any` value is a pointer to an immutable 16-byte box
-`{DynType *t, payload}` ([runtime.c#L3192-L3244][rt-dyn]). The `DynType` holds the kind, the
+`{DynType *t, payload}` ([runtime.c#L3204-L3256][rt-dyn]). The `DynType` holds the kind, the
 payload's layout descriptor, `type(x).__name__`, the class's dense id (`cls`, the `O<id>` of
 descriptors; -1 for builtin and function types), its base and flags. `None`, `True`, `False` and
 the ints from -5 to 256 are constant boxes; other numbers allocate. Containers of `Any` values
@@ -76,11 +77,12 @@ and the descriptor walks of containers.
 |---|---|---|
 | M1 | Instructions per `obj.f0` read through `Any` (the sum it feeds allocates a box each time), receiver of the last class in the chain | 106 with 2 boxed classes, 155 with 16, **493 with 128**: about 3 more per class ahead of it in the chain |
 | M2 | Dispatcher IR, 64 classes × 32 shared field names | 34 dispatchers, **29,240 of the program's 53,179 IR lines** (about 14 per class and attribute). At 32 × 32 they are 14,904 of 27,035 lines: the other 12,131 alone stay under `PYSTACHY_JIT_INLINE`'s 20,000, so the dispatchers make `run` skip inlining for the whole program ([driver.py#L741-L751][inline]) |
-| M3 | Heap slot of a box | 24 bytes for 16 of payload: the collector adds one byte of slack to every request ([runtime.c#L193][cls], [#L396-L402][alloc]) |
-| M4 | Compile time with K comparison methods whose body does not compile for an `Any` operand (300 other functions) | K = 0, 1, 4, 16: **58, 91, 209, 697 ms**; each declined method costs one more whole-program pass ([driver.py#L70-L103][passes]) |
+| M3 | Heap slot of a box | 24 bytes for 16 of payload, for `Any` boxes and closed-union boxes (`pys_ubox`) alike: the collector adds one byte of slack to every request ([runtime.c#L193][cls], [#L396-L402][alloc]) |
+| M4 | Compile time with K comparison methods whose body does not compile for an `Any` operand (300 other functions; `pystachy ir`, best of 5) | K = 0, 1, 4, 16: **65, 104, 234, 824 ms**; each declined method costs one more whole-program pass ([driver.py#L71-L103][passes]) |
 | M5 | `x.m(f(i))` through `Any` | two class dispatches, `dyn.has.m.1` then `dyn.call.m.1` (or `dyn.callv.1` for a field), per call ([dynamic.py#L1448-L1479][method]) |
-| M6 | `a: Any = 1000`, `b: Any = int("1000")`, `print(a is b, id(a) == id(b))` | Pystachy `True False` in JIT and AOT; CPython `False False`. `is` compares ints by value ([dynamic.py#L936-L952][ident]) while `id()` gives the box's address ([runtime.c#L3647][id]) |
-| M7 | Seeded differential fuzz, 3 × 150 expressions over 37 values, 21 binary operators and 11 unary operators and builtins, JIT | one undocumented mismatch class: a `**` `TypeError` says `for **:` where CPython says `for ** or pow():` ([runtime.c#L3373-L3376][dops]); the rest are documented (`%` of an `Any` str, 64-bit overflow) or not comparable (str hashes, which CPython randomizes) |
+| M6 | `a: Any = 1000`, `b: Any = int("1000")`, `print(a is b, id(a) == id(b))` | Pystachy `True False` in JIT and AOT; CPython `False False`. `is` compares ints by value ([dynamic.py#L936-L952][ident]) while `id()` gives the box's address ([runtime.c#L3659][id]) |
+| M7 | Seeded differential fuzz, 3 × 150 expressions over 37 values, 21 binary operators and 11 unary operators and builtins, JIT | one undocumented mismatch class: a `**` `TypeError` says `for **:` where CPython says `for ** or pow():` ([runtime.c#L3385-L3388][dops]); the rest are documented (`%` of an `Any` str, 64-bit overflow) or not comparable (str hashes, which CPython randomizes) |
+| M8 | In-place operators on `Any` values that do not support them (`probes/opmsg.py`), JIT and AOT | every one names the binary operator: `for +:` where CPython says `for +=:`, `for **:` for `**=`. `pys_dyn_inplace` falls back to `pys_dyn_binop`, whose message knows only the binary symbol ([runtime.c#L3454-L3470][inplace]) |
 
 From #780 and #784 (compiler `ad19255e`): on 100,000 mixed JSONL events, AOT processing takes 1.6×
 CPython's time; about half of its instructions are `Any`-keyed dict lookups and hashing, a quarter
@@ -90,9 +92,8 @@ results are `Any`, parses 2.0× as fast as CPython runs it, at 2.5× CPython's p
 
 **Robustness record.** #772 (silent wrong comparisons through `Any`) and #781 (compile time
 doubling with display depth) were found by probes after #761 merged, not by its tests, and fixed
-in #790; 5 of #782's
-15 opt-in regressions remain, and #790 notes compile time still grows faster than linearly with
-display depth. M6 and M7 are two more findings of the same kind.
+in #790; 5 of #782's 15 opt-in regressions remain, and #790 notes compile time still grows faster
+than linearly with display depth. M6, M7 and M8 are three more findings of the same kind.
 
 ## 2. What transfers, and what does not
 
@@ -229,24 +230,29 @@ for it to be settled first.
 **B1. Boxes in exact 16-byte slots.** Allocate boxes from a 16-byte size class without the slack
 byte (a `pys_alloc_box`). The slack byte keeps an object alive through a pointer one past its end,
 which loops over arrays form; a box is immutable and read only at offsets 0 and 8, so no code forms
-one. `patches/box-16-byte-slots.diff` approximates this by requesting 15 bytes:
+one. The same holds for closed-union boxes (`pys_ubox`, 16 bytes of `{tag, payload}`).
+`patches/box-16-byte-slots.diff` approximates this by requesting 15 bytes for both:
 
-| `tools/dynany_bench.py` mode | construction, 24 → 16-byte slots | processing | heap peak (one stats run) |
+| Benchmark and mode | construction, 24 → 16-byte slots | processing | heap peak (one stats run) |
 |---|---:|---:|---:|
-| `generic 1000000` | 21.5 → 15.3 ms | 14.6 → 14.3 ms | 55.2 → 39.1 MiB |
-| `dyn 1000000` | 20.8 → 15.0 ms | 1.3 → 1.0 ms | 34.1 → 33.1 MiB (no collection) |
-| `graph 2000` | 5.3 → 4.9 ms | 23.4 → 19.3 ms | 34.2 → 34.2 MiB (no collection) |
+| `dynany_bench.py generic 1000000` | 24.9 → 18.4 ms | 17.1 → 16.2 ms | 55.2 → 39.1 MiB |
+| `dynany_bench.py dyn 1000000` | 26.5 → 17.6 ms | 2.4 → 1.8 ms | 34.1 → 33.1 MiB (no collection) |
+| `dynany_bench.py union 1000000` | 28.8 → 17.3 ms | 2.2 → 1.7 ms | 34.1 → 33.1 MiB (no collection) |
+| `dynany_bench.py graph 2000` | 6.2 → 5.6 ms | 26.8 → 22.6 ms | 34.2 → 34.2 MiB (no collection) |
+| `union_values_bench.py boxed 1000000` | 28.6 → 16.2 ms | 1.6 → 1.3 ms | 33.1 → 33.1 MiB (no collection) |
 
-Medians of 7 interleaved process pairs pinned to one core; every checksum matched. For 2,000,000
-boxed ints (`probes/boxes.py`) the peak fell from 63.2 to 56.1 MiB, with one collection instead of
-two. Gate: GC stress on every `dynany_*` case, UBSan, a test that keeps only a box's interior
-pointer alive across a collection, and `PYSTACHY_GC=stats` counts in the measurements doc.
+Medians of 7 interleaved process pairs pinned to one core; every checksum matched. (At `3d48ce8c`,
+with `Any` boxes only, the first run gave 21.5 → 15.3, 20.8 → 15.0 and 5.3 → 4.9 ms of
+construction.) For 2,000,000 boxed ints (`probes/boxes.py`) the peak fell from 63.2 to 56.1 MiB,
+with one collection instead of two. Gate: GC stress on every `dynany_*` and union case, UBSan, a
+test that keeps only a box's interior pointer alive across a collection, and `PYSTACHY_GC=stats`
+counts in the measurements doc.
 
 **B2. `Any`-keyed dicts** (#780). In order of #780's profile:
 - kind-specialized comparison and hashing in `dlook` for two boxed strs or ints (for strs, 16% of
   the pipeline's instructions in #780's experiment) and a one-call hash of a boxed str, instead of
-  `hkey` → `hval` → `hcls` → `hitem` → `pys_dyn_hash` ([runtime.c#L2873-L2893][dlook],
-  [#L3359-L3370][dynhash]);
+  `hkey` → `hval` → `hcls` → `hitem` → `pys_dyn_hash` ([runtime.c#L2885-L2905][dlook],
+  [#L3371-L3382][dynhash]);
 - a "keys are all boxed strs" flag on `dict[Any, Any]`, set at creation and cleared by the first
   other key, after which a str probe compares str bytes only, as CPython's dicts with only str keys
   do;
@@ -289,6 +295,7 @@ pointer comparisons with one `switch` on it, which LLVM can lower to a jump tabl
 | Boxed classes | Chain, receiver last | `switch`, receiver last |
 |---:|---:|---:|
 | 2 | 106 | 104 |
+| 16 | 155 | 107 |
 | 128 | 493 | 108 |
 
 (instructions per field read; the probes' outputs are identical). Arms are exact-type tests, so
@@ -298,7 +305,7 @@ and `dynany_*` cases, JIT and AOT.
 **C2. Fields through tables.** For `get.<a>`/`set.<a>`, look up the receiver's class id in a
 per-selector table of field entries (byte offset, assigned-flag offset, descriptor), taken from
 the reflection records' field tables ([internals.md#reflection][refl]), then load and box by the
-descriptor (`dyn_of` already boxes a slot by its descriptor, [runtime.c#L3548-L3564][dynof]; it
+descriptor (`dyn_of` already boxes a slot by its descriptor, [runtime.c#L3560-L3576][dynof]; it
 needs `O<id>` for objects). Code becomes constant per selector and data linear in the
 (class, field) pairs that reach a site, instead of about 14 IR lines per pair (M2). Properties and
 methods keep per-class arms or A2's entries.
@@ -341,8 +348,8 @@ Each step stands alone and has its own gate; numbers name existing issues.
 
 | Step | Items | Why now | Issues |
 |---|---|---|---|
-| 1 | A1 fuzzer, metamorphic oracle, invariants, opt-in sweep check | finds silent wrong results before users do; M6 and M7 came from probes | #782, #772 |
-| 2 | B1 exact box slots; M7's message; A6 identity rule | small, measured, independent | new |
+| 1 | A1 fuzzer, metamorphic oracle, invariants, opt-in sweep check | finds silent wrong results before users do; M6 to M8 came from probes | #782, #772 |
+| 2 | B1 exact box slots; M7's and M8's messages; A6 identity rule | small, measured, independent | new |
 | 3 | B2 `Any`-keyed dict fast paths and literal boxes | half of a dynamic-heavy workload | #780 |
 | 4 | C1 `switch` dispatch; A5 single restart for declined methods | mechanical; removes O(classes) and O(declines) costs | new |
 | 5 | A4 container crossings (allocation-site selection first) | the first failure users of `tomllib`-style code meet | #777, #487 |
@@ -385,16 +392,17 @@ python3.13 $T/proto/pystachy.py build $T/chain_128.py -o $T/switch_128
 python3 $D/probes/gen_classes.py 64 32 > $T/c64a32.py && ./pystachy ir $T/c64a32.py -o $T/c.ll
 awk '/^define internal .*@dyn\./{d=1} d{n++} /^}/{d=0} END{print n}' $T/c.ll
 # M3 and B1: copy runtime.c, runtime.py, pyext.c, pyembed.c and VERSION to $T/rt16, link lib/ and ryu/,
-# apply patches/box-16-byte-slots.diff there, then
+# apply patches/box-16-byte-slots.diff there, then (likewise for tools/union_values_bench.py boxed)
 ./pystachy build tools/dynany_bench.py -o $T/bench24
 PYSTACHY_HOME=$T/rt16 ./pystachy build tools/dynany_bench.py -o $T/bench16
 python3 $D/probes/interleave.py 7 generic 1000000 $T/bench24 $T/bench16
 PYSTACHY_GC=stats $T/bench16 generic 1000000
-# M4: one compile pass per declined comparison method
+# M4: one compile pass per declined comparison method (best of 5)
 python3 $D/probes/gen_decline.py 16 300 > $T/decline_16.py && time ./pystachy ir $T/decline_16.py -o /dev/null
-# M6 and M7
+# M6, M7 and M8
 python3.13 $D/probes/ident.py; ./pystachy run $D/probes/ident.py
 python3 $D/probes/gen_fuzz.py 1 150 > $T/fuzz1.py && python3.13 $T/fuzz1.py > $T/c.txt; ./pystachy run $T/fuzz1.py > $T/p.txt; diff $T/c.txt $T/p.txt
+python3.13 $D/probes/opmsg.py; ./pystachy run $D/probes/opmsg.py
 ```
 
 ## References
@@ -413,22 +421,23 @@ python3 $D/probes/gen_fuzz.py 1 150 > $T/fuzz1.py && python3.13 $T/fuzz1.py > $T
 - [.NET guarded devirtualization][dotnet-gdv]; [mypyc object representation][mypyc-int].
 - J. Siek et al., [Monotonic references for efficient gradual typing][monotonic], ESOP 2015.
 
-[rt-dyn]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/runtime.c#L3192-L3244
-[cls]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/runtime.c#L193
-[alloc]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/runtime.c#L396-L402
-[dlook]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/runtime.c#L2873-L2893
-[dynhash]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/runtime.c#L3359-L3370
-[dops]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/runtime.c#L3373-L3376
-[dynof]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/runtime.c#L3548-L3564
-[id]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/runtime.c#L3647
-[ident]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/src/pystachy_compiler/dynamic.py#L936-L952
-[body]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/src/pystachy_compiler/dynamic.py#L1085-L1128
-[dispatchers]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/src/pystachy_compiler/dynamic.py#L1403-L1418
-[method]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/src/pystachy_compiler/dynamic.py#L1448-L1479
-[fixpoint]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/src/pystachy_compiler/program.py#L1126-L1128
-[passes]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/src/pystachy_compiler/driver.py#L70-L103
-[inline]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/src/pystachy_compiler/driver.py#L741-L751
-[refl]: https://github.com/den-run-ai/pystachy/blob/3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15/docs/internals.md#reflection
+[rt-dyn]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/runtime.c#L3204-L3256
+[cls]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/runtime.c#L193
+[alloc]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/runtime.c#L396-L402
+[dlook]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/runtime.c#L2885-L2905
+[dynhash]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/runtime.c#L3371-L3382
+[dops]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/runtime.c#L3385-L3388
+[dynof]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/runtime.c#L3560-L3576
+[inplace]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/runtime.c#L3454-L3470
+[id]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/runtime.c#L3659
+[ident]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/dynamic.py#L936-L952
+[body]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/dynamic.py#L1085-L1128
+[dispatchers]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/dynamic.py#L1403-L1418
+[method]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/dynamic.py#L1448-L1479
+[fixpoint]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/program.py#L1126-L1128
+[passes]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/driver.py#L71-L103
+[inline]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/driver.py#L741-L751
+[refl]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/docs/internals.md#reflection
 [julia-unions]: https://docs.julialang.org/en/v1/devdocs/isbitsunionarrays/
 [julia-split]: https://julialang.org/blog/2018/08/union-splitting/
 [dart-table]: https://dart.googlesource.com/sdk/+/stable/runtime/vm/compiler/aot/dispatch_table_generator.h
