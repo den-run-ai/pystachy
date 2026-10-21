@@ -1759,16 +1759,26 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
             return targs(t)[1]
         if n.kind == "index" and t in self.classes and "__setitem__" in self.classes[t].methods and len(self.classes[t].methods["__setitem__"].ptypes) > 2:
             return self.classes[t].methods["__setitem__"].ptypes[2]
-        if base and n.kind == "index" and is_tuple(t) and n.kids[1].kind == "int" and n.kids[1].s.isdigit() and len(n.kids[1].s) < 4 and self.dyn_policy(n.line):
-            i = int(n.kids[1].s)
-            return "dyn" if i < len(targs(t)) and targs(t)[i] == "dyn" else ""  # (a tuple's Any item: pair[1][k] = {})
+        if base and n.kind == "index" and is_tuple(t) and self.dyn_policy(n.line):
+            # (a tuple's Any item, at a constant index as the tuple's subscript takes one, -1 and
+            # True too: pair[1][k] = {}, pair[-1][k] = {})
+            k = n.kids[1]
+            neg = k.kind == "unary" and k.s == "-" and k.kids[0].kind == "int"
+            d = k.kids[0].s if neg else k.s if k.kind == "int" else "1" if k.kind == "True" else "0" if k.kind == "False" else ""
+            if not d.isdigit() or len(d) > 3:
+                return ""
+            ts = targs(t)
+            j = -int(d) if neg else int(d)
+            if j < 0:
+                j += len(ts)
+            return "dyn" if 0 <= j < len(ts) and ts[j] == "dyn" else ""
     if base and n.kind == "call" and self.dyn_policy(n.line):
         # (a call's Any value, in a module that compiles Any so: f()[k] = {}, o.f().x = []. CPython
-        # calls it after it evaluates the value stored, which may bind or retype what the call
-        # reads (f(x)[k] = (x := v)), so nothing is compiled ahead: a call is Any where its
-        # function is declared to return Any, or where it calls through an Any value)
+        # calls it after it evaluates the value stored, so nothing is compiled ahead: a call is
+        # Any where its function, not a local of that name, is declared to return Any, or where
+        # it calls through an Any value)
         c = n.kids[0]
-        if c.kind == "name" and c.s in self.funcs and c.s not in self.ltype:
+        if c.kind == "name" and c.s in self.funcs and c.s not in self.ltype and c.s not in self.assigned:
             f = self.funcs[c.s]
             return "dyn" if not f.generic and f.ret == "dyn" else ""
         if c.kind != "attr":

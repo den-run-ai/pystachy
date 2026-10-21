@@ -75,6 +75,8 @@ print(cont["g"], o.kids, cont["c"])
 pair = (len(cont), lst)
 pair[1][0]["u"] = {}
 pair[1][0]["u"]["w"] = [len(pair)]
+pair[-1][0]["neg"] = []
+pair[True][0]["t"] = {}
 print(lst[0], pair[0] > 0)
 
 
