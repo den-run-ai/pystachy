@@ -444,13 +444,15 @@ def gen_deref(self, v: Val) -> Val:
 
 def gen_reboxes(self, a: str, b: str) -> bool:
     # is tuple type a tuple type b, but for items that are ints, floats or bools where b's may
-    # be None (boxed), and that are as they are otherwise
+    # be None (boxed), items that one of them holds as Any values (boxed, or unboxed with
+    # dyn_unbox's check: dynamic.py), and that are as they are otherwise
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)) or a == b:
         return False
     for i in range(len(targs(a))):
         x = targs(a)[i]
         y = targs(b)[i]
-        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y):
+        dyn = x != y and ((y == "dyn" and self.dyn_boxable(x) == "") or (x == "dyn" and self.dyn_boxable(y) == ""))
+        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn:
             return False
     return True
 

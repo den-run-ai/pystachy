@@ -50,14 +50,15 @@ STANDINS: dict[str, str] = {"binascii": "_pystachy_binascii", "_codecs": "_pysta
                             "_imp": "_pystachy_imp", "_io": "_pystachy__io", "_opcode": "_pystachy_opcode",
                             "unicodedata": "_pystachy_unicodedata", "itertools": "_pystachy_itertools",
                             "_ast": "_pystachy_ast", "_weakref": "_pystachy_weakref"}
-# the stand-ins whose objects have no attributes in CPython (a weak reference's C struct): their
-# classes' fields are the module's own, which a program can neither read, assign, find by
-# hasattr() nor reflect over, and a call of __init__ on an object cannot initialize it again
-OPAQUE: dict[str, bool] = {"_weakref": True}
+# the stand-ins whose objects have no attributes in CPython (a weak reference's C struct, and a
+# mapping proxy's, whose dict code given only the proxy must not reach): their classes' fields
+# are the module's own, which a program can neither read, assign, find by hasattr() nor reflect
+# over, and a call of __init__ on an object cannot initialize it again
+OPAQUE: dict[str, bool] = {"_weakref": True, "_pystachy_mappingproxy": True}
 # the module that CPython's types of a stand-in name as theirs (__module__, reprs), where it is
-# not the module's own: weakref.ReferenceType, ast.Constant, and _io.StringIO (every class that
-# lib's io defines is the C module _io's in CPython)
-TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast", "io": "_io"}
+# not the module's own: weakref.ReferenceType, ast.Constant, _io.StringIO (every class that lib's
+# io defines is the C module _io's in CPython), and mappingproxy, a builtin type
+TYPEMODS: dict[str, str] = {"_weakref": "weakref", "_ast": "ast", "io": "_io", "_pystachy_mappingproxy": "builtins"}
 
 
 # the kinds of nodes whose code calls no function or method of the program (Loader.raises_in())
@@ -233,13 +234,14 @@ IMPLEMENTATION = "pystachy"
 MODATTRS["sys.implementation.name"] = True
 # Pystachy's own builtin module, which only lib/types.py imports (Loader.import_stmt): CPython
 # 3.13's names of types, which lib/types.py binds, but TracebackType (lib/_pystachy_types.py's
-# class, which a with statement passes to __exit__). GenericAlias is supported only as a class body's
+# class, which a with statement passes to __exit__) and MappingProxyType (lib/_pystachy_mappingproxy.py's
+# mappingproxy, a read-only view of a dict). GenericAlias is supported only as a class body's
 # __class_getitem__ = classmethod(GenericAlias), CPython's idiom for a generic class, which defines
 # nothing in Pystachy (Gen.generic_aliases()); any other use of these names is an error
 TYPESMOD = "_pystachy_typenames"
 for _k in ("AsyncGeneratorType BuiltinFunctionType BuiltinMethodType CapsuleType CellType ClassMethodDescriptorType CodeType "
            "CoroutineType DynamicClassAttribute EllipsisType FrameType FunctionType GeneratorType GenericAlias "
-           "GetSetDescriptorType LambdaType MappingProxyType MemberDescriptorType MethodDescriptorType MethodType "
+           "GetSetDescriptorType LambdaType MemberDescriptorType MethodDescriptorType MethodType "
            "MethodWrapperType ModuleType NoneType NotImplementedType SimpleNamespace UnionType "
            "WrapperDescriptorType _GeneratorWrapper _calculate_meta coroutine get_original_bases new_class prepare_class "
            "resolve_bases").split():
@@ -248,7 +250,7 @@ MODULES[TYPESMOD] = True
 MODULES[IOMOD] = True
 GALIAS = TYPESMOD + ".GenericAlias"
 GALIASUSE = "types.GenericAlias is supported only as a class body's __class_getitem__ = classmethod(GenericAlias), CPython's idiom for a generic class: Pystachy has no generic aliases"
-TYPESUSE = "types.NAME is not supported: of the types module, Pystachy has only GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)"
+TYPESUSE = "types.NAME is not supported: of the types module's names, Pystachy has MappingProxyType, TracebackType and GenericAlias, for a class body's __class_getitem__ = classmethod(GenericAlias)"
 GALIASSUB = "subscripting class 'NAME' at run time is not supported: CPython makes NAME[...] a types.GenericAlias (its __class_getitem__ = classmethod(GenericAlias)), and Pystachy has no generic aliases"
 for _k in FLOATINFO:
     MODATTRS[_k] = True
@@ -721,7 +723,7 @@ RUNTIME: dict[str, str] = {
     # homogeneous runtime-length tuples (immutable copied slots)
     "vtuple.new": "%ptr:list[T]|R A rL|", "vtuple.from": "%ptr:%ptr,int|R A|",
     "vtuple.get": "int:%ptr,int|R|", "vtuple.list": "list[T]:%ptr|R A|", "vtuple.box": "%ptr:%ptr|R A|",
-    "vtuple.slice": "%ptr:%ptr,int,int,int|R A|",
+    "vtuple.slice": "%ptr:%ptr,int,int,int|R A|", "vtuple.concat": "%ptr:%ptr,%ptr|R A|",
     "vtuple.index": "int:%ptr,*T,#,int,int|R rL rD U?|", "vtuple.count": "int:%ptr,*T,#|R? rL rD U?|",
     # lists
     "list.new": "list[T]:int|A|", "list.new_atomic": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
@@ -872,7 +874,7 @@ RUNTIME: dict[str, str] = {
     "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.type": "str:exc|A|",
     "exc.setcause": "None:exc,exc|wO|", "exc.cause": "exc:exc|rO|", "exc.errcls": "str:int|A|",
     # exception classes as values: class objects (runtime.c's exceptions)
-    "exc.proto": "exc:str,%ptr|A I|", "exc.canon": "exc:exc|A I|", "exc.sub": "int:exc,exc,str||", "exc.module": "str:exc|A|",
+    "exc.proto": "exc:str,%ptr|A I|", "exc.canon": "exc:exc|A I|", "exc.sub": "int:exc,exc,str||", "exc.module": "str:exc|A|", "exc.setmodule": "None:%ptr,str|R I|",
     "exc.ctor": "%ptr:exc,%ptr||", "exc.make": "exc:exc,int,str,str,int,int|R A|",
     "reraise": "None:|R N|", "unwind_file": "None:file|I|", "unwind_pop": "None:|I|",
     # generators: the unwind actions a suspended generator sets aside (gen.leave) and takes up

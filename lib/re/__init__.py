@@ -115,6 +115,7 @@ This module also defines exception 'PatternError', aliased to 'error' for
 backward compatibility.
 
 """
+from types import GenericAlias
 from typing import TypeVar
 
 import _pystachy_re_specialized
@@ -1949,6 +1950,9 @@ def _code(p: SubPattern, flags: int) -> list[int]:
 class Pattern:
     """Compiled regular expression object."""
 
+    # (as _sre's: re.Pattern[str] annotates a pattern; the subscript is no object here)
+    __class_getitem__ = classmethod(GenericAlias)
+
     def __init__(self, pattern: str, flags: int, code: list[int], groups: int, groupindex: dict[str, int]) -> None:
         self.pattern = pattern
         self.flags = flags
@@ -2254,6 +2258,9 @@ def _cut(s: str, n: int) -> str:
 class Match:
     """The result of re.match() and re.search().
     Match objects always have a boolean value of True."""
+
+    # (as _sre's: re.Match[str] annotates a match; the subscript is no object here)
+    __class_getitem__ = classmethod(GenericAlias)
 
     def __init__(self, pattern: Pattern, string: str, mark: list[int], pos: int, endpos: int, lastindex: int) -> None:
         self.re = pattern

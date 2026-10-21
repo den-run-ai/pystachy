@@ -1,0 +1,12 @@
+('a', 'b', 'c') 3 ('a', 'b', 'c', 'd') ('a', 'b', 'c') ('a', 'b', 'c')
+('x', 'a', 'b', 'c') ('a', 'b', 'c', 'y', 'z') ('a', 'c') ('a', 'b', 'c', 'b', 'c') ('a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c')
+() True True True True 0
+[('tool', 'poetry'), ('tool', 'poetry', 'group')] []
+(1, 2, 3) (1, 2, 4, 5) (0, 1, 2) 6 3
+(None, 1, 1, 2) (1, 2, None, 1) (None, 1, None)
+(1.5, 2.5) (1.5, 1.5) 1.5 (1.5,)
+(True, False) (True, True)
+60 ('0', '0', '1', '2', '2') ('38', '38', '39') 2 15
+('x', 'y', 'z', 'w') ('x', 'y', 'z') False True True
+p q r 
+[exit 0]

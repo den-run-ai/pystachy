@@ -142,6 +142,10 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   to make the container a `list[Any]` from the start; a display that flows into `Any` storage is
   made one automatically. Fresh lists that a builtin method returns (`str.split()`,
   `dict.items()` of an `Any` dict) are converted, since nothing else refers to them yet.
+- **Between tuple types**: a tuple whose items one side holds as `Any` values and the other as
+  typed ones converts item by item into a new tuple: a typed item is boxed where an `Any` item is
+  declared (`tuple[int, str]` returned as `tuple[int, Any]`), and an `Any` item is checked and
+  unboxed where a typed one is, as below (`tests/programs/inference/dynany_tuple_items.py`).
 - **Out of `Any`**: `isinstance()` narrows an `Any` local or parameter to the payload's type for
   the builtin types and classes. `isinstance(x, int)` keeps the box, since a `bool` passes it
   too, but proves that its payload is an int's or a bool's: arithmetic and comparisons on it
@@ -247,6 +251,10 @@ of the original, as CPython's is.
 This is not `copy.deepcopy` itself. Running the unchanged module still needs `type(x)` as a
 value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` and
 `__reduce_ex__` by run-time names (#489), `cls.__new__(cls)`, and `object.__dict__` updates.
+
+`lib/tomllib` is a library compiled this way: CPython's `tomllib`, whose modules opt in, parses a
+document into dicts and lists of `Any` values that programs which do not opt in read
+([tomllib](../lib/compatibility.md#tomllib)).
 
 ## Deviations
 

@@ -45,6 +45,44 @@ recursive mutable storage. `ensure_ascii=False` returns non-ASCII and surrogate
 characters unchanged; writing that string follows the runtime's text-encoding
 rules. See the [prototype design and validation](../docs/json-prototype.md).
 
+## Tomllib
+
+`tomllib` is CPython 3.13.16's `Lib/tomllib` with the edits below, each marked `Pystachy port:`.
+Its modules opt in to [dynamic `Any`](../docs/dynamic-any.md), so `loads(s, *, parse_float=float)`
+returns a dict of dynamic values, of the types CPython's `tomllib` gives them: tables are dicts,
+arrays are lists, and strings, ints, floats, bools and `datetime`, `date` and `time` objects keep
+their types. A program that does not opt in reads them as such values: indexing, iteration,
+comparisons, arithmetic and printing work, and `isinstance()` or an annotation
+(`name: str = doc["project"]["name"]`) gives typed code a concrete value
+([test](../tests/programs/library/lib_tomllib.py)). `TOMLDecodeError` has CPython's messages, and an
+uncaught one's line names it `tomllib.TOMLDecodeError`
+([test](../tests/programs/library/lib_tomllib_uncaught.py)). The 62 documents of CPython's
+`Lib/test/test_tomllib/data`, and the assertions of its `test_error.py` and `test_misc.py` that
+need no binary file, `decimal`, `copy` or `test.support`, are in the differential suite
+([data](../tests/programs/upstream/upstream_tomllib_data.py),
+[errors and limits](../tests/programs/upstream/upstream_tomllib_misc.py)).
+
+- `load(fp)` reads a binary file, which Pystachy does not have: its `BinaryIO` parameter is a
+  compile-time error. Read the file as text and call `loads(f.read())`, which CPython runs too.
+- The values have dynamic `Any`'s [deviations](../docs/dynamic-any.md#deviations): an
+  annotation that receives a value of another type raises `TypeError`, and `keys()`, `values()`
+  and `items()` give lists.
+- `parse_float` is a function of one `str`, whose result is the value. One that returns a typed
+  `dict` or `list` is a compile-time error (a typed container cannot become an `Any` value); one
+  that returns an `Any` dict or list raises CPython's `ValueError`.
+
+The edits: the three modules that use `Any` hold the comment `# pystachy: dynamic-any`.
+`_parser.py` annotates tables `dict[Any, Any]` where CPython writes `dict[str, Any]`, and makes an
+empty table with a function, `_new_table()`, where CPython writes `{}`, as a typed or empty dict
+does not become an `Any` value yet ([#777](https://github.com/den-run-ai/pystachy/issues/777));
+keeps `Flags`'s flags as dict keys where CPython uses sets, which are no `Any` values yet, and its
+pending flags in a list, as a set's tuples do not hold a runtime-length tuple yet
+([#783](https://github.com/den-run-ai/pystachy/issues/783)); and declares the variable that
+`parse_basic_str()` gives one of two functions,
+`Callable[[str, Pos], tuple[Pos, str]]`, as each function is a type of its own. `_re.py` asserts that
+an offset's hour and minute groups matched, which its pattern ensures, and passes
+`str(match.group())` to `parse_float`, as a group is a `str | None`.
+
 ## `_imp` prototype
 
 The [prototype contract](../docs/prototypes/imp.md) covers recursive one-thread
@@ -520,7 +558,9 @@ atomic groups, scoped flags, escapes and Unicode character classes/case folding.
 The module and `Pattern` expose matching, searching, splitting, substitution,
 escaping and cache purging. `Match` supports group queries (up to five groups
 per `group` call), runtime-length `groups(default=None)` tuples, indexing,
-dictionaries, positions, spans and expansion.
+dictionaries, positions, spans and expansion. `re.Pattern[str]` and `re.Match[str]` annotate
+patterns and matches, as CPython's generic `_sre` types do
+([test](../tests/programs/library/lib_re_annotations.py)).
 
 - Matches, bounds (`pos`, `endpos`), group spans and pattern-error positions count
   Unicode code points. Invalid UTF-8 input retains the runtime's permissive behavior;
@@ -1008,16 +1048,47 @@ class whose subclasses' `__init__` binds their fields.
 
 `types` is Pystachy's own module for CPython's `Lib/types.py`, of which it has `TracebackType`,
 the class of the object a `with` statement passes to `__exit__()` (see [Contextlib](#contextlib)),
-and `GenericAlias` for CPython's idiom for a generic class: `__class_getitem__ = classmethod(GenericAlias)` (or
-`classmethod(types.GenericAlias)`) in a class body defines nothing in Pystachy, so the class
-compiles as it does without it ([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in
-annotations are what they are for any class, and at run time, where CPython makes them
+`MappingProxyType` and `GenericAlias`. `GenericAlias` is for CPython's idiom for a generic class:
+`__class_getitem__ = classmethod(GenericAlias)` (or `classmethod(types.GenericAlias)`) in a class
+body defines nothing in Pystachy, so the class compiles as it does without it
+([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in annotations, evaluated or
+not, name the class, as CPython does not check their arguments: types, or number, `None`,
+`True`, `False` and `...` constants (`C[1]`, `C[int, ...]`). A string argument is a forward
+reference, as elsewhere in an annotation, and any other argument must still be an annotation
+([test](../tests/programs/reflection/types_generic_alias_subscripts.py),
+[constants](../tests/programs/reflection/types_generic_alias_constants.py)); `re.Pattern` and `re.Match` follow
+the idiom, as CPython's `_sre` types are generic. At run time, where CPython makes them
 `types.GenericAlias` objects, they are a compile-time error
 ([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
 
+`MappingProxyType(d)` is a read-only view of dict `d`, CPython's `mappingproxy`
+(`lib/_pystachy_mappingproxy.py`): indexing, `in`, `len()`, iteration (which fails as the dict's
+iterator does where the dict changes size), `reversed()`, `get()`, `keys()`, `values()`, `items()`,
+`copy()`, `==` and `!=` with a dict or another view, `|` (a new dict), `str()` and `repr()` give
+CPython's results, from the dict's items as they are when the view is read; `|=` and `hash()` raise
+CPython's `TypeError` ([test](../tests/programs/library/lib_types_mappingproxy.py)). Item assignment and
+deletion are compile-time errors, where CPython raises `TypeError`
+([error test](../tests/errors/library/lib_types_mappingproxy_setitem.py)). A view has no
+attributes of its own, as CPython's has none, so code given only the view cannot reach its dict:
+`hasattr()` of its fields or of `__dict__` is false, `__init__` leaves it viewing its dict, and
+`type(view).__module__` is `builtins` ([test](../tests/programs/library/lib_types_mappingproxy_opaque.py));
+reading or assigning a field is a compile-time error, where CPython raises `AttributeError`
+([error test](../tests/errors/library/lib_types_mappingproxy_field.py)).
+
+- It takes a dict, whose key and value types are the view's (`MappingProxyType[str, int]`);
+  CPython's takes any mapping. `keys()`, `values()` and `items()` give lists, as a dict's do, and
+  `dict(view)` and `dict | view` are compile-time errors, as for other mapping objects.
+- A view is equal only to a dict or a view of an equal dict: compared with an object of another
+  class it is unequal, where CPython compares its dict with the object, whose own `__eq__`, given
+  the dict, may decide ([deviation](../tests/deviations/lib_types_mappingproxy_eq_other.py)).
+  Comparing a dict with such an object is a compile-time error.
+- Through a dynamic `Any` value, a view is an object like others: it is not iterable, and its
+  `keys()`, `values()` and `items()`, typed lists, are compile-time errors (dynamic `Any`'s
+  [deviations](../docs/dynamic-any.md#deviations)).
+
 - Any other use of `GenericAlias`, such as calling it, is a compile-time error
   ([error test](../tests/errors/reflection/types_generic_alias_call.py)).
-- The module's other names, CPython's (`MappingProxyType`, `SimpleNamespace`, `FunctionType`,
+- The module's other names, CPython's (`SimpleNamespace`, `FunctionType`,
   `MethodType`, `ModuleType`, `NoneType`, `new_class()`, `coroutine()`, ...), import as in
   CPython, also in an optional import, but any use of one is a compile-time error
   ([error test](../tests/errors/reflection/types_unsupported_name.py)): Pystachy has no such objects, or

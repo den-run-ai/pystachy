@@ -185,7 +185,8 @@ def gen_ann(self, n: Node) -> str:
         for t in ts:
             if t.startswith("!"):
                 return t
-        return self.union_type(ts)  # A | B
+        fam = self.class_family(ts)
+        return fam if fam != "" else self.union_type(ts)  # A | B
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and (is_excname(n.kids[1].s) or (n.kids[1].s in self.classes and self.classes[n.kids[1].s].exc != "")):
         # type[BaseException], as __exit__ takes the class of the exception: exctype, which is the
         # exception itself (its class is what it shows)
@@ -194,6 +195,17 @@ def gen_ann(self, n: Node) -> str:
         return self.alias_ann(n)
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.tparams:
         return self.generic_ann(n.kids[0].s, n.kids[1])
+    elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr") and self.ann(n.kids[0]) in self.galias:
+        # C[...] of a class whose body binds __class_getitem__ = classmethod(GenericAlias), CPython's
+        # idiom for a generic class (generic_aliases), which re.Pattern and re.Match follow too: the
+        # class, whose fields have one type each whatever the subscript names. CPython does not
+        # check the arguments: constants are any (C[1], C[None], C[int, ...]), and the others
+        # annotations, whose names must be bound (a string is a forward reference: Loader.qann)
+        for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
+            t = "" if is_const(x) or x.kind == "ellipsis" else self.ann(x)
+            if t.startswith("!"):
+                return t
+        return self.ann(n.kids[0])
     elif k == "index" and (n.kids[0].kind == "name" or n.kids[0].kind == "attr"):
         base = self.ann_base(n.kids[0])
         if base.startswith("!"):
@@ -251,12 +263,32 @@ def gen_ann(self, n: Node) -> str:
                 return us[0]  # Union[T]
             if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
                 return self.opt(us[0] if us[1] == "None" else us[1], [x for x in a if x.kind != "None"][0])  # Union[T, None]
-            return self.union_type(us)
+            fam = self.class_family(us)
+            return fam if fam != "" else self.union_type(us)
     if self.typing_ref(n) == "Final":
         return "!a bare Final needs a value to give its type (x: Final = v, a constant in a class body); write Final[T]"
     if self.pathlike(n):
         return "!" + PATHLIKE
     return "!unsupported type annotation"
+
+def gen_class_family(self, ts: list[str]) -> str:
+    # the type of an annotation A | B ... whose members include classes of the program derived
+    # from another member, whose type holds their objects too: the union of the others
+    # (datetime | date is date, Base | Child | Other is Base | Other); "" where there are none.
+    # A member that is a union or an optional counts by its members, as union_type flattens it
+    # (Union[Union[Base, Other], Child], or an alias of Base | Other with Child)
+    ms: list[str] = []
+    for t in ts:
+        t = self.rec_type(t)
+        if is_opt(t):
+            ms.append("None")
+            t = unopt(t)
+        ms.extend(umembers(t) if is_union(t) else [t])
+    cs = [t for t in ms if t in self.classes and self.classes[t].exc == ""]
+    drop = [c for c in cs if len([b for b in cs if b != c and self.derives(c, b)]) > 0]
+    if len(drop) == 0:
+        return ""
+    return self.union_type([t for t in ms if t not in drop])
 
 def gen_ann_base(self, b: Node) -> str:
     # what b of annotation b[...] is (a name or attribute): list, dict, tuple, set, frozenset, or
@@ -2657,12 +2689,14 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
 
 def gen_glue_field(self, o: Val, name: str) -> None:
     # a field of an object of a class of GLUE (pyobj.Object) is that module's own: its twin has others;
-    # one of OPAQUE's (weakref.ReferenceType) too, as CPython's object has no such attribute
+    # one of OPAQUE's (weakref.ReferenceType, mappingproxy) too, as CPython's object has no such
+    # attribute (named as CPython names its type: with the module of TYPEMODS, or a builtin's alone)
     ci = self.classes.get(unopt(o.t), None)
     if ci is not None and ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"'{short(ci.name)}' object has no attribute '{name}' that a program may use: the fields of Pystachy's {ci.mod}.{short(ci.name)} are its own (its methods are not)")
     if ci is not None and ci.mod in OPAQUE and self.curfn.mod != ci.mod:
-        self.err(f"'{TYPEMODS.get(ci.mod, ci.mod)}.{short(ci.name)}' object has no attribute '{name}'")
+        tshown = TYPEMODS[ci.mod] + "." + short(ci.name) if TYPEMODS.get(ci.mod, "builtins") != "builtins" else short(ci.name)
+        self.err(f"'{tshown}' object has no attribute '{name}'")
 
 def gen_fn_attr_read(self, o: Val, name: str) -> None:
     # o.name read through object o, where its class binds name to a function in its body

@@ -865,7 +865,8 @@ def gen_refl_supported(self, c: str, what: str) -> None:
     elif ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
     elif ci.mod in OPAQUE and self.curfn.mod != ci.mod:
-        self.err(f"{what} of a {TYPEMODS.get(ci.mod, ci.mod)}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own, and CPython's object has no attributes of its own")
+        tshown = TYPEMODS[ci.mod] + "." + short(c) if TYPEMODS.get(ci.mod, "builtins") != "builtins" else short(c)
+        self.err(f"{what} of a {tshown} object is not supported: its fields are Pystachy's {ci.mod} module's own, and CPython's object has no attributes of its own")
     elif ci.bad != "":
         why = ci.bad
     if why != "":
