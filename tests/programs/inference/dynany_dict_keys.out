@@ -1,0 +1,14 @@
+True literal literal missing
+overwritten: {'type': 'computed', 'id': 7} 2
+7 7 False
+deleted and stored again: {'new': 1, 'type': 'again'} 2
+KeyError 'tyPE'
+200 6633 True False
+a True False
+minus one minus two 2**61 - 1 zero 2**61 one 7
+equal numbers: {1: 'bool', 1099511627776: 'big'} 2
+big True False
+True False nan
+True 2 False
+False {'id': 2}
+[exit 0]

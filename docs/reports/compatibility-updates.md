@@ -5599,3 +5599,69 @@ remain historical. No broad dynamic-Python, PyPI, runtime-speed or peak-memory
 claim follows. Complete this checkpoint after an authorized pinned rebuild,
 selected native parity and the retained import sweep. The latest fully evaluated
 main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #812: dynamic Any dictionary key comparison and hashing
+
+Inspected [main `838aff6d161c48450da46beaa1a772fd7de90bd8`](https://github.com/den-run-ai/pystachy/commit/838aff6d161c48450da46beaa1a772fd7de90bd8)
+after [#812](https://github.com/den-run-ai/pystachy/pull/812) merged at
+2026-10-21 07:26:19 UTC. Fresh first-parent history and ancestry checks establish
+it as the only merge after #811. Final implementation head
+`ee33dd4cf06ece9aa1a1b8d05a12496aeed42848` and merged main share tree
+`09841b99c0b66843590536c1710d504d0644d1a3`.
+
+The runtime now bypasses the generic `dkeyeq`/dynamic-equality chain for equal
+boxed strings, integers and booleans of the same dynamic type in a
+`dict[Any, ...]`. String hashes take the cached-string path directly and other
+boxed keys retain dynamic hashing. Cross-type numeric equality (`1`, `1.0` and
+`True`), NaN identity, user equality and mutation during equality still fall
+back to the effect-aware generic path. A new deterministic `DICT_KEYEQ` probe
+guards that division. Sets of `Any` and the remaining [#780](https://github.com/den-run-ai/pystachy/issues/780)
+proposals are unchanged.
+
+[Machine-readable evidence](compatibility-2026-10-21-dynamic-any-dict-partial.json)
+retains exact source/tree identities, changed-file hashes, selection-manifest
+hashes, commands, results, workflow runs, issue state and limitations.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| Selected hosted compiler inputs | **102/102** common dynamic-`Any`, dictionary, JSON and tomllib positive/deviation inputs compile before and after with byte-identical IR and identical compiler messages. The new dictionary-key regression also compiles, so current main is **103/103** for this selection. |
+| Retained rejection contracts | **10/10** dynamic-`Any` rejections keep the exact exit status, stdout and diagnostic text. |
+| New differential reference | Hosted CPython 3.12.14 output, empty stderr and exit marker match `dynany_dict_keys.out` exactly. This is not a pinned-3.13 regeneration. |
+| Source contract | The merged tree contains one definition each of `dyn_keyeq`, `hdyn` and the probe's `DICT_KEYEQ` counter. A non-`-Werror` GCC syntax pass succeeds. The initial strict GCC attempt is retained as a failed toolchain-mismatch control: Clang-only pragmas, attributes and `__builtin_unpredictable` become GCC errors under `-Werror`. |
+
+The identical hosted IR is expected because #812 changes `runtime.c`, not the
+compiler-generated program IR. It is useful as a selected compiler-surface
+regression check, but does not execute or measure the fast path.
+
+Exact-final-tree external workflows succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39560000436) has
+**27/27 successful jobs**, including bootstrap, native/hosted, JIT/AOT GC,
+UBSan, Python-free, optimization-off, contracts, runtime-cache, benchmarks,
+dict probes and final `make verify`;
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39560000384)
+has **3/3** successful platform jobs; [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39560000407)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39560000415)
+each succeeded. These validate the tree merged to main but are not relabeled as
+fresh local native execution.
+
+The PR reports the retained #780 pipeline at **7,912 → 5,596 instructions per
+event (−29%)**, with the comparison and hash call chains accounting for most of
+the reduction. This audit did not reproduce callgrind, so that result remains
+attributed PR evidence rather than an independent measurement. No runtime-speed
+or memory regression claim is inferred from shared-host timing.
+
+[#780](https://github.com/den-run-ai/pystachy/issues/780) remains open for
+constant literal boxes, a str-only dictionary strategy, shared decoded-key boxes
+and a repository pipeline guard. [#796](https://github.com/den-run-ai/pystachy/pull/796)
+retains the separate number-box and broader dynamic-`Any` roadmap. The #812
+documentation also replaces the stale linear-lookup description noted at the
+#811 checkpoint. No uncovered bug was confirmed, so no new issue was filed.
+
+Pinned CPython **3.13.16** and LLVM 18 were unavailable locally. Therefore no
+fresh local native JIT/AOT, fixed-point build, GC stress, `dictprobe` execution,
+metadata-enabled isolated import sweep, callgrind measurement, full
+`make verify`, FFI/cache suite or CPython regrtest completed. Import totals and
+unrelated first errors remain historical; a runtime dictionary optimization is
+not counted as a new library import. Complete this checkpoint after an authorized
+pinned rebuild, selected native parity and the retained import sweep. The latest
+fully evaluated main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
