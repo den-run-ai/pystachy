@@ -1524,8 +1524,9 @@ def gen_refl_dict_copy(self, d: Node) -> Val:
                 nxt = self.label()
                 self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, go, nxt)
                 self.place(go)
-            v = self.coerce(self.getfield(ov, self.field(ov, fl), fl), vt)
-            self.rt("pys_dict_set", "void", [f"ptr {r.v}", "i64 " + self.to_slot(Val(self.sconst(fl), "str")), "i64 " + self.to_slot(v)], self.key_fx("str"))
+            kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers: ctype)
+            v = self.coerce(self.getfield(ov, self.field(ov, fl), fl), kv[1])
+            self.rt("pys_dict_set", "void", [f"ptr {r.v}", "i64 " + self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
             if nxt != "":
                 self.br(nxt)
                 self.place(nxt)
