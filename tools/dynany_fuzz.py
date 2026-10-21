@@ -31,6 +31,9 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# CPython, as the programs run in it: isolated, and without the DeprecationWarning of ~ of a bool,
+# which Pystachy does not give (tests/programs/upstream/upstream_bool.py), for the same result
+CPYTHON = [sys.executable, "-I", "-W", "ignore:Bitwise inversion:DeprecationWarning"]
 
 # The value pool: (source of the value, kind). A kind tells the generator what an operand is,
 # for the cases it leaves out (see allowed()).
@@ -330,7 +333,7 @@ def main() -> int:
         path = os.path.join(work, f"dynany_fuzz_{seed}.py")
         with open(path, "w") as f:
             f.write(src)
-        cp = run([sys.executable, "-I", path], work)
+        cp = run(CPYTHON + [path], work)
         bad += compare(seed, cases, "jit", cp, run(cmd + ["run", path], work))
         if aot:
             exe = os.path.join(work, f"dynany_fuzz_{seed}")

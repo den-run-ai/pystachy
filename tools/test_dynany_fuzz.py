@@ -36,12 +36,20 @@ class GeneratorTest(unittest.TestCase):
             path = os.path.join(d, "prog.py")
             with open(path, "w") as f:
                 f.write(src)
-            p = subprocess.run([sys.executable, "-I", path], capture_output=True, text=True, cwd=d)
+            p = subprocess.run(fz.CPYTHON + [path], capture_output=True, text=True, cwd=d)
         self.assertEqual(p.returncode, 0, p.stderr)
         got, other = fz.by_case(p.stdout)
         self.assertEqual(other, [])
         self.assertEqual(sorted(got), list(range(len(cases))))
         self.assertTrue(all(len(v) == 1 for v in got.values()), p.stdout)
+
+    def test_bool_inversion_warning(self) -> None:
+        # (CPython's DeprecationWarning of ~ of a bool, which Pystachy does not give, is no line)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "inv.py")
+            with open(path, "w") as f:
+                f.write("from typing import Any\nb: Any = True\nprint(0, ~b)\n")
+            self.assertEqual(fz.run(fz.CPYTHON + [path], d), (0, "0 -2\n"))
 
     def test_inplace_alias(self) -> None:
         # (an in-place case checks its invariants against its left operand as it was)
