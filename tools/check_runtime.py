@@ -20,9 +20,9 @@ disagrees with its entry is an internal error. This tool checks the table itself
     R where the op's descriptor holds such an edge: Gen.opfx), A if it reaches the allocator's slow
     path (gc_slow) other than on the way out of a raise (through a raise funnel, or the exception
     it builds, EXC_MAKERS: R stands for that),
-    U or U? if it reaches pys_obj_eq, pys_obj_cmp or pys_obj_repr (user code), rL and rD if it
-    has a # parameter and reaches eqv, opv or repr (which walk a value of any type by its
-    descriptor: the lists and dicts in it), and N if the C function is noreturn;
+    U or U? if it reaches pys_obj_eq, pys_obj_cmp, pys_obj_repr or pys_obj_iter (user code), rL
+    and rD if it has a # parameter and reaches eqv, opv or repr (which walk a value of any type by
+    its descriptor: the lists and dicts in it), and N if the C function is noreturn;
   - it has rL or wL if it reads or writes the memory of a list parameter (S of a list.* entry,
     or list[...]), rD or wD a dict's (S of dict.*, dict[...]) or a set's (S of set.*, set[...]:
     its memory counts as a dict's) and rF or wF a file's (S of
@@ -96,7 +96,7 @@ EXC_MAKERS = {"exc_line", "exc_raise", "exc_exit"}
 # functions that store another's address rather than call it: pys_eh_on the funnels' thrower,
 # pys_unwind_file the unwind action that a landing pad or an uncaught exception runs
 STORES = {"pys_eh_on": "throw_", "pys_unwind_file": "close_with"}
-USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"}
+USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr", "pys_obj_iter"}
 # a dynamic value's box in a descriptor walk (A): what its DynType holds decides what the walk
 # runs, an object's helpers among them, so that the compiler gives an op whose descriptor holds
 # an A every effect, as it does for an O (Gen.opfx). The walks of other entries do not look into

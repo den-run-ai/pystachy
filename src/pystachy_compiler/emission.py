@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.diagnostics import Rejoin, fail
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
-from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.specs import CHECKED, DYNITERS, RTL, RTSYM, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
     is_opt,
@@ -248,6 +248,8 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
         self.rt("pys_str_audit", "void", [args[0], f"ptr {self.sconst('str.' + name[8:])}"])
     if self.rtmode and "@" + name == self.curfn.ll:
         self.err(f"{name}() implements an operation that it uses: write it without that operation")
+    if name in DYNITERS:
+        self.anyiters = True  # (the runtime may iterate an object then: its __iter__ and __next__ are compiled, dyn_iterhelper)
     k = self.runtime(name)
     ts = self.rtfns[k].sig
     ll = self.rtfns[k].ll

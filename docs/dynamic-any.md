@@ -97,9 +97,10 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
 - **The DynType** is a constant that tells the value's Python type identity (`kind`), its
   `type(x).__name__`, the payload's physical layout as runtime.c's descriptor walks read it
   (`desc`), and, for an object, its class's `O<id>` (which the program's `pys_obj_eq`,
-  `pys_obj_cmp` and `pys_obj_repr` dispatch on), its base class's DynType and whether the
-  class compares, orders or hashes through its own methods, also with values of other types
-  (`DF_X`). runtime.c defines the builtin
+  `pys_obj_cmp`, `pys_obj_repr` and `pys_obj_iter` dispatch on), its base class's DynType and
+  whether the class compares, orders or hashes through its own methods, also with values of
+  other types (`DF_X`), and iterates through its `__iter__` and `__next__` (`DF_ITER`,
+  `DF_NEXT`). runtime.c defines the builtin
   DynTypes (`None`, `bool`, `int`, `float`, `str`, `list`, `dict`, `tuple`); the program
   defines one for each class whose objects it boxes, and one for each function value type.
 - **The payload** is an `int`'s, `float`'s or `bool`'s bits, or the original pointer of a
@@ -275,9 +276,10 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   compile for an `Any` value: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
   (`tests/deviations/dynany_eq_annotated_body.py`).
-- An object is not iterable through an `Any` value yet (iteration of objects is under
-  [next steps](#next-steps)): a `for` loop over one, and a pair of `dict.update()` that is one,
-  raise `TypeError` where CPython calls its `__iter__` (`tests/deviations/dynany_iter_object.py`).
+- An object whose `__iter__` is a generator function does not iterate through an `Any` value
+  yet: `TypeError`, as a generator cannot be an `Any` value, where CPython iterates it
+  (`tests/deviations/dynany_iter_generator.py`). Other objects iterate as typed code iterates
+  them: the iterator object their `__iter__` returns, or the list it returns `iter()` of.
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
@@ -384,7 +386,8 @@ lines.
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: keyword arguments and `*args` through a generic binding entry; builtin functions
   as values; `type(x)` as a class object.
-- **Protocols**: iteration of objects (`__iter__`), `__int__`/`__index__`/`__float__`, and the
-  builtins listed under [deviations](#deviations) that do not take `Any` values yet.
+- **Protocols**: generators as `Any` values (and `__iter__` generator functions),
+  `__int__`/`__index__`/`__float__`, and the builtins listed under [deviations](#deviations)
+  that do not take `Any` values yet.
 - **Guarded variants and inline caches** only where measurements justify them (#392): a
   dispatcher with one dominant case is a candidate for a guarded direct call.

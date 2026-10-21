@@ -18,8 +18,8 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import METHODS, NONEVAR, RTDATA
-from src.pystachy_compiler.syntax import Node, mk
+from src.pystachy_compiler.specs import ITERS, METHODS, NONEVAR, RANGEC, RTDATA
+from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
@@ -35,6 +35,9 @@ DF_HASH = 4
 DF_BOXID = 8
 DF_NE = 16
 DF_X = 32
+DF_ITER = 64
+DF_NEXT = 128
+DF_ITEMS = 256
 # the comparisons the program's @o.x.<class> runs with any value, by their op codes (+ 1: dyn_xhelper)
 XCMP: list[str] = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
 XOPS: list[str] = ["==", "!=", "<", "<=", ">", ">="]
@@ -109,7 +112,9 @@ def gen_dyn_class_type(self, c: str) -> str:
     # descriptor O<id> (which pys_obj_repr dispatches on), its name, its O<id>, its base's DynType,
     # and its flags: DF_EQ and DF_CMP where the class defines == or an ordering, which the program's
     # pys_obj_eq and pys_obj_cmp run then (ocmp), DF_HASH where it hashes through its __hash__ (or
-    # is unhashable: hcls). Each class that gets one is a case of the dispatchers (dyn_dispatchers)
+    # is unhashable: hcls); DF_ITER, DF_ITEMS and DF_NEXT where the program's pys_obj_iter runs its
+    # __iter__ and __next__ (oiter, onext: dyn_iterhelper sets them). Each class that gets one is a
+    # case of the dispatchers (dyn_dispatchers)
     if c in self.dyntypes:
         return self.dyntypes[c]
     ci = self.classes[c]
@@ -145,6 +150,10 @@ def gen_dyn_class_type(self, c: str) -> str:
     dt.refs = [self.sconst(d), self.sconst(short(c)), base]
     dt.items = [Val(str(DK_OBJ), "int"), Val(str(self.ocls[c]), "int"), Val(str(flags), "int")]
     self.consts.append(dt)
+    if "__iter__" in ms and ms["__iter__"].bad == "":
+        self.oiter[c] = dt  # (its iteration through Any values, where the program has any: dyn_iterhelper)
+    if self.eh and "__next__" in ms and ms["__next__"].bad == "":
+        self.onext[c] = dt  # (whose StopIteration a handler catches: exceptions are on)
     self.dynclasses.append(c)
     return name
 
@@ -155,6 +164,78 @@ def gen_dyn_xmethod(self, c: str, m: str) -> bool:
     # declaration failed, which the lenient helpers leave out (see desc)
     ms = self.classes[c].methods
     return m in ms and ms[m].bad == "" and not (ms[m].synthetic and self.is_dc(ms[m].cls))
+
+
+def gen_dyn_iterhelper(self, k: str) -> None:
+    # @o.iter.<class>(a) and @o.next.<class>(a), for k "iter:<class>" and "next:<class>": a's
+    # __iter__ and __next__, which the program's pys_obj_iter runs for the runtime's iteration of a
+    # dynamic value (pys_dyn_iter, pys_dyn_next: dyn_iterbody); the class's DynType then says so
+    c = k[k.find(":") + 1 :]
+    f = FnInfo(k[: k.find(":")], f"@o.{k[: k.find(':')]}.{c}", self.classes[c].node, "")
+    f.params = ["a"]
+    f.ptypes = [c]
+    f.ret = DYN
+    self.function(f, [mk("dyniter", k, self.classes[c].node.line, [])])
+    dt = self.oiter[c] if k.startswith("iter:") else self.onext[c]
+    flag = DF_NEXT if k.startswith("next:") else DF_ITER | DF_ITEMS if self.dyn_iter_items(c) else DF_ITER
+    dt.items[2] = Val(str(int(dt.items[2].v) | flag), "int")
+
+
+def gen_dyn_iter_items(self, c: str) -> bool:
+    # does @o.iter.<class> of class c give a list of the items (DF_ITEMS) rather than an iterator
+    # object: where its __iter__ returns iter() of a list, which is a range's own, made anew for
+    # each iteration (an iterator object's __next__ would need exceptions on, which a program may
+    # not have for its ranges), or where no list iterator class is loaded (one that iter() reads)
+    return self.classes[c].methods["__iter__"].iters and (c == RANGEC or ITERS + "$list_iterator" not in self.classes or not self.eh)
+
+
+def gen_dyn_iterbody(self, k: str) -> None:
+    # the body of @o.iter.<class> or @o.next.<class> (dyn_iterhelper), as typed code iterates an
+    # object (obj_iterator): for __iter__, the iterator object it returns, boxed, or an iterator
+    # over the list it returns iter() of, which sees the list's changes as CPython's list iterator
+    # does (a range's: its numbers, as a list of Any values, DF_ITEMS: dyn_iter_items); for
+    # __next__, its item, boxed, or null where it raises StopIteration. TypeError where CPython's
+    # iter() raises it, or where what is returned cannot be an Any value (a generator)
+    c = k[k.find(":") + 1 :]
+    line = self.line
+    a = self.read(mk("name", "a", line, []))
+    if k.startswith("next:"):
+        st = self.stop_catch()
+        v = self.next_in(a, st)
+        self.place(self.label())
+        self.dyn_iterret(c, v)
+        end = self.label()
+        self.stop_landing(st, end)
+        self.place(end)
+        self.ret_(Val("null", DYN))
+        return
+    f = self.classes[c].methods["__iter__"]
+    if f.gen:
+        self.raise_("TypeError", self.sconst(f"iterating a '{short(c)}' object through an Any value is not supported: its __iter__ is a generator, which cannot be an Any value"))
+        return
+    it = self.protocol(a, "__iter__", [])
+    if f.iters and not self.dyn_iter_items(c):
+        self.dyn_iterret(c, self.iter_obj("list_iterator", [it]))
+    elif f.iters and elem(it.t) == DYN:
+        self.ret_(self.dyn_box(it))
+    elif f.iters:
+        item = made_var("__item", line)
+        self.ret_(self.dyn_box(self.listcomp(mk("listcomp", "", line, [mk("name", "__item", line, []), item, self.vnode(it)]), "list[dyn]")))
+    elif it.t == DYN or self.is_iterator(unopt(it.t)):
+        self.notnone(it, "TypeError: iter() returned non-iterator of type 'NoneType'")
+        self.dyn_iterret(c, Val(it.v, unopt(it.t)))
+    else:
+        self.raise_("TypeError", self.sconst(f"iter() returned non-iterator of type '{tname(it.t)}'"))
+
+
+def gen_dyn_iterret(self, c: str, r: Val) -> None:
+    # return r, what class c's __iter__ or __next__ gave, as an Any value, or raise the TypeError
+    # that names why it cannot be one
+    why = self.dyn_boxable(self.rec_type(r.t))
+    if why != "":
+        self.raise_("TypeError", self.sconst(f"iterating a '{short(c)}' object through an Any value is not supported: {why}"))
+        return
+    self.ret_(self.dyn_box(r))
 
 
 def gen_dyn_xhelper(self, c: str) -> None:

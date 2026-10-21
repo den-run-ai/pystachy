@@ -108,6 +108,10 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_widened as dynamic_dyn_widened,
     gen_dyn_xbody as dynamic_dyn_xbody,
     gen_dyn_xhelper as dynamic_dyn_xhelper,
+    gen_dyn_iterbody as dynamic_dyn_iterbody,
+    gen_dyn_iter_items as dynamic_dyn_iter_items,
+    gen_dyn_iterhelper as dynamic_dyn_iterhelper,
+    gen_dyn_iterret as dynamic_dyn_iterret,
     gen_dyn_xmethod as dynamic_dyn_xmethod,
     gen_empty_ctor as dynamic_empty_ctor,
     gen_rtdata as dynamic_rtdata,
@@ -823,6 +827,7 @@ from src.pystachy_compiler.lowering import (
 from src.pystachy_compiler.lower_module import (
     gen_cextern as lower_module_cextern,
     gen_dispatch as lower_module_dispatch,
+    gen_dispatch_iter as lower_module_dispatch_iter,
     gen_extern_decl as lower_module_extern_decl,
     gen_gen_module as lower_module_gen_module,
     gen_lower_module as lower_module_lower_module,
@@ -1136,6 +1141,9 @@ class Gen:
         self.hcls: dict[str, bool] = {}  # those of them that keys hash through the program (H<id>: obj_hash)
         self.one: dict[str, bool] = {}  # those whose != a dynamic value runs through the program (@o.ne: pys_dyn_ne)
         self.xobj: dict[str, bool] = {}  # those whose comparisons with a dynamic value of another type run their methods (@o.x: dyn_xhelper)
+        self.oiter: dict[str, Data] = {}  # those with __iter__, by their DynTypes, which the runtime runs for a dynamic value (@o.iter: dyn_iterhelper)
+        self.onext: dict[str, Data] = {}  # those with __next__ (@o.next)
+        self.anyiters = False  # the program iterates dynamic values, which may be objects (DYNITERS: gen_rt)
         self.lenient = False
         self.uflags: dict[str, bool] = {}
         self.lflag: dict[str, str] = {}
@@ -1411,6 +1419,18 @@ class Gen:
 
     def dyn_xhelper(self, c: str) -> None:
         return dynamic_dyn_xhelper(self, c)
+
+    def dyn_iterhelper(self, k: str) -> None:
+        return dynamic_dyn_iterhelper(self, k)
+
+    def dyn_iterbody(self, k: str) -> None:
+        return dynamic_dyn_iterbody(self, k)
+
+    def dyn_iter_items(self, c: str) -> bool:
+        return dynamic_dyn_iter_items(self, c)
+
+    def dyn_iterret(self, c: str, r: Val) -> None:
+        return dynamic_dyn_iterret(self, c, r)
 
     def dyn_xbody(self, c: str) -> None:
         return dynamic_dyn_xbody(self, c)
@@ -2811,8 +2831,8 @@ class Gen:
     def cextern(self, f: FnInfo, at: bool = False) -> None:
         return lower_module_cextern(self, f, at)
 
-    def pyext(self) -> list[str]:
-        return lower_module_pyext(self)
+    def pyext(self, iters: bool) -> list[str]:
+        return lower_module_pyext(self, iters)
 
     def untold(self, f: FnInfo, ts: list[str], how: str) -> None:
         return functions_untold(self, f, ts, how)
@@ -3068,6 +3088,9 @@ class Gen:
 
     def dispatch(self, op: str) -> None:
         return lower_module_dispatch(self, op)
+
+    def dispatch_iter(self) -> bool:
+        return lower_module_dispatch_iter(self)
 
     def check_special(self, f: FnInfo) -> None:
         return statements_check_special(self, f)

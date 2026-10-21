@@ -701,22 +701,26 @@ for _j in range(len(FX)):
 # graphs show). A function of runtime.py has R where it may raise in the linked runtime: a raise
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
 # result too long in join and replace, where CPython raises OverflowError too
+# the runtime functions that may iterate a dynamic value, an object's through the program's
+# pys_obj_iter (Gen.anyiters)
+DYNITERS: dict[str, bool] = {"pys_dyn_iter": True, "pys_dyn_list": True, "pys_dyn_strs": True, "pys_dyn_unpack": True,
+                             "pys_dyn_update": True, "pys_dyn_inplace": True, "pys_dyn_contains": True}
 RUNTIME: dict[str, str] = {
     # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
     # any type, so that an operation on one may run the program's code (an object's __repr__,
-    # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
+    # __eq__, __lt__, __hash__, __iter__ or __next__: U) and raise; boxing a number allocates (A), but the boxes of
     # -5..256 are constants
     "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A|",
     "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
-    "dyn.binop": "%ptr:%ptr,%ptr,int|R A rL|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I rL wL rD|", "dyn.unary": "%ptr:%ptr,int|R A|",
+    "dyn.binop": "%ptr:%ptr,%ptr,int|R A rL|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I rL wL rD U|", "dyn.unary": "%ptr:%ptr,int|R A|",
     "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
-    "dyn.iter": "%ptr:%ptr|R A rD|", "dyn.next": "%ptr:%ptr|R A I rL rD|",
-    "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I rL rD|",
+    "dyn.iter": "%ptr:%ptr|R A I rD U|", "dyn.next": "%ptr:%ptr|R A I rL rD U|",
+    "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I rL rD U|",
     "dyn.slice": "%ptr:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
-    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I rL rD|", "dyn.strs": "list[str]:%ptr|R A I rL rD|", "dyn.id": "int:%ptr||",
+    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I rL rD U|", "dyn.strs": "list[str]:%ptr|R A I rL rD U|", "dyn.id": "int:%ptr||",
     # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE), as does
     # the queue of the fire functions of references whose referents a collection found dead
     "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",
@@ -884,7 +888,7 @@ RUNTIME: dict[str, str] = {
     "gen.enter": "int:%ptr|I|", "gen.leave": "%ptr:int|A I|",
     "gen.ignored": "None:str,%ptr|A I|", "gen.unraisable": "None:exc,str,%ptr|U|", "gen.closed": "exc:|I|",
     "personality": "%i32:%i32,%i32,int,%ptr,%ptr|I|",
-    "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|U|", "exit_hook": "None:%ptr|I|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
+    "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|U|", "exit_hook": "None:%ptr|I|", "iter_hook": "None:%ptr|I|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
     # files and the standard streams
     "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
     "file.read": "str:S,int|R A I rF wF|", "file.readline": "str:S|R A I rF wF|", "file.readlines": "list[str]:S|R A I rF wF|",

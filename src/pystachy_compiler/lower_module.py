@@ -243,7 +243,7 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
     if f.lib == "python" and f.lib not in LIBS:
         LIBS.append(f.lib)
 
-def gen_pyext(self) -> list[str]:
+def gen_pyext(self, iters: bool) -> list[str]:
     # pystachy ext: in place of @main, what pyext.c calls. @pyx.init runs the module's code and
     # each public function of the main module gets @pyx.f.<name>(ptr slots, ptr err): its
     # arguments in i64 slots, its result as one; a raise is caught there (none crosses CPython's
@@ -256,7 +256,8 @@ def gen_pyext(self) -> list[str]:
     pad = ["lp:", "  %x = landingpad { ptr, i32 } catch ptr null", "  %ue = extractvalue { ptr, i32 } %x, 0",
            "  %e = call ptr @pys_exc_begin(ptr %ue, i64 %mark)", "  call void @pys_exc_restore(ptr %prev)"]
     o.extend(["declare void @pyx_argv()", "declare ptr @pyx_call(i64, ptr, i64, ptr)", "define ptr @pyx_init() personality ptr @pys_personality {",
-              f"  call void @pys_init_lib(ptr @pys.roots, i64 {len(self.gcroots)})", "  call void @pyx_argv()", "  call void @pys_eh_on()", "  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()",
+              f"  call void @pys_init_lib(ptr @pys.roots, i64 {len(self.gcroots)})", "  call void @pyx_argv()", "  call void @pys_eh_on()"]
+             + (["  call void @pys_iter_hook(ptr @pys.obj.iter)"] if iters else []) + ["  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()",
               "  invoke void @main.init() to label %ok unwind label %lp", "ok:", "  ret ptr null"] + pad + ["  ret ptr %e", "}"])
     tab: list[str] = []
     letter = {"int": "i", "float": "f", "bool": "b", "str": "s", "None": "n"}
@@ -370,6 +371,35 @@ def gen_dispatch(self, op: str) -> None:
     self.out.append("  unreachable")
     self.out.append("}")
 
+def gen_dispatch_iter(self) -> bool:
+    # @pys.obj.iter(class id, op, a), which main hands the runtime (pys_iter_hook) for its
+    # iteration of a dynamic value's object (pys_dyn_iter, pys_dyn_next): op 0 runs
+    # @o.iter.<class>, a's __iter__, op 1 @o.next.<class>, a's __next__ (oiter, onext:
+    # dyn_iterhelper), each giving a box (null at StopIteration). None where no class has a helper
+    # (no DynType then says DF_ITER or DF_NEXT): False
+    cs = [c for c in self.oiter if f"@o.iter.{c}" in self.compiled]
+    ns = [c for c in self.onext if f"@o.next.{c}" in self.compiled]
+    if len(cs) + len(ns) == 0:
+        return False
+    self.out.append("define internal i64 @pys.obj.iter(i64 %c, i64 %op, i64 %a) {")
+    self.out.append("entry:")
+    self.out.append("  %pa = inttoptr i64 %a to ptr")
+    self.out.append("  %isnext = icmp ne i64 %op, 0")
+    self.out.append("  br i1 %isnext, label %next, label %iter")
+    for op in ["iter", "next"]:
+        self.out.append(f"{op}:")
+        self.out.append(f"  switch i64 %c, label %none [{' '.join([f'i64 {self.ocls[c]}, label %{op}{self.ocls[c]}' for c in (cs if op == 'iter' else ns)])}]")
+        for c in cs if op == "iter" else ns:
+            i = self.ocls[c]
+            self.out.append(f"{op}{i}:")
+            self.out.append(f"  %{op}r{i} = call ptr @o.{op}.{c}(ptr %pa)")
+            self.out.append(f"  %{op}x{i} = ptrtoint ptr %{op}r{i} to i64")
+            self.out.append(f"  ret i64 %{op}x{i}")
+    self.out.append("none:")
+    self.out.append("  unreachable")
+    self.out.append("}")
+    return True
+
 def gen_gen_module(self) -> list[str]:
     # what generators need of the module (docs/internals.md#generators): LLVM's coroutine
     # intrinsics, and pys.gen.drop, which closes a generator a loop owns as the loop is left and
@@ -428,6 +458,7 @@ def gen_lower_module(self) -> str:
     roots = ", ".join([f"ptr {g}" for g in self.gcroots])
     if not self.rtmode:
         hdr.append(f"@pys.roots = private constant [{len(self.gcroots)} x ptr] [{roots}]")
+    iters = self.dispatch_iter() if not self.rtmode else False  # (objects' iteration through dynamic values, if any)
     for d in self.consts:
         hdr.append(lower_data(d))
     hdr.extend(self.out)
@@ -453,8 +484,10 @@ def gen_lower_module(self) -> str:
         hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
         hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775791}}")
         return "\n".join(hdr) + "\n"
+    if iters:
+        hdr.append(runtime_decl("iter_hook"))
     if self.ext != "":
-        return "\n".join(hdr + self.pyext()) + "\n"
+        return "\n".join(hdr + self.pyext(iters)) + "\n"
     # pys_init gets the GC roots: main's frame address bounds the stack scan (it also
     # covers @main.init if inlined here) and the table of pointer-typed globals
     hdr.append(runtime_decl("init"))
@@ -473,6 +506,8 @@ def gen_lower_module(self) -> str:
         hdr.append("  call void @pys_eh_on()")  # (from now on, the runtime raises exceptions)
     if hook != "":
         hdr.append(f"  call void @pys_exit_hook(ptr {hook})")
+    if iters:
+        hdr.append("  call void @pys_iter_hook(ptr @pys.obj.iter)")  # (before any code iterates an object through Any)
     hdr.append("  call void @main.init()")
     hdr.append("  call void @pys_finish()")
     hdr.append("  ret i32 0")

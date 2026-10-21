@@ -573,6 +573,8 @@ def gen_stmt(self, n: Node) -> None:
         self.dyn_body(n.s)  # (a dispatcher of dynamic values: dynamic.py)
     elif k == "dynx":
         self.dyn_xbody(n.s)  # (a class's comparisons with dynamic values of other types: dynamic.py)
+    elif k == "dyniter":
+        self.dyn_iterbody(n.s)  # (an object's __iter__ or __next__, for a dynamic value's iteration: dynamic.py)
     elif (k == "assign" or k == "annassign") and n.kids[-1].kind == "yield" and n.kids[-1].s == "from" and (k == "annassign" or len(n.kids) == 2):
         # r = yield from g(): what the generator g() makes returns
         v = self.yield_from(n.kids[-1].kids[0])

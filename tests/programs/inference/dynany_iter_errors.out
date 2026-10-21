@@ -1,0 +1,6 @@
+bad TypeError: iter() returned non-iterator of type 'list'
+boom 1
+boom ValueError: boom at 2
+none TypeError: 'NoIter' object is not iterable
+list ValueError: boom at 2
+[exit 0]
