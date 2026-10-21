@@ -14,40 +14,53 @@ counts come from callgrind and do not depend on the host's load; timings are med
 interleaved, core-pinned processes, and on this host differences under about 20% are noise.
 Measurements cited from issues keep their own revisions.
 
+**Revised after review (2026-10-21).** A review of `81527522` corrected these points, now in the
+text: the no-deoptimization claim is scoped to local specializations that re-check what they
+assume; inline caches are deferred, not ruled out; A1's containment oracle is `y is x or y == x`,
+and its hash and ordering laws hold only for generated classes that obey them; #797's identity fix
+is separate from tagging; A4 drops checked views, which #487 forbids; A2 specifies operation
+semantics before a slot ABI; and the order of work (section 5) is the review's.
+
 ## Summary
 
 1. **Pystachy is a closed world whose classes never change.** Both `build` and `run` compile the
    whole program before it runs (`run` hands it to `lli`; there is no tiering, profiling or code
    loading, #707/#704/#104), and a class's fields and methods are fixed. So a test of a box's
-   `DynType` is a *complete* guard: unlike V8's maps or CPython's type version tags, nothing can
-   invalidate it, and no deoptimization is ever needed. Every specialization can be a diamond
-   whose other branch is the generic path, chosen before any effect, as #108 requires.
+   `DynType` settles the receiver's class, layout and methods for good: unlike V8's maps or
+   CPython's type version tags, nothing invalidates those facts. It settles nothing else: a
+   callable field, a global, a container's contents or its storage can change across any call.
+   Local specializations therefore need no frame deoptimization or online compilation, provided
+   each re-checks what it assumes, falls back to the generic path before any effect without
+   replaying one, and still captures a callable before evaluating its arguments, as the compiler
+   does today and #108 requires.
 2. **Which references transfer.** Julia (inference, union splitting, unboxed representations)
    and Dart's AOT (closed-world type flow analysis, a global dispatch table, call-site state kept
    as data) transfer directly. PyPy's storage strategies transfer to `list[Any]` and
    `dict[Any, Any]`. CPython supplies type slots, a "str keys only" dict mode and PEP 659's
    cheap-guard-plus-fallback shape. V8 transfers only as *offline* feedback (profiles, as
    `tools/re_specialize.py` already does for regexes) and as its small-integer tagging; its
-   hidden classes are already Pystachy's fixed class layouts.
+   hidden classes are already Pystachy's fixed class layouts. Inline caches are deferred, not
+   ruled out: fixed layouts do not tell which receiver dominates a site, and Dart's AOT uses
+   switchable calls for dynamic receivers. Switches (C1) are the first experiment.
 3. **Order the work by the measurements, not by the references.** On the dynamic-heavy pipeline
    of #780, `Any`-keyed dict lookups and hashing take about half of the instructions, box
    allocation and collection a quarter, dispatchers and boxing a tenth. So: a semantics harness
-   first (robustness), then the data path (boxes, `Any`-keyed dicts), then dispatch structure,
-   then compile-time passes, and guarded speculation last, under #392's reopen criteria.
-4. **Five cheap steps with measured or well-bounded payoff:**
-   - a differential and metamorphic fuzzer for `Any` operations, and #784's opt-in sweep as a CI
-     check (a 450-expression sample already finds one undocumented mismatch class);
-   - `Any` boxes, and closed-union boxes, in exact 16-byte slots: today each 16-byte box takes a
-     24-byte slot, and the experiment cut the time to build a million boxed values by 26% to 43%
-     and `generic`'s heap peak from 55.2 to 39.1 MiB;
+   and two bug fixes first, then the data path (`Any`-keyed dicts, exact box slots) beside a small
+   dispatch change, then compile-time passes, JSON storage and operation tables; tagging, storage
+   strategies and speculation only once those are measured, under #392's reopen criteria.
+4. **Near-term steps with measured or well-bounded payoff**, none yet shown to speed up a whole
+   application:
+   - a bounded differential and metamorphic harness for `Any` operations with a corrected
+     oracle, #784's opt-in sweep as a CI check, and focused fixes of #797 and #798;
+   - the `Any`-keyed dict fast paths of #780, plus constant boxes for literal keys;
    - dispatchers that `switch` on the dense class id every `DynType` already holds, instead of a
-     chain of pointer comparisons: reading a field of the 128th boxed class drops from 493 to
-     108 instructions, about its cost with 2 boxed classes (104 to 106);
-   - field reads and writes through `Any` driven by the reflection records' field tables, so
-     dispatcher code stops growing as classes × attributes (14 IR lines per pair today: 55% of a
-     64-class, 32-field probe, and enough to push programs past the JIT's 20,000-line inlining
-     threshold);
-   - the `Any`-keyed dict fast paths of #780, plus constant boxes for literal keys.
+     chain of pointer comparisons: in a synthetic probe, reading a field of the chain's last
+     class at 128 boxed classes drops from 493 to 108 instructions;
+   - exact 16-byte box slots from a dedicated allocator: today each 16-byte box takes a 24-byte
+     slot, and the experiment's 15-byte requests built a million boxed values 26% to 43% faster
+     and cut `generic`'s heap peak from 55.2 to 39.1 MiB (a construction microbenchmark);
+   - one compile pass for all declined comparison methods, and #804's class aliases, which are
+     independent of the rest.
 5. **Diagrams:** today's pipeline is in section 1; the proposed pipeline across the compiler, both
    build modes and the runtime, the four dispatch levels of an operation on an `Any` value and the
    layout of a `dyn` value are under [Design at a
@@ -56,15 +69,18 @@ Measurements cited from issues keep their own revisions.
    operations through `Any` still run faster (a field read 21×, a method call 4×, an int sum 3.5×);
    `tomllib` parses 2.7× as fast. CPython wins where an `Any` loop hashes and compares keys parsed
    from data and boxes new numbers: it processes #780's record pipeline 1.57× as fast, although
-   Pystachy's faster decoding makes the whole AOT run 1.24× as fast. Peak RSS is 2.0 to 2.6 times
-   CPython's. See [Against CPython](#against-cpython).
+   Pystachy's faster decoding makes a whole run of the prebuilt AOT executable 1.24× as fast (the
+   build itself not counted). Peak RSS is 2.0 to 2.6 times CPython's. See [Against
+   CPython](#against-cpython).
 7. **Library reach is not what dynamic `Any` buys today:** with the comment in every stdlib module,
    150 of 457 modules import instead of 149: outside `Any` annotations and displays of mixed items,
-   the comment leaves unannotated code as it was. C modules (220 modules, #491) and the class model
-   (#7) block far more. 32 modules stop at three lines that use a class as a value: two aliases
+   the comment leaves unannotated code as it was. That measures today's opt-in behavior, not what
+   dynamic typing may do for libraries later; stdlib compatibility and dynamic-`Any` optimization
+   stay separate workstreams. C modules (220 modules, #491) and the class model (#7) block far
+   more. 32 modules stop first at three lines that use a class as a value: two aliases
    (`Charset = _charset.Charset`), which a loader change admits with no `Any` at all (#804), and
-   `copyreg`'s table keyed by types, which needs classes as values (#805). See [Library
-   reach](#library-reach) and group E.
+   `copyreg`'s table keyed by types, which needs canonical class values (#805). Those counts are
+   first blockers removed, not working imports. See [Library reach](#library-reach) and group E.
 
 ## 1. Where dynamic `Any` stands at `1cf6a676`
 
@@ -181,7 +197,7 @@ compares keys parsed from data and boxes new numbers:
 |---|---:|---:|---|
 | #780's record pipeline, 100,000 mixed JSONL events: processing, the `Any`-heavy loop | 102 ms | 160 ms | CPython 1.57× as fast (#780: 101 against 165 ms) |
 | the same: decoding (`json.loads()` and the copy into `Any` storage) | 599 ms | 363 ms | AOT 1.65× as fast |
-| the same: one pass end to end, with start-up and compilation | 755 ms | 607 ms (AOT), 957 ms (JIT) | AOT 1.24× as fast, JIT 0.79× |
+| the same: one pass end to end with process start-up: the prebuilt AOT executable (its build not counted), and the JIT with its compilation | 755 ms | 607 ms (AOT), 957 ms (JIT) | AOT 1.24× as fast, JIT 0.79× |
 | the same: peak RSS | 136 MiB | 269 MiB (AOT), 329 MiB (JIT) | 2.0× and 2.4× CPython's |
 | `tomllib.loads()` of #784's 526 KB document | 187 ms | 70 ms | AOT 2.66× as fast (#784: 2.0×), at 41 against 16 MiB peak RSS |
 | `tools/dynany_bench.py graph`: 2,000 object graphs deep-copied and checked through `Any` | 147 ms | 27 ms | AOT 5.5× as fast |
@@ -211,8 +227,8 @@ dict whose keys are all strs compares them in one specialized loop (the kernel a
 to 0.95× with such keys). Every count above 256, token sum and float stored into `Any` storage takes
 a new box, and each collection scans the live heap: 11 collections took 154 ms of one pass with
 135 MiB live (`PYSTACHY_GC=stats`), while the kernels' 25 took 3.2 ms. CPython frees short-lived
-numbers by reference count. B2, B1 and B3 address these, in that order; the dispatchers that C1 and
-C2 change are a tenth of this workload.
+numbers by reference count. B2 and B1 address the first two, and B3 the boxes once A6 settles
+identity; the dispatchers that C1 and C2 change are a tenth of this workload.
 
 ### Library reach
 
@@ -252,25 +268,31 @@ everyday idioms.
 | CPython | type slots; [PEP 659][pep659] specialization with a cheap guard and a generic fallback; dicts with only str keys; small-int cache | slots give one definition per operation (A2); the str-keys mode is B2; the small-int cache is already copied (-5 to 256) | A2, B2, D1 |
 | Truffle | [DSL specializations][truffle-dsl] with guards and a generic fallback | a declarative table of each operation's cases drives the fuzzer's coverage and the compiler's fast paths; partial evaluation does not apply | A1, A2 |
 | V8 | hidden classes and transitions | already Pystachy's fixed class layouts: nothing to add | non-goal |
-| V8 | inline caches, feedback, speculation, deoptimization | no online compilation, and guards cannot be invalidated: use offline profiles and diamonds instead | D1, D2 |
+| V8 | inline caches, feedback, speculation, deoptimization | no online compilation: offline profiles and diamonds (D1); caches deferred, not ruled out, since fixed layouts do not tell which receiver dominates a site (D2) | D1, D2 |
 | V8, mypyc, OCaml | small integers tagged in the pointer ([mypyc][mypyc-int]) | fits the conservative, non-moving collector; V8's pointer compression does not (the C runtime and every container slot hold full 64-bit pointers) | B4 |
 | .NET, HotSpot | [guarded devirtualization][dotnet-gdv]: a profile's dominant type tested, its target inlined, the virtual call as fallback | exactly D1's shape | D1 |
 | Go | interface values `{itab, data}`; escape analysis keeps conversions off the heap | #488's tables; B3 | A2, B3 |
-| Gradual typing | proxies, transient checks, [monotonic references][monotonic] for typed mutable data seen through a dynamic type | the typed-container crossing of #777 and #487's item 6 is this problem | A4 |
+| Gradual typing | proxies, transient checks, [monotonic references][monotonic] for typed mutable data seen through a dynamic type | the typed-container crossing of #777 and #487's item 6 is this problem; checked writes are out, since #487 forbids store errors introduced by annotations | A4 |
 | LuaJIT, SBCL, Chez | a tracing JIT and NaN-boxing (LuaJIT), compilation at run time (SBCL, Chez) | need code generation at run time; NaN-boxing cannot hold 64-bit ints unboxed | non-goal |
 
 Where this proposal departs from the general advice in the research it builds on:
 
 - **"Start with small inline caches."** For a selector known at compile time, a `switch` on a dense
-  class id (C1) or a table (C2, C3) does an inline cache's job with no mutable state and no miss
-  handler, and the measured dispatch share is about a tenth. Caches pay off where the selector is
-  itself a run-time value: `getattr(o, name)`, `setattr` and `__dict__` access (D2).
-- **"Before full frame deoptimization."** Not needed at all here: guards are complete and the
-  fallback is the generic path, selected before any effect. Deoptimization becomes relevant only
-  with online speculative compilation, which #392 parks.
+  class id (C1) is the first experiment: no mutable state, no miss handler, and the measured
+  dispatch share is about a tenth. Fixed layouts remove shape transitions but not the question of
+  which receiver dominates a site, so a small cache may still help a constant-name call on skewed
+  receivers (Dart's AOT uses switchable calls for dynamic receivers), besides run-time selectors
+  such as `getattr(o, name)`. Caches are deferred, not ruled out (D2).
+- **"Before full frame deoptimization."** Not needed for the specializations proposed here: each
+  checks its assumptions locally and falls back to the generic path before any effect, without
+  replaying one. A `DynType` check covers the receiver's class, layout and methods; what a call
+  can change (callable fields, globals, container contents, storage strategies) is read after
+  the check or checked again. Frame deoptimization becomes relevant only with online speculative
+  compilation, which #392 parks.
 - **"LLVM supplies GC integration and stack maps."** Those serve precise or moving collectors.
-  Pystachy's collector is conservative and non-moving by design, which is what makes box
-  elimination (B3) and tagging (B4) cheap: no stack map has to learn which slots hold pointers.
+  Pystachy's collector is conservative and non-moving by design, so box elimination (B3) and
+  tagging (B4) need no stack maps; each still needs proof, under GC stress with a negative
+  control, that every live reference stays a recognizable root across allocations.
 - **"GC is workload-dependent."** For `Any`, the lever is fewer and smaller allocations (B1-B5).
   A generational mode with sticky mark bits (compatible with conservative roots) is the GC-side
   option only if allocation still dominates afterwards.
@@ -279,8 +301,12 @@ Where this proposal departs from the general advice in the research it builds on
 
 - **Never reject or change a program that compiles today** (#409): a program without the comment
   keeps its IR (`make irsame`), and opting in rejects nothing that compiles without it (A1's sweep).
-- **Complete guards, generic fallbacks.** Every fast path tests the `DynType` (or the class id) and
-  falls back to the generic path; no analysis result is ever a reason to reject a program.
+- **Local guards, generic fallbacks.** Every fast path tests what it assumes (the receiver's
+  `DynType` or class id, and again anything a call can change) and falls back to the generic path
+  before any effect; a callable is captured before its arguments are evaluated, as today. No
+  analysis result is ever a reason to reject a program.
+- **Observable identity is kept** (#487): no box is removed or re-made where `is` or `id()` could
+  tell, and #797's rule is settled before any box elimination.
 - **One definition per (type, operation), many entry points** (A2): typed code, dispatchers,
   container searches and dict lookups must reach the same per-class code.
 - **Python type identity is not layout** (#487): `type(x)` identity (the reflection record) and the
@@ -367,7 +393,7 @@ flowchart TB
 - **3 · Run time.** The program's code runs the guards and switches; `runtime.c`'s generic helpers
   call through the operation tables (A2); `Any`-keyed dicts get fast paths (B2); boxes take exact
   16-byte slots (B1). The collector stays conservative and non-moving: split slots and tagged ints
-  need no stack maps.
+  need no stack maps, provided each keeps every live reference recognizable (B3, B4).
 
 **One operation on an `Any` value.** Blue diamonds are choices the compiler makes per site; the
 colored boxes are the code it emits, from the cheapest (level 1) to the generic path (level 4),
@@ -375,9 +401,10 @@ which the others fall back to at run time (dotted arrows). Level 1 is a direct f
 and level 2 a switch over the classes type flow found, each arm typed and inlinable (C4); level 3
 checks the box's `DynType` against the type a profile names and inlines that class's code (D1);
 level 4 switches on the class id (C1) or indexes a selector table (C2, C3), and a class's table
-entry is the same code the runtime calls (A2). Every check tests something that cannot change while
-the program runs (a `DynType` or a class id), so a failed check takes the generic path before any
-effect and nothing is ever deoptimized.
+entry is the same code the runtime calls (A2). A check of the receiver's `DynType` or class id
+settles its class, layout and methods; what a call can change (a callable field, a global, a
+container's contents) is read after the check, never assumed. A failed check takes the generic
+path before any effect, with no frame deoptimization.
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"fontSize": "20px", "lineColor": "#8a8a8a", "edgeLabelBackground": "#ffffff", "textColor": "#1f2937"}, "flowchart": {"nodeSpacing": 40, "rankSpacing": 55, "padding": 14}}}%%
@@ -478,25 +505,40 @@ flowchart TB
 - A **metamorphic** oracle that needs no CPython: the same expression compiled with concrete
   annotations and through `Any` must agree. #772's bugs were exactly typed and dynamic paths
   disagreeing.
-- Cross-operation invariants: `a is b` iff `id(a) == id(b)` while both live (M6 fails it);
-  `a == b` implies `hash(a) == hash(b)`; `x in [y]` iff `x is y or x == y`; `sorted()` agrees
-  with `<`; JIT and AOT agree.
+- Cross-operation invariants, each only where CPython guarantees it: `a is b` iff
+  `id(a) == id(b)` while both live (M6 fails it); `x in [y]` iff `y is x or y == x`, since
+  CPython's `list_contains()` compares the stored element with the probe after an identity check
+  ([listobject.c][list-contains]), which asymmetric `__eq__` tells apart from `x == y` (with an
+  `__eq__` always true on `Yes` and always false on `No`, `Yes() in [No()]` is `False`); `a == b`
+  implies `hash(a) == hash(b)`, and `sorted()` agrees with `<`, only for builtin values and
+  generated classes written to obey those contracts, never for arbitrary stateful dunders; JIT
+  and AOT agree.
 - #784's opt-in corpus sweep (`tools/optin_sweep.py`, `optin_recheck.py`) as a CI check with a
   documented exception list, as #782's acceptance asks.
 
-Gate: the fuzzer is a `make verify` group with a fixed seed budget, as `re-fuzz` is; the sweep's
-exception list only shrinks.
+Gate: the harness is a bounded `make verify` group, deterministic for its fixed seed budget, as
+`re-fuzz` is; known bugs fail it when reintroduced (#772, #797, #798); each documented deviation
+is excluded by a narrow pattern, and the sweep's exception list only shrinks.
 
 **A2. One definition per operation: slots in the `DynType`** (#803). Give each boxed class's `DynType`
 a constant slot table (CPython's `tp_*`, Go's itab, #488's tables): `eq`, `ne`, `cmp`, `hash`,
 `repr`, `str`, `format`, `truth`, `len`, `iter`, `next`, `getitem`, `setitem`, `delitem`,
-`contains`, `call`, each a boxed entry compiled once per class, or null for "not defined".
+`contains`, `call`, each an entry compiled once per class, or null for "not defined".
 `pys_dyn_eq`, the container searches, dict lookups and sorting call through the slot; the
 compiler's dispatchers keep direct (inlinable) calls to the same entries. This retires the
 `-1 - id` operation encoding for `Any` values and the shared runtime library's stand-ins for those
 paths, since the pointers are the program's data. Converge the `DynType` with the class's
 reflection record (`@pys.refl.c.<Class>`), as internals' extension path already plans: one
 per-class table format for #487, #488, #489 and `Any`.
+
+Semantics come before the slot ABI. One table does not make one meaning: specify for each
+operation what "not defined" does (the reflected operand, then CPython's `TypeError`), how
+`NotImplemented` will be told from a result once #499 adds it, that an exception propagates as it
+is, reflected and subclass precedence for binary operators and comparisons, inheritance of
+entries, and explicit unhashability (`__hash__ = None`). Share one semantic implementation per
+(class, operation) through typed and boxed adapters: typed callers keep their direct calls, and
+`hash`, `len` and `truth` return machine integers, never a box. Stage the change; don't freeze the
+whole table at once.
 
 Gate: `make irsame` unchanged without the comment; every `dynany_*` test, also under
 `PYSTACHY_GC_STRESS_PROGRAM=1`; `make eqprobe`'s comparison counts unchanged.
@@ -506,26 +548,26 @@ method, bound method, class and builtin that can become an `Any` value, one entr
 callee, an argument vector of boxes and keyword names, binding them by the callee's signature
 (defaults, keyword-only, `*args`, `**kwargs`) and calling the typed body, unboxing per annotation
 (CPython's [vectorcall][pep590] is the model). `callv.<n>`, `call.<m>.<n>` and `has.<m>.<n>`
-become a lookup plus this call: one class dispatch per method call instead of two (M5), keyword
-arguments and builtins as values (#774), and CPython's arity messages from one binder instead of
-`gen_dyn_arity`'s copy of `arity`'s wording.
+become a lookup, still made before the arguments are evaluated as today, plus this call: one
+class dispatch per method call instead of two (M5), keyword arguments and builtins as values
+(#774), and CPython's arity messages from one binder instead of `gen_dyn_arity`'s copy of
+`arity`'s wording.
 
 **A4. Typed containers that cross into `Any`** (#777, #487 item 6). The gradual-typing literature
 names the three choices: guarded proxies, transient checks, and monotonic references, where a
-heap cell keeps its precise type and dynamic writes are checked against it. In order:
+heap cell keeps its precise type and dynamic writes are checked against it. Checked writes are not
+in this plan: a store through `Any` that raises where CPython stores is a store error introduced by
+annotations, which #487 forbids. So, for now:
 1. *Allocation-site selection* (#487's option b): give `list[Any]`/`dict[Any, Any]` storage to an
    allocation whose value flows into `Any` storage and that no annotation types (displays held in
    locals, `cont[k] = {}`, empty displays an `Any` parameter receives). Within one function this is
    the recompilation `gen_dyn_widen` already performs for scalars.
-2. In an opted-in module, a `dict[str, Any]` annotation gets `dict[Any, Any]`'s layout, with str
-   keys checked where typed code stores them (#777's second direction).
-3. *Descriptor views* for the rest: box a `list[int]` with a `DynType` whose descriptor is `Li`.
-   The runtime's walks already follow descriptors, so reads, `repr`, `==`, sorting and searching
-   work unchanged; a store through `Any` writes an int in place, and any other value raises
-   `TypeError`, a documented deviation, never a copy. This is a monotonic reference; #108 decides
-   whether that deviation is acceptable or whether such crossings stay compile-time errors. Here
-   `isinstance(x, list)` proves a list, not `list[Any]`'s layout: narrowing to `list[Any]` must
-   test the `DynType` itself, and other layouts stay on the generic path.
+2. *Empty-container inference* for those allocations, so an empty display takes the layout its
+   later `Any` stores need.
+
+The mutation contract for typed and dynamic aliases of one container stays #487's and #108's to
+settle; until then such crossings stay compile-time errors. Here `isinstance(x, list)` proves a
+list, not `list[Any]`'s layout.
 
 **A5. Compile time that stays linear** (declined methods: #801).
 - Find the comparison methods whose bodies do not compile for an `Any` operand in one pass, not
@@ -539,12 +581,15 @@ heap cell keeps its precise type and dynamic writes are checked against it. In o
 - The superlinear residue of #781 that #790 records (a 199-deep dict display: 442 ms).
 
 **A6. One identity rule for numbers** (#797). `is` compares ints by value while `id()` gives the box's
-address (M6). Choose one rule under which `a is b` holds exactly when `id(a) == id(b)`, and
-document it. One that fits B4: value identity for ints in the 63-bit range, whose `id()` is the odd
-number `2v + 1` (the tagged word itself, which no aligned address equals), and box identity for
-ints beyond it and for floats, as CPython has for its objects. No value-derived id can cover every
-64-bit int: there are not enough odd numbers. B3 and B4 depend on this rule, and #487's gate asks
-for it to be settled first.
+address (M6). Fix the disagreement now, separately from any representation change. The preferred
+immediate rule is box identity for ints outside the small-int cache, as `id()` already has:
+`int("1000") is int("1000")` is then `False`, as in CPython. Test it across typed/`Any` boundaries,
+where one typed int boxed at two crossings becomes two boxes (`a: Any = n`, `b: Any = n`, then
+`a is b` is `False`; CPython `True`), a deviation to document. Value-derived int identity (`id()`
+the odd number `2v + 1`) is a separate compatibility policy, not the fix: it must keep identities
+stable and aliases intact, and making `is` and `id()` agree does not justify re-making observable
+float or int boxes. B3 and B4 then keep whatever identity the rule makes observable (#487: no box
+elimination where identity is observable).
 
 ### B. The data path: the measured three quarters
 
@@ -552,7 +597,9 @@ for it to be settled first.
 byte (a `pys_alloc_box`). The slack byte keeps an object alive through a pointer one past its end,
 which loops over arrays form; a box is immutable and read only at offsets 0 and 8, so no code forms
 one. The same holds for closed-union boxes (`pys_ubox`, 16 bytes of `{tag, payload}`).
-`patches/box-16-byte-slots.diff` approximates this by requesting 15 bytes for both:
+`patches/box-16-byte-slots.diff` approximates this by requesting 15 bytes for both, an experiment
+that stays one; the change is the dedicated allocator. These construction microbenchmarks show the
+slot's cost, not an application-wide speedup:
 
 | Benchmark and mode | construction, 24 → 16-byte slots | processing | heap peak (one stats run) |
 |---|---:|---:|---:|
@@ -566,7 +613,8 @@ Medians of 7 interleaved process pairs pinned to one core; every checksum matche
 with `Any` boxes only, the first run gave 21.5 → 15.3, 20.8 → 15.0 and 5.3 → 4.9 ms of
 construction.) For 2,000,000 boxed ints (`probes/boxes.py`) the peak fell from 63.2 to 56.1 MiB,
 with one collection instead of two. Gate: GC stress on every `dynany_*` and union case, UBSan, a
-test that keeps only a box's interior pointer alive across a collection, and `PYSTACHY_GC=stats`
+test that keeps only a box's interior pointer alive across a collection with a negative control,
+scanned and atomic boxes each allocated correctly, full `make verify`, and `PYSTACHY_GC=stats`
 counts in the measurements doc.
 
 **B2. `Any`-keyed dicts** (#780). In order of #780's profile:
@@ -591,15 +639,18 @@ pipeline-shaped benchmark.
 into its `DynType` and payload slots where its address goes only to its loads and stores, and
 make a box only where a value leaves (a call, a return, a heap store), with #742's rule that a
 pass never makes more boxes than it removes. Payload pointers stay in stack slots and registers,
-which the conservative collector scans, so no root is lost. First targets: numeric accumulators
-and `t.calls += 1`-style field updates. Requires A6, since a re-made float box would change `is`.
+which the conservative collector scans; each step must still prove under GC stress, with a
+negative control, that every live reference stays a recognizable root across allocations. First
+targets: numeric accumulators and `t.calls += 1`-style field updates. Requires A6's rule first, and
+keeps observable identity: no box is re-made where `is` or `id()` could tell.
 
 **B4. Tagged small ints, as a measured prototype** if B1-B3 leave allocation dominant. A `dyn`
 word with its low bit set holds a 63-bit int; everything else is a box pointer. `dyn.type` and
 `dyn.payload` lower to a select, every `pys_dyn_*` reads the type through one accessor, and ints
 outside 63 bits stay boxed. The collector already treats any word that points into an object as a
 reference, so a tagged int can at worst retain a block it happens to point into: a cost, never a
-safety problem. With A6, `is` and `id()` of ints are already value-based.
+safety problem. Deferred until B1-B3 are measured: a tagged int has no box, so tagging presupposes
+the value-identity policy that A6 leaves as a separate decision.
 
 **B5. Storage strategies for `list[Any]` and `dict[Any, Any]`** (PyPy). Homogeneous int, float or
 str storage, converted in place to boxes on the first store of another type, so a container keeps
@@ -623,7 +674,10 @@ pointer comparisons with one `switch` on it, which LLVM can lower to a jump tabl
 their order never mattered and the change is semantics-preserving. Built natively in its own
 worktree from `afd0ba79` (this branch's merge of main `1cf6a676`, whose compiler and runtime it
 keeps) plus the patch, the prototype reached the compiler and runtime fixed points, and the 74 `dynany_*` and `tomllib` cases passed (138 checks, JIT and AOT, 0 failed), as on
-main. Gate: the dispatchers' IR tests and `dynany_*` cases, JIT and AOT (#799).
+main. The probe times the chain's last class, a synthetic case: it shows the linear cost removed,
+not an application-wide speedup. Gate: the receiver as the first and the last class, mixed and
+skewed receivers, fallback correctness (classes without the operation, builtin values, `None`),
+the dispatchers' IR tests and `dynany_*` cases, JIT and AOT (#799).
 
 **C2. Fields through tables** (#799). For `get.<a>`/`set.<a>`, look up the receiver's class id in a
 per-selector table of field entries (byte offset, assigned-flag offset, descriptor), taken from
@@ -656,9 +710,13 @@ needed. Reopen criteria are
 #392's: a workload, an optimization ordinary AOT cannot economically obtain, paired measurements
 including compilation, start-up and memory, and guard/GC/fallback tests.
 
-**D2. Inline caches where the selector is a run-time value:** `getattr(o, name)`, `setattr`, and
-`__dict__`-style access (#489). A per-site cache of `{DynType, interned name}` to a field-table
-entry is V8's keyed load cache and Dart's switchable-call data, with no code generation.
+**D2. Inline caches, deferred, not ruled out.** Fixed layouts remove shape transitions but do not
+tell which receiver dominates a site: a small per-site cache may still help a constant-name
+`o.method()` on skewed receivers in AOT code, as Dart's switchable calls do for dynamic receivers.
+It is also the natural shape for run-time selectors, `getattr(o, name)`, `setattr` and
+`__dict__`-style access (#489): a per-site cache of `{DynType, interned name}` to a field-table
+entry is V8's keyed load cache, with no code generation. C1's switches come first; measure a
+cache only where a skewed site's cost stays visible after them.
 
 **D3. Not on this roadmap:** tiered compilation with on-stack replacement or deoptimization (it
 needs in-process code loading, #707/#704, and a code cache, #104), NaN-boxing, a moving collector,
@@ -671,18 +729,21 @@ The sweep under [Library reach](#library-reach) puts C modules (#491) and the cl
 of `Any` as what keeps the standard library out. Group E is dynamic `Any`'s share, and the
 measurement that keeps it honest.
 
-**E1. Class values: aliases first, `Any` boxes where code keys or stores them.** The 32 stdlib
-modules that stop at a class or builtin used as a value stop at three lines. Two are module-level
-aliases through a module attribute (`Charset = _charset.Charset`, `_LockType = _thread.LockType`,
-24 modules), which the loader can treat as it treats `X = C` after `from m import C`: no opt-in,
-no run-time value, only programs rejected today change (#804). The third is `copyreg`'s table keyed
-by types whose values are different functions, the idiom of `copy`'s and `pickle`'s dispatch
-tables too (8 modules, #805). Dynamic `Any` fits it: a class or builtin type read as a value
-becomes a constant box whose `DynType` is the class's own, equal and hashed by identity, the value
-`type(x)` gives, and callable through A3's convention, while storage given different functions
-widens to `Any` as storage given an `Any` value does. Since CPython's modules do not carry the
-comment, that needs an opted-in `lib/` overlay of `copyreg`; #7's general class values are the
-alternative that needs no opt-in. What blocks the 32 modules next is not measured.
+**E1. Class values: aliases first, canonical class objects where code keys or stores them.** The 32
+stdlib modules that stop at a class or builtin used as a value stop at three lines. Two are
+module-level aliases through a module attribute (`Charset = _charset.Charset`, `_LockType =
+_thread.LockType`, 24 modules), which the loader can treat as it treats `X = C` after `from m import
+C`: no opt-in, no run-time value, only programs rejected today change (#804). The third is
+`copyreg`'s table keyed by types whose values are different functions, the idiom of `copy`'s and
+`pickle`'s dispatch tables too (8 modules, #805). It needs both canonical class values and
+registration of different functions. A class or builtin type read as a value becomes its canonical
+class object, as merged #721 made exception classes' (one object per class, equal and hashed by
+address, the object `type(x)` gives, callable): a value of its own type, never sharing a `DynType`
+with the class's instances, since `C` and `C()` must stay distinguishable. Storage given different
+functions widens to `Any` as storage given an `Any` value does. Since CPython's modules do not carry
+the comment, a prototype needs an opted-in `lib/` overlay of `copyreg`, and need not wait for the
+rest of #7's general class values. #804 is the best immediate, independent PR. The 24 and 8 modules
+are first blockers removed, not working imports; what blocks them next is not measured.
 
 **E2. The gaps that library-style code meets in a module that opts in**, all filed: calls through
 `Any` with keywords, `*` unpacking or builtin functions (#774); builtins and `math` given `Any`
@@ -699,35 +760,40 @@ corpus sweep, and record the modules and packages each E item moves.
 inference cannot settle become `dyn` instead of a compile-time error? It would admit unannotated
 library code that needs annotations today, but it is section 6's non-goal in a narrower form, and
 it would make slow paths silent. Its stdlib payoff today is bounded by the 4 modules whose first
-blocker is such a failure.
+blocker is such a failure. Deferred until the steps of section 5 are measured.
 
 ## 5. Order of work
 
-Each step stands alone and has its own gate. #797 to #805 were filed from this record; the other
-numbers are existing issues.
+The review's order: each step is its own PR with its own evidence, and the micro-measurements
+above justify trying a step, not a promised application speedup. #797 to #805 were filed from this
+record; the other numbers are existing issues.
 
-| Step | Items | Why now | Issues |
+| Step | Work | Acceptance evidence | Issues |
 |---|---|---|---|
-| 1 | A1 fuzzer, metamorphic oracle, invariants, opt-in sweep check | finds silent wrong results before users do; M6 to M8 came from probes | #802, #782 |
-| 2 | B1 exact box slots; M7's and M8's messages; A6 identity rule | small, measured, independent | #800, #798, #797 |
-| 3 | B2 `Any`-keyed dict fast paths and literal boxes | half of a dynamic-heavy workload | #780 |
-| 4 | C1 `switch` dispatch; A5 single restart for declined methods | mechanical; removes O(classes) and O(declines) costs | #799, #801 |
-| 5 | A4 container crossings (allocation-site selection first) | the first failure users of `tomllib`-style code meet | #777, #487 |
-| 6 | A2 slots, then A3 boxed calling convention | one definition per operation; keywords and builtins as values | #803, #108, #774 |
-| 7 | B3 split `dyn` locals | numeric accumulators and counters | #780, #742 |
-| 8 | C2 field tables, C4 type flow | code size and unboxed results at scale | #799, #488, #489 |
-| 9 | B4 tagging, B5 strategies, C3 global table, D1, D2 | only if the measurements after steps 1-8 still point there | #392 |
-| 10 | #804's aliases at any time; E3's sweep beside step 1's checks; E2's filed gaps; E1's type-keyed tables once A2 and A3 give class values a `DynType` and a calling convention | library reach: dynamic `Any`'s share, after C modules (#491) and the class model (#7) | #804, #805, #774, #775, #778, #779, #7 |
+| 1 | Correct this roadmap; a bounded, deterministic A1 harness with the corrected oracle; focused fixes of the identity rule and the messages (A6, M7, M8) | CPython comparisons, typed/`Any` parity and evaluation-order checks under JIT, AOT and GC stress; known bugs fail it when reintroduced; documented deviations narrowly identified | #802, #797, #798 |
+| 2, in parallel | #804's module-qualified class aliases | calls, annotations, aliases, rebinding and import cycles tested; the modules that newly import, and their next blockers, reported | #804 |
+| 2, in parallel | B2's str-key dict fast paths; C1's `switch` | the pipeline's instructions per event; first, last, mixed and skewed receivers; fallback correctness | #780, #799 |
+| 3 | B1's dedicated exact-slot allocator | interior-root survival with a negative control, scanned and atomic allocation correct, UBSan and full `make verify` | #800 |
+| 4 | A5's batched declines | deterministic restart counts; genuine errors reported unchanged | #801 |
+| 5 | #779's JSON into `Any` storage; A4's allocation-site selection and empty-container inference | JSON → mixed processing → JSON with no whole-document conversion copy; fewer instructions and allocations on the full pipeline | #779, #777 |
+| 6 | A2's semantics, then staged tables; A3's call binding | one semantic implementation per operation, callable capture preserved, keywords and error order as CPython's; consumers simpler, with no new aliasing or annotation-driven behavior | #803, #774, #108 |
+| 7 | #805's bounded type-keyed registration experiment | register different reducers, retrieve them by `type(x)`, call them correctly, then measure the next blockers | #805, #7 |
+| Later, if measured | B3 box elimination (after A6, with identity and root proofs); C2 field tables; C4 type flow | each step's own measurement | #742, #799 |
+| Deferred | E4's fallback, B4 tagging, B5 strategies, C3 global table packing, D1 profile-guided guards, D2 caches | until the steps above are measured; C-module support (#491) continues independently | #392 |
 
 ## 6. Risks and non-goals
 
 - **Semantics.** Every fast path must keep CPython's evaluation order and first error, including
-  user `__eq__`/`__hash__` mutating the container being searched (#554, #473). B2's fast paths
+  user `__eq__`/`__hash__` mutating the container being searched (#554, #473), and must capture a
+  callable before evaluating its arguments, as the compiler does today. B2's fast paths
   apply only to builtin kinds; objects keep the generic path.
 - **GC.** B1 relies on no live pointer one past a box's end; B3 and B4 rely on conservative
   scanning of stack slots and registers; B5 changes a container's backing store between atomic and
   scanned memory. Each needs GC stress and a negative control.
-- **Identity.** B3 and B4 change which box holds a number; A6 must come first.
+- **Identity.** A6's rule comes first. B3 and B4 must keep observable identity (#487), and value
+  identity for ints is a policy decision of its own.
+- **Mutation.** No checked views or other store errors introduced by annotations (#487); the
+  contract for typed and dynamic aliases stays #487's and #108's.
 - **New `Gen` state.** C4's per-site sets and A5's batched declines are state that `dry()`, `Rejoin`
   and `Frame` must handle; per AGENTS.md, state what speculative compilation may retain.
 - **Code size.** D1 duplicates arms; tables and slots keep methods alive. Emit them only for classes
@@ -821,6 +887,7 @@ python3 $D/probes/sweep_blockers.py $T/base.json $T/dyn.json $T/stdlib-dyn
 [inline]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/src/pystachy_compiler/driver.py#L741-L751
 [refl]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/docs/internals.md#reflection
 [dynstorage]: https://github.com/den-run-ai/pystachy/blob/1cf6a676633a5d3e703648d26e3fe328d884b726/docs/dynamic-any.md#selecting-dynamic-storage
+[list-contains]: https://github.com/python/cpython/blob/v3.13.16/Objects/listobject.c
 [pipeline]: https://github.com/den-run-ai/pystachy/tree/4d61e4ce2824ae2f2a0046bfb66cf1ef2d9db868/research/dynamic-any/pipeline
 [tomlbench]: https://github.com/den-run-ai/pystachy/tree/4d61e4ce2824ae2f2a0046bfb66cf1ef2d9db868/research/dynamic-any/bench
 [julia-unions]: https://docs.julialang.org/en/v1/devdocs/isbitsunionarrays/
