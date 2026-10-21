@@ -1,7 +1,7 @@
 # pystachy: dynamic-any
 # A display stored into an Any value's item or attribute holds Any values, as a CPython container
 # does whatever is stored into it later (#777): an empty one too, and one of typed items, also
-# where the Any value is a call's result or a tuple's item
+# where the Any value is what a call returns, a conditional expression's value or a tuple's item
 from typing import Any
 
 
@@ -76,3 +76,19 @@ pair = (len(cont), lst)
 pair[1][0]["u"] = {}
 pair[1][0]["u"]["w"] = [len(pair)]
 print(lst[0], pair[0] > 0)
+
+
+class Holder:
+    def __init__(self) -> None:
+        self.d: Any = {}
+
+    def get(self) -> Any:
+        return self.d
+
+
+h = Holder()
+h.get()["m"] = {}
+h.get()["m"]["n"] = [2.5]
+fns: Any = [get]
+fns[0]()["fn"] = []
+print(h.d, cont["fn"])

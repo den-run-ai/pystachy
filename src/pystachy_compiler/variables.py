@@ -1759,13 +1759,27 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
             return targs(t)[1]
         if n.kind == "index" and t in self.classes and "__setitem__" in self.classes[t].methods and len(self.classes[t].methods["__setitem__"].ptypes) > 2:
             return self.classes[t].methods["__setitem__"].ptypes[2]
-        r = n.kids[0]
-        if not base and t == "" and r.kind != "name" and self.dyn_policy(n.line) and self.typed_now(r) and not self.calls_open(r, {}) and self.dry(r) == "dyn":
-            # (another expression's Any value, in a module that compiles Any so: f()[k] = {},
-            # f().x = []. CPython evaluates it after the value, which may bind what it reads
-            # (f(x)[k] = (x := v)), so dry() types it here only as lookahead's rule allows; and
-            # once, at the target, not at each receiver of a chain)
-            return "dyn"
+        if base and n.kind == "index" and is_tuple(t) and n.kids[1].kind == "int" and n.kids[1].s.isdigit() and len(n.kids[1].s) < 4 and self.dyn_policy(n.line):
+            i = int(n.kids[1].s)
+            return "dyn" if i < len(targs(t)) and targs(t)[i] == "dyn" else ""  # (a tuple's Any item: pair[1][k] = {})
+    if base and n.kind == "call" and self.dyn_policy(n.line):
+        # (a call's Any value, in a module that compiles Any so: f()[k] = {}, o.f().x = []. CPython
+        # calls it after it evaluates the value stored, which may bind or retype what the call
+        # reads (f(x)[k] = (x := v)), so nothing is compiled ahead: a call is Any where its
+        # function is declared to return Any, or where it calls through an Any value)
+        c = n.kids[0]
+        if c.kind == "name" and c.s in self.funcs and c.s not in self.ltype:
+            f = self.funcs[c.s]
+            return "dyn" if not f.generic and f.ret == "dyn" else ""
+        if c.kind != "attr":
+            return "dyn" if self.target_type(c, True) == "dyn" else ""
+        t = self.target_type(c.kids[0], True)
+        if t in self.classes and c.s in self.classes[t].methods:
+            m = self.classes[t].methods[c.s]
+            return "dyn" if not m.generic and not m.prop and m.ret == "dyn" else ""
+        return "dyn" if t == "dyn" else ""
+    if base and n.kind == "ifexp" and self.dyn_policy(n.line):
+        return "dyn" if self.target_type(n.kids[1], True) == "dyn" and self.target_type(n.kids[2], True) == "dyn" else ""  # (Any either way)
     return ""
 
 def gen_assign(self, t: Node, v: Val) -> None:
