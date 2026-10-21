@@ -1,8 +1,9 @@
 # Minimal compiler state contracts: research prototype
 
 Refs [#767](https://github.com/den-run-ai/pystachy/issues/767),
-[#801](https://github.com/den-run-ai/pystachy/issues/801) and
-[#816](https://github.com/den-run-ai/pystachy/pull/816).
+[#801](https://github.com/den-run-ai/pystachy/issues/801),
+[#816](https://github.com/den-run-ai/pystachy/pull/816) and
+[#822](https://github.com/den-run-ai/pystachy/issues/822).
 Draft proposal; partial acceptance only. No compiler/runtime source changes.
 
 ## Recommendation
@@ -94,13 +95,89 @@ changed. Full `make lint`, native build/JIT/AOT, `make verify`, full-corpus
 `make irsame` and GC stress were not run locally. New-head CI execution evidence
 is reported separately in the PR; corpus registration alone is not a passing run.
 
+### Native evidence for the review fixes
+
+At `c8a7f326`, all 32 applicable checks passed; the fork-only DCO check skipped.
+The #816 fixture is explicitly listed in the successful native JIT/AOT, GC JIT
+and GC AOT case manifests. Those shards respectively report 2,621/2,621,
+1,813/1,813 and 1,208/1,208 passed; GC tests collect at every program allocation.
+The differential expectation is `True` followed by exit status zero.
+The tested clean merge `cceb7652` has parents main `c5d7f9e8` and PR head
+`c8a7f326`. [Artifact hashes, manifests and job links](ci-c8a7f326.json) preserve
+this evidence. This is historical validation of that head, not later additions.
+
+## Nested compilation follow-up (#822)
+
+[#819](https://github.com/den-run-ai/pystachy/pull/819) adds the broader field
+inventory, including `gen_enter` and fields omitted from every Frame list.
+[#824](https://github.com/den-run-ai/pystachy/pull/824), reviewed here at
+`59713c2c`, applies the eight operation-field fixes found by that audit.
+Keep those production changes in their existing PR. This prototype adds a
+dynamic boundary check and an acceptance control; it does not implement another
+compiler fix or import either branch.
+
+The boundary probe calls the actual `Gen.save`, `Gen.enter` and `Gen.restore`
+with deliberately non-neutral operation state at nesting depths 1, 2 and 3.
+It checks neutral callee entry and restoration of the caller's values and object
+identities for `drying`, `carried`, `nonecmp`, `fieldcmp`, `cmpnode`, `stkkey`,
+`reflcopies` and `stmtexpr`. These synthetic boundary checks complement actual
+program regressions; they do not prove that every caller uses the boundary or
+that retained semantic discoveries are safe. They require no rollback or new
+production reflection.
+
+[Pinned results](nested-results.json): main `c5d7f9e8` reports all eight entry
+leaks and all eight caller restoration changes at every measured boundary;
+#824 `59713c2c` reports none. `--strict` exits 1 and 0 respectively. The normal
+invocation prints findings without failing, so the research probe can inspect
+the known-broken baseline. The six new mechanism tests check existing saved
+fields, deliberate entry/restore defects, missing attributes, equal-value object
+replacement and in-place mutation. All **31 state tests pass** on the prototype
+and when its tools are overlaid on #824; they do not bless main's known leaks.
+
+```sh
+python3 tools/compiler_state_nested_probe.py
+python3 tools/compiler_state_nested_probe.py --strict  # expected exit 1 on this branch
+```
+
+The original dry observer also passes against #824. In `dry_template.py`,
+`carried` is no longer among the retained changes. Other program discoveries
+remain observable; a successful boundary check does not approve those effects.
+
+### Preserve accepted programs too
+
+`tests/programs/optional/nestcomp_nonecmp_one_read.py` is the one-iteration
+acceptance control for #822's `nonecmp` reproducer. Its only truth test reads
+`None`, before the later assignment; CPython prints `x is None`, `y is falsy`
+and `x still None`. Main compiles it successfully with typed-IR checks enabled.
+The emitted IR takes the falsy branch in its only iteration. #824 at
+`59713c2c` rejects it with the cannot-infer-None diagnostic.
+[The pinned hosted comparison](nonecmp-acceptance.json) records both results,
+input/recording hashes and CPython 3.13.16 output. Native execution of this new
+control remains for CI; it is registered in the differential corpus and its
+`.out` was generated with `tests/record.sh`.
+
+The #824 description acknowledges this class of new rejection. It conflicts
+with the repository's rule to preserve previously accepted programs that match
+CPython, even when the prior implementation got the right result accidentally.
+Fixing the multiple-iteration wrong result must also preserve this boundary.
+Retaining the leaked flag or broadly permitting unresolved `NONEVAR` reads is
+not a demonstrated safe solution. Further optional inference work is required.
+
+At the reviewed #824 head, CI also timed out its
+[`gc-self` job](https://github.com/den-run-ai/pystachy/actions/runs/39630216342/job/119327947645)
+after 600 seconds (exit 124), which failed aggregate verification. That establishes
+a failed gate, not its cause. Both acceptance and verification remain open before
+that change is ready to merge.
+
 ## Small follow-up changes, in order
 
 1. **Review an explicit ownership inventory.** Classify newly added `Gen` fields
    as function context, transient traversal, persistent program discovery or
    pass output. Inventory mutable module globals separately: restart, loader
    initialization, configuration or immutable table. Require a reason for every
-   exception. The current checker intentionally does not guess these categories.
+   exception. #819 supplies the Gen-field inventory; module-global classification
+   remains pending. Preserve the existing negative control for a missing
+   `return fr` when consolidating its checker with this prototype.
 2. **Give restart state one owner.** Introduce a small subset-compatible restart
    record for `FILES`, `LAMBDAS`, `RENAMED`, `LIBS`, `LINKDL`, retaining current
    truncate/reset semantics and alias identity. Distinguish driver-entry state

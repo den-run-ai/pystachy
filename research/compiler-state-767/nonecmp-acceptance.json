@@ -1,0 +1,32 @@
+{
+  "case": "tests/programs/optional/nestcomp_nonecmp_one_read.py",
+  "input_sha256": "48424738585d30b9b5437acfcfc741ecc62a4301d4fffaf114b95ba0f38837c2",
+  "recording_sha256": "3423b5e1dd713a577943ec33ee670f63674c368dd1e42129f293be285cbfb140",
+  "scope": "Hosted CLI compilation with typed-IR checks. No native execution in this environment. The current-main IR takes the falsy branch in its only iteration; CPython output is recorded separately.",
+  "python": "Python 3.13.16",
+  "compilations": [
+    {
+      "compiler_commit": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
+      "command": "PYSTACHY_IRCHECK=1 python3.13 pystachy.py ir <case> -o <output>",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "ir_sha256": "8eadb90a423016ac423c1f58eb6f8ea702e3790fcf4bf96091cb10421e131ee8",
+      "ir_bytes": 4689,
+      "checkout_commit": "c8a7f326e44c14cffbd3e054a0a6dd912865406a",
+      "source_note": "Compiler, runtime and lib sources are unchanged from main c5d7f9e8; the new case is identified by its input hash."
+    },
+    {
+      "compiler_commit": "59713c2ce2ede474551daac88588fb86ab72e648",
+      "command": "PYSTACHY_IRCHECK=1 python3.13 pystachy.py ir <case> -o <output>",
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/workspace/scratch/a8a327275305/pystachy-767/tests/programs/optional/nestcomp_nonecmp_one_read.py:7: error: cannot infer the type of 'y' from None here, before a value of another type is assigned to it; annotate it (y: T | None) (compiling g(int) for the call at /workspace/scratch/a8a327275305/pystachy-767/tests/programs/optional/nestcomp_nonecmp_one_read.py:19)\n"
+    }
+  ],
+  "cpython": {
+    "returncode": 0,
+    "stdout": "x is None\ny is falsy\nx still None\n",
+    "stderr": ""
+  }
+}
