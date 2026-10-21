@@ -48,8 +48,9 @@ Measurements cited from issues keep their own revisions.
      64-class, 32-field probe, and enough to push programs past the JIT's 20,000-line inlining
      threshold);
    - the `Any`-keyed dict fast paths of #780, plus constant boxes for literal keys.
-5. **Diagrams:** today's pipeline is in section 1, and the proposed design across the compiler, the
-   runtime and both build modes is under [Design at a
+5. **Diagrams:** today's pipeline is in section 1; the proposed pipeline across the compiler, both
+   build modes and the runtime, the four dispatch levels of an operation on an `Any` value and the
+   layout of a `dyn` value are under [Design at a
    glance](#design-at-a-glance-compiler-runtime-aot-and-jit).
 
 ## 1. Where dynamic `Any` stands at `1cf6a676`
@@ -74,40 +75,66 @@ the operation (`-1 - id`, op codes 1 to 6). So a dynamic operation's semantics l
 places: the compiler's dispatchers, the runtime's generic helpers, the program's `@o.*` helpers
 and the descriptor walks of containers.
 
-**The pipeline today.** Where `Any` is handled in the compiler, the two build modes and the runtime
-(the proposed design is under [Design at a
-glance](#design-at-a-glance-compiler-runtime-aot-and-jit)):
+**The pipeline today.** Every program goes through the three numbered regions: compile time
+(blue), the build (purple) and run time (amber). Both build modes take the same typed IR:
+`pystachy build` links in the runtime's bitcode and optimizes across it with clang -O2, and
+`pystachy run` hands the whole program to `lli` at start-up, inlining only under 20,000 IR lines.
+Red boxes are today's measured costs: dispatchers test boxed classes one by one (M1, M5) and are
+all compiled again whenever more classes get boxed, growing with classes × attributes (M2); each
+declined comparison method restarts the whole compilation (M4); boxes take 24-byte slots (M3); and
+`Any`-keyed dicts hash and compare keys through generic helpers (#780). The proposed design is
+under [Design at a glance](#design-at-a-glance-compiler-runtime-aot-and-jit).
 
 ```mermaid
-flowchart TD
-    src["A module whose first lines hold<br/>pystachy: dynamic-any"]
-    subgraph ct["Compile time: Gen types and builds IR in one walk per pass"]
-        typing["Any annotations become dyn,<br/>values are boxed where they flow into dyn storage"]
-        disp["One dispatcher per operation key (get.f, call.m.1, op0, ...):<br/>a chain of DynType pointer tests, one per boxed class.<br/>All are compiled again whenever more classes get boxed"]
-        helpers["Per-class helpers that the runtime calls back (o.eq, o.cmp, o.x).<br/>A comparison method that does not compile for an Any operand<br/>restarts the whole compilation (Rejoin), once per method"]
-        typing --> disp
-        typing --> helpers
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "20px", "lineColor": "#8a8a8a", "edgeLabelBackground": "#ffffff", "textColor": "#1f2937"}, "flowchart": {"nodeSpacing": 40, "rankSpacing": 55, "padding": 14}}}%%
+flowchart TB
+    src(["Module opted in<br/>to dynamic Any"])
+
+    subgraph L1["<b>1 · COMPILE TIME</b>"]
+        direction TB
+        t1["Any becomes a box"]
+        t2["Dispatchers test<br/>classes one by one"]
+        t3["All dispatchers<br/>recompiled"]
+        t4["Whole compile restarted<br/>per declined method"]
+        t1 --> t2 --> t3
+        t1 --> t4
     end
-    subgraph build["Build: one typed IR for both modes"]
-        ir["Typed IR: dyn.type, dyn.payload,<br/>dispatcher calls, pys_dyn_* calls"]
-        aot["pystachy build: runtime bitcode linked in,<br/>clang -O2 across the runtime boundary"]
-        jit["pystachy run: lli (ORC) compiles the whole program<br/>at start-up, inlines only under 20,000 IR lines"]
-        ir --> aot
-        ir --> jit
+
+    subgraph L2["<b>2 · BUILD</b> · same IR for both"]
+        direction LR
+        b1["Typed IR"]
+        b2["AOT<br/>clang -O2"]
+        b3["JIT<br/>lli at start-up"]
+        b1 --> b2
+        b1 --> b3
     end
-    subgraph run["Run time"]
-        code["Compiled program:<br/>dispatchers, helpers, user code"]
-        lib["runtime.c: boxes (16 bytes in a 24-byte slot),<br/>pys_dyn_eq, pys_dyn_hash, pys_dyn_binop, dict lookups"]
-        gc["Conservative, non-moving<br/>mark-and-sweep collector"]
-        code -->|"builtin types"| lib
-        lib -->|"pys_obj_eq, cmp, repr:<br/>the class id also encodes the operation"| code
-        lib --- gc
+
+    subgraph L3["<b>3 · RUN TIME</b>"]
+        direction LR
+        r1["Program code"]
+        r2["Runtime library"]
+        r3["Boxes in<br/>24-byte slots"]
+        r5["Any-keyed dicts<br/>generic hash + compare"]
+        r4["Garbage<br/>collector"]
+        r1 <--> r2
+        r2 --- r3
+        r2 --- r5
+        r2 --- r4
     end
-    src --> typing
-    disp --> ir
-    helpers --> ir
-    aot --> code
-    jit --> code
+
+    src ==> L1
+    L1 ==> L2
+    L2 ==> L3
+
+    classDef base fill:#ffffff,stroke:#6b7280,stroke-width:1px,color:#111827
+    classDef bad fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#7f1d1d
+    classDef input fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,color:#111827
+    class t1,b1,b2,b3,r1,r2,r4 base
+    class t2,t3,t4,r3,r5 bad
+    class src input
+    style L1 fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+    style L2 fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95
+    style L3 fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
 ```
 
 **Measured costs** (method under [Reproduce](#reproduce)):
@@ -185,81 +212,177 @@ Where this proposal departs from the general advice in the research it builds on
 
 ## Design at a glance: compiler, runtime, AOT and JIT
 
-The same pipeline with the proposal applied; the labels (A2, B1, ...) name the items of section 4.
-`pystachy build` and `pystachy run` share everything up to the typed IR, and the whole runtime: they
-differ only in how LLVM IR becomes machine code, so every item applies to both.
+The same three regions with the proposal applied; green boxes are what it adds, and the labels in
+the notes below (A2, B1, ...) name the items of section 4. `pystachy build` and `pystachy run`
+share everything up to the typed IR, and the whole runtime: they differ only in how LLVM IR becomes
+machine code, so every item applies to both.
 
 ```mermaid
-flowchart TD
-    src["Program: modules that opt in, and modules that do not"]
-    prof["Optional profile: DynType counts per site,<br/>recorded under CPython with sys.monitoring,<br/>as tools/re_specialize.py records regexes"]
-    subgraph ct["Compile time: the frontend"]
-        infer["Inference: Any is dyn, the top of the lattice,<br/>never a reason to reject a program"]
-        flow["Type flow over the closed world (C4):<br/>the DynTypes that can reach each site"]
-        choose["Per site: direct call, union split,<br/>profile guard or generic path (C4, D1)"]
-        unbox["Box elimination in locals (B3):<br/>DynType and payload in two slots"]
-        tables["Per boxed class: DynType with an operation table (A2)<br/>and a field table (C2), one boxed entry per callable (A3)"]
-        infer --> flow
-        flow --> choose
-        choose --> unbox
-        flow --> tables
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "20px", "lineColor": "#8a8a8a", "edgeLabelBackground": "#ffffff", "textColor": "#1f2937"}, "flowchart": {"nodeSpacing": 40, "rankSpacing": 55, "padding": 14}}}%%
+flowchart TB
+    src(["Python modules"])
+    prof[/"Optional profile<br/>recorded under CPython"/]
+
+    subgraph L1["<b>1 · COMPILE TIME</b>"]
+        direction TB
+        p1["Type inference<br/>Any is the top type"]
+        p2["Type flow<br/>classes per site"]
+        p3["Pick a dispatch<br/>level per site"]
+        p4["Unbox locals"]
+        p5["Per-class tables<br/>operations · fields"]
+        p1 --> p2 --> p3 --> p4
+        p2 --> p5
     end
-    src --> infer
-    prof -.-> choose
-    subgraph build["Build: one typed IR for both modes"]
-        ir["Typed IR"]
-        aot["pystachy build: runtime bitcode linked in,<br/>clang -O2 inlines guards and arms<br/>across the runtime boundary"]
-        jit["pystachy run: lli (ORC) compiles the whole program<br/>at start-up: no tiering, no deoptimization"]
-        ir --> aot
-        ir --> jit
+
+    subgraph L2["<b>2 · BUILD</b> · same IR for both"]
+        direction LR
+        q1["Typed IR"]
+        q2["AOT<br/>clang -O2"]
+        q3["JIT<br/>lli at start-up"]
+        q1 --> q2
+        q1 --> q3
     end
-    unbox --> ir
-    tables --> ir
-    subgraph run["Run time"]
-        code["Compiled program: guarded fast paths,<br/>switches on class ids (C1), generic calls"]
-        lib["runtime.c: generic helpers call through<br/>operation tables, Any-keyed dict fast paths (B2),<br/>boxes in 16-byte slots (B1)"]
-        gc["Conservative, non-moving collector:<br/>split slots and tagged ints need no stack maps"]
-        code -->|"builtin types"| lib
-        lib -->|"table entries"| code
-        lib --- gc
+
+    subgraph L3["<b>3 · RUN TIME</b>"]
+        direction LR
+        s1["Program code<br/>guards · switches"]
+        s2["Runtime library<br/>calls through tables"]
+        s3["Boxes in<br/>16-byte slots"]
+        s5["Fast paths for<br/>Any-keyed dicts"]
+        s4["Garbage<br/>collector"]
+        s1 <--> s2
+        s2 --- s3
+        s2 --- s5
+        s2 --- s4
     end
-    aot --> code
-    jit --> code
+
+    src ==> L1
+    prof -.->|"guides dispatch"| L1
+    L1 ==> L2
+    L2 ==> L3
+
+    classDef base fill:#ffffff,stroke:#6b7280,stroke-width:1px,color:#111827
+    classDef new fill:#dcfce7,stroke:#16a34a,stroke-width:3px,color:#14532d
+    classDef input fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,color:#111827
+    class p1,q1,q2,q3,s4 base
+    class p2,p3,p4,p5,s1,s2,s3,s5 new
+    class src,prof input
+    style L1 fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+    style L2 fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95
+    style L3 fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
 ```
 
-**One operation on an `Any` value.** The frontend picks the cheapest dispatch the closed world
-allows, and every path ends in the generic one. Every guard tests something that cannot change while
-the program runs (a `DynType` or a class id), so a failed guard takes the generic path before any
-effect and nothing is ever deoptimized:
+- **Inputs.** Modules that opt in and modules that do not, and optionally a profile of the
+  `DynType`s seen at each site, recorded under CPython with `sys.monitoring` as
+  `tools/re_specialize.py` records regexes (D1).
+- **1 · Compile time.** Inference keeps `Any` as `dyn`, the top of the lattice and never a reason
+  to reject a program. Type flow over the closed world finds the `DynType`s that can reach each
+  site (C4), and each site gets the cheapest dispatch level of the next diagram (C1, D1). Locals
+  keep `DynType` and payload in two slots and box only where a value leaves (B3). Each boxed class
+  gets a `DynType` with an operation table (A2), a field table (C2) and one boxed entry per
+  callable (A3).
+- **2 · Build.** Unchanged: in `pystachy build`, clang -O2 inlines guards and switch arms across
+  the runtime boundary; in `pystachy run`, `lli` compiles the same IR at start-up, with no tiering
+  and no deoptimization.
+- **3 · Run time.** The program's code runs the guards and switches; `runtime.c`'s generic helpers
+  call through the operation tables (A2); `Any`-keyed dicts get fast paths (B2); boxes take exact
+  16-byte slots (B1). The collector stays conservative and non-moving: split slots and tagged ints
+  need no stack maps.
+
+**One operation on an `Any` value.** Blue diamonds are choices the compiler makes per site; the
+colored boxes are the code it emits, from the cheapest (level 1) to the generic path (level 4),
+which the others fall back to at run time (dotted arrows). Level 1 is a direct field load or call
+and level 2 a switch over the classes type flow found, each arm typed and inlinable (C4); level 3
+checks the box's `DynType` against the type a profile names and inlines that class's code (D1);
+level 4 switches on the class id (C1) or indexes a selector table (C2, C3), and a class's table
+entry is the same code the runtime calls (A2). Every check tests something that cannot change while
+the program runs (a `DynType` or a class id), so a failed check takes the generic path before any
+effect and nothing is ever deoptimized.
 
 ```mermaid
-flowchart TD
-    op["x.f, x + y, x == y or x.m(...), where x is Any"] --> q1{"Type flow: which classes<br/>can x hold here?"}
-    q1 -->|"one"| d1["Direct field load or call"]
-    q1 -->|"a few"| d2["Union split: a switch over them,<br/>each arm typed and inlinable"]
-    q1 -->|"many, or unknown"| q2{"Does a profile name<br/>a dominant DynType?"}
-    q2 -->|"yes"| d3["Guard: box.t == dominant,<br/>then that class's inlined arm"]
-    q2 -->|"no"| g["Generic path"]
-    d3 -->|"guard fails"| g
-    d2 -.->|"default arm"| g
-    g --> sw["switch on the class id (C1),<br/>or a selector table (C2, C3)"]
-    sw -->|"a class of the program"| e["That class's table entry (A2):<br/>the same code the runtime calls"]
-    sw -->|"a builtin type"| h["runtime.c's helper for that type"]
-    sw -->|"no such operation"| err["CPython's TypeError or AttributeError"]
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "20px", "lineColor": "#8a8a8a", "edgeLabelBackground": "#ffffff", "textColor": "#1f2937"}, "flowchart": {"nodeSpacing": 40, "rankSpacing": 55, "padding": 14}}}%%
+flowchart TB
+    op(["x.f · x.m()<br/>x + y · x == y"])
+    q1{"How many classes<br/>reach this site?"}
+    a1["<b>LEVEL 1</b><br/>Direct call"]
+    a2["<b>LEVEL 2</b><br/>Switch over<br/>those classes"]
+    q2{"Profile names<br/>a common type?"}
+    a3["<b>LEVEL 3</b><br/>One type check<br/>+ inlined code"]
+    a4["<b>LEVEL 4 · GENERIC</b><br/>Switch on class id"]
+    e1["The class's<br/>table entry"]
+    e2["Runtime helper<br/>for builtins"]
+    e3["TypeError or<br/>AttributeError"]
+
+    op --> q1
+    q1 -->|"one"| a1
+    q1 -->|"a few"| a2
+    q1 -->|"many or unknown"| q2
+    q2 -->|"yes"| a3
+    q2 -->|"no"| a4
+    a2 -.->|"other class"| a4
+    a3 -.->|"check fails"| a4
+    a4 --> e1
+    a4 --> e2
+    a4 --> e3
+
+    classDef q fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
+    classDef l1 fill:#bbf7d0,stroke:#15803d,stroke-width:3px,color:#14532d
+    classDef l2 fill:#d9f99d,stroke:#4d7c0f,stroke-width:3px,color:#365314
+    classDef l3 fill:#fef08a,stroke:#a16207,stroke-width:3px,color:#713f12
+    classDef l4 fill:#fed7aa,stroke:#c2410c,stroke-width:3px,color:#7c2d12
+    classDef out fill:#ffffff,stroke:#6b7280,stroke-width:1px,color:#111827
+    classDef input fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,color:#111827
+    class q1,q2 q
+    class a1 l1
+    class a2 l2
+    class a3 l3
+    class a4 l4
+    class e1,e2,e3 out
+    class op input
 ```
 
-**A `dyn` value.** Today's box and `DynType` (word 0 and its fields), with the proposed additions:
+**A `dyn` value.** One word (grey) points to a box on the heap (amber), which points to its type's
+constant data (purple); green is new. The payload holds an int's, float's or bool's bits, or the
+original pointer of a str, list, dict, tuple or object, never a copy. Proposed: a 63-bit int tagged
+in the word itself, with no allocation and identity by value (B4, optional; today the ints from -5
+to 256 are constant boxes and others allocate); boxes in exact 16-byte slots (B1); constant boxes
+for str literals used as `Any` values (B2); and behind each `DynType`, a reflection record with the
+type's names and field table (C2) and an operation table: eq, ne, cmp, hash, repr, str, format,
+truth, len, iter, next, getitem, setitem, delitem, contains and call (A2).
 
 ```mermaid
-flowchart LR
-    w["A dyn value: one word"] -->|"low bit set (B4, optional)"| smi["A 63-bit int in the word:<br/>no allocation, identity by value"]
-    w -->|"otherwise a pointer"| box["Immutable box<br/>in a 16-byte slot (B1)"]
-    box -->|"word 0"| dt["DynType: kind, layout descriptor,<br/>name, class id, base, flags"]
-    box -->|"word 1"| p["Payload: int, float or bool bits,<br/>or the original pointer of a str, list,<br/>dict, tuple or object, never a copy"]
-    dt --> rec["Reflection record: the type's identity,<br/>its names and field table (C2)"]
-    dt --> ops["Operation table (A2): eq, ne, cmp, hash,<br/>repr, str, format, truth, len, iter, next,<br/>getitem, setitem, delitem, contains, call"]
-    lit["Str literals used as Any values:<br/>constant boxes, never allocated (B2)"] -.-> box
-    loc["Locals: DynType and payload in two slots,<br/>a box only where a value leaves (B3)"] -.-> box
+%%{init: {"theme": "base", "themeVariables": {"fontSize": "20px", "lineColor": "#8a8a8a", "edgeLabelBackground": "#ffffff", "textColor": "#1f2937"}, "flowchart": {"nodeSpacing": 40, "rankSpacing": 55, "padding": 14}}}%%
+flowchart TB
+    subgraph V["<b>VALUE</b> · one word"]
+        direction LR
+        w(["dyn"])
+        smi["Small int<br/>in the word"]
+        w -->|"low bit 1"| smi
+    end
+    subgraph H["<b>HEAP</b>"]
+        direction LR
+        box["Box · 16 bytes<br/>type + payload"]
+        obj["The original object,<br/>list, dict or str"]
+        box -->|"payload pointer"| obj
+    end
+    subgraph C["<b>CONSTANT DATA</b> · one per type"]
+        direction LR
+        dt["DynType<br/>kind · class id · base"]
+        rec["Reflection record<br/>names · fields"]
+        ops["Operation table<br/>eq · hash · call ..."]
+        dt --> rec
+        dt --> ops
+    end
+    V ==>|"otherwise a pointer"| H
+    H ==>|"type"| C
+
+    classDef base fill:#ffffff,stroke:#6b7280,stroke-width:1px,color:#111827
+    classDef new fill:#dcfce7,stroke:#16a34a,stroke-width:3px,color:#14532d
+    class w,box,obj,dt base
+    class smi,rec,ops new
+    style V fill:#f3f4f6,stroke:#6b7280,stroke-width:2px,color:#111827
+    style H fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    style C fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#4c1d95
 ```
 
 ## 4. Proposal
