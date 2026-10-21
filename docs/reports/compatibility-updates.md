@@ -80,6 +80,8 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 concurrency contract (#789), bounded tooling evaluation complete | `870bfa15`; no compiler/runtime/library implementation paths | Five registration checks and both 25-line source-twin clients pass; exact-tree native CI and FFI coverage jobs succeeded. This records contracts and probes, not a new native concurrency or import-compatibility claim. [Evidence](compatibility-2026-10-20-concurrency-contract.json). |
 | 2026-10-20 dominated null-check elimination (#791), **partial** | `10097965`; compiler/typed-IR pass changes after #789 | On the same prior compiler source, hosted IR falls **710,837→621,696 lines** and null tests **36,182→13,978**; disabling the pass is byte-identical to the previous compiler. 137 hosted tests, three call contracts, the new reference and linear-scaling controls pass. Native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-nullcheck-partial.json). |
 | 2026-10-20 JIT landing pads and dynamic Any follow-up (#793/#790), **partial** | `3d48ce8c`; #793 intermediate `a79e6bbc`, both exact PR-head trees | 29/29 new CPython references, 31/31 new positive/deviation hosted compilations, one exact rejection, 19/19 targeted unit tests and six retained consumer compilations pass. The retained depth-199 compiler input finishes in 7.96s where `10097965` exceeds 20s. Exact-tree CI is green; local native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-dynamic-any-followup-partial.json). |
+| 2026-10-20 tomllib prerequisite blockers (#794), **partial** | `387059ba`; follows #793/#790 | 14/14 new positive CPython references, 17/17 positive/deviation hosted compilations, 6/6 changed rejections, 25/25 targeted unit tests and six retained consumer compilations pass. MappingProxyType and five compiler/runtime capabilities land; exact-tree CI is green. Local native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-tomllib-blockers-partial.json). |
+| 2026-10-20 `tomllib.loads()` port (#795), **partial** | `1cf6a676`; library/test/docs port on #794 | All five selected sources move from unsupported-module rejection to checked hosted IR; 5/5 CPython references match, including 62 upstream data documents (12 valid, 50 invalid). Exact-tree CI is green. Binary-file `load()`, local native/import evaluation and the full upstream suite remain incomplete. [Evidence](compatibility-2026-10-20-tomllib-port-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5307,3 +5309,151 @@ gaps remain historical; no runtime-speed, peak-memory or broad library-support
 claim follows. Complete this checkpoint after an authorized pinned rebuild,
 selected native parity and the retained import sweep. The latest fully evaluated
 main therefore remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-20 — #794: MappingProxyType and five tomllib prerequisites
+
+Inspected [main `387059bac6f2eec2940d66cdaa435e3132e92890`](https://github.com/den-run-ai/pystachy/commit/387059bac6f2eec2940d66cdaa435e3132e92890)
+after [#794](https://github.com/den-run-ai/pystachy/pull/794) merged at
+2026-10-21 00:32:50 UTC. Fresh history and ancestry checks establish it as the
+only first-parent merge after the #793/#790 checkpoint. Implementation head
+`afcaca9059a5ad453465c89191d26a929164f1c1` is in main, and the head and merge
+share tree `97c5f199045a949d02737d5bbfa549ffbd443eea`.
+
+This merge removes five of [#783](https://github.com/den-run-ai/pystachy/issues/783)'s
+general `tomllib`/tomli-w blockers and #778's two tuple cases:
+`types.MappingProxyType`; runtime-length tuple `+`/`+=`; item-wise opt-in
+dynamic-`Any` tuple conversions; `GenericAlias` annotation subscripts including
+`re.Pattern[str]`/`re.Match[str]`; base/subclass union pruning, including nested
+union aliases; and the exception-class `__module__` assignment that `tomllib`
+uses. The merge does **not** include stacked #795, so this checkpoint does not
+claim that `tomllib.loads()` has shipped.
+
+[Machine-readable evidence](compatibility-2026-10-20-tomllib-blockers-partial.json)
+retains exact source/tree identities, commands, selected input hashes, results,
+workflow links, review state, environment and clean pre/post source snapshots.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| New positive references | **14/14** CPython 3.12.14 stdout, final stderr line and exit recordings match. This is not a pinned-3.13 regeneration. |
+| New compiler inputs | All **14** positive and **3** documented-deviation programs emit checked hosted IR: **17/17**. |
+| Changed rejection contracts | **6/6** exact diagnostics pass through `tests/run.sh`. These are compile-time checks; its `jit aot` label does not make them native executions. |
+| Targeted compiler tests | `test_typed_comparisons`, `test_typed_module_lowering`, `test_typed_fields` and `test_typed_complete`: **25/25** pass. |
+| Retained adapted consumers | iniconfig, tomli-w, roman, pylev, textwrap and regex: **6/6** emit checked hosted IR and **6/6** CPython recordings match. This is not an upstream-suite or native port pass. |
+| Library initialization controls | The retained regex input grows **55,138→55,346** raw hosted IR lines (+208), and the retained `types` input **658→694** (+36). The retained tomli-w table input stays byte-identical at **10,653** lines. These are LLVM-text counts, not runtime, compile-time, binary-size or memory measurements. |
+
+The focused programs cover a live read-only mapping view whose backing dictionary
+is not program-visible, tuple concatenation on either side of fixed tuples and
+optional-`None` widening, dynamic tuple boxing/unboxing with aliases, generic
+annotations, flat and nested class-family unions, and exception-module display
+and declared-field behavior. Three cases remain explicit deviations rather than
+being counted as CPython parity: an incompatible `Any` tuple item, assigning an
+exception class to the `builtins` module, and mapping-proxy equality with a custom
+reflected object.
+
+[#783](https://github.com/den-run-ai/pystachy/issues/783) remains the appropriate
+tracker for the unshipped `tomllib`/tomli-w boundaries: sets containing a
+runtime-length tuple, whole-match `Match.group()` typed as optional, function-level
+imports in an imported module, tuples of classes held in variables, binary
+`load(fp)` ([#493](https://github.com/den-run-ai/pystachy/issues/493)), and
+`list.extend()` from a runtime-length tuple. General post-class attribute writes
+remain [#244](https://github.com/den-run-ai/pystachy/issues/244). No duplicate
+issue was filed.
+
+All **8/8** Codex inline review threads are resolved. Seven findings were fixed
+with regressions; the reflected proxy comparison became the documented deviation.
+The exception-module allocation finding was only partly fixed: assigning the same
+name reuses its buffer, but assigning a different string retains the old native
+buffer, so a loop of distinct names grows by one short string each time. The final
+head `afcaca90` fixes the eighth, nested-union finding and has exact-tree CI, but
+was not itself sent through a sixth Codex review; this audit does not represent it
+as a final no-findings review.
+
+Historical workflows on the identical implementation tree succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39520378605) has
+**27/27 successful jobs**, including bootstrap, native/hosted, GC, UBSan,
+Python-free, optimization-off, contracts, runtime-cache, benchmark and final
+`make verify` gates; [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39520379785)
+has **3/3** successful platform jobs; [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39520378614)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39520378556)
+succeeded. These are exact-tree external results, not relabeled as fresh local
+native execution.
+
+Pinned CPython **3.13.16** and LLVM 18 were unavailable locally. Therefore no
+local native JIT/AOT, GC-stress, AOT build, metadata-enabled isolated import
+sweep, native adapted-port benchmark, full upstream suite or CPython regrtest
+completed. Existing import totals and first errors remain historical. No broad
+tomllib, PyPI, NumPy, runtime-speed or peak-memory claim follows. Complete this
+checkpoint after an authorized pinned rebuild, selected native parity and the
+retained import sweep. The latest fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-20 — #795: CPython tomllib.loads() port
+
+Inspected [main `1cf6a676633a5d3e703648d26e3fe328d884b726`](https://github.com/den-run-ai/pystachy/commit/1cf6a676633a5d3e703648d26e3fe328d884b726)
+after [#795](https://github.com/den-run-ai/pystachy/pull/795) merged at
+2026-10-21 00:37:17 UTC. Fresh first-parent history and ancestry checks establish
+it as the only merge after #794. Implementation head
+`b607b51f4a2cb8a5e3cee19736c8ac9d219c5736` is in main, and the head and merge
+share tree `d42da0970158788551dc6be77bcb7aebf077b534`.
+
+This merge adds the maintained CPython 3.13.16 `tomllib` parser as a Pystachy
+library port, including `loads()`, `TOMLDecodeError` and dynamically typed TOML
+values. It changes library, tests and documentation only; compiler, runtime and
+test-runner sources are unchanged from #794. Binary-file `load()` is deliberately
+not exposed because binary file support remains
+[#493](https://github.com/den-run-ai/pystachy/issues/493).
+
+[Machine-readable evidence](compatibility-2026-10-20-tomllib-port-partial.json)
+retains exact source/tree identities, commands, input and landed-file hashes,
+results, upstream provenance, workflow links, review state, adaptations,
+limitations and clean pre/post source snapshots.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| Reference recordings | **5/5** stdout, final stderr line and exit recordings match hosted CPython 3.12.14. This is not a pinned-3.13 regeneration. |
+| Hosted compiler inputs | All **5/5** emit checked hosted IR. Raw LLVM-text sizes are 66,494; 64,480; 61,622; 62,417; and 62,995 lines. These are not runtime, compile-time, binary-size or memory measurements. |
+| Acceptance transition | Against exact prior source `387059ba`, all **5/5** inputs change from the exact unsupported-`tomllib` module rejection to successful checked IR. |
+| Upstream-derived data corpus | **62** documents are exercised: **12** valid and **50** invalid, with exact result or error-message recordings. |
+| API scope | The focused cases cover strings, integers, floats, booleans, dates, times, datetimes, arrays, tables, inline tables, dotted keys, dynamic access and uncaught parse errors. Binary `load(fp)` is not tested or supported. |
+
+The landed `lib/tomllib/__init__.py` hash matches the upstream-package hash
+recorded in its README, and the evidence file records hashes for all four shipped
+library files and all five retained programs. This is an adapted, hosted parser
+and data-corpus check, not a run of CPython's full `test_tomllib` suite. Decimal
+hooks, copy/deepcopy, binary `load()`, `test.support` helpers and recursion-limit
+scaffolding are outside this checkpoint.
+
+Exact-tree external workflows succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39521093627) has
+**27/27 successful jobs**, including bootstrap, native/hosted, GC, UBSan,
+Python-free, optimization-off, contracts, runtime-cache, benchmark and final
+`make verify` gates; [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39521093470)
+has **3/3** successful platform jobs; [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39521093578)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39521093573)
+succeeded. These validate the identical implementation tree but are not relabeled
+as fresh local native execution.
+
+The PR has no inline review threads. Its Codex review completed without findings
+at `ce1071f1aeabc9f40eba73d5fd286344d9b46810`; later changes only merged the #794
+implementation heads and moved explanatory documentation. The final exact tree
+has the green workflow set above, but this audit does not represent the earlier
+review as a second review of those later merge commits.
+
+The port retains documented adaptations: tables use the existing empty-helper
+pattern ([#777](https://github.com/den-run-ai/pystachy/issues/777)); flags and
+pending containers use typed list-backed forms
+([#775](https://github.com/den-run-ai/pystachy/issues/775),
+[#783](https://github.com/den-run-ai/pystachy/issues/783)); a local callable
+boundary remains [#782](https://github.com/den-run-ai/pystachy/issues/782); and
+regex group optionality is narrowed at the parser boundary under #783. Dynamic
+`Any` behavior remains intentionally distinct from general CPython/PyPI
+compatibility.
+
+Pinned CPython **3.13.16** and LLVM 18 were unavailable locally. Therefore no
+local native JIT/AOT, GC-stress, AOT build, metadata-enabled isolated import
+sweep, native port benchmark, full upstream suite or CPython regrtest completed.
+Existing import totals and unrelated first errors remain historical. No broad
+PyPI, NumPy, runtime-speed or peak-memory claim follows. Complete this checkpoint
+after an authorized pinned rebuild, selected native parity and the retained import
+sweep. The latest fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

@@ -2186,6 +2186,18 @@ I pys_vtuple_get(VTuple *t, I index) {
   if (!t) pys_fail("TypeError: 'NoneType' object is not subscriptable");
   return t->a[idx(index, t->len, "IndexError: tuple index out of range")];
 }
+/* a + b: a new tuple of the items of both, or the other operand itself where one is empty, as
+   CPython's tupleconcat gives it */
+VTuple *pys_vtuple_concat(VTuple *a, VTuple *b) {
+  if (!a->len) return b;
+  if (!b->len) return a;
+  if (a->len > (INT64_MAX - (I)sizeof(VTuple)) / (I)sizeof(I) - b->len) pys_fail("MemoryError");
+  VTuple *t = pys_alloc(sizeof(VTuple) + (a->len + b->len) * sizeof(I));
+  t->len = a->len + b->len;
+  memcpy(t->a, a->a, a->len * sizeof(I));
+  memcpy(t->a + a->len, b->a, b->len * sizeof(I));
+  return t;
+}
 VTuple *pys_vtuple_slice(VTuple *t, I lo, I hi, I st) {   /* t[lo:hi:st]; all of t is t itself, as in CPython */
   I n = sspan(&lo, hi, &st, t->len);
   if (st == 1 && n == t->len) return t;
@@ -4860,6 +4872,26 @@ Str *pys_exc_module(Exc *e) {           /* C.__module__: builtins, a builtin cla
   Str *k = XCLS(e)->disp; I n = k->len;
   while (n > 0 && k->s[n - 1] != '.') n--;
   return n ? pys_str(k->s, n - 1) : cstr("__main__");
+}
+void pys_exc_setmodule(ExcClass *c, Str *mod) {   /* C.__module__ = mod of a user class: the name its uncaught
+                                                    exceptions show ("Class" for __main__, as traceback's), which
+                                                    pys_exc_module reads back. The class lives as long as the
+                                                    program, so the name is no heap object */
+  int n; const char *q = short_name(c->disp, &n);
+  if (mod->len == 8 && !memcmp(mod->s, "builtins", 8)) pys_fail("NotImplementedError: a class's __module__ = 'builtins' is not supported");
+  int top = mod->len == 8 && !memcmp(mod->s, "__main__", 8);
+  I len = top ? n : mod->len + 1 + n;
+  Str *o = c->disp;   /* the name it has already (a function that assigns it on each call): kept. A name
+                         replaced is not freed: an uncaught exception's line holds it while the class's
+                         __str__ runs, which may assign another */
+  if (o->len == len && (top ? !memcmp(o->s, q, n) : !memcmp(o->s, mod->s, mod->len) && o->s[mod->len] == '.' && !memcmp(o->s + mod->len + 1, q, n))) return;
+  Str *d = malloc(sizeof(Str) + len + 1);
+  if (!d) oom();
+  d->len = len; d->dict_hash = 0; d->chars1 = 0;
+  char *p = d->s;
+  if (!top) { memcpy(p, mod->s, mod->len); p += mod->len; *p++ = '.'; }
+  memcpy(p, q, n); p[n] = 0;
+  c->disp = d;
 }
 void *pys_exc_ctor(Exc *c, void **table) {   /* the function table holds for class object c's class, {ExcClass, function}
                                               pairs ended by NULL, or NULL */

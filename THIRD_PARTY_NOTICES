@@ -83,6 +83,19 @@ lib/getopt.py is CPython 3.13.16's Lib/getopt.py with the edits lib/README.md li
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
 
+lib/tomllib/ is CPython 3.13.16's Lib/tomllib with the edits lib/compatibility.md lists, each
+marked "Pystachy port:" in the source; it is derived from Python and is used under the same license
+and copyright notice. Its files are Taneli Hukkinen's code ("SPDX-FileCopyrightText: 2021 Taneli
+Hukkinen"), licensed to the PSF under a Contributor Agreement and also available under the MIT
+License, whose text and copyright notice are in ports/tomli_w/LICENSE.
+tests/programs/upstream/upstream_tomllib_data.py holds the TOML documents of CPython 3.13.16's
+Lib/test/test_tomllib/data, and tests/programs/upstream/upstream_tomllib_misc.py adapts the
+assertions of its Lib/test/test_tomllib/test_error.py and test_misc.py, under the same licenses.
+
+lib/_pystachy_mappingproxy.py is Pystachy's own mappingproxy (types.MappingProxyType), written
+after CPython 3.13.16's Objects/descrobject.c, whose behaviour, messages and docstrings it follows;
+it is derived from Python and is used under the same license and copyright notice.
+
 lib/io.py is Pystachy's own StringIO, written after CPython 3.13.16's Modules/_io/stringio.c,
 whose behaviour and messages it follows and whose docstrings it keeps; it is derived from Python
 and is used under the same license and copyright notice.

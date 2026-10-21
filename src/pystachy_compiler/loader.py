@@ -623,6 +623,11 @@ class Loader:
                 m.kinds[st.s] = "f" if k == "def" else "c"
                 if k == "subclass" and (len(st.kids) == 2 or st.kids[1].kind == "typeparams") and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
                     m.cbases[st.s] = st.kids[1]
+                for x in st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids if k == "subclass" else []:
+                    if x.kind == "assign" and len(x.kids) == 2 and x.kids[0].kind == "name" and x.kids[0].s == "__class_getitem__":
+                        v = x.kids[1]
+                        if v.kind == "call" and len(v.kids) == 2 and v.kids[0].kind == "name" and v.kids[0].s == "classmethod":
+                            m.cgetitem[st.s] = v.kids[1]
                 for d in [st] if k == "def" else st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids:
                     if d.kind == "def":
                         ga: dict[str, bool] = {}
@@ -1168,9 +1173,20 @@ class Loader:
             return True  # (a builtin module may lack the attribute)
         return k not in ANNKINDS or (self.kind_of(b) == "v" and not (top and k == "name") and not (k == "name" and self.typevar(e))) or (k == "index" and self.kind_of(b) == "" and b.s in PYBUILTINS and b.kind == "name" and b.s not in GENERICS)
 
+    def galias_of(self, m: Mod, x: Node) -> bool:
+        # is x (a name or a module's attribute, in module m) types.GenericAlias
+        k = ""
+        if x.kind == "name":
+            k = m.kinds.get(x.s, "")
+        elif x.kind == "attr" and x.kids[0].kind == "name":
+            b = m.kinds.get(x.kids[0].s, "")
+            k = self.mods[b[2:]].kinds.get(x.s, "") if b.startswith("m:") and b[2:] in self.mods else ""
+        return k == "b:" + TYPESMOD + ".GenericAlias"
+
     def generic_class(self, b: Node) -> bool:
         # is b (a name, an alias such as an imported class's, or a user module's attribute, that
-        # names a class) a class whose one base is typing.Generic[...]
+        # names a class) a class whose one base is typing.Generic[...], or whose body binds
+        # __class_getitem__ = classmethod(GenericAlias), which makes its subscripts types too
         m = self.dm
         name = b.s
         k = self.kind_of(b)
@@ -1185,6 +1201,8 @@ class Loader:
         elif b.kind == "attr":
             k = self.kind_of(b.kids[0])
             m = self.mods[k[2:]] if k.startswith("m:") and k[2:] in self.mods else self.dm
+        if name in m.cgetitem and self.galias_of(m, m.cgetitem[name]):
+            return True  # (CPython's idiom for a generic class, __class_getitem__ = classmethod(GenericAlias))
         base = m.cbases.get(name, None)
         if base is not None and base.kind == "typeparams":
             return True  # (class C[T])

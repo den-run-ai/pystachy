@@ -407,6 +407,7 @@ from src.pystachy_compiler.declarations import (
     gen_any_variables as declarations_any_variables,
     gen_boxto as declarations_boxto,
     gen_boxwider as declarations_boxwider,
+    gen_class_family as declarations_class_family,
     gen_class_params as declarations_class_params,
     gen_class_tvars as declarations_class_tvars,
     gen_ctype as declarations_ctype,
@@ -553,6 +554,8 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_held as exceptions_exc_held,
     gen_exc_holds as exceptions_exc_holds,
     gen_exc_helpers as exceptions_exc_helpers,
+    gen_exc_disp as exceptions_exc_disp,
+    gen_exc_set_module as exceptions_exc_set_module,
     gen_exc_make as exceptions_exc_make,
     gen_exc_sub as exceptions_exc_sub,
     gen_exc_tables as exceptions_exc_tables,
@@ -1106,6 +1109,7 @@ class Gen:
         self.shadows: list[list[str]] = []
         self.xcls: dict[str, bool] = {}  # exception classes whose objects are made: they get an ExcClass
         self.xvals: dict[str, bool] = {}  # exception classes of the program used as values: calls of class objects make them (exc_ctors)
+        self.xmods: dict[str, bool] = {}  # exception classes whose __module__ the program assigns (C.__module__ = v: exc_set_module)
         self.xsigs: dict[str, int] = {}  # each argument type of calls of class objects ("": none): its table's number
         self.xctors: dict[str, bool] = {}  # the functions exc_ctors compiled ("<table>.<class>"): does the class's __init__ take it
         self.xtypes: dict[str, bool] = {}  # the static types of exceptions whose type() became a class object ("exc": any)
@@ -2108,6 +2112,9 @@ class Gen:
 
     def union_members(self, n: Node, out: list[Node]) -> list[Node]:
         return declarations_union_members(self, n, out)
+
+    def class_family(self, ts: list[str]) -> str:
+        return declarations_class_family(self, ts)
 
     def has_path(self, n: Node) -> bool:
         return declarations_has_path(self, n)
@@ -3232,6 +3239,12 @@ class Gen:
 
     def exc_helpers(self, c: str) -> None:
         return exceptions_exc_helpers(self, c)
+
+    def exc_disp(self, c: str) -> str:
+        return exceptions_exc_disp(self, c)
+
+    def exc_set_module(self, cn: Node, v: Val) -> None:
+        return exceptions_exc_set_module(self, cn, v)
 
     def exc_class_value(self, c: str) -> Val:
         return exceptions_exc_class_value(self, c)

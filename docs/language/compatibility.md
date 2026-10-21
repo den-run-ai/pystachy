@@ -226,6 +226,10 @@ above apply to well-formed text (with the surrogate exception described above).
   tests it only when it prints that line; no other exception class tests it
   (`tests/deviations/exc_syntax_error_truth.py`).
 
+- `E.__module__ = "builtins"` of an exception class raises `NotImplementedError`, where CPython
+  assigns it and its uncaught exceptions' line names the class alone; other names are assigned
+  as in CPython (`tests/deviations/exc_class_module_builtins.py`).
+
 - An `__exit__` whose traceback parameter is not annotated `TracebackType | None` (from `types`)
   is given `None` for it where CPython passes the exception's traceback (`tb is None` is true);
   annotated so, it takes an object of `TracebackType` that has none of a traceback's attributes.
@@ -336,11 +340,13 @@ above apply to well-formed text (with the surrogate exception described above).
   runtime-typed boxes ([dynamic `Any`](../dynamic-any.md)). A concrete annotation, or storage
   that keeps its first type, that receives an `Any` value of another type raises `TypeError`
   where CPython, which does not check annotations, goes on
-  (`tests/deviations/dynany_annotation_check.py`). A comparison method annotated with a class
-  does not run with a value of another type, and the comparison is identity's (or `TypeError`
-  for an ordering) where CPython runs the method (`tests/deviations/dynany_eq_annotated_body.py`).
-  The prototype's other differences, such as `in` of an `Any` item in a typed container and
-  function values printing as `<function>`, are listed in its
+  (`tests/deviations/dynany_annotation_check.py`), also an item of a tuple that a typed tuple
+  receives (`tests/deviations/dynany_tuple_item_check.py`). A comparison method annotated with a
+  class does not run with a value of another type, and the comparison is identity's (or
+  `TypeError` for an ordering) where CPython runs the method
+  (`tests/deviations/dynany_eq_annotated_body.py`). The prototype's other differences, such as
+  `in` of an `Any` item in a typed container and function values printing as `<function>`, are
+  listed in its
   [deviations](../dynamic-any.md#deviations).
 
 ## Rejected rather than miscompiled

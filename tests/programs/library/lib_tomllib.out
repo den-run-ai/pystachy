@@ -1,0 +1,48 @@
+title str 'TOML "Example"\té😀'
+literal str 'C:\\Users\\nodejs'
+multi str 'Roses are red\n  Violets are bluestill'
+int int 99
+neg int -17
+hex int 3735928559
+oct int 493
+bin int 13
+big int 1000000
+float float 6.626e-34
+exp float 5e+22
+frac float -0.01
+inf float inf
+ninf float -inf
+nan float nan
+yes bool True
+no bool False
+odt datetime datetime.datetime(1979, 5, 27, 7, 32, tzinfo=datetime.timezone.utc)
+odt_ms datetime datetime.datetime(1979, 5, 27, 0, 32, 0, 999999, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=61200)))
+ldt datetime datetime.datetime(1979, 5, 27, 7, 32)
+ld date datetime.date(1979, 5, 27)
+lt time datetime.time(7, 32, 0, 500000)
+mixed list [1, 'two', 3.5, [True], {'x': 1}, datetime.date(1979, 5, 27)]
+nested list [[1, 2], ['a', 'b']]
+inline dict {'name': 'Tom', 'quoted key': 1, 'point': {'x': 1, 'y': 2}}
+key with spaces str 'spaced'
+site dict {'google.com': True}
+owner dict {'name': 'Tom Preston-Werner', 'dob': datetime.datetime(1979, 5, 27, 7, 32, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=57600)))}
+database dict {'enabled': True, 'ports': [8000, 8001, 8002], 'data': [['delta', 'phi'], [3.14]], 'temp_targets': {'cpu': 79.5, 'case': 72.0}}
+servers dict {'alpha': {'ip': '10.0.0.1', 'role': 'frontend'}, 'beta': {'ip': '10.0.0.2', 'role': 'backend'}}
+products list [{'name': 'Hammer', 'sku': 738594937}, {}, {'name': 'Nail', 'sku': 284758393, 'color': 'gray'}]
+fruits list [{'name': 'apple', 'physical': {'color': 'red'}, 'varieties': [{'name': 'red delicious'}, {'name': 'granny smith'}]}]
+17 EXAMPLE True
+24003
+Tom
+1979-05-27T07:32:00-08:00 -1 day, 16:00:00 1979
+1979-06-01 6
+7 32 500000
+['frontend', 'backend']
+[738594937, 0, 284758393] 1023353330
+True True
+granny smith {'x': 1, 'y': 2} {'google.com': True}
+True True 3735929065
+changed False [8000, 8001, 8002, 9000]
+{'a': 1, 'b': 'two', 't': {'c': [3]}}
+{} {}
+{'lines': 'first\n  second', 'raw': 'a \\ b'}
+[exit 0]

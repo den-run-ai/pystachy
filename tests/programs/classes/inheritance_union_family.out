@@ -1,0 +1,12 @@
+point area 0.0 Shape
+square side 2.0 area 4.0 Square
+unit side 1.0 area 1.0 Unit
+nothing
+[1.0, 0.0]
+2020-01-02 datetime.date(2020, 1, 2) date False 2020 None
+2020-01-02 03:04:00 datetime.datetime(2020, 1, 2, 3, 4) datetime True 2020 2020-01-02
+hour 3
+2020-01-02 datetime.date(2020, 1, 2) date False 2020 2020-01-02 03:04:00
+[datetime.datetime(2020, 1, 2, 3, 4), datetime.date(2020, 1, 2)] [datetime.date(2019, 5, 5), datetime.date(2020, 1, 2)]
+True True False
+[exit 0]

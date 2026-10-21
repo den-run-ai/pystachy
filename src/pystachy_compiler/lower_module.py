@@ -89,7 +89,9 @@ def lower_data(d: Data) -> str:
         slots = ["i64 ptrtoint (ptr " + v.v + " to i64)" if v.t == "str" else "i64 " + v.v for v in d.items]
         return f"{d.name} = private constant [{len(slots)} x i64] [{', '.join(slots)}], align 8"
     if d.kind == "callable" or d.kind == "exception":
-        return f"{d.name} = private constant {{{', '.join(['ptr' for _ in d.refs])}}} {{{', '.join(['ptr ' + x for x in d.refs])}}}"
+        # (an ExcClass whose displayed name the program assigns, d.text, is written: exc_set_module)
+        how = "global" if d.text == "global" else "constant"
+        return f"{d.name} = private {how} {{{', '.join(['ptr' for _ in d.refs])}}} {{{', '.join(['ptr ' + x for x in d.refs])}}}"
     if d.kind == "classrec":
         # a class's reflection record (reflection.py): name, qualified name and module, flags,
         # the sorted name table and the field table with their lengths (null and 0 until a site

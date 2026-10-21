@@ -1,0 +1,8 @@
+True
+5
+True
+7 7
+[1, 2, 3] True
+[1, 2, 3, 4] True
+(None, None) True True
+[exit 0]

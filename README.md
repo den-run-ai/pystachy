@@ -149,8 +149,8 @@ Some standard-library modules compile unchanged. Others, including `fnmatch`, `t
 `difflib`, `statistics` and `random`, use localized adaptations marked `# Pystachy port:`.
 The adapted code remains valid Python and can be diffed against upstream.
 The library also includes `re`, `itertools`, Unicode normalization, a bounded native `json`,
-`functools.cache` / `lru_cache`, `collections.namedtuple`, and in-memory binary I/O with
-`io.BytesIO`.
+`tomllib.loads()`, `functools.cache` / `lru_cache`, `collections.namedtuple`, and in-memory
+binary I/O with `io.BytesIO`.
 See [library coverage and port notes](lib/README.md) for supported APIs and remaining limits.
 There are also [15 third-party ports](ports/README.md), with scoped APIs and documented adaptations.
 The [compatibility audit](docs/reports/compatibility-updates.md) records measured coverage and blockers.

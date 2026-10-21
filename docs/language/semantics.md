@@ -556,6 +556,14 @@ classes, otherwise the builtin exception type. An uncaught user exception prints
 `module.E: message` (`E` in the main program) and exits with status 1; a `SystemExit`
 subclass exits using its code. Exception values keep identity when raised.
 
+`E.__module__ = name` gives the class another module's name, as a package does for the
+exceptions of its submodules ("Pretend this exception was created here", as `tomllib` does): from
+then on `E.__module__`, `type(e).__module__`, `repr(E)` and an uncaught exception's line show it
+(`E` alone for `"__main__"`), while what was read before and the subclasses keep their own. The
+name must be a `str`, and `"builtins"` raises `NotImplementedError`
+([test](../../tests/programs/exceptions/exc_class_module_assign.py)). An ordinary class's
+`__module__` is not assigned this way.
+
 Additional inheritance, constructor and attribute restrictions are in
 [exception restrictions](compatibility.md#exceptions-and-exception-classes).
 
