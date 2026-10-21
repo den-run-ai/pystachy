@@ -83,6 +83,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-20 tomllib prerequisite blockers (#794), **partial** | `387059ba`; follows #793/#790 | 14/14 new positive CPython references, 17/17 positive/deviation hosted compilations, 6/6 changed rejections, 25/25 targeted unit tests and six retained consumer compilations pass. MappingProxyType and five compiler/runtime capabilities land; exact-tree CI is green. Local native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-tomllib-blockers-partial.json). |
 | 2026-10-20 `tomllib.loads()` port (#795), **partial** | `1cf6a676`; library/test/docs port on #794 | All five selected sources move from unsupported-module rejection to checked hosted IR; 5/5 CPython references match, including 62 upstream data documents (12 valid, 50 invalid). Exact-tree CI is green. Binary-file `load()`, local native/import evaluation and the full upstream suite remain incomplete. [Evidence](compatibility-2026-10-20-tomllib-port-partial.json). |
 | 2026-10-20 dynamic `Any` in-place dispatch (#806), **partial** | `20d1aa29`; compiler/runtime change after #795 | 66/66 selected CPython references and hosted compilations pass. All 64 retained inputs have byte-identical hosted IR; only the two new regression programs change, fixing typed `Any` operands' in-place dunder dispatch and CPython operator messages. Exact-tree CI is green; local pinned native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-dynamic-inplace-partial.json). |
+| 2026-10-20 dynamic `Any` class-id dispatcher switch (#811), **partial** | `730886ea`; compiler/test change after #806 | 70/70 selected positive/deviation inputs emit hosted IR and 10/10 retained rejections remain exact. Of 69 common positive inputs, 57 change only inside `@dyn.*` dispatchers and 12 are byte-identical. Synthetic 2/16/128-class getters use one class-id switch with 2/16/128 cases; the 128-class dispatcher shrinks 1,809→1,429 IR lines. Exact-tree CI is green; local pinned native/import evaluation remains incomplete. [Evidence](compatibility-2026-10-20-dynamic-dispatch-switch-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -5528,3 +5529,73 @@ dynamic-Python, PyPI, runtime-speed or peak-memory claim follows. Complete this
 checkpoint after an authorized pinned rebuild, selected native parity and the
 retained import sweep. The latest fully evaluated main remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-20 — #811: dynamic Any class-id dispatcher switch
+
+Inspected [main `730886ea84d9f8d655e2da0d6b0ec98804b43e8b`](https://github.com/den-run-ai/pystachy/commit/730886ea84d9f8d655e2da0d6b0ec98804b43e8b)
+after [#811](https://github.com/den-run-ai/pystachy/pull/811) merged at
+2026-10-21 06:50:56 UTC. Fresh first-parent history and ancestry checks establish
+it as the only merge after #806. Final implementation head
+`33a99f0a7ed6779477b32f3e034ee485a6684cea` and merged main share tree
+`68f6497fa3fb9424e84f17d5893fcec2e9ac527f`.
+
+This is step 1 of [#799](https://github.com/den-run-ai/pystachy/issues/799).
+Every generated `@dyn.*` dispatcher previously compared its receiver's
+`DynType` with each supported boxed class in sequence. It now loads the dense
+class id stored in the `DynType` and selects one exact class case with an LLVM
+`switch`; builtin and function values retain the generic fallback. This removes
+the class-position-dependent branch chain. It does not yet make the dispatcher
+constant-size: each supported class still has an emitted operation arm.
+
+[Machine-readable evidence](compatibility-2026-10-20-dynamic-dispatch-switch-partial.json)
+retains exact source/tree identities, commands, selected inputs, landed-file
+hashes, before/after IR hashes, synthetic probe source hashes, workflow jobs,
+review state, environment, limitations and clean pre/post source snapshots.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| Selected hosted compiler inputs | All **69/69** common positive/deviation inputs compile both before and after; the new differential test also compiles, for **70/70** on current main. Compiler stdout/stderr remain equal for all 69 common inputs. |
+| Retained rejection contracts | **10/10** dynamic-`Any` rejections keep the exact status, stdout and diagnostic text. |
+| Before/after IR isolation | **12/69** common positive inputs are byte-identical. All **57/57** changed inputs become byte-identical after removing only `@dyn.*` function definitions; no non-dispatch IR difference remains. |
+| New differential reference | Hosted CPython 3.12.14 output, empty stderr and exit marker match the checked-in `dynany_dispatch_switch.out`. This is not a pinned-3.13 regeneration. |
+| Two-class synthetic getter | The dispatcher changes from **0 switches / 45 lines** to **one two-case switch / 43 lines**; whole-program IR is 259→257 lines. |
+| Sixteen-class synthetic getter | The dispatcher changes from **0 switches / 241 lines** to **one 16-case switch / 197 lines**; whole-program IR is 1,085→1,041 lines. |
+| 128-class synthetic getter | The dispatcher changes from **0 switches / 1,809 lines** to **one 128-case switch / 1,429 lines**; whole-program IR is 7,693→7,313 lines. |
+
+The synthetic results establish emitted dispatcher structure and bounded LLVM
+text size only. They do not establish LLVM's eventual jump-table lowering,
+executed instruction counts, runtime speed, binary size or memory. The PR's
+separate pinned LLVM 18.1.3 callgrind measurements report a 128-class field read
+at approximately 140 instructions for last, mixed and skewed receiver sets,
+versus 524, 333 and 505 on the preceding chain; the first receiver changes
+117→119. Those figures are PR-reported, not independently re-timed here, and the
+PR correctly makes no application-wide speedup claim.
+
+Exact-final-tree external workflows succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39555933460) has
+**27/27 successful jobs**, including bootstrap, native/hosted, GC, UBSan,
+Python-free, optimization-off, contracts, runtime-cache, benchmarks and final
+`make verify`; [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39555933520)
+has **3/3** successful platform jobs; [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39555933495)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39555933430)
+each succeeded. These validate the identical final implementation tree but are
+not relabeled as fresh local native execution. Codex reviewed the implementation
+commit `f98d583a` and reported no major issues; the later final head merges #806
+without changing the #811 implementation patch.
+
+The remaining work stays under #799: one lookup per method call, per-selector
+field tables, selective dispatcher recompilation and a deterministic native
+instruction-count guard. The merge hand-off also notes that
+`docs/dynamic-any.md` still describes the old linear `DynType` chain and
+recommends recording each emitted class id with its `DynType` to make any future
+id desynchronization fail loudly. Neither note reproduces a current wrong result,
+so no duplicate issue was filed.
+
+Pinned CPython **3.13.16** and LLVM 18 were unavailable locally. Therefore no
+fresh local native JIT/AOT, fixed-point build, GC stress, metadata-enabled isolated
+import sweep, callgrind measurement, full `make verify`, FFI/cache suite or
+CPython regrtest completed. Existing import totals and unrelated first errors
+remain historical. No broad dynamic-Python, PyPI, runtime-speed or peak-memory
+claim follows. Complete this checkpoint after an authorized pinned rebuild,
+selected native parity and the retained import sweep. The latest fully evaluated
+main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
