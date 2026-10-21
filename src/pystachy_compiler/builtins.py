@@ -1027,6 +1027,8 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
     k = self.call_key(key, item)
     if "?" in k.t:
         self.err(f"the key function returns an empty container whose type is not known here ({typestr(k.t)})")
+    if self.ctype("list", [k.t]) == "list[dyn]":
+        k = self.coerce(k, "dyn")  # (an Any container's box, which a list of them holds: ctype)
     self.rt("pys_list_append", "void", [f"ptr {ks}", "i64 " + self.to_slot(k)])
     self.mstore('int', f"{self.scalar('add', [Val(i, 'int'), Val('1', 'int')])}", ctr)
     self.br(lc)

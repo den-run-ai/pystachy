@@ -1975,11 +1975,14 @@ def gen_drain(self, it: Val) -> Val:
     if v.t == "None" or "?" in v.t:
         self.err(f"the items of {short(it.t)}'s __next__ ({typestr(v.t)}) cannot be a list's")
     self.place(self.label())
+    lt = self.ctype("list", [v.t])
+    if lt == "list[dyn]":
+        v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
     self.rt("pys_list_append", "void", [f"ptr {res}", "i64 " + self.to_slot(v)])
     self.br(lc)
     self.stop_landing(c, le)
     self.place(le)
-    self.holes[h.k] = self.ctype("list", [v.t])
-    return Val(res, self.ctype("list", [v.t]))
+    self.holes[h.k] = lt
+    return Val(res, lt)
 
 # ---- narrowing: optional locals known not to be None
