@@ -6050,3 +6050,55 @@ executables were unavailable locally. No fresh local native rebuild, JIT/AOT,
 GC-stress matrix, full `make verify`, upstream suite or CPython regrtest completed.
 Exact-tree CI supplies the native matrix externally. The latest fully evaluated
 main remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #825: actionlint, stale suppressions and fast hosted checks
+
+Inspected [main `10aa41753ee6d984f0f51ac8289b806ef526391b`](https://github.com/den-run-ai/pystachy/commit/10aa41753ee6d984f0f51ac8289b806ef526391b)
+after [#825](https://github.com/den-run-ai/pystachy/pull/825) merged at
+2026-10-21 16:51:51 UTC. Fresh first-parent history establishes it as the only
+merge after #820. Merged main and final implementation head `1c72b448` share
+tree `f9f44d9ba814a62e0b367005e143bb3cc1933aba`.
+
+#825 adds a checksummed actionlint 1.7.12 workflow gate, enables Ruff's RUF100
+stale-suppression rule and introduces `make check-fast`: Ruff, the existing
+mypy gate, seven effect-summary tests and 84 typed-IR tests. Three obsolete
+`# noqa: E402` comments are removed. The release workflow only groups three
+release-note writes under one redirection with a narrow ShellCheck explanation.
+`pystachy.py`, `runtime.py`, `src/`, `lib/`, `ports/` and the differential,
+rejection and deviation corpus are byte-identical to #820.
+
+[Machine-readable evidence](compatibility-2026-10-21-fast-tooling-partial.json)
+retains exact source/tree identities, changed-file hashes, pinned tool versions,
+commands, workflow jobs, local results and limitations.
+
+| Fresh local hosted measurement | Result and boundary |
+|---|---|
+| `make check-fast` under CPython 3.13.16 | Ruff clean; mypy **45/45 files**; effect summaries **7/7** and typed IR **84/84**. |
+| Feedback latency | **8.642 s** first and **4.354 s** warm on this shared host. The sequential second run benefits from caches; these are local-loop observations, not compiler/runtime benchmarks. |
+| actionlint 1.7.12 | All **8/8 workflow files** pass with embedded ShellCheck enabled and Pyflakes integration explicitly disabled. |
+| Workflow limits | **4/4** tests pass. |
+
+Exact-final-tree external workflow jobs also succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39635819474) has
+**27/27**, [Installation](https://github.com/den-run-ai/pystachy/actions/runs/39635819469)
+has **3/3**, [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39635819533)
+and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/39635819537)
+each have **1/1**, and [Release](https://github.com/den-run-ai/pystachy/actions/runs/39635819699)
+has **5 successes plus its expected skipped publish job**. The fetched workflow
+set therefore contains **37 successes, one expected skip and no failures or
+cancellations**. The PR body separately records an expected DCO certification
+skip among commit checks.
+
+No review threads exist. The Codex review summary was still marked running in
+the comment visible immediately before merge, while the PR records a separate
+complete-diff review with no blocking findings. This audit found no compatibility
+bug and filed no issue.
+
+This is a developer-feedback and workflow-validation gain, not a language,
+runtime or library compatibility gain. Imports, APIs, adapted ports, packages,
+performance and memory were not rerun; #817's hosted **141/441** import result
+remains the latest local count. `make check-fast` is deliberately not a substitute
+for bootstrap, native JIT/AOT, GC, runtime, FFI or recording verification.
+Exact-final-tree CI supplies that unchanged native matrix externally. The latest
+fully evaluated main remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.

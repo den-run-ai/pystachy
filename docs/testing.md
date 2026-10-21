@@ -18,6 +18,8 @@ Run these from the repository root:
 | `make runtime-coverage` | Measure which lines and branches of the runtime's C code the corpus's programs and the FFI suite run ([native runtime coverage](#native-runtime-coverage)). |
 | `make variants` | Run the suite, JIT and AOT, in configurations that verification does not test: combinations of IR passes turned off, and the runtime and AOT programs built at `-O0` ([configuration variants](#configuration-variants)). |
 | `make verify` | Run the complete verification plan and write `build/verification.json`. |
+| `make check-fast` | Run Ruff, mypy and selected hosted compiler unit tests; no LLVM or native build needed. |
+| `make lint-python` | Run Ruff only. |
 | `make lint` | Run Ruff, ShellCheck and Clang warnings. |
 | `make typecheck` | Run mypy on the Python compiler and its entry point; no native build needed. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
@@ -29,6 +31,15 @@ Run these from the repository root:
 | `make bench-extended-check` | Check the extended benchmark runner and CPython/JIT/AOT checksums; no timing thresholds. |
 | `make bench-pyperformance-check` | Check the pyperformance runner and the ported benchmarks' CPython/JIT/AOT output; no timing thresholds. |
 | `make blas-check` | Check the optional `cblas_dgemm` adapter (`examples/ndarray`) against NumPy and nanoGPT's BLAS backend against its scalar one, under CPython, JIT, AOT and GC stress; needs an LP64 `libblas.so.3` and NumPy. `LD_LIBRARY_PATH` selects the provider; CI checks OpenBLAS and the reference BLAS. |
+
+For quick local feedback, activate the environment with the dependencies from
+`tools/requirements-dev.txt` and run `make check-fast`. It runs Ruff, the existing
+mypy gate, compiler effect-summary tests (`tools/test_function_summaries.py`), and
+all typed-IR unit tests (`tools/test_typed*.py`) under the interpreter selected by `PY`. It builds no native
+compiler and needs no LLVM tools. This is a hosted subset; use the full verification
+plan for bootstrap, JIT/AOT, GC and runtime evidence. `make check-fast lint` also
+runs ShellCheck and Clang warnings, sharing the Ruff prerequisite. Ruff also rejects
+obsolete `# noqa` suppressions with `RUF100`.
 
 For a focused edit, select the affected cases:
 
@@ -368,8 +379,15 @@ other shape of `tools/scaling.py` (its `-x`), so a new shape is checked as well;
 the two to check every shape once. Locally, `scaling` runs both.
 The final report job allows ten minutes for artifact downloads and validation.
 
-The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: type checking, lint, report-gate tests
-and recording checks use the pinned CPython and require no compiler bootstrap.
+The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: `make check-fast lint`,
+report-gate tests and recording checks use the pinned CPython and require no compiler bootstrap.
+It also validates every GitHub Actions workflow with actionlint 1.7.12, installed
+from its SHA-256-verified release archive. To run the same check locally, install
+that [upstream version](https://github.com/rhysd/actionlint/releases/tag/v1.7.12)
+and run `actionlint -pyflakes=` from the repository root.
+Embedded shell checks remain enabled, using the pinned `shellcheck-py` executable;
+Pyflakes integration is disabled, so embedded Python snippets are not linted here.
+Ruff checks the repository's Python files separately.
 
 `make typecheck` uses the mypy version pinned in `tools/requirements-dev.txt` and
 the scope in [`mypy.ini`](../mypy.ini): `pystachy.py` and all of `src/`, targeting
