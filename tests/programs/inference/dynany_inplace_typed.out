@@ -1,0 +1,7 @@
+P.__ipow__
+2 True
+R.__iadd__
+2 True
+Q.__add__
+101 False
+[exit 0]
