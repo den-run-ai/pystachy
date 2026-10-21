@@ -1707,10 +1707,18 @@ def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool)
             return None
         self.add(Ins("init", "", JSONANY))  # (its module's code, as an import runs it: nothing imports it)
         return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
-    if len(args) == 0 or args[0].kind == "kw" or args[0].kind == "starred" or args[0].kind == "dstar":
+    objkw = [x for x in args if x.kind == "kw" and x.s == "obj"]
+    if len(args) == 0 or args[0].kind == "starred" or args[0].kind == "dstar" or (args[0].kind == "kw" and len(objkw) != 1):
         return None
-    a = args[0]
+    a = args[0] if args[0].kind != "kw" else objkw[0].kids[0]
     if a.kind == "list" or a.kind == "dict" or a.kind == "tuple" or a.kind == "dictcomp" or (a.kind == "listcomp" and a.s != "gen"):
+        self.add(Ins("init", "", JSONANY))
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
+    if args[0].kind == "kw":
+        # (dumps(obj=...): the function its value's type chooses, which dry() finds without
+        # evaluating it before the arguments ahead of it, called with the arguments as they are)
+        if not holds_dyn(self.dry(a)):
+            return None
         self.add(Ins("init", "", JSONANY))
         return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
     v = self.expr(a, "")

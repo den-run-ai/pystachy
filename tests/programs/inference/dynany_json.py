@@ -99,3 +99,12 @@ def live_default(o: Any) -> Any:
 print(json.dumps(live_doc, default=live_default))
 live_doc["b"] = 0
 print(json.dumps(live_doc, default=live_default, sort_keys=True))
+
+
+# json.dumps(obj=...): the keyword's value chooses the encoder, as a positional one does (#823)
+def json_payload() -> Any:
+    return {"k": [1, None]}
+
+
+print(json.dumps(obj=json_payload()))
+print(json.dumps(sort_keys=True, obj={2: "y", 1: "x"}))

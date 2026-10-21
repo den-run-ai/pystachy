@@ -29,4 +29,6 @@ loop Circular reference detected
 '[1] x' Extra data 4 1 5
 {"a": 1, "b": 2}
 {"a": 1, "b": 0}
+{"k": [1, null]}
+{"1": "x", "2": "y"}
 [exit 0]
