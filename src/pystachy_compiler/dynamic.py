@@ -1328,7 +1328,7 @@ def gen_dyn_return(self, f: FnInfo, r: Val) -> None:
 
 
 def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
-    # the cases of a method call's dispatcher (call.<m>.<n>, and has.<m>.<n>, which only finds it)
+    # the cases of a method call's dispatcher (call.<m>.<shape>, and has.<m>.<shape>, which only finds it)
     # for the builtin types that box: list[Any] and dict[Any, Any]'s methods, which keep their
     # boxes, and str's, tuple's and the numbers', whose arguments unbox (dyn_unbox) and whose fresh
     # results box (a bool's are int's, of its payload, 0 or 1)
@@ -1338,7 +1338,11 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
     t = Val(self.dyn_typeof(o), "dyntype")
     line = self.line
     for bt in ["list[dyn]", "dict[dyn,dyn]", "str", "vtuple[dyn]", "int", "bool", "float"]:
-        if not self.dyn_builtin_takes(bt, m, n):
+        # (with keyword arguments, which only list.sort() and dict.update() take, its method of
+        # that name whatever the positional ones: the call's case raises the TypeError once the
+        # arguments are evaluated, as CPython's binding does)
+        kwerr = len(ks) > 0 and not (bt == "list[dyn]" and m == "sort") and not (bt == "dict[dyn,dyn]" and m == "update")
+        if not self.dyn_builtin_takes(bt, m, -1 if kwerr else n):
             continue
         hit = self.label()
         nxt = self.label()
@@ -1369,17 +1373,18 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
 
 def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
     # does builtin type bt (one a box holds) have method m, called with n positional arguments
+    # (n < 0: with any number of them)
     base = "list" if is_list(bt) else "dict" if is_dict(bt) else "vtuple" if is_vtuple(bt) else "int" if bt == "bool" else bt
     special = {"list.sort": "0 0", "dict.update": "0 1", "dict.pop": "1 2", "dict.setdefault": "2 2", "str.join": "1 1"}
     k = base + "." + m
     if k in special:
         lo = int(special[k].split(" ")[0])
-        return lo <= n and n <= int(special[k].split(" ")[1])
+        return n < 0 or (lo <= n and n <= int(special[k].split(" ")[1]))
     if k not in METHODS:
         return False
     e = METHODS[k]
     ps = [p for p in e[e.find(":") + 1 :].split(",") if p != "" and p != "#"]
-    return len([p for p in ps if "=" not in p]) <= n and n <= len(ps)
+    return n < 0 or (len([p for p in ps if "=" not in p]) <= n and n <= len(ps))
 
 
 def gen_dyn_fresh(self, v: Val) -> Val:
@@ -1523,7 +1528,7 @@ def gen_dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
     # the lookup gives null for a method, which call.<m>.<shape> then calls, or a field's value,
     # read now as LOAD_ATTR reads it, which callv.<shape> calls although an argument assigns the
     # field anew
-    h = self.dyn_call(self.dyn_dispatcher(f"has.{m}.{len(vs) - len([a for a in args if a.kind == 'kw'])}", [DYN], DYN, m), [o])
+    h = self.dyn_call(self.dyn_dispatcher(f"has.{m}.{call_shape(args)}", [DYN], DYN, m), [o])
     vals = [self.dyn_box(self.expr(a, DYN)) for a in vs]
     fld = self.label()
     meth = self.label()
