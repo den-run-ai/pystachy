@@ -1,0 +1,31 @@
+literal, computed False True False
+one computed int, two names True False True
+two computed ints False True False
+literal, literal True False True
+literal, another function's literal True False True
+literal, sum False True False
+small ints True False True
+-5 True False True
+256 True False True
+257 False True False
+-6 False True False
+max, computed twice False True False
+max, literal twice True False True
+a literal appended twice True False True
+one float, two names True False True
+two computed floats False True False
+two equal strs False True False
+one str, two names True False True
+one list, two names True False True
+two equal lists False True False
+one tuple, two names True False True
+one object, two names True False True
+two objects False True False
+one bound method True False True
+two bound methods False True False
+one function True False True
+None True False True
+True True False True
+True, 1 False True False
+1, 1.0 False True False
+[exit 0]

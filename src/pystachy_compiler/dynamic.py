@@ -240,6 +240,17 @@ def gen_dyn_box(self, v: Val) -> Val:
         return Val(self.rtdata("pys_dyn_none_box"), DYN)
     if t == "bool":
         return Val(self.select(v.v, Val(self.rtdata("pys_dyn_true_box"), DYN), Val(self.rtdata("pys_dyn_false_box"), DYN)), DYN)
+    if t == "int" and (v.v[1:] if v.v.startswith("-") else v.v).isdigit() and (int(v.v) < -5 or int(v.v) > 256):
+        # an int literal's box is a constant, one per value, as a module's equal constants are one
+        # object in CPython: a is b where both hold 1000, which identity tells apart (dyn_identity)
+        g = "@dbi." + v.v.replace("-", "m")
+        if g not in self.dynboxes:
+            self.dynboxes[g] = True
+            d = Data("dynint", g)
+            d.refs = [self.rtdata("pys_dyntype_int")]
+            d.items = [Val(v.v, "int")]
+            self.consts.append(d)
+        return Val(g, DYN)
     if t == "int":
         return Val(self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]), DYN)
     if t == "float":
@@ -935,8 +946,10 @@ def gen_dyn_cmp2(self, op: str, a: Val, b: Val) -> Val:
 
 def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     # a is b (op "is") or a is not b, where either is dyn: the same box, or the same type and
-    # payload but for floats and bound methods (whose box is their identity, as a float object's
-    # and a method object's is CPython's: DF_BOXID)
+    # payload but for ints, floats and bound methods, whose box is their identity, as an int's,
+    # a float's and a method object's is CPython's (DF_BOXID), so that a is b exactly where
+    # id(a) == id(b) (pys_dyn_id, #797). An int from -5 to 256 has one constant box, as CPython
+    # caches those, and so does an int literal (dyn_box)
     x = self.dyn_box(a)
     y = self.dyn_box(b)
     ta = Val(self.dyn_typeof(x), "dyntype")
@@ -944,9 +957,10 @@ def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     st = self.ptr_cmp("==", ta, Val(self.dyn_typeof(y), "dyntype")).v
     sp = self.num_cmp("==", Val(self.to_slot(self.dyn_payload(x, "int")), "int"), Val(self.to_slot(self.dyn_payload(y, "int")), "int")).v
     nf = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_float"), "dyntype")).v
+    ni = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_int"), "dyntype")).v
     fl = self.mload("int", self.maddr("int", ta.v, "5"))  # (its DynType's flags)
     nb = self.num_cmp("==", Val(self.scalar("and", [Val(fl, "int"), Val(str(DF_BOXID), "int")]), "int"), Val("0", "int")).v
-    nf = self.scalar("and", [Val(nf, "bool"), Val(nb, "bool")])
+    nf = self.scalar("and", [Val(self.scalar("and", [Val(nf, "bool"), Val(ni, "bool")]), "bool"), Val(nb, "bool")])
     alike = self.scalar("and", [Val(st, "bool"), Val(self.scalar("and", [Val(sp, "bool"), Val(nf, "bool")]), "bool")])
     r = self.scalar("or", [Val(same, "bool"), Val(alike, "bool")])
     return Val(r if op == "is" else self.scalar("xor", [Val(r, "bool"), Val("true", "bool")]), "bool")

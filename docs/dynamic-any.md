@@ -106,8 +106,9 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   `str`, list, dict, tuple or object. Boxing never copies a mutable container and never gives
   an alias a second layout.
 - **`None` is the constant box `pys_dyn_none_box`, never null.** Null is an unbound variable's
-  slot, and the existing "is assigned" flags still tell unbound reads apart. `True`, `False`
-  and the ints from -5 to 256 are constant boxes too. Other numbers' boxes are atomic
+  slot, and the existing "is assigned" flags still tell unbound reads apart. `True`, `False`,
+  the ints from -5 to 256 and the program's int literals are constant boxes too, one per value.
+  Other numbers' boxes are atomic
   allocations, which the collector does not scan; a reference's box is a scanned allocation,
   so the box keeps its payload alive. DynTypes are constants outside the heap. Dynamic locals,
   arguments and closure cells are ordinary pointer slots, which the conservative collector
@@ -123,6 +124,14 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   method object; a def's box is a constant, whose payload is its DynType's address, and a
   closure's holds the env its def made for it, so different functions have different `id()`s
   (`tests/programs/inference/dynany_fn_identity.py`).
+- **Identity**: two `Any` values are one object, for `is`, exactly where their `id()`s are equal
+  (#797). `None`, a bool and a reference are their payload's object. An int, a float and a
+  bound method are their box, as an int or float object is in CPython. An int from -5 to 256
+  and an int literal have one constant box per value, as CPython caches the former and makes
+  equal constants one object; an int computed at run time gets a new box, as
+  `int("1000") is int("1000")` is `False` in CPython
+  (`tests/programs/inference/dynany_identity.py`). Where typed code's numbers cross into `Any`,
+  see the [deviations](#deviations).
 
 Two typed IR operations read a box: `dyn.type` its DynType pointer and `dyn.payload` its
 payload, declaring the type a test proved it holds. Neither has a memory effect: a box never
@@ -274,6 +283,12 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
+- An int or float of typed code is boxed where it becomes an `Any` value, a new object at each
+  crossing: one typed int stored in two `Any` variables is two objects, for `is` and `id()`
+  alike, where CPython's two names hold one object. So is an expression of literals, which
+  CPython's compiler folds into a constant (`999 + 1` is the object of the literal `1000`
+  there), and a float literal at each evaluation, where CPython's equal constants are one object
+  (`tests/deviations/dynany_identity_boundary.py`).
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional arguments only; keywords and
