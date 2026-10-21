@@ -719,6 +719,12 @@ def targs(t: str) -> list[str]:
     return out
 
 
+def any_item(t: str) -> bool:
+    # is t an Any value (dyn) or one of Any's containers, which a container holds as a box: then a
+    # list or dict of it has Any's container layout too (Gen.ctype)
+    return t == "dyn" or t == "list[dyn]" or t == "dict[dyn,dyn]"
+
+
 def slice_items(lo: int, hi: int, st: int, n: int) -> list[int]:
     # the indices of n items that lo:hi:st selects, as CPython's slice.indices(n) gives them: -2**63
     # is an omitted bound (Gen.slice_bound), and st is not 0
