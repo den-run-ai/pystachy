@@ -345,6 +345,8 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     # it v (its box slot, idbox): the box of the Any value it unboxes, the box of the binding it
     # copies, an int literal's constant box, else none yet, a new object that its first crossing
     # boxes (dyn_box)
+    if v.idslot == slot and self.idstores.get(slot, 0) == v.idgen:
+        return  # (x = x, x := x: the binding's own object, read with no store since, is no new binding)
     b = "null"
     if v.t == DYN or v.t == DYNINT:
         b = v.v

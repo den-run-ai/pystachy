@@ -11,4 +11,5 @@ a module variable that a call rebinds True True
 a folded constant False False
 a float literal False False
 a read before a store in a branch that does not run False False
+a value a conditional chooses from two variables False False
 [exit 0]
