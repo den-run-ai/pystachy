@@ -300,8 +300,8 @@ pointer comparisons with one `switch` on it, which LLVM can lower to a jump tabl
 
 (instructions per field read; the probes' outputs are identical). Arms are exact-type tests, so
 their order never mattered and the change is semantics-preserving. Built natively in its own
-worktree from `cb512cf3` plus the patch, the prototype reached the compiler and runtime fixed
-points, and the 74 `dynany_*` and `tomllib` cases passed (138 checks, JIT and AOT, 0 failed), as on
+worktree from `afd0ba79` (this branch's merge of main `1cf6a676`, whose compiler and runtime it
+keeps) plus the patch, the prototype reached the compiler and runtime fixed points, and the 74 `dynany_*` and `tomllib` cases passed (138 checks, JIT and AOT, 0 failed), as on
 main. Gate: the dispatchers' IR tests and `dynany_*` cases, JIT and AOT (#799).
 
 **C2. Fields through tables** (#799). For `get.<a>`/`set.<a>`, look up the receiver's class id in a
