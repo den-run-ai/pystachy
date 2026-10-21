@@ -1,0 +1,35 @@
+side 1
+side 2
+duplicate __main__.g() got multiple values for keyword argument 'a'
+side 4
+side 5
+side 6
+mapping __main__.g() got multiple values for keyword argument 'a'
+side 8
+side 9
+side 10
+keywords __main__.g() got multiple values for keyword argument 'a'
+side 12
+side 13
+side 14
+g {'a': 14, 'b': 13}
+2
+side 15
+side 16
+empty __main__.g() got multiple values for keyword argument ''
+side 18
+side 19
+method __main__.C.m() got multiple values for keyword argument ''
+side 21
+side 22
+m {'a': 22}
+1
+side 23
+side 24
+builtin dict.update() got multiple values for keyword argument ''
+{'z': 0}
+side 26
+side 27
+{'z': 0, 'a': 27}
+missing
+[exit 0]

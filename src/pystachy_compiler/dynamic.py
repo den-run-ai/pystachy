@@ -18,9 +18,9 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import METHODS, NONEVAR, RTDATA
+from src.pystachy_compiler.specs import JSONANY, METHODS, NONEVAR, RTDATA
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -240,6 +240,56 @@ def gen_dyn_box(self, v: Val) -> Val:
         return Val(self.rtdata("pys_dyn_none_box"), DYN)
     if t == "bool":
         return Val(self.select(v.v, Val(self.rtdata("pys_dyn_true_box"), DYN), Val(self.rtdata("pys_dyn_false_box"), DYN)), DYN)
+    if (t == "int" or t == "float") and v.idfrom != "":
+        return Val(v.idfrom, DYN)  # (the Any value's object it was read from: dyn_unbox, dyn_narrowed)
+    if (t == "int" or t == "float") and v.idslot != "":
+        # a variable's value: the box of its object (dyn_id_held), where that holds this value of
+        # this type, else a new box, which the binding keeps (idbox) where it has none and has not
+        # changed since the read, so that each crossing of one binding into Any gives one object,
+        # as CPython's name holds one (#797)
+        kept = self.idstores.get(v.idslot, 0) == v.idgen
+        b = self.dyn_id_held(v)
+        chk = self.label()
+        hit = self.label()
+        miss = self.label()
+        end = self.label()
+        self.cbr(self.ptr_cmp("!=", b, Val("null", DYN)).v, chk, miss)
+        self.place(chk)
+        typ = Val(self.rtdata("pys_dyntype_int" if t == "int" else "pys_dyntype_float"), "dyntype")
+        st = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), typ).v
+        sp = self.num_cmp("==", Val(self.to_slot(self.dyn_payload(b, "int")), "int"), Val(self.to_slot(v), "int")).v
+        self.cbr(self.scalar("and", [Val(st, "bool"), Val(sp, "bool")]), hit, miss)
+        self.place(hit)
+        self.br(end)
+        self.place(miss)
+        nb = self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]) if t == "int" else self.rt("pys_dyn_float", "ptr", [f"double {v.v}"])
+        ph = Ins("phi", DYN, "")
+        self.incoming(ph, b.v, hit)
+        self.incoming(ph, nb, self.cur)
+        if kept:
+            # (not over a box: that is another object's, as where a call has given a module
+            # variable a new binding since the read)
+            keep = self.label()
+            self.cbr(self.ptr_cmp("==", b, Val("null", DYN)).v, keep, end)
+            self.place(keep)
+            self.mem_store(Val(v.idslot, "*" + DYN), Val(nb, DYN))
+            self.incoming(ph, nb, keep)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), DYN)
+    if t == "int" and v.lit and (int(v.v) < -5 or int(v.v) > 256):
+        # an int literal's box is a constant, one per value in each module (its functions' code
+        # included), as a module's equal constants are one object in CPython, and another module's
+        # another: a is b where both hold 1000, which identity tells apart (dyn_identity). Not a
+        # value only the compiler knows (struct.calcsize("300x")), which CPython computes
+        g = "@dbi." + self.curfn.mod + "$" + v.v.replace("-", "m")
+        if g not in self.dynboxes:
+            self.dynboxes[g] = True
+            d = Data("dynint", g)
+            d.refs = [self.rtdata("pys_dyntype_int")]
+            d.items = [Val(v.v, "int")]
+            self.consts.append(d)
+        return Val(g, DYN)
     if t == "int":
         return Val(self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]), DYN)
     if t == "float":
@@ -288,6 +338,47 @@ def gen_dyn_box(self, v: Val) -> Val:
     if is_fn(t) or is_callable(t):
         return self.dyn_fn_box(v)
     return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.dyn_type(t)}", f"ptr {v.v}"]), DYN)
+
+
+def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
+    # the box that an int or float variable's binding has as an Any value, where store_name gives
+    # it v (its box slot, idbox): the box of the Any value it unboxes, the box of the binding it
+    # copies, an int literal's constant box, else none yet, a new object that its first crossing
+    # boxes (dyn_box)
+    if v.idslot == slot and self.idstores.get(slot, 0) == v.idgen:
+        return  # (x = x, x := x: the binding's own object, read with no store since, is no new binding)
+    b = "null"
+    if v.t == DYN or v.t == DYNINT:
+        b = v.v
+    elif v.idfrom != "":
+        b = v.idfrom
+    elif v.idslot != "":
+        b = self.dyn_id_held(v).v
+    elif v.lit and t == "int" and (int(v.v) < -5 or int(v.v) > 256):
+        b = self.dyn_box(v).v
+    self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+    self.idstores[slot] = self.idstores.get(slot, 0) + 1
+
+
+def gen_dyn_id_read(self, v: Val, slot: str) -> None:
+    # v, read from an int or float variable whose box slot is slot (idbox): it keeps the slot, the
+    # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
+    # far (dyn_id_held)
+    v.idslot = slot
+    v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
+    v.idgen = self.idstores.get(slot, 0)
+
+
+def gen_dyn_id_held(self, v: Val) -> Val:
+    # the box of the object that v, an int or float variable's value (dyn_id_read), is, null where
+    # it has none yet: the box its slot held at the read, else, where no store has given the
+    # variable a new binding since, the box a crossing of the object has given it since ([x, x]).
+    # Not after one (x, y = y, x), whose box is another object's
+    b = Val(v.idheld, DYN)
+    if self.idstores.get(v.idslot, 0) != v.idgen:
+        return b
+    now = self.mem_load(Val(v.idslot, "*" + DYN))
+    return Val(self.select(self.ptr_cmp("!=", b, Val("null", DYN)).v, b, now), DYN)
 
 
 def gen_dyn_union_box(self, v: Val) -> Val:
@@ -428,7 +519,10 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
         return Val(self.phi(ph), t)
     if t in BUILTIN:
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_type(t)}"])
-        return self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
+        x = self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
+        if t == "int" or t == "float":
+            x.idfrom = v.v  # (a box of exactly type t: pys_dyn_unbox)
+        return x
     if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_class_type(t)}"])
         return self.from_slot(self.to_slot(Val(r, "int")), t)
@@ -617,7 +711,10 @@ def gen_dyn_narrowed(self, v: Val, nt: str) -> Val:
     if nt == DYNINT:
         self.dynints[v.v] = True
         return v
-    return self.dyn_payload(v, nt)
+    x = self.dyn_payload(v, nt)
+    if nt == "float":
+        x.idfrom = v.v  # (its object, as an Any value again: dyn_box)
+    return x
 
 
 def gen_dyn_proven_int(self, v: Val) -> Val:
@@ -946,8 +1043,10 @@ def gen_dyn_cmp2(self, op: str, a: Val, b: Val) -> Val:
 
 def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     # a is b (op "is") or a is not b, where either is dyn: the same box, or the same type and
-    # payload but for floats and bound methods (whose box is their identity, as a float object's
-    # and a method object's is CPython's: DF_BOXID)
+    # payload but for ints, floats and bound methods, whose box is their identity, as an int's,
+    # a float's and a method object's is CPython's (DF_BOXID), so that a is b exactly where
+    # id(a) == id(b) (pys_dyn_id, #797). An int from -5 to 256 has one constant box, as CPython
+    # caches those, and so does an int literal (dyn_box)
     x = self.dyn_box(a)
     y = self.dyn_box(b)
     ta = Val(self.dyn_typeof(x), "dyntype")
@@ -955,9 +1054,10 @@ def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     st = self.ptr_cmp("==", ta, Val(self.dyn_typeof(y), "dyntype")).v
     sp = self.num_cmp("==", Val(self.to_slot(self.dyn_payload(x, "int")), "int"), Val(self.to_slot(self.dyn_payload(y, "int")), "int")).v
     nf = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_float"), "dyntype")).v
+    ni = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_int"), "dyntype")).v
     fl = self.mload("int", self.maddr("int", ta.v, "5"))  # (its DynType's flags)
     nb = self.num_cmp("==", Val(self.scalar("and", [Val(fl, "int"), Val(str(DF_BOXID), "int")]), "int"), Val("0", "int")).v
-    nf = self.scalar("and", [Val(nf, "bool"), Val(nb, "bool")])
+    nf = self.scalar("and", [Val(self.scalar("and", [Val(nf, "bool"), Val(ni, "bool")]), "bool"), Val(nb, "bool")])
     alike = self.scalar("and", [Val(st, "bool"), Val(self.scalar("and", [Val(sp, "bool"), Val(nf, "bool")]), "bool")])
     r = self.scalar("or", [Val(same, "bool"), Val(alike, "bool")])
     return Val(r if op == "is" else self.scalar("xor", [Val(r, "bool"), Val("true", "bool")]), "bool")
@@ -1140,6 +1240,9 @@ def gen_dyn_body(self, key: str) -> None:
                 ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyntypes[s], "dyntype"))])
             if dunder == "__mod__":
                 ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyn_type("str"), "dyntype"))])
+            if key == "iop10":
+                # dict.__ior__ updates or raises: it never declines to the right's __ror__.
+                ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyn_type("dict[dyn,dyn]"), "dyntype"))])
             self.dyn_reflected(f, c, r, o, ps[1], ok)
     if key.startswith("call.") or key.startswith("has."):
         self.dyn_builtin_methods(f, key, o, ps[1:])
@@ -1258,8 +1361,9 @@ def gen_dyn_bind(self, fm: FnInfo, own: int, key: str, an: list[Node]) -> str:
     # object) and the arguments an, or "" where they fit its parameters: positional arguments as
     # dyn_takes counts them, keyword arguments as a typed call binds them (arity_error), and a
     # keyword argument named twice as CPython merges them first (dup_kw)
-    if dup_kw(key) != "":
-        return f"{fm.mod if fm.mod != '' else '__main__'}.{self.qualname(fm)}() got multiple values for keyword argument '{dup_kw(key)}'"
+    dup = dup_kw(key)
+    if dup >= 0:
+        return f"{fm.mod if fm.mod != '' else '__main__'}.{self.qualname(fm)}() got multiple values for keyword argument '{shape_kws(key)[dup]}'"
     if len(shape_kws(key)) == 0 or fm.bad != "" or len(fm.defaults) < len(fm.params):
         return "" if self.dyn_takes(fm, own, len(an)) else self.dyn_arity(fm, own, len(an))
     return self.arity_error(fm, own, an)
@@ -1364,8 +1468,8 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
         self.place(hit)
         if key.startswith("has."):
             self.ret_(Val("null", DYN))  # (a method, which call.<m>.<shape> calls)
-        elif dup != "":
-            self.raise_("TypeError", self.sconst(f"{tname('int' if bt == 'bool' else bt)}.{m}() got multiple values for keyword argument '{dup}'"))
+        elif dup >= 0:
+            self.raise_("TypeError", self.sconst(f"{tname('int' if bt == 'bool' else bt)}.{m}() got multiple values for keyword argument '{ks[dup]}'"))
         elif len(ks) > 0 and bt == "list[dyn]" and m == "sort" and n > 0:
             self.raise_("TypeError", self.sconst("sort() takes no positional arguments"))  # (CPython's, before the keywords)
         elif len(ks) > 0 and bt == "dict[dyn,dyn]" and m == "update" and n > 1:
@@ -1547,15 +1651,16 @@ def shape_kws(key: str) -> list[str]:
     return out
 
 
-def dup_kw(key: str) -> str:
-    # the first keyword argument name that the calls of dispatcher key pass a second time (** of a
-    # display or of **kwargs brings it), or "": CPython raises TypeError for it as it merges the
+def dup_kw(key: str) -> int:
+    # the index of the first keyword argument that the calls of dispatcher key pass a second time
+    # (** of a display or of **kwargs brings it), or -1: even the empty string is a legal name.
+    # CPython raises TypeError for it as it merges the
     # keyword arguments, once they are evaluated and before the call binds them
     ks = shape_kws(key)
     for j in range(len(ks)):
         if ks[j] in ks[:j]:
-            return ks[j]
-    return ""
+            return j
+    return -1
 
 
 def gen_dyn_lookup(self, o: Val, m: str, npos: int, names: list[str]) -> Val:
@@ -1773,9 +1878,10 @@ def gen_dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:
         own = 1 if f is not None and f.deco == "" else 0
     if f is None:
         return "TypeError: the function cannot be called with positional arguments only"
-    if dup_kw(key) != "":
+    dup = dup_kw(key)
+    if dup >= 0:
         # (a keyword argument named twice: CPython's TypeError, as it merges them before the call)
-        return f"TypeError: {f.mod if f.mod != '' else '__main__'}.{self.qualname(f)}() got multiple values for keyword argument '{dup_kw(key)}'"
+        return f"TypeError: {f.mod if f.mod != '' else '__main__'}.{self.qualname(f)}() got multiple values for keyword argument '{shape_kws(key)[dup]}'"
     if f.bad == "" and len(f.defaults) >= len(f.params) and (len(shape_kws(key)) > 0 or k.startswith("c:")):
         # (keyword arguments as a typed call binds them, and a closure's by its qualified name, its
         # env not counted: arity_error)
@@ -1815,3 +1921,40 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     self.br(head)
     self.place(end)
     return self.mem_load(Val(acc, "*dyn"))
+
+
+def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
+    # json.loads() or json.dumps() (name: json$loads, json$dumps) in a module that compiles Any as
+    # dyn: lib's function of Any values (JSONANY, which the loader adds to a program that has such
+    # a module and json) where the document is Any values, so that loads() decodes it into Any's
+    # containers and dumps() encodes those as the objects they are, with no copy (#779); else
+    # None, json's own function of JSONValue. loads() where its result becomes Any storage (want
+    # holds Any values); dumps() where its argument does, or is a list, dict or tuple display or a
+    # list or dict comprehension, which is then Any's
+    q = JSONANY + "$" + name[name.find("$") + 1 :]
+    if q not in self.funcs:
+        return None
+    if name == "json$loads":
+        if not holds_dyn(want):
+            return None
+        self.add(Ins("init", "", JSONANY))  # (its module's code, as an import runs it: nothing imports it)
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
+    objkw = [x for x in args if x.kind == "kw" and x.s == "obj"]
+    if len(args) == 0 or args[0].kind == "starred" or args[0].kind == "dstar" or (args[0].kind == "kw" and len(objkw) != 1):
+        return None
+    a = args[0] if args[0].kind != "kw" else objkw[0].kids[0]
+    if a.kind == "list" or a.kind == "dict" or a.kind == "tuple" or a.kind == "dictcomp" or (a.kind == "listcomp" and a.s != "gen"):
+        self.add(Ins("init", "", JSONANY))
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
+    if args[0].kind == "kw":
+        # (dumps(obj=...): the function its value's type chooses, which dry() finds without
+        # evaluating it before the arguments ahead of it, called with the arguments as they are)
+        if not holds_dyn(self.dry(a)):
+            return None
+        self.add(Ins("init", "", JSONANY))
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
+    v = self.expr(a, "")
+    if not holds_dyn(v.t):
+        return self.call_fn(self.funcs[name], [], [self.vnode(v)] + args[1:], want, resultsoft=resultsoft)
+    self.add(Ins("init", "", JSONANY))
+    return self.call_fn(self.funcs[q], [], [self.vnode(v)] + args[1:], want, resultsoft=resultsoft)

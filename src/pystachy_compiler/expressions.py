@@ -642,7 +642,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "int":
         if not int_fits(n.s):
             self.err("integer literal does not fit in 64 bits")
-        return Val(n.s, "int")
+        lit = Val(n.s, "int")
+        lit.lit = True
+        return lit
     if k == "float":
         return Val(fbits(n.s), "float")
     if k == "str":
@@ -2766,7 +2768,14 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     self.place(l3)
     if t == "None":
         return Val("null", "None")  # (None either way)
-    return Val(self.phi(ph), t)
+    r = Val(self.phi(ph), t)
+    if (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
+        # (x if c else x: the one binding both arms read, whose box its slot still holds here,
+        # so that the value keeps its object where it becomes an Any value: dyn_id_read, #797)
+        r.idslot = a.idslot
+        r.idheld = self.mem_load(Val(a.idslot, "*dyn")).v
+        r.idgen = a.idgen
+    return r
 
 def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
     # Python semantics: `a or b` yields a if a is truthy, else b (same static type)

@@ -3232,8 +3232,10 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    second layout. The containers a box may hold have boxes for items (list[Any] LA, dict[Any,
    Any] DAA, tuple VA): descriptor A is such a slot, which the walks follow through its box's
    DynType. None is the constant box pys_dyn_none_box and never null, which is an unbound
-   variable's; True, False and the ints from -5 to 256 are constant boxes too, and the other
-   numbers' boxes atomic, so that boxing a number allocates nothing the collector scans. */
+   variable's; True, False and the ints from -5 to 256 are constant boxes too (as the program
+   makes each int literal's), and the other numbers' boxes atomic, so that boxing a number
+   allocates nothing the collector scans. An int's, a float's and a bound method's box is its
+   identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
 enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC };
 enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);
@@ -3273,6 +3275,7 @@ Dyn *pys_dyn_ref(const DynType *t, void *p) {
 static Dyn *dlist(List *l) { return pys_dyn_ref(&pys_dyntype_list, l); }
 static Dyn *dstr(Str *s) { return pys_dyn_ref(&pys_dyntype_str, s); }
 static Dyn *dtuple(VTuple *t) { return pys_dyn_ref(&pys_dyntype_tuple, t); }
+static Dyn *ddict(Dict *d) { return pys_dyn_ref(&pys_dyntype_dict, d); }
 static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
 /* does x have type t as a typed variable, argument or field of type t takes it (pys_dyn_unbox):
    x's type is t; or t is a class's, and x an object of a class that derives from it, or None (a
@@ -3472,6 +3475,11 @@ static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace) {   /* a OP b, or a's i
     memcpy(r->a, x->a, x->len * sizeof(I)); memcpy(r->a + x->len, y->a, y->len * sizeof(I));
     return dtuple(r);
   }
+  if (op == 10 && ka == DK_DICT && kb == DK_DICT) {   /* d | e: a new dict of d's items updated with e's, as dict.__or__ */
+    Dict *r = pys_dict_copy((Dict *)a->v);
+    pys_dict_update(r, (Dict *)b->v);
+    return ddict(r);
+  }
   if (inplace && op == 2 && (ka == DK_DICT || ka == DK_OBJ))
     dyn_unsupported(a, b, op, inplace);   /* (CPython's *= repeats a sequence on the right only where the left operand's type has no
                                              sequence methods: a dict's and an object's have them, though no repeat) */
@@ -3483,9 +3491,12 @@ static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace) {   /* a OP b, or a's i
   dyn_unsupported(a, b, op, inplace);
 }
 Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) { return dyn_binop(a, b, op, 0); }
-/* a OP= b: a list extends or repeats itself in place, as list's __iadd__ and __imul__ do; other
-   values have no in-place operation and make a new value */
+void pys_dyn_update(Dict *d, Dyn *x);
+/* a OP= b: a list extends or repeats itself in place, as list's __iadd__ and __imul__ do, and a
+   dict updates itself, as dict's __ior__ does (dict.update(b): a mapping, or pairs); other values
+   have no in-place operation and make a new value */
 Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
+  if (DKIND(a) == DK_DICT && op == 10) { pys_dyn_update((Dict *)a->v, b); return a; }
   if (DKIND(a) == DK_LIST && op == 0) {
     if (DKIND(b) == DK_LIST) { pys_list_extend((List *)a->v, (List *)b->v); return a; }
     if (DKIND(b) == DK_TUPLE) { VTuple *t = (VTuple *)b->v; for (I i = 0; i < t->len; i++) pys_list_append((List *)a->v, t->a[i]); return a; }

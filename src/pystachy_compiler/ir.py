@@ -9,6 +9,11 @@ class Val:
         self.v = v
         self.t = t
         self.infer_from = ""  # direct recursive call whose inferred return still defaults to None
+        self.lit = False  # an int literal's own value, as gen_expr made it (dyn_box: its constant box)
+        self.idslot = ""  # the box slot of the int or float variable it was read from (dyn_box: idbox)
+        self.idheld = ""  # the box that slot held then, null where it held none yet (dyn_id_read)
+        self.idgen = 0  # the stores into that slot that the compiler had emitted then (idstores)
+        self.idfrom = ""  # the box of the Any value that an int or float was read from (dyn_box)
 
 
 class Data:
@@ -423,6 +428,8 @@ class Frame:
         self.iflag: dict[str, str] = {}
         self.appends: dict[str, bool] = {}
         self.owned: dict[str, str] = {}
+        self.idbox: dict[str, str] = {}
+        self.idstores: dict[str, int] = {}
         self.cells: dict[str, str] = {}
         self.nlw: dict[str, bool] = {}
         self.nonevars: dict[str, int] = {}
@@ -432,6 +439,20 @@ class Frame:
         self.branch = 0
         self.modlevel = False
         self.lenient = False
+        # the state of the operation that the function was compiling when it compiled another,
+        # which that function must neither see nor change (#822): dry()'s depth, a return's value
+        # while leave() compiles finally blocks, the comparison with None and the lookup key being
+        # compiled, the copies unrolled loops make and the expression statement
+        self.drying = 0
+        self.carried = Val("", "")
+        self.nonecmp = False
+        self.fieldcmp = False
+        self.cmpnode = Node("", "", 0)
+        self.stkkey = Node("", "", 0)
+        self.reflcopies = 1
+        self.stmtexpr: Node | None = None
+        self.dmemo: list[Node] = []
+        self.dmemot: list[str] = []
         self.n = 0
         self.cur = ""
         self.term = False
