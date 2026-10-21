@@ -32,6 +32,16 @@
       "ir_sha256": "8eadb90a423016ac423c1f58eb6f8ea702e3790fcf4bf96091cb10421e131ee8",
       "ir_bytes": 4689,
       "source_note": "Retested while integrating main 0536d1a8; compiler/runtime/lib diff against that main is empty."
+    },
+    {
+      "compiler_commit": "185849790523815d0f63ab1a8b33c17549bf31b4",
+      "command": "PYSTACHY_IRCHECK=1 python3.13 pystachy.py ir <case> -o <output>",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "ir_sha256": "8eadb90a423016ac423c1f58eb6f8ea702e3790fcf4bf96091cb10421e131ee8",
+      "ir_bytes": 4689,
+      "source_note": "Retested while integrating main 18584979 (#821); compiler/runtime/lib diff against that main is empty."
     }
   ],
   "cpython": {

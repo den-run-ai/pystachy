@@ -284,6 +284,198 @@
         }
       ],
       "violations": false
+    },
+    {
+      "compiler_source_commit": "185849790523815d0f63ab1a8b33c17549bf31b4",
+      "compiler_source_tree": "5ac3628d5b6b8d77f79ddfce9fab8231059fe926",
+      "command": "python3.13 tools/compiler_state_nested_probe.py --strict",
+      "exit_status": 1,
+      "stderr": "",
+      "reports": [
+        {
+          "depth": 1,
+          "fields": [
+            "drying",
+            "carried",
+            "nonecmp",
+            "fieldcmp",
+            "cmpnode",
+            "stkkey",
+            "reflcopies",
+            "stmtexpr"
+          ],
+          "boundaries": [
+            {
+              "level": 1,
+              "entry_leaks": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ],
+              "caller_restore_changes": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ]
+            }
+          ]
+        },
+        {
+          "depth": 2,
+          "fields": [
+            "drying",
+            "carried",
+            "nonecmp",
+            "fieldcmp",
+            "cmpnode",
+            "stkkey",
+            "reflcopies",
+            "stmtexpr"
+          ],
+          "boundaries": [
+            {
+              "level": 1,
+              "entry_leaks": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ],
+              "caller_restore_changes": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ]
+            },
+            {
+              "level": 2,
+              "entry_leaks": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ],
+              "caller_restore_changes": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ]
+            }
+          ]
+        },
+        {
+          "depth": 3,
+          "fields": [
+            "drying",
+            "carried",
+            "nonecmp",
+            "fieldcmp",
+            "cmpnode",
+            "stkkey",
+            "reflcopies",
+            "stmtexpr"
+          ],
+          "boundaries": [
+            {
+              "level": 1,
+              "entry_leaks": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ],
+              "caller_restore_changes": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ]
+            },
+            {
+              "level": 2,
+              "entry_leaks": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ],
+              "caller_restore_changes": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ]
+            },
+            {
+              "level": 3,
+              "entry_leaks": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ],
+              "caller_restore_changes": [
+                "carried",
+                "cmpnode",
+                "drying",
+                "fieldcmp",
+                "nonecmp",
+                "reflcopies",
+                "stkkey",
+                "stmtexpr"
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }
