@@ -3241,7 +3241,7 @@ static const Dyn smallint[262] = {DI4(-5), DI(-1), DI64(0), DI64(64), DI64(128),
 #define DNAME(x) ((x)->t->name->s)
 static int dnum(const Dyn *x) { return DKIND(x) == DK_INT || DKIND(x) == DK_BOOL; }   /* an int or a bool: its value is v */
 Dyn *pys_dyn_int(I v) {
-  if ((uint64_t)(v + 5) < 262) return (Dyn *)&smallint[v + 5];
+  if ((uint64_t)v + 5 < 262) return (Dyn *)&smallint[v + 5];   /* (unsigned: v + 5 overflows from INT64_MAX - 4) */
   Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_int; d->v = v; return d;
 }
 Dyn *pys_dyn_float(double x) { Dyn *d = pys_alloc_atomic(sizeof(Dyn)); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
