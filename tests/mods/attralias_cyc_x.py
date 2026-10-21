@@ -1,7 +1,6 @@
-# x imports y, whose alias A = cx.K (import mods.attralias_cyc_x as cx) names x's class: y
-# imported first, x runs to its end before y's alias reads it (tests/programs/imports/
-# import_attr_class_alias_cycle.py); x imported first, it has not run its class statement then
-# (tests/deviations/circular_class_alias.py does that)
+# x imports y, whose A = cx.K (import mods.attralias_cyc_x as cx) reads x's class while x's code
+# runs: in that circular import, A stays a variable, which cannot hold the class
+# (tests/errors/imports/import_attr_class_alias_cycle.py)
 import mods.attralias_cyc_y
 
 

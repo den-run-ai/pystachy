@@ -817,15 +817,15 @@ class Loader:
                 # does, which raises where m's code has not bound C yet (a circular import: Gen's
                 # "ready"). Not where m's C is an alias and m imports this module, itself or through
                 # others: m binds C where its statement runs, which may come after that import, and
-                # "ready" checks only the class. Nor where code before the statement names name
-                # (named_before)
+                # "ready" checks only the class. Nor where code may read name before the statement
+                # binds it (read_early)
                 nm = st.kids[0].s
                 t = self.attr_mod(st.kids[1].kids[0])
                 k = self.mods[t].kinds.get(st.kids[1].s, "") if t != "" and st.kids[1].s not in self.mods[t].amb else ""
                 if k.startswith("a:") and self.imports_mod(self.mods[t].body, m.name, {}, True):
                     k = ""
                 q = k[2:] if k.startswith("a:") and self.class_alias(k) else self.mods[t].q + st.kids[1].s if k == "c" else ""
-                if q != "" and self.plain_class(q, 0) and m.kinds.get(nm, "") == "v" and count.get(nm, 0) == 1 and nm not in m.fnglobal and not self.named_before(m, st, nm):
+                if q != "" and self.plain_class(q, 0) and m.kinds.get(nm, "") == "v" and count.get(nm, 0) == 1 and nm not in m.fnglobal and not self.read_early(m, st, nm):
                     m.kinds[nm] = "a:" + q
                     self.aliased[m.name + " " + nm] = st
                     self.used_before(m, st)
@@ -1038,15 +1038,18 @@ class Loader:
             changed = True
         return changed
 
-    def named_before(self, m: Mod, al: Node, nm: str) -> bool:
-        # does a statement of module m before alias statement al name nm, also in a function, class
-        # or lambda it defines? Such code may run before al (a call of the function) and find nm
-        # unbound, where CPython raises NameError, while an alias names the class for all of the
-        # module's code (late_aliases)
+    def read_early(self, m: Mod, al: Node, nm: str) -> bool:
+        # may code read nm before alias statement al of module m binds it, where CPython raises
+        # NameError or AttributeError while an alias names the class for all of the program's code
+        # (late_aliases)? A statement before al that names nm, also in a function, class or lambda
+        # it defines, which a call may run then; or one that imports, at the top level, itself or
+        # through other modules, a module whose code imports m back: in that import cycle, the
+        # other module's code runs before al and may read m.nm. (As for Gen's import components,
+        # imports in functions are not followed: #814)
         for st in m.body.kids:
             if st is al:
                 return False
-            if names_name(st, nm):
+            if names_name(st, nm) or self.imports_mod(st, m.name, {}, False):
                 return True
         return False
 

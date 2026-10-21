@@ -1,5 +1,5 @@
 # An alias of a class through the attribute that its package's from-import binds
-# (tests/programs/imports/import_attr_class_alias_fromcycle*.py)
+# (tests/errors/imports/import_attr_class_alias_fromcycle.py)
 import emods.fromcyc as pkg
 
 A = pkg.x.C
