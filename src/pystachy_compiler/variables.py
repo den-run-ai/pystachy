@@ -1745,6 +1745,8 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
         return t if is_list(t) else ""
     if n.kind == "attr" or n.kind == "index":
         t = self.target_type(n.kids[0], True)
+        if t == "dyn":
+            return "dyn"  # (an Any value's item or attribute: a display stored there holds Any values, cont[k] = {})
         if n.kind == "attr" and self.is_prop(t, n.s):
             ms = self.classes[t].methods
             s = n.s + ".setter"

@@ -1,0 +1,55 @@
+# pystachy: dynamic-any
+# A display stored into an Any value's item or attribute holds Any values, as a CPython container
+# does whatever is stored into it later (#777): an empty one too, and one of typed items
+from typing import Any
+
+
+class Node:
+    def __init__(self) -> None:
+        self.kids: Any = None
+
+
+cont: Any = {}
+cont["k"] = {}
+cont["k"]["x"] = 1
+cont["l"] = []
+cont["l"].append(1)
+cont["l"].append("two")
+cont["t"] = [1, 2]
+cont["t"].append("three")
+cont["m"] = {"a": 1}
+cont["m"]["b"] = [None]
+cont["n"] = [{}]
+cont["n"][0]["deep"] = []
+cont["n"][0]["deep"].append({"z": 0.5})
+print(cont)
+
+inner = cont["k"]
+inner["y"] = 2
+print(cont["k"], inner is cont["k"])
+
+lst: Any = [None, None]
+lst[0] = {}
+lst[1] = [1]
+lst[0]["s"] = "v"
+lst[1].append(2.5)
+print(lst)
+
+o: Any = Node()
+o.kids = []
+o.kids.append(Node())
+o.kids[0].kids = {"leaf": True}
+print(len(o.kids), o.kids[0].kids)
+
+
+def put(c: Any, k: str) -> None:
+    c[k] = {"n": [k]}
+    c[k]["n"].append(len(k))
+
+
+put(cont, "f")
+cont["p"], cont["q"] = [], {}
+cont["sq"] = [i * i for i in range(3)]
+cont["sq"].append("x")
+cont["l"] += [3]
+print(cont["f"], cont["p"], cont["q"], cont["sq"], cont["l"])

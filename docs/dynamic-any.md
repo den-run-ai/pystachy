@@ -142,8 +142,12 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   either read boxes as ints through its typed aliases, store boxes into memory the collector does
   not scan, or have to be copied (breaking identity). The compiler rejects the crossing and says
   to make the container a `list[Any]` from the start; a display that flows into `Any` storage is
-  made one automatically. Fresh lists that a builtin method returns (`str.split()`,
-  `dict.items()` of an `Any` dict) are converted, since nothing else refers to them yet.
+  made one automatically, an empty one too: also one stored into an `Any` value's item or
+  attribute (`cont[k] = {}`, `o.kids = [1, 2]`: `tests/programs/inference/dynany_store_display.py`),
+  which a field or `__setitem__` parameter of typed items then rejects at compile time
+  (`tests/errors/inference/dynany_store_display_typed.py`). Fresh lists that a builtin method returns
+  (`str.split()`, `dict.items()` of an `Any` dict) are converted, since nothing else refers to
+  them yet.
 - **Between tuple types**: a tuple whose items one side holds as `Any` values and the other as
   typed ones converts item by item into a new tuple: a typed item is boxed where an `Any` item is
   declared (`tuple[int, str]` returned as `tuple[int, Any]`), and an `Any` item is checked and
