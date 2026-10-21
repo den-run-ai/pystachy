@@ -333,6 +333,12 @@ every mode once for the AOT build and for CPython 3.13.16, alternating and pinne
 
 - **Boxing** costs construction 3.0× the typed list's (26.6 ms against 8.9 ms: a 16-byte box
   per int above 256), a little less than a closed union's (32.2 ms), which tags its boxes too.
+- **Box slots**: since #800 a box takes a 16-byte heap slot rather than 24 bytes. At
+  `2438e7e0`, against the same build with main `838aff6d`'s runtime (medians of 7 alternating
+  runs pinned to one core of an Intel Xeon at 2.10 GHz), construction took 19.6 ms instead of
+  34.9 ms (`union`), 19.3 instead of 26.6 ms (`dyn`) and 21.4 instead of 27.2 ms (`generic`),
+  and the graph's copy 22.8 instead of 31.0 ms; `typed` is unchanged. A million boxes no longer
+  fill the collector's 32 MiB window, so `union`, `dyn` and `graph` run without a collection.
 - **Proven payloads**: after `isinstance(x, int)` the scan reads the payload with no dispatch or
   new box, 3.2 ms, as the union's tag test does. Before that path the scan took 26.2 ms, 8.4×
   as long (the same program built by the compiler at `48e31e33`, median of 7 runs interleaved
@@ -341,22 +347,24 @@ every mode once for the AOT build and for CPython 3.13.16, alternating and pinne
   (17.8 ms against 1.1 ms) and 0.6× CPython's processing time.
 - **The acceptance graph** builds 2.9× and copies and checks 5.8× faster than CPython.
 
-Memory, from separate `PYSTACHY_GC=stats` runs and the process's peak resident size
-(`getrusage`; an empty CPython process is 10 MiB):
+Memory at `2438e7e0`, from separate `PYSTACHY_GC=stats` runs and the process's peak resident
+size (`getrusage`; an empty CPython process is 10 MiB; CPython's column is from the round at
+`bc79f24c`):
 
-| Mode | Heap peak | Live at the last collection | AOT peak RSS | CPython peak RSS |
+| Mode | Heap peak | Collections | AOT peak RSS | CPython peak RSS |
 |---|---:|---:|---:|---:|
-| `typed` | 13.0 MiB | 4.0 MiB | 13 MiB | 48 MiB |
-| `union` | 34.1 MiB | 24.0 MiB | 33 MiB | 48 MiB |
-| `dyn` | 34.1 MiB | 24.0 MiB | 33 MiB | 48 MiB |
-| `generic` | 55.2 MiB | 24.0 MiB | 56 MiB | 48 MiB |
-| `graph` | 34.2 MiB | 8.6 MiB | 35 MiB | 18 MiB |
+| `typed` | 13.0 MiB | 2 | 14 MiB | 48 MiB |
+| `union` | 33.1 MiB | 0 | 34 MiB | 48 MiB |
+| `dyn` | 33.1 MiB | 0 | 34 MiB | 48 MiB |
+| `generic` | 39.1 MiB | 1 | 40 MiB | 48 MiB |
+| `graph` | 34.2 MiB | 0 | 34 MiB | 18 MiB |
 
-The boxes of a million ints retain 16 MiB beside the list's 8 MiB: a heap peak 2.6× the typed
-list's (34.1 MiB against 13.0 MiB), the same as the union's. A generic accumulator's discarded
-boxes raise the peak until a collection, and so does the graph's copy: its live data, 8.6 MiB,
-is close to CPython's 8 MiB above an empty process, but the heap grows to 1.9× CPython's peak
-before the collector runs.
+A million boxes take 16 MB beside the list's 8 MB: a `union` or `dyn` run's heap peaks at
+33.1 MiB, 2.5× the typed list's, without a collection. With 24-byte slots, before #800, the same
+runs collected once, at a peak of 34.1 MiB; at four million ints the peak is 97.2 MiB against
+125.4 MiB then (peak RSS 95 against 126 MiB), with three collections each. A generic
+accumulator's discarded boxes raise the peak until a collection (39.1 MiB, against 55.2 MiB with
+24-byte slots), and so does the graph's copy, whose heap reaches 1.9× CPython's peak.
 
 Compilation and code size for the benchmark module (5 runs each, median): the IR takes 18 ms,
 an AOT build 1.45 s (clang's `-O2` and the link with the runtime) for a 124,000-byte binary,
