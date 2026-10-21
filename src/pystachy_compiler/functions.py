@@ -60,7 +60,6 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     # (none of the operation that was compiling when this function's compile began: see Frame)
     self.drying = 0
     self.carried = Val("", "")
-    self.nonecmp = False
     self.fieldcmp = False
     self.cmpnode = self.nokey
     self.stkkey = self.nokey

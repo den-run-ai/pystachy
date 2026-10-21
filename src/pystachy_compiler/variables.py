@@ -584,7 +584,8 @@ def gen_none_global(self, name: str) -> str:
             if f.generic or f.bad != "" or f.ll in self.compiled or self.unready(f.node.kids[2], f.mod, {}):
                 continue
             self.making.append(f"compiling {f.name if f.cls == '' else f.cls + '.' + f.name}() for the type of '{short(name)}' at {where(self.line)}")
-            fr = self.save()  # (the read being compiled may be compared with None, not that function's: Frame)
+            fr = self.save()
+            self.nonecmp = False  # (the read being compiled may be compared with None, not that function's)
             self.modlevel = False
             self.lenient = False
             self.function(f, f.node.kids[2].kids)
