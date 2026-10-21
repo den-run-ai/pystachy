@@ -133,4 +133,10 @@ item //= unsupported operand type(s) for //=: 'int' and 'str'
 dict item ^= unsupported operand type(s) for ^=: 'int' and 'str'
 pow() unsupported operand type(s) for ** or pow(): 'int' and 'str'
 1 [1] {'k': 1}
+int *= str 'ababab'
+None *= list can't multiply sequence by non-int of type 'NoneType'
+float *= tuple can't multiply sequence by non-int of type 'float'
+dict *= list unsupported operand type(s) for *=: 'dict' and 'list'
+object *= tuple unsupported operand type(s) for *=: 'Plain' and 'tuple'
+object *= str unsupported operand type(s) for *=: 'Plain' and 'str'
 [exit 0]

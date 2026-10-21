@@ -136,6 +136,16 @@ def targets(a: Any, s: Any) -> None:
     print(h.v, xs, d)
 
 
+def imul(label: str, a: Any, b: Any) -> None:
+    # (*= repeats a sequence on the right only where the left operand's type has no sequence
+    # methods, as an int's: a dict's and an object's have them, so CPython's TypeError is *='s)
+    try:
+        a *= b
+        print(label, repr(a))
+    except TypeError as e:
+        print(label, e)
+
+
 attempt("None, int:", None, 1)
 attempt("int, None:", 1, None)
 attempt("Plain, int:", Plain(), 1)
@@ -144,3 +154,9 @@ attempt("list, str:", [1], "x")
 typed_targets("z")
 typed_targets(None)
 targets(1, "z")
+imul("int *= str", 3, "ab")
+imul("None *= list", None, [1])
+imul("float *= tuple", 1.5, (1,))
+imul("dict *= list", {}, [1])
+imul("object *= tuple", Plain(), (1,))
+imul("object *= str", Plain(), "ab")

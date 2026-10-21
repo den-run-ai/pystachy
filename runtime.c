@@ -3443,6 +3443,9 @@ static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace) {   /* a OP b, or a's i
     memcpy(r->a, x->a, x->len * sizeof(I)); memcpy(r->a + x->len, y->a, y->len * sizeof(I));
     return dtuple(r);
   }
+  if (inplace && op == 2 && (ka == DK_DICT || ka == DK_OBJ))
+    dyn_unsupported(a, b, op, inplace);   /* (CPython's *= repeats a sequence on the right only where the left operand's type has no
+                                             sequence methods: a dict's and an object's have them, though no repeat) */
   if (op == 2 && (dseq(a) || dseq(b))) {
     Dyn *s = dseq(a) ? a : b, *n = s == a ? b : a;
     if (!dnum(n)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(n));
