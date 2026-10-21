@@ -252,6 +252,10 @@ This is not `copy.deepcopy` itself. Running the unchanged module still needs `ty
 value with class objects as dict keys (#7), `getattr(x, "__deepcopy__", None)` and
 `__reduce_ex__` by run-time names (#489), `cls.__new__(cls)`, and `object.__dict__` updates.
 
+`lib/tomllib` is a library compiled this way: CPython's `tomllib`, whose modules opt in, parses a
+document into dicts and lists of `Any` values that programs which do not opt in read
+([tomllib](../lib/compatibility.md#tomllib)).
+
 ## Deviations
 
 - A concrete annotation that receives an `Any` value raises `TypeError` where its type differs

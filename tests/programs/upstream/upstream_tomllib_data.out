@@ -1,0 +1,64 @@
+invalid/array-missing-comma.toml TOMLDecodeError: Unclosed array (at line 1, column 14)
+invalid/array-of-tables/overwrite-array-in-parent.toml TOMLDecodeError: Cannot overwrite a value (at line 4, column 8)
+invalid/array-of-tables/overwrite-bool-with-aot.toml TOMLDecodeError: Cannot overwrite a value (at line 2, column 4)
+invalid/array/file-end-after-val.toml TOMLDecodeError: Unclosed array (at end of document)
+invalid/array/unclosed-after-item.toml TOMLDecodeError: Invalid value (at end of document)
+invalid/array/unclosed-empty.toml TOMLDecodeError: Invalid value (at end of document)
+invalid/basic-str-ends-in-escape.toml TOMLDecodeError: Unescaped '\' in a string (at end of document)
+invalid/boolean/invalid-false-casing.toml TOMLDecodeError: Invalid value (at line 1, column 5)
+invalid/boolean/invalid-true-casing.toml TOMLDecodeError: Invalid value (at line 1, column 5)
+invalid/dates-and-times/invalid-day.toml TOMLDecodeError: Invalid date or datetime (at line 1, column 36)
+invalid/dotted-keys/access-non-table.toml TOMLDecodeError: Cannot overwrite a value (at end of document)
+invalid/dotted-keys/extend-defined-aot.toml TOMLDecodeError: Cannot redefine namespace ('tab', 'arr') (at line 3, column 11)
+invalid/dotted-keys/extend-defined-table-with-subtable.toml TOMLDecodeError: Cannot redefine namespace ('a', 'b', 'c', 'd') (at line 4, column 16)
+invalid/dotted-keys/extend-defined-table.toml TOMLDecodeError: Cannot redefine namespace ('a', 'b', 'c') (at line 4, column 12)
+invalid/inline-table-missing-comma.toml TOMLDecodeError: Unclosed inline table (at line 1, column 31)
+invalid/inline-table/define-twice-in-subtable.toml TOMLDecodeError: Duplicate inline table key 'dupe' (at line 1, column 44)
+invalid/inline-table/define-twice.toml TOMLDecodeError: Duplicate inline table key 'dupe' (at line 1, column 29)
+invalid/inline-table/file-end-after-key-val.toml TOMLDecodeError: Unclosed inline table (at end of document)
+invalid/inline-table/mutate.toml TOMLDecodeError: Cannot mutate immutable namespace ('a',) (at end of document)
+invalid/inline-table/override-val-in-table.toml TOMLDecodeError: Cannot redefine namespace ('tab', 'nested') (at line 5, column 25)
+invalid/inline-table/override-val-with-array.toml TOMLDecodeError: Cannot mutate immutable namespace ('inline-t', 'nest') (at line 3, column 16)
+invalid/inline-table/override-val-with-table.toml TOMLDecodeError: Cannot declare ('inline-t', 'nest') twice (at line 3, column 15)
+invalid/inline-table/overwrite-implicitly.toml TOMLDecodeError: Cannot overwrite a value (at line 1, column 21)
+invalid/inline-table/overwrite-value-in-inner-array.toml TOMLDecodeError: Cannot mutate immutable namespace ('inner', 'table', 'val') (at line 1, column 52)
+invalid/inline-table/overwrite-value-in-inner-table.toml TOMLDecodeError: Cannot mutate immutable namespace ('inner', 'cat') (at line 1, column 54)
+invalid/inline-table/unclosed-empty.toml TOMLDecodeError: Invalid initial character for a key part (at end of document)
+invalid/invalid-comment-char.toml TOMLDecodeError: Found invalid character '\x0c' (at line 1, column 14)
+invalid/invalid-escaped-unicode.toml TOMLDecodeError: Invalid hex value (at line 1, column 22)
+invalid/invalid-hex.toml TOMLDecodeError: Expected newline or end of document after a statement (at line 1, column 8)
+invalid/keys-and-vals/ends-early-table-def.toml TOMLDecodeError: Expected ']' at the end of a table declaration (at end of document)
+invalid/keys-and-vals/ends-early.toml TOMLDecodeError: Expected '=' after a key in a key/value pair (at end of document)
+invalid/keys-and-vals/no-value.toml TOMLDecodeError: Invalid value (at end of document)
+invalid/keys-and-vals/only-ws-after-dot.toml TOMLDecodeError: Invalid initial character for a key part (at end of document)
+invalid/keys-and-vals/overwrite-with-deep-table.toml TOMLDecodeError: Cannot overwrite a value (at line 2, column 9)
+invalid/literal-str/unclosed.toml TOMLDecodeError: Expected "'" (at end of document)
+invalid/missing-closing-double-square-bracket.toml TOMLDecodeError: Expected ']]' at the end of an array declaration (at line 1, column 26)
+invalid/missing-closing-square-bracket.toml TOMLDecodeError: Expected ']' at the end of a table declaration (at line 1, column 25)
+invalid/multiline-basic-str/carriage-return.toml TOMLDecodeError: Illegal character '\r' (at line 1, column 38)
+invalid/multiline-basic-str/escape-only.toml TOMLDecodeError: Unterminated string (at end of document)
+invalid/multiline-basic-str/file-ends-after-opening.toml TOMLDecodeError: Unterminated string (at end of document)
+invalid/multiline-basic-str/last-line-escape.toml TOMLDecodeError: Unescaped '\' in a string (at line 4, column 9)
+invalid/multiline-basic-str/unclosed-ends-in-whitespace-escape.toml TOMLDecodeError: Unterminated string (at end of document)
+invalid/multiline-literal-str/file-ends-after-opening.toml TOMLDecodeError: Expected "'''" (at end of document)
+invalid/multiline-literal-str/unclosed.toml TOMLDecodeError: Expected "'''" (at end of document)
+invalid/non-scalar-escaped.toml TOMLDecodeError: Escaped character is not a Unicode scalar value (at line 1, column 10)
+invalid/table/eof-after-opening.toml TOMLDecodeError: Invalid initial character for a key part (at end of document)
+invalid/table/redefine-1.toml TOMLDecodeError: Cannot declare ('t1', 't2') twice (at line 3, column 7)
+invalid/table/redefine-2.toml TOMLDecodeError: Cannot declare ('t1', 't2', 't3') twice (at line 3, column 10)
+invalid/unclosed-multiline-string.toml TOMLDecodeError: Unterminated string (at end of document)
+invalid/unclosed-string.toml TOMLDecodeError: Unterminated string (at end of document)
+valid/apostrophes-in-literal-string.toml OK {'this-str-has-apostrophes': "' there's one already\n'' two more\n''"}
+valid/array/array-subtables.toml OK {'arr': [{'subtab': {'val': 1}}, {'subtab': {'val': 2}}]}
+valid/array/open-parent-table.toml OK {'parent-table': {'arr': [{}, {}], 'not-arr': 1}}
+valid/boolean.toml OK {'a': True, 'b': False}
+valid/dates-and-times/datetimes.toml OK {'local-dt': datetime.datetime(1988, 10, 27, 1, 1, 1), 'zulu-dt': datetime.datetime(1988, 10, 27, 1, 1, 1, tzinfo=datetime.timezone.utc)}
+valid/dates-and-times/localtime.toml OK {'t': datetime.time(0, 0, 0, 999999)}
+valid/empty-inline-table.toml OK {'empty': {}}
+valid/five-quotes.toml OK {'five-quotes': 'Closing with five quotes\n""', 'four-quotes': 'Closing with four quotes\n"'}
+valid/hex-char.toml OK {'a': 'a', 'b': 'b', 'c': 'c'}
+valid/multiline-basic-str/ends-in-whitespace-escape.toml OK {'beee': 'heeee\ngeeee'}
+valid/no-newlines.toml OK {}
+valid/trailing-comma.toml OK {'arr': [1]}
+12 valid, 50 invalid
+[exit 0]
