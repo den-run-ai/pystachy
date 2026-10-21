@@ -67,6 +67,9 @@ jobs:
       - name: Compiler effect summary tests
         run: python3 -m unittest discover -s tools -p test_function_summaries.py
 
+      - name: Compiler function-state lists (Gen, Frame, gen_save, gen_restore, gen_enter)
+        run: python3 -m unittest discover -s tools -p test_frame_fields.py
+
       - name: Typed IR tests
         run: python3 -m unittest discover -s tools -p 'test_typed*.py'
 
