@@ -1282,10 +1282,16 @@ def gen_fname(self, f: FnInfo) -> str:
     return f"{short(f.cls)}.{f.name}" if f.cls != "" else short(f.name)
 
 def gen_arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
+    # CPython's TypeError for a call of f whose arguments do not fit its parameters (arity_error)
+    e = self.arity_error(f, npre, args)
+    if e != "":
+        self.err(e)
+
+def gen_arity_error(self, f: FnInfo, npre: int, args: list[Node]) -> str:
     # CPython's TypeError for a call of f whose arguments do not fit its parameters, in the order
     # its frame setup finds them: a keyword that names no parameter (or a positional-only one)
     # or one already given, too many positional arguments, then the missing positional and
-    # keyword-only ones; npre values (the object of a method) come before args
+    # keyword-only ones; npre values (the object of a method) come before args; "" where they fit
     np = len(f.params)
     last = f.vararg if f.vararg >= 0 else f.npos if f.npos >= 0 else np  # (the positional parameters end there)
     last = min(last, f.kwarg) if f.kwarg >= 0 else last
@@ -1308,25 +1314,25 @@ def gen_arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
         if j < 0 or j < f.posonly:
             po = [k for k in kws if k in f.params and f.params.index(k) < f.posonly]
             if len(po) > 0:
-                self.err(f"{self.fname(f)}() got some positional-only arguments passed as keyword arguments: '{', '.join(po)}'")
-            self.err(f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'")
+                return f"{self.fname(f)}() got some positional-only arguments passed as keyword arguments: '{', '.join(po)}'"
+            return f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'"
         if filled[j]:
-            self.err(f"{self.fname(f)}() got multiple values for argument '{a.s}'")
+            return f"{self.fname(f)}() got multiple values for argument '{a.s}'"
         filled[j] = True
     off = 1 if f.deco == "classmethod" else -1 if f.clo >= 0 else 0  # (cls, which CPython counts and f.params leaves out; a closure's env, the reverse)
     if f.vararg < 0 and given > last:
         if f.name == "__init__" and f.node.kids[0].kind == "noann" and (not self.is_dc(f.cls) or "no-init" in self.classes[f.cls].dcopts):
-            self.err(f"{short(f.cls)}() takes no arguments")
+            return f"{short(f.cls)}() takes no arguments"
         dflt = len([j for j in range(last) if f.defaults[j].kind != "noann"])
         kwg = len([j for j in range(last, np) if filled[j]])
         takes = f"from {last + off - dflt} to {last + off}" if dflt > 0 else str(last + off)
         plural = "s" if dflt > 0 or last + off != 1 else ""
         kwonly = f" positional argument{'s' if given + off != 1 else ''} (and {kwg} keyword-only argument{'s' if kwg != 1 else ''})" if kwg > 0 else ""
-        self.err(f"{self.fname(f)}() takes {takes} positional argument{plural} but {given + off}{kwonly} {'was' if given + off == 1 and kwg == 0 else 'were'} given")
+        return f"{self.fname(f)}() takes {takes} positional argument{plural} but {given + off}{kwonly} {'was' if given + off == 1 and kwg == 0 else 'were'} given"
     if f.vartup != "" and given >= f.vararg and given - f.vararg != len(targs(f.vartup)):
         # *args: *Ts, which a generic class's specialization binds: as many as Ts has types
         n = f.vararg + len(targs(f.vartup)) + off
-        self.err(f"{self.fname(f)}() takes {n} positional argument{'s' if n != 1 else ''} but {given + off} {'was' if given + off == 1 else 'were'} given (its *{f.params[f.vararg]} is a {typestr(f.vartup)})")
+        return f"{self.fname(f)}() takes {n} positional argument{'s' if n != 1 else ''} but {given + off} {'was' if given + off == 1 else 'were'} given (its *{f.params[f.vararg]} is a {typestr(f.vartup)})"
     for kind in ["positional", "keyword-only"]:
         miss = [f.params[j] for j in range(np) if not filled[j] and f.defaults[j].kind == "noann" and j != f.vararg and j != f.kwarg and (j < last) == (kind == "positional")]
         if len(miss) > 0:
@@ -1335,7 +1341,8 @@ def gen_arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
                 names = f"'{miss[0]}' and '{miss[1]}'"
             elif len(miss) > 2:
                 names = "'" + "', '".join(miss[:-1]) + f"', and '{miss[-1]}'"
-            self.err(f"{self.fname(f)}() missing {len(miss)} required {kind} argument{'s' if len(miss) != 1 else ''}: {names}")
+            return f"{self.fname(f)}() missing {len(miss)} required {kind} argument{'s' if len(miss) != 1 else ''}: {names}"
+    return ""
 
 def gen_kw_type(self, f: FnInfo, name: str) -> str:
     # the type call_fn evaluates keyword argument name of a call of f with: its parameter's, or

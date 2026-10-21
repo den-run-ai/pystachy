@@ -1151,22 +1151,23 @@ def gen_dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) 
 
 
 def gen_dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
-    # the cases of dispatcher callv.<n> for the function values boxed: each called as its own
+    # the cases of dispatcher callv.<shape> for the function values boxed: each called as its own
     # type calls it (defaults, a closure's env, a bound method's object), or the TypeError of a
-    # call with the wrong number of arguments
+    # call whose arguments do not fit its parameters
     t = Val(self.dyn_typeof(o), "dyntype")
     for ft in [x for x in self.dynfuncs]:
         hit = self.label()
         nxt = self.label()
         self.cbr(self.ptr_cmp("==", t, Val(self.dynfnt[ft], "dyntype")).v, hit, nxt)
         self.place(hit)
-        bad = self.dyn_fn_takes(ft, len(args))
+        an = self.dyn_call_args(key, args)
+        bad = self.dyn_fn_takes(ft, key, an)
         if bad != "":
             i = bad.find(": ")
             self.raise_(bad[:i], self.sconst(bad[i + 2 :]))
         else:
             x = Val("null", ft) if ft.startswith("fn[f:") else self.dyn_payload(o, ft)
-            self.dyn_return(f, self.obj_call(x, [self.vnode(a) for a in args], ""))
+            self.dyn_return(f, self.obj_call(x, an, ""))
         self.place(nxt)
 
 
@@ -1241,11 +1242,28 @@ def gen_dyn_arity(self, fm: FnInfo, own: int, nargs: int) -> str:
     return f"{self.fname(fm)}() cannot take {nargs} positional argument{'s' if nargs != 1 else ''}"
 
 
+def gen_dyn_bind(self, fm: FnInfo, own: int, key: str, an: list[Node]) -> str:
+    # CPython's TypeError for call dispatcher key's case of method fm, with own values (its
+    # object) and the arguments an, or "" where they fit its parameters: positional arguments as
+    # dyn_takes counts them, keyword arguments as a typed call binds them (arity_error)
+    if len(shape_kws(key)) == 0 or fm.bad != "" or len(fm.defaults) < len(fm.params):
+        return "" if self.dyn_takes(fm, own, len(an)) else self.dyn_arity(fm, own, len(an))
+    return self.arity_error(fm, own, an)
+
+
+def gen_dyn_call_args(self, key: str, args: list[Val]) -> list[Node]:
+    # the boxed arguments args of call dispatcher key's case, as the arguments of the call it
+    # compiles: the positional ones, then each keyword argument by its name (call_shape)
+    n = shape_npos(key)
+    ks = shape_kws(key)
+    return [self.vnode(a) for a in args[:n]] + [mk("kw", ks[j], self.line, [self.vnode(args[n + j])]) for j in range(len(ks))]
+
+
 def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val]) -> None:
     # class x.t's case of dispatcher key: its own operation on the object x, then return
     line = self.line
     xn = self.vnode(x)
-    an = [self.vnode(a) for a in args]
+    an = self.dyn_call_args(key, args) if key.startswith("call") else [self.vnode(a) for a in args]
     if key.startswith("get."):
         r = self.expr(mk("attr", key[4:], line, [xn]), "")
     elif key.startswith("set."):
@@ -1256,19 +1274,20 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
     elif key.startswith("has."):
         r = Val("null", DYN)  # (a method, which call.<m>.<n> calls, or a field no box holds, whose call raises there)
     elif key.startswith("call.") and key[5 : key.rfind(".")] not in self.classes[x.t].methods:
-        # a field's value, called as a function value is (callv.<n>), or CPython's TypeError for
-        # one that no box holds, which is not callable either
+        # a field's value, called as a function value is (callv.<shape>), or CPython's TypeError
+        # for one that no box holds, which is not callable either
         v = self.expr(mk("attr", key[5 : key.rfind(".")], line, [xn]), "")
         if self.dyn_boxable(self.rec_type(v.t)) != "":
             self.raise_("TypeError", self.sconst(f"'{tname(self.rec_type(v.t))}' object is not callable"))
             return
-        r = self.dyn_call(self.dyn_dispatcher(f"callv.{len(args)}", [DYN] * (len(args) + 1), DYN, "__call__"), [v] + args)
+        r = self.dyn_call(self.dyn_dispatcher(f"callv.{key[key.rfind('.') + 1 :]}", [DYN] * (len(args) + 1), DYN, "__call__"), [v] + args)
     elif key.startswith("call."):
         fm = self.classes[x.t].methods[key[5 : key.rfind(".")]]
         own = 0 if fm.deco != "" else 1
-        if not self.dyn_takes(fm, own, len(args)):
+        bad = self.dyn_bind(fm, own, key, an)
+        if bad != "":
             # (arguments that do not fit its parameters: CPython's TypeError, once they are evaluated)
-            self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, len(args))))
+            self.raise_("TypeError", self.sconst(bad))
             return
         r = self.expr(mk("call", "", line, [mk("attr", key[5 : key.rfind(".")], line, [xn])] + an), "")
     elif key == "module":
@@ -1276,9 +1295,9 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
     elif key == "slice":
         self.raise_("TypeError", self.sconst(f"slicing an object is not supported: {short(x.t)}.__getitem__ would take a slice object, which Pystachy does not have"))
         return
-    elif key.startswith("callv.") and not self.dyn_takes(self.classes[x.t].methods["__call__"], 1, len(args)):
+    elif key.startswith("callv.") and self.dyn_bind(self.classes[x.t].methods["__call__"], 1, key, an) != "":
         # (arguments that do not fit __call__'s parameters: CPython's TypeError)
-        self.raise_("TypeError", self.sconst(self.dyn_arity(self.classes[x.t].methods["__call__"], 1, len(args))))
+        self.raise_("TypeError", self.sconst(self.dyn_bind(self.classes[x.t].methods["__call__"], 1, key, an)))
         return
     elif key == "truth":
         r = Val(self.truth(x), "bool")
@@ -1314,7 +1333,8 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
     # boxes, and str's, tuple's and the numbers', whose arguments unbox (dyn_unbox) and whose fresh
     # results box (a bool's are int's, of its payload, 0 or 1)
     m = key[key.find(".") + 1 : key.rfind(".")]
-    n = int(key[key.rfind(".") + 1 :])
+    n = shape_npos(key)
+    ks = shape_kws(key)
     t = Val(self.dyn_typeof(o), "dyntype")
     line = self.line
     for bt in ["list[dyn]", "dict[dyn,dyn]", "str", "vtuple[dyn]", "int", "bool", "float"]:
@@ -1325,10 +1345,24 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
         self.cbr(self.ptr_cmp("==", t, Val(self.dyn_type(bt), "dyntype")).v, hit, nxt)
         self.place(hit)
         if key.startswith("has."):
-            self.ret_(Val("null", DYN))  # (a method, which call.<m>.<n> calls)
+            self.ret_(Val("null", DYN))  # (a method, which call.<m>.<shape> calls)
+        elif len(ks) > 0 and bt == "list[dyn]" and m == "sort" and len([k for k in ks if k != "key" and k != "reverse"]) > 0:
+            kx = [k for k in ks if k != "key" and k != "reverse"][0]
+            self.raise_("TypeError", self.sconst(f"sort() got an unexpected keyword argument '{kx}'"))  # (CPython's, as typed code's)
+        elif len(ks) > 0 and not (bt == "list[dyn]" and m == "sort") and not (bt == "dict[dyn,dyn]" and m == "update"):
+            # (keyword arguments, which typed code takes only for these two: its error, raised here)
+            self.raise_("TypeError", self.sconst(f"keyword arguments to {tname(bt)}.{m}() are not supported; pass them by position"))
+        elif len(ks) > 0 and m == "update":
+            # (d.update(other, k=v): other's items, then each keyword argument's, as d[k] = v stores them)
+            x = self.dyn_payload(o, bt)
+            if n > 0:
+                self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)]), self.vnode(args[0])]), "")
+            for j in range(len(ks)):
+                self.assign(mk("index", "", line, [self.vnode(x), mk("str", ks[j], line, [])]), args[n + j])
+            self.dyn_return(f, Val("null", "None"))
         else:
             x = self.dyn_payload(o, "int" if bt == "bool" else bt)
-            r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + [self.vnode(a) for a in args]), "")
+            r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + self.dyn_call_args(key, args)), "")
             self.dyn_return(f, self.dyn_fresh(r))
         self.place(nxt)
 
@@ -1336,7 +1370,7 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
 def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
     # does builtin type bt (one a box holds) have method m, called with n positional arguments
     base = "list" if is_list(bt) else "dict" if is_dict(bt) else "vtuple" if is_vtuple(bt) else "int" if bt == "bool" else bt
-    special = {"list.sort": "0 0", "dict.update": "1 1", "dict.pop": "1 2", "dict.setdefault": "2 2", "str.join": "1 1"}
+    special = {"list.sort": "0 0", "dict.update": "0 1", "dict.pop": "1 2", "dict.setdefault": "2 2", "str.join": "1 1"}
     k = base + "." + m
     if k in special:
         lo = int(special[k].split(" ")[0])
@@ -1454,30 +1488,50 @@ def gen_dyn_setattr(self, o: Val, a: str, v: Val) -> None:
     self.dyn_call(self.dyn_dispatcher("set." + a, [DYN, DYN], "None", a), [o, self.dyn_box(v)])
 
 
+def call_shape(args: list[Node]) -> str:
+    # the arguments of a call as the key of its dispatcher ends with them (call.<m>.<shape>,
+    # callv.<shape>): how many are positional, then -<name> for each keyword argument, in order
+    return str(len([a for a in args if a.kind != "kw"])) + "".join(["-" + a.s for a in args if a.kind == "kw"])
+
+
+def shape_npos(key: str) -> int:
+    # how many positional arguments the calls of dispatcher key pass (see call_shape)
+    s = key[key.rfind(".") + 1 :]
+    return int(s[: s.find("-")]) if "-" in s else int(s)
+
+
+def shape_kws(key: str) -> list[str]:
+    # the names of the keyword arguments the calls of dispatcher key pass, in order (call_shape)
+    return key[key.rfind(".") + 1 :].split("-")[1:]
+
+
 def gen_dyn_method(self, o: Val, m: str, args: list[Node]) -> Val:
     # o.m(args) for a dyn o: the method of its class (or of its builtin type) that m names, found
     # before the arguments are evaluated, as CPython's LOAD_ATTR finds it, then called with them
-    # boxed (positional arguments only)
+    # boxed, positional and keyword arguments, which each class's case binds to its method's
+    # parameters (call.<m>.<shape>: call_shape)
     for a in args:
-        if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar":
-            self.err(f"a method call of an Any value takes positional arguments only (o.{m}(...))")
+        if a.kind == "starred" or a.kind == "dstar":
+            self.err(f"a method call of an Any value takes no * or ** arguments here (o.{m}(...))")
+    vs = [a.kids[0] if a.kind == "kw" else a for a in args]
     # (no lookup first where no argument can run code or raise: literals, and locals that flow
     # analysis found assigned, whose reads have no check)
-    call = self.dyn_dispatcher(f"call.{m}.{len(args)}", [DYN] * (len(args) + 1), DYN, m)
-    if len([a for a in args if a.kind not in ["int", "float", "str", "True", "False", "None"] and not (a.kind == "name" and a.s in self.ltype and not a.chk)]) == 0:
-        vals = [self.dyn_box(self.expr(a, DYN)) for a in args]
+    call = self.dyn_dispatcher(f"call.{m}.{call_shape(args)}", [DYN] * (len(args) + 1), DYN, m)
+    if len([a for a in vs if a.kind not in ["int", "float", "str", "True", "False", "None"] and not (a.kind == "name" and a.s in self.ltype and not a.chk)]) == 0:
+        vals = [self.dyn_box(self.expr(a, DYN)) for a in vs]
         return self.dyn_call(call, [o] + vals)
-    # the lookup gives null for a method, which call.<m>.<n> then calls, or a field's value, read
-    # now as LOAD_ATTR reads it, which callv.<n> calls although an argument assigns the field anew
-    h = self.dyn_call(self.dyn_dispatcher(f"has.{m}.{len(args)}", [DYN], DYN, m), [o])
-    vals = [self.dyn_box(self.expr(a, DYN)) for a in args]
+    # the lookup gives null for a method, which call.<m>.<shape> then calls, or a field's value,
+    # read now as LOAD_ATTR reads it, which callv.<shape> calls although an argument assigns the
+    # field anew
+    h = self.dyn_call(self.dyn_dispatcher(f"has.{m}.{len(vs) - len([a for a in args if a.kind == 'kw'])}", [DYN], DYN, m), [o])
+    vals = [self.dyn_box(self.expr(a, DYN)) for a in vs]
     fld = self.label()
     meth = self.label()
     end = self.label()
     ph = Ins("phi", DYN, "")
     self.cbr(self.ptr_cmp("==", h, Val("null", "None")).v, meth, fld)
     self.place(fld)
-    r = self.dyn_call(self.dyn_dispatcher(f"callv.{len(args)}", [DYN] * (len(args) + 1), DYN, "__call__"), [h] + vals)
+    r = self.dyn_call(self.dyn_dispatcher(f"callv.{call_shape(args)}", [DYN] * (len(args) + 1), DYN, "__call__"), [h] + vals)
     self.incoming(ph, r.v, self.cur)
     self.br(end)
     self.place(meth)
@@ -1616,18 +1670,23 @@ def gen_dyn_fn_box(self, v: Val) -> Val:
 
 
 def gen_dyn_call_value(self, o: Val, args: list[Node]) -> Val:
-    # o(args) for a dyn o: the function its box holds, called with the arguments boxed (positional
-    # only), once they are evaluated, as CPython calls the value (callv.<n>)
+    # o(args) for a dyn o: the function its box holds, called with the arguments boxed, positional
+    # and keyword arguments, once they are evaluated, as CPython calls the value (callv.<shape>:
+    # call_shape)
     for a in args:
-        if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar":
-            self.err("a call of an Any value takes positional arguments only")
-    vals = [self.dyn_box(self.expr(a, DYN)) for a in args]
-    return self.dyn_call(self.dyn_dispatcher(f"callv.{len(args)}", [DYN] * (len(args) + 1), DYN, "__call__"), [o] + vals)
+        if a.kind == "starred" or a.kind == "dstar":
+            self.err("a call of an Any value takes no * or ** arguments here")
+    vals = [self.dyn_box(self.expr(a.kids[0] if a.kind == "kw" else a, DYN)) for a in args]
+    return self.dyn_call(self.dyn_dispatcher(f"callv.{call_shape(args)}", [DYN] * (len(args) + 1), DYN, "__call__"), [o] + vals)
 
 
-def gen_dyn_fn_takes(self, ft: str, n: int) -> str:
-    # "" if a function value of type ft takes n positional arguments, else CPython's TypeError
+def gen_dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:
+    # "" if a function value of type ft takes the arguments an of call dispatcher key's case (see
+    # call_shape), else CPython's TypeError: keyword arguments as a typed call binds them
+    n = shape_npos(key)
     if is_callable(ft):
+        if len(shape_kws(key)) > 0:
+            return f"TypeError: a call of a {typestr(ft)} takes positional arguments only"  # (typed code's error: it has no names)
         k = len(targs(ft)) - 1
         return "" if k == n else f"TypeError: the function takes {k} positional argument{'s' if k != 1 else ''} but {n} {'were' if n != 1 else 'was'} given"
     k = ft[3:-1]
@@ -1644,6 +1703,11 @@ def gen_dyn_fn_takes(self, ft: str, n: int) -> str:
         own = 1 if f is not None and f.deco == "" else 0
     if f is None:
         return "TypeError: the function cannot be called with positional arguments only"
+    if f.bad == "" and len(f.defaults) >= len(f.params) and (len(shape_kws(key)) > 0 or k.startswith("c:")):
+        # (keyword arguments as a typed call binds them, and a closure's by its qualified name, its
+        # env not counted: arity_error)
+        e = self.arity_error(f, own, an)
+        return "" if e == "" else "TypeError: " + e
     if self.dyn_takes(f, own, n):
         return ""
     if f.bad == "" and not k.startswith("c:"):

@@ -28,6 +28,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_arity as dynamic_dyn_arity,
     gen_dyn_arm as dynamic_dyn_arm,
     gen_dyn_asked as dynamic_dyn_asked,
+    gen_dyn_bind as dynamic_dyn_bind,
     gen_dyn_body as dynamic_dyn_body,
     gen_dyn_bound as dynamic_dyn_bound,
     gen_dyn_box as dynamic_dyn_box,
@@ -36,6 +37,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_builtin_methods as dynamic_dyn_builtin_methods,
     gen_dyn_builtin_takes as dynamic_dyn_builtin_takes,
     gen_dyn_call as dynamic_dyn_call,
+    gen_dyn_call_args as dynamic_dyn_call_args,
     gen_dyn_call_value as dynamic_dyn_call_value,
     gen_dyn_callables as dynamic_dyn_callables,
     gen_dyn_check as dynamic_dyn_check,
@@ -276,6 +278,7 @@ from src.pystachy_compiler.calls import (
     gen_adapter as calls_adapter,
     gen_adapter_ret as calls_adapter_ret,
     gen_arity as calls_arity,
+    gen_arity_error as calls_arity_error,
     gen_asdict as calls_asdict,
     gen_dc_replace as calls_dc_replace,
     gen_bound as calls_bound,
@@ -1586,6 +1589,12 @@ class Gen:
     def dyn_arity(self, fm: FnInfo, own: int, nargs: int) -> str:
         return dynamic_dyn_arity(self, fm, own, nargs)
 
+    def dyn_bind(self, fm: FnInfo, own: int, key: str, an: list[Node]) -> str:
+        return dynamic_dyn_bind(self, fm, own, key, an)
+
+    def dyn_call_args(self, key: str, args: list[Val]) -> list[Node]:
+        return dynamic_dyn_call_args(self, key, args)
+
     def dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) -> None:
         return dynamic_dyn_reflected(self, f, c, r, a, b, ok)
 
@@ -1652,8 +1661,8 @@ class Gen:
     def dyn_call_value(self, o: Val, args: list[Node]) -> Val:
         return dynamic_dyn_call_value(self, o, args)
 
-    def dyn_fn_takes(self, ft: str, n: int) -> str:
-        return dynamic_dyn_fn_takes(self, ft, n)
+    def dyn_fn_takes(self, ft: str, key: str, an: list[Node]) -> str:
+        return dynamic_dyn_fn_takes(self, ft, key, an)
 
     def dyn_sum(self, xs: Val, start: Val) -> Val:
         return dynamic_dyn_sum(self, xs, start)
@@ -3878,6 +3887,9 @@ class Gen:
 
     def arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
         return calls_arity(self, f, npre, args)
+
+    def arity_error(self, f: FnInfo, npre: int, args: list[Node]) -> str:
+        return calls_arity_error(self, f, npre, args)
 
     def kw_type(self, f: FnInfo, name: str) -> str:
         return calls_kw_type(self, f, name)

@@ -1,0 +1,20 @@
+evaluated zzz
+unexpected TypeError: C.m() got an unexpected keyword argument 'zzz'
+evaluated a
+evaluated a again
+multiple TypeError: C.m() got multiple values for argument 'a'
+missing TypeError: C.m() missing 1 required positional argument: 'a'
+positional-only TypeError: C.only() got some positional-only arguments passed as keyword arguments: 'a'
+keyword-only TypeError: C.kwo() missing 1 required keyword-only argument: 'flag'
+too many TypeError: C.kwo() takes 2 positional arguments but 3 positional arguments (and 1 keyword-only argument) were given
+bound method TypeError: C.m() got multiple values for argument 'b'
+evaluated c
+function TypeError: g() got an unexpected keyword argument 'c'
+closure TypeError: make.<locals>.add() got an unexpected keyword argument 'z'
+closure positional TypeError: make.<locals>.add() takes from 1 to 2 positional arguments but 3 were given
+lambda TypeError: attempt.<locals>.<lambda>() got an unexpected keyword argument 'c'
+absent AttributeError: 'C' object has no attribute 'nope'
+evaluated cmp
+sort TypeError: sort() got an unexpected keyword argument 'cmp'
+None
+[exit 0]

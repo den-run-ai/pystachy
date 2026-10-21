@@ -1,0 +1,16 @@
+13 18 11
+6 cm 6-m
+4 10 square:3 cube:2
+7
+TypeError: Shape.scaled() got multiple values for argument 'k'
+502
+302
+21 34 5
+16 13
+19
+103 103
+41
+[{'n': 3}, {'n': 2}, {'n': 1}]
+[{'n': 1}, {'n': 2}, {'n': 3}]
+{'a': 9, 'b': 2, 'c': [3], 'z': 0}
+[exit 0]

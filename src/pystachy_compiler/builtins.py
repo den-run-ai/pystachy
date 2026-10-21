@@ -946,9 +946,10 @@ def gen_vnode(self, v: Val) -> Node:
 
 def gen_key_check(self, key: Val, of: str) -> None:
     # key= of sorted(), min(), max() or list.sort(): a function value, a Callable (one that may
-    # be None too, see key_none), or an object whose class defines __call__
+    # be None too, see key_none), an object whose class defines __call__, or an Any value (which
+    # may be None too)
     t = unopt(key.t) if is_opt(key.t) and is_callable(unopt(key.t)) else key.t
-    if not is_fn(t) and not is_callable(t) and not (t in self.classes and "__call__" in self.classes[t].methods):
+    if not is_fn(t) and not is_callable(t) and not (t in self.classes and "__call__" in self.classes[t].methods) and t != "dyn":
         self.err(f"'{tname(key.t)}' object is not callable (the key of {of})")
 
 def gen_key_none(self, key: Val, et: str, use: str, of: str) -> str:
@@ -957,6 +958,13 @@ def gen_key_none(self, key: Val, et: str, use: str, of: str) -> str:
     # items (of type et, by desc(et, use)) themselves, and on in a new block where it is not
     # None (call_key); "" where it never is, or the items are not key_free (an object key is
     # called then, and raises TypeError for None)
+    if key.t == "dyn" and (self.key_free(et, use) or et == "dyn"):
+        # (an Any value, which may hold None: the items are ordered as they are, Any values too)
+        lnone = self.label()
+        lkey = self.label()
+        self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(key), "dyntype"), Val(self.rtdata("pys_dyntype_none"), "dyntype")).v, lnone, lkey)
+        self.place(lkey)
+        return lnone
     if not (is_opt(key.t) and is_callable(unopt(key.t))) and (key.t not in self.classes or key.v in self.nn):
         return ""
     if not self.key_free(et, use):
@@ -999,6 +1007,8 @@ def gen_call_key(self, key: Val, x: Val) -> Val:
     # here, see key_none), or of object key's __call__
     if key.t in self.classes:
         return self.obj_call(key, [self.vnode(x)], "")
+    if key.t == "dyn":
+        return self.dyn_call_value(key, [self.vnode(x)])  # (the function an Any value holds: dynamic.py)
     if is_opt(key.t):
         key = Val(key.v, unopt(key.t))
     return self.call_value(key, [self.vnode(x)], "") if is_fn(key.t) else self.call_callable(key, [self.vnode(x)])
@@ -1738,7 +1748,10 @@ def gen_reverse_arg(self, n: Node, name: str) -> str:
     return self.reverse_val(self.expr(n, "bool"), name)
 
 def gen_reverse_val(self, r: Val, name: str) -> str:
-    # sorted(..., reverse=r) and list.sort(reverse=r): r is a bool or an int, as in CPython
+    # sorted(..., reverse=r) and list.sort(reverse=r): r is a bool or an int (an Any value: its
+    # truth, as CPython 3.13 takes any object's)
+    if r.t == "dyn":
+        return self.scalar_cast('zext', Val(self.dyn_truth(r), 'bool'), 'int')
     if r.t != "bool" and r.t != "int":
         self.err(f"{name}() argument 'reverse' must be a bool, not {tname(r.t)}")
     return self.scalar_cast('zext', Val(self.truth(r), 'bool'), 'int')
