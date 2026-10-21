@@ -147,9 +147,12 @@ class _Writer:
             raise RecursionError("maximum JSON nesting depth exceeded")
         self.open.append(value)
 
+    def supported_key(self, k: Any) -> bool:
+        return k is None or isinstance(k, (str, int, float))
+
     def skips(self, k: Any) -> bool:
         # does skipkeys skip key k, which no JSON key spells
-        return self.skipkeys and k is not None and not isinstance(k, (str, int, float))
+        return self.skipkeys and not self.supported_key(k)
 
     def key(self, k: Any) -> str:
         # an object key as a string: CPython's conversions, or "" where skipkeys skips it
@@ -216,11 +219,25 @@ class _Writer:
                 while i < len(keys):
                     k = keys[i]
                     i += 1
-                    if not self.skips(k) and (self.calls == calls or k in value) and self.entry(k, value[k], first, depth):
-                        first = False
+                    if not self.skips(k):
+                        if not self.supported_key(k):
+                            # Reject an unsupported key without hashing it again. After a callback,
+                            # it may have been deleted: check its identity in the live keys first.
+                            present = self.calls == calls
+                            if not present:
+                                for live in value:
+                                    if live is k:
+                                        present = True
+                                        break
+                            if present:
+                                self.key(k)
+                        elif (self.calls == calls or k in value) and self.entry(k, value[k], first, depth):
+                            first = False
                     if i == len(keys) and self.calls != calls:
-                        seen = {x: True for x in keys if not self.skips(x)}
-                        keys.extend([x for x in value if not self.skips(x) and x not in seen])
+                        # Deleted unsupported keys must not be hashed while looking for additions
+                        # either. Any live unsupported key is still to reject (or skip).
+                        seen = {x: True for x in keys if self.supported_key(x)}
+                        keys.extend([x for x in value if not self.skips(x) and (not self.supported_key(x) or x not in seen)])
             out.append("}")
             self.open.pop()
         elif self.default is not None:
