@@ -3232,8 +3232,10 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    second layout. The containers a box may hold have boxes for items (list[Any] LA, dict[Any,
    Any] DAA, tuple VA): descriptor A is such a slot, which the walks follow through its box's
    DynType. None is the constant box pys_dyn_none_box and never null, which is an unbound
-   variable's; True, False and the ints from -5 to 256 are constant boxes too, and the other
-   numbers' boxes atomic, so that boxing a number allocates nothing the collector scans. */
+   variable's; True, False and the ints from -5 to 256 are constant boxes too (as the program
+   makes each int literal's), and the other numbers' boxes atomic, so that boxing a number
+   allocates nothing the collector scans. An int's, a float's and a bound method's box is its
+   identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
 enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC };
 enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);

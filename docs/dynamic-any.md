@@ -43,6 +43,13 @@ list(d)` from a function declared `-> list[str]`). A container of tuples (`list[
 Any]]`) or of typed items (`dict[str, int]`), and one that holds `None` items before its first
 value types it (`ws = [None]`, then `ws[0] = {...}`), keep their typed layouts.
 
+`json.loads()` decodes into these containers, and `json.dumps()` encodes `Any` values, in a module
+that opts in, where the document is `Any` values (#779; [the JSON prototype](json-prototype.md#in-modules-that-opt-in-to-dynamic-any)):
+a document decoded once is the same objects to the typed functions and the `Any` code it passes
+through. Where a `default()` callback changes the dict being encoded, `json.dumps()` writes it
+as CPython does, except a key that the callback deletes and inserts again, which keeps its old
+place where CPython writes it after the others (`tests/deviations/dynany_json_reinsert.py`).
+
 Storage that an unannotated first value types, and that a later store gives an `Any` value, is
 `Any` from that first store, as a CPython variable holds whatever was assigned last
 (`tests/programs/inference/dynany_widen.py`):
@@ -120,11 +127,12 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   `str`, list, dict, tuple or object. Boxing never copies a mutable container and never gives
   an alias a second layout.
 - **`None` is the constant box `pys_dyn_none_box`, never null.** Null is an unbound variable's
-  slot, and the existing "is assigned" flags still tell unbound reads apart. `True`, `False`
-  and the ints from -5 to 256 are constant boxes too, and so is each str constant's, whose
-  payload is that constant: a literal key of a `dict[str, Any]` allocates nothing (#777). Other
-  numbers' boxes are atomic allocations, which the collector does not scan; a reference's box is
-  a scanned allocation, so the box keeps its payload alive. DynTypes are constants outside the heap. Dynamic locals,
+  slot, and the existing "is assigned" flags still tell unbound reads apart. `True`, `False`,
+  the ints from -5 to 256 and the program's int literals are constant boxes too, one per value
+  (a literal's in each module), and so is each str constant's, whose payload is that constant: a
+  literal key of a `dict[str, Any]` allocates nothing (#777). Other numbers' boxes are atomic
+  allocations, which the collector does not scan; a reference's box is a scanned allocation,
+  so the box keeps its payload alive. DynTypes are constants outside the heap. Dynamic locals,
   arguments and closure cells are ordinary pointer slots, which the conservative collector
   scans; dynamic module variables are registered roots like every pointer-typed global.
 - **Containers of boxes**: `list[Any]` (descriptor `LA`), `dict[Any, Any]` (`DAA`, its keys
@@ -140,6 +148,26 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   method object; a def's box is a constant, whose payload is its DynType's address, and a
   closure's holds the env its def made for it, so different functions have different `id()`s
   (`tests/programs/inference/dynany_fn_identity.py`).
+- **Identity**: two `Any` values are one object, for `is`, exactly where their `id()`s are equal
+  (#797). `None`, a bool and a reference are their payload's object. An int, a float and a
+  bound method are their box, as an int or float object is in CPython. An int from -5 to 256
+  has one constant box per value, and an int literal one per value in each module, its
+  functions included, as CPython caches the former and makes a module's equal constants one
+  object, and another module's another; an int computed at run time gets a new box, as
+  `int("1000") is int("1000")` is `False` in CPython (`tests/programs/inference/dynany_identity.py`
+  and `dynany_identity_modules.py`). An int or float variable of typed code (a local or a
+  parameter of a module that opts in, or any module's variable in a program where one does)
+  holds one object, as CPython's name does. Beside it is a box
+  slot, null until the variable has a box. Each time the variable becomes an `Any` value, it
+  gives the slot's box where that box holds its value, else a new box, which the slot then
+  holds. A value read before a store gives the variable a new binding (`x, y = y, x`) keeps the
+  object it read: the box the slot held at the read, else a new one that the slot does not take.
+  A store gives the slot the box of the `Any` value it unboxes, the slot's box of the
+  variable it copies, or an int literal's constant box; any other value, such as an int computed
+  there, is a new object, which its first crossing boxes. A float that `isinstance()` narrows an
+  `Any` value to is that value's box again where it becomes one
+  (`tests/programs/inference/dynany_identity_typed.py`). Where typed code's numbers still cross
+  into `Any` as new objects, see the [deviations](#deviations).
 
 Two typed IR operations read a box: `dyn.type` its DynType pointer and `dyn.payload` its
 payload, declaring the type a test proved it holds. Neither has a memory effect: a box never
@@ -196,6 +224,11 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 `int`/`float` comparisons are exact, and the error messages are CPython's
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
+
+Dict union `d | e` makes a new dict, with the right dict's values taking precedence. `d |= e`
+updates the existing dict through `dict.update()`, accepting a dict or builtin iterable of
+pairs and preserving aliases. Its key comparisons may run user code. A dict's `|=` updates or
+raises before considering a right operand's reflected operator, as CPython does (#810).
 
 runtime.c's generic helpers implement the builtin types' operations. The program's classes
 take part through **dispatchers**: functions the compiler writes once every class whose objects
@@ -297,6 +330,25 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
+- An int or float of typed code that no variable's box slot holds is a new object where it
+  becomes an `Any` value, where CPython's names, containers and classes hold one object: an
+  argument or a parameter's default value (the parameter receives a new object), a return
+  value, an item of a typed container, a typed field or class variable, a variable that a
+  closure reads, a comprehension's variable, and a copy of a variable made before the variable
+  first became an `Any` value (also the name that `from m import x` binds), and a value that a
+  conditional expression chooses from two variables. So is an expression
+  of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
+  literal `1000` there), and a float literal at each evaluation, where CPython's equal
+  constants are one object (`tests/deviations/dynany_identity_boundary.py`).
+- A module's int or float variable that has no box yet, read in an expression that then calls a
+  function which rebinds the variable to an equal value, can give the new binding the box that
+  the read value gets where it becomes an `Any` value: `[G, rebind()][0] is G` is `True`, where
+  CPython holds two objects (`tests/deviations/dynany_identity_boundary.py`). The compiler sees
+  a store between the read and the crossing in the function itself, not in the call. So does a
+  value read before an assignment that a branch of the same expression makes but does not run:
+  with `flag` false, `ys: list[Any] = [x, (x := v) if flag else 0]` then `a: Any = x` gives
+  `ys[0] is a` as `False`, where CPython keeps one object. The compiler counts the stores it
+  emits, not those that run; following the run-time path would take a generation on every store.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional arguments only; keywords and

@@ -69,7 +69,7 @@ PROGRAM = """
     gkk holes twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
     inited guessed galias nts cnts ntdflts hasfrozen cvars typevars tvtuples tvdefaults tparams
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
-    dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen
+    dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.

@@ -1,0 +1,11 @@
+users ['ANN', 'BOB', 'CY'] kinds ['buy', 'login', 'logout']
+the index holds the records True True
+buys tagged 3 again 0
+seen through the list ['paid'] ['promo', 'paid']
+promo users ['ANN', 'BOB']
+total ms 765.5 of buys 645.5
+one record {"id": 4, "kind": "logout", "meta": {"by": ["admin", 7], "note": "closed", "seen": true}, "tags": ["web"], "user": "CY"}
+{"count":5,"first":{"id":1,"kind":"login","meta":{"ms":120,"seen":true},"tags":["web"],"user":"ANN"},"ms":765.5,"users":["ANN","BOB"]}
+round trip equal False distinct True
+[{"id": 1, "user": "ANN", "kind": "login", "tags": ["web"], "meta": {"ms": 120, "seen": true}}]
+[exit 0]
