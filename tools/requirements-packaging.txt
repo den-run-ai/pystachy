@@ -1,4 +1,4 @@
 # Pinned tools used by the Packages workflow; tracked by Dependabot.
-uv==0.12.23
+uv==0.13.4
 setuptools==84.0.0
 wheel==0.48.0
