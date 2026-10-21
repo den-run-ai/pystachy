@@ -1,0 +1,3 @@
+circ.alias_y: start
+AttributeError: module 'circ.alias_x' has no attribute 'K'
+[exit 1]
