@@ -719,6 +719,11 @@ def targs(t: str) -> list[str]:
     return out
 
 
+def holds_dyn(t: str) -> bool:
+    # is t an Any value, or a type whose values hold Any values (a container's items, a tuple's)
+    return t == "dyn" or "[dyn" in t or ",dyn" in t
+
+
 def any_item(t: str) -> bool:
     # is t an Any value (dyn) or one of Any's containers, which a container holds as a box: then a
     # list or dict of it has Any's container layout too (Gen.ctype)

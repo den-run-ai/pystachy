@@ -1,0 +1,6 @@
+plain TypeError keys must be str, int, float, bool or None, not BadHash
+0 TypeError keys must be str, int, float, bool or None, not BadHash
+1 {"first": 1, "last": 3, "new": 4}
+2 {"first": 1, "last": 3}
+3 TypeError keys must be str, int, float, bool or None, not BadHash
+[exit 0]
