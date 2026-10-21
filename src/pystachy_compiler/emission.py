@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.diagnostics import Rejoin, fail
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
+from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Transient, Val
 from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
@@ -26,6 +26,10 @@ def gen_err(self, msg: str) -> None:
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
+    if len(self.newx) > 0:
+        # (a pass that declined a comparison method goes on only to find the others: the next
+        # pass declines them all, and reports an error that comes of the program, see dyn_xcall)
+        raise Rejoin()
     if len(self.making) > 0:
         # an error in a template's function: say which call made it compile
         for i in range(len(self.making) - 1, -1, -1):
@@ -145,6 +149,120 @@ def gen_restore(self, fr: Frame) -> None:
     self.cur = fr.cur
     self.term = fr.term
     self.line = fr.line
+
+def gen_save_transient(self) -> Transient:
+    # Gen's state that code puts back once it has compiled something (Transient)
+    t = Transient()
+    t.brks = len(self.brks)
+    t.making = len(self.making)
+    t.resolving = len(self.resolving)
+    t.memo = len(self.dmemo)
+    t.busy = dict(self.busy)
+    t.fchk = dict(self.fchk)
+    t.fieldbusy = dict(self.fieldbusy)
+    t.retainers = dict(self.retainers)
+    t.scanning = dict(self.scanning)
+    t.specing = dict(self.specing)
+    t.allowq = self.allowq
+    t.appending = self.appending
+    t.carried = self.carried
+    t.cmpnode = self.cmpnode
+    t.compshare = self.compshare
+    t.copying = self.copying
+    t.dead = self.dead
+    t.dmemo = self.dmemo
+    t.dmemot = self.dmemot
+    t.drying = self.drying
+    t.elsebrk = self.elsebrk
+    t.elsebrks = self.elsebrks
+    t.elsekids = self.elsekids
+    t.fieldcmp = self.fieldcmp
+    t.flowmod = self.flowmod
+    t.gencall = self.gencall
+    t.gencallf = self.gencallf
+    t.joinkind = self.joinkind
+    t.joinname = self.joinname
+    t.joinsrc = self.joinsrc
+    t.jointype = self.jointype
+    t.lib = self.lib
+    t.live = self.live
+    t.mcall = self.mcall
+    t.nonecmp = self.nonecmp
+    t.reflcopies = self.reflcopies
+    t.selfcls = self.selfcls
+    t.soft = self.soft
+    t.stkkey = self.stkkey
+    t.stmtexpr = self.stmtexpr
+    t.unaliased = self.unaliased
+    t.unsure = self.unsure
+    t.whole = self.whole
+    t.template_bytes = self.template_bytes
+    t.template_instances = self.template_instances
+    t.template_retained = self.template_retained
+    return t
+
+def gen_restore_transient(self, t: Transient) -> None:
+    # put it back after an error, which skipped the code that puts it back (dyn_xcall)
+    while len(self.brks) > t.brks:
+        self.brks.pop()
+    while len(self.making) > t.making:
+        self.making.pop()
+    while len(self.resolving) > t.resolving:
+        self.resolving.pop()
+    # (what the tables gained since: the code that would take it out again did not run)
+    for k in [k for k in self.busy if k not in t.busy]:
+        del self.busy[k]
+    for k in [k for k in self.fchk if k not in t.fchk]:
+        del self.fchk[k]
+    for k in [k for k in self.fieldbusy if k not in t.fieldbusy]:
+        del self.fieldbusy[k]
+    for k in [k for k in self.scanning if k not in t.scanning]:
+        del self.scanning[k]
+    for k in [k for k in self.specing if k not in t.specing]:
+        del self.specing[k]
+    for k in [k for k in self.retainers if k not in t.retainers]:
+        del self.retainers[k]
+    for k in t.retainers:
+        self.retainers[k] = t.retainers[k]
+    self.allowq = t.allowq
+    self.appending = t.appending
+    self.carried = t.carried
+    self.cmpnode = t.cmpnode
+    self.compshare = t.compshare
+    self.copying = t.copying
+    self.dead = t.dead
+    self.dmemo = t.dmemo
+    self.dmemot = t.dmemot
+    while len(self.dmemo) > t.memo:
+        self.dmemo.pop()
+        self.dmemot.pop()
+    self.drying = t.drying
+    self.elsebrk = t.elsebrk
+    self.elsebrks = t.elsebrks
+    self.elsekids = t.elsekids
+    self.fieldcmp = t.fieldcmp
+    self.flowmod = t.flowmod
+    self.gencall = t.gencall
+    self.gencallf = t.gencallf
+    self.joinkind = t.joinkind
+    self.joinname = t.joinname
+    self.joinsrc = t.joinsrc
+    self.jointype = t.jointype
+    self.lib = t.lib
+    self.live = t.live
+    self.mcall = t.mcall
+    self.nonecmp = t.nonecmp
+    self.reflcopies = t.reflcopies
+    self.selfcls = t.selfcls
+    self.soft = t.soft
+    self.stkkey = t.stkkey
+    self.stmtexpr = t.stmtexpr
+    self.unaliased = t.unaliased
+    self.unsure = t.unsure
+    self.whole = t.whole
+    self.template_bytes = t.template_bytes
+    self.template_instances = t.template_instances
+    self.template_retained = t.template_retained
 
 def gen_tmp(self) -> str:
     self.n += 1

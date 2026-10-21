@@ -110,6 +110,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_widen as dynamic_dyn_widen,
     gen_dyn_widened as dynamic_dyn_widened,
     gen_dyn_xbody as dynamic_dyn_xbody,
+    gen_dyn_xcall as dynamic_dyn_xcall,
     gen_dyn_xhelper as dynamic_dyn_xhelper,
     gen_dyn_xmethod as dynamic_dyn_xmethod,
     gen_empty_ctor as dynamic_empty_ctor,
@@ -519,11 +520,13 @@ from src.pystachy_compiler.emission import (
     gen_put as emission_put,
     gen_reboxes as emission_reboxes,
     gen_restore as emission_restore,
+    gen_restore_transient as emission_restore_transient,
     gen_ret_ as emission_ret_,
     gen_returned_none as emission_returned_none,
     gen_rt as emission_rt,
     gen_runtime as emission_runtime,
     gen_save as emission_save,
+    gen_save_transient as emission_save_transient,
     gen_sconst as emission_sconst,
     gen_bconst as emission_bconst,
     gen_select as emission_select,
@@ -805,6 +808,7 @@ from src.pystachy_compiler.ir import (
     SeqStart,
     SetArg,
     StopCatch,
+    Transient,
     Val,
     Values,
 )
@@ -1205,7 +1209,8 @@ class Gen:
         self.final = True
         # comparison methods (Class.method) that @o.x.<class> does not call with an Any value, as
         # their call with one did not compile on an earlier pass (dyn_xbody); the ones this pass
-        # finds; the method whose call with one is being compiled (then an error restarts: gen_err)
+        # finds (after the first it goes on only to find the others: dyn_xcall, gen_err); the
+        # method whose call with one is being compiled (where an error declines it: dyn_xcall)
         self.xnot: dict[str, bool] = {}
         self.newx: dict[str, bool] = {}
         self.xtry = ""
@@ -1431,6 +1436,9 @@ class Gen:
 
     def dyn_xbody(self, c: str) -> None:
         return dynamic_dyn_xbody(self, c)
+
+    def dyn_xcall(self, c: str, m: str, a: Val, b: Val, line: int) -> str:
+        return dynamic_dyn_xcall(self, c, m, a, b, line)
 
     def dyn_box(self, v: Val) -> Val:
         return dynamic_dyn_box(self, v)
@@ -1911,6 +1919,12 @@ class Gen:
 
     def restore(self, fr: Frame) -> None:
         return emission_restore(self, fr)
+
+    def save_transient(self) -> Transient:
+        return emission_save_transient(self)
+
+    def restore_transient(self, t: Transient) -> None:
+        return emission_restore_transient(self, t)
 
     def tmp(self) -> str:
         return emission_tmp(self)

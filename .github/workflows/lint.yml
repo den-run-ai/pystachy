@@ -78,6 +78,9 @@ jobs:
       - name: Dynamic Any fuzzer generator and comparison tests
         run: python3 -m unittest discover -s tools -p test_dynany_fuzz.py
 
+      - name: Dynamic Any declined comparison methods (passes and compiler state)
+        run: python3 -m unittest discover -s tools -p test_dynany_declines.py
+
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py
 

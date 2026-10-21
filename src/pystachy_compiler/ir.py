@@ -460,6 +460,63 @@ class Frame:
         self.curfn = curfn
 
 
+class Transient:
+    # Gen's state beside a function's (Frame) that code changes and changes back around what it
+    # compiles, or sets for what it compiles next: a stack it pushes and pops (its depth here), a
+    # table it enters something in for a while (a copy here), a value it replaces and puts back,
+    # a flag it sets and resets, a count it raises and lowers, and what the last loop, call and
+    # statement left. An error raised in between leaves it changed: only dyn_xcall goes on
+    # compiling after one, and puts this back (tools/test_dynany_declines.py checks that Frame and
+    # this hold every field of Gen's that code changes but its caches and registries)
+    def __init__(self) -> None:
+        self.brks = 0
+        self.making = 0
+        self.resolving = 0
+        self.memo = 0  # (dmemo's and dmemot's, which grow together)
+        self.busy: dict[str, bool] = {}
+        self.fchk: dict[str, bool] = {}
+        self.fieldbusy: dict[str, bool] = {}
+        self.retainers: dict[str, int] = {}
+        self.scanning: dict[str, bool] = {}
+        self.specing: dict[str, str] = {}
+        self.allowq = False
+        self.appending = False
+        self.carried = Val("", "")
+        self.cmpnode = Node("", "", 0)
+        self.compshare: dict[str, str] = {}
+        self.copying = False
+        self.dead = False
+        self.dmemo: list[Node] = []
+        self.dmemot: list[str] = []
+        self.drying = 0
+        self.elsebrk = ""
+        self.elsebrks: list[dict[str, str]] = []
+        self.elsekids: list[Node] = []
+        self.fieldcmp = False
+        self.flowmod = ""
+        self.gencall = ""
+        self.gencallf: FnInfo | None = None
+        self.joinkind = ""
+        self.joinname = ""
+        self.joinsrc = Node("", "", 0)
+        self.jointype = ""
+        self.lib = False
+        self.live = False
+        self.mcall: Node | None = None
+        self.nonecmp = False
+        self.reflcopies = 1
+        self.selfcls = ""
+        self.soft = Node("", "", 0)
+        self.stkkey = Node("", "", 0)
+        self.stmtexpr: Node | None = None
+        self.unaliased = 0
+        self.unsure = False
+        self.whole = 0
+        self.template_bytes = 0
+        self.template_instances = 0
+        self.template_retained = 0
+
+
 class ClassInfo:
     def __init__(self, name: str, node: Node):
         self.name = name

@@ -181,10 +181,10 @@ self-compilation with a ten-minute bound: fix compiler cost, not its timeout
   ([#227](https://github.com/den-run-ai/pystachy/pull/227)). Reviews also keep finding
   values past `INT64_MAX`, modules read during their circular import and enclosing locals
   that shadow type parameters.
-- Adding `Gen` state requires auditing `Frame`, save/restore, `dry()` and restart paths
-  such as `Rejoin`: state explicitly what speculative compilation may retain. Test
-  increasing nesting depth; dry and real traversal can multiply each other's work
-  ([#767](https://github.com/den-run-ai/pystachy/issues/767),
+- Adding `Gen` state requires auditing `Frame`, `Transient`, save/restore, `dry()` and
+  restart paths such as `Rejoin`: state explicitly what speculative compilation may
+  retain. Test increasing nesting depth; dry and real traversal can multiply each other's
+  work ([#767](https://github.com/den-run-ai/pystachy/issues/767),
   [#781](https://github.com/den-run-ai/pystachy/issues/781)). Valid IR shape alone does
   not prove a payload read is guarded by the matching tag; inspect control-flow proof
   and invalidation after mutations/calls when changing narrowing

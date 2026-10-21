@@ -1126,6 +1126,8 @@ def gen_program(self, mods: list[Mod]) -> str:
         # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
         if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) == before and not self.dyn_dispatchers():
             break
+    if len(self.newx) > 0:
+        raise Rejoin()  # (comparison methods were declined: the next pass declines them all, see dyn_xcall)
     self.exc_tables()
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
