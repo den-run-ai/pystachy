@@ -1,4 +1,5 @@
-# make typecheck (mypy), then make lint: ruff, shellcheck of the scripts as POSIX sh, and clang's warnings on
+# actionlint validates workflows and embedded shell; make check-fast runs ruff, mypy and hosted unit
+# tests; make lint adds shellcheck of the scripts as POSIX sh and clang's warnings on
 # runtime.c and tools/dictprobe.c, with the versions of tools/requirements-dev.txt; then make
 # check-recordings (tests/record.sh --check): the CPython of .python-version, which recorded the
 # tests' expected output (with the typing_extensions of tools/requirements-dev.txt), still prints
@@ -41,10 +42,23 @@ jobs:
 
       - run: python3 -m pip install -r tools/requirements-dev.txt
 
-      - name: Type-check the compiler (mypy)
-        run: make typecheck
+      - name: Validate GitHub Actions workflows (actionlint)
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+        run: |
+          actionlint_dir=$(mktemp -d)
+          trap 'rm -rf "$actionlint_dir"' EXIT
+          curl --fail --location --silent --show-error --retry 3 \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            --output "$actionlint_dir/actionlint.tar.gz"
+          printf '%s  %s\n' '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' \
+            "$actionlint_dir/actionlint.tar.gz" | sha256sum --check -
+          tar --no-same-owner -xzf "$actionlint_dir/actionlint.tar.gz" -C "$actionlint_dir" actionlint
+          command -v shellcheck >/dev/null
+          "$actionlint_dir/actionlint" -pyflakes=
 
-      - run: make lint
+      - name: Fast hosted checks and full lint
+        run: make check-fast lint
 
       - name: CI verification harness and report gate tests
         run: python3 -m unittest discover -s tools -p 'test_*verif*.py'
@@ -67,14 +81,8 @@ jobs:
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py
 
-      - name: Compiler effect summary tests
-        run: python3 -m unittest discover -s tools -p test_function_summaries.py
-
       - name: Compiler state contract research controls
         run: python3 -m unittest discover -s tools -p 'test_compiler_state*.py'
-
-      - name: Typed IR tests
-        run: python3 -m unittest discover -s tools -p 'test_typed*.py'
 
       - name: JSON benchmark evidence tests
         run: python3 -m unittest discover -s tools -p test_bench_json.py

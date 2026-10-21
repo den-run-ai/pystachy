@@ -69,6 +69,13 @@ Ruff 0.17.0, mypy 2.4.0 (45 compiler source files), four workflow-limit tests an
 the branch; the documentation conflict was resolved by retaining both its
 type-checking guidance and these research controls. Both Lint steps remain.
 
+The later integration of main `f4b93961` preserves #825's `check-fast`/actionlint
+setup and #668's dependency-update configuration. Compiler/runtime/lib sources
+are unchanged from the recorded baseline. `make check-fast` (91 tests, Ruff and
+mypy), the 31 state tests, four workflow-limit tests and actionlint 1.7.12 pass.
+The state-test Lint step remains separate; effect and typed-IR tests run once
+through `check-fast`.
+
 Run from the repository root:
 
 ```sh
