@@ -72,6 +72,71 @@ def tuple_op(op, t="tuple[int,str]", index=1, member="str"):
     return i
 
 
+class ConstructorResultTests(unittest.TestCase):
+    def test_none_and_terminated_calls_add_no_instructions(self):
+        for value, terminated in ((Val("null", "None"), False), (Val("0", "int"), True)):
+            with self.subTest(type=value.t, terminated=terminated):
+                g = Gen()
+                g.term = terminated
+                g.init_result(value)
+                self.assertEqual(g.fn.blocks[0].code, [])
+                self.assertEqual(g.term, terminated)
+
+    def test_false_and_zero_are_rejected_without_a_truth_test(self):
+        for value in (Val("0", "int"), Val("false", "bool")):
+            with self.subTest(type=value.t):
+                g = Gen()
+                g.init_result(value)
+                code = [i for b in g.fn.blocks for i in b.code]
+                self.assertEqual([(i.op, i.s) for i in code if i.op == "raise"],
+                                 [("raise", "TypeError")])
+                self.assertFalse(any(i.op == "cbr" for i in code))
+                self.assertTrue(g.term)
+
+    def test_optional_union_payload_is_guarded_by_nonnull(self):
+        g = Gen()
+        g.init_result(Val("%a0", "opt[union[int,str]]"))
+        entry = g.fn.blocks[0].code
+        check, branch = entry[-2:]
+        self.assertEqual((check.op, check.s), ("ptr.cmp", "=="))
+        self.assertEqual([(a.v, a.t) for a in check.a],
+                         [("%a0", "opt[union[int,str]]"), ("null", "None")])
+        tagged = [b for b in g.fn.blocks if any(i.op == "union.tag" for i in b.code)]
+        self.assertEqual(len(tagged), 1)
+        self.assertEqual(branch.op, "cbr")
+        self.assertEqual(branch.b[1], tagged[0].label)
+        self.assertNotEqual(branch.b[0], tagged[0].label)
+        self.assertFalse(g.term)
+
+    def test_construction_checks_but_explicit_method_call_does_not(self):
+        source = """
+class C:
+    def __init__(self, bad: bool) -> int | None:
+        if bad:
+            return 0
+        return None
+
+def explicit(c: C) -> int | None:
+    return c.__init__(True)
+
+c = C(False)
+print(explicit(c))
+"""
+        raises = {}
+        lower = Gen.lower
+
+        def capture(g, fn):
+            g.verify(fn, False)
+            raises[fn.f.name] = [i.s for b in fn.blocks for i in b.code if i.op == "raise"]
+            lower(g, fn)
+
+        with patch.object(Gen, "lower", capture):
+            Gen().program(Loader([]).program("init_explicit.py", source))
+        self.assertIn("explicit", raises)
+        self.assertNotIn("TypeError", raises["explicit"])
+        self.assertTrue(any("TypeError" in kinds for kinds in raises.values()))
+
+
 class ClosurePathTests(unittest.TestCase):
     def test_paths_do_not_change_tuple_layouts_or_closure_types(self):
         fixture = Path(__file__).resolve().parent.parent / "tests/paths]/closure_path_fixture.py"

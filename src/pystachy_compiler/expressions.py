@@ -1389,7 +1389,7 @@ def gen_format_args(self, fa: FmtArgs, args: list[Node]) -> bool:
                 if args[at].kind == "kw":
                     run.append(args[at])
                 at += 1
-            vals = [self.expr(k.kids[0], "") for k in run]
+            vals: list[Val] = [self.expr(k.kids[0], "") for k in run]
             for j in range(len(run)):
                 if not self.format_kw(fa, run[j].s, vals[j]):
                     return False
@@ -1397,7 +1397,7 @@ def gen_format_args(self, fa: FmtArgs, args: list[Node]) -> bool:
             # (**{"k": v}: its items, a later key's value replacing an earlier one's, as in the dict)
             d = a.kids[0]
             names: list[str] = []
-            vals: list[Val] = []
+            vals = []
             for i in range(0, len(d.kids), 2):
                 v = self.expr(d.kids[i + 1], "")
                 if d.kids[i].s in names:
@@ -2024,7 +2024,8 @@ def gen_unroll(self, g: Node, every: bool = False) -> list[Node] | None:
         e = bind_names(g.kids[0], env)
         if e is None:
             self.err("a comprehension over a tuple of items of different types cannot hold a lambda, comprehension or := expression")
-        out.append(e)
+        # self.err() exits; self stays untyped for self-hosted specialization.
+        out.append(e)  # type: ignore[arg-type]
     return out
 
 def gen_dict_merge(self, n: Node, want: str) -> Val:

@@ -212,6 +212,7 @@ class Loader:
         self.optry = False  # (in the body of one whose clauses may catch ImportError: not an optional import)
         self.fragile: dict[str, str] = {}
         self.solid: dict[str, bool] = {}
+        self.first_import: dict[str, bool] = {}  # first local import site's need for a binding flag
         # the submodules that imports in try statements run, which their package has as an attribute
         # only once an import of them has run to its end (Gen.modchk), and the reads through such an
         # attribute that qmod() found in the expression being qualified (Node.mchk)
@@ -254,11 +255,13 @@ class Loader:
         # each from-import of a variable (take()), with the bindings it went to, for late_takes(): s
         # is the name bound, the kids the module, the name, the copy, what bound the name before (but
         # another from-import of a variable), where ("@" and the module, or the function) and the line
-        # its module's code was at (Mod.at, 0 once done); vtook: names only such imports bound so far
+        # its module's code was at (Mod.at, 0 once done), and the import's try depth. vtakem:
+        # destination modules; vtook: names only such imports bound so far
         self.vtaken: list[Node] = []
         self.vtakek: list[dict[str, str]] = []
+        self.vtakem: list[Mod] = []
         self.vtook: dict[str, bool] = {}
-        self.aliased: dict[str, Node] = {}  # the alias statements late_aliases() made, by "<module> <name>"
+        self.aliased: dict[str, Node] = {}  # assignment/type alias statements, by "<module> <name>"
         # each star import of a package without __all__, with the module it is in (submodules())
         self.stars: list[Node] = []
         self.starm: list[Mod] = []
@@ -362,6 +365,20 @@ class Loader:
                 made = self.late_aliases(x) or made
             more = self.late_takes(False) or made
         self.late_takes(True)
+        for i in range(len(self.vtaken)):
+            n = self.vtaken[i]
+            if n.kids[2].kind == "bound" and not n.kids[4].s.startswith("@"):
+                # Alias discovery may visit imports out of order. The first lexical binding
+                # determines whether every successful import must set a local flag.
+                key = f"{self.vtakem[i].name} {n.kids[4].s} {n.s}"
+                if self.first_import[key]:
+                    self.fragile[key] = n.s
+                else:
+                    self.fragile.pop(key, "")
+        for x in self.order if not self.rtmode else []:
+            for nm in x.kinds:
+                if x.kinds[nm].startswith("a:") and x.name + " " + nm in self.aliased:
+                    self.fragile[f"{x.name}  {nm}"] = x.q + nm
         self.doccycles()
         for x in self.order:
             self.lazyann = False
@@ -678,6 +695,7 @@ class Loader:
                 m.kinds[al.kids[0].s] = "v"  # a function's global statement rebinds it
             else:
                 al.kind = "pass"
+                self.aliased[m.name + " " + al.kids[0].s] = al
                 self.used_before(m, al)
 
     def nt_func(self, m: Mod, e: Node) -> bool:
@@ -722,6 +740,7 @@ class Loader:
             if t is not st and t.kind == "name" and v.kind == "name" and v.s in fields and count.get(t.s, 0) == 1 and t.s not in m.fnglobal:
                 m.kinds[t.s] = "a:" + m.q + v.s
                 st.kind = "pass"
+                self.aliased[m.name + " " + t.s] = st
                 self.used_before(m, st)
             out.append(st)
         m.body.kids = out
@@ -1037,6 +1056,19 @@ class Loader:
             if msg == "":
                 self.vtakek[i][n.s] = k
                 cp.kind = "pass"
+                if k.startswith("a:"):
+                    # The original variable copy now binds an alias. Keep the import's flag
+                    # and source read, just as import_stmt does for an alias known at load time.
+                    saved_def = self.curdef
+                    saved_try = self.intry
+                    self.curdef = n.kids[4].s
+                    self.intry = int(n.kids[6].s)
+                    cp.kind = "bound"
+                    cp.s = self.import_binds(self.vtakem[i], n.s, not n.kids[4].s.startswith("@"))
+                    cp.mchk = "?" + n.kids[0].s + " " + n.kids[1].s
+                    cp.kids = []
+                    self.curdef = saved_def
+                    self.intry = saved_try
                 if not n.kids[4].s.startswith("@") and n.kids[4].s + " " + n.s not in self.fkline:
                     self.fkline[n.kids[4].s + " " + n.s] = n.line  # (the function's import that binds it: qstmts())
             elif not n.kids[4].s.startswith("@"):
@@ -2347,6 +2379,10 @@ class Loader:
         # once the code of its own modules has run (the uimport is split there), in a from-import
         # once that of all of them has, in the order of its names, among the copies
         line = st.line
+        for a in st.kids if infn else []:
+            key = f"{m.name} {self.curdef} {a.s}"
+            if key not in self.first_import:
+                self.first_import[key] = self.intry > 0 or a.s in self.checked.get(self.curdef, {})
         keep = mk("import", st.s, line, [])
         inits = mk("uimport", "", line, [])
         copies: list[Node] = []
@@ -2451,8 +2487,11 @@ class Loader:
                     mine = self.rebinds(m, src, x, x, infn)  # (a def or class statement of m binds x)
                     k = src.kinds[x] if mine else self.take(m, src, x, x, infn, keep, inits, copies, line)
                     took.append(" " if mine else x if k != "v" else "")
+                    # Aliases may acquire a flag only after late_aliases. Other imports check
+                    # only existing source flags: from . import submodule must not check the
+                    # destination flag that this same statement will create in its package.
                     key = f"{src.name}  {x}"
-                    checks.append(f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
+                    checks.append(f"?{src.name} {x}" if k.startswith("a:") else f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
                     if not mine:
                         names.append(x)
                 if src.pdir != "" and not has_all(src.body.kids):
@@ -2465,7 +2504,7 @@ class Loader:
                 k = src.kinds[x] if mine else self.take(m, src, x, a.s, infn, keep, inits, copies, line)
                 took.append(" " if mine else a.s if k != "v" else "")
                 key = f"{src.name}  {x}"
-                checks.append(f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
+                checks.append(f"?{src.name} {x}" if k.startswith("a:") else f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
                 if not mine:
                     names.append(a.s)
         at.append(len(inits.kids))
@@ -2526,7 +2565,8 @@ class Loader:
             self.solid[key] = True
         elif key not in self.solid:
             self.fragile[key] = name if infn else m.q + name
-        return self.fragile.get(key, "")
+        # Retain local import sites until late_takes has restored their lexical flag decision.
+        return "?" + self.curdef + " " + name if infn else self.fragile.get(key, "")
 
     def chain(self, path: str, inits: Node) -> None:
         # the modules import path initializes: a, a.b, a.b.c
@@ -2708,8 +2748,9 @@ class Loader:
                 m.kinds[name] = "v"
             copies.append(mk("assign", "from", line, [mk("name", name, line, []), mk("name", src.q + x, line, [])]))
             self.vtaken.append(mk("vtake", name, line, [mk("str", src.name, line, []), mk("str", x, line, []), copies[-1], mk("str", was, line, []), mk("str", at, line, []),
-                                                       mk("int", str(src.at if not src.done else 0), line, [])]))
+                                                       mk("int", str(src.at if not src.done else 0), line, []), mk("int", str(self.intry), line, [])]))
             self.vtakek.append(ks)
+            self.vtakem.append(m)
         if src.pdir != "" and k != "" and k != "m:" + src.name + "." + x:
             # the package binds x itself, which an import of its submodule x may rebind (submodules())
             self.taken.append(mk("take", name, line, [mk("str", src.name, line, []), mk("str", x, line, [])] + (copies[-1:] if k == "v" else copies[:0])))
@@ -2995,7 +3036,24 @@ class Loader:
     def qstmts(self, m: Mod, body: list[Node], loc: dict[str, bool], cls: bool) -> None:
         for st in body:
             k = st.kind
-            if k == "def":
+            nm = st.kids[0].s if len(st.kids) > 1 and st.kids[0].kind == "name" else ""
+            if not self.qdef and not cls and not self.rtmode and nm != "" and m.kinds.get(nm, "").startswith("a:") and self.aliased.get(m.name + " " + nm, None) is st:
+                # Assignment aliases still bind at their statement. Check the RHS before
+                # marking the alias bound, without making a function/class into a value.
+                v = st.kids[-1]
+                self.qexpr(m, v, loc)
+                st.kind = "bound"
+                st.s = m.q + nm
+                st.mchk = v.mchk if k != "ready" else ""
+                st.kids = [mk("ready", "", st.line, [v])] if k == "ready" else []
+            elif k == "bound":
+                if st.s.startswith("?"):
+                    st.s = self.fragile.get(m.name + " " + st.s[1:], "")
+                if st.mchk.startswith("?"):
+                    source = st.mchk[1:].split(" ")
+                    key = source[0] + "  " + source[1]
+                    st.mchk = f"{self.fragile[key]} {source[1]} I" if key in self.fragile else ""
+            elif k == "def":
                 if not cls:
                     st.s = self.qname(m, st.s, loc)
                 for d in st.kids[3:]:

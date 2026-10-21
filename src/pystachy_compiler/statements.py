@@ -1045,8 +1045,10 @@ def gen_stmt(self, n: Node) -> None:
         # assignment does, which raises AttributeError where m's code has not bound C yet
         self.class_ready(n.kids[-1])
     elif k == "bound":
-        # an import has bound these names, which an import in a try statement may leave unbound
-        self.modchk(n)  # a from-import must read an existing source-module attribute first
+        # An import or alias assignment binds these names only after its source read succeeds.
+        self.modchk(n)
+        for source in n.kids:
+            self.stmt(source)
         for bn in n.s.split():
             self.mstore('bool', 'true', self.imp_flag(bn, self.modlevel))
     elif k == "def" and (n.s in self.decorated if self.modlevel else self.applies(n, False, self.scope_names())):

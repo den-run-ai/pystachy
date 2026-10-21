@@ -1,0 +1,10 @@
+arg
+init 7
+TypeError __init__() should return None, not 'int'
+init 8
+TypeError __init__() should return None, not 'int'
+raising
+ValueError initializer
+init 9
+super result 0
+[exit 0]

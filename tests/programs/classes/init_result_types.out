@@ -1,0 +1,7 @@
+TypeError __init__() should return None, not 'bool'
+TypeError __init__() should return None, not 'list'
+TypeError __init__() should return None, not 'tuple'
+object result was None
+TypeError __init__() should return None, not 'Value'
+TypeError __init__() should return None, not 'SubValue'
+[exit 0]

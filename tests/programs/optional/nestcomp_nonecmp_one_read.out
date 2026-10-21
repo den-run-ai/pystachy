@@ -1,0 +1,4 @@
+x is None
+y is falsy
+x still None
+[exit 0]
