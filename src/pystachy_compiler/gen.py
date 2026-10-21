@@ -1025,6 +1025,7 @@ from src.pystachy_compiler.variables import (
     gen_no_type as variables_no_type,
     gen_none_ends as variables_none_ends,
     gen_none_read as variables_none_read,
+    gen_none_resolve as variables_none_resolve,
     gen_none_type as variables_none_type,
     gen_none_values as variables_none_values,
     gen_only_empties as variables_only_empties,
@@ -1181,6 +1182,7 @@ class Gen:
         # the statements that may assign each name, for a variable typed from None (none_type):
         # found once a function needs them (none_sites), then with the key ""
         self.nonesites: dict[str, list[Node]] = {}
+        self.nonepending: dict[str, bool] = {}
         # optional, union and class locals: the narrower type a read has here (see narrows)
         self.narrowed: dict[str, str] = {}
         self.nonecmp = False  # the read being compiled is compared with None (see none_type)
@@ -2456,6 +2458,9 @@ class Gen:
 
     def none_read(self, name: str) -> str:
         return variables_none_read(self, name)
+
+    def none_resolve(self, name: str, t: str) -> None:
+        variables_none_resolve(self, name, t)
 
     def none_extend(self, name: str) -> None:
         return variables_none_extend(self, name)

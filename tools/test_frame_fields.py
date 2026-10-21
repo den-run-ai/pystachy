@@ -49,7 +49,6 @@ NOT_SAVED: dict = {}
 # the fields Frame holds that gen_enter does not assign, by design: the code that starts a nested
 # function sets them. Each with its reason, in one line.
 NOT_RESET = {
-    "nonecmp": "a nested compile inherits the comparison with None in progress, as on main: main accepts programs that rely on it (nestcomp_nonecmp_one_read), which the function compiled on its own rejects, so resetting it would reject them (#822); Frame still restores it, so the nested compile cannot change it (nestcomp_nonecmp_clobber)",
     "modlevel": "each caller of save() sets it for what it compiles, module code or a function; gen_enter reads it",
     "lenient": "set around helpers compiled leniently (obj_helpers, dyn_xhelper); save()'s callers that compile clear it",
 }

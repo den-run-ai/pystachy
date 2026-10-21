@@ -263,8 +263,10 @@ that cannot yet be typed.
 ## Optional values and narrowing
 
 A local first assigned `None` becomes `T | None` when another assignment supplies a known
-`T`. Earlier reads use a known later assignment or their expected type. A local assigned only
-`None` reads as `None`.
+`T`. Earlier reads use a known later assignment or their expected type. When a loop's later
+store reveals the type, inference revisits earlier reads, including truth tests on subsequent
+iterations. Copies of unresolved locals participate in the same bounded inference passes.
+A local assigned only `None` reads as `None`.
 
 Module globals and fields work the same way. A global first assigned `None` becomes `T | None`
 at the first other value that module code or a function gives it, and a field that `__init__`

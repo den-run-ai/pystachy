@@ -1,0 +1,34 @@
+direct 0
+True
+nested 0
+x is None
+x still None
+zero 0
+DONE
+direct 1
+falsy
+False
+nested 1
+x is None
+falsy
+x still None
+zero 1
+False True
+DONE
+direct 3
+falsy
+truthy
+truthy
+False
+nested 3
+x is None
+falsy
+truthy
+truthy
+x still None
+zero 3
+False True
+False True
+True False
+DONE
+[exit 0]
