@@ -1759,8 +1759,13 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
             return targs(t)[1]
         if n.kind == "index" and t in self.classes and "__setitem__" in self.classes[t].methods and len(self.classes[t].methods["__setitem__"].ptypes) > 2:
             return self.classes[t].methods["__setitem__"].ptypes[2]
-    if base and n.kind != "name" and self.dyn_policy(n.line) and self.dry(n) == "dyn":
-        return "dyn"  # (another expression's Any value, in a module that compiles Any so: f()[k] = {}, f().x = [])
+        r = n.kids[0]
+        if not base and t == "" and r.kind != "name" and self.dyn_policy(n.line) and self.typed_now(r) and not self.calls_open(r, {}) and self.dry(r) == "dyn":
+            # (another expression's Any value, in a module that compiles Any so: f()[k] = {},
+            # f().x = []. CPython evaluates it after the value, which may bind what it reads
+            # (f(x)[k] = (x := v)), so dry() types it here only as lookahead's rule allows; and
+            # once, at the target, not at each receiver of a chain)
+            return "dyn"
     return ""
 
 def gen_assign(self, t: Node, v: Val) -> None:

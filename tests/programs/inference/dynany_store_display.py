@@ -1,7 +1,7 @@
 # pystachy: dynamic-any
 # A display stored into an Any value's item or attribute holds Any values, as a CPython container
 # does whatever is stored into it later (#777): an empty one too, and one of typed items, also
-# where the Any value is a call's result
+# where the Any value is a call's result or a tuple's item
 from typing import Any
 
 
@@ -71,3 +71,8 @@ node().kids[0]["leaf"] = False
 o.kids[0]["more"] = [None]
 (cont if len(cont) > 0 else lst)["c"] = []
 print(cont["g"], o.kids, cont["c"])
+
+pair = (len(cont), lst)
+pair[1][0]["u"] = {}
+pair[1][0]["u"]["w"] = [len(pair)]
+print(lst[0], pair[0] > 0)
