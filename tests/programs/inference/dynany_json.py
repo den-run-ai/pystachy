@@ -130,3 +130,17 @@ def del_default(o: Any) -> Any:
 
 print(json.dumps(ins_doc, default=ins_default))
 print(json.dumps(del_doc, default=del_default))
+
+
+# a chain of default() calls, each returning an object the next converts: only containers count
+# against the nesting limit, as in CPython (#823)
+class Chain:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+
+def chain_default(o: Any) -> Any:
+    return Chain(o.n - 1) if o.n > 0 else 7
+
+
+print(json.dumps([Chain(300)], default=chain_default))

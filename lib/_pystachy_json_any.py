@@ -135,6 +135,7 @@ class _Writer:
         self.default = default
         self.out: list[str] = []
         self.calls = 0  # (default() calls so far: where one ran, a dict being written may have changed)
+        self.chain = 0  # (default() calls in progress, each converting the value the one before returned)
         self.open: list[Any] = []  # (the containers being written, for check_circular)
 
     def enter(self, value: Any, depth: int) -> None:
@@ -218,9 +219,15 @@ class _Writer:
             out.append("}")
             self.open.pop()
         elif self.default is not None:
-            self.enter(value, depth)
+            # (only containers count against the nesting limit; a chain of default() calls is
+            # bounded as CPython's recursion bounds it)
+            self.enter(value, 0)
             self.calls += 1
-            self.write(self.default(value), depth + 1)
+            self.chain += 1
+            if self.chain > 1000:
+                raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
+            self.write(self.default(value), depth)
+            self.chain -= 1
             self.open.pop()
         else:
             raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")

@@ -33,4 +33,5 @@ loop Circular reference detected
 {"1": "x", "2": "y"}
 {"a": 1, "b": 0, "c": 3}
 {"a": 1}
+[7]
 [exit 0]
