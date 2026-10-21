@@ -181,7 +181,7 @@ def gen_ann(self, n: Node) -> str:
     elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
         return self.opt(self.ann(n.kids[1]), n.kids[1])  # None | T
     elif k == "binop" and n.s == "|":
-        ts = [self.ann(x) for x in self.union_members(n, [])]
+        ts: list[str] = [self.ann(x) for x in self.union_members(n, [])]
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -240,7 +240,7 @@ def gen_ann(self, n: Node) -> str:
             if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
                 return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
             return self.ctype("vtuple", [t])
-        ts: list[str] = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
+        ts = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -1371,7 +1371,7 @@ def gen_iter_ann(self, n: Node) -> str:
     t = self.iter_item(n)
     return self.ctype("list", [self.vtype(t)]) if t is not None else ""
 
-def gen_iter_item(self, n: Node) -> Node:
+def gen_iter_item(self, n: Node) -> Node | None:
     # T, of an __iter__'s return annotation Iterator[T] or Iterable[T]; else None
     if n.kind == "str":
         n = self.parse_expr(n.s)
@@ -2260,7 +2260,7 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if c in self.tmpl:
             # a class template's object: of the specialization its arguments' types pick, once
             # code is being compiled (a specialization compiles its special methods)
-            ts = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling else ["!"]
+            ts: list[str] = self.guess_args(self.classes[c].methods["__init__"], e.kids[1:], f) if self.compiling else ["!"]
             lits = self.literal_args(self.classes[c].methods["__init__"], e.kids[1:]) if self.literal_class(c) and "!" not in ts else {}
             return self.specialize(c, ts, {}, False, lits) if "!" not in ts else ""
         if c in self.classes or c in self.unsupported:
@@ -2279,7 +2279,7 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
                 args = e.kids[1:]
                 if c in f.params or c in assigned or len(args) > len(helper.params) or (helper.npos >= 0 and len(args) > helper.npos):
                     return ""
-                ts: list[str] = []
+                ts = []
                 for i in range(len(helper.params)):
                     if i < len(args):
                         arg = args[i]
