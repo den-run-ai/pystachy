@@ -278,7 +278,9 @@ the class's `self.x = v` assignments, typed as `__init__`'s are. Otherwise a fun
 that assigns it, unless it is a template (a parameter without an annotation), is compiled
 first; `self.x = v` in a method of an unrelated class assigns that class's own field, not this
 one. A comparison with `None` by `is` needs no type. A global or field that no code gives
-another value reads as `None`. Where none of this finds a type in time, annotate it:
+another value reads as `None`. If a later compiled store reveals a global's type, inference
+revisits its earlier reads and copies, including across calls to template setters. This
+inference does not override an explicit annotation. Where none of this finds a type in time, annotate it:
 `last: str | None = None`, `self.next: Node | None = None`.
 
 Class types already permit `None`: `C` and `C | None` use the same nullable type. Builtin

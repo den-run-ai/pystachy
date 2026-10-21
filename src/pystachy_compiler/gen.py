@@ -979,6 +979,7 @@ from src.pystachy_compiler.variables import (
     gen_global_setters as variables_global_setters,
     gen_none_arms as variables_none_arms,
     gen_none_global as variables_none_global,
+    gen_none_global_resolve as variables_none_global_resolve,
     gen_none_global_store as variables_none_global_store,
     gen_adopt as variables_adopt,
     gen_ahead as variables_ahead,
@@ -1183,6 +1184,7 @@ class Gen:
         # found once a function needs them (none_sites), then with the key ""
         self.nonesites: dict[str, list[Node]] = {}
         self.nonepending: dict[str, bool] = {}
+        self.noneglobalpending: dict[str, bool] = {}  # unresolved global reads, shared by nested compiles
         # optional, union and class locals: the narrower type a read has here (see narrows)
         self.narrowed: dict[str, str] = {}
         self.nonecmp = False  # the read being compiled is compared with None (see none_type)
@@ -2503,6 +2505,9 @@ class Gen:
 
     def none_global(self, name: str) -> str:
         return variables_none_global(self, name)
+
+    def none_global_resolve(self, name: str, t: str) -> None:
+        variables_none_global_resolve(self, name, t)
 
     def none_arms(self, name: str) -> str:
         return variables_none_arms(self, name)

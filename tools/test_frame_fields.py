@@ -59,7 +59,7 @@ PROGRAM = """
     classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts bconsts strs bstrs strvals vnodes cmexit rtfns opfxs out fns fll summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
-    xobj impg wide nokey nonereads attrvals attrown hints newhints final xnot newx retseen
+    xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
     template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused intat strglobals strtuples abstracts abcmeta
     constflags late ext libdir prefix csyms csymline cdirect extvars unicode_audit rtmode rtdefs
