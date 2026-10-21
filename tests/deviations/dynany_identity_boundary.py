@@ -97,3 +97,8 @@ print("a folded constant", k is m, id(k) == id(m))
 h: Any = 1.5
 j: Any = 1.5
 print("a float literal", h is j, id(h) == id(j))
+bx = int("1000")
+bflag = bool(int("0"))
+bys: list[Any] = [bx, (bx := int("2000")) if bflag else 0]
+bw: Any = bx
+print("a read before a store in a branch that does not run", bys[0] is bw, id(bys[0]) == id(bw))

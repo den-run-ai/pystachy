@@ -10,4 +10,5 @@ a comprehension's variable [False]
 a module variable that a call rebinds True True
 a folded constant False False
 a float literal False False
+a read before a store in a branch that does not run False False
 [exit 0]

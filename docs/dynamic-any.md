@@ -331,7 +331,11 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   function which rebinds the variable to an equal value, can give the new binding the box that
   the read value gets where it becomes an `Any` value: `[G, rebind()][0] is G` is `True`, where
   CPython holds two objects (`tests/deviations/dynany_identity_boundary.py`). The compiler sees
-  a store between the read and the crossing in the function itself, not in the call.
+  a store between the read and the crossing in the function itself, not in the call. So does a
+  value read before an assignment that a branch of the same expression makes but does not run:
+  with `flag` false, `ys: list[Any] = [x, (x := v) if flag else 0]` then `a: Any = x` gives
+  `ys[0] is a` as `False`, where CPython keeps one object. The compiler counts the stores it
+  emits, not those that run; following the run-time path would take a generation on every store.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional arguments only; keywords and
