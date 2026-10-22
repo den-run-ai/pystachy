@@ -53,7 +53,7 @@ General notes on the underlying Mersenne Twister core generator:
 from math import log as _log, exp as _exp, pi as _pi, e as _e, ceil as _ceil
 from math import sqrt as _sqrt, acos as _acos, cos as _cos, sin as _sin
 from math import tau as TWOPI, floor as _floor, isfinite as _isfinite
-from math import fabs as _fabs, log2 as _log2  # Pystachy port: lgamma below
+from math import fabs as _fabs, lgamma as _lgamma, log2 as _log2
 # Pystachy port: os.urandom() is imported with SystemRandom (below)
 # Pystachy port: Pystachy has Sequence in collections.abc only
 try:
@@ -90,101 +90,6 @@ try:
     import _random
 except ImportError:
     import _pyrandom as _random
-# Pystachy port: math.lgamma(), where math has none (Pystachy's): m_lgamma() of CPython 3.13.16's
-# Modules/mathmodule.c, with its lanczos_sum() and m_sinpi(), the C code's operations in its order
-# (CPython does not use the C library's lgamma()), and the errors math.lgamma() raises
-try:
-    from math import lgamma as _lgamma
-except ImportError:
-    from math import fmod as _fmod, copysign as _copysign, inf as _inf
-    from math import isinf as _isinf, isnan as _isnan
-
-    _lanczos_g = 6.024680040776729583740234375
-    _lanczos_num_coeffs = [
-        23531376880.410759688572007674451636754734846804940,
-        42919803642.649098768957899047001988850926355848959,
-        35711959237.355668049440185451547166705960488635843,
-        17921034426.037209699919755754458931112671403265390,
-        6039542586.3520280050642916443072979210699388420708,
-        1439720407.3117216736632230727949123939715485786772,
-        248874557.86205415651146038641322942321632125127801,
-        31426415.585400194380614231628318205362874684987640,
-        2876370.6289353724412254090516208496135991145378768,
-        186056.26539522349504029498971604569928220784236328,
-        8071.6720023658162106380029022722506138218516325024,
-        210.82427775157934587250973392071336271166969580291,
-        2.5066282746310002701649081771338373386264310793408,
-    ]
-    # denominator is x*(x+1)*...*(x+LANCZOS_N-2)
-    _lanczos_den_coeffs = [
-        0.0, 39916800.0, 120543840.0, 150917976.0, 105258076.0, 45995730.0,
-        13339535.0, 2637558.0, 357423.0, 32670.0, 1925.0, 66.0, 1.0]
-    _logpi = 1.144729885849400174143427351353058711647
-
-    def _lanczos_sum(x: float) -> float:
-        # Lanczos' sum L_g(x), for positive x: for large x, the rational function is rescaled by
-        # x**(1-LANCZOS_N), as a rational function in 1/x, which does not overflow
-        num = 0.0
-        den = 0.0
-        if x < 5.0:
-            for i in range(12, -1, -1):
-                num = num * x + _lanczos_num_coeffs[i]
-                den = den * x + _lanczos_den_coeffs[i]
-        else:
-            for i in range(13):
-                num = num / x + _lanczos_num_coeffs[i]
-                den = den / x + _lanczos_den_coeffs[i]
-        return num / den
-
-    def _sinpi(x: float) -> float:
-        # sin(pi*x), giving accurate results for all finite x (especially x integral or close to
-        # an integer)
-        y = _fmod(_fabs(x), 2.0)
-        # (int)round(2.0*y): C's round() takes a half away from zero, where Python's takes it to
-        # even (2.0*y - n is exact)
-        n = int(2.0 * y)
-        if 2.0 * y - n >= 0.5:
-            n += 1
-        if n == 0:
-            r = _sin(_pi * y)
-        elif n == 1:
-            r = _cos(_pi * (y - 0.5))
-        elif n == 2:
-            # N.B. -sin(pi*(y-1.0)) is *not* equivalent: it would give -0.0 instead of 0.0 when
-            # y == 1.0.
-            r = _sin(_pi * (1.0 - y))
-        elif n == 3:
-            r = -_cos(_pi * (y - 1.5))
-        else:
-            r = _sin(_pi * (y - 2.0))
-        return _copysign(1.0, x) * r
-
-    def _lgamma(x) -> float:
-        # lgamma: natural log of the absolute value of the Gamma function
-        x = float(x)  # (math_1(): PyFloat_AsDouble())
-        if not _isfinite(x):
-            if _isnan(x):
-                return x  # lgamma(nan) = nan
-            return _inf  # lgamma(+-inf) = +inf
-        # integer arguments: x == floor(x), tested with fmod(), as math.floor() gives an int, which
-        # would overflow 64 bits for a float of 2**63 or more
-        if _fmod(x, 1.0) == 0.0 and x <= 2.0:
-            if x <= 0.0:
-                raise ValueError("math domain error")  # lgamma(n) = inf for integers n <= 0
-            return 0.0  # lgamma(1) = lgamma(2) = 0.0
-        absx = _fabs(x)
-        # tiny arguments: lgamma(x) ~ -log(fabs(x)) for small x
-        if absx < 1e-20:
-            return -_log(absx)
-        # Lanczos' formula
-        r = _log(_lanczos_sum(absx)) - _lanczos_g
-        r += (absx - 0.5) * (_log(absx + _lanczos_g - 0.5) - 1)
-        if x < 0.0:
-            # Use reflection formula to get value for negative x.
-            r = _logpi - _log(_fabs(_sinpi(absx))) - _log(absx) - r
-        if _isinf(r):
-            raise OverflowError("math range error")
-        return r
 
 __all__ = [
     "Random",

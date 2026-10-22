@@ -3,8 +3,8 @@
 # normalvariate(), gauss() and its saved second value, lognormvariate(), expovariate(),
 # vonmisesvariate(), gammavariate() (alpha below, at and above 1), betavariate(), paretovariate(),
 # weibullvariate() and binomialvariate() on its three paths (n == 1, the geometric method and BTRS,
-# whose test uses the port of math.lgamma()) up to n near 2**63, on Random objects and the module's
-# functions, with their errors, and the lgamma port (math.lgamma in CPython) at quarter-integers,
+# whose test uses math.lgamma()) up to n near 2**63, on Random objects and the module's
+# functions, with their errors, and random's math.lgamma alias at quarter-integers,
 # where C's round() differs from Python's, and past 64-bit ints
 import math
 import random

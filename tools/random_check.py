@@ -2,8 +2,8 @@
 
 This checks the adapted sources, not compiled Pystachy (tests/programs/library/lib_random*.py compare that): the
 port with CPython's C _random, and the port with _pyrandom in its place, must give the standard
-module's values for the same calls; _pyrandom's float hash must equal hash(); and random's port of
-math.lgamma() must equal math.lgamma(). With --upstream DIR, it also runs CPython 3.13.16's
+module's values for the same calls; _pyrandom's float hash must equal hash().
+With --upstream DIR, it also runs CPython 3.13.16's
 Lib/test/test_random.py, which DIR holds with its randv2_32.pck, randv2_64.pck and randv3.pck, on
 the port with each generator: on C's, every test must pass; on _pyrandom's, all but those of
 EXPECTED, which need more than 63 bits from getrandbits() or pickle a _random.Random.
@@ -69,25 +69,6 @@ def calls(module, seed):
     r.setstate(state)
     out.append(first == r.random())
     return repr(out)
-
-
-def lgamma_port(source):
-    # the fallback block of random's port, run with math's own functions
-    start = source.index("    _lanczos_g = ")
-    end = source.index("__all__ = [")
-    names = {}
-    exec("from math import fmod as _fmod, copysign as _copysign, inf as _inf, isinf as _isinf, "
-         "isnan as _isnan, log as _log, floor as _floor, fabs as _fabs, sin as _sin, cos as _cos, "
-         "pi as _pi, isfinite as _isfinite\n"
-         + "\n".join(line[4:] for line in source[start:end].splitlines()), names)
-    return names["_lgamma"]
-
-
-def outcome(f, x):
-    try:
-        return repr(f(x))
-    except (ValueError, OverflowError) as e:
-        return f"{type(e).__name__}: {e}"
 
 
 def run_upstream(directory, generator):
@@ -163,19 +144,9 @@ def main():
     hashes = sum(hash(f) != pyrandom._hash_float(f) for f in floats)
     print(f"{len(floats)} float hashes, {hashes} differ")
 
-    lgamma = lgamma_port((LIB / "random.py").read_text(encoding="utf-8"))
-    args = [float(i) for i in range(-20, 2000)] + [i / 8 for i in range(-400, 400)]
-    args += [-1e20, 1e20, -1e300, 1e300, 2.0**63, -2.0**63, 0.49999999999999994,
-             -2.5000000000000004]
-    for i in range(200 * count):
-        big = math.ldexp(gen.random(), gen.randrange(-70, 1024)) * gen.choice([1, -1])
-        args.append(gen.choice([float(gen.randrange(1, 10**12)), gen.uniform(-100.0, 100.0), big]))
-    gammas = sum(outcome(math.lgamma, x) != outcome(lgamma, x) for x in args)
-    print(f"{len(args)} lgamma arguments, {gammas} differ")
-
     same = port_c.__all__ == random.__all__ and sorted(port_py.__all__) == sorted(random.__all__)
     print("__all__", "matches" if same else "differs")
-    status = 1 if failures or hashes or gammas or not same else 0
+    status = 1 if failures or hashes or not same else 0
     if options.upstream:
         status |= upstream(options.upstream)
     return status

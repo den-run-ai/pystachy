@@ -19,7 +19,7 @@ kept 9
 <weakref at ADDR; to 'Item' at ADDR> True
 2 True True
 <weakref at ADDR; to 'Sub' at ADDR>
-<weakref at ADDR; to 'ast.Constant' at ADDR>
-<ast.Constant object at ADDR> ast
-kept 3 1
+<weakref at ADDR; to '_io.StringIO' at ADDR>
+<_io.StringIO object at ADDR> _io
+kept 3 value
 [exit 0]

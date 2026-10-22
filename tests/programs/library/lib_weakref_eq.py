@@ -3,7 +3,7 @@
 # a native local is a root only until its last use (a CPython local's reference lasts to the
 # end of its scope), so ref(x) of an x read nowhere after could be cleared at once.
 import re
-import _ast
+from io import StringIO
 from _weakref import ReferenceType, ref
 
 
@@ -111,10 +111,12 @@ def reprs() -> None:
     print(len(addrs), addrs[0] != addrs[1], addrs[1] in repr(item))
     base: Item = Sub(2)
     print(re.sub("0x[0-9a-f]+", "ADDR", repr(ref(base))))
-    node = _ast.Constant(1)
-    print(re.sub("0x[0-9a-f]+", "ADDR", repr(ref(node))))
-    print(re.sub("0x[0-9a-f]+", "ADDR", repr(node)), type(node).__module__)
-    print("kept", item.value + base.value, node.value)
+    # StringIO is exported by io but its type belongs to _io in CPython.
+    # Keep coverage of stand-in type names in weakref and ordinary object reprs.
+    stream = StringIO("value")
+    print(re.sub("0x[0-9a-f]+", "ADDR", repr(ref(stream))))
+    print(re.sub("0x[0-9a-f]+", "ADDR", repr(stream)), type(stream).__module__)
+    print("kept", item.value + base.value, stream.getvalue())
 
 
 names()
