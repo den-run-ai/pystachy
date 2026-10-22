@@ -1,0 +1,54 @@
+0 0
+RuntimeError dict mutated during update
+[10] []
+0 1
+RuntimeError dict mutated during update
+[10] [20, 30, 40]
+0 2
+RuntimeError dict mutated during update
+[10] [20]
+0 3
+[20, 31]
+[10] [20, 31]
+0 4
+[20, 90]
+[10] [80, 90]
+0 5
+ValueError callback
+[10] []
+1 0
+RuntimeError dict mutated during update
+[20] []
+1 1
+RuntimeError dict mutated during update
+[20] [20, 30, 40]
+1 2
+RuntimeError dict mutated during update
+[20] [20]
+1 3
+[20, 31] [20, 31]
+1 4
+[20, 90] [80, 90]
+1 5
+ValueError callback
+[10] []
+2 0
+RuntimeError dict mutated during update
+[20] []
+2 1
+RuntimeError dict mutated during update
+[20] [20, 30, 40]
+2 2
+RuntimeError dict mutated during update
+[20] [20]
+2 3
+[20, 31] [20, 31]
+2 4
+[20, 90] [80, 90]
+2 5
+ValueError callback
+[10] []
+last 0 dict mutated during update
+last 1 dict mutated during update
+1 0
+[exit 0]

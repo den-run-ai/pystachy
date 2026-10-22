@@ -1240,6 +1240,9 @@ def gen_dyn_body(self, key: str) -> None:
                 ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyntypes[s], "dyntype"))])
             if dunder == "__mod__":
                 ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyn_type("str"), "dyntype"))])
+            if key == "iop10":
+                # dict.__ior__ updates or raises: it never declines to the right's __ror__.
+                ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyn_type("dict[dyn,dyn]"), "dyntype"))])
             self.dyn_reflected(f, c, r, o, ps[1], ok)
     if key.startswith("call.") or key.startswith("has."):
         self.dyn_builtin_methods(f, key, o, ps[1:])

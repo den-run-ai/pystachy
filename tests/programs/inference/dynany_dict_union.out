@@ -1,0 +1,15 @@
+{'a': 1, 'b': 20, 'c': 3} {'a': 1, 'b': 2} {'b': 20, 'c': 3} False False
+{'a': 1, 'b': 20, 'c': 3} {'a': 1, 'b': 20, 'c': 3} True
+{'a': 1, 'b': 20, 'c': 3, 'x': 7, 'y': 8}
+{'a': 1, 'b': 20, 'c': 3, 'x': 7, 'y': 8, 1: 'one', (2, 3): 'pair'}
+{'a': 'b'}
+TypeError 'bool' object is not iterable {'keep': 0}
+TypeError cannot convert dictionary update sequence element #0 to a sequence {'keep': 0}
+ValueError dictionary update sequence element #0 has length 3; 2 is required {'keep': 0}
+ValueError dictionary update sequence element #0 has length 1; 2 is required {'keep': 0}
+ValueError dictionary update sequence element #0 has length 1; 2 is required {'keep': 0}
+TypeError unsupported operand type(s) for |: 'dict' and 'list'
+TypeError unsupported operand type(s) for |: 'list' and 'dict'
+[{'a': 1, 'b': 2}] True
+{'k': 2, 'j': 3} {}
+[exit 0]

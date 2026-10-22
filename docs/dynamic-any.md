@@ -221,6 +221,11 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
 
+Dict union `d | e` makes a new dict, with the right dict's values taking precedence. `d |= e`
+updates the existing dict through `dict.update()`, accepting a dict or builtin iterable of
+pairs and preserving aliases. Its key comparisons may run user code. A dict's `|=` updates or
+raises before considering a right operand's reflected operator, as CPython does (#810).
+
 runtime.c's generic helpers implement the builtin types' operations. The program's classes
 take part through **dispatchers**: functions the compiler writes once every class whose objects
 are boxed is known, recompiling them while compiling them boxes more classes. Each tests the

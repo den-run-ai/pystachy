@@ -1,0 +1,7 @@
+reflected
+42
+TypeError 'Right' object is not iterable
+{'a': 1} True
+reflected
+42
+[exit 0]
