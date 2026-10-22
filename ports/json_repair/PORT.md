@@ -54,6 +54,9 @@ Split trace records before repair and validate types and content afterward.
   Cache values use `tuple[int, int | None]` instead of `Any`.
 - Use `str.find` for single-character lookahead with the same escape boundaries;
   retain the original scan for other targets and negative offsets.
+- Update brace/bracket state incrementally after replacing a trailing escape,
+  preserving decoded structural characters without rescanning accumulated text.
+  Immutable string copying remains a separate cost.
 - Use the native `json._raw_decode` adapter at two call sites, with a guarded
   import falling back to CPython’s `JSONDecoder`. The public decoder keeps its
   class identity; see the [JSON API notes](../../docs/json-prototype.md).
