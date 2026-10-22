@@ -6,7 +6,7 @@
 # variable that a closure reads and a comprehension's variable. Each is a new object there, where
 # CPython's names, containers and classes hold one (it prints True for each). So is the value of
 # an expression of literals, which CPython's compiler folds into one constant (999 + 1 is 1000
-# there), and a float literal, where CPython's equal constants are one object. `is` and id() still
+# there). `is` and id() still
 # agree. The other way round, a module variable that has no box yet, read in an expression that
 # then calls a function which rebinds it to an equal value, gives the new binding the read value's
 # box: one object where CPython has two (it prints False there).
@@ -94,9 +94,6 @@ rebound()
 k: Any = 1000
 m: Any = 999 + 1
 print("a folded constant", k is m, id(k) == id(m))
-h: Any = 1.5
-j: Any = 1.5
-print("a float literal", h is j, id(h) == id(j))
 bx = int("1000")
 bflag = bool(int("0"))
 bys: list[Any] = [bx, (bx := int("2000")) if bflag else 0]

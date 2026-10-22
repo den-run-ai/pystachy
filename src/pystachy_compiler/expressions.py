@@ -647,7 +647,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         lit.lit = True
         return lit
     if k == "float":
-        return Val(fbits(n.s), "float")
+        lit = Val(fbits(n.s), "float")
+        lit.lit = True
+        return lit
     if k == "str":
         self.modchk(n)
         return Val(self.sconst(n.s), "str")

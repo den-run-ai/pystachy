@@ -292,6 +292,18 @@ def gen_dyn_box(self, v: Val) -> Val:
         return Val(g, DYN)
     if t == "int":
         return Val(self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]), DYN)
+    if t == "float" and v.lit:
+        # As with int literals, equal constants in one compiled module share an object.
+        # Key by exact IEEE bits: 0.0 and -0.0 are distinct constants, while 1.5 and 15e-1
+        # share one. A computed float (including NaN) is not a literal and stays a new box.
+        g = "@dbf." + self.curfn.mod + "$" + v.v
+        if g not in self.dynboxes:
+            self.dynboxes[g] = True
+            d = Data("dynfloat", g)
+            d.refs = [self.rtdata("pys_dyntype_float")]
+            d.items = [Val(v.v, "float")]
+            self.consts.append(d)
+        return Val(g, DYN)
     if t == "float":
         return Val(self.rt("pys_dyn_float", "ptr", [f"double {v.v}"]), DYN)
     if t == "str" and v.v.startswith("@s."):
@@ -343,7 +355,7 @@ def gen_dyn_box(self, v: Val) -> Val:
 def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     # the box that an int or float variable's binding has as an Any value, where store_name gives
     # it v (its box slot, idbox): the box of the Any value it unboxes, the box of the binding it
-    # copies, an int literal's constant box, else none yet, a new object that its first crossing
+    # copies, a numeric literal's constant box, else none yet, a new object that its first crossing
     # boxes (dyn_box)
     if v.idslot == slot and self.idstores.get(slot, 0) == v.idgen:
         return  # (x = x, x := x: the binding's own object, read with no store since, is no new binding)
@@ -354,7 +366,7 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         b = v.idfrom
     elif v.idslot != "":
         b = self.dyn_id_held(v).v
-    elif v.lit and t == "int" and (int(v.v) < -5 or int(v.v) > 256):
+    elif v.lit and (t == "float" or (t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         b = self.dyn_box(v).v
     self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1

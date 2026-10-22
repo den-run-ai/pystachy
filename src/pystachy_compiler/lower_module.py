@@ -118,6 +118,10 @@ def lower_data(d: Data) -> str:
         # an int literal's dynamic value (dynamic.py): int's DynType and the value. Internal, and
         # its address is the value's identity: never merged
         return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 {d.items[0].v}}}, align 8"
+    if d.kind == "dynfloat":
+        # A float literal's dynamic value: preserve the exact bits in its i64 payload and
+        # retain its address as object identity, including separate positive/negative zero.
+        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 bitcast (double {d.items[0].v} to i64)}}, align 8"
     if d.kind == "classfields":
         # the fields of an object's __dict__ in their order: name, type descriptor, byte offset in
         # the class's layout (d.text) and that of its "is assigned" flag (-1: always assigned)
