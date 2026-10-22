@@ -59,10 +59,12 @@ class JsonContext:
         Returns:
             None
         """
-        try:
+        # Pystachy port: empty stacks are normal; avoid native exception unwinding.
+        if self.context:
             self.context.pop()
+        if self.context:
             self.current = self.context[-1]
-        except IndexError:
+        else:
             self.current = None
             self.empty = True
 

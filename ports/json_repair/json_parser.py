@@ -333,23 +333,20 @@ class JSONParser:
         return value
 
     def get_char_at(self, count: int = 0) -> str | None:
-        # Why not use something simpler? Because try/except in python is a faster alternative to an "if" statement that is often True
-        try:
-            return self.json_str[self.index + count]
-        except IndexError:
-            return None
+        # Pystachy port: EOF probes are normal; avoid native exception unwinding.
+        index = self.index + count
+        if -len(self.json_str) <= index < len(self.json_str):
+            return self.json_str[index]
+        return None
 
     def skip_whitespaces(self) -> None:
         """
         This function quickly iterates on whitespaces, moving the self.index forward
         """
-        try:
-            char = self.json_str[self.index]
-            while char.isspace():
-                self.index += 1
-                char = self.json_str[self.index]
-        except IndexError:
-            pass
+        # Preserve Python's negative-index behavior for callers outside parse().
+        length = len(self.json_str)
+        while -length <= self.index < length and self.json_str[self.index].isspace():
+            self.index += 1
 
     def scroll_whitespaces(self, idx: int = 0, *, backwards: bool = False) -> int:
         """
@@ -357,13 +354,9 @@ class JSONParser:
         Set backwards to scan toward the start.
         """
         step = -1 if backwards else 1
-        try:
-            char = self.json_str[self.index + idx]
-            while self.index + idx >= 0 and char.isspace():
-                idx += step
-                char = self.json_str[self.index + idx]
-        except IndexError:
-            pass
+        # Unlike skip_whitespaces(), this scan stops at a negative position.
+        while 0 <= self.index + idx < len(self.json_str) and self.json_str[self.index + idx].isspace():
+            idx += step
         return idx
 
     def skip_to_character(self, character: str | list[str], idx: int = 0) -> int:
