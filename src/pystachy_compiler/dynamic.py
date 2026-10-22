@@ -1397,6 +1397,14 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
     line = self.line
     xn = self.vnode(x)
     an = self.dyn_call_args(key, args) if key.startswith("call") else [self.vnode(a) for a in args]
+    if key == "un3":
+        fm = self.classes[x.t].methods[dunder]
+        own = 0 if fm.deco != "" else 1
+        if fm.bad == "" and len(fm.defaults) >= len(fm.params) and not self.dyn_takes(fm, own, len(an)):
+            # A boxed class's abs signature must fail only if this arm is selected,
+            # after the operand has been evaluated, as an ordinary dynamic call does.
+            self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, len(an))))
+            return
     if key.startswith("get."):
         r = self.expr(mk("attr", key[4:], line, [xn]), "")
     elif key.startswith("set."):
