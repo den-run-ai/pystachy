@@ -2,12 +2,17 @@
 
 Pystachy's largest measured gains are on compute-heavy loops. String processing, regex
 matching, allocation and exceptions have different costs, so measure the workload you intend
-to run. The tables below are published snapshots; they have not been rerun for this guide.
+to run.
 
 ## Benchmarks
 
-Published October 2026 baseline: 4-core x86-64 Linux VM, CPython 3.13.16, LLVM 18,
-median of three warm runs. The source revision was not recorded with this table.
+Run `make bench` to compare CPython, JIT and AOT on your build. Each invocation measures each
+mode once; repeat it to obtain a median. The benchmark gate in `make verify` checks output
+agreement, without imposing timing thresholds.
+
+The following measurements were recorded in October 2026 on a 4-core x86-64 Linux VM with
+CPython 3.13.16 and LLVM 18, using the median of three warm runs. The source revision was not
+recorded, so these figures are examples of workload differences, not results for the latest build.
 JIT times include compilation and process startup; AOT times exclude compilation.
 The runtime compilation cache is primed first, and outputs are checked against CPython.
 
@@ -24,59 +29,31 @@ The runtime compilation cache is primed first, and outputs are checked against C
 | `setdisplay.py`: constant set displays | 0.40 s | 0.20 s | 0.12 s | 3× |
 | `itertools_loops.py`: `product`, `combinations`, `groupby`, `chain` | 0.65 s | 0.43 s | 0.17 s | 4× |
 
-The `itertools_loops.py` row was added on 2026-10-16 on a 4-core VM shared with another job:
-the median of five runs of each mode, with lib/_pystachy_itertools.py's generators. Speedups use
-the unrounded timings. The README rounds the maximum 67× to about 70×.
-Run `make bench` to collect current results. Each invocation of `bench/run.sh` measures each
-mode once; repeat it to obtain a median. The benchmark gate in `make verify` rejects output
-mismatches, without imposing timing thresholds.
+The `itertools_loops.py` row uses five runs per mode on a shared 4-core VM on 2026-10-16,
+with `lib/_pystachy_itertools.py`'s generators. Speedups use unrounded timings.
 
 The [pyperformance results](pyperformance.md) compare CPython, JIT and AOT on 18 benchmarks
-adapted from pyperformance 1.14.0. In that advisory snapshot, taken on a loaded machine, AOT ran
-14 of 17 comparable benchmarks 1.5× to 84× faster and the three regex benchmarks 2.5–2.7× slower
-than CPython. Later paired regex reruns ([repeat matcher](pyperformance.md#regex-repeat-rerun),
-[class loops and prefilters](pyperformance.md#regex-class-loop-and-prefilter-rerun),
-[in-place subjects](pyperformance.md#regex-in-place-subject-rerun)) measure the
-regex timed loops at 0.32–0.82× CPython's time AOT. The [current audit](reports/compatibility-2026-10-17-benchmarks.md) and
-[port notes](../bench/pyperformance/README.md#blocked) distinguish delivered ports from
-upstream sources that compile after replacing only the runner. Of the 33 nondeferred
-sources without a delivered port, 32 still reject and `generators` compiles.
-Deltablue is separately deferred for a licence provenance decision.
+adapted from pyperformance 1.14.0, including regex workloads. These are comparisons on adapted
+sources, not official pyperformance scores. The [port notes](../bench/pyperformance/README.md)
+describe adaptations and unsupported benchmarks.
 
-Array code is measured with its examples. In the nanoGPT example's
-[paired measurement](../examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work),
-AOT inference with OpenBLAS on one thread took 0.52 times CPython + NumPy's latency and 0.80
-times PyTorch's for the full logits and loss, about half its time before the October array, BLAS
-and compiler changes, which also halved the scalar AOT path's time and cut the scalar JIT's to a
-quarter. The [ndarray example](../examples/ndarray/README.md#recorded-benchmark) times elementwise,
-reduction and matrix workloads against NumPy.
+For numerical workloads, the [nanoGPT measurements](../examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)
+compare inference with CPython, NumPy and PyTorch. The
+[ndarray benchmark](../examples/ndarray/README.md#recorded-benchmark) compares elementwise
+operations, reductions and matrix products with NumPy. Both document inputs, threading,
+compilation costs and reproduction commands.
 
 ## Caching workloads
 
-Caching event classifications skips matching entirely on repeated names. Both implementations
-use the same cache policy in these comparisons; fnmatch's pattern cache alone still matches
-each event. See the [router example](../examples/route/README.md) for inputs and reproduction.
+Caching event classifications skips matching entirely on repeated names. Fnmatch's pattern
+cache only skips compilation; it still matches every event. The
+[router measurements](../examples/route/README.md#current-paired-snapshot) compare both runtimes
+using the same inputs and cache policies, including repeated names, unique names and misses.
 
-The [2026-10-14 paired router rerun](../examples/route/README.md#current-paired-snapshot)
-includes the current regex optimizations and raw revision/trace evidence. On that shared host,
-cached repeating names are 1.79× faster AOT, while fnmatch per-rule routing is 1.01× and
-precompiled-regex misses are slower than CPython. Results vary with the cache policy, input
-and host; the self-hosted launch candidate `a74efdf` reproduces that conclusion at 1.88×
-for cached classifications and 0.95× for fnmatch per rule. Neither rerun confirms a current
-2× fnmatch speedup. The following table
-preserves the older published measurements from another host.
-
-| Workload | CPython | AOT | Source |
-|---|---:|---:|---|
-| Router, fnmatch per rule, 1M events | 2.927 s | 1.866 s | Initial [#294](https://github.com/den-run-ai/pystachy/pull/294) table |
-| Router, cached classifications, 1M events | 0.236 s | 0.158 s | #294 follow-up, branch tested with main `bbf8959` |
-| Memoized matrix-chain computation | 0.355 s | 0.068 s | [#308](https://github.com/den-run-ai/pystachy/pull/308), candidate `c7de6d3` |
-
-The router measurements use a 4-core x86-64 VM and CPython 3.13.16: median of five
-whole-program wall times, including startup. They correspond to 1.6× and 1.5× faster AOT
-execution, rounded in the announcement. The memo workload uses a chain of 220 matrices and
-3.5M cache hits, median of five runs. Its roughly 5× gain is specific to that workload.
-For regex and textwrap measurements, see [caching text processing](caching.md).
+Measure the hit rate as well as the cost of a hit. A cache that rarely hits adds lookup and
+eviction work. See [caching text processing](caching.md) for cache bounds, invalidation and
+regex/textwrap benchmarks, or the [matrix-chain benchmark](https://github.com/den-run-ai/pystachy/pull/308)
+for memoization of recursive computation.
 
 <a id="where-the-gains-are-smaller"></a>
 <a id="the-cost-of-exceptions"></a>

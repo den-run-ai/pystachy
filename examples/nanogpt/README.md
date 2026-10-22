@@ -138,6 +138,89 @@ the timer. First-step optimizer timings therefore include different setup work;
 use the later step for a steady-state comparison. Two steps establish bounded
 update parity, not training convergence or stable long-run throughput.
 
+<a id="paired-measurement-after-the-array-and-blas-work"></a>
+
+## Recorded inference performance
+
+The measured build at [`d97a60c`](https://github.com/den-run-ai/pystachy/commit/d97a60c4aceb43f6e510a0673167b1a0386b3f58)
+runs a small model with 108,288 unique parameters: two layers, two heads, width 64,
+context capacity 64, vocabulary 64, bias enabled, batch 2 and sequence length 16.
+All paths use float64 and dropout zero; this is not a pretrained GPT-2 throughput result.
+
+Measurements use a shared 4-vCPU Intel Xeon @ 2.10 GHz VM, LLVM 18.1.3 and one CPU.
+Native BLAS uses SciPy 1.18.1's LP64 OpenBLAS on one thread. The reference tiers use
+CPython 3.12.3 with NumPy 2.5.4 and PyTorch 2.14.1+cpu, single-threaded through
+`nanogpt_numpy_baseline.py`; the typed port uses CPython 3.13.16. Compare rows within
+this table; the build-comparison details below retain the earlier measurements.
+
+Each of ten rounds ran every tier once, pinned to one CPU, in an order rotated by one tier per
+round. A run timed 300 operations after 20 warmups (the CPython port 5 after 1), and the table
+gives the median over rounds of each run's median.
+[Recorded data](results/ndarray-work-paired.json) holds every round's medians, instruction
+counts and source hashes.
+
+| Runtime | Full logits + loss | Last-position logits |
+|---|---:|---:|
+| Upstream PyTorch | 0.710 ms | 0.651 ms |
+| CPython + NumPy | 1.139 ms | 0.765 ms |
+| Pystachy AOT + OpenBLAS | **0.564 ms** | **0.537 ms** |
+| Pystachy JIT + OpenBLAS | 0.730 ms | 0.881 ms |
+| Pystachy scalar AOT | 2.492 ms | 2.442 ms |
+| Pystachy scalar JIT | 4.288 ms | 3.191 ms |
+| Typed port on CPython | 110.9 ms | 152.2 ms |
+
+- **Against Python:** BLAS AOT took 0.52 times NumPy's full-inference latency and 0.80 times
+  PyTorch's (0.71 and 0.89 for the last position). It ran about
+  200 times faster than the typed port on CPython, the noisiest row (101 to 172 ms for full
+  inference across rounds).
+- **Outputs:** the scalar logits and loss are byte-identical before and after. The measured BLAS build
+  lends K's transposed per-head views to OpenBLAS, which sums them in another order: 1,421 of
+  2,176 logits differ in the last bit, by at most 3.3e-16, and the loss is identical. Both builds
+  match PyTorch within 4.5e-16.
+- **Scope:** these results describe a small float64 model on one thread. Other dtypes and
+  thread counts need separate measurement. The VM is shared: a tier's
+  slowest round took 1.2 to 1.9 times its fastest (NumPy's once 3.7 times), so the paired ratios
+  are firmer than single rows.
+
+<details>
+<summary>Build comparison and optimization provenance</summary>
+
+The earlier build produced these timings on the same host and inputs:
+
+| Runtime | Full logits + loss | Last-position logits |
+|---|---:|---:|
+| Pystachy AOT + OpenBLAS, before | 1.227 ms | 1.158 ms |
+| Pystachy JIT + OpenBLAS, before | 1.676 ms | 1.616 ms |
+| Pystachy scalar AOT, before | 5.200 ms | 5.091 ms |
+| Pystachy scalar JIT, before | 15.852 ms | 16.928 ms |
+
+- **All four native tiers became faster.** Paired by round, after over before: BLAS AOT 0.46
+  (full) and 0.47 (last), BLAS JIT 0.51 and 0.55, scalar AOT 0.47 and 0.49, scalar JIT 0.25 and
+  0.19. The scalar JIT gained most: matrix products step through rows and columns
+  instead of calling the runtime's list helpers for each item, which the JIT cannot inline.
+- **Instructions** (callgrind, one full and one last-position inference): 26.1M before and
+  15.2M after with BLAS, 130.7M and 61.6M without.
+
+The paired build comparison covers these changes:
+
+- each block's bias folded into its product (#647);
+- list repetition (#657) and a collection budget for large arrays (#658);
+- in the compiler, index keys made in the caller's frame and cold raise helpers (#681, #684, #695);
+- ndarray indexing, elementwise loops and matrix products (#687, #698, #691), and the model's
+  direct reads (#688);
+- BLAS views lent from an offset instead of copied, with `ffi.at` (#693, #699).
+
+"Before" is main as #642 merged it, with #657, which had merged first, reverted. "After" is main
+at [`d97a60c`](https://github.com/den-run-ai/pystachy/commit/d97a60c4aceb43f6e510a0673167b1a0386b3f58), once #699 merged. Both ran on a shared 4-vCPU Intel Xeon @ 2.10 GHz VM with
+LLVM 18.1.3, and their BLAS rows load SciPy 1.18.1's LP64 OpenBLAS on one thread. CPython 3.12.3
+with NumPy 2.5.4 and PyTorch 2.14.1+cpu ran single-threaded through `nanogpt_numpy_baseline.py`,
+and the typed port on CPython 3.13.16. The earlier measurements below used different hosts and must not be compared by absolute time.
+
+</details>
+
+<details>
+<summary>Earlier CPU results and folded-bias experiment</summary>
+
 ## Recorded CPU result
 
 [Recorded data](results/native-cpu.json), collected 2026-10-17 UTC on a shared
@@ -157,10 +240,9 @@ these optimized timings. PyTorch uses its own CPU kernels, so this compares
 complete implementations rather than isolating compiler code generation.
 
 Medians of five operation timings after one warmup, within one process per tier.
-The BLAS rows predate folding the bias into the product, and every row predates the
-later array and compiler work; see the paired measurements
-[with the folded bias](#paired-measurement-folded-bias-and-a-cpython--numpy-baseline) and
-[after the array and BLAS work](#paired-measurement-after-the-array-and-blas-work) below.
+These rows use an earlier build. The [recorded inference comparison](#recorded-inference-performance)
+above uses the later array and BLAS changes. The folded-bias experiment below isolates one
+of those changes on another host.
 
 | Runtime | Full logits + loss | Last-position logits |
 |---|---:|---:|
@@ -216,7 +298,7 @@ The folded and separate runners alternated their order each round.
 
 Folding the bias lowered full-inference latency in all seven paired rounds
 (median ratio 0.85) and last-position latency in five of seven (0.82); the logits
-were bit-identical with and without it. BLAS AOT now takes 1.54 times PyTorch's
+were bit-identical with and without it. In that run, BLAS AOT took 1.54 times PyTorch's
 and 1.33 times NumPy's full-inference latency, from 1.89 and 1.63 times. NumPy
 matched every PyTorch logit and the loss within 3.9e-16. In a profile of the
 separate-bias runner, `cblas_dgemm` executed about a fifth of the forward pass's
@@ -231,60 +313,7 @@ python3 tools/check_nanogpt.py --upstream-model /path/to/nanoGPT/model.py \
   --upstream-model /path/to/nanoGPT/model.py --json build/nanogpt-numpy.json
 ```
 
-## Paired measurement after the array and BLAS work
-
-This compares inference before and after the changes that followed the measurements above:
-- each block's bias folded into its product (#647);
-- list repetition (#657) and a collection budget for large arrays (#658);
-- in the compiler, index keys made in the caller's frame and cold raise helpers (#681, #684, #695);
-- ndarray indexing, elementwise loops and matrix products (#687, #698, #691), and the model's
-  direct reads (#688);
-- BLAS views lent from an offset instead of copied, with `ffi.at` (#693, #699).
-
-"Before" is main as #642 merged it, with #657, which had merged first, reverted. "After" is main
-at [`d97a60c`](https://github.com/den-run-ai/pystachy/commit/d97a60c4aceb43f6e510a0673167b1a0386b3f58), once #699 merged. Both ran on a shared 4-vCPU Intel Xeon @ 2.10 GHz VM with
-LLVM 18.1.3, and their BLAS rows load SciPy 1.18.1's LP64 OpenBLAS on one thread. CPython 3.12.3
-with NumPy 2.5.4 and PyTorch 2.14.1+cpu ran single-threaded through `nanogpt_numpy_baseline.py`,
-and the typed port on CPython 3.13.16. Compare rows within this table, not with the ones above.
-
-Each of ten rounds ran every tier once, pinned to one CPU, in an order rotated by one tier per
-round. A run timed 300 operations after 20 warmups (the CPython port 5 after 1), and the table
-gives the median over rounds of each run's median.
-[Recorded data](results/ndarray-work-paired.json) holds every round's medians, instruction
-counts and source hashes.
-
-| Runtime | Full logits + loss | Last-position logits |
-|---|---:|---:|
-| Upstream PyTorch | 0.710 ms | 0.651 ms |
-| CPython + NumPy | 1.139 ms | 0.765 ms |
-| Pystachy AOT + OpenBLAS | **0.564 ms** | **0.537 ms** |
-| Pystachy AOT + OpenBLAS, before | 1.227 ms | 1.158 ms |
-| Pystachy JIT + OpenBLAS | 0.730 ms | 0.881 ms |
-| Pystachy JIT + OpenBLAS, before | 1.676 ms | 1.616 ms |
-| Pystachy scalar AOT | 2.492 ms | 2.442 ms |
-| Pystachy scalar AOT, before | 5.200 ms | 5.091 ms |
-| Pystachy scalar JIT | 4.288 ms | 3.191 ms |
-| Pystachy scalar JIT, before | 15.852 ms | 16.928 ms |
-| Typed port on CPython | 110.9 ms | 152.2 ms |
-
-- **Every tier at least halved its time.** Paired by round, after over before: BLAS AOT 0.46
-  (full) and 0.47 (last), BLAS JIT 0.51 and 0.55, scalar AOT 0.47 and 0.49, scalar JIT 0.25 and
-  0.19. The scalar JIT gained most: matrix products now step through rows and columns (#691)
-  instead of calling the runtime's list helpers for each item, which the JIT cannot inline.
-- **Against Python:** BLAS AOT took 0.52 times NumPy's full-inference latency and 0.80 times
-  PyTorch's (0.71 and 0.89 for the last position), from 1.24 and 2.10 times before. It ran about
-  200 times faster than the typed port on CPython, the noisiest row (101 to 172 ms for full
-  inference across rounds).
-- **Instructions** (callgrind, one full and one last-position inference): 26.1M before and
-  15.2M after with BLAS, 130.7M and 61.6M without.
-- **Outputs:** the scalar logits and loss are byte-identical before and after. With BLAS, #699
-  lends K's transposed per-head views to OpenBLAS, which sums them in another order: 1,421 of
-  2,176 logits differ in the last bit, by at most 3.3e-16, and the loss is identical. Both builds
-  match PyTorch within 4.5e-16.
-- **Scope:** a small float64 model on one thread, where PyTorch's per-operation overhead
-  dominates; in float32 or with more threads PyTorch would gain. The VM is shared: a tier's
-  slowest round took 1.2 to 1.9 times its fastest (NumPy's once 3.7 times), so the paired ratios
-  are firmer than single rows.
+</details>
 
 ## Reusing autodiff components
 
