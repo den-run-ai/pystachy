@@ -1,0 +1,978 @@
+{
+  "source": "numeric_global.py",
+  "source_sha256": "7d04e1500195bd5cfb98f10ed30dc72e0f74603500a02910d1bb2d1f7eb0bea4",
+  "note": "Compiler-only isolation using identical current runtime/lib for all three native compilers; not a historical end-to-end stack comparison. Native proof compiler completed full compiler/runtime bootstrap. All original samples and medians preserved; only path-bearing metadata normalized and provenance/protocol added.",
+  "source_commit": "738fe1a400f7b5c96d7a10f393414dd806dfec29",
+  "cpu": [
+    0
+  ],
+  "compilers": {
+    "baseline": {
+      "source_commit": "3939db4748270199f5319c4e1dd7f683a1081c0c",
+      "binary_sha256": "f3e313da2a5355576178214e07625418349bdaca856b5175d6b20277e754021d"
+    },
+    "copies": {
+      "source_commit": "dc753ee8f4eef6de97cfb84552ac87593649079f",
+      "binary_sha256": "6a1e83e41c7efe20dd4b750bd2aa6d6199c42ae16632b7ed90c7ab92e16c138f"
+    },
+    "proof": {
+      "source_commit": "738fe1a400f7b5c96d7a10f393414dd806dfec29",
+      "binary_sha256": "7420800ce119af2e2c1dba144e945c9ff04285bea567f2941c1acdebab9d259c"
+    }
+  },
+  "builds": {
+    "baseline": {
+      "sha256": "5047e9b2081e9b18fc636f74c3cd9bf90eb59bfd281792448d6ae3246a1dc6f4",
+      "compiler_binary_sha256": "f3e313da2a5355576178214e07625418349bdaca856b5175d6b20277e754021d",
+      "stderr": ""
+    },
+    "copies": {
+      "sha256": "5b0a3ecbbabe2fa0e2f17cfc8db8c98e739a7d06ee02627d164a4ac69dd20bfd",
+      "compiler_binary_sha256": "6a1e83e41c7efe20dd4b750bd2aa6d6199c42ae16632b7ed90c7ab92e16c138f",
+      "stderr": ""
+    },
+    "proof": {
+      "sha256": "5b0a3ecbbabe2fa0e2f17cfc8db8c98e739a7d06ee02627d164a4ac69dd20bfd",
+      "compiler_binary_sha256": "7420800ce119af2e2c1dba144e945c9ff04285bea567f2941c1acdebab9d259c",
+      "stderr": ""
+    }
+  },
+  "results": {
+    "int": {
+      "n": 2000000,
+      "checksum": 999909475241,
+      "rows": [
+        {
+          "baseline": {
+            "loop_s": 0.013245702,
+            "loop_cpu_s": 0.013201876,
+            "rss_kib": 768,
+            "process_cpu_s": 0.013996,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.013996000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.023963297,
+            "loop_cpu_s": 0.023946452,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.025663,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.025663000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.034060234,
+            "loop_cpu_s": 0.034056882,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.036712,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.036712000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.027420654,
+            "loop_cpu_s": 0.027418958,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.03082,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.030820000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.025947266,
+            "loop_cpu_s": 0.025880872,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.028905,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.028905000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.01071387,
+            "loop_cpu_s": 0.010712748,
+            "rss_kib": 768,
+            "process_cpu_s": 0.011754,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.011754000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "baseline": {
+            "loop_s": 0.010696525,
+            "loop_cpu_s": 0.01069349,
+            "rss_kib": 768,
+            "process_cpu_s": 0.011927,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.011927000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.026411124,
+            "loop_cpu_s": 0.026408829,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.029626,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.029626000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.025480976,
+            "loop_cpu_s": 0.0254293,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.028779,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.028779000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.025722303,
+            "loop_cpu_s": 0.025718951,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.02888,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.028880000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.02493052,
+            "loop_cpu_s": 0.024928093,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.028067,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.028067000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.010797834,
+            "loop_cpu_s": 0.010796042,
+            "rss_kib": 768,
+            "process_cpu_s": 0.011928,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.011928000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "baseline": {
+            "loop_s": 0.011501478,
+            "loop_cpu_s": 0.011455223,
+            "rss_kib": 768,
+            "process_cpu_s": 0.012668,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.012668000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.024456588,
+            "loop_cpu_s": 0.024455309,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.027989,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.027989000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.030630148,
+            "loop_cpu_s": 0.03062901,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.033244,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.033244000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.02519991,
+            "loop_cpu_s": 0.025153839,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.027023,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.027023000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.026701554,
+            "loop_cpu_s": 0.026548307,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.030156,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.030156000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.011959746,
+            "loop_cpu_s": 0.011957051,
+            "rss_kib": 768,
+            "process_cpu_s": 0.012983,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.012983000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "baseline": {
+            "loop_s": 0.010704457,
+            "loop_cpu_s": 0.010702863,
+            "rss_kib": 768,
+            "process_cpu_s": 0.011704,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.011704000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.025143336,
+            "loop_cpu_s": 0.025142092,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.027894,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.027894000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.025001886,
+            "loop_cpu_s": 0.0250001,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.028035,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.028035000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.025535968,
+            "loop_cpu_s": 0.025533595,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.028567,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.028567000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.025152871,
+            "loop_cpu_s": 0.025151586,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.027768,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.027768000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.010707591,
+            "loop_cpu_s": 0.010662753,
+            "rss_kib": 768,
+            "process_cpu_s": 0.011595,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.011595000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "baseline": {
+            "loop_s": 0.011828322,
+            "loop_cpu_s": 0.010715717,
+            "rss_kib": 768,
+            "process_cpu_s": 0.011672,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.011672000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.025869992,
+            "loop_cpu_s": 0.025868254,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.028554,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.028554000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.025863773,
+            "loop_cpu_s": 0.025862245,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.028549,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.028549000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.025878995,
+            "loop_cpu_s": 0.025833372,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.028637,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.028637000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.026370353,
+            "loop_cpu_s": 0.026112538,
+            "rss_kib": 32512,
+            "process_cpu_s": 0.029047,
+            "stderr": "\nWATCH_RSS_KIB 32512 CPU_S 0.029047000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.010784114,
+            "loop_cpu_s": 0.010782793,
+            "rss_kib": 768,
+            "process_cpu_s": 0.01178,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.011780000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        }
+      ],
+      "medians": {
+        "baseline": {
+          "loop_s": 0.010790973999999998,
+          "loop_cpu_s": 0.010749255,
+          "rss_kib": 768.0,
+          "process_cpu_s": 0.0118535
+        },
+        "copies": {
+          "loop_s": 0.0255114315,
+          "loop_cpu_s": 0.02550992,
+          "rss_kib": 32512.0,
+          "process_cpu_s": 0.028310500000000002
+        },
+        "proof": {
+          "loop_s": 0.025793037999999997,
+          "loop_cpu_s": 0.0257761615,
+          "rss_kib": 32512.0,
+          "process_cpu_s": 0.028707999999999997
+        }
+      },
+      "gc": {
+        "baseline": {
+          "loop_s": 0.010674963,
+          "loop_cpu_s": 0.01067368,
+          "rss_kib": 896,
+          "process_cpu_s": 0.011633,
+          "stderr": "gc: 0 collections, 0.0 ms; heap peak 1.0 MiB; live 0.0 MiB at the last\n\nWATCH_RSS_KIB 896 CPU_S 0.011633000\n",
+          "load": [
+            1.06591796875,
+            1.22216796875,
+            1.1396484375
+          ]
+        },
+        "copies": {
+          "loop_s": 0.025513263,
+          "loop_cpu_s": 0.025512063,
+          "rss_kib": 32640,
+          "process_cpu_s": 0.028131,
+          "stderr": "gc: 0 collections, 0.0 ms; heap peak 32.1 MiB; live 0.0 MiB at the last\n\nWATCH_RSS_KIB 32640 CPU_S 0.028131000\n",
+          "load": [
+            1.06591796875,
+            1.22216796875,
+            1.1396484375
+          ]
+        },
+        "proof": {
+          "loop_s": 0.025071409,
+          "loop_cpu_s": 0.025070425,
+          "rss_kib": 32640,
+          "process_cpu_s": 0.028023,
+          "stderr": "gc: 0 collections, 0.0 ms; heap peak 32.1 MiB; live 0.0 MiB at the last\n\nWATCH_RSS_KIB 32640 CPU_S 0.028023000\n",
+          "load": [
+            1.06591796875,
+            1.22216796875,
+            1.1396484375
+          ]
+        }
+      }
+    },
+    "float": {
+      "n": 1000000,
+      "checksum": 373576124,
+      "rows": [
+        {
+          "baseline": {
+            "loop_s": 0.006484155,
+            "loop_cpu_s": 0.006482866,
+            "rss_kib": 768,
+            "process_cpu_s": 0.007426,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.007426000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.013336877,
+            "loop_cpu_s": 0.013335455,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.014975,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.014975000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.013352679,
+            "loop_cpu_s": 0.013351358,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.015042,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015042000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.013376115,
+            "loop_cpu_s": 0.013374663,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.01489,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.014890000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.013356165,
+            "loop_cpu_s": 0.013354723,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.014854,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.014854000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.006618324,
+            "loop_cpu_s": 0.006616326,
+            "rss_kib": 768,
+            "process_cpu_s": 0.007628,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.007628000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "baseline": {
+            "loop_s": 0.006505257,
+            "loop_cpu_s": 0.006463928,
+            "rss_kib": 768,
+            "process_cpu_s": 0.007383,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.007383000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.013357326,
+            "loop_cpu_s": 0.013355454,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.015137,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015137000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.013310348,
+            "loop_cpu_s": 0.013309216,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.014898,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.014898000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.013257879,
+            "loop_cpu_s": 0.013256146,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.015001,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015001000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.013565324,
+            "loop_cpu_s": 0.013373681,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.0151,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015100000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.00656203,
+            "loop_cpu_s": 0.006560532,
+            "rss_kib": 768,
+            "process_cpu_s": 0.007575,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.007575000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "baseline": {
+            "loop_s": 0.006540358,
+            "loop_cpu_s": 0.006530679,
+            "rss_kib": 768,
+            "process_cpu_s": 0.007522,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.007522000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.013456683,
+            "loop_cpu_s": 0.013415855,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.015344,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015344000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.01357589,
+            "loop_cpu_s": 0.013356216,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.01527,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015270000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.013479007,
+            "loop_cpu_s": 0.013477606,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.01511,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015110000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.013472287,
+            "loop_cpu_s": 0.013470506,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.0151,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015100000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.006545977,
+            "loop_cpu_s": 0.006544298,
+            "rss_kib": 768,
+            "process_cpu_s": 0.007536,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.007536000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "baseline": {
+            "loop_s": 0.006519998,
+            "loop_cpu_s": 0.006517799,
+            "rss_kib": 768,
+            "process_cpu_s": 0.007441,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.007441000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.013312351,
+            "loop_cpu_s": 0.013311008,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.015114,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015114000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.013565164,
+            "loop_cpu_s": 0.013524846,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.0151,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.015100000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.013537694,
+            "loop_cpu_s": 0.013469895,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.014986,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.014986000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.012161526,
+            "loop_cpu_s": 0.012113484,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.013386,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.013386000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.005644416,
+            "loop_cpu_s": 0.00564307,
+            "rss_kib": 768,
+            "process_cpu_s": 0.006501,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.006501000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "baseline": {
+            "loop_s": 0.005322525,
+            "loop_cpu_s": 0.005320947,
+            "rss_kib": 768,
+            "process_cpu_s": 0.006169,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.006169000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.012696988,
+            "loop_cpu_s": 0.012695711,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.013778,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.013778000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "proof": {
+            "loop_s": 0.012149703,
+            "loop_cpu_s": 0.012110585,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.0139,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.013900000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        },
+        {
+          "proof": {
+            "loop_s": 0.017174891,
+            "loop_cpu_s": 0.017124298,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.018354,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.018354000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "copies": {
+            "loop_s": 0.013699053,
+            "loop_cpu_s": 0.013697794,
+            "rss_kib": 16640,
+            "process_cpu_s": 0.016364,
+            "stderr": "\nWATCH_RSS_KIB 16640 CPU_S 0.016364000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          },
+          "baseline": {
+            "loop_s": 0.008373849,
+            "loop_cpu_s": 0.008372607,
+            "rss_kib": 768,
+            "process_cpu_s": 0.01116,
+            "stderr": "\nWATCH_RSS_KIB 768 CPU_S 0.011160000\n",
+            "load": [
+              1.06591796875,
+              1.22216796875,
+              1.1396484375
+            ]
+          }
+        }
+      ],
+      "medians": {
+        "baseline": {
+          "loop_s": 0.006530177999999999,
+          "loop_cpu_s": 0.006524239,
+          "rss_kib": 768.0,
+          "process_cpu_s": 0.0074815
+        },
+        "copies": {
+          "loop_s": 0.0133567455,
+          "loop_cpu_s": 0.0133550885,
+          "rss_kib": 16640.0,
+          "process_cpu_s": 0.0151
+        },
+        "proof": {
+          "loop_s": 0.013427561,
+          "loop_cpu_s": 0.0133654395,
+          "rss_kib": 16640.0,
+          "process_cpu_s": 0.0150215
+        }
+      },
+      "gc": {
+        "baseline": {
+          "loop_s": 0.006331549,
+          "loop_cpu_s": 0.006314005,
+          "rss_kib": 896,
+          "process_cpu_s": 0.007173,
+          "stderr": "gc: 0 collections, 0.0 ms; heap peak 1.0 MiB; live 0.0 MiB at the last\n\nWATCH_RSS_KIB 896 CPU_S 0.007173000\n",
+          "load": [
+            1.06591796875,
+            1.22216796875,
+            1.1396484375
+          ]
+        },
+        "copies": {
+          "loop_s": 0.014292081,
+          "loop_cpu_s": 0.014280262,
+          "rss_kib": 16768,
+          "process_cpu_s": 0.016332,
+          "stderr": "gc: 0 collections, 0.0 ms; heap peak 16.1 MiB; live 0.0 MiB at the last\n\nWATCH_RSS_KIB 16768 CPU_S 0.016332000\n",
+          "load": [
+            1.06591796875,
+            1.22216796875,
+            1.1396484375
+          ]
+        },
+        "proof": {
+          "loop_s": 0.016504339,
+          "loop_cpu_s": 0.01648078,
+          "rss_kib": 16768,
+          "process_cpu_s": 0.018253,
+          "stderr": "gc: 0 collections, 0.0 ms; heap peak 16.1 MiB; live 0.0 MiB at the last\n\nWATCH_RSS_KIB 16768 CPU_S 0.018253000\n",
+          "load": [
+            1.06591796875,
+            1.22216796875,
+            1.1396484375
+          ]
+        }
+      }
+    }
+  },
+  "llvm_tools": {
+    "clang": "37f126a5e97442563fa0963660a72a11f2b31a9d608664d9e5675f2ebac99eca",
+    "opt": "68bce89007caf00c1c73c3e88f2ff90dde243799f9557d5a729b3a8b3d7ea370",
+    "lli": "44669e8442edb76ada08c806e80695c597240aedb7aa005986058d0111893370",
+    "llvm-link": "1eb44d783a8c7bd55af1af5abf786eacb994cef08110caaa52259da14558952c",
+    "llvm-as": "5daefabd373e614b6cc406c57fe37bc7ba20d0b80b4619cbef72b9fb5958910d"
+  },
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "shared_inputs": {
+    "runtime_and_library_commit": "738fe1a400f7b5c96d7a10f393414dd806dfec29",
+    "lib_tree": "fcf3a39c365348b0139544939e211bbf580112fb",
+    "runtime_sha256": {
+      "runtime.c": "550830c0d8ca229838bd93ea0316031faf254ec311696341dc2ea1c2ad7d1908",
+      "runtime.py": "427907a36fc36d7d13de4e787c9b7f1a61cd2bfe7505cebc0af8b40cd715e780"
+    }
+  },
+  "protocol": {
+    "mode": "AOT",
+    "compiler_command": [
+      "COMPILER",
+      "build",
+      "SOURCE",
+      "-o",
+      "PROGRAM"
+    ],
+    "program_arguments": [
+      "int|float",
+      "iterations from result",
+      "123"
+    ],
+    "samples": 10,
+    "warmups_per_compiler_case": 1,
+    "order": "baseline,copies,proof on even rounds; proof,copies,baseline on odd rounds; JSON object insertion order preserves each round",
+    "oracle": "CPython3.13.16 checksum before timing each case",
+    "rss": "rss_meter.c executes each program in a forked child; wait4 ru_maxrss in KiB (Linux), process CPU from ru_utime + ru_stime",
+    "loop_clock": "perf_counter_ns and process_time_ns inside exact probe; raw integer durations converted to seconds",
+    "gc": "separate post-timing sample with PYSTACHY_GC=stats; these GC samples are not included in medians",
+    "environment": "All inherited PYSTACHY_* variables removed; shared PYSTACHY_HOME and private PYSTACHY_CACHE set for all compilers; PYSTACHY_LLVM points to the same hashed LLVM18 tools. PYTHONPATH and PYTHONHOME removed. No extra compiler flags or optimization overrides. CPU affinity fixed as recorded.",
+    "rss_meter_source_sha256": "2b0f25e6c741011829ceda528dd5e39491caf1a1066a8887bf1049a59fce72a3",
+    "original_rss_meter_binary_sha256": "aaa05e96c2088a29ceadaa44ea7854cf7285bd7b999ea90f5d92085e88944bee"
+  },
+  "measured_source_reconstruction": {
+    "local_commit": "738fe1a400f7b5c96d7a10f393414dd806dfec29",
+    "tree": "9f8d71da305b920a1e582277a819a9fcb072f872",
+    "published_base_commit": "db50db1a981a52e376d428ba7a6cd4d60fd89f71",
+    "patch": "mitigation-source.diff",
+    "note": "Measured source738fe1a4 is a local compiler-source commit, not the final published PR head. Apply the patch to the published base to reconstruct its tree. Later published head db4b8517 also merges PR865 and adds maintained benchmarks; these raw timings did not use that head."
+  }
+}

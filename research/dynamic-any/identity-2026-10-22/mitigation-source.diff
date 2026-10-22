@@ -1,0 +1,435 @@
+diff --git a/Makefile b/Makefile
+index 4d65ee54..42a83384 100644
+--- a/Makefile
++++ b/Makefile
+@@ -320,6 +320,7 @@ check-fast: lint-python typecheck check-repository
+ 	$(PY) -m unittest discover -s tools -p test_function_summaries.py
+ 	$(PY) -m unittest discover -s tools -p 'test_typed*.py'
+ 	$(PY) -m unittest discover -s tools -p test_json_any_loader.py
++	$(PY) -m unittest discover -s tools -p test_numeric_identity.py
+ 
+ check-repository:
+ 	$(PY) tools/check_repository_hygiene.py
+diff --git a/docs/dynamic-any.md b/docs/dynamic-any.md
+index 93af184b..f588a5a3 100644
+--- a/docs/dynamic-any.md
++++ b/docs/dynamic-any.md
+@@ -180,7 +180,13 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
+   initialization, so their reads only load it and cannot allocate
+   (`tests/programs/inference/dynany_identity_constants.py`). This applies to
+   numeric globals in imported typed modules too when the program uses dynamic `Any`. These
+-  copies and global reads can allocate before an `Any` crossing, even if none follows. Any
++  copies and global reads can allocate before an `Any` crossing, even if none follows.
++  Closed functions with explicit numeric parameters and return types omit local box slots
++  when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
++  and numeric conversions. Identity tests, `Any` storage, globals, containers, closures and
++  other calls prevent that proof (`tests/ir/dynany_numeric_locals.py`). This relies on the
++  existing typed numeric return boundary; extending identity preservation across that
++  boundary must revisit this proof. Any
+   other value, such as an int computed there, is a new object, which its first crossing, copy
+   or global read boxes. A float that `isinstance()` narrows an
+   `Any` value to is that value's box again where it becomes one
+diff --git a/src/pystachy_compiler/analysis.py b/src/pystachy_compiler/analysis.py
+index ef1f4ec6..ef75dbd3 100644
+--- a/src/pystachy_compiler/analysis.py
++++ b/src/pystachy_compiler/analysis.py
+@@ -6,6 +6,52 @@ from src.pystachy_compiler.syntax import Node, comp_names, has_kind, mentions, m
+ from src.pystachy_compiler.utils import int_fits
+ 
+ 
++def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool]) -> bool:
++    # A closed scalar expression: nothing can expose a number's object identity or call
++    # user code. Names are exclusively numeric parameters/locals; every store is checked
++    # by numeric_statement. Unknown syntax is deliberately outside this proof.
++    k = n.kind
++    if k in ["int", "float", "True", "False"]:
++        return True
++    if k == "name":
++        return n.s in names
++    if k == "walrus":
++        return n.s in names and numeric_value(n.kids[0], names, blocked)
++    if k == "call":
++        if len(n.kids) != 2 or n.kids[0].kind != "name":
++            return False
++        callee = n.kids[0].s
++        return callee in ["int", "float", "bool"] and callee not in names and callee not in blocked and numeric_value(n.kids[1], names, blocked)
++    allowed = (k == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~", "not"]) or k == "ifexp" or (k == "boolop" and n.s in ["and", "or"])
++    if k == "cmp":
++        allowed = all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(","))
++    return allowed and all(numeric_value(x, names, blocked) for x in n.kids)
++
++
++def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool]) -> bool:
++    # A bounded body whose local numbers only feed scalar operations and the existing
++    # typed numeric return ABI. No globals, containers, callbacks, closures or Any storage.
++    k = n.kind
++    if k in ["pass", "break", "continue"]:
++        return True
++    if k == "block":
++        return all(numeric_statement(x, names, blocked) for x in n.kids)
++    if k in ["return", "expr"]:
++        return len(n.kids) == 1 and numeric_value(n.kids[0], names, blocked)
++    if k in ["assign", "augassign"]:
++        if len(n.kids) != 2 or n.kids[0].kind != "name" or n.kids[0].s not in names:
++            return False
++        return (k == "assign" or n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) and numeric_value(n.kids[1], names, blocked)
++    if k in ["if", "while"]:
++        return numeric_value(n.kids[0], names, blocked) and all(numeric_statement(x, names, blocked) for x in n.kids[1:])
++    if k == "for":
++        it = n.kids[1]
++        if n.kids[0].kind != "name" or n.kids[0].s not in names or it.kind != "call" or it.kids[0].kind != "name" or it.kids[0].s != "range":
++            return False
++        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked) for x in n.kids[2:])
++    return False
++
++
+ def target_names(t: Node, out: dict[str, bool]) -> None:
+     # the names target t binds, into a dict (names_in)
+     ns: list[str] = []
+diff --git a/src/pystachy_compiler/emission.py b/src/pystachy_compiler/emission.py
+index 55cfea8c..e070753b 100644
+--- a/src/pystachy_compiler/emission.py
++++ b/src/pystachy_compiler/emission.py
+@@ -589,7 +589,7 @@ def gen_alloca(self, t: str, name: str) -> str:
+             # (a comprehension's variable has none, and the function's variable of its name keeps
+             # its own)
+             self.idbox.pop(name, "")
+-        if (t == "int" or t == "float") and name not in self.compvars and self.dyn_policy(self.line):
++        if (t == "int" or t == "float") and name not in self.compvars and self.dyn_policy(self.line) and not self.fn.numeric_only:
+             # the box of its binding as an Any value (idbox): null, as each slot is where the
+             # function begins, until a store or its first crossing gives it one (dyn_box)
+             i = Ins("slot", "dyn", name + ".box")
+diff --git a/src/pystachy_compiler/functions.py b/src/pystachy_compiler/functions.py
+index b15a4cce..a5188ed3 100644
+--- a/src/pystachy_compiler/functions.py
++++ b/src/pystachy_compiler/functions.py
+@@ -1,6 +1,6 @@
+ """Functions component of the self-hosting Pystachy compiler."""
+ from __future__ import annotations
+-from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, str_appends
++from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, str_appends
+ from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
+ from src.pystachy_compiler.local_versions import local_versions
+ from src.pystachy_compiler.names import short
+@@ -133,6 +133,17 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
+     if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
+         f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
+         self.ret = f.ret
++    if not self.modlevel and not self.rtmode and self.dyn_policy(f.node.line) and not f.infer and f.ret in ["int", "float", "bool"] and f.node.kind == "def" and len(f.node.kids) == 3 and f.clo < 0 and not f.gen and f.vararg < 0 and f.kwarg < 0 and all(t in ["int", "float", "bool"] for t in f.ptypes) and all(p.kids[0].kind != "noann" for p in f.node.kids[0].kids):
++        names = dict(self.assigned)
++        for p in f.params:
++            names[p] = True
++        blocked: dict[str, bool] = {}
++        for nm in ["int", "float", "bool", "range"]:
++            if nm in self.mvars or nm in self.gtypes or nm in self.funcs or nm in self.classes or nm in self.aliases or nm in self.fglobals:
++                blocked[nm] = True
++        # This belongs to the fresh IFn, so dynamic widening/restarts recompute it and
++        # nested function compilation saves/restores it with the existing Frame.
++        self.fn.numeric_only = all(numeric_statement(n, names, blocked) for n in body)
+     if takes_self(f):
+         # callers check the receiver, so self is never None inside a method
+         self.nn["%a0"] = True
+diff --git a/src/pystachy_compiler/ir.py b/src/pystachy_compiler/ir.py
+index 73534274..5ea264ad 100644
+--- a/src/pystachy_compiler/ir.py
++++ b/src/pystachy_compiler/ir.py
+@@ -302,6 +302,7 @@ class IFn:
+     # one compiled function: a function, a method, a module's code, a helper or a template's function
+     def __init__(self, f: FnInfo):
+         self.f = f  # f.ret is final once the IFn is complete
++        self.numeric_only = False  # function_body proved local numeric identity unobservable
+         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
+         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
+         self.blocks: list[Blk] = [Blk("entry")]
+diff --git a/tests/ir/dynany_numeric_locals.calls b/tests/ir/dynany_numeric_locals.calls
+new file mode 100644
+index 00000000..654c472f
+--- /dev/null
++++ b/tests/ir/dynany_numeric_locals.calls
+@@ -0,0 +1,12 @@
++@main.init:
++@f.integer: pys_mod pys_raise
++@f.floating: pys_fmod pys_f2i pys_raise
++@f.conditional:
++@f.same:
++@f.observable: pys_dyn_float pys_dyn_float pys_dyn_float
++@f.dynamic_local: pys_dyn_float pys_dyn_float pys_dyn_float
++@f.dynamic_return: pys_dyn_float pys_dyn_float
++@pys_obj_eq:
++@pys_obj_cmp:
++@pys_obj_repr:
++@main: pys_init pys_finish
+diff --git a/tests/ir/dynany_numeric_locals.py b/tests/ir/dynany_numeric_locals.py
+new file mode 100644
+index 00000000..e83685fd
+--- /dev/null
++++ b/tests/ir/dynany_numeric_locals.py
+@@ -0,0 +1,49 @@
++# pystachy: dynamic-any
++# Closed numeric functions need no identity boxes; an observable copy still does.
++from typing import Any
++
++
++def integer(n: int, seed: int) -> int:
++    x = seed
++    total = 0
++    for i in range(n):
++        x = (x * 17 + 3) % 1000003
++        y = x
++        total += y
++    return total
++
++
++def floating(n: int, seed: int) -> int:
++    x = float(seed)
++    total = 0
++    for i in range(n):
++        x = (x * 1.25 + 3.0) % 1000.0
++        y = x
++        total += int(y)
++    return total
++
++
++def conditional(x: float, positive: bool) -> float:
++    y = x if positive else -x
++    z = y
++    return z
++
++
++def same(x: Any, y: Any) -> bool:
++    return x is y
++
++
++def observable(x: float) -> bool:
++    y = x
++    return same(x, y)
++
++
++def dynamic_local(x: float) -> bool:
++    y = x
++    value: Any = y
++    return value is x
++
++
++def dynamic_return(x: float) -> Any:
++    y = x
++    return y
+diff --git a/tests/programs/inference/dynany_numeric_locals.out b/tests/programs/inference/dynany_numeric_locals.out
+new file mode 100644
+index 00000000..470d4fb4
+--- /dev/null
++++ b/tests/programs/inference/dynany_numeric_locals.out
+@@ -0,0 +1,16 @@
++0 0 0 0 0
++1 2094 997915 156 2094
++9 3473506 5241809 4239 3473506
++1000 495306364 515479566 381687 495306364
++-7.5
++7.5
++True True
++True
++True True
++True
++True True
++True
++True True
++True
++3473506 4239
++[exit 0]
+diff --git a/tests/programs/inference/dynany_numeric_locals.py b/tests/programs/inference/dynany_numeric_locals.py
+new file mode 100644
+index 00000000..c5eff29b
+--- /dev/null
++++ b/tests/programs/inference/dynany_numeric_locals.py
+@@ -0,0 +1,78 @@
++# pystachy: dynamic-any
++from typing import Any
++
++
++def integer(n: int, seed: int = 123) -> int:
++    x = seed
++    total = 0
++    for i in range(n):
++        x = (x * 17 + 3) % 1000003
++        y = x
++        total += y
++    return total
++
++
++def floating(n: int, seed: int) -> int:
++    x = float(seed)
++    total = 0
++    for i in range(n):
++        x = (x * 1.25 + 3.0) % 1000.0
++        y = x
++        total += int(y)
++    return total
++
++
++def control(n: int, x: float, choose: bool) -> float:
++    total = 0.0
++    while n > 0:
++        n -= 1
++        if n == 2:
++            continue
++        if n < 1:
++            break
++        copied = x if choose else -x
++        copied = copied
++        total += copied
++    return total
++
++
++def named(n: int, seed: int) -> int:
++    total = 0
++    for i in range(n):
++        copied = (seed := (seed * 17 + 3) % 1000003)
++        total += copied
++    return total
++
++
++def same(x: Any, y: Any) -> bool:
++    return x is y
++
++
++def identity(x: float) -> bool:
++    y = x
++    return same(x, y)
++
++
++def annotated(x: float) -> bool:
++    y = x
++    value: Any = y
++    return value is x
++
++
++def boxed(x: Any) -> Any:
++    y = x
++    return y
++
++
++for n in [0, 1, 9, 1000]:
++    print(n, integer(n), integer(n, -123), floating(n, 123), named(n, 123))
++for choose in [False, True]:
++    print(control(7, 1.5, choose))
++for x in [0.0, -0.0, float("nan"), 3.25]:
++    print(identity(x), annotated(x))
++    value: Any = x
++    print(boxed(value) is value)
++# Dynamic argument conversion reaches the same closed numeric ABI.
++count: Any = 9
++seed: Any = 123
++print(integer(count, seed), floating(count, seed))
+diff --git a/tools/test_numeric_identity.py b/tools/test_numeric_identity.py
+new file mode 100644
+index 00000000..cdf3b83c
+--- /dev/null
++++ b/tools/test_numeric_identity.py
+@@ -0,0 +1,107 @@
++"""Identity-slot elision must stay inside its closed numeric function boundary."""
++import sys
++import unittest
++from pathlib import Path
++from unittest.mock import patch
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT))
++
++from src.pystachy_compiler import driver, functions  # noqa: E402
++
++
++class NumericIdentityTests(unittest.TestCase):
++    def decision(self, source):
++        generators = []
++        original = driver.Gen
++
++        def make_generator():
++            generator = original()
++            generators.append(generator)
++            return generator
++
++        with patch.object(driver, "Gen", make_generator):
++            driver.compile_program("numeric_identity_probe.py", "# pystachy: dynamic-any\n" + source,
++                                   [str(ROOT / "lib")], "")
++        # Use the final compilation: inference may restart with changed type hints.
++        functions = [function for function in generators[-1].fns
++                     if function.f.node.s == "target"]
++        self.assertEqual(len(functions), 1)
++        return functions[0].numeric_only
++
++    def test_closed_numeric_functions(self):
++        programs = [
++            "def target(x: int) -> int:\n    n = x + 1000\n    m = n\n    return m + n\nprint(target(2))\n",
++            "def target(x: int) -> int:\n    total = 0\n    for i in range(x):\n        n = (m := i + 1000)\n        total += n + m\n    return total\nprint(target(2))\n",
++            "def target(x: float) -> float:\n    n = x\n    while n < 3.0:\n        n = n + 1.0\n    return n if x > 0.0 else -n\nprint(target(2.0))\n",
++        ]
++        for source in programs:
++            with self.subTest(source=source):
++                self.assertTrue(self.decision(source))
++
++    def test_observable_or_open_bodies_keep_slots(self):
++        bodies = [
++            "observed: Any = n\nreturn m",
++            "observed: Any = n\nreturn id(observed)",
++            "return consume(n)",
++            "items = [n]\nreturn items[0]",
++            "print(n)\nreturn m",
++            "annotated: int = n\nreturn annotated",
++            "return GLOBAL + m",
++            "global GLOBAL\nGLOBAL = n\nreturn m",
++            "if x < 0:\n    raise ValueError('negative')\nreturn m",
++            "try:\n    return m // x\nexcept ZeroDivisionError:\n    return n",
++        ]
++        prefix = "from typing import Any\nGLOBAL = 1\ndef consume(value: Any) -> int:\n    return 1\n"
++        for body in bodies:
++            source = (prefix + "def target(x: int) -> int:\n    n = x + 1000\n    m = n\n" +
++                      "\n".join("    " + line for line in body.splitlines()) + "\nprint(target(2))\n")
++            with self.subTest(body=body):
++                self.assertFalse(self.decision(source))
++
++    def test_dynamic_and_inferred_signatures_keep_slots(self):
++        headers = [
++            ("def target(x: Any) -> int:", "target(2)"),
++            ("def target(x: int) -> Any:", "target(2)"),
++            ("def target(x: int) -> int | float:", "target(2)"),
++            ("def target(x: int):", "target(2)"),
++            ("def target(x) -> int:", "target(2)"),
++            ("def target(x: int, *rest: int) -> int:", "target(2, 3)"),
++            ("def target(x: int, **rest: int) -> int:", "target(2, extra=3)"),
++        ]
++        for header, call in headers:
++            source = ("from typing import Any\n" + header +
++                      "\n    n = 1000\n    m = n\n    return m\nprint(" + call + ")\n")
++            with self.subTest(header=header):
++                self.assertFalse(self.decision(source))
++
++    def test_closures_generators_and_decorators_keep_slots(self):
++        programs = [
++            "def outer() -> int:\n    def target(x: int) -> int:\n        n = x + 1000\n        m = n\n        return m\n    return target(2)\nprint(outer())\n",
++            "from typing import Iterator\ndef target(x: int) -> Iterator[int]:\n    n = x + 1000\n    m = n\n    yield m\nprint(list(target(2)))\n",
++            "class Box:\n    @staticmethod\n    def target(x: int) -> int:\n        n = x + 1000\n        m = n\n        return m\nprint(Box.target(2))\n",
++        ]
++        for source in programs:
++            with self.subTest(source=source):
++                self.assertFalse(self.decision(source))
++
++    def test_shadowed_builtin_calls_keep_slots(self):
++        programs = [
++            "from typing import Any\ndef float(value: Any) -> int:\n    return 7\ndef target(x: int) -> int:\n    n = x + 1000\n    m = n\n    return float(m)\nprint(target(2))\n",
++            "from typing import Any\ndef bool(value: Any) -> int:\n    return 7\ndef target(x: int) -> int:\n    n = x + 1000\n    m = n\n    return bool(m)\nprint(target(2))\n",
++            "from typing import Any\ndef int(value: Any) -> bool:\n    return True\ndef target(x: bool) -> bool:\n    n = 1000\n    m = n\n    return int(m)\nprint(target(True))\n",
++            "def range(n: int) -> list[int]:\n    return [n]\ndef target(x: int) -> int:\n    total = 0\n    for n in range(x):\n        m = n\n        total += m\n    return total\nprint(target(2))\n",
++        ]
++        for source in programs:
++            with self.subTest(source=source):
++                self.assertFalse(self.decision(source))
++
++    def test_accepting_unchecked_bodies_is_detected(self):
++        # A proof that trusts every body must fail the real compiler boundary checks.
++        with patch.object(functions, "numeric_statement", return_value=True):
++            with self.assertRaises(AssertionError):
++                NumericIdentityTests().test_observable_or_open_bodies_keep_slots()
++
++
++if __name__ == "__main__":
++    unittest.main()
