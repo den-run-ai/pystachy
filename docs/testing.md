@@ -399,6 +399,39 @@ retention of every semantic discovery. The hosted dry-call fixture lives in
 normal differential corpus. Historical investigation and raw evidence are linked
 from [PR #818](https://github.com/den-run-ai/pystachy/pull/818).
 
+`tools/compiler_state_globals.py`, also tested by that Lint pattern, inventories
+module-level containers under the compiler's declaration conventions. Every
+container is classified as a reviewed lookup table, restart-rewound state, or
+currently retained state. It rejects unclassified containers and new writers,
+including direct writes, imported names, simple local and default-argument aliases,
+assignment expressions and nested subscripts. Module subscript aliases retain possible
+source owners for later mutation checks without declaring scalar-capable reads as
+new containers. Import and alias propagation can retain multiple possible owners
+across rebindings; reports require review. Explicit re-export chains preserve those
+original owners; qualified
+exports expand only to attribute-path depths referenced in the scanned source, so
+module-object import cycles remain finite. Container annotations include explicit
+builtin/typing import aliases, quoted forms, unions, `Optional` and `Annotated`
+wrappers; metadata is not treated as a type. Direct bound and builtin unbound
+mutator calls include in-place dunders and reinitialization, with explicit import
+resolution and lexical builtin-name shadows. Callable alias/effect inference remains
+outside the check. Loop, context, exception and pattern targets, plus named
+definitions, participate in global-rebinding and local-shadow checks without
+inferring aliases from arbitrary iterators or context managers. The five rewind
+classifications are tied to the executable restart controls; removing a rewind must still fail those controls. `DYNFILES`, `GLUE`
+and `SPECSHOW` currently retain discoveries across restarts; the inventory records
+that behavior without certifying its safety. This is a hosted drift check, not a
+whole-program effect analysis: arbitrary helper calls, object-attribute aliases,
+unannotated factory results, and effects inside class bodies, anonymous function
+bodies or comprehensions require review. Lambda defaults are scanned in their
+defining scope. Method scans include local classes and preserve their enclosing
+function aliases. Straightforward class field/import declarations can supply method
+defaults, but class fields are not method closure variables; conditional class
+initialization and control-flow-sensitive alias retention still require review. One explicit alias exception
+covers `gen_verify` borrowing `NOLABELS` as `out`; its copy-before-write control
+flow still needs review. The checker has no native
+compilation overhead and does not establish that lookup tables are deeply immutable.
+
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: `make check-fast lint`,
 report-gate tests and recording checks use the pinned CPython and require no compiler bootstrap.
 `make check-repository`, included in `check-fast`, rejects root `research` paths in
