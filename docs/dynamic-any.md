@@ -170,7 +170,10 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   holds. A value read before a store gives the variable a new binding (`x, y = y, x`) keeps the
   object it read: the box the slot held at the read, else a new one that the slot does not take.
   A store gives the slot the box of the `Any` value it unboxes, the slot's box of the
-  variable it copies, or a numeric literal's constant box; any other value, such as an int computed
+  variable it copies, or a numeric literal's constant box. Copying a numeric variable materializes
+  its box if needed, so copies made before either variable crosses into `Any` still share one
+  object (`tests/programs/inference/dynany_identity_copy.py`). This can allocate at the copy
+  in opt-in code even if neither variable later crosses into `Any`. Any other value, such as an int computed
   there, is a new object, which its first crossing boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
   (`tests/programs/inference/dynany_identity_typed.py`). Where typed code's numbers still cross
@@ -341,8 +344,7 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   becomes an `Any` value, where CPython's names, containers and classes hold one object: an
   argument or a parameter's default value (the parameter receives a new object), a return
   value, an item of a typed container, a typed field or class variable, a variable that a
-  closure reads, a comprehension's variable, and a copy of a variable made before the variable
-  first became an `Any` value (also the name that `from m import x` binds), and a value that a
+  closure reads, a comprehension's variable, the name that `from m import x` binds, and a value that a
   conditional expression chooses from two variables. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
   literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`).

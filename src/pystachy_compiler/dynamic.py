@@ -356,7 +356,8 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     # the box that an int or float variable's binding has as an Any value, where store_name gives
     # it v (its box slot, idbox): the box of the Any value it unboxes, the box of the binding it
     # copies, a numeric literal's constant box, else none yet, a new object that its first crossing
-    # boxes (dyn_box)
+    # boxes (dyn_box). A copy must give both bindings a box now: copying a null lazy slot would
+    # let their later crossings create two objects for one Python value.
     if v.idslot == slot and self.idstores.get(slot, 0) == v.idgen:
         return  # (x = x, x := x: the binding's own object, read with no store since, is no new binding)
     b = "null"
@@ -365,7 +366,7 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     elif v.idfrom != "":
         b = v.idfrom
     elif v.idslot != "":
-        b = self.dyn_id_held(v).v
+        b = self.dyn_box(v).v
     elif v.lit and v.t == t and (t == "float" or (t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         # store_name can retain t until a pending type join restarts compilation to widen
         # it. A provisional int slot may receive a float literal: its LLVM hex bits

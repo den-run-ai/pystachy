@@ -1,9 +1,9 @@
 # Documented deviation (docs/dynamic-any.md): in a module that compiles typing.Any as dynamic
 # values, an int or float variable of typed code holds one object (#797), but these values do not
-# keep their object where they become Any values: a copy of a variable made before the variable
-# first became one, an argument or a parameter's default value (the parameter receives a new
-# object), a return value, an item of a typed container, a typed field or class variable, a
-# variable that a closure reads and a comprehension's variable. Each is a new object there, where
+# keep their object where they become Any values: an argument or a parameter's default value
+# (the parameter receives a new object), a return value, an item of a typed container, a typed
+# field or class variable, a variable that a closure reads and a comprehension's variable.
+# Each is a new object there, where
 # CPython's names, containers and classes hold one (it prints True for each). So is the value of
 # an expression of literals, which CPython's compiler folds into one constant (999 + 1 is 1000
 # there). `is` and id() still
@@ -57,10 +57,6 @@ def rebound() -> None:
 
 def run() -> None:
     n = int("1000")
-    m = n
-    a: Any = n
-    b: Any = m
-    print("a copy made before the variable became Any", a is b, id(a) == id(b))
     callee(n, n)
     r: Any = int("1000")
     g2: Any = give(r)
