@@ -154,8 +154,6 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
         tag = -1
         origin = -1
         for i in b.code:
-            n = -1
-            producer: Ins | None = None
             for a in i.a:
                 n = proof_number(a.v, 2, fn.n) if a.v.startswith("%t") else -1
                 producer = definitions[n] if n >= 0 else None
@@ -169,22 +167,12 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
                     t = i.t if i.op == "slot.unpack" else a.t
                     if t != producer.s:
                         return False
-            if i.op == "union.payload" and len(i.a) == 1 and producer is not None and producer.op == "mem.load":
-                # All definitions are unique and slot writes/escapes were checked
-                # before alias discovery. Cache this already-decoded source in the
-                # payload's otherwise-unused result slot; proof_origin only reads
-                # mem.load entries, so payload bits cannot become union aliases.
-                origins[i.r[1]] = origins[n]
             if i.op == "mem.load" and is_union(i.t):
                 n = proof_slot(i.a[0].v, definitions)
                 if n >= 0 and origins[n] >= 0:
                     origins[i.r[0]] = origins[n]
             if i.op == "union.tag" or (i.op == "mach.load" and i.t == "int"):
-                origin = -1
-                if len(i.a) == 1 and producer is not None and producer.op == "mem.load":
-                    origin = origins[n]
-                if origin < 0:
-                    origin = proof_origin(i.a[0].v, fn, definitions, origins)
+                origin = proof_origin(i.a[0].v, fn, definitions, origins)
                 if origin < 0:
                     return False
                 tag = i.r[0]
@@ -200,10 +188,7 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
         for i in fn.blocks[bn].code:
             if i.op != "union.payload":
                 continue
-            origin = origins[i.r[1]]
-            if origin < 0:
-                # A source defined later in block order was not known above.
-                origin = proof_origin(i.a[0].v, fn, definitions, origins)
+            origin = proof_origin(i.a[0].v, fn, definitions, origins)
             if origin < 0:
                 return False
             domain = domains[fn.f.ptypes[origin]]
@@ -822,6 +807,22 @@ class UnionProof:
                 if ck in self.fn.cold:
                     dests.append(self.fn.cold[ck])
                     edges.append(s.conditional(last.a[0].v, True))
+            elif last.op == "switch" and last.a[0].v in self.tagvals:
+                key = self.tag(s, last.a[0].v)
+                default = s.clone()
+                dests.extend(last.b)
+                edges.append(default)
+                for j in range(1, len(last.a)):
+                    arm = s.clone()
+                    literal = last.a[j].v
+                    # Only canonical, known tag IDs establish an exact member.
+                    # Other spellings and the many unknown IDs grouped by '?'
+                    # remain conservative on both the case and default edges.
+                    if literal in self.tags:
+                        member = self.tags[literal]
+                        arm.narrow(key, [member])
+                        default.narrow(key, [t for t in default.dom(key) if t != member])
+                    edges.append(arm)
             else:
                 for l in last.b:
                     dests.append(l)

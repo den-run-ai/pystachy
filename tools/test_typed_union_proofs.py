@@ -327,6 +327,181 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_switch_cases_and_default_refine_union_members(self):
+        for typ, members in ((U, ("int", "float")), (W, ("int", "float", "str"))):
+            for wrong in (False, True):
+                with self.subTest(typ=typ, wrong=wrong):
+                    c = Case("switch_members", [typ])
+                    tag = c.op("union.tag", "int", a=[("%a0", typ)])
+                    c.op("switch", a=[(tag, "int")] + [(str(c.g.utags[t]), "int") for t in members[:-1]],
+                         b=[members[-1]] + list(members[:-1]))
+                    for t in members:
+                        c.block(t)
+                        c.payload(member="float" if wrong and t == "int" else t, typ=typ)
+                        c.ret()
+                    self.assertFalse(simple_union_proof(c.fn, c.g.utags))
+                    with redirect_stderr(StringIO()):
+                        if wrong:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+                        else:
+                            c.g.verify(c.fn, False)
+
+    def test_switch_shared_destinations_join_their_domains(self):
+        for shared_default in (False, True):
+            with self.subTest(shared_default=shared_default):
+                c = Case("switch_shared", [W])
+                tag = c.op("union.tag", "int", a=[("%a0", W)])
+                labels = ["hit", "hit", "miss"] if shared_default else ["miss", "hit", "hit"]
+                c.op("switch", a=[(tag, "int"), (str(c.g.utags["int"]), "int"), (str(c.g.utags["float"]), "int")], b=labels)
+                c.block("hit")
+                c.payload(typ=W)
+                c.finish_pair()
+                with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+                    c.g.verify(c.fn, False)
+
+    def test_switch_unknown_or_noncanonical_literals_do_not_prune_case_edges(self):
+        for literal in ("01", "-0", "999", "-1", str(2**64 + 1)):
+            with self.subTest(literal=literal):
+                c = Case("switch_literal", [U])
+                if literal == "-0":
+                    c.g.utags["int"] = 0
+                tag = c.op("union.tag", "int", a=[("%a0", U)])
+                c.op("switch", a=[(tag, "int"), (literal, "int")], b=["miss", "hit"])
+                c.block("hit")
+                c.payload(member="float")
+                c.finish_pair()
+                with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+                    c.g.verify(c.fn, False)
+
+    def test_switch_unknown_literal_does_not_exclude_the_unknown_tag_domain(self):
+        c = Case("switch_unknown_default", [W])
+        tag = c.op("union.tag", "int", a=[("%a0", W)])
+        c.op("switch", a=[(tag, "int")] + [(str(c.g.utags[t]), "int") for t in ("int", "float", "str")] + [("999", "int")],
+             b=["default", "exit", "exit", "exit", "exit"])
+        c.block("default")
+        c.payload(typ=W)
+        c.ret()
+        c.block("exit")
+        c.ret()
+        proof = UnionProof(c.fn, c.g.utags)
+        # '?' denotes many numeric IDs, so excluding 999 cannot exhaust it.
+        proof.base["U:%a0"] = ["?", "float", "int", "str"]
+        proof.run()
+        self.assertIn("default", proof.badblocks)
+        self.assertTrue(any("union.payload needs tag int" in error for error in proof.bad))
+
+    def test_switch_unrelated_selectors_do_not_prove_a_union_payload(self):
+        for source in ("integer", "other_union", "mixed_select"):
+            with self.subTest(source=source):
+                c = Case("switch_unrelated", [U, U, "int", "bool"])
+                tag = "%a2" if source == "integer" else c.op("union.tag", "int", a=[("%a1", U)])
+                if source == "mixed_select":
+                    own = c.op("union.tag", "int", a=[("%a0", U)])
+                    tag = c.op("select", "int", a=[("%a3", "bool"), (own, "int"), (tag, "int")])
+                c.op("switch", a=[(tag, "int"), (str(c.g.utags["int"]), "int")], b=["miss", "hit"])
+                c.block("hit")
+                c.payload()
+                c.finish_pair()
+                with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+                    c.g.verify(c.fn, False)
+
+    def test_switch_preserves_tag_transport_and_destination_phis(self):
+        for transport in ("select", "phi", "slot", "machine", "destination_phi"):
+            with self.subTest(transport=transport):
+                c = Case("switch_transport", [U, "bool"])
+                tag = c.op("mach.load" if transport == "machine" else "union.tag", "int", a=[("%a0", "%ptr" if transport == "machine" else U)])
+                predecessor = "entry"
+                if transport == "select":
+                    tag = c.op("select", "int", a=[("%a1", "bool"), (tag, "int"), (tag, "int")])
+                elif transport == "phi":
+                    c.op("cbr", a=[("%a1", "bool")], b=["left", "right"])
+                    for label in ("left", "right"):
+                        c.block(label)
+                        c.op("br", b=["merge"])
+                    c.block("merge")
+                    tag = c.op("phi", "int", a=[(tag, "int"), (tag, "int")], b=["left", "right"])
+                    predecessor = "merge"
+                elif transport == "slot":
+                    slot = Ins("slot", "int", "tag")
+                    c.fn.n += 1
+                    slot.r = [c.fn.n]
+                    c.fn.slots.append(slot)
+                    address = "%tag." + str(slot.r[0])
+                    c.op("mem.store", a=[(address, "*int"), (tag, "int")])
+                    tag = c.op("mem.load", "int", a=[(address, "*int")])
+                c.op("switch", a=[(tag, "int"), (str(c.g.utags["int"]), "int")], b=["miss", "hit"])
+                c.block("hit")
+                value = c.op("phi", U, a=[("%a0", U)], b=[predecessor]) if transport == "destination_phi" else "%a0"
+                c.payload(value)
+                c.finish_pair()
+                c.g.verify(c.fn, False)
+
+    def test_switch_old_tag_does_not_prove_reloaded_mutable_storage(self):
+        for old in (False, True):
+            with self.subTest(old=old):
+                c = Case("switch_mutated")
+                value = c.op("mem.load", U, a=[("%a2", "*" + U)])
+                tag = c.op("union.tag", "int", a=[(value, U)])
+                c.op("mem.store", a=[("%a2", "*" + U), ("%a1", U)])
+                c.op("switch", a=[(tag, "int"), (str(c.g.utags["int"]), "int")], b=["miss", "hit"])
+                c.block("hit")
+                after = value if old else c.op("mem.load", U, a=[("%a2", "*" + U)])
+                c.payload(after)
+                c.finish_pair()
+                with redirect_stderr(StringIO()):
+                    if old:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
+    def test_switch_does_not_supply_a_missing_nonnull_precondition(self):
+        for guarded in (False, True):
+            with self.subTest(guarded=guarded):
+                typ = "opt[" + U + "]"
+                c = Case("switch_nullable", [typ])
+                if guarded:
+                    condition = c.op("ptr.cmp", "bool", "!=", [("%a0", typ), ("null", "None")])
+                    c.op("cbr", a=[(condition, "bool")], b=["read", "miss"])
+                    c.block("read")
+                tag = c.op("union.tag", "int", a=[("%a0", U)])
+                c.op("switch", a=[(tag, "int"), (str(c.g.utags["int"]), "int")], b=["miss", "hit"])
+                c.block("hit")
+                c.payload()
+                c.finish_pair()
+                errors = StringIO()
+                with redirect_stderr(errors):
+                    if guarded:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+                        self.assertIn("union.tag needs a nonnull proof", errors.getvalue())
+
+    def test_switch_refines_raw_provenance_without_permitting_reinterpretation(self):
+        for mode in ("matching", "wrong", "other", "address"):
+            with self.subTest(mode=mode):
+                c = Case("switch_raw")
+                tag, bits = raw_parts(c, "%a0")
+                if mode == "other":
+                    _, bits = raw_parts(c, "%a1")
+                c.op("switch", a=[(tag, "int"), (str(c.g.utags["int"]), "int")], b=["miss", "hit"])
+                c.block("hit")
+                if mode == "address":
+                    c.op("union.payload", "%slot", "int", [("%a0", U)])
+                    address = "%t" + str(c.b.code[-1].r[0])
+                    c.op("mach.load", "float", a=[(address, "%ptr")])
+                else:
+                    c.op("slot.unpack", "float" if mode == "wrong" else "int", a=[(bits, "%slot")])
+                c.finish_pair()
+                with redirect_stderr(StringIO()):
+                    if mode == "matching":
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
     def test_payload_source_alias_may_be_defined_later_in_block_order(self):
         c = Case("later_payload_source_alias", [U])
         slot = Ins("slot", U, "local")
