@@ -92,6 +92,24 @@ def run() -> None:
     flag = bool(int("0"))
     selected: list[Any] = [G, (G := int("8000")) if flag else 0]
     same("untaken global store", selected[0], G)
+    # A non-null companion box belongs to the exact value stored in the global:
+    # Any round trips preserve it, while explicit numeric conversion makes a new value.
+    boxed_int: Any = int("9000")
+    G = boxed_int
+    same("Any int global round trip", boxed_int, G)
+    for value in ["1.5", "-0.0", "nan"]:
+        boxed_float: Any = float(value)
+        F = boxed_float
+        same("Any float global round trip", boxed_float, F)
+    G = int("1000")
+    F = float(G)
+    print("int to float global", G, F)
+    same("int to float fresh box", G, F)
+    converted_float: Any = F
+    G = int(F)
+    print("float to int global", F, G)
+    same("float to int fresh box", converted_float, G)
+    same("converted float retained", converted_float, F)
 
 
 run()

@@ -29,4 +29,13 @@ typed module snapshot False False
 typed module saved alias True True
 typed module fresh binding False False
 untaken global store True True
+Any int global round trip True True
+Any float global round trip True True
+Any float global round trip True True
+Any float global round trip True True
+int to float global 1000 1000.0
+int to float fresh box False False
+float to int global 1000.0 1000
+float to int fresh box False False
+converted float retained True True
 [exit 0]

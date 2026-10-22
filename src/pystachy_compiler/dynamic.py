@@ -388,7 +388,24 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         # Snapshot its object now, while the read still names this binding. A null lazy box
         # cannot be recovered later: even an equal new value is a different object. Keeping
         # only idfrom also prevents a later self-assignment from taking the idslot fast path.
-        v.idfrom = self.dyn_box(v).v
+        # The payload and this box were just loaded, with no user code between them.
+        # store_name pairs every numeric global store with dyn_id_store: its box is
+        # either null or exactly this binding's type and payload. Unlike a delayed
+        # local read, it needs neither dyn_box's stale-value checks nor a slot reload.
+        start = self.cur
+        make = self.label()
+        end = self.label()
+        self.cbr(self.ptr_cmp("==", Val(v.idheld, DYN), Val("null", DYN)).v, make, end)
+        self.place(make)
+        b = self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]) if v.t == "int" else self.rt("pys_dyn_float", "ptr", [f"double {v.v}"])
+        self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+        made = self.cur
+        self.br(end)
+        self.place(end)
+        ph = Ins("phi", DYN, "")
+        self.incoming(ph, v.idheld, start)
+        self.incoming(ph, b, made)
+        v.idfrom = self.phi(ph)
         v.idslot = ""
 
 
