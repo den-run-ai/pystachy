@@ -1,4 +1,4 @@
-# error: cannot infer the type of 'x' from None here, before a value of another type is assigned to it; annotate it (x: T | None)
+# error: NoneType | None values cannot be compared or printed
 def f() -> None:
     x = None
     print(x)  # (y has no type yet here)

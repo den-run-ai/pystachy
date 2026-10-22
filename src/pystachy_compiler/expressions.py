@@ -660,7 +660,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "name" and (is_opt(want) or want in self.classes) and want != NONEVAR and self.ltype.get(n.s, "") == NONEVAR:
         # a local only None has been assigned so far, where a T | None is expected
         t0 = self.none_type(n.s)
-        self.ltype[n.s] = t0 if t0 != "" else want
+        self.none_resolve(n.s, t0 if t0 != "" else want)
     if is_opt(want) and k != "ifexp" and k != "boolop":
         want = unopt(want)  # (what types an empty display is the type a value would hold)
     if want == "dyn" and (k == "list" or (k == "listcomp" and n.s != "gen") or k == "dict" or k == "dictcomp"):
