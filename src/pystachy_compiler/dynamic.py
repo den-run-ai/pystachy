@@ -366,7 +366,10 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         b = v.idfrom
     elif v.idslot != "":
         b = self.dyn_id_held(v).v
-    elif v.lit and (t == "float" or (t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
+    elif v.lit and v.t == t and (t == "float" or (t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
+        # store_name can retain t until a pending type join restarts compilation to widen
+        # it. A provisional int slot may receive a float literal: its LLVM hex bits
+        # must not be parsed as an int or given the provisional destination's identity.
         b = self.dyn_box(v).v
     self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1
