@@ -7,12 +7,14 @@ from io import StringIO
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, Val
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
+from src.pystachy_compiler.union_state import UnionState
 
 U = "union[int,float]"
 W = "union[int,float,str]"
@@ -323,6 +325,92 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_completed_guards_do_not_accumulate_live_proof_facts(self):
+        for count in (20, 100):
+            with self.subTest(count=count):
+                c = Case("sequential_guards", [U])
+                for n in range(count):
+                    hit, miss, join = "hit" + str(n), "miss" + str(n), "join" + str(n)
+                    c.guard(yes=hit, no=miss)
+                    c.block(hit)
+                    c.payload(member="int")
+                    c.op("br", b=[join])
+                    c.block(miss)
+                    c.payload(member="float")
+                    c.op("br", b=[join])
+                    c.block(join)
+                c.ret()
+                sizes = []
+                retain = UnionState.retain
+
+                def observe(state, values, retain=retain, sizes=sizes):
+                    retain(state, values)
+                    sizes.append(len(state.d))
+
+                with patch.object(UnionState, "retain", observe):
+                    c.g.verify(c.fn, False)
+                self.assertTrue(sizes)
+                self.assertLess(max(sizes), 16)
+
+    def test_nullable_condition_survives_an_unrelated_join(self):
+        for loop in (False, True):
+            for pred in ("!=", "=="):
+                with self.subTest(loop=loop, pred=pred):
+                    optional = "opt[" + U + "]"
+                    c = Case("saved_null_test", [optional, "bool"])
+                    condition = c.op("ptr.cmp", "bool", pred, [("%a0", optional), ("null", "None")])
+                    if loop:
+                        c.op("br", b=["loop"])
+                        c.block("loop")
+                        c.op("cbr", a=[("%a1", "bool")], b=["loop", "join"])
+                    else:
+                        c.op("cbr", a=[("%a1", "bool")], b=["left", "right"])
+                        for label in ("left", "right"):
+                            c.block(label)
+                            c.op("br", b=["join"])
+                    c.block("join")
+                    c.op("cbr", a=[(condition, "bool")], b=["nonnull", "exit"])
+                    c.block("nonnull")
+                    c.guard(no="exit")
+                    c.block("hit")
+                    c.payload()
+                    c.ret()
+                    c.block("exit")
+                    c.ret()
+                    with redirect_stderr(StringIO()):
+                        if pred == "!=":
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+
+    def test_only_raising_calls_contribute_handler_edges(self):
+        for raises in (False, True):
+            with self.subTest(raises=raises):
+                c = Case("handler_effects")
+                c.b.handler = "handler"
+                if raises:
+                    c.op("icall", "None", a=[("%a3", "%ptr")])
+                else:
+                    c.g.runtime("pys_alloc")
+                    c.op("rt", "%ptr", "alloc", [("8", "int")])
+                c.guard(no="exit")
+                c.block("hit")
+                c.b.handler = "handler"
+                c.op("icall", "None", a=[("%a3", "%ptr")])
+                c.ret()
+                c.block("handler")
+                c.payload()
+                c.ret()
+                c.block("exit")
+                c.ret()
+                with redirect_stderr(StringIO()):
+                    if raises:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+                    else:
+                        c.g.verify(c.fn, False)
+
     def test_fresh_float_phi_keeps_its_native_payload_type(self):
         for tag in ("float", "int"):
             with self.subTest(tag=tag):

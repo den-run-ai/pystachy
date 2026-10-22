@@ -6,14 +6,15 @@ stable. It keeps one state per block, not a product of whole-function execution 
 """
 from __future__ import annotations
 from src.pystachy_compiler.ir import IFn, Ins, Val
-from src.pystachy_compiler.union_state import UnionState, union_join
+from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join
 from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
 
 
 class UnionProof:
-    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None):
+    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None):
         self.fn = fn
         self.writes: dict[str, bool] = {} if writes is None else writes
+        self.raises: dict[str, bool] = {} if raises is None else raises
         self.tags: dict[str, str] = {}
         self.full: list[str] = ["?", "None"]
         for t in utags:
@@ -144,28 +145,28 @@ class UnionProof:
         for v in self.bitsslots:
             if v in self.memtypes:
                 self.base["MB:" + v] = [self.memtypes[v]]
-        # Boolean implications matter only while their condition can still be read.
-        # In particular, reflection emits many independent guarded selectors; retaining
-        # every completed selector at every later join multiplies unrelated proof work.
-        self.livebool: dict[str, dict[str, bool]] = {}
+        # Facts matter only while their value or storage address can still be read.
+        # Retaining completed selectors at every later join multiplies unrelated work.
+        self.livevalues: dict[str, dict[str, bool]] = {}
         uses: dict[str, dict[str, bool]] = {}
         defined: dict[str, dict[str, bool]] = {}
         for b in fn.blocks:
             uses[b.label] = {}
             defined[b.label] = {}
-            self.livebool[b.label] = {}
+            self.livevalues[b.label] = {}
             for i in b.code:
                 if i.op == "phi":
                     continue
                 for a in i.a:
-                    if self.native.get(a.v, "") == "bool" and a.v not in defined[b.label]:
+                    if a.v.startswith("%") and a.v not in defined[b.label]:
                         uses[b.label][a.v] = True
                 for n in i.r:
                     defined[b.label]["%t" + str(n)] = True
         changed = True
         while changed:
             changed = False
-            for b in fn.blocks:
+            for bn in range(len(fn.blocks) - 1, -1, -1):
+                b = fn.blocks[bn]
                 live = dict(uses[b.label])
                 targets = [v for v in b.code[-1].b]
                 if b.handler != "":
@@ -178,7 +179,7 @@ class UnionProof:
                 for target in targets:
                     if target not in self.blocks:
                         continue
-                    incoming = dict(self.livebool[target])
+                    incoming = dict(self.livevalues[target])
                     for i in fn.blocks[self.blocks[target]].code:
                         if i.op != "phi":
                             break
@@ -187,13 +188,13 @@ class UnionProof:
                             del incoming[r]
                             if b.label in i.b:
                                 v = i.a[i.b.index(b.label)].v
-                                if self.native.get(v, "") == "bool":
+                                if v.startswith("%"):
                                     incoming[v] = True
                     for v in incoming:
                         if v not in defined[b.label]:
                             live[v] = True
-                if live != self.livebool[b.label]:
-                    self.livebool[b.label] = live
+                if live != self.livevalues[b.label]:
+                    self.livevalues[b.label] = live
                     changed = True
 
     def transport_closure(self, i: Ins, vals: dict[str, bool], slots: dict[str, bool], bits: bool) -> None:
@@ -281,11 +282,27 @@ class UnionProof:
                     s.forget(k)
 
     def compare(self, s: UnionState, r: str, key: str, allowed: list[str], equal: bool) -> None:
-        yes = s.clone()
-        no = s.clone()
-        yes.narrow(key, allowed)
-        no.narrow(key, [t for t in self.full if t not in allowed])
-        s.boolean(r, yes if equal else no, no if equal else yes)
+        domain = s.dom(key)
+        yes = intersect_tags(domain, allowed)
+        no = [t for t in domain if t not in allowed]
+        bt: dict[str, list[str]] = {}
+        bf: dict[str, list[str]] = {}
+        if yes != domain:
+            bt[key] = yes
+        if no != domain:
+            bf[key] = no
+        rep = s.eq.get(key, key)
+        for k in s.eq:
+            if s.eq[k] == rep:
+                yt = intersect_tags(s.dom(k), yes)
+                nt = intersect_tags(s.dom(k), no)
+                if yt != s.dom(k):
+                    bt[k] = yt
+                if nt != s.dom(k):
+                    bf[k] = nt
+        s.truth[r] = (2 if len(yes if equal else no) > 0 else 0) | (1 if len(no if equal else yes) > 0 else 0)
+        s.bt[r] = bt if equal else bf
+        s.bf[r] = bf if equal else bt
 
     def error(self, b: str, message: str) -> None:
         self.badblocks.append(b)
@@ -507,10 +524,7 @@ class UnionProof:
             z.truth[k] = bc[j].truth[k]
             z.bt[k] = bc[j].bt[k]
             z.bf[k] = bc[j].bf[k]
-        needed = self.livebool[to]
-        z.truth = {k: z.truth[k] for k in z.truth if k in needed}
-        z.bt = {k: z.bt[k] for k in z.bt if k in needed}
-        z.bf = {k: z.bf[k] for k in z.bf if k in needed}
+        z.retain(self.livevalues[to])
         return z
 
     def run(self) -> None:
@@ -531,8 +545,10 @@ class UnionProof:
                 if i.op == "phi":
                     continue
                 self.transfer(s, i, label, False)
-                if b.handler != "" and i.op in ["rt", "call", "icall", "init", "gen.resume", "raise", "throw", "check"]:
-                    ex = s.clone()
+                call = i.op in ["rt", "call", "icall", "init", "gen.resume"]
+                throwing = i.op in ["raise", "throw", "check"] or (call and self.raises.get(i.op + "|" + i.s + "|" + i.x, True))
+                if b.handler != "" and throwing:
+                    ex = s.conditional(i.a[0].v, True) if i.op == "check" else s.clone()
                     self.killmem(ex)
                     dests.append(b.handler)
                     edges.append(ex)

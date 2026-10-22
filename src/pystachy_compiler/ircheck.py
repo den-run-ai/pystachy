@@ -306,11 +306,15 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                         self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
     if union_reads:
         writes: dict[str, bool] = {}
+        raises: dict[str, bool] = {}
         for b in fn.blocks:
             for i in b.code:
                 if i.op in ["rt", "call", "icall", "init", "gen.resume"]:
-                    writes[i.op + "|" + i.s + "|" + i.x] = self.opfx(i, fn.fa) & (RAWW | FXBIT["wG"]) != 0
-        proof = UnionProof(fn, self.utags, writes, self.gtypes)
+                    key = i.op + "|" + i.s + "|" + i.x
+                    effects = self.opfx(i, fn.fa)
+                    writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
+                    raises[key] = effects & FXBIT["R"] != 0
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])

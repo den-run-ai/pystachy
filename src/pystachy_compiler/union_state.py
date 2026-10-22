@@ -46,26 +46,19 @@ def intersect_tags(a: list[str], b: list[str]) -> list[str]:
 
 
 class UnionState:
-    def __init__(self, base: dict[str, list[str]], full: list[str]) -> None:
+    def __init__(self, base: dict[str, list[str]], full: list[str], source: UnionState | None = None) -> None:
         self.base = base
         self.full = full
-        self.d: dict[str, list[str]] = {}
-        self.eq: dict[str, str] = {}
-        self.bt: dict[str, dict[str, list[str]]] = {}
-        self.bf: dict[str, dict[str, list[str]]] = {}
-        self.truth: dict[str, int] = {}
-        self.live = True
+        self.d: dict[str, list[str]] = {} if source is None else dict(source.d)
+        self.eq: dict[str, str] = {} if source is None else dict(source.eq)
+        # Domains and implication maps are immutable once shared.
+        self.bt: dict[str, dict[str, list[str]]] = {} if source is None else dict(source.bt)
+        self.bf: dict[str, dict[str, list[str]]] = {} if source is None else dict(source.bf)
+        self.truth: dict[str, int] = {} if source is None else dict(source.truth)
+        self.live: bool = True if source is None else source.live
 
     def clone(self) -> UnionState:
-        other = UnionState(self.base, self.full)
-        other.d = dict(self.d)
-        other.eq = dict(self.eq)
-        # Implication maps, like domains, are immutable once shared.
-        other.bt = dict(self.bt)
-        other.bf = dict(self.bf)
-        other.truth = dict(self.truth)
-        other.live = self.live
-        return other
+        return UnionState(self.base, self.full, self)
 
     def dom(self, k: str) -> list[str]:
         return self.d.get(k, self.base.get(k, self.full))
@@ -175,6 +168,27 @@ class UnionState:
         # States in one proof share the immutable base and full domain.
         return self.d == other.d and self.eq == other.eq and self.bt == other.bt and self.bf == other.bf and self.truth == other.truth and self.live == other.live
 
+    def needed(self, k: str, values: dict[str, bool]) -> bool:
+        v = k[k.find(":") + 1:]
+        return not v.startswith("%") or v in values
+
+    def retain(self, values: dict[str, bool]) -> None:
+        self.d = {k: self.d[k] for k in self.d if self.needed(k, values)}
+        # Representatives can name dead values. Rebase each surviving equivalence
+        # class instead of dropping its relation when that representative dies.
+        representatives: dict[str, str] = {}
+        equal: dict[str, str] = {}
+        for k in sorted(self.eq):
+            if self.needed(k, values):
+                old = self.eq[k]
+                if old not in representatives:
+                    representatives[old] = k
+                equal[k] = representatives[old]
+        self.eq = equal
+        self.truth = {k: self.truth[k] for k in self.truth if k in values}
+        self.bt = {b: {k: self.bt[b][k] for k in self.bt[b] if self.needed(k, values)} for b in self.bt if b in values}
+        self.bf = {b: {k: self.bf[b][k] for k in self.bf[b] if self.needed(k, values)} for b in self.bf if b in values}
+
 
 def union_join(a: UnionState, b: UnionState) -> UnionState:
     if not a.live:
@@ -186,6 +200,15 @@ def union_join(a: UnionState, b: UnionState) -> UnionState:
     for k in b.d:
         if k not in a.d:
             keys.append(k)
+    present = {k: True for k in keys}
+    # A parameter-backed comparison can have no unconditional override at all.
+    # Its domain still has to participate in a join of the saved condition.
+    for implications in [a.bt, a.bf, b.bt, b.bf]:
+        for condition in implications:
+            for k in implications[condition]:
+                if k not in present:
+                    present[k] = True
+                    keys.append(k)
     keys.sort()
     groups: dict[str, dict[str, str]] = {}
     for k in keys:
