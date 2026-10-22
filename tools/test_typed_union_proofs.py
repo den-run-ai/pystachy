@@ -16,7 +16,7 @@ from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, NOLABELS,
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
 from src.pystachy_compiler.union_state import UnionState
-from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
+from src.pystachy_compiler.union_proof import UnionProof, proof_number, simple_union_proof
 
 U = "union[int,float]"
 W = "union[int,float,str]"
@@ -623,6 +623,29 @@ class UnionProofTests(unittest.TestCase):
                         else:
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
+
+    def test_numeric_parser_small_and_large_bounds_agree(self):
+        numbers = ("", "0", "00", "01", "9", "10", "99999", "100000", "262143",
+                   "262144", "262145", "999999", "1000000", "9999999",
+                   "9223372036854775807", "9223372036854775808", "9" * 100,
+                   "+1", "-1", "0x1", "1x", "12345x", "123456x", "١", "１")
+        for prefix in ("", "%t"):
+            for limit in (-1, 0, 1, 9, 10, 262144, 999999, 1000000, 2 ** 63 - 1):
+                for number in numbers:
+                    with self.subTest(prefix=prefix, limit=limit, number=number):
+                        canonical = (number.isascii() and number.isdecimal()
+                                     and (number == "0" or not number.startswith("0")))
+                        expected = int(number) if canonical and int(number) <= limit else -1
+                        self.assertEqual(proof_number(prefix + number, len(prefix), limit), expected)
+
+    def test_numeric_parser_single_character_contract(self):
+        for prefix in ("", "%a", "%t"):
+            for limit in (-1, 0, 4, 9, 262144):
+                for character in [chr(n) for n in range(128)] + ["٠", "１", "²", "😀"]:
+                    with self.subTest(prefix=prefix, limit=limit, character=character):
+                        expected = (int(character) if "0" <= character <= "9"
+                                    and int(character) <= limit else -1)
+                        self.assertEqual(proof_number(prefix + character, len(prefix), limit), expected)
 
     def test_numeric_metadata_requires_exact_canonical_names(self):
         for source in ("%a00", "%a+0", "%a-0", "%a٠", "%a０", "%a0x",

@@ -12,10 +12,27 @@ from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
 
 def proof_number(v: str, start: int, limit: int) -> int:
     """Read exactly a canonical nonnegative ASCII integer without slicing or overflow."""
-    if start >= len(v) or (v[start] == "0" and start + 1 != len(v)):
+    end = len(v)
+    if start >= end:
+        return -1
+    if start + 1 == end:
+        # A single digit needs neither the leading-zero test nor a decimal loop.
+        n = ord(v[start]) - 48
+        return n if n >= 0 and n <= 9 and n <= limit else -1
+    if v[start] == "0":
         return -1
     n = 0
-    for j in range(start, len(v)):
+    if end - start <= 6:
+        # Dense metadata IDs are bounded to 262144. Any six ASCII digits fit
+        # safely in an integer, so check their range once instead of dividing
+        # for an overflow check at every digit. Longer literals keep that check.
+        for j in range(start, end):
+            digit = ord(v[j]) - 48
+            if digit < 0 or digit > 9:
+                return -1
+            n = n * 10 + digit
+        return n if n <= limit else -1
+    for j in range(start, end):
         digit = ord(v[j]) - 48
         if digit < 0 or digit > 9 or n > (limit - digit) // 10:
             return -1
