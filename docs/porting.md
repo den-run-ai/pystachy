@@ -22,7 +22,6 @@ suite is never a count of passing compiled upstream cases.
 
 ## Prototype checks
 
-This is the first bounded implementation of [#361](https://github.com/den-run-ai/pystachy/issues/361).
 The acceptance manifest covers **fnmatch and textwrap only**. It does not inventory
 the whole CPython suite or certify every module in `lib/`.
 

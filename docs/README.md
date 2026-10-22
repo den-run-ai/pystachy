@@ -1,8 +1,8 @@
 # Documentation
 
 Start with the [README](../README.md) to build the compiler and run a first program.
-The guides below describe current behavior; detailed contracts and historical measurements
-are linked from the relevant guide.
+Use the guides for supported behavior and commands, and the reports below for measurements
+at specific compiler revisions.
 
 ## Write and port programs
 
@@ -14,9 +14,6 @@ are linked from the relevant guide.
 | [Dynamic `Any` (prototype)](dynamic-any.md) | Opt-in runtime-typed `Any` values: representation, contract, deviations and costs |
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
-| [Compatibility audit (2026-10-17)](reports/compatibility-2026-10-17.md) | Measured stdlib, PyPI, benchmark and test-suite coverage at a pinned revision |
-| [Compatibility updates](reports/compatibility-updates.md) | Later measured checkpoints, each with its main revision, evidence and remaining blockers |
-| [Builtin-module prototypes (2026-10-19)](reports/compatibility-2026-10-19-prototypes.md) | What `_imp`, `_ast`, `select` and `_weakref` changed for that coverage, and the blockers that now come first |
 | [Third-party ports](../ports/README.md) | Port examples, usage and per-package restrictions |
 | [Native JSON prototype](json-prototype.md) | Recursive JSON values, `json.loads()`/`dumps()`, their limits and [benchmark](json-benchmark.md) |
 | [C and CPython interoperability](ffi.md) | Native C calls, embedded CPython and CPython extension modules |
@@ -41,6 +38,14 @@ are linked from the relevant guide.
 | [Testing](testing.md) | Bootstrap, differential tests, CI and targeted checks |
 | [Releases](releasing.md) | Binary packaging, Docker publishing, release gates and [release notes](releases/) |
 | [History](history.md) | Design decisions and project lineage |
+
+## Compatibility reports
+
+| Report | Covers |
+|---|---|
+| [Compatibility audit](reports/compatibility-2026-10-17.md) | Stdlib, PyPI, benchmark and test-suite coverage measured at a pinned revision |
+| [Compatibility updates](reports/compatibility-updates.md) | Dated coverage measurements and remaining blockers |
+| [Builtin-module prototypes](reports/compatibility-2026-10-19-prototypes.md) | Measured coverage changes from `_imp`, `_ast`, `select` and `_weakref` prototypes |
 
 Historical surveys, prototypes and development reports are retained in [the archive](archive/).
 They explain how decisions were made; their counts, timings and feature gaps describe the

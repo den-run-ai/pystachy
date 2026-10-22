@@ -1,22 +1,18 @@
 # Dynamic `Any` (prototype)
 
-A module whose first lines, before any code, hold the comment
+Dynamic `Any` is experimental. To enable it, put this comment before any code in a module:
 
 ```python
 # pystachy: dynamic-any
 ```
 
-compiles `typing.Any` as a dynamic type: a value whose Python type is known only when the
-program runs. Every other module, and every program without the comment, compiles exactly as
-before: there `Any` keeps its [inference-only meaning](language/typing.md#supported-types). The
-prototype runs through the ordinary JIT/AOT pipeline; there is no interpreter, profiling or
-online compilation. It establishes the generic representation and operations that later
-optimization (box elimination, guarded variants, inline caches) would need, and measures what
-they cost.
+In that module, `typing.Any` can hold values whose Python type is determined at runtime.
+Modules without the comment keep `Any`'s
+[inference-only meaning](language/typing.md#supported-types). Both use the ordinary JIT/AOT
+pipeline: the program is compiled before it runs.
 
-This page describes the representation, the typed/dynamic contract, what works, what is
-rejected, the deviations, and measurements. Design input: #108 (contract), #487 (descriptor
-box), #488 and #489 (dispatch and attribute lookup), #392 (specialization evidence).
+The sections below explain supported values, conversions between typed and dynamic code,
+[limitations](#deviations), and [measured costs](#measurements).
 
 ## Selecting dynamic storage
 

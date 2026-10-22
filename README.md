@@ -118,23 +118,14 @@ on Linux x86-64.
 | microGPT, five generated names | 260.6 ms | 14.26 ms | **13.45 ms (19.4× faster)** |
 | [4M integer list, peak RSS](docs/performance.md#start-up-and-memory) | 169 MiB | Not recorded | 34.2 MiB |
 
-These are published snapshots, not a rerun on the latest compiler. microGPT timings are
-training/inference phases, excluding startup and compilation; all parameters, losses and
-sampled names are checked against the original program. The adapted source also runs under
-CPython as a second baseline.
+The microGPT timings measure training and inference, excluding startup and compilation.
+Parameters, losses and generated names are checked against the original CPython program;
+the adapted source also runs under CPython.
 
-Across [18 adapted pyperformance workloads](docs/pyperformance.md), the historical AOT
-snapshot was **1.5–84× faster** for 14, **2.5–2.7× slower** for three regex workloads;
-one optimized-away workload has no meaningful AOT ratio. The regex workloads have improved
-since: after the [repeat-matcher](docs/pyperformance.md#regex-repeat-rerun),
-[class-loop and prefilter](docs/pyperformance.md#regex-class-loop-and-prefilter-rerun) and
-[in-place subject](docs/pyperformance.md#regex-in-place-subject-rerun) changes, their timed
-loops took **0.32×** (`regex_dna`), **0.44×** (`regex_effbot`) and **0.82×** (`regex_v8`)
-CPython's time AOT, and 0.33×, 0.55× and 0.99× JIT, in a paired rerun on 2026-10-19.
-These are workload-specific measurements on adapted sources, not official
-pyperformance scores or a general Python speedup.
-JIT compiles each run; AOT builds once. See [performance](docs/performance.md) for startup,
-memory trade-offs and reproduction details, and the [caching guide](docs/caching.md) for text workloads.
+Performance depends on your workload. See the [18 adapted pyperformance benchmarks](docs/pyperformance.md)
+for more comparisons and the [performance guide](docs/performance.md) for startup, memory use
+and reproduction instructions. JIT compiles each run; AOT builds once.
+The [caching guide](docs/caching.md) covers regex and text processing.
 
 ## Libraries and compatibility
 
