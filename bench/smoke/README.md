@@ -13,9 +13,10 @@ CPython. These are core algorithm probes, not full application benchmarks.
 | `json` | Actual `json.loads`, nested mixed values, dynamic `Any` traversal, dictionary/list allocation, Unicode and escapes | CPython uses its stdlib, Pystachy its native JSON overlay; no files or encoder |
 | `repair_scan` | Single-pass quoted-string/token scanning, slices, membership, escape decoding and list/join assembly; short, malformed, truncated and 2,048-escape inputs | Original scanning probe; does not import json_repair or implement its structural heuristics |
 | `copy_int`, `copy_float` | Typed numeric recurrence, local copy and accumulation in a dynamic-Any opt-in module | No observable identity or Any crossing; isolates unwanted boxing of ordinary numeric copies, without measuring retained memory |
+| `global_int`, `global_float` | The same recurrences through mutable typed module globals | Retains global-read snapshot costs outside the closed-function proof; no identity observation or Any crossing |
 | `regex_effbot` | Existing adapted pyperformance regex workload | See [pyperformance provenance and adaptations](../pyperformance/README.md) |
 
-The first two cases share `ml.py`, the next three share `text.py`, and the numeric-copy
+The first two cases share `ml.py`, the next three share `text.py`, and the numeric-copy/global
 cases share `identity.py`. Compilation is
 measured once per source file (three pairs), while every mode has its own execution
 samples. This keeps the suite small without mixing unrelated loop timings.
@@ -35,6 +36,6 @@ code. No model downloads or new dependencies are needed. `regex_effbot` comes fr
 pyperformance; the **pyperf runner is not used**. Measurement and warning rules are
 documented in [testing](../../docs/testing.md#continuous-integration).
 
-Numeric-copy cases use six million iterations and a runtime seed of 123 so the native
+Numeric-copy/global cases use six million iterations and a runtime seed of 123 so the native
 loops are long enough to exercise the existing 5 ms warning floor. The paired harness
 records timing; peak RSS and retained-memory costs require separate measurements.

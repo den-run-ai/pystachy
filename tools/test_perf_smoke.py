@@ -10,9 +10,11 @@ import perf_smoke as perf
 
 
 class KernelTests(unittest.TestCase):
-    def test_numeric_copy_cases_match_analytical_checksum_and_timing_protocol(self):
+    def test_numeric_identity_cases_match_analytical_checksum_and_timing_protocol(self):
         for case, seed, expected in (("copy_int", "1", "int 6197\n"),
-                                     ("copy_float", "4", "float 40\n")):
+                                     ("copy_float", "4", "float 40\n"),
+                                     ("global_int", "1", "global_int 6197\n"),
+                                     ("global_float", "4", "global_float 40\n")):
             with self.subTest(case=case):
                 path, arguments = perf.CASES[case]
                 record = bench_pyperformance.run(

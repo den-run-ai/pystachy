@@ -324,9 +324,9 @@ Packages workflows; Lint and the DCO check still run, and pushes to `main` run t
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
 The independent [Performance smoke workflow](../.github/workflows/performance.yml) runs on
-the same events (excluding documentation-only PRs). One job measures eight small workloads:
+the same events (excluding documentation-only PRs). One job measures ten small workloads:
 scalar autograd, dense projection/softmax, fnmatch, mixed JSON parsing, repair-style scanning,
-integer/float copies in a dynamic-Any opt-in module without observed identity, and the
+integer/float copies and mutable-global reads in a dynamic-Any opt-in module without observed identity, and the
 existing adapted pyperformance `regex_effbot`. The [kernel notes](../bench/smoke/README.md)
 map each case to its coverage and limits. It builds each revision's
 native compiler once, then compares the PR merge against its base, or a main push against
