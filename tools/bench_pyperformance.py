@@ -482,6 +482,9 @@ def main(argv=None):
     args.json = args.json or ROOT / "build" / f"pyperformance{suffix}.json"
     env = dict(os.environ)
     env.setdefault("PYTHONHASHSEED", "0")
+    if args.census:
+        # Measure the shipped module surface, independently of caller overlays.
+        env.pop("PYSTACHY_PATH", None)
     report = {"schema_version": 1, "status": "running", "settings": {
         k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}}
     args.json.parent.mkdir(parents=True, exist_ok=True)
