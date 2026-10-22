@@ -280,8 +280,9 @@ re-fuzz:
 
 # dynamic Any: seeded programs that apply operators, comparisons and builtins to Any values must
 # print what CPython prints, but for the documented deviations, and keep its identity and
-# containment invariants (tools/dynany_fuzz.py, #802; deterministic: 3 programs of 150 cases, JIT;
-# e.g. make dynany-fuzz DYNANY_FUZZ="--aot 10 300")
+# containment invariants and strict typed/Any parity (tools/dynany_fuzz.py, #802; default:
+# 3 programs of 150 random + 30 parity cases, JIT; verify also runs AOT and program GC stress).
+# e.g. make dynany-fuzz DYNANY_FUZZ="--aot --gc-stress 10 300"
 DYNANY_FUZZ ?=
 dynany-fuzz: pystachy
 	$(PY) tools/dynany_fuzz.py $(DYNANY_FUZZ)

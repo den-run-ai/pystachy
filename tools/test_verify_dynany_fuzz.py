@@ -19,8 +19,8 @@ class DynanyFuzzStageTests(unittest.TestCase):
             compiler.write_text('''#!/bin/sh
 [ "$1" = tools/dynany_fuzz.py ] && [ "$2" = --compiler ] &&
   [ "$3" = "$V/pystachy2" ] && [ "$4" = --keep ] &&
-  [ "$5" = "$V/dynany-fuzz" ] && [ "$6" = 3 ] && [ "$7" = 150 ] &&
-  [ "$#" = 7 ] || exit 99
+  [ "$5" = "$V/dynany-fuzz" ] && [ "$6" = --aot ] && [ "$7" = --gc-stress ] &&
+  [ "$8" = 3 ] && [ "$9" = 150 ] && [ "$#" = 9 ] || exit 99
 printf '%s\\n' "$MOCK_SUMMARY"
 exit "$MOCK_STATUS"
 ''')
@@ -36,16 +36,20 @@ step() { printf '{"name":"%s", "result":"%s"%s}\\n' "$1" "$2" "$5"; }
             return json.loads(result.stdout)
 
     def test_native_compiler_budget_and_report(self):
-        self.assertEqual(self.run_stage("3 programs, 450 cases (JIT): 0 mismatches"),
+        self.assertEqual(self.run_stage("3 programs, 540 cases, 90 parity cases (JIT, AOT, JIT-GC, AOT-GC): 0 mismatches"),
                          {"name": "dynany-fuzz", "result": "pass", "programs": 3,
-                          "cases": 450, "modes": ["jit"], "mismatches": 0})
+                          "cases": 540, "parity_cases": 90, "modes": ["jit", "aot", "jit-gc", "aot-gc"],
+                          "program_gc_interval": 1, "mismatches": 0})
 
     def test_short_malformed_wrong_mode_mismatching_and_failed_runs(self):
         for summary, status in (("2 programs, 300 cases (JIT): 0 mismatches", 0),
                                 ("3 programs, 449 cases (JIT): 0 mismatches", 0),
                                 ("3 programs, 450 cases (JIT and AOT): 0 mismatches", 0),
                                 ("3 programs, 450 cases (JIT): 5 mismatches", 0),
-                                ("3 programs, 450 cases (JIT): 0 mismatches", 1),
+                                ("3 programs, 540 cases, 90 parity cases (JIT, AOT, JIT-GC, AOT-GC): 0 mismatches", 1),
+                                ("3 programs, 540 cases, 89 parity cases (JIT, AOT, JIT-GC, AOT-GC): 0 mismatches", 0),
+                                ("3 programs, 540 cases, 90 parity cases (JIT, AOT): 0 mismatches", 0),
+                                ("3 programs, 540 cases, 90 parity cases (JIT, AOT, JIT-GC, AOT-GC): 1 mismatches", 0),
                                 ("", 0), ("unexpected output", 0)):
             with self.subTest(summary=summary, status=status):
                 self.assertEqual(self.run_stage(summary, status)["result"], "fail")
