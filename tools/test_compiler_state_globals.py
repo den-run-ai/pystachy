@@ -31,6 +31,46 @@ class GlobalOwnershipTests(unittest.TestCase):
             errors = validate_sources({"added": f"cache: {annotation} = factory()\n"})
             self.assertIn("unclassified module container: added.cache", errors)
 
+    def test_parameterized_container_constructors(self):
+        for name, args in (("list", "int"), ("dict", "str, bool"), ("set", "str")):
+            for imports, constructor in (
+                ("", name),
+                ("import builtins\n", "builtins." + name),
+                ("import builtins as b\n", "b." + name),
+                (f"from builtins import {name} as C\n", "C"),
+            ):
+                for expression in (f"{constructor}[{args}]()", f"{constructor}()"):
+                    with self.subTest(expression=expression):
+                        self.assertEqual(inventory({"probe": imports + f"CACHE = {expression}\n"})[1],
+                                         {"probe.CACHE"})
+        for imports, expression in (
+            ("", "tuple[int]()"), ("", "factory[list[int]]()"),
+            ("from unrelated import list\n", "list[int]()"),
+            ("from unrelated import list\n", "list()"),
+            ("import unrelated as b\n", "b.dict[str, int]()"),
+        ):
+            self.assertEqual(inventory({"probe": imports + f"CACHE = {expression}\n"})[1], set())
+
+    def test_conditional_container_initializers(self):
+        for expression in ("{} if enabled else {}", "[] if enabled else None", "None if enabled else set()",
+                           "[] or []", "enabled and {}", "enabled or dict[str, int]()",
+                           "([] if first else None) or ({} if second else None)"):
+            with self.subTest(expression=expression):
+                self.assertEqual(inventory({"probe": f"CACHE = {expression}\n"})[1], {"probe.CACHE"})
+        for expression in ("1 if [] else 2", "True if dict[str, int]() else False", "1 or 2",
+                           "check([]) and 3", "factory({}) if enabled else factory([])"):
+            self.assertEqual(inventory({"probe": f"VALUE = {expression}\n"})[1], set())
+
+    def test_new_initializer_forms_report_container_and_writer(self):
+        for expression in ("dict[str, bool]()", "{} if enabled else {}", "[] or []"):
+            with self.subTest(expression=expression):
+                sources = read_sources()
+                sources["lexer"] += f"\nNEW_CACHE = {expression}\ndef added_writer():\n    NEW_CACHE.clear()\n"
+                self.assertEqual(validate_sources(sources), [
+                    "unclassified module container: lexer.NEW_CACHE",
+                    "unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE",
+                ])
+
     def test_annotation_wrappers_and_import_aliases(self):
         forms = (
             ("", "'list[int]'"),

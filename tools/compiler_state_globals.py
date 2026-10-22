@@ -216,10 +216,14 @@ def container(value, annotation, known, annotations):
         return container(value.value, None, known, annotations)
     if isinstance(value, ast.Tuple):
         return any(container(v, None, known, annotations) for v in value.elts)
+    if isinstance(value, ast.IfExp):
+        return container(value.body, None, known, annotations) or container(value.orelse, None, known, annotations)
+    if isinstance(value, ast.BoolOp):
+        return any(container(v, None, known, annotations) for v in value.values)
     if isinstance(value, ast.BinOp):
         return container(value.left, None, known, annotations) or container(value.right, None, known, annotations)
     if isinstance(value, ast.Call):
-        return (isinstance(value.func, ast.Name) and value.func.id in {"list", "dict", "set"}
+        return (annotations.get(root_id(value.func)) == "container"
                 or isinstance(value.func, ast.Attribute) and value.func.attr in {"split", "rsplit", "splitlines"})
     return False
 
