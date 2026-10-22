@@ -1,8 +1,7 @@
 # pystachy: dynamic-any
 # A comparison method whose parameter is annotated with a type that no Any value has, as list[int]
-# and dict[str, int] are (an Any list's items are Any values), compiles where its class's objects
-# are Any values, and does not run with an Any value: the comparison gives what the method gives
-# here, as in a module that does not opt in. Typed code calls it as before.
+# and dict[str, int] are (an Any list's items are Any values), has a dynamic-body specialization
+# for Any operands. Typed code calls the original method as before.
 from typing import Any
 
 

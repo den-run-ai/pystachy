@@ -1,0 +1,39 @@
+eq int
+eq int
+ne int
+ne int
+True True False False
+lt int
+lt int
+le int
+le int
+True True True True
+gt int
+gt int
+ge int
+ge int
+False False False False
+eq int
+gt int
+True False
+override eq
+override eq
+override gt
+False False True
+eq int
+eq int
+eq int
+True 1 0
+eq int
+eq int
+found True
+tuple 2
+tuple 3
+tuple 3
+True True True
+list 1
+list 1
+True True
+before error
+ValueError comparison failed
+[exit 0]
