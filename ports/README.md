@@ -10,6 +10,7 @@ support for its complete upstream package or dependencies.
 |---|---|---|
 | [convertdate](convertdate/PORT.md) | 2.5.1 | Arithmetic calendar conversions and selected holidays |
 | [iniconfig](iniconfig/PORT.md) | 2.3.1 | INI parsing and configuration access with conversions |
+| [json_repair](json_repair/PORT.md) | 0.64.1 | Prototype: in-memory, schema-free repair with dynamic `Any`; signed 64-bit integers |
 | [jdcal](jdcal/PORT.md) | 1.4.1 | Gregorian/Julian ↔ split Julian dates |
 | [ordered-set](ordered_set/PORT.md) | 4.1.0 | Insertion-ordered sets of strings |
 | [pyaes](pyaes/PORT.md) | 1.6.1 | AES blocks with integer-list keys/data |
@@ -48,7 +49,9 @@ uv pip install --target build/deps dist/pystachy_ports-0.1.0-py3-none-any.whl
 PYSTACHY_PATH=build/deps ./pystachy build program.py -o build/program
 ```
 
-`pystachy-ports` bundles these adapted packages with their existing import names,
+The source-only `json_repair` prototype is not yet included in this wheel.
+
+`pystachy-ports` bundles the other adapted packages with their existing import names,
 licenses and port notes. Use a dedicated target to avoid overlapping upstream
 installations. It does not include `lib/` or claim unchanged upstream compatibility.
 See the [tiny dependent package](../examples/package/README.md) and

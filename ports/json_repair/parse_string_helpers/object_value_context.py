@@ -1,17 +1,10 @@
+# pystachy: dynamic-any
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal
 
 from ..utils.constants import STRING_DELIMITERS  # noqa: TID252
 
-if TYPE_CHECKING:
-    from ..json_parser import JSONParser  # noqa: TID252
-
-
-ObjectValueCommaClassification = Literal["container", "member", "string", "string_no_future_delimiter"]
-
-
 def _bare_member_has_recoverable_value(
-    parser: "JSONParser",
+    parser,
     value_idx: int,
     skip_to_character: Callable[[str | list[str], int], int],
 ) -> bool:
@@ -36,16 +29,16 @@ def _bare_member_has_recoverable_value(
 
 
 def classify_object_value_comma(
-    parser: "JSONParser",
+    parser,
     cached_skip_to_character: Callable[[str | list[str], int], int] | None = None,
-) -> ObjectValueCommaClassification:
+) -> str:
     skip_to_character = cached_skip_to_character or parser.skip_to_character
     next_idx = parser.scroll_whitespaces(idx=1)
     next_c = parser.get_char_at(next_idx)
     if next_c in ["}", None]:
         return "member"
 
-    if next_c in STRING_DELIMITERS:
+    if next_c is not None and next_c in STRING_DELIMITERS:
         key_end_idx = parser.skip_to_character(character=next_c, idx=next_idx + 1)
         if not parser.get_char_at(key_end_idx):
             return "string"

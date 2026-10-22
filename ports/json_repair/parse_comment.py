@@ -1,13 +1,10 @@
-from typing import TYPE_CHECKING
+# pystachy: dynamic-any
+# Pystachy port: annotate recursive JSON values directly with dynamic Any.
+from typing import Any
 
-from .utils.constants import JSONReturnType
 from .utils.json_context import ContextValues
 
-if TYPE_CHECKING:
-    from .json_parser import JSONParser
-
-
-def parse_comment(self: "JSONParser", record_top_level_value: bool = False) -> JSONReturnType:
+def parse_comment(self, record_top_level_value: bool = False) -> Any:
     """
     Parse code-like comments:
 

@@ -1,19 +1,18 @@
+# pystachy: dynamic-any
+# Pystachy port: annotate recursive JSON values directly with dynamic Any.
+from typing import Any
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, cast
 
 from .parse_string_helpers.object_value_context import classify_object_value_comma, update_inline_container_stack
 from .parse_string_helpers.parse_boolean_or_null import parse_boolean_or_null
 from .parse_string_helpers.parse_json_llm_block import parse_json_llm_block
-from .utils.constants import STRING_DELIMITERS, JSONReturnType
+from .utils.constants import STRING_DELIMITERS
 from .utils.json_context import ContextValues
-
-if TYPE_CHECKING:
-    from .json_parser import JSONParser
-
 
 NO_DIRECT_RESULT = object()
 INLINE_CONTAINER_CLOSING_DELIMITERS = {"[": "]", "{": "}", "(": ")"}
-INLINE_CONTAINER_OPENERS = tuple(INLINE_CONTAINER_CLOSING_DELIMITERS)
+# Pystachy port: explicit immutable keys of the fixed delimiter table.
+INLINE_CONTAINER_OPENERS = ("[", "{", "(")
 LOW_SMART_QUOTE_SENTINEL = "\0"
 
 
@@ -28,7 +27,7 @@ class StringParseState:
     pending_inline_container: bool = False
     inline_container_stack: list[str] = field(default_factory=list)
     object_value_has_no_future_delimiter: bool = False
-    lookahead_cache: dict[tuple[str, ...], tuple[int, int | None]] = field(default_factory=dict)
+    lookahead_cache: dict[Any, Any] = field(default_factory=dict)
     object_value_unmatched_opening_braces: int = 0
     regex_character_class_start: int | None = None
 
@@ -53,7 +52,7 @@ def _pop_low_smart_quote_span(state: StringParseState) -> None:
     state.rstring_delimiter = state.rstring_delimiter[:-1]
 
 
-def _try_parse_simple_quoted_string(self: "JSONParser") -> str | None:
+def _try_parse_simple_quoted_string(self) -> str | None:
     if self.get_char_at() != '"':
         return None
 
@@ -91,10 +90,10 @@ def _try_parse_simple_quoted_string(self: "JSONParser") -> str | None:
         if next_char != ":":
             return None
     elif current_context == ContextValues.OBJECT_VALUE:
-        if next_char not in {",", "}", None}:
+        if next_char is not None and next_char not in {",", "}"}:
             return None
     elif current_context == ContextValues.ARRAY:
-        if next_char not in {",", "]", None}:
+        if next_char is not None and next_char not in {",", "]"}:
             return None
     elif next_char is not None:
         return None
@@ -104,7 +103,7 @@ def _try_parse_simple_quoted_string(self: "JSONParser") -> str | None:
 
 
 def _append_literal_char(
-    self: "JSONParser",
+    self,
     state: StringParseState,
     current_char: str,
 ) -> str | None:
@@ -128,7 +127,7 @@ def _append_string_content(state: StringParseState, content: str) -> None:
 
 
 def _quote_belongs_to_regex_character_class(
-    self: "JSONParser",
+    self,
     state: StringParseState,
 ) -> bool:
     """Return whether the current quote is inside a compact ``[...]`` character class."""
@@ -155,12 +154,14 @@ def _rebuild_unmatched_opening_braces(state: StringParseState) -> None:
 
 
 def _cached_skip_to_character(
-    self: "JSONParser",
+    self,
     state: StringParseState,
     character: str | list[str],
     idx: int = 0,
 ) -> int:
-    targets = (character,) if isinstance(character, str) else tuple(character)
+    # Pystachy port: an injective string key for the same ordered str targets;
+    # dynamic boxing does not yet accept variable-length typed tuples.
+    targets = repr([character]) if isinstance(character, str) else repr(character)
     start_index = self.index + idx
     cached = state.lookahead_cache.get(targets)
     if cached is not None:
@@ -183,8 +184,8 @@ def _cached_skip_to_character(
 
 
 def _prepare_string_entry(
-    self: "JSONParser",
-) -> tuple[StringParseState | None, object]:
+    self,
+) -> tuple[StringParseState | None, Any]:
     char = self.get_char_at()
     if char in ["#", "/"]:
         return None, self.parse_comment()
@@ -289,7 +290,7 @@ def _prepare_string_entry(
 
 
 def _normalize_escape_sequence(
-    self: "JSONParser",
+    self,
     state: StringParseState,
     char: str,
 ) -> tuple[bool, str | None]:
@@ -350,7 +351,7 @@ def _normalize_escape_sequence(
 
 
 def _brace_before_code_fence_belongs_to_string(
-    self: "JSONParser",
+    self,
     state: StringParseState,
     fence_idx: int,
 ) -> bool:
@@ -384,7 +385,7 @@ def _matching_string_delimiter(delimiter: str) -> str:
 
 
 def _bare_key_is_followed_by_colon(
-    self: "JSONParser",
+    self,
     key_idx: int,
 ) -> bool:
     key_char = self.get_char_at(key_idx)
@@ -402,7 +403,7 @@ def _bare_key_is_followed_by_colon(
 
 
 def _post_fence_container_starts_next_member(
-    self: "JSONParser",
+    self,
     container_end_idx: int,
 ) -> bool:
     after_container_idx = self.scroll_whitespaces(idx=container_end_idx)
@@ -417,7 +418,7 @@ def _post_fence_container_starts_next_member(
 
 
 def _starts_nested_inline_container(
-    self: "JSONParser",
+    self,
     idx: int,
 ) -> bool:
     opening_delimiter = self.get_char_at(idx)
@@ -448,7 +449,7 @@ def _starts_nested_inline_container(
 
 
 def _skip_inline_container(
-    self: "JSONParser",
+    self,
     idx: int,
 ) -> int | None:
     opening_delimiter = self.get_char_at(idx)
@@ -461,7 +462,7 @@ def _skip_inline_container(
         char = self.get_char_at(i)
         if not char:
             return None
-        if char in STRING_DELIMITERS:
+        if char is not None and char in STRING_DELIMITERS:
             end_delimiter = _matching_string_delimiter(char)
             i = self.skip_to_character(character=end_delimiter, idx=i + 1)
             if self.get_char_at(i) != end_delimiter:
@@ -478,7 +479,7 @@ def _skip_inline_container(
 
 
 def _scroll_comment_prefixed_member_start(
-    self: "JSONParser",
+    self,
     idx: int,
 ) -> int:
     idx = self.scroll_whitespaces(idx=idx)
@@ -516,7 +517,7 @@ def _scroll_comment_prefixed_member_start(
 
 
 def _quoted_object_member_follows(
-    self: "JSONParser",
+    self,
     quote_idx: int,
 ) -> bool:
     comma_idx = self.scroll_whitespaces(idx=quote_idx + 1)
@@ -528,14 +529,14 @@ def _quoted_object_member_follows(
 
 
 def _object_member_starts_at(
-    self: "JSONParser",
+    self,
     next_member_idx: int,
 ) -> bool:
     if self.get_char_at(next_member_idx) in ["}", None]:
         return False
 
     next_member = self.get_char_at(next_member_idx)
-    if next_member in STRING_DELIMITERS:
+    if next_member is not None and next_member in STRING_DELIMITERS:
         key_end_delimiter = _matching_string_delimiter(next_member)
         key_end_idx = self.skip_to_character(character=key_end_delimiter, idx=next_member_idx + 1)
         if self.get_char_at(key_end_idx) != key_end_delimiter:
@@ -550,7 +551,7 @@ def _object_member_starts_at(
 
 
 def _handle_right_delimiter_candidate(
-    self: "JSONParser",
+    self,
     state: StringParseState,
     char: str,
 ) -> tuple[bool, str | None, bool]:
@@ -674,7 +675,7 @@ def _handle_right_delimiter_candidate(
 
 
 def _scan_string_body(
-    self: "JSONParser",
+    self,
     state: StringParseState,
 ) -> str | None:
     outer_rstring_delimiter = _outer_rstring_delimiter(state)
@@ -871,6 +872,7 @@ def _scan_string_body(
                 )
                 break
         if _in_low_smart_quote_span(state) and char == '"':
+            assert char is not None  # Pystachy port: explicit optional narrowing.
             _pop_low_smart_quote_span(state)
             char = _append_literal_char(self, state, char)
             continue
@@ -896,7 +898,7 @@ def _scan_string_body(
 
 
 def _finalize_string_result(
-    self: "JSONParser",
+    self,
     state: StringParseState,
     char: str | None,
 ) -> str:
@@ -924,17 +926,17 @@ def _finalize_string_result(
     return state.string_acc
 
 
-def parse_string(self: "JSONParser") -> JSONReturnType:
+def parse_string(self) -> Any:
     state, direct_result = _prepare_string_entry(self)
     if direct_result is not NO_DIRECT_RESULT:
-        return cast("JSONReturnType", direct_result)
+        return direct_result
     assert state is not None
 
     char = _scan_string_body(self, state)
     return _finalize_string_result(self, state, char)
 
 
-def _only_whitespace_until(self: "JSONParser", end: int) -> bool:
+def _only_whitespace_until(self, end: int) -> bool:
     for j in range(1, end):
         c = self.get_char_at(j)
         if c is not None and not c.isspace():

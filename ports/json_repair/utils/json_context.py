@@ -1,18 +1,18 @@
-from enum import Enum, auto
+# pystachy: dynamic-any
 from types import TracebackType
-from typing import Literal
 
 
-class ContextValues(Enum):
-    OBJECT_KEY = auto()
-    OBJECT_VALUE = auto()
-    ARRAY = auto()
+# Pystachy port: private enum values are only compared and stacked.
+class ContextValues:
+    OBJECT_KEY = 1
+    OBJECT_VALUE = 2
+    ARRAY = 3
 
 
 class _JsonContextEntry:
     __slots__ = ("context", "value")
 
-    def __init__(self, context: "JsonContext", value: ContextValues) -> None:
+    def __init__(self, context: "JsonContext", value: int) -> None:
         self.context = context
         self.value = value
 
@@ -24,21 +24,21 @@ class _JsonContextEntry:
         _exc_type: type[BaseException] | None,
         _exc: BaseException | None,
         _traceback: TracebackType | None,
-    ) -> Literal[False]:
+    ) -> bool:
         self.context.reset()
         return False
 
 
 class JsonContext:
     def __init__(self) -> None:
-        self.context: list[ContextValues] = []
-        self.current: ContextValues | None = None
+        self.context: list[int] = []
+        self.current: int | None = None
         self.empty: bool = True
 
-    def enter(self, value: ContextValues) -> _JsonContextEntry:
+    def enter(self, value: int) -> _JsonContextEntry:
         return _JsonContextEntry(self, value)
 
-    def set(self, value: ContextValues) -> None:
+    def set(self, value: int) -> None:
         """
         Set a new context value.
 

@@ -1,16 +1,13 @@
-from typing import TYPE_CHECKING
+# pystachy: dynamic-any
+# Pystachy port: annotate recursive JSON values directly with dynamic Any.
+from typing import Any
 
-from .utils.constants import JSONReturnType
 from .utils.json_context import ContextValues
 
 NUMBER_CHARS: set[str] = set("0123456789-.eE/,_")
 
 
-if TYPE_CHECKING:
-    from .json_parser import JSONParser
-
-
-def parse_number(self: "JSONParser") -> JSONReturnType:
+def parse_number(self) -> Any:
     # <number> is a valid real number expressed in one of a number of given formats
     number_start_index = self.index
     number_str = ""

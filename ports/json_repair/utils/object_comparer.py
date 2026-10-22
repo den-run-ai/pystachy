@@ -1,3 +1,4 @@
+# pystachy: dynamic-any
 from typing import Any
 
 

@@ -1,6 +1,7 @@
 """Native recursive JSON values and a bounded JSON text codec.
 
-This prototype implements loads(str) and dumps(JSONValue). Integers use Pystachy's
+This prototype implements loads(str), dumps(JSONValue) and the default JSONDecoder.
+Integers use Pystachy's
 signed 64-bit range, nesting is limited to 256 containers, and object keys are str.
 Decoder hooks, bytes input, encoder subclasses, indentation and file APIs are not
 implemented. Containers are created with recursive JSONValue storage; narrowing
@@ -9,7 +10,7 @@ keeps their original identity and mutable contents.
 
 type JSONValue = None | bool | int | float | str | list[JSONValue] | dict[str, JSONValue]
 
-__all__ = ["loads", "dumps", "JSONDecodeError", "JSONValue"]
+__all__ = ["loads", "dumps", "JSONDecoder", "JSONDecodeError", "JSONValue"]
 
 
 class JSONDecodeError(ValueError):
@@ -93,6 +94,21 @@ class _Parser:
         self.mark_byte = i
         self.mark_char = count
         return count
+
+    def seek_char(self, idx: int) -> None:
+        # raw_decode's idx is a character offset; the scanner itself uses byte offsets.
+        if idx < 0:
+            raise ValueError("idx cannot be negative")
+        i = 0
+        count = 0
+        while count < idx and i < self.n:
+            i += _u8len(self.data, i)
+            count += 1
+        if count < idx:
+            raise JSONDecodeError("Expecting value", self.doc, idx)
+        self.pos = i
+        self.mark_byte = i
+        self.mark_char = count
 
     def text(self, start: int, end: int) -> str:
         # Without lone surrogates, decode() needs no error handler or codec name lookup.
@@ -395,9 +411,40 @@ def loads(s: str) -> JSONValue:
         return _parse(_Parser(s, True))
 
 
-def _parse(parser: _Parser) -> JSONValue:
+
+
+class JSONDecoder:
+    """Default JSON decoder; custom hooks and strict=False are not supported."""
+
+    def decode(self, s: str) -> JSONValue:
+        # loads() diagnoses a leading BOM specially; the decoder reports an invalid value.
+        try:
+            return _parse(_Parser(s, False), False)
+        except UnicodeDecodeError:
+            return _parse(_Parser(s, True), False)
+
+    def raw_decode(self, s: str, idx: int = 0) -> tuple[JSONValue, int]:
+        return _raw_decode(s, idx)
+
+
+def _raw_decode(s: str, idx: int = 0) -> tuple[JSONValue, int]:
+    # Native adapter entry point. Like JSONDecoder.raw_decode(), this starts exactly
+    # at idx and permits trailing text. Opt-in calls can select Any's containers.
+    try:
+        return _raw_parse(_Parser(s, False), idx)
+    except UnicodeDecodeError:
+        return _raw_parse(_Parser(s, True), idx)
+
+
+def _raw_parse(parser: _Parser, idx: int) -> tuple[JSONValue, int]:
+    parser.seek_char(idx)
+    value = parser.value(0)
+    return value, parser.char_index(parser.pos)
+
+
+def _parse(parser: _Parser, reject_bom: bool = True) -> JSONValue:
     data = parser.data
-    if parser.n >= 3 and data[0] == 0xEF and data[1] == 0xBB and data[2] == 0xBF:
+    if reject_bom and parser.n >= 3 and data[0] == 0xEF and data[1] == 0xBB and data[2] == 0xBF:
         # U+FEFF's UTF-8 bytes; s.startswith() would count the characters of all of s
         raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)", parser.doc, 0)
     parser.skip()

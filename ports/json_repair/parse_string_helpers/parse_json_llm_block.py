@@ -1,12 +1,9 @@
-from typing import TYPE_CHECKING
-
-from ..utils.constants import JSONReturnType  # noqa: TID252
-
-if TYPE_CHECKING:
-    from ..json_parser import JSONParser  # noqa: TID252
+# pystachy: dynamic-any
+# Pystachy port: annotate recursive JSON values directly with dynamic Any.
+from typing import Any
 
 
-def parse_json_llm_block(parser: "JSONParser") -> JSONReturnType:
+def parse_json_llm_block(parser) -> Any:
     """
     Extracts and normalizes JSON enclosed in ```json ... ``` blocks.
     """
