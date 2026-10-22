@@ -379,16 +379,25 @@ other shape of `tools/scaling.py` (its `-x`), so a new shape is checked as well;
 the two to check every shape once. Locally, `scaling` runs both.
 The final report job allows ten minutes for artifact downloads and validation.
 
-The compiler state research controls (`python3 -m unittest discover -s tools -p
+The compiler state controls (`python3 -m unittest discover -s tools -p
 'test_compiler_state*.py'`) run in Lint. They check declared Frame mappings,
 successful dry emission restoration, known restart rewinds and the nested-state
 probe's ability to detect entry leaks and failed restoration. The standalone
 `tools/compiler_state_nested_probe.py --strict` reports known #822 violations
-on the baseline; its success is not asserted by the mechanism tests. See the
-[prototype's guarantees and limits](../research/compiler-state-767/README.md).
+on the historical baseline; its success is not asserted by the mechanism tests.
+These checks cover the listed boundaries, not exhaustive state ownership or safe
+retention of every semantic discovery. The hosted dry-call fixture lives in
+`tools/fixtures/compiler_state_dry_template.py`; native regressions remain in the
+normal differential corpus. Historical investigation and raw evidence are linked
+from [PR #818](https://github.com/den-run-ai/pystachy/pull/818).
 
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: `make check-fast lint`,
 report-gate tests and recording checks use the pinned CPython and require no compiler bootstrap.
+`make check-repository`, included in `check-fast`, rejects root `research` paths in
+the Git index and tests the gate against temporary repositories. It checks tracked
+files even when ignored; local untracked experiments are outside the merge gate.
+Review still checks for research dumps, transient handoffs and unapplied patches
+in other directories; curated reports and maintained tests are allowed.
 It also validates every GitHub Actions workflow with actionlint 1.7.12, installed
 from its SHA-256-verified release archive. To run the same check locally, install
 that [upstream version](https://github.com/rhysd/actionlint/releases/tag/v1.7.12)
