@@ -159,15 +159,18 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   functions included, as CPython caches the former and makes a module's equal constants one
   object, and another module's another; an int computed at run time gets a new box, as
   `int("1000") is int("1000")` is `False` in CPython (`tests/programs/inference/dynany_identity.py`
-  and `dynany_identity_modules.py`). An int or float variable of typed code (a local or a
-  parameter of a module that opts in, or any module's variable in a program where one does)
+  and `dynany_identity_modules.py`). A float literal likewise has one constant box per exact
+  value in each module, shared by its functions. Positive and negative zero have distinct
+  boxes; computed floats, including NaNs, are not interned
+  (`tests/programs/inference/dynany_float_identity.py`). An int or float variable of typed code
+  (a local or a parameter of a module that opts in, or any module's variable in a program where one does)
   holds one object, as CPython's name does. Beside it is a box
   slot, null until the variable has a box. Each time the variable becomes an `Any` value, it
   gives the slot's box where that box holds its value, else a new box, which the slot then
   holds. A value read before a store gives the variable a new binding (`x, y = y, x`) keeps the
   object it read: the box the slot held at the read, else a new one that the slot does not take.
   A store gives the slot the box of the `Any` value it unboxes, the slot's box of the
-  variable it copies, or an int literal's constant box; any other value, such as an int computed
+  variable it copies, or a numeric literal's constant box; any other value, such as an int computed
   there, is a new object, which its first crossing boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
   (`tests/programs/inference/dynany_identity_typed.py`). Where typed code's numbers still cross
@@ -342,8 +345,7 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   first became an `Any` value (also the name that `from m import x` binds), and a value that a
   conditional expression chooses from two variables. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
-  literal `1000` there), and a float literal at each evaluation, where CPython's equal
-  constants are one object (`tests/deviations/dynany_identity_boundary.py`).
+  literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`).
 - A module's int or float variable that has no box yet, read in an expression that then calls a
   function which rebinds the variable to an equal value, can give the new binding the box that
   the read value gets where it becomes an `Any` value: `[G, rebind()][0] is G` is `True`, where
