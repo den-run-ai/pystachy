@@ -79,6 +79,7 @@ them compare equal. See [numeric deviations](language/compatibility.md#numbers).
 | `loads(s: str)` | Scalars, mixed arrays, nested objects; string keys; whitespace; last duplicate key wins |
 | `dumps(obj: JSONValue)` | Scalars and recursive lists/dicts; insertion-order objects; shared aliases; cycle detection |
 | Encoder keywords | `ensure_ascii=True`, `allow_nan=True`, `sort_keys=False`, `separators=None` or a two-string tuple |
+| `JSONDecoder()` | Default `decode(s)` and `raw_decode(s, idx=0)`; the latter returns a value and character end offset, without skipping leading whitespace or rejecting trailing text |
 | `JSONDecodeError` | `ValueError` subclass with `msg`, `doc`, `pos`, `lineno`, `colno` and formatted error text |
 
 Strings support JSON escapes, Unicode code points, surrogate-pair decoding and
@@ -99,7 +100,7 @@ Deliberate limits:
 - Decoding and encoding permit at most 256 nested containers and raise
   `RecursionError` beyond that budget. Circular serialization raises
   `ValueError: Circular reference detected`.
-- Input is `str`; bytes/bytearray input, `load()`/`dump()`, `JSONDecoder`,
+- Input is `str`; bytes/bytearray input, `load()`/`dump()`, configured `JSONDecoder` constructors,
   `JSONEncoder`, hooks, custom conversion functions, `default`, `skipkeys`,
   `check_circular`, `strict` and indentation are not implemented.
 - Object keys must be strings; tuple serialization and arbitrary user objects
@@ -107,6 +108,26 @@ Deliberate limits:
   compilation errors, not CPython's runtime errors.
 
 ## In modules that opt in to dynamic `Any`
+
+The public `JSONDecoder` keeps recursive `JSONValue` storage and its ordinary class
+identity. A native-only `_raw_decode(s, idx=0)` adapter decodes into `Any` containers
+when called directly from an opt-in module. Ports can retain CPython execution with
+this fallback:
+
+```python
+# pystachy: dynamic-any
+import json
+from typing import Any
+
+try:
+    from json import _raw_decode as raw_decode
+except ImportError:
+    def raw_decode(s: str, idx: int = 0) -> tuple[Any, int]:
+        return json.JSONDecoder().raw_decode(s, idx)
+```
+
+This extension is for direct calls, like the `json.loads()` dynamic-storage route;
+passing the adapter as a callable value does not request dynamic result storage.
 
 In a module that opts in to [dynamic `Any`](dynamic-any.md), `json.loads()` decodes into `Any`'s
 containers wherever its result becomes `Any` storage: an `Any` variable, argument or return value,
