@@ -1,0 +1,43 @@
+side 1
+side 2
+TypeError 1 got multiple values for keyword argument 'a'
+side 4
+TypeError 'int' object is not callable
+side 1
+side 2
+TypeError None got multiple values for keyword argument 'a'
+side 4
+TypeError 'NoneType' object is not callable
+side 1
+side 2
+TypeError text got multiple values for keyword argument 'a'
+side 4
+TypeError 'str' object is not callable
+side 1
+side 2
+TypeError [2] got multiple values for keyword argument 'a'
+side 4
+TypeError 'list' object is not callable
+side 1
+side 2
+named str
+TypeError named target got multiple values for keyword argument 'a'
+side 4
+TypeError 'Named' object is not callable
+side 1
+side 2
+callable str
+TypeError callable target got multiple values for keyword argument 'a'
+side 4
+called 4
+ordinary 4
+side 1
+side 2
+bad str
+RuntimeError target string failed
+side 4
+TypeError 'BadStr' object is not callable
+side 5
+side 6
+field 1 got multiple values for keyword argument ''
+[exit 0]

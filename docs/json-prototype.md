@@ -124,6 +124,9 @@ strings, and takes CPython's `skipkeys`, `check_circular` and `default` too. It 
 must be str, int, float, bool or None, not C`. A `default` callback's result becomes an `Any` value,
 so the callback is declared `-> Any`: one declared `-> dict[str, int]` is rejected, as a typed
 container is wherever it would become an `Any` value. Its other limits are the prototype's, above.
+Without `sort_keys`, callbacks that delete and reinsert keys or clear and repopulate the dict
+can change output order or entries compared with CPython's live dict-table traversal (the
+[dynamic `Any` deviation](dynamic-any.md#selecting-dynamic-storage)).
 Elsewhere, including where the result has a typed or no annotation (`doc = json.loads(s)`),
 `json`'s own functions and `JSONValue` storage stay as they are.
 
@@ -166,10 +169,10 @@ escaped character by character, again copying the runs between escapes whole. A
 byte that starts no UTF-8 sequence is escaped as the character `str` counts it
 as.
 
-In AOT and the JIT, this makes `dumps()` of the benchmark's 5,000-record
-documents 3.6–6.3 times faster, at 1.1–1.6 times the time of CPython's C encoder;
-non-ASCII text that `ensure_ascii=True` escapes stays the slowest case
-([report](reports/native-json-encoder-2026-10-19.md)).
+In the [recorded encoder benchmark](reports/native-json-encoder-2026-10-19.md),
+AOT and JIT `dumps()` of 5,000-record documents took 1.1–1.6 times CPython's C
+encoder time. Escaping non-ASCII text with `ensure_ascii=True` was the slowest
+case. The report includes inputs, measurements and comparisons with the earlier encoder.
 
 ## Consumer example
 
@@ -194,14 +197,12 @@ The [record-processing benchmark](json-benchmark.md) uses nested API/event
 records with common integer amounts and rare floats, nulls, missing fields and
 other values. It separates parsing, processing and their combination, and compares
 ordinary execution with a hand-written guarded control. Correct generic fallback
-behavior is required for every alternative. This prototype makes no performance
-claim and does not demonstrate a benefit from online specialization. A
-[measured checkpoint](reports/native-json-2026-10-18.md) finds parsing dominates
-this workload and the guarded-processing results remain inconclusive. A
-[parser follow-up](reports/native-json-parser-2026-10-18.md) makes AOT parsing
-6.1–7.3× faster, compares CPython and PyPy, and times processing without parsing;
-the guard stays inconclusive in AOT and the JIT, and allocation now dominates the
-parse.
+behavior is required for every alternative. The
+[parser measurements](reports/native-json-parser-2026-10-18.md) compare CPython,
+PyPy and Pystachy, with parsing and processing timed separately. They do not
+establish a reliable benefit from the hand-written guarded path in JIT or AOT.
+The [initial checkpoint](reports/native-json-2026-10-18.md) retains the earlier
+parser baseline and experiment details.
 
 ## Validation and reproduction
 

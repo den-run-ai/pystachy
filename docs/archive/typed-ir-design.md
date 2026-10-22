@@ -1630,7 +1630,7 @@ that commit's. What has changed since, and where the code departs from the text:
     `tests/opt_exc_dictfuse.py` and `opt_exc_listget.py` run handlers that change the dict or
     shorten the list between a lookup and its reuse, or a loop's test and its read.
 
-`docs/typed-ir-prototype.diff` is the prototype of steps 5 to 7 (plus `check`, `ovf` and
+The [historical prototype diff](https://github.com/den-run-ai/pystachy/blob/30b51d9169d802563380216b6352df561b7d8fc8/docs/typed-ir-prototype.diff) is the prototype of steps 5 to 7 (plus `check`, `ovf` and
 `list_get`) that §6.5 measures; it applies to `bd4cd6a`'s `pystachy.py`. Appendix A records how
 this design was chosen.
 

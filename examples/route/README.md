@@ -41,11 +41,19 @@ precompiled regexes as `--no-cache`. Both implementations use the same caching p
 
 ## What the cache buys
 
-### Current paired snapshot
+Cache repeated event names to avoid matching them again. For mostly unique names, compare
+`--no-cache`: caching adds lookup and eviction work without avoiding many matches. A totals-only
+batch job can count names first and classify each distinct name once; streaming delivery still
+needs a decision for each event. Prefix or suffix rules can use string operations to reduce
+regex work on misses.
 
-A launch check on **2026-10-14 UTC** uses main `1438ac4`'s compiler/runtime/library tree
-plus the router validation changes at local measured commit `a12cdd6`. It includes the regex and caching optimizations
-merged since #294. The CPython-hosted compiler builds AOT with LLVM 18.1.3; compilation is
+<a id="current-paired-snapshot"></a>
+
+### Paired measurements (2026-10-14)
+
+These measurements use main `1438ac4`'s compiler/runtime/library tree plus the router
+validation changes at local measured commit `a12cdd6`. The CPython-hosted compiler builds
+AOT with LLVM 18.1.3; compilation is
 excluded from execution time. The comparison uses CPython 3.13.16, an AMD EPYC 9V74 shared
 Linux x86-64 host, one assigned CPU (affinity 8), and five paired rounds that alternate
 CPython/AOT order. Both implementations use the same traces and cache policies.
@@ -63,21 +71,20 @@ source/executable/trace hashes, environment, all reports and peak RSS. Every rep
 
 These are host-specific observations, with substantial variation: cached repeated-name wall
 times span 0.299–0.381 s for CPython and 0.165–0.228 s AOT; the fnmatch row spans
-2.959–4.155 s and 2.936–3.344 s respectively. This rerun **does not reproduce a 2×
-fnmatch whole-program speedup**. Classification-cache hits help both runtimes; new names
-still pay regex matching and eviction costs. This host differs from the historical VM, so
-the old and new absolute timings alone do not establish a performance regression.
+2.959–4.155 s and 2.936–3.344 s respectively. Cached classifications are faster in AOT on
+this host; fnmatch whole-program times are approximately equal. New names still pay regex
+matching and eviction costs. Measurements from different hosts do not establish a
+performance regression.
 
 Streaming RSS is 12.2–12.8 MiB CPython and 34.4–36.3 MiB AOT. Keeping distinct names
 raises unique-trace RSS to 24.1 and 47.8 MiB respectively. Reading the whole trace into
 memory is only used for the routing-time column; it is not the streaming memory measurement.
 
-The two repeated-name headline comparisons were also rerun with the **self-hosted launch
-candidate `a74efdf` (local measured commit)**, which includes the import correctness fixes and setup changes from
-#369. Five paired rounds use the same host, CPU, inputs and policies; all reports agree.
-Its source tree is identical to published [#371](https://github.com/den-run-ai/pystachy/pull/371)
-at `5ec733c1`.
-Its [raw snapshot](../../docs/benchmarks/route-2026-10-14-a74efdf.json) records the native
+The **self-hosted compiler at local measured commit `a74efdf`** gives the same conclusion
+in five paired rounds with the same host, CPU, inputs and policies. All reports agree. Its
+source tree matches published commit `5ec733c1`
+([PR #371](https://github.com/den-run-ai/pystachy/pull/371)).
+The [raw measurements](../../docs/benchmarks/route-2026-10-14-a74efdf.json) record the native
 compiler's hash and source revision separately from the router harness revision.
 
 | Repeated-name mode | CPython wall | AOT wall | AOT speedup | CPython routing | AOT routing |
@@ -85,18 +92,19 @@ compiler's hash and source revision separately from the router harness revision.
 | Cached classifications | 0.309 s | 0.165 s | 1.88× | 130 ns | 69 ns |
 | `--fnmatch` | 2.923 s | 3.071 s | 0.95× | 2,804 ns | 3,751 ns |
 
-The launch candidate reproduces the same conclusion: approximately equal fnmatch whole-program
-time and faster cached classifications on this host, with slower regex routing on misses.
-Its cached wall times span 0.288–0.331 s CPython and 0.161–0.193 s AOT; fnmatch spans
+The self-hosted build's cached wall times span 0.288–0.331 s CPython and 0.161–0.193 s AOT; fnmatch spans
 2.867–3.129 s and 2.944–3.182 s respectively. These ranges describe host variability,
 not statistical confidence intervals.
+
+<details>
+<summary>Earlier measurements and provenance</summary>
 
 ### Historical snapshots
 
 Measurements recorded in [#294](https://github.com/den-run-ai/pystachy/pull/294): 4-core x86-64 VM,
 CPython 3.13.16, median of five whole-program wall-time runs including startup. AOT compilation
 is excluded. Repeating traces contain 1M events over 2,476 names; unique traces contain
-100,000 new names. These are published snapshots, without a rerun for this guide.
+100,000 new names. These measurements use an older build and a different host from the paired results above.
 
 | Trace | Mode | CPython | Initial AOT | AOT speedup |
 |---|---|---:|---:|---:|
@@ -116,8 +124,7 @@ Caching helps both runtimes; it produces the largest improvement when names repe
 With new names it pays lookup/eviction overhead and still runs regexes. In the initial routing-only
 measurements, Pystachy's precompiled-regex misses were slower than CPython's C engine.
 
-<details>
-<summary>Historical routing-only timings and memory</summary>
+#### Routing-only timings and memory
 
 The same initial #294 benchmark used five `--in-memory` runs for routing time and one run
 for peak RSS. Its exact tested revision was not recorded separately from the PR's later follow-up.
@@ -137,11 +144,8 @@ For repeated names, classifications reduced routing from 1,430 to 99 ns in CPyth
 classification cache. The cache is bounded at 4,096 names; adding `--names` makes memory
 grow with distinct names (unique trace: 23.0 MiB CPython, 48.8 MiB AOT).
 
-</details>
 
-A totals-only batch job could count names first and classify each distinct name once.
-Streaming delivery still needs a decision for each event. Rules restricted to prefixes or
-suffixes could also use string operations to reduce regex work on misses.
+</details>
 
 ## Tests
 

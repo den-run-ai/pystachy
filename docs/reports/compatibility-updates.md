@@ -98,6 +98,71 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 nested compiler-state isolation (#819), **partial** | `4046df59`; compiler/tests/tooling after #832 | All eight new nested-compilation regressions emit checked hosted IR: four previous rejections become accepted and four accepted cases change IR. The structural guard passes 18/18 tests; all 31 retained state tests pass. Caller restoration has no observed change at depths 1–3, while the intentional `nonecmp` inheritance and its known multi-iteration miscompile remain under #822. Pinned imports remain 148/460. [Evidence](compatibility-2026-10-21-nested-compiler-state-partial.json). |
 | 2026-10-21 dynamic `Any` numeric object identity (#807), **partial** | `8433b9d7`; compiler/runtime/tests/docs after #819 | Pinned CPython validates 1,563 recordings and 96 deviations. The retained dynamic-`Any` corpus preserves all 87 acceptances and 12 rejections; 65 accepted programs change IR for identity boxes/slots. Exact-tree native CI is green and reports zero mismatches in the 450-case fuzzer, versus five on prior main. Pinned imports remain 148/460. Documented identity boundaries remain under open #797. [Evidence](compatibility-2026-10-21-dynamic-identity-partial.json). |
 | 2026-10-21 dynamic JSON `Any` and `None` loop inference (#823/#835), **partial** | `c39f2ad3`; implementation through `0f69df2b`, plus docs-only #837 | Pinned CPython validates 1,570 recordings and 97 deviations. Six selected programs move from rejection to checked hosted IR: four JSON/`Any` cases and two stale-`None` loop cases; two retained global-loop cases remain accepted. The JSON differential tool passes 22,449 checks, compiler-state contracts pass, and both implementation heads have 32/32 successful jobs. Pinned imports remain 148/460. General typed-container crossings remain under #777. [Evidence](compatibility-2026-10-21-json-any-none-loop-partial.json). |
+| 2026-10-21 dynamic `Any` dict unions and keyword calls (#833/#826), native affected evaluation | `3cbb7e87`; implementation through `511f6e4a`, CI-only #834 and deviation/docs #839 | LLVM 18 rebuild reaches 647,549/18,709 compiler/runtime IR lines. The selected dict-union/keyword corpus passes **36/36** normal and **36/36** GC-stressed JIT/AOT checks; the #839 JSON deviation adds **4/4**. CPython validates 1,586 recordings and 98 deviations, the local 450-case JIT fuzzer has zero mismatches, and imports remain 148/460. Keyword support is still partial under #774; #839 documents live-dictionary-cursor differences. [Evidence](compatibility-2026-10-21-dynany-keywords-native.json). |
+
+## 2026-10-21 — #833/#826: dynamic `Any` dictionary unions and keyword calls
+
+Inspected exact [main `3cbb7e874e29bab109376096b83a6303c5993df6`](https://github.com/den-run-ai/pystachy/commit/3cbb7e874e29bab109376096b83a6303c5993df6),
+covering the implementation merges [#833](https://github.com/den-run-ai/pystachy/pull/833)
+and [#826](https://github.com/den-run-ai/pystachy/pull/826), bounded-fuzzer CI
+gate [#834](https://github.com/den-run-ai/pystachy/pull/834), and JSON callback
+deviation documentation [#839](https://github.com/den-run-ai/pystachy/pull/839).
+The intervening #838 is documentation-only. #836 removes research artifacts and
+adds repository-hygiene checks; it does not change compiler/runtime/library
+semantics. The exact source tree is `3c0f5234`; executable implementation ends at
+`511f6e4a` because #834 is verification tooling and #839 changes helper comments
+without changing its Python AST.
+
+[Machine-readable evidence](compatibility-2026-10-21-dynany-keywords-native.json)
+retains exact source/build identities, toolchain and CPython-input revisions,
+commands, import hashes, workflows, observed limits and attributed final-tree
+measurements.
+
+| Fresh measurement | Result and boundary |
+|---|---|
+| Local native rebuild | Pinned CPython **3.13.16** and LLVM/Clang **18.1.3** reach fixed points of **647,549 compiler / 18,709 runtime IR lines**. The built compiler SHA-256 is `7e58328a...`; build source is recorded separately from current source. |
+| Affected JIT/AOT corpus | The 18 selected ordinary/deviation programs for dictionary union, dictionary-source mutation and keyword calls pass **36/36** normal JIT/AOT checks and **36/36** with per-allocation program GC. The expanded #839 JSON callback deviation separately passes **2/2** normal and **2/2** GC-stressed checks. These are retained regression programs, not a full corpus or upstream suite. |
+| CPython recordings | Pinned CPython validates **1,586 recordings**, **98 deviations** and 12 pinned library files with zero failures: **+16 recordings / +1 deviation** from the preceding checkpoint. |
+| Dynamic-`Any` fuzzer | The newly gated default workload runs locally with the rebuilt compiler: **3 programs / 450 JIT cases / 0 mismatches**. Its verifier tests pass **18/18** report-merger and **2/2** shell-stage checks, including missing/short/wrong-mode/mismatching negative controls. |
+| Runtime and fast contracts | **494** runtime entries and 70 exception classes agree across lowering/runtime sources. `make check-fast` passes Ruff, mypy on 45 files, seven summary, 88 typed-IR and four JSON-loader tests; repository hygiene and its **9/9** tests pass. |
+| Pinned isolated imports | Fresh `--metadata` sweep: **148/460**, 62 overlay exclusions, 312 errors, zero timeouts. All 522 normalized outcomes equal the preceding result; there is no new/lost success or first-error change. This is hosted import-to-IR evidence, not API execution. |
+
+#833 adds CPython-like `dict |` and `dict |=` behavior to opted-in dynamic
+values. The selected tests distinguish a new result from in-place alias updates,
+exercise reflected dispatch order, and retain the correction that notices source
+dictionary size mutation even at the last entry. #826 adds keyword binding for
+dynamic functions, closures, lambdas, bound methods, callable objects and selected
+builtins, including evaluation and duplicate-error order. The measured programs
+execute in both JIT and AOT modes rather than stopping at hosted IR emission.
+
+The gain is intentionally narrower than general Python call compatibility.
+[Issue #774](https://github.com/den-run-ai/pystachy/issues/774) remains open:
+runtime-sized `Any` unpacking, boxed builtin functions, properties and
+static/class methods read as values, and callables without usable parameter names
+remain outside the supported surface. `dynany_key_none_objects` also remains a
+recorded deviation: a dynamic key that can produce `None` for typed object items
+raises `TypeError` where CPython orders the measured objects.
+
+#839 records a separate existing JSON traversal difference rather than a new
+regression. Without `sort_keys`, a `default()` callback that clears and
+repopulates its dictionary sees Pystachy's queued keys instead of CPython's live
+dictionary-table cursor. With one inserted replacement, CPython emits
+`{"a": 1}` and Pystachy emits `{"a": 1, "z": 9}`; the two-replacement case
+retains `z` as well. The deviation is explicit and its native expectation passes;
+no parity claim is made for structural mutation during the callback.
+
+All four final implementation-head workflow sets are green. #833, #826, #834
+and #839 each have successful CI, Lint, Packages and Installation runs, and the
+final automated reviews report no unresolved findings. The broad #834 contract
+also attributes 1,741 checked IR programs plus `llvm-as`; #826 attributes 12
+rejection-to-acceptance changes among 3,520 IR comparisons with no previous
+acceptance loss.
+
+No performance or memory ratio is inferred from these checks. Full local
+`make verify`, unmodified CPython regrtest, and broad port/package/upstream suites
+were not run, so the latest fully evaluated marker remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`** despite completing the affected
+native evaluation.
 
 ## 2026-10-17 — #583: compiled float64 array example
 

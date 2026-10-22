@@ -18,12 +18,11 @@ The [router example](../examples/route/README.md) shows an application result ca
 The regex front caches reference entries in their larger caches; they do not compile extra
 patterns or templates. Repeated front hits only read the cache, and `re.purge()` clears both levels.
 
-Class tables are built lazily. They decide ASCII characters directly, and code points from
-U+0080 when the class's members there form one range (or none, or all); other classes keep the
-evaluator, behind a memo of its recent answers. Stable integer constants also allow LLVM
-switches in regex dispatch. Textwrap skips unnecessary tab expansion
-and uses literal replacements for its default whitespace table, while preserving custom tables
-and mutation behavior. These changes reduce uncached work; a result hit skips it altogether.
+Class tables are built lazily. They handle ASCII characters directly. For non-ASCII characters,
+they handle classes whose members form one range, match no code points or match every code
+point directly; other classes use an evaluator and cache its recent answers. Textwrap skips unnecessary tab expansion and uses literal
+replacements for its default whitespace table, while preserving custom tables and mutation
+behavior. These optimizations reduce uncached work; a result-cache hit skips it altogether.
 
 ## An application cache
 
@@ -69,38 +68,29 @@ exclude scheduling waits but do not eliminate shared-host variation.
 
 ## Recorded results
 
-Published snapshots, without a new rerun for this guide. [#360](https://github.com/den-run-ai/pystachy/pull/360)
-compared an updated AOT build with starting revision `ebb0c54` on a shared x86-64 host,
-CPython 3.13.16 and LLVM 18. The regex/textwrap rows are medians of six interleaved process
-runs, each taking a five-round median over 200 generated inputs. The replacement row is a
-paired cache microbenchmark. The updated build revision was not separately recorded in the table.
-
-| Operation | Starting AOT | Updated AOT | Change within Pystachy |
-|---|---:|---:|---:|
-| Regex word splitter | 625 µs | 284 µs | About 55% less CPU |
-| `wrap` | 520 µs | 258 µs | About 2.0× faster |
-| `fill` | 516 µs | 343 µs | About 1.5× faster |
-| `shorten` | 519 µs | 216 µs | About 2.4× faster |
-| Cached `Match.expand` | 449 ns | 175 ns | About 2.6× faster |
+The measurements below compare warmed operations with CPython. They describe the recorded
+builds and inputs; use the commands above to measure your own workload.
 
 ### CPython comparison: provisional samples
 
-[#366](https://github.com/den-run-ai/pystachy/pull/366) records paired measurements at `ab12ee6`
-on 2026-10-13: the same 200 deterministic 80-word ASCII paragraphs at width 70, two nine-round
-runs per implementation in CPython/AOT/AOT/CPython order. Values are medians of 18 round averages.
+The [paired textwrap benchmark](https://github.com/den-run-ai/pystachy/pull/366), recorded at
+`ab12ee6` on 2026-10-13, uses 200 deterministic 80-word ASCII paragraphs at width 70. Each
+implementation runs twice for nine rounds, in CPython/AOT/AOT/CPython order. Values are medians
+of 18 round averages.
 
 | Operation | CPython 3.13.16 | AOT |
 |---|---:|---:|
 | `wrap`, paired probe | 171 µs | 186 µs |
 | `fill`, paired probe | 166 µs | 177 µs |
 
-The paired fill/wrap ratios were 0.984 in CPython and 0.985 in AOT; joining precomputed lines
-cost about 0.26 µs in both. The earlier independent-operation fill gap did not persist.
 The second operation can reuse the regex decoded-subject cache; alternating order balances
-this advantage. These are warmed paired inputs, not cold-input measurements.
+this advantage. These measurements exclude cold-input costs.
 
-Separate-phase samples from the earlier six-run aggregate are retained below. They are not
-interchangeable with the paired protocol and do not establish precise small differences.
+The following [separate-operation measurements](https://github.com/den-run-ai/pystachy/pull/360)
+use a different protocol: six interleaved processes, each taking a five-round median on a
+shared x86-64 host with CPython 3.13.16 and LLVM 18. The exact updated compiler revision was
+not recorded. These samples are not directly comparable to the paired table above, and small
+timing differences are inconclusive.
 
 | Operation | CPython 3.13.16 | AOT |
 |---|---:|---:|
@@ -110,7 +100,6 @@ interchangeable with the paired protocol and do not establish precise small diff
 | Warm cached `fill` result hit | 98 ns | 35 ns |
 | Warm `fnmatchcase` pattern lookup and match | 329 ns | 338 ns |
 
-Cached fill's roughly 2.8× hit advantage skips wrapping. The ordinary textwrap rows support
-no general 2× CPython claim. `make re-probe` checks deterministic matcher work; `make re-fuzz`
-checks bytecode and results against CPython. Remaining profiling work is tracked in
-[#345](https://github.com/den-run-ai/pystachy/issues/345).
+The cached `fill` result hit skips wrapping entirely. Measure cache hits and misses separately
+when deciding whether a cache helps your application. `make re-probe` checks deterministic
+matcher work; `make re-fuzz` checks bytecode and results against CPython.

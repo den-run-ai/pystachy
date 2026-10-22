@@ -1,22 +1,18 @@
 # Dynamic `Any` (prototype)
 
-A module whose first lines, before any code, hold the comment
+Dynamic `Any` is experimental. To enable it, put this comment before any code in a module:
 
 ```python
 # pystachy: dynamic-any
 ```
 
-compiles `typing.Any` as a dynamic type: a value whose Python type is known only when the
-program runs. Every other module, and every program without the comment, compiles exactly as
-before: there `Any` keeps its [inference-only meaning](language/typing.md#supported-types). The
-prototype runs through the ordinary JIT/AOT pipeline; there is no interpreter, profiling or
-online compilation. It establishes the generic representation and operations that later
-optimization (box elimination, guarded variants, inline caches) would need, and measures what
-they cost.
+In that module, `typing.Any` can hold values whose Python type is determined at runtime.
+Modules without the comment keep `Any`'s
+[inference-only meaning](language/typing.md#supported-types). Both use the ordinary JIT/AOT
+pipeline: the program is compiled before it runs.
 
-This page describes the representation, the typed/dynamic contract, what works, what is
-rejected, the deviations, and measurements. Design input: #108 (contract), #487 (descriptor
-box), #488 and #489 (dispatch and attribute lookup), #392 (specialization evidence).
+The sections below explain supported values, conversions between typed and dynamic code,
+[limitations](#deviations), and [measured costs](#measurements).
 
 ## Selecting dynamic storage
 
@@ -46,9 +42,11 @@ value types it (`ws = [None]`, then `ws[0] = {...}`), keep their typed layouts.
 `json.loads()` decodes into these containers, and `json.dumps()` encodes `Any` values, in a module
 that opts in, where the document is `Any` values (#779; [the JSON prototype](json-prototype.md#in-modules-that-opt-in-to-dynamic-any)):
 a document decoded once is the same objects to the typed functions and the `Any` code it passes
-through. Where a `default()` callback changes the dict being encoded, `json.dumps()` writes it
-as CPython does, except a key that the callback deletes and inserts again, which keeps its old
-place where CPython writes it after the others (`tests/deviations/dynany_json_reinsert.py`).
+through. Without `sort_keys`, a `default()` callback's changes to later values and deletion of
+later keys are observed. Structural changes can differ from CPython's live dict-table traversal:
+the encoder keeps queued keys in their old order and appends newly observed keys. A deleted and
+reinserted key can therefore keep its old output position, and clearing and repopulating the
+dict can emit replacement entries that CPython skips (`tests/deviations/dynany_json_reinsert.py`).
 
 Storage that an unannotated first value types, and that a later store gives an `Any` value, is
 `Any` from that first store, as a CPython variable holds whatever was assigned last
@@ -225,6 +223,11 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
 
+Dict union `d | e` makes a new dict, with the right dict's values taking precedence. `d |= e`
+updates the existing dict through `dict.update()`, accepting a dict or builtin iterable of
+pairs and preserving aliases. Its key comparisons may run user code. A dict's `|=` updates or
+raises before considering a right operand's reflected operator, as CPython does (#810).
+
 runtime.c's generic helpers implement the builtin types' operations. The program's classes
 take part through **dispatchers**: functions the compiler writes once every class whose objects
 are boxed is known, recompiling them while compiling them boxes more classes. Each tests the
@@ -240,8 +243,8 @@ or CPython's `AttributeError`/`TypeError`:
 | `slice`, `module` | a slice, of its bounds and step as `Any` values (an object's `__getitem__` would take a slice object, which Pystachy does not have: `TypeError`), `type(x).__module__` |
 | `getitem`, `setitem`, `delitem`, `contains` | the container protocol |
 | `get.<a>`, `set.<a>` | attribute `a`: a field or property of the class, or a method, which reads as its bound method |
-| `has.<m>.<n>`, `call.<m>.<n>` | method `m` with `n` positional arguments: found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, or CPython's `TypeError` where the arguments do not fit its parameters; a field's value, read before the arguments as `LOAD_ATTR` reads it (`has.<m>.<n>` gives it) and called as `callv.<n>` calls it; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` that take `n` arguments |
-| `callv.<n>` | a call of a boxed function value, bound method or object with `__call__` with `n` positional arguments, through the function's own calling code (defaults, a closure's env), or CPython's `TypeError` for a wrong count, worded by the function's qualified name |
+| `has.<m>.<n>`, `call.<m>.<shape>` | method `m`, called with `n` positional arguments, then the keyword arguments that `<shape>` names (`2-sep-end`: two positional arguments, then `sep=` and `end=`): found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, each class's case binding the arguments to its own method's parameters as a typed call binds them, or raising CPython's `TypeError` where they do not fit; a field's value, read before the arguments as `LOAD_ATTR` reads it (`has.<m>.<n>` gives it) and called as `callv.<shape>` calls it; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` that take `n` positional arguments, with keyword arguments where typed code takes them (`list.sort()`'s and `dict.update()`'s) |
+| `callv.<shape>` | a call of a boxed function value, bound method or object with `__call__`, with the arguments `<shape>` describes, through the function's own calling code (defaults, a closure's env, keyword arguments), or CPython's `TypeError` where the arguments do not fit, worded by the function's qualified name |
 
 Each case calls the class's operation with `Any` arguments: a method whose parameters are
 unannotated or `Any` takes them as they are (a template is instantiated for `Any` once), and
@@ -346,8 +349,19 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   emits, not those that run; following the run-time path would take a generation on every store.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
-- Calls of `Any` values and their methods take positional arguments only; keywords and
-  unpacking are rejected at compile time.
+- Calls of `Any` values and their methods take positional and keyword arguments, and what a
+  typed call unpacks (a tuple's items, a dict display with str keys, a function's `**kwargs`);
+  an `Any` value unpacked into a call's arguments (`f(*xs)`) is rejected at compile time. A
+  builtin type's method takes keyword arguments only where typed code takes them
+  (`list.sort()`'s `key` and `reverse`, `dict.update()`'s): another raises the `TypeError` that
+  typed code reports at compile time, where CPython binds them (`s.split(sep=",")`). So does a
+  call with keyword arguments of a function value whose type is a `Callable`, which has no
+  parameter names (`tests/deviations/dynany_builtin_keywords.py`).
+- `sorted()`, `list.sort()`, `min()` and `max()` of objects with a `key` that is an `Any` value
+  holding `None` call it, and raise `TypeError`, where CPython orders the objects themselves:
+  ordering them without a key would compile their class's comparison methods, which the keyed
+  call never needs. Typed code rejects a `Callable | None` key over objects at compile time
+  (`tests/deviations/dynany_key_none_objects.py`).
 - A builtin type's method that typed code does not support either (`int.to_bytes()`,
   `int.as_integer_ratio()`) raises `AttributeError` where it is called through an `Any` value;
   typed code rejects it at compile time. So does a builtin type's method called through an
@@ -445,8 +459,8 @@ lines.
   closure's cell and a generator's frame, which would need their users compiled again too.
 - **Typed-container crossings**: the flow analysis that selects `list[Any]` storage at the
   allocation of every alias of a container that may flow into `Any` storage.
-- **Calls**: keyword arguments and `*args` through a generic binding entry; builtin functions
-  as values; `type(x)` as a class object.
+- **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
+  builtin functions as values; `type(x)` as a class object.
 - **Protocols**: iteration of objects (`__iter__`), `__int__`/`__index__`/`__float__`, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.
 - **Guarded variants and inline caches** only where measurements justify them (#392): a

@@ -1,0 +1,3 @@
+TypeError: keyword arguments to str.split() are not supported; pass them by position
+TypeError: a call of a Callable[[int, int], int] takes positional arguments only
+[exit 0]

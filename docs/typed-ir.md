@@ -464,6 +464,6 @@ types. Mutable list/dict element types must remain invariant through that change
 The [archived design](archive/typed-ir-design.md) preserves the original goals, migration
 sequence, prototype measurements, prior-art links and implementation-departure log.
 Its [exception and optional-value analysis](archive/typed-ir-design.md#appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs)
-explains rejected alternatives. The [prototype diff](typed-ir-prototype.diff) applies to
+explains rejected alternatives. The historical [prototype diff](https://github.com/den-run-ai/pystachy/blob/30b51d9169d802563380216b6352df561b7d8fc8/docs/typed-ir-prototype.diff) applies to
 `bd4cd6a`, not current source. Proposed operations and unsupported feature sketches there
 must not be read as executable examples for today's compiler.
