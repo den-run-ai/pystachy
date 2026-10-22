@@ -1,0 +1,41 @@
+mods: init mods
+mods.shapes: init mods.shapes
+equal rebind False False
+old copy True True
+boxed old preserved True True
+boxed old distinct False False
+two saved reads True True
+two saved reads distinct False False
+equal rebind False False
+old copy True True
+boxed old preserved True True
+boxed old distinct False False
+two saved reads True True
+two saved reads distinct False False
+different values 2000 3000
+different rebind False False
+callback only boxes True True
+callback box alias True True
+restore saved binding True True
+restored distinct from callback False False
+display snapshot False False
+float rebind False False
+float saved aliases True True
+float rebind False False
+float saved aliases True True
+float rebind False False
+float saved aliases True True
+typed module snapshot False False
+typed module saved alias True True
+typed module fresh binding False False
+untaken global store True True
+Any int global round trip True True
+Any float global round trip True True
+Any float global round trip True True
+Any float global round trip True True
+int to float global 1000 1000.0
+int to float fresh box False False
+float to int global 1000.0 1000
+float to int fresh box False False
+converted float retained True True
+[exit 0]

@@ -621,6 +621,24 @@ def gen_list_hint_type(self, a: str, b: str) -> str:
     t = self.union_type([a, b])
     return "" if t.startswith("!") else t
 
+def gen_scalar_read_value(self, n: Node) -> bool:
+    # A bounded, side-effect-free scalar operand tree. Unlike numeric_value's closed
+    # function proof, globals are allowed but walrus stores are not: even an arithmetic
+    # operand can publish an identity through (saved := G). Never infer types here.
+    k = n.kind
+    if k in ["int", "float", "True", "False"]:
+        return True
+    if k == "name":
+        return self.qtype(n.s) in ["int", "float", "bool"]
+    if k == "call":
+        if len(n.kids) != 2 or n.kids[0].kind != "name":
+            return False
+        callee = n.kids[0].s
+        return callee in ["int", "float", "bool"] and callee not in self.assigned and callee not in self.aliases and callee not in self.fglobals and callee not in self.gtypes and not self.bound(callee) and self.scalar_read_value(n.kids[1])
+    allowed = (k == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~", "not"])
+    return allowed and all(self.scalar_read_value(x) for x in n.kids)
+
+
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
     self.line = n.line
     want = self.rec_type(want)
@@ -714,8 +732,15 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         b = self.expr(n.kids[1], "", resultsoft=resultsoft)
         return self.arith(n.s, self.expr(n.kids[0], unopt(b.t) if is_dict(unopt(b.t)) else ""), b)
     if k == "binop":
-        a = self.expr(n.kids[0], want, resultsoft=resultsoft)
-        return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
+        scalar_fn = self.fn
+        scalar_held = scalar_fn.scalar_reads
+        if not scalar_held and len(self.gidbox) > 0 and self.scalar_read_value(n):
+            scalar_fn.scalar_reads = True
+        try:
+            a = self.expr(n.kids[0], want, resultsoft=resultsoft)
+            return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
+        finally:
+            scalar_fn.scalar_reads = scalar_held
     if k == "unary":
         return self.unary(n)
     if k == "boolop":
@@ -2772,7 +2797,17 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     if t == "None":
         return Val("null", "None")  # (None either way)
     r = Val(self.phi(ph), t)
-    if (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
+    if (t == "int" or t == "float") and (e1 == "" or (a.t == t and a.idfrom != "")) and (e2 == "" or (b.t == t and b.idfrom != "")):
+        # Numeric globals snapshot their box at the read, before later effects can rebind
+        # them. Select that same object with the payload, without consulting mutable slots.
+        # A converted numeric payload cannot retain its original type's box.
+        identity = Ins("phi", "dyn", "")
+        if e1 != "":
+            self.incoming(identity, a.idfrom, e1)
+        if e2 != "":
+            self.incoming(identity, b.idfrom, e2)
+        r.idfrom = self.phi(identity)
+    elif (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
         # (x if c else x: the one binding both arms read, whose box its slot still holds here,
         # so that the value keeps its object where it becomes an Any value: dyn_id_read, #797)
         r.idslot = a.idslot

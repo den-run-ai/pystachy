@@ -589,7 +589,7 @@ def gen_alloca(self, t: str, name: str) -> str:
             # (a comprehension's variable has none, and the function's variable of its name keeps
             # its own)
             self.idbox.pop(name, "")
-        if (t == "int" or t == "float") and name not in self.compvars and self.dyn_policy(self.line):
+        if (t == "int" or t == "float") and name not in self.compvars and self.dyn_policy(self.line) and not self.fn.numeric_only:
             # the box of its binding as an Any value (idbox): null, as each slot is where the
             # function begins, until a store or its first crossing gives it one (dyn_box)
             i = Ins("slot", "dyn", name + ".box")

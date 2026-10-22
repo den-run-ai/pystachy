@@ -23,7 +23,8 @@ appears: parameters, returns, locals, module variables, fields, and the items of
 display whose items have no one type (`[1, "two", [3]]`) is a container of `Any` values instead
 of a compile error, and so are the displays among its items. Concrete annotations and
 unannotated code keep their static types, layouts and templates: boxing is selective, at the
-boundary where a concrete value flows into `Any` storage.
+boundary where a concrete value flows into `Any` storage, and when numeric copies or global
+reads need to preserve its object identity (see [representation](#representation)).
 
 A list whose items are `Any` values or `Any`'s containers is a `list[Any]`, and a dict whose
 values are is a `dict[Any, Any]`: `dict[str, Any]`, `list[dict[str, Any]]`, `dict[str, list[Any]]`
@@ -170,8 +171,30 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   holds. A value read before a store gives the variable a new binding (`x, y = y, x`) keeps the
   object it read: the box the slot held at the read, else a new one that the slot does not take.
   A store gives the slot the box of the `Any` value it unboxes, the slot's box of the
-  variable it copies, or a numeric literal's constant box; any other value, such as an int computed
-  there, is a new object, which its first crossing boxes. A float that `isinstance()` narrows an
+  variable it copies, or a numeric literal's constant box. Copying a numeric variable materializes
+  its box if needed, so copies made before either variable crosses into `Any` still share one
+  object (`tests/programs/inference/dynany_identity_copy.py`). A module variable's read also
+  materializes and snapshots its box, before later operands can call code that rebinds the
+  variable (`tests/programs/inference/dynany_identity_global_snapshot.py`). Proven single-binding
+  integer constants and their from-import copies have their cached or literal box ready at
+  initialization, so their reads only load it and cannot allocate
+  (`tests/programs/inference/dynany_identity_constants.py`). This applies to
+  numeric globals in imported typed modules too when the program uses dynamic `Any`. These
+  copies and global reads can allocate before an `Any` crossing, even if none follows.
+  A global read used only by a proven scalar arithmetic expression does not materialize
+  a box. The expression must contain only concrete numeric names, literals, arithmetic
+  and unshadowed numeric conversions; calls to user code, assignment expressions,
+  dynamic operands and unknown syntax retain snapshots. Global stores still update
+  their identity slots, and copies or values kept across calls retain their objects
+  (`tests/programs/inference/dynany_identity_scalar_globals.py`).
+  Closed functions with explicit numeric parameters and return types omit local box slots
+  when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
+  and numeric conversions. Identity tests, `Any` storage, globals, containers, closures and
+  other calls prevent that proof (`tests/ir/dynany_numeric_locals.py`). This relies on the
+  existing typed numeric return boundary; extending identity preservation across that
+  boundary must revisit this proof. Any
+  other value, such as an int computed there, is a new object, which its first crossing, copy
+  or global read boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
   (`tests/programs/inference/dynany_identity_typed.py`). Where typed code's numbers still cross
   into `Any` as new objects, see the [deviations](#deviations).
@@ -347,17 +370,13 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   becomes an `Any` value, where CPython's names, containers and classes hold one object: an
   argument or a parameter's default value (the parameter receives a new object), a return
   value, an item of a typed container, a typed field or class variable, a variable that a
-  closure reads, a comprehension's variable, and a copy of a variable made before the variable
-  first became an `Any` value (also the name that `from m import x` binds), and a value that a
-  conditional expression chooses from two variables. So is an expression
+  closure reads, a comprehension's variable, the name that `from m import x` binds, and a value that a
+  conditional expression chooses from two typed locals. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
   literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`).
-- A module's int or float variable that has no box yet, read in an expression that then calls a
-  function which rebinds the variable to an equal value, can give the new binding the box that
-  the read value gets where it becomes an `Any` value: `[G, rebind()][0] is G` is `True`, where
-  CPython holds two objects (`tests/deviations/dynany_identity_boundary.py`). The compiler sees
-  a store between the read and the crossing in the function itself, not in the call. So does a
-  value read before an assignment that a branch of the same expression makes but does not run:
+- A typed local's value read before an assignment that a branch of the same expression makes
+  but does not run can lose its binding's box
+  (`tests/deviations/dynany_identity_boundary.py`):
   with `flag` false, `ys: list[Any] = [x, (x := v) if flag else 0]` then `a: Any = x` gives
   `ys[0] is a` as `False`, where CPython keeps one object. The compiler counts the stores it
   emits, not those that run; following the run-time path would take a generation on every store.

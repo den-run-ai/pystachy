@@ -1,0 +1,27 @@
+module copy True True
+module rebound False False
+int copy True True
+float copy True True
+nan copy True True
+copy chain True True
+equal distinct False False
+source rebound False False
+old alias survives True True
+target rebound False False
+self assignment True True
+swap first True True
+swap second True True
+unboxed swap first True True
+unboxed swap second True True
+unboxed swap values 5000 4000
+branch copy True True
+branch rebound False False
+branch copy True True
+branch rebound False False
+loop copy True True
+loop distinct False False
+loop copy True True
+loop distinct False False
+loop copy True True
+loop distinct False False
+[exit 0]

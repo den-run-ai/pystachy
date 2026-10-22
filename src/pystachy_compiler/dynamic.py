@@ -373,7 +373,8 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     # the box that an int or float variable's binding has as an Any value, where store_name gives
     # it v (its box slot, idbox): the box of the Any value it unboxes, the box of the binding it
     # copies, a numeric literal's constant box, else none yet, a new object that its first crossing
-    # boxes (dyn_box)
+    # boxes (dyn_box). A copy must give both bindings a box now: copying a null lazy slot would
+    # let their later crossings create two objects for one Python value.
     if v.idslot == slot and self.idstores.get(slot, 0) == v.idgen:
         return  # (x = x, x := x: the binding's own object, read with no store since, is no new binding)
     b = "null"
@@ -382,11 +383,15 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     elif v.idfrom != "":
         b = v.idfrom
     elif v.idslot != "":
-        b = self.dyn_id_held(v).v
+        b = self.dyn_box(v).v
     elif v.lit and v.t == t and (t == "float" or (t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         # store_name can retain t until a pending type join restarts compilation to widen
         # it. A provisional int slot may receive a float literal: its LLVM hex bits
         # must not be parsed as an int or given the provisional destination's identity.
+        b = self.dyn_box(v).v
+    if b == "null" and slot.startswith("@g.") and slot[3:-4] in self.intglobals:
+        # Proven single-binding integer globals have their cached/literal box at
+        # initialization. Mutable globals retain lazy boxing and snapshot reads.
         b = self.dyn_box(v).v
     self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1
@@ -396,9 +401,43 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     # v, read from an int or float variable whose box slot is slot (idbox): it keeps the slot, the
     # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
     # far (dyn_id_held)
+    if slot.startswith("@") and self.fn.scalar_reads:
+        # A proven scalar arithmetic consumer uses only the payload. Its subtree has
+        # no stores or user calls, so it cannot publish an alias or observe this object.
+        # Ordinary reads still snapshot, and every global store still updates its box.
+        return
     v.idslot = slot
     v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
     v.idgen = self.idstores.get(slot, 0)
+    if slot.startswith("@g.") and slot[3:-4] in self.intglobals:
+        # module_ints excludes rebinding/deletion across the whole import graph.
+        # Initialization guards precede this read; dyn_id_store made its box ready.
+        v.idfrom = v.idheld
+        v.idslot = ""
+    elif slot.startswith("@"):
+        # Another operand can call code that rebinds a global, beyond idstores' local view.
+        # Snapshot its object now, while the read still names this binding. A null lazy box
+        # cannot be recovered later: even an equal new value is a different object. Keeping
+        # only idfrom also prevents a later self-assignment from taking the idslot fast path.
+        # The payload and this box were just loaded, with no user code between them.
+        # store_name pairs every numeric global store with dyn_id_store: its box is
+        # either null or exactly this binding's type and payload. Unlike a delayed
+        # local read, it needs neither dyn_box's stale-value checks nor a slot reload.
+        start = self.cur
+        make = self.label()
+        end = self.label()
+        self.cbr(self.ptr_cmp("==", Val(v.idheld, DYN), Val("null", DYN)).v, make, end)
+        self.place(make)
+        b = self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]) if v.t == "int" else self.rt("pys_dyn_float", "ptr", [f"double {v.v}"])
+        self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+        made = self.cur
+        self.br(end)
+        self.place(end)
+        ph = Ins("phi", DYN, "")
+        self.incoming(ph, v.idheld, start)
+        self.incoming(ph, b, made)
+        v.idfrom = self.phi(ph)
+        v.idslot = ""
 
 
 def gen_dyn_id_held(self, v: Val) -> Val:

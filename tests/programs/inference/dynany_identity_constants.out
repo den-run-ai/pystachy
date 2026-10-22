@@ -1,0 +1,11 @@
+mods: init mods
+mods.shapes: init mods.shapes
+cached True True
+cached import True True
+large import True True
+distinct modules False False
+negative modules False False
+same module literal True True
+late unbound
+late initialized True True
+[exit 0]

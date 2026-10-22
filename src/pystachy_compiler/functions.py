@@ -1,6 +1,6 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, str_appends
+from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, str_appends
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
@@ -133,6 +133,17 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
     if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
         f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
         self.ret = f.ret
+    if not self.modlevel and not self.rtmode and self.dyn_policy(f.node.line) and not f.infer and f.ret in ["int", "float", "bool"] and f.node.kind == "def" and len(f.node.kids) == 3 and f.clo < 0 and not f.gen and f.vararg < 0 and f.kwarg < 0 and all(t in ["int", "float", "bool"] for t in f.ptypes) and all(p.kids[0].kind != "noann" for p in f.node.kids[0].kids):
+        names = dict(self.assigned)
+        for p in f.params:
+            names[p] = True
+        blocked: dict[str, bool] = {}
+        for nm in ["int", "float", "bool", "range"]:
+            if nm in self.mvars or nm in self.gtypes or nm in self.funcs or nm in self.classes or nm in self.aliases or nm in self.fglobals:
+                blocked[nm] = True
+        # This belongs to the fresh IFn, so dynamic widening/restarts recompute it and
+        # nested function compilation saves/restores it with the existing Frame.
+        self.fn.numeric_only = all(numeric_statement(n, names, blocked) for n in body)
     if takes_self(f):
         # callers check the receiver, so self is never None inside a method
         self.nn["%a0"] = True

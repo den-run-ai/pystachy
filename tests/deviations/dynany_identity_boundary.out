@@ -1,4 +1,3 @@
-a copy made before the variable became Any False False
 an argument False False
 a return value False False
 a typed list's item False False
@@ -7,7 +6,6 @@ a class variable False False
 a parameter's default value False False
 a variable a closure reads False False
 a comprehension's variable [False]
-a module variable that a call rebinds True True
 a folded constant False False
 a read before a store in a branch that does not run False False
 a value a conditional chooses from two variables False False

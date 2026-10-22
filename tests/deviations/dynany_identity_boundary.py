@@ -1,15 +1,12 @@
 # Documented deviation (docs/dynamic-any.md): in a module that compiles typing.Any as dynamic
 # values, an int or float variable of typed code holds one object (#797), but these values do not
-# keep their object where they become Any values: a copy of a variable made before the variable
-# first became one, an argument or a parameter's default value (the parameter receives a new
-# object), a return value, an item of a typed container, a typed field or class variable, a
-# variable that a closure reads and a comprehension's variable. Each is a new object there, where
+# keep their object where they become Any values: an argument or a parameter's default value
+# (the parameter receives a new object), a return value, an item of a typed container, a typed
+# field or class variable, a variable that a closure reads and a comprehension's variable.
+# Each is a new object there, where
 # CPython's names, containers and classes hold one (it prints True for each). So is the value of
 # an expression of literals, which CPython's compiler folds into one constant (999 + 1 is 1000
-# there). `is` and id() still
-# agree. The other way round, a module variable that has no box yet, read in an expression that
-# then calls a function which rebinds it to an equal value, gives the new binding the read value's
-# box: one object where CPython has two (it prints False there).
+# there). `is` and id() still agree.
 # pystachy: dynamic-any
 from typing import Any
 
@@ -40,27 +37,8 @@ def give(a: Any) -> int:
     return n
 
 
-G = int("1000")
-
-
-def rebind() -> int:
-    global G
-    G = int("1000")
-    return 0
-
-
-def rebound() -> None:
-    a: list[Any] = [G, rebind()]
-    b: Any = G
-    print("a module variable that a call rebinds", a[0] is b, id(a[0]) == id(b))
-
-
 def run() -> None:
     n = int("1000")
-    m = n
-    a: Any = n
-    b: Any = m
-    print("a copy made before the variable became Any", a is b, id(a) == id(b))
     callee(n, n)
     r: Any = int("1000")
     g2: Any = give(r)
@@ -89,20 +67,28 @@ def run() -> None:
 
 
 run()
-rebind()
-rebound()
 k: Any = 1000
 m: Any = 999 + 1
 print("a folded constant", k is m, id(k) == id(m))
-bx = int("1000")
-bflag = bool(int("0"))
-bys: list[Any] = [bx, (bx := int("2000")) if bflag else 0]
-bw: Any = bx
-print("a read before a store in a branch that does not run", bys[0] is bw, id(bys[0]) == id(bw))
-cx = int("1000")
-cz = int("1000")
-cflag = bool(int("1"))
-cw: Any = cx
-cy = cx if cflag else cz
-cv: Any = cy
-print("a value a conditional chooses from two variables", cw is cv, id(cw) == id(cv))
+
+
+def local_branch() -> None:
+    bx = int("1000")
+    bflag = bool(int("0"))
+    bys: list[Any] = [bx, (bx := int("2000")) if bflag else 0]
+    bw: Any = bx
+    print("a read before a store in a branch that does not run", bys[0] is bw, id(bys[0]) == id(bw))
+
+
+def local_selection() -> None:
+    cx = int("1000")
+    cz = int("1000")
+    cflag = bool(int("1"))
+    cw: Any = cx
+    cy = cx if cflag else cz
+    cv: Any = cy
+    print("a value a conditional chooses from two variables", cw is cv, id(cw) == id(cv))
+
+
+local_branch()
+local_selection()
