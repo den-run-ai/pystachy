@@ -39,7 +39,12 @@ trap 'exit 130' INT TERM
 
 # same FILE DIR: compile FILE with both compilers in DIR; DIR/report says what differs (empty: nothing)
 same() {
-  mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
+  mp=$PYSTACHY_PATH
+  if [ -f "${1%.py}.path" ]; then
+    mp=$(sh tests/prepare_path.sh "$1" "$2") || {
+      echo "cannot prepare import path" > "$2/report"; return;
+    }
+  fi
   how=ir
   case $RT:$1 in 1:runtime.py | 1:*/runtime.py | 1:*/rtmode_*.py) how=rt ;; esac
   PYSTACHY_PATH=$mp $OLD $how "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?

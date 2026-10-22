@@ -15,7 +15,8 @@ class LayoutTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        for name in ("tests/corpus.sh", "tests/run.sh", "tests/record.sh", "tests/verify.sh"):
+        for name in ("tests/corpus.sh", "tests/run.sh", "tests/record.sh", "tests/verify.sh",
+                     "tests/prepare_path.sh", "tools/irsame.sh", "tools/check_ir.sh"):
             self.write(name, (ROOT / name).read_text())
         # a case of each suite, helper packages and other suites' files, which are no cases
         self.write("tests/programs/b/two.py", "print(2)\n")
@@ -81,6 +82,8 @@ class LayoutTests(unittest.TestCase):
 from pathlib import Path
 import sys
 
+if len(sys.argv) < 3:
+    sys.exit(0)
 mode, source = sys.argv[1:3]
 if Path(source).name == "warm.py":
     sys.exit(0)
@@ -91,7 +94,9 @@ assert (helper / "closure_path_fixture.py").read_bytes() == Path(
     "tests/closure_path_modules/closure_path_fixture.py").read_bytes()
 with open("calls", "a") as log:
     log.write(mode + " " + str(helper) + "\\n")
-if mode == "run":
+if mode == "ir":
+    Path(sys.argv[sys.argv.index("-o") + 1]).write_text("; test IR\\n")
+elif mode == "run":
     print("ok")
 else:
     output = Path(sys.argv[sys.argv.index("-o") + 1])
@@ -109,6 +114,21 @@ else:
             self.assertFalse(Path(call.split(" ", 1)[1]).exists())
         self.assertFalse((self.root / "tests/paths]").exists())
 
+        self.write("bin/llvm-as", "#!/bin/sh\ncat > /dev/null\n")
+        (self.root / "bin/llvm-as").chmod(0o755)
+        for command in (("tools/irsame.sh", "./compiler", "./compiler"),
+                        ("tools/check_ir.sh", "./compiler")):
+            with self.subTest(command=command):
+                (self.root / "calls").unlink()
+                result = self.run_script(*command, "tests/programs/language/closure_paths.py",
+                                         PYSTACHY_JOBS="1", PYSTACHY_LLVM=str(self.root / "bin"))
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                calls = (self.root / "calls").read_text().splitlines()
+                self.assertEqual(len(calls), 2 if "irsame" in command[0] else 1)
+                for call in calls:
+                    self.assertTrue(call.startswith("ir "))
+                    self.assertFalse(Path(call.split(" ", 1)[1]).exists())
+
     def test_missing_closure_helper_fails_before_compilation(self):
         self.write("tests/programs/language/closure_paths.py", "print(1)\n")
         self.write("tests/programs/language/closure_paths.out", "1\n[exit 0]\n")
@@ -118,6 +138,12 @@ else:
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("cannot prepare bracket-path fixture", result.stdout)
         self.assertIn("0 passed, 1 failed", result.stdout)
+        for command in (("tools/irsame.sh", "true", "true"), ("tools/check_ir.sh", "true")):
+            with self.subTest(command=command):
+                result = self.run_script(*command, "tests/programs/language/closure_paths.py",
+                                         PYSTACHY_JOBS="1")
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("cannot prepare import path", result.stdout)
 
     def test_check_recordings_fails_on_a_stray_and_on_two_cases_of_one_name(self):
         version = "%d.%d.%d" % sys.version_info[:3]
@@ -132,6 +158,49 @@ else:
         self.assertIn("FAIL tests/programs/*/one.py: two cases have that name", result.stdout)
         self.assertNotIn("FAIL tests/programs/a/__pycache__", result.stdout)
         self.assertNotIn("FAIL one:", result.stdout)  # (each program's recording is CPython's)
+
+    def test_runtime_abi_uses_bracket_path_and_fails_when_preparation_fails(self):
+        for name in ("tools/rtabi.py", "tests/programs/language/closure_paths.py",
+                     "tests/programs/language/closure_paths.path",
+                     "tests/closure_path_modules/closure_path_fixture.py"):
+            self.write(name, (ROOT / name).read_text())
+        self.write("runtime.py", "def pys_probe() -> int: ...\n")
+        self.write("abi-compiler", f"#!{sys.executable}\n" + '''import os
+from pathlib import Path
+import sys
+if sys.argv[1] == "rt":
+    print("@s.0 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1}")
+if sys.argv[-1].endswith("closure_paths.py"):
+    helper = Path(os.environ["PYSTACHY_PATH"])
+    assert helper.name == "paths]"
+    assert (helper / "closure_path_fixture.py").read_bytes() == Path(
+        "tests/closure_path_modules/closure_path_fixture.py").read_bytes()
+    Path("observed-path").write_text(str(helper))
+print("declare i64 @pys_probe()")
+''')
+        self.write("llvm/clang", f"#!{sys.executable}\n" +
+                   'print("%struct.Str = type { i64, i64, i64, [0 x i8] }")\n'
+                   'print("define i64 @pys_probe()")\n')
+        for name in ("abi-compiler", "llvm/clang"):
+            (self.root / name).chmod(0o755)
+
+        def run():
+            return subprocess.run(
+                [sys.executable, "tools/rtabi.py", "./abi-compiler"], cwd=self.root,
+                text=True, capture_output=True, timeout=20,
+                env={"PATH": "/usr/bin:/bin", "PYSTACHY_LLVM": str(self.root / "llvm")})
+
+        result = run()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("0 mismatches", result.stdout)
+        observed = self.root / "observed-path"
+        self.assertFalse(Path(observed.read_text()).exists())
+        observed.unlink()
+        (self.root / "tests/closure_path_modules/closure_path_fixture.py").unlink()
+        result = run()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("cannot prepare bracket-path fixture", result.stderr)
+        self.assertFalse(observed.exists())
 
     def test_record_finds_a_program_by_its_name_or_its_path(self):
         version = "%d.%d.%d" % sys.version_info[:3]
