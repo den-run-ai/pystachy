@@ -97,6 +97,7 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 dynamic `Any` dictionary views (#829), **partial** | `bd0eb909`; compiler/tests after #818 | The 75-program dynamic-`Any` corpus improves **73→75 hosted compilations** with no loss: direct typed consumers of `dict[str, Any].keys()` and `.items()` recover. Pinned imports remain 148/460. Saved-bound and unbound `dict.keys`/`values`/`items` spellings still reject; existing #777 and the acknowledged follow-up retain that gap. [Evidence](compatibility-2026-10-21-dynamic-views-partial.json). |
 | 2026-10-21 nested compiler-state isolation (#819), **partial** | `4046df59`; compiler/tests/tooling after #832 | All eight new nested-compilation regressions emit checked hosted IR: four previous rejections become accepted and four accepted cases change IR. The structural guard passes 18/18 tests; all 31 retained state tests pass. Caller restoration has no observed change at depths 1–3, while the intentional `nonecmp` inheritance and its known multi-iteration miscompile remain under #822. Pinned imports remain 148/460. [Evidence](compatibility-2026-10-21-nested-compiler-state-partial.json). |
 | 2026-10-21 dynamic `Any` numeric object identity (#807), **partial** | `8433b9d7`; compiler/runtime/tests/docs after #819 | Pinned CPython validates 1,563 recordings and 96 deviations. The retained dynamic-`Any` corpus preserves all 87 acceptances and 12 rejections; 65 accepted programs change IR for identity boxes/slots. Exact-tree native CI is green and reports zero mismatches in the 450-case fuzzer, versus five on prior main. Pinned imports remain 148/460. Documented identity boundaries remain under open #797. [Evidence](compatibility-2026-10-21-dynamic-identity-partial.json). |
+| 2026-10-21 dynamic JSON `Any` and `None` loop inference (#823/#835), **partial** | `c39f2ad3`; implementation through `0f69df2b`, plus docs-only #837 | Pinned CPython validates 1,570 recordings and 97 deviations. Six selected programs move from rejection to checked hosted IR: four JSON/`Any` cases and two stale-`None` loop cases; two retained global-loop cases remain accepted. The JSON differential tool passes 22,449 checks, compiler-state contracts pass, and both implementation heads have 32/32 successful jobs. Pinned imports remain 148/460. General typed-container crossings remain under #777. [Evidence](compatibility-2026-10-21-json-any-none-loop-partial.json). |
 
 ## 2026-10-17 — #583: compiled float64 array example
 
@@ -6479,6 +6480,58 @@ supplies the native matrix separately. No local full `make verify`, broad port o
 package suite, CPython regrtest, performance or memory comparison completed.
 The latest fully evaluated main therefore remains
 **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
+
+## 2026-10-21 — #823 dynamic JSON `Any` and #835 `None` loop inference
+
+Inspected [main `c39f2ad35b565801a60e9c0267b582c4c135cd66`](https://github.com/den-run-ai/pystachy/commit/c39f2ad35b565801a60e9c0267b582c4c135cd66),
+covering [#823](https://github.com/den-run-ai/pystachy/pull/823) and
+[#835](https://github.com/den-run-ai/pystachy/pull/835) after the previous
+audited `8433b9d7`. The implementation tree is `0f69df2b` / `954f3c79`; the
+final source additionally includes [#837](https://github.com/den-run-ai/pystachy/pull/837),
+which changes only README prose and is not treated as a compatibility event.
+
+#823 adds a gated `_pystachy_json_any` helper. In opted-in modules, bundled
+`json.loads()` can decode directly into dynamic `Any` containers and
+`json.dumps()` can serialize supported `Any` values. Local or search-path
+`json.py` modules remain unshadowed, and typed JSON calls retain the typed path.
+#835 fixes the confirmed stale-`None` loop result by replaying provisional local
+and global reads when later inference supplies a payload type.
+
+[Machine-readable evidence](compatibility-2026-10-21-json-any-none-loop-partial.json)
+retains exact revisions, commands, workflow links, issue state and boundaries.
+
+| Fresh merged-tree measurement | Result and boundary |
+|---|---|
+| CPython recordings | Pinned CPython **3.13.16** validates all **1,570 recordings**, **97 deviations** and 12 pinned library files with zero failures. This is +7 recordings and +1 deviation from #807. |
+| Selected hosted IR | Of eight new JSON/`None` inputs, the #807 frontend accepts **2/8** and current main accepts **8/8**. The four JSON positive/deviation programs and two loop-inference programs move from rejection to checked hosted IR; the two global-loop controls stay accepted. No selected acceptance is lost. Hosted emission does not execute IR. |
+| JSON helper and differential checks | The loader gate passes **4/4** tests: bundled JSON uses the helper while user/local JSON and typed calls do not. `tools/json_check.py` passes **22,449** hosted differential/limit checks with seed 391. |
+| Compiler-state contracts | Frame fields pass **18/18**, retained compiler-state tests **31/31**, and the contract reports exact initialization/save/restore mappings. |
+| Fast hosted checks | `make check-fast` passes Ruff, mypy on **45/45** files, seven effect-summary, **88/88** typed-IR and **4/4** JSON-helper tests. |
+| Pinned isolated imports | Both fresh CPython 3.13.16 source sweeps remain **148/460**, with 62 overlay exclusions, 312 errors and no timeout. After checkout paths are normalized, all 460 results and first errors are identical. `_pystachy_json_any` is an internal overlay helper, not a new CPython inventory success. |
+
+This is a material compatibility gain for opted-in dynamic applications and a
+compiler-correctness fix. The four JSON fixtures cover nested aliasing, Unicode,
+numeric values, options, bad keys and the documented key-reinsertion deviation.
+The loop fixtures cover direct/copy/helper/global paths and multiple iterations.
+Issue [#779](https://github.com/den-run-ai/pystachy/issues/779) is closed as
+completed. Open [#777](https://github.com/den-run-ai/pystachy/issues/777) still
+tracks general typed mutable-container crossings and allocation-site selection;
+JSON helper support does not establish general NumPy/PyPI compatibility. The
+broader compiler-state tracker [#822](https://github.com/den-run-ai/pystachy/issues/822)
+also remains open, although its stale-`None` loop case is resolved here.
+
+Both final implementation heads have **32/32 successful external jobs** across
+CI, Lint, Packages and Installation. #823 has eight resolved review threads and
+#835 has none. The PRs additionally attribute 24 selected JSON JIT/AOT checks,
+24 JSON GC-stress checks, a byte-identical 100,000-event pipeline, 15 affected
+`None` JIT/AOT checks and 12 selected `None` GC-stress checks. These are
+attributed exact-head measurements, not fresh local native execution of the
+combined merge tree.
+
+LLVM 18 remains unavailable locally, so there is no fresh local native build,
+JIT/AOT or GC execution, full `make verify`, broad package/port suite, CPython
+regrtest, performance or memory comparison. The latest fully evaluated main
+therefore remains **`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
 
 ## 2026-10-21 — #819: nested compiler-state isolation
 

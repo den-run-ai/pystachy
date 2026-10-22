@@ -106,6 +106,27 @@ Deliberate limits:
   are outside the `JSONValue` representation. Unsupported APIs/types are normally
   compilation errors, not CPython's runtime errors.
 
+## In modules that opt in to dynamic `Any`
+
+In a module that opts in to [dynamic `Any`](dynamic-any.md), `json.loads()` decodes into `Any`'s
+containers wherever its result becomes `Any` storage: an `Any` variable, argument or return value,
+or a `list[Any]`, `dict[str, Any]` or `list[dict[str, Any]]`, which have `Any`'s layout there.
+`json.dumps()` encodes a value that holds `Any` values, and a display or comprehension passed to
+it, by walking `Any` values. Both are lib's `_pystachy_json_any.py`, which the compiler calls for
+`json`'s functions in such a module (#779). The document is then one set of objects that typed
+code (`dict[str, Any]`, `list[dict[str, Any]]`) and `Any` code share, with no copy: a change made
+through either shows through the other (`tests/programs/inference/dynany_json.py`,
+`tests/programs/inference/dynany_json_app.py`).
+
+`dumps()` of `Any` values writes tuples as arrays, and int, float, bool and `None` keys as
+strings, and takes CPython's `skipkeys`, `check_circular` and `default` too. It raises CPython's
+`TypeError`s: `Object of type C is not JSON serializable` for a value JSON cannot hold, and `keys
+must be str, int, float, bool or None, not C`. A `default` callback's result becomes an `Any` value,
+so the callback is declared `-> Any`: one declared `-> dict[str, int]` is rejected, as a typed
+container is wherever it would become an `Any` value. Its other limits are the prototype's, above.
+Elsewhere, including where the result has a typed or no annotation (`doc = json.loads(s)`),
+`json`'s own functions and `JSONValue` storage stay as they are.
+
 ## Decoder
 
 `loads()` scans the UTF-8 bytes of its argument with integer comparisons, so it

@@ -18,9 +18,9 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import METHODS, NONEVAR, RTDATA
+from src.pystachy_compiler.specs import JSONANY, METHODS, NONEVAR, RTDATA
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -1789,3 +1789,40 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     self.br(head)
     self.place(end)
     return self.mem_load(Val(acc, "*dyn"))
+
+
+def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
+    # json.loads() or json.dumps() (name: json$loads, json$dumps) in a module that compiles Any as
+    # dyn: lib's function of Any values (JSONANY, which the loader adds to a program that has such
+    # a module and json) where the document is Any values, so that loads() decodes it into Any's
+    # containers and dumps() encodes those as the objects they are, with no copy (#779); else
+    # None, json's own function of JSONValue. loads() where its result becomes Any storage (want
+    # holds Any values); dumps() where its argument does, or is a list, dict or tuple display or a
+    # list or dict comprehension, which is then Any's
+    q = JSONANY + "$" + name[name.find("$") + 1 :]
+    if q not in self.funcs:
+        return None
+    if name == "json$loads":
+        if not holds_dyn(want):
+            return None
+        self.add(Ins("init", "", JSONANY))  # (its module's code, as an import runs it: nothing imports it)
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
+    objkw = [x for x in args if x.kind == "kw" and x.s == "obj"]
+    if len(args) == 0 or args[0].kind == "starred" or args[0].kind == "dstar" or (args[0].kind == "kw" and len(objkw) != 1):
+        return None
+    a = args[0] if args[0].kind != "kw" else objkw[0].kids[0]
+    if a.kind == "list" or a.kind == "dict" or a.kind == "tuple" or a.kind == "dictcomp" or (a.kind == "listcomp" and a.s != "gen"):
+        self.add(Ins("init", "", JSONANY))
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
+    if args[0].kind == "kw":
+        # (dumps(obj=...): the function its value's type chooses, which dry() finds without
+        # evaluating it before the arguments ahead of it, called with the arguments as they are)
+        if not holds_dyn(self.dry(a)):
+            return None
+        self.add(Ins("init", "", JSONANY))
+        return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)
+    v = self.expr(a, "")
+    if not holds_dyn(v.t):
+        return self.call_fn(self.funcs[name], [], [self.vnode(v)] + args[1:], want, resultsoft=resultsoft)
+    self.add(Ins("init", "", JSONANY))
+    return self.call_fn(self.funcs[q], [], [self.vnode(v)] + args[1:], want, resultsoft=resultsoft)

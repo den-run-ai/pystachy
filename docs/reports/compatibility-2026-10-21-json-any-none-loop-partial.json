@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "checkpoint": "dynamic Any JSON and None-loop inference",
+  "evaluated_main": {
+    "sha": "c39f2ad35b565801a60e9c0267b582c4c135cd66",
+    "tree": "9d557d9408c553068fb6f6a997695d02dc31ab90",
+    "implementation_sha": "0f69df2b62b591a9890614810b243bf7a39b07ee",
+    "implementation_tree": "954f3c79f9a195694e3b3ea5fd3ad9be63583cbb"
+  },
+  "previous_audited_main": "8433b9d78e02c1b3e4abdba632999da33e2fac56",
+  "merges": [
+    {
+      "pr": 823,
+      "title": "Dynamic Any: json.loads() into Any's containers, json.dumps() of Any values (#779)",
+      "merge_sha": "b9b97bd86b409f1fa58333c9873ff5a1ec7fa21f",
+      "head_sha": "d7787e95cbfa1dd520405d6801b4a5badfa7d292",
+      "merge_tree": "30db647ccd1410843a768c1eee98e4cd7748c10e",
+      "merged_at": "2026-10-21T23:57:29Z"
+    },
+    {
+      "pr": 835,
+      "title": "Revisit earlier None reads when loop inference widens a local",
+      "merge_sha": "0f69df2b62b591a9890614810b243bf7a39b07ee",
+      "head_sha": "16f276e2424e42d3611a37131173221a2109e30b",
+      "head_tree": "aea5bc3d53ade5a68d2d562ca51bb293a5057330",
+      "merge_tree": "954f3c79f9a195694e3b3ea5fd3ad9be63583cbb",
+      "merged_at": "2026-10-21T23:57:40Z"
+    },
+    {
+      "pr": 837,
+      "title": "docs: simplify README performance summary",
+      "merge_sha": "c39f2ad35b565801a60e9c0267b582c4c135cd66",
+      "head_sha": "48a5260e28783416ea2b60ee25a0839a51f5ea44",
+      "classification": "documentation only; included in exact source identity and not treated as a compatibility event"
+    }
+  ],
+  "environment": {
+    "python": "CPython 3.13.16 (Clang 22.1.3)",
+    "python_executable": "/root/.local/bin/python3.13",
+    "cpython_source_revision": "cbc944f4bc59639a444dd971c737788ba2283a91",
+    "llvm": "LLVM 18 unavailable locally; no fresh local native build or execution",
+    "import_scope": "isolated CPython-source imports compiled to hosted IR with --metadata; not runtime/API compatibility"
+  },
+  "fresh_results": {
+    "recordings": {
+      "recordings": 1570,
+      "deviations": 97,
+      "library_files": 12,
+      "failures": 0,
+      "delta_from_807": {
+        "recordings": 7,
+        "deviations": 1
+      }
+    },
+    "selected_hosted_ir": {
+      "scope": "four new JSON positive/deviation programs and four new None-loop positive programs",
+      "previous_compiled": 2,
+      "current_compiled": 8,
+      "newly_compiled": [
+        "dynany_json",
+        "dynany_json_app",
+        "dynany_json_bad_keys",
+        "dynany_json_reinsert",
+        "none_loop_dependencies",
+        "none_loop_inference"
+      ],
+      "lost_compilations": [],
+      "unchanged_acceptances": [
+        "none_global_loop_copy",
+        "none_global_loop_result"
+      ],
+      "current_ir_lines": {
+        "dynany_json": 9278,
+        "dynany_json_app": 7823,
+        "dynany_json_bad_keys": 3304,
+        "dynany_json_reinsert": 2704,
+        "none_global_loop_copy": 159,
+        "none_global_loop_result": 173,
+        "none_loop_dependencies": 564,
+        "none_loop_inference": 394
+      },
+      "boundary": "Checked hosted IR emission does not execute JIT/AOT code."
+    },
+    "json_hosted_checks": {
+      "json_any_loader_tests": "4/4 pass",
+      "json_differential_limit_checks": "22449/22449 pass (seed 391)",
+      "helper_gating": "bundled json routes opted-in Any calls to _pystachy_json_any; local/search-path json and typed calls remain unshadowed"
+    },
+    "compiler_state": {
+      "frame_field_tests": "18/18 pass",
+      "compiler_state_tests": "31/31 pass",
+      "contract": "all declared fields match Gen initialization and exact save/restore mappings"
+    },
+    "fast_checks": {
+      "ruff": "pass",
+      "mypy_files": 45,
+      "function_summary_tests": "7/7 pass",
+      "typed_ir_tests": "88/88 pass",
+      "json_any_loader_tests": "4/4 pass"
+    },
+    "pinned_import_sweep": {
+      "inventory_total": 522,
+      "overlay_exclusions": 62,
+      "included": 460,
+      "previous_successes": 148,
+      "current_successes": 148,
+      "errors": 312,
+      "timeouts": 0,
+      "new_successes": [],
+      "lost_successes": [],
+      "normalized_result_changes": 0,
+      "normalized_result_sha256": "11958ee8f820e02cac447af6526f6562d91089cd4e104c429b1f73e4743627ee",
+      "previous_duration_seconds": 89.075,
+      "current_duration_seconds": 176.869,
+      "comparison_status": "identical after checkout paths are normalized"
+    }
+  },
+  "implementation_workflows": {
+    "pr_823": {
+      "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39693179248",
+      "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39693179247",
+      "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39693179288",
+      "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39693179269",
+      "successful_jobs": 32,
+      "failed_jobs": 0
+    },
+    "pr_835": {
+      "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39695019900",
+      "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39695019933",
+      "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39695019782",
+      "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39695019830",
+      "successful_jobs": 32,
+      "failed_jobs": 0
+    },
+    "combined_tree_note": "The two implementation heads were validated separately by external native matrices; fresh local hosted checks cover their merged tree."
+  },
+  "review": {
+    "pr_823_threads": 8,
+    "pr_823_unresolved_threads": 0,
+    "pr_835_threads": 0,
+    "pr_835_unresolved_threads": 0
+  },
+  "issue_state": {
+    "779": "closed as completed by #823",
+    "777": "open; general typed-container crossings and allocation-site selection remain",
+    "822": "open; #835 resolves the stale None loop-inference case but the broader compiler-state tracker remains open"
+  },
+  "attributed_final_tree_results": {
+    "pr_823": [
+      "24/24 selected JSON JIT/AOT checks and 24/24 GC-stress checks pass",
+      "100000-event study pipeline matches CPython/JIT/AOT output byte-for-byte",
+      "native json_check reports 22449 checks",
+      "No current performance comparison was run; historical instruction and heap figures remain historical."
+    ],
+    "pr_835": [
+      "15/15 affected JIT/AOT program and rejection checks pass",
+      "12/12 selected GC-stress checks pass",
+      "full irsame reports six intended changes and no new rejection"
+    ]
+  },
+  "commands": [
+    "uv run --python /root/.local/bin/python3.13 --with-requirements tools/requirements-dev.txt make check-fast",
+    "uv run --python /root/.local/bin/python3.13 --with-requirements tools/requirements-dev.txt make check-recordings",
+    "/root/.local/bin/python3.13 -m unittest discover -s tools -p test_frame_fields.py",
+    "/root/.local/bin/python3.13 -m unittest discover -s tools -p 'test_compiler_state*.py'",
+    "/root/.local/bin/python3.13 tools/compiler_state_contract.py",
+    "/root/.local/bin/python3.13 -m unittest discover -s tools -p test_json_any_loader.py",
+    "/root/.local/bin/python3.13 tools/json_check.py",
+    "compile the eight selected current-tree inputs to checked hosted IR with the #807 and current frontends",
+    "PYSTACHY_HOME=<checkout> /root/.local/bin/python3.13 tools/import_sweep.py -j 2 --metadata <meta.json> <hosted-wrapper> <cpython-v3.13.16-source>/Lib <result.json>"
+  ],
+  "limitations": [
+    "LLVM 18 was unavailable locally, so no fresh local native compiler build, JIT/AOT execution, GC-stress run or full make verify completed on the combined tree.",
+    "Exact implementation-head CI supplies native evidence but is not the combined merge tree.",
+    "No broad port/package/upstream suite, CPython regrtest, performance or memory comparison completed.",
+    "General NumPy or PyPI compatibility is not inferred from this JSON helper work."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

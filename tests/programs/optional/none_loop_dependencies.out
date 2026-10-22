@@ -1,0 +1,45 @@
+copies 0
+none 0
+control 0
+True
+initial copy 0
+returned None 0
+parameter 0
+copies 1
+falsy
+none 1
+falsy
+control 1
+falsy
+False
+initial copy 1
+falsy
+returned None 1
+falsy
+parameter 1
+falsy
+copies 3
+falsy
+falsy
+truthy
+none 3
+falsy
+falsy
+falsy
+control 3
+falsy
+truthy
+False
+initial copy 3
+falsy
+truthy
+truthy
+returned None 3
+falsy
+truthy
+truthy
+parameter 3
+falsy
+truthy
+truthy
+[exit 0]
