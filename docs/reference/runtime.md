@@ -96,6 +96,11 @@ of int keys are atomic. `tests/programs/runtime/gc_dict_values.py` and `make dic
 The driver reads and compiles a source snapshot of `runtime.c`, its `ryu/` includes
 and `runtime.py`, links the bitcode with `llvm-link`, then runs `opt -O2`. The C
 part is built with `-fexceptions` so exceptions can unwind through runtime frames.
+When `PYSTACHY_CFLAGS` enables AddressSanitizer, generated subset definitions
+are marked `sanitize_address` and compiled to bitcode through Clang's ASan
+pipeline first. This supplies the selected target/layout and honors sanitizer
+options without rerunning ASan on the already-instrumented C module. Raw `rt`
+output and ordinary builds retain their existing IR.
 JIT uses an object compiled from the combined bitcode; AOT links that runtime into
 the program.
 
@@ -134,10 +139,15 @@ hashing and formatting. CPython integers do not overflow at 64 bits, so compiled
 differential tests cover overflow behavior; CPython also does not enforce subset
 typing.
 
-C sanitizers cover `runtime.c`, while subset arithmetic and byte primitives provide
-their own checks. A compiler or primitive-lowering bug can still miscompile the
-runtime. Bootstrap checks, independent CPython execution and compiled comparisons
-address different parts of that risk.
+ASan covers both runtime parts during cached JIT/AOT builds; UBSan covers C only.
+`tools/test_runtime_asan.py` verifies cached subset instrumentation and uses an
+externally allocated string with a deliberately false length to demonstrate an
+overread report. Its uninstrumented control misses that overread. Managed small
+objects still share allocator arenas, so ASan does not yet give every managed
+object an independent red zone or detect all use after collection. Those
+allocator checks remain separate work. Subset arithmetic and byte primitives
+also provide their own checks; bootstrap, independent CPython execution and
+compiled comparisons address other compiler/lowering risks.
 
 For commit-specific experiments and the original proposed migration order, see
 the [historical evaluation](../archive/runtime-prototype.md).

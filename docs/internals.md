@@ -443,5 +443,10 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_JOBS` | Parallelism for the test runner and IR tools |
 
 For AddressSanitizer builds, set `ASAN_OPTIONS=detect_stack_use_after_return=0`: its fake stack
-is outside the collector's scanned stack. Sanitizer flags instrument the C runtime and final
-link; they do not directly instrument the generated code of `runtime.py`.
+is outside the collector's scanned stack. `PYSTACHY_CFLAGS=-fsanitize=address` instruments
+the C runtime and generated `runtime.py` code before caching; the final link adds the sanitizer
+runtime. For Linux JIT, preload the matching ASan shared runtime into `lli`, for example
+`LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so)` on x86-64. The compiler's
+LLVM toolchain must match that library. Small managed objects still share allocator arenas,
+so this is not complete managed-object bounds or reclaimed-memory coverage. UBSan continues
+to instrument C only.
