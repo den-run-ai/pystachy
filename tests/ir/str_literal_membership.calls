@@ -1,0 +1,8 @@
+@main.init:
+@f.literal: pys_eq pys_eq
+@f.optional: pys_eq_pair pys_eq_pair pys_eq_pair
+@f.fallback: pys_list_new pys_list_append pys_list_append pys_list_find
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish
