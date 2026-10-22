@@ -258,6 +258,63 @@ class GlobalOwnershipTests(unittest.TestCase):
                                           "from src.pystachy_compiler import lexer as lex\n"),
                                  {("lexer.KEYWORDS", "probe.added", "lex.KEYWORDS")})
 
+    def test_conditional_alias_origins(self):
+        for expression in ("KEYWORDS if enabled else OPS", "KEYWORDS or OPS",
+                           "(KEYWORDS if enabled else {}) or OPS"):
+            for body in (f"def added():\n    alias = {expression}\n    alias.clear()\n",
+                         f"def added(alias=({expression})):\n    alias.clear()\n",
+                         f"def added():\n    ({expression})['nested'].clear()\n",
+                         f"def added():\n    ({expression})['bad'] = 0\n"):
+                with self.subTest(expression=expression, body=body):
+                    sources = {"probe": "from src.pystachy_compiler.lexer import KEYWORDS, OPS\n" + body,
+                               "lexer": "KEYWORDS = {}\nOPS = {}\n"}
+                    trees, found, bindings = inventory(sources)
+                    actual = writes(trees["probe"], "probe", bindings["probe"], found)
+                    self.assertEqual({(origin, owner) for origin, owner, alias in actual},
+                                     {("lexer.KEYWORDS", "probe.added"), ("lexer.OPS", "probe.added")})
+        for expression in ("{} if KEYWORDS else {}", "dict(KEYWORDS) or {}",
+                           "dict(KEYWORDS) if enabled else []"):
+            self.assertEqual(self.scan(f"def added(alias=({expression})):\n    alias.clear()\n"), set())
+            self.assertEqual(self.scan(f"def added():\n    alias = {expression}\n    alias.clear()\n"), set())
+
+    def test_starred_unpack_declarations(self):
+        for assignment in ("HEAD, *CACHE = [0, 1, 2]", "*CACHE, TAIL = (1, 2, 3)",
+                           "HEAD, *CACHE, TAIL = factory()", "HEAD, (*CACHE,) = factory()",
+                           "*(HEAD, *CACHE), = factory()", "*CACHE, = []",
+                           "for HEAD, *CACHE in rows:\n    pass",
+                           "with context() as (HEAD, *CACHE):\n    pass"):
+            with self.subTest(assignment=assignment):
+                self.assertEqual(inventory({"probe": assignment + "\n"})[1], {"probe.CACHE"})
+        for assignment in ("HEAD, TAIL = factory()", "*(HEAD, TAIL), = [1, 2]",
+                           "*[HEAD, TAIL], = factory()"):
+            self.assertEqual(inventory({"probe": assignment + "\n"})[1], set())
+
+    def test_starred_unpack_preserves_literal_outer_aliases(self):
+        for assignment in ("left, *fresh, right = [KEYWORDS, 0, KEYWORDS]",
+                           "left, *fresh, right = (KEYWORDS, KEYWORDS)"):
+            source = "def added():\n    " + assignment + "\n    left.clear()\n    right.clear()\n    fresh.clear()\n"
+            self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "left"),
+                                                ("lexer.KEYWORDS", "probe.added", "right")})
+        for assignment in ("*fresh, = KEYWORDS", "left, *fresh, right = factory(KEYWORDS)",
+                           "left, *fresh, right = [*KEYWORDS]"):
+            source = "def added():\n    " + assignment + "\n    fresh.clear()\n"
+            self.assertEqual(self.scan(source), set())
+
+    def test_new_conditional_alias_and_starred_writer_controls(self):
+        sources = read_sources()
+        sources["lexer"] += "\ndef added_writer():\n    alias = KEYWORDS if enabled else OPS\n    alias.clear()\n"
+        self.assertEqual(validate_sources(sources), [
+            "unreviewed container writer: lexer.added_writer writes lexer.KEYWORDS via alias",
+            "unreviewed container writer: lexer.added_writer writes lexer.OPS via alias",
+        ])
+        for assignment in ("HEAD, *NEW_CACHE = [0, 1, 2]", "HEAD, *NEW_CACHE = factory()"):
+            sources = read_sources()
+            sources["lexer"] += "\n" + assignment + "\ndef added_writer():\n    NEW_CACHE.clear()\n"
+            self.assertEqual(validate_sources(sources), [
+                "unclassified module container: lexer.NEW_CACHE",
+                "unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE",
+            ])
+
     def test_local_alias_chain_and_nested_container(self):
         source = "def added():\n    one = KEYWORDS\n    two = one['x']\n    two.clear()\n"
         self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "two")})

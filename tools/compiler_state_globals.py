@@ -160,13 +160,26 @@ def target_leaves(target):
 def pairs(node):
     """Assignment bindings, including literal tuple/list unpacking."""
     def unpack(target, value):
-        if (isinstance(target, (ast.Tuple, ast.List)) and isinstance(value, (ast.Tuple, ast.List))
-                and len(target.elts) == len(value.elts)):
-            for left, right in zip(target.elts, value.elts):
+        if isinstance(target, ast.Starred):
+            # The starred result is a fresh list, never an alias to its iterable.
+            fresh = value if isinstance(value, ast.List) else ast.List(elts=[], ctx=ast.Load())
+            yield from unpack(target.value, fresh)
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            values = (value.elts if isinstance(value, (ast.Tuple, ast.List))
+                      and not any(isinstance(v, ast.Starred) for v in value.elts) else None)
+            star = next((i for i, t in enumerate(target.elts) if isinstance(t, ast.Starred)), -1)
+            if values is not None and star >= 0 and len(values) >= len(target.elts) - 1:
+                end = len(values) - (len(target.elts) - star - 1)
+                values = values[:star] + [ast.List(elts=values[star:end], ctx=ast.Load())] + values[end:]
+            if values is None or len(values) != len(target.elts):
+                values = [None] * len(target.elts)
+            for left, right in zip(target.elts, values):
                 yield from unpack(left, right)
         else:
             yield target, value
     targets, value = assigned(node)
+    if isinstance(node, (ast.For, ast.AsyncFor, ast.With, ast.AsyncWith)):
+        targets = list(binding_targets(node))  # Only starred targets have a known fresh result.
     for target in targets:
         yield from unpack(target, value)
 
@@ -278,6 +291,8 @@ def inventory(sources):
 
 
 def root_id(node):
+    if isinstance(node, (ast.IfExp, ast.BoolOp)):
+        return ast.unparse(node)
     if isinstance(node, ast.NamedExpr):
         return root_id(node.target)
     if isinstance(node, ast.Subscript):
@@ -291,6 +306,9 @@ def root_id(node):
 def root_name(node, names):
     if isinstance(node, (ast.NamedExpr, ast.Subscript)):
         return root_name(node.value, names)
+    if isinstance(node, (ast.IfExp, ast.BoolOp)):
+        values = [node.body, node.orelse] if isinstance(node, ast.IfExp) else node.values
+        return set().union(*(root_name(value, names) or set() for value in values))
     return names.get(root_id(node))
 
 
