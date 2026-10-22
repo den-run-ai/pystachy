@@ -21,5 +21,6 @@ Identify adapted sources/licenses and substantive AI assistance/tools, or state 
 
 - [ ] I reviewed and can explain the complete change.
 - [ ] I added regression coverage, or explained why it is not applicable.
+- [ ] The diff contains no raw research, transient handoffs or unapplied prototype patches; reusable checks and fixtures are in maintained locations.
 - [ ] I have the right to contribute this work and preserved applicable license notices.
 - [ ] For a PR from a fork: my account is in `.github/dco-signers.txt`, or this PR adds my line.

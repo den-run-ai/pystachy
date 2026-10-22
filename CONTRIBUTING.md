@@ -19,6 +19,18 @@ workflow and regression-prevention guidance.
 4. Open a draft if work or validation is incomplete. Fill in the PR template with
    actual evidence, including failures, timeouts and checks you could not run.
 
+## Repository contents
+
+Keep research proposals, roadmaps and transient integration notes in issues or PRs;
+keep raw experiments and evaluation dumps on a separate research branch. Do not
+merge `research/` directories or unapplied prototype patches into `main`.
+Promote useful checks into `tools/` and regression fixtures into their maintained
+test locations before merging. Curated documentation and reproducible benchmark
+or compatibility reports remain in their established locations.
+`make check-repository` rejects tracked root `research` paths, even when ignored.
+Review the full diff for misplaced artifacts elsewhere; the path check cannot
+classify a document's purpose.
+
 ## Validation
 
 For code changes, start with a minimal regression that fails before the fix and
