@@ -124,6 +124,9 @@ strings, and takes CPython's `skipkeys`, `check_circular` and `default` too. It 
 must be str, int, float, bool or None, not C`. A `default` callback's result becomes an `Any` value,
 so the callback is declared `-> Any`: one declared `-> dict[str, int]` is rejected, as a typed
 container is wherever it would become an `Any` value. Its other limits are the prototype's, above.
+Without `sort_keys`, callbacks that delete and reinsert keys or clear and repopulate the dict
+can change output order or entries compared with CPython's live dict-table traversal (the
+[dynamic `Any` deviation](dynamic-any.md#selecting-dynamic-storage)).
 Elsewhere, including where the result has a typed or no annotation (`doc = json.loads(s)`),
 `json`'s own functions and `JSONValue` storage stay as they are.
 

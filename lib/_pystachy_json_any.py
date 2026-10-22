@@ -208,10 +208,11 @@ class _Writer:
                     if self.entry(k, v, first, depth):
                         first = False
             else:
-                # as CPython's encoder walks a dict (PyDict_Next): each value is read when its key is
-                # reached, so a default() callback's change to a later entry is seen, a key it
-                # deletes is skipped and one it adds is written after the others (where no callback
-                # ran, the dict is as it was)
+                # Read values when their queued keys are reached, skip deleted keys, and append
+                # newly observed keys after callbacks. This differs from CPython's live table
+                # cursor for delete/reinsert and clear/repopulate: output order or entries can
+                # differ (tests/deviations/dynany_json_reinsert.py). Without callbacks the dict
+                # is unchanged.
                 # A key skipkeys skips is not looked up or hashed again: it writes nothing either way
                 keys = list(value)
                 calls = self.calls
