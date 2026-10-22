@@ -62,6 +62,8 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/syntax.py',
     'src/pystachy_compiler/templates.py',
     'src/pystachy_compiler/union_arithmetic.py',
+    'src/pystachy_compiler/union_proof.py',
+    'src/pystachy_compiler/union_state.py',
     'src/pystachy_compiler/unions.py',
     'src/pystachy_compiler/utils.py',
     'src/pystachy_compiler/variables.py',

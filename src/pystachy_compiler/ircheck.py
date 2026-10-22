@@ -1,9 +1,22 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
-from src.pystachy_compiler.ir import Blk, IFn, Ins
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
+from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
+
+# Fixed SSA result counts printed by each lowering (gen_nums handles calls).
+RESULT_NUMBERS: dict[str, int] = {
+    "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "field.addr": 1,
+    "mach.load": 1, "mach.addr": 1, "ovf": 3, "list.load": 4,
+    "landing": 2, "exc.match": 2, "union.payload": 2, "union.raw": 2,
+    "tuple.load": 2, "dyn.payload": 2, "dyn.type": 1, "phi": 1,
+    "select": 1, "list.len": 1, "slot.pack": 1, "slot.unpack": 1,
+    "union.tag": 1, "num.cast": 1, "num.cmp": 1, "alloc.fixed": 1,
+    "tuple.store": 1, "mem.load": 1, "int.ucmp": 1, "ptr.cmp": 1,
+    "empty.kind": 1, "gen.yield": 2, "gen.ret": 2, "gen.promise": 1,
+}
 
 
 class EffectSummaries:
@@ -85,6 +98,28 @@ class EffectSummaries:
         self.calls = [[c for c in cs] for cs in calls]
 
 
+def has_machine_union_tag(fn: IFn) -> bool:
+    # A machine pointer annotation alone says nothing about its source. Recognize
+    # union boxes from parameter and result declarations, not narrowed operands.
+    # Only functions with an integer machine load need this scan.
+    sources: dict[str, bool] = {}
+    for n in range(len(fn.f.ptypes)):
+        t = fn.f.ptypes[n]
+        if is_union(t[4:-1] if is_opt(t) else t):
+            sources["%a" + str(n)] = True
+    for b in fn.blocks:
+        for i in b.code:
+            if len(i.r) == 1 and is_union(i.t[4:-1] if is_opt(i.t) else i.t):
+                sources["%t" + str(i.r[0])] = True
+    if len(sources) == 0:
+        return False
+    for b in fn.blocks:
+        for i in b.code:
+            if i.op == "mach.load" and i.t == "int" and i.a[0].v in sources:
+                return True
+    return False
+
+
 def gen_verify(self, fn: IFn, eh: bool) -> None:
     # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
     # call and init ops call compiled
@@ -95,6 +130,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     # edges of invokes reach, and every invoke's unwind edge goes to one; in a block that a
     # try statement covers, no call that may raise is left a call, nor a raise or throw
     at: dict[str, int] = {}
+    union_types: dict[str, list[str]] = {}
+    union_proofs = False
+    machine_tags = False
     lands: dict[str, bool] = {}
     for b in fn.blocks:
         if len(b.code) > 0 and b.code[0].op == "landing":
@@ -113,7 +151,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         at[l] = j
     succ: list[list[str]] = []
     for b in fn.blocks:
-        out: list[str] = []
+        # Most blocks can borrow their terminator's labels without combining edges.
+        out: list[str] = NOLABELS
+        owned = False
         for j in range(len(b.code)):
             i = b.code[j]
             if i.op not in IROPS:
@@ -132,8 +172,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 self.bad_ir(fn, b, f"{i.op} {i.s} may raise, in a block {b.handler} covers, but goes to no landing block")
             if i.op == "phi" and j > 0 and b.code[j - 1].op != "phi":
                 self.bad_ir(fn, b, "a phi after other ops")
-            if i.op == "rt" and i.s not in self.rtfns:
-                self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}" if i.s not in RUNTIME else f"{i.s}, which runtime() did not declare")
+            if i.op == "rt":
+                if i.s == "ubox":
+                    union_proofs = True
+                if i.s not in self.rtfns:
+                    self.bad_ir(fn, b, f"no RUNTIME entry for {i.s}" if i.s not in RUNTIME else f"{i.s}, which runtime() did not declare")
             if i.op == "empty.kind":
                 if len(i.a) != 1 or i.t != "" or i.s != "" or i.x != "" or len(i.b) != 0 or i.k < 0 or i.k >= len(self.holes):
                     self.bad_ir(fn, b, "empty.kind needs one empty dict/set and a valid type hole")
@@ -151,7 +194,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 t = i.t
                 if i.a[0].t != "bool" or i.a[1].t != t or i.a[2].t != t:
                     self.bad_ir(fn, b, "select needs a bool condition and matching value and result types")
-                if t == "" or t == "None" or t.startswith("*") or t == "#" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32", "%slot"]) or (t in ["T", "K", "V", "S"] and t not in self.classes):
+                if t == "" or t == "None" or t.startswith("*") or t == "#" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32", "%slot"]) or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
                     self.bad_ir(fn, b, "select needs a native or machine scalar value type")
 
             if i.op == "switch":
@@ -173,12 +216,14 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
 
             if i.op == "mach.load" or i.op == "mach.store":
                 load = i.op == "mach.load"
+                if load and i.t == "int":
+                    machine_tags = True
                 if len(i.a) != (1 if load else 2) or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
                 if i.a[0].t != "%ptr":
                     self.bad_ir(fn, b, f"{i.op} needs a machine pointer address")
                 t = i.t if load else i.a[1].t
-                if t == "" or t == "None" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32"]) or t.startswith("*") or t == "#" or (t in ["T", "K", "V", "S"] and t not in self.classes):
+                if t == "" or t == "None" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32"]) or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
                     self.bad_ir(fn, b, f"{i.op} needs a machine storage value type")
                 if (not load and i.t != "") or i.s not in ["", "length", "length.range", "bytes"] or (i.s == "length.range" and not load) or (i.s.startswith("length") and t != "int") or (i.s == "bytes" and t != "%byte"):
                     self.bad_ir(fn, b, f"{i.op} has invalid value or memory metadata")
@@ -191,7 +236,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if len(i.a) != (1 if i.op == "mem.load" else 2) or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
                 t = i.a[0].t[1:] if i.a[0].t.startswith("*") else ""
-                if t == "" or t.startswith("%") or t.startswith("*") or t == "#" or (t in ["T", "K", "V", "S"] and t not in self.classes):
+                if t == "" or t.startswith("%") or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
                     self.bad_ir(fn, b, f"{i.op} needs a typed address of a native value")
                 if (i.op == "mem.load" and i.t != t) or (i.op == "mem.store" and (i.t != "" or i.a[1].t != t)):
                     self.bad_ir(fn, b, f"{i.op} needs matching address and native value types")
@@ -221,7 +266,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 ts = targs(t) if is_tuple(t) and t.endswith("]") and t.count("[") == t.count("]") else []
                 if "" in ts or "..." in ts or i.k < 0 or i.k >= len(ts):
                     self.bad_ir(fn, b, f"{i.op} needs a fixed tuple and an in-range item index")
-                if i.s != ts[i.k] or i.s.startswith("%") or i.s.startswith("*") or i.s == "#" or (i.s in ["T", "K", "V", "S"] and i.s not in self.classes):
+                if i.s != ts[i.k] or i.s.startswith("%") or i.s.startswith("*") or i.s == "#" or ((i.s == "T" or i.s == "K" or i.s == "V" or i.s == "S") and i.s not in self.classes):
                     self.bad_ir(fn, b, f"{i.op} needs the declared native item type")
                 if (i.op == "tuple.load" and i.t != "%slot") or (i.op == "tuple.store" and (i.t != "" or i.a[1].t != "%slot")):
                     self.bad_ir(fn, b, f"{i.op} needs an opaque item slot")
@@ -246,27 +291,31 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, "ptr.cmp needs == or !=, returning bool")
                 for a in i.a:
                     t = a.t
-                    if t == "" or t.startswith("%") or t.startswith("*") or t == "#" or (t in ["T", "K", "V", "S"] and t not in self.classes) or (t != "None" and lt(t) != "ptr"):
+                    if t == "" or t.startswith("%") or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes) or (t != "None" and lt(t) != "ptr"):
                         self.bad_ir(fn, b, "ptr.cmp needs native references or None")
             if i.op == "slot.pack" or i.op == "slot.unpack":
                 if len(i.a) != 1 or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} needs one operand and no immediates or labels")
                 t = i.a[0].t if i.op == "slot.pack" else i.t
                 slot = i.t if i.op == "slot.pack" else i.a[0].t
-                if slot != "%slot" or t == "" or t.startswith("%") or t.startswith("*") or t == "#" or (t in ["T", "K", "V", "S"] and t not in self.classes):
+                if slot != "%slot" or t == "" or t.startswith("%") or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
                     self.bad_ir(fn, b, f"{i.op} needs a native value type and a %slot")
-            if i.op == "union.tag" or i.op == "union.payload":
+            if i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw":
+                union_proofs = True
                 if len(i.a) != 1 or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} needs one union operand and no extra metadata")
                 u = i.a[0].t
-                ms = umembers(u) if is_union(u) and u.endswith("]") else []
-                if len(ms) < 2:
-                    self.bad_ir(fn, b, f"{i.op} needs a nonoptional closed union")
-                for j in range(len(ms)):
-                    m = ms[j]
-                    if m == "" or m == "None" or is_opt(m) or is_union(m) or m.count("[") != m.count("]") or m in ms[:j] or m.startswith("%") or m.startswith("*") or m == "#" or (m in ["T", "K", "V", "S"] and m not in self.classes):
-                        self.bad_ir(fn, b, f"{i.op} needs distinct nonoptional union members")
-                if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)):
+                if u not in union_types:
+                    ms = umembers(u) if is_union(u) and u.endswith("]") else []
+                    if len(ms) < 2:
+                        self.bad_ir(fn, b, f"{i.op} needs a nonoptional closed union")
+                    for j in range(len(ms)):
+                        m = ms[j]
+                        if m == "" or m == "None" or is_opt(m) or is_union(m) or m.count("[") != m.count("]") or ms.index(m) != j or m.startswith("%") or m.startswith("*") or m == "#" or ((m == "T" or m == "K" or m == "V" or m == "S") and m not in self.classes):
+                            self.bad_ir(fn, b, f"{i.op} needs distinct nonoptional union members")
+                    union_types[u] = ms
+                ms = union_types[u]
+                if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)) or (i.op == "union.raw" and (i.t != "%slot" or i.s != "")):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or member")
             if i.op == "dyn.type" or i.op == "dyn.payload":
                 if len(i.a) != 1 or i.a[0].t != "dyn" or i.x != "" or i.k != 0 or len(i.b) != 0:
@@ -283,10 +332,19 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} {i.s} numbered {x}, above IFn.n ({fn.n})")
             if (i.op == "call" and i.s not in self.fll and i.s not in self.externs) or (i.op == "init" and "@init." + i.s not in self.fll):
                 self.bad_ir(fn, b, f"a call of {i.s}, which is not compiled")
-            if i.op != "phi":
-                out.extend(i.b)
+            if i.op != "phi" and len(i.b) > 0:
+                if len(out) == 0:
+                    out = i.b
+                else:
+                    if not owned:
+                        out = [l for l in out]
+                        owned = True
+                    out.extend(i.b)
             if i.op == "check":
                 ck = i.x if i.x != "" else i.s
+                if not owned:
+                    out = [l for l in out]
+                    owned = True
                 out.append(fn.cold[ck] if ck in fn.cold else f"(none for {ck})")
         if len(b.code) == 0:
             self.bad_ir(fn, b, "no terminator")
@@ -300,6 +358,20 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 for l in i.b:
                     if l not in at or b.label not in succ[at[l]]:
                         self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
+    if (union_proofs or (machine_tags and has_machine_union_tag(fn))) and not simple_union_proof(fn, self.utags, at, succ, union_types):
+        writes: dict[str, bool] = {}
+        raises: dict[str, bool] = {}
+        for b in fn.blocks:
+            for i in b.code:
+                if (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume"):
+                    key = i.op + "|" + i.s + "|" + i.x
+                    effects = self.opfx(i, fn.fa)
+                    writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
+                    raises[key] = effects & FXBIT["R"] != 0
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises)
+        proof.run()
+        for j in range(len(proof.bad)):
+            self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
 
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # a generator op (docs/internals.md#generators): gen.start ends the entry block of a
@@ -325,32 +397,13 @@ def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
         self.bad_ir(fn, b, "gen.start before other ops")
 
 def gen_nums(self, i: Ins) -> int:
-    if i.op == "scalar.bin" or i.op == "scalar.cast" or i.op == "scalar.cmp":
-        return 1
-    # how many numbers op i defines (%tN): what its lowering prints
-    if i.op == "field.addr" or i.op == "mach.load" or i.op == "mach.addr":
-        return 1
-    if i.op == "ovf":
-        return 3
-    if i.op == "list.load":
-        return 4
-    if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload" or i.op == "tuple.load" or i.op == "dyn.payload":
-        return 2
-    if i.op == "dyn.type":
-        return 1
-    if i.op == "phi" or i.op == "select" or i.op == "list.len" or i.op == "slot.pack" or i.op == "slot.unpack" or i.op == "union.tag" or i.op == "num.cast" or i.op == "num.cmp" or i.op == "alloc.fixed" or i.op == "tuple.store" or i.op == "mem.load" or i.op == "int.ucmp" or i.op == "ptr.cmp" or i.op == "empty.kind":
-        return 1
-    if i.op == "gen.yield":
-        return 2
-    if i.op == "gen.ret":
-        return 2
-    if i.op == "gen.promise":
-        return 1
+    # Runtime and compiled calls depend on their signature; all other counts are
+    # fixed by the operation's lowering and need no per-instruction opcode chain.
     if i.op == "rt":
         return 0 if self.rtfns[i.s].sig[0] == "None" else 1
     if i.op == "call" or i.op == "icall":
         return 0 if i.t == "None" else 1
-    return 0
+    return RESULT_NUMBERS.get(i.op, 0)
 
 def gen_bad_ir(self, fn: IFn, b: Blk, what: str) -> None:
     fail(f"internal error: bad IR in {fn.f.ll}, block {b.label or '(unnamed)'}: {what}", 0)

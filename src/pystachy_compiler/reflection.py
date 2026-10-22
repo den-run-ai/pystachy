@@ -2127,16 +2127,18 @@ def gen_refl_lookup(self, n: Node) -> RText:
         r.arms[0].slot = d.v  # (the default's value: evaluated before the lookup, as CPython does)
     end = self.label()
     narrow = dict(self.narrowed)
-    members: dict[str, str] = {}
-    if is_union(unopt(o.t)):
-        for m in umembers(unopt(o.t)):
-            for c in self.refl_concrete(m):
-                members[c] = m
     for lf in self.refl_split(o, known):
         self.place(lf.label)
         self.narrowed = dict(narrow)
         if lf.c != "None" and lf.c not in self.classes:
             self.err(f"the text of getattr(o, name) for a run-time name is not supported where o may be a {typestr(lf.c)}, whose methods are no values (#247, #489)")
+        # Keep the receiver extracted under this leaf's union tag guard. The later text
+        # consumer dispatches on the attribute selector, after the union branches merge;
+        # it must not reinterpret the original box's payload there without its tag proof.
+        receiver = ""
+        if is_union(unopt(o.t)) and lf.c != "None":
+            receiver = self.alloca(lf.c, "")
+            self.mstore(lf.c, lf.v.v, receiver)
         names = self.refl_name_list(lf.c)
         for nk in names:
             if nk[1] == "o" and self.refl_otext(lf.c, nk[0]) == "":
@@ -2150,7 +2152,7 @@ def gen_refl_lookup(self, n: Node) -> RText:
             if kind == "u":
                 continue  # (a slot never set: the miss below)
             arm = RArm(len(r.arms), lf.c, kind, nm)
-            arm.t = members.get(lf.c, "")  # (the union member to read the object from, later)
+            arm.slot = receiver  # (shared by this leaf's methods and object attributes)
             r.arms.append(arm)
             yes = self.label()
             no = self.label()
@@ -2241,11 +2243,11 @@ def gen_refl_arm_text(self, r: RText, arm: RArm, conv: str) -> Val:
         t = arm.c[arm.c.find("\x01") + 1 :]
         v = Val(self.mload(t, arm.slot), t)
         return self.repr(v) if conv == "repr" else self.to_str(v)
-    # the object, again: the receiver's register, or its union box's payload (a pure read)
+    # The object captured by lookup, already extracted from a union under its tag guard.
     if c == "None":
         obj = Val(self.refl_record("None"), "%ptr")
-    elif arm.t != "":
-        obj = Val(self.uget(Val(r.o.v, unopt(r.o.t)), arm.t).v, c)
+    elif arm.slot != "":
+        obj = Val(self.mload(c, arm.slot), c)
     else:
         obj = Val(r.o.v, c)
     if arm.kind == "m":

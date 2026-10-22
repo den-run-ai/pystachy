@@ -1140,13 +1140,15 @@ def gen_program(self, mods: list[Mod]) -> str:
     chk = os.getenv("PYSTACHY_IRCHECK", "") == "1"
     dump = os.getenv("PYSTACHY_IRFX", "") == "1" and not self.rtcache
     on = self.opts
-    if chk:
-        for fn in self.fns:
-            self.verify(fn, False)
     if self.eh or len(on) > 0 or chk or dump:
         # the passes and eh_ir read the effect summaries (eh_ir: which calls may raise); the IR
         # check computes them too, so that the tests run effects even with every pass off
         self.effects()
+    if chk:
+        # Union proofs distinguish read-only callees from calls that can invalidate
+        # storage facts, so the first verification uses complete effect summaries too.
+        for fn in self.fns:
+            self.verify(fn, False)
     if len(on) > 0:
         # (before eh_ir: a block that a try statement covers keeps its exception edge to the
         # landing block, Blk.handler, which the passes count, see preds)
