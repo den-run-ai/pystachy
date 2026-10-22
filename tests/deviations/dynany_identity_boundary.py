@@ -6,10 +6,7 @@
 # Each is a new object there, where
 # CPython's names, containers and classes hold one (it prints True for each). So is the value of
 # an expression of literals, which CPython's compiler folds into one constant (999 + 1 is 1000
-# there). `is` and id() still
-# agree. The other way round, a module variable that has no box yet, read in an expression that
-# then calls a function which rebinds it to an equal value, gives the new binding the read value's
-# box: one object where CPython has two (it prints False there).
+# there). `is` and id() still agree.
 # pystachy: dynamic-any
 from typing import Any
 
@@ -38,21 +35,6 @@ def dflt(a: Any, n: int = 1000) -> None:
 def give(a: Any) -> int:
     n: int = a
     return n
-
-
-G = int("1000")
-
-
-def rebind() -> int:
-    global G
-    G = int("1000")
-    return 0
-
-
-def rebound() -> None:
-    a: list[Any] = [G, rebind()]
-    b: Any = G
-    print("a module variable that a call rebinds", a[0] is b, id(a[0]) == id(b))
 
 
 def run() -> None:
@@ -85,16 +67,20 @@ def run() -> None:
 
 
 run()
-rebind()
-rebound()
 k: Any = 1000
 m: Any = 999 + 1
 print("a folded constant", k is m, id(k) == id(m))
-bx = int("1000")
-bflag = bool(int("0"))
-bys: list[Any] = [bx, (bx := int("2000")) if bflag else 0]
-bw: Any = bx
-print("a read before a store in a branch that does not run", bys[0] is bw, id(bys[0]) == id(bw))
+
+
+def local_branch() -> None:
+    bx = int("1000")
+    bflag = bool(int("0"))
+    bys: list[Any] = [bx, (bx := int("2000")) if bflag else 0]
+    bw: Any = bx
+    print("a read before a store in a branch that does not run", bys[0] is bw, id(bys[0]) == id(bw))
+
+
+local_branch()
 cx = int("1000")
 cz = int("1000")
 cflag = bool(int("1"))

@@ -383,6 +383,13 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     v.idslot = slot
     v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
     v.idgen = self.idstores.get(slot, 0)
+    if slot.startswith("@"):
+        # Another operand can call code that rebinds a global, beyond idstores' local view.
+        # Snapshot its object now, while the read still names this binding. A null lazy box
+        # cannot be recovered later: even an equal new value is a different object. Keeping
+        # only idfrom also prevents a later self-assignment from taking the idslot fast path.
+        v.idfrom = self.dyn_box(v).v
+        v.idslot = ""
 
 
 def gen_dyn_id_held(self, v: Val) -> Val:
