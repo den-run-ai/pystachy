@@ -42,6 +42,20 @@ class GlobalOwnershipTests(unittest.TestCase):
         self.assertEqual(inventory({"added": "LEFT, RIGHT = [], {}\n"})[1],
                          {"added.LEFT", "added.RIGHT"})
 
+    def test_match_case_declarations(self):
+        source = "match mode:\n    case 0:\n        FIRST = {}\n    case _:\n        match other:\n            case 1:\n                SECOND: list = factory()\n"
+        self.assertEqual(inventory({"added": source})[1], {"added.FIRST", "added.SECOND"})
+
+    def test_imported_noncontainers_are_not_writers(self):
+        for source in (
+            "from src.pystachy_compiler.worker import Worker\ndef added():\n    Worker.clear()\n",
+            "def added():\n    from src.pystachy_compiler.worker import Worker as Tool\n    Tool.clear()\n",
+        ):
+            with self.subTest(source=source):
+                sources = {"probe": source, "worker": "class Worker:\n    pass\n"}
+                trees, found, bindings = inventory(sources)
+                self.assertEqual(writes(trees["probe"], "probe", bindings["probe"], found), set())
+
     def scan(self, body, imports="from src.pystachy_compiler.lexer import KEYWORDS\n"):
         sources = {"probe": imports + body, "lexer": "KEYWORDS = {}\n"}
         trees, found, bindings = inventory(sources)
@@ -95,6 +109,32 @@ class GlobalOwnershipTests(unittest.TestCase):
     def test_local_alias_chain_and_nested_container(self):
         source = "def added():\n    one = KEYWORDS\n    two = one['x']\n    two.clear()\n"
         self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "two")})
+
+    def test_nonlocal_alias_augmented_mutation(self):
+        source = "def outer():\n    alias = KEYWORDS\n    def inner():\n        nonlocal alias\n        alias |= {'bad': True}\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.inner", "alias")})
+        source = "def outer():\n    alias = dict(KEYWORDS)\n    def inner():\n        nonlocal alias\n        alias |= {'bad': True}\n"
+        self.assertEqual(self.scan(source), set())
+        source = "def outer():\n    alias = KEYWORDS\n    def inner():\n        nonlocal alias\n        alias = {}\n"
+        self.assertEqual(self.scan(source), set())
+
+    def test_control_flow_nested_function_writer_owner(self):
+        source = "def outer():\n    match value:\n        case 0:\n            def inner():\n                KEYWORDS.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.inner", "KEYWORDS")})
+        source = "def outer():\n    match value:\n        case 0 if KEYWORDS.clear():\n            pass\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer", "KEYWORDS")})
+        source = "def outer():\n    try:\n        pass\n    except Exception:\n        def inner():\n            KEYWORDS.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.inner", "KEYWORDS")})
+
+    def test_conditional_function_and_method_definitions(self):
+        for header in ("if flag:", "try:", "match value:\n    case 0:"):
+            indent = "        " if header.startswith("match") else "    "
+            source = header + "\n" + indent + "def added():\n" + indent + "    KEYWORDS.clear()\n"
+            if header == "try:":
+                source += "except Exception:\n    pass\n"
+            self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+        source = "class C:\n    if flag:\n        def method(self):\n            KEYWORDS.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.C.method", "KEYWORDS")})
 
     def test_local_imports_and_import_aliases(self):
         forms = (

@@ -88,6 +88,16 @@ def statements(body):
                 yield from statements(getattr(node, field, []))
             for handler in getattr(node, "handlers", []):
                 yield from statements(handler.body)
+            for case in getattr(node, "cases", []):
+                yield from statements(case.body)
+
+
+def expression_nodes(node):
+    """Expression descendants, stopping before every statement body or scope."""
+    for child in ast.iter_child_nodes(node):
+        if not isinstance(child, ast.stmt):
+            yield child
+            yield from expression_nodes(child)
 
 
 def assigned(node):
@@ -149,7 +159,9 @@ def import_bindings(node, containers):
     names = {}
     if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith(PREFIX):
         for alias in node.names:
-            names[alias.asname or alias.name] = node.module[len(PREFIX):] + "." + alias.name
+            origin = node.module[len(PREFIX):] + "." + alias.name
+            if origin in containers:
+                names[alias.asname or alias.name] = origin
     elif isinstance(node, ast.ImportFrom) and node.module == PREFIX[:-1]:
         for alias in node.names:
             for origin in containers:
@@ -210,7 +222,7 @@ def writes(tree, module, bindings, containers=None):
 
     def visit_scope(scope, path, outer=None):
         if isinstance(scope, ast.ClassDef):
-            for child in scope.body:
+            for child in statements(scope.body):
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                     # Methods close over an enclosing function, never class fields.
                     visit_scope(child, path + "." + child.name, outer)
@@ -220,6 +232,7 @@ def writes(tree, module, bindings, containers=None):
         # Parameters and local rebinding shadow globals unless declared global.
         nodes = list(statements(scope.body))
         declared = {name for n in nodes if isinstance(n, ast.Global) for name in n.names}
+        enclosing = {name for n in nodes if isinstance(n, ast.Nonlocal) for name in n.names}
         for name in declared:
             names.pop(name, None)
             if name in bindings:
@@ -233,7 +246,7 @@ def writes(tree, module, bindings, containers=None):
                 local.update(a.asname or (a.name.split(".")[0] if isinstance(n, ast.Import) else a.name)
                              for a in n.names)
         for name in list(names):
-            if name.split(".")[0] in local - declared:
+            if name.split(".")[0] in local - declared - enclosing:
                 names.pop(name, None)
         for n in nodes:
             for name, origin in import_bindings(n, containers).items():
@@ -258,19 +271,15 @@ def writes(tree, module, bindings, containers=None):
                 if origin and (isinstance(target, (ast.Subscript, ast.Attribute)) or isinstance(n, ast.AugAssign)
                                or isinstance(target, ast.Name) and target.id in declared):
                     result.update((name, path, root_id(target)) for name in origin)
-            # Walk expressions but not bodies again or nested function scopes.
-            for child in ast.iter_child_nodes(n):
-                if isinstance(child, ast.stmt):
-                    continue
-                for expression in ast.walk(child):
-                    if isinstance(expression, ast.Call) and isinstance(expression.func, ast.Attribute):
-                        if expression.func.attr in MUTATORS:
-                            origin = root_name(expression.func.value, names)
-                            if origin:
-                                result.update((name, path, root_id(expression.func.value)) for name in origin)
+            for expression in expression_nodes(n):
+                if isinstance(expression, ast.Call) and isinstance(expression.func, ast.Attribute):
+                    if expression.func.attr in MUTATORS:
+                        origin = root_name(expression.func.value, names)
+                        if origin:
+                            result.update((name, path, root_id(expression.func.value)) for name in origin)
             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 visit_scope(n, path + "." + n.name, names)
-    for node in tree.body:
+    for node in statements(tree.body):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             visit_scope(node, module + "." + node.name)
     return result
