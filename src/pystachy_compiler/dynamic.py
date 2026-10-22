@@ -161,7 +161,7 @@ def gen_dyn_xhelper(self, c: str) -> None:
     # @o.x.<class>(op, a, b): comparison op (1 ==, 2 !=, 3 <, 4 <=, 5 >, 6 >=, XCMP) of the object a
     # of class c with b, an Any value that is no object of c's hierarchy (pys_dyn_eq, through
     # pys_obj_cmp(-1 - id, op, a, b): gen_dispatch): 0 or 1, its result, 2 where c has no method
-    # for op, as object's own methods decline, or 3 where its method does not take b (dyn_xbody)
+    # for op, as object's own methods decline, or 3 where its body cannot compile for b (dyn_xbody)
     f = FnInfo("x", f"@o.x.{c}", self.classes[c].node, "")
     f.params = ["op", "a", "b"]
     f.ptypes = ["int", c, DYN]
@@ -174,10 +174,11 @@ def gen_dyn_xhelper(self, c: str) -> None:
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
-    # method annotated with a type that b's value does not have (dyn_isa), or that no Any value has
-    # (list[int]), cannot run with it: 3, and the comparison is identity's, or TypeError for an
-    # ordering, without b's reflected method, as a method that returns no NotImplemented (#499)
-    # decides in CPython. A NamedTuple without the method (!= also where it defines __eq__:
+    # concrete annotation keeps its ordinary method for a matching operand. For another value,
+    # specialize the same body with an Any parameter: Python annotations do not decline rich
+    # comparisons. If that body cannot compile, retain the existing documented fallback (3).
+    # The two attempts have separate restart keys, so failure of the dynamic body cannot remove
+    # a supported typed call. A NamedTuple without the method (!= also where it defines __eq__:
     # tuple's __ne__) compares its fields with a tuple, as tuple's methods do, which decline any
     # other value
     line = self.line
@@ -197,22 +198,38 @@ def gen_dyn_xbody(self, c: str) -> None:
         nxt = self.label()
         self.cbr(self.num_cmp("==", op, Val(str(k + 1), "int")).v, hit, nxt)
         self.place(hit)
-        ps = self.classes[c].methods[m].ptypes if self.dyn_xmethod(c, m) else []
-        takes = self.dyn_isa(b, ps[1]) if len(ps) >= 2 else ""
-        if takes == "false" or f"{c}.{m}" in self.xnot:
-            self.ret_(Val("3", "int"))
-            self.place(nxt)
-            continue
-        if takes != "":
-            run = self.label()
-            decline = self.label()
-            self.cbr(takes, run, decline)
-            self.place(decline)
-            self.ret_(Val("3", "int"))
-            self.place(run)
         if self.dyn_xmethod(c, m):
-            self.xtry = f"{c}.{m}"
-            r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
+            method = self.classes[c].methods[m]
+            ps = method.ptypes
+            adapt = len(ps) == 2 and ps[1] != "" and ps[1] != DYN and method.deco == ""
+            takes = self.dyn_isa(b, ps[1]) if adapt else ""
+            if takes != "" and takes != "false":
+                run = self.label()
+                dynamic = self.label()
+                self.cbr(takes, run, dynamic)
+                self.place(run)
+                if f"{c}.{m}" in self.xnot:
+                    self.ret_(Val("3", "int"))
+                else:
+                    self.xtry = f"{c}.{m}"
+                    r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
+                    self.xtry = ""
+                    if inv:
+                        r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
+                    if not self.term:
+                        self.ret_(Val(self.select(r, Val("1", "int"), Val("0", "int")), "int"))
+                self.place(dynamic)
+            key = f"{c}.{m}" + (":dynamic" if adapt else "")
+            if key in self.xnot:
+                self.ret_(Val("3", "int"))
+                self.place(nxt)
+                continue
+            self.xtry = key
+            if adapt:
+                method = self.instance(method, [c, DYN], [])
+                r = self.truth(self.call_fn(method, [a, b], [], direct=True))
+            else:
+                r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
             self.xtry = ""
             if inv:
                 r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
@@ -616,7 +633,7 @@ def gen_dyn_unboxable(self, t: str) -> bool:
 def gen_dyn_isa(self, v: Val, t: str) -> str:
     # i1: does dyn_unbox take box v as a value of static type t without an error: "" where it
     # takes any value (t is dyn, or a template's ""), "false" where no Any value has t
-    # (dyn_unboxable: dyn_xbody's comparison method annotated t never runs)
+    # (dyn_unboxable: dyn_xbody then needs its dynamic-operand specialization)
     if t == "" or t == DYN:
         return ""
     if not self.dyn_unboxable(t):

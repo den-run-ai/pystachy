@@ -1,10 +1,24 @@
 """Regression warning and evidence controls; no LLVM or timing-sensitive assertions."""
 from pathlib import Path
+import os
+import sys
 import unittest
 from unittest import mock
 
 import bench_pyperformance
 import perf_smoke as perf
+
+
+class KernelTests(unittest.TestCase):
+    def test_numeric_copy_cases_match_analytical_checksum_and_timing_protocol(self):
+        for case, seed, expected in (("copy_int", "1", "int 6197\n"),
+                                     ("copy_float", "4", "float 40\n")):
+            with self.subTest(case=case):
+                path, arguments = perf.CASES[case]
+                record = bench_pyperformance.run(
+                    [sys.executable, str(perf.ROOT / path), arguments[0], "3", seed],
+                    dict(os.environ), 10, expected)
+                self.assertGreaterEqual(record["loop_s"], 0)
 
 
 class ComparisonTests(unittest.TestCase):

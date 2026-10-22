@@ -20,6 +20,8 @@ CASES = {
     "fnmatch": ("bench/smoke/text.py", ["fnmatch", "1000"]),
     "json": ("bench/smoke/text.py", ["json", "6000"]),
     "repair_scan": ("bench/smoke/text.py", ["repair_scan", "400"]),
+    "copy_int": ("bench/smoke/identity.py", ["int", "6000000", "123"]),
+    "copy_float": ("bench/smoke/identity.py", ["float", "6000000", "123"]),
     "regex_effbot": ("bench/pyperformance/regex_effbot.py", BENCHMARKS["regex_effbot"][0]),
 }
 METRICS = ("build_s", "jit_process_s", "jit_loop_s", "aot_process_s", "aot_loop_s")

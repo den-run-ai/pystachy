@@ -3308,8 +3308,8 @@ static Dyn *ddict(Dict *d) { return pys_dyn_ref(&pys_dyntype_dict, d); }
 static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
 /* does x have type t as a typed variable, argument or field of type t takes it (pys_dyn_unbox):
    x's type is t; or t is a class's, and x an object of a class that derives from it, or None (a
-   class's values may be None). A comparison method annotated with t declines another value (the
-   program's @o.x.<class>) */
+   class's values may be None). The program's @o.x.<class> uses this to retain the typed call
+   when a concrete comparison-operand annotation matches. */
 I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
 /* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
    type): the same DynType, or both a function's or both a bound method's, as each def's boxes
@@ -3347,8 +3347,8 @@ I pys_dyn_truth(Dyn *x) {
    class both are objects of (dhier); an object and another value, an object of an unrelated class
    among them, as CPython's do_richcompare: the left operand's method, else the right one's reflected
    method (dobj), else identity for == and != and TypeError for an ordering. There is no
-   NotImplemented (#499): the first method that runs gives the result, and one annotated with a type
-   that the other value does not have, which cannot run with it, gives identity's (or TypeError) */
+   NotImplemented (#499): the first method that runs gives the result. The remaining unsupported
+   dynamic-body fallback gives identity's result (or TypeError); see docs/dynamic-any.md. */
 static const DynType *dhier(Dyn *a, Dyn *b) {
   if (DKIND(a) != DK_OBJ || DKIND(b) != DK_OBJ) return 0;
   return derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
@@ -3356,7 +3356,7 @@ static const DynType *dhier(Dyn *a, Dyn *b) {
 /* comparison k (0 ==, 1 !=, 2 <, 3 <=, 4 >, 5 >=) of the object a with b by a's class's own method,
    which the program's helper calls with b as an Any value (pys_obj_cmp(-1 - id, 1 + k, a, b)): 0 or 1,
    its result, 2 where a is no object or its class has no such method, as object's methods decline,
-   or 3 where its method's parameter is annotated with a type that b does not have (pys_dyn_isa) */
+   or 3 where its method's body cannot compile for b */
 static I dobj(Dyn *a, Dyn *b, I k) { return DKIND(a) == DK_OBJ && (a->t->flags & DF_X) ? pys_obj_cmp(-1 - a->t->cls, 1 + k, a->v, (I)b) : 2; }
 I pys_dyn_eq(Dyn *a, Dyn *b) {
   int ka = DKIND(a), kb = DKIND(b);

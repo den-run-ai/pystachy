@@ -1,9 +1,8 @@
 # pystachy: dynamic-any
 # A comparison method whose parameter is annotated with a tuple's shape runs, through Any values,
 # with a tuple of that length whose items have its item types (nested tuples and None for an
-# optional one too), and with no other tuple, which its body is not compiled for: the comparison
-# then gives what the method gives here, as one that declines the value. Without the item tests,
-# a tuple of another length or item type raised ValueError or TypeError instead.
+# optional one too). Other tuples run a dynamic-body specialization without forcing their
+# contents through the annotation's shape or item types.
 from typing import Any
 
 

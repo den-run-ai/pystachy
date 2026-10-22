@@ -180,7 +180,13 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   initialization, so their reads only load it and cannot allocate
   (`tests/programs/inference/dynany_identity_constants.py`). This applies to
   numeric globals in imported typed modules too when the program uses dynamic `Any`. These
-  copies and global reads can allocate before an `Any` crossing, even if none follows. Any
+  copies and global reads can allocate before an `Any` crossing, even if none follows.
+  Closed functions with explicit numeric parameters and return types omit local box slots
+  when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
+  and numeric conversions. Identity tests, `Any` storage, globals, containers, closures and
+  other calls prevent that proof (`tests/ir/dynany_numeric_locals.py`). This relies on the
+  existing typed numeric return boundary; extending identity preservation across that
+  boundary must revisit this proof. Any
   other value, such as an int computed there, is a new object, which its first crossing, copy
   or global read boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
@@ -291,16 +297,17 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
 list compared with an `Any` value's field), the program is compiled again without that call
 (`Gen.xnot`), and the method runs only with objects of its class, as in a module that does not opt
-in (`tests/programs/inference/dynany_eq_template.py`). One whose parameter is annotated with a class (or
-another concrete type) runs where the other value has that type (an object of the class or of a
-subclass, or `None`, as such a parameter takes an `Any` value; for a tuple's shape, a tuple of its
-length whose items have its item types); its body is compiled for that type, so it does not run
-with another value (`pys_dyn_isa`), nor with any where no `Any` value has the type (`list[int]`),
-and the comparison is identity's, or `TypeError` for an ordering, without the other operand's
-reflected method: what CPython gives where the method declines the value, as `lib/datetime.py`'s
-methods decline a `str` (`tests/programs/inference/dynany_eq_annotated.py`,
-`tests/programs/inference/dynany_eq_annotated_tuple.py`,
-`tests/programs/inference/dynany_eq_annotated_container.py`, `tests/programs/inference/dynany_eq_datetime.py`).
+in (`tests/programs/inference/dynany_eq_template.py`). A normal instance comparison method with
+one concretely annotated operand retains its typed call where that operand fits the annotation.
+For a value of another type, its cross-type helper specializes the same body with an `Any`
+operand, preserving method calls, side effects and exceptions instead of treating the annotation
+as a reason to decline (`tests/programs/inference/dynany_eq_annotated_body.py`,
+`tests/programs/inference/dynany_cmp_annotated_effects.py`). This also handles tuple shapes and
+typed-container annotations when the body can operate on dynamic values. If the dynamic body
+cannot compile, the original typed call remains available to matching values
+(`tests/programs/inference/dynany_cmp_typed_fallback.py`); the unsupported cross-type call still
+uses the documented identity/ordering fallback below. Typed calls and same-hierarchy comparison
+helpers retain their existing behavior.
 A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
 methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
 rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
@@ -341,12 +348,12 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
   [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
-- A comparison method does not run with a value of another type that an `Any` value brings it
-  where its parameter is annotated with a class (or another concrete type) that the value does
-  not have, or with a type that no `Any` value has (`list[int]`), or where its body does not
-  compile for an `Any` value: the comparison is identity's, or `TypeError` for an ordering, where
+- A cross-type comparison method whose body cannot compile for an `Any` operand still does
+  not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
-  (`tests/deviations/dynany_eq_annotated_body.py`).
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`). Concrete operand annotations alone no
+  longer suppress normal instance comparison methods; the remaining unsupported-body fallback
+  is a correctness gap tracked by #803, not a stable comparison contract.
 - An object is not iterable through an `Any` value yet (iteration of objects is under
   [next steps](#next-steps)): a `for` loop over one, and a pair of `dict.update()` that is one,
   raise `TypeError` where CPython calls its `__iter__` (`tests/deviations/dynany_iter_object.py`).
