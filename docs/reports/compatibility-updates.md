@@ -100,6 +100,62 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 dynamic JSON `Any` and `None` loop inference (#823/#835), **partial** | `c39f2ad3`; implementation through `0f69df2b`, plus docs-only #837 | Pinned CPython validates 1,570 recordings and 97 deviations. Six selected programs move from rejection to checked hosted IR: four JSON/`Any` cases and two stale-`None` loop cases; two retained global-loop cases remain accepted. The JSON differential tool passes 22,449 checks, compiler-state contracts pass, and both implementation heads have 32/32 successful jobs. Pinned imports remain 148/460. General typed-container crossings remain under #777. [Evidence](compatibility-2026-10-21-json-any-none-loop-partial.json). |
 | 2026-10-21 dynamic `Any` dict unions and keyword calls (#833/#826), native affected evaluation | `3cbb7e87`; implementation through `511f6e4a`, CI-only #834 and deviation/docs #839 | LLVM 18 rebuild reaches 647,549/18,709 compiler/runtime IR lines. The selected dict-union/keyword corpus passes **36/36** normal and **36/36** GC-stressed JIT/AOT checks; the #839 JSON deviation adds **4/4**. CPython validates 1,586 recordings and 98 deviations, the local 450-case JIT fuzzer has zero mismatches, and imports remain 148/460. Keyword support is still partial under #774; #839 documents live-dictionary-cursor differences. [Evidence](compatibility-2026-10-21-dynany-keywords-native.json). |
 | 2026-10-21 temporary special-character fixture paths (#841), bounded tooling evaluation complete | `42fabd72`; harness/tests/docs only after #839 | All **345** retained `.path` cases preserve their outcomes: **525** JIT/AOT or rejection checks pass, all 345 are identical under the IR oracle, and 178 positive programs pass the IR checker and LLVM assembler. Runtime ABI scanning reports **0 mismatches across 1,751 programs**; pinned CPython still validates 1,586 recordings, 98 deviations and 12 library files. No compiler/runtime/library input or compatibility count changed. [Evidence](compatibility-2026-10-21-path-hygiene.json). |
+| 2026-10-21 string ABI and runtime GC-root coverage (#842), native evaluation complete with verification blocker | `117185e1`; compiler/runtime/adapters/checkers after #841 | The rebuilt compiler reaches the 647,631/18,709-line fixed points and SHA `304778fd…`. Runtime ABI reports **0 mismatches across 1,751 programs**; 1,752 IR checks, 141 FFI checks and 28 selected normal/GC-stressed string checks pass. Imports remain **148/460** with all 522 normalized outcomes unchanged. A post-merge negative control proves that the root checker accepts a scan behind an unwritten zero-initialized guard, so existing issue **#769 is reopened**. [Evidence](compatibility-2026-10-21-runtime-abi-roots.json). |
+
+## 2026-10-21 — #842: string ABI and runtime GC-root coverage
+
+Inspected exact [main `117185e11db60581a88deaded9238614140d8db1`](https://github.com/den-run-ai/pystachy/commit/117185e11db60581a88deaded9238614140d8db1)
+after [#842](https://github.com/den-run-ai/pystachy/pull/842), the sole
+first-parent merge after `42fabd72`. The final implementation head `d7b8f818`
+and merge share tree `72dd7f53c4c7b705453f8de7c03692e7123f6968`.
+
+#842 adds named `Str` offset/size assertions to the runtime and both CPython
+adapters, replaces scattered compiler header constants with `STR_HEADER_SIZE`,
+and extends `rt-abi` to check actual offsets and literal fields. It also labels
+all 54 static pointer stores as roots, root ranges or justified non-roots and
+compares the labels with seven scans in `mark_roots`. Five review findings were
+addressed before merge: complete static intervals, unknown arithmetic, stable
+range backing pointers, external-linkage definitions and negative affine ranges.
+
+[Machine-readable evidence](compatibility-2026-10-21-runtime-abi-roots.json)
+retains exact source/build identities, input hashes, commands, normalized import
+hashes, workflow runs, the post-merge reproduction and limits.
+
+| Fresh merged-tree measurement | Result and boundary |
+|---|---|
+| Native rebuild | Pinned CPython **3.13.16** and LLVM/Clang **18.1.3** reach fixed points of **647,631 compiler / 18,709 runtime IR lines**. The compiler SHA-256 is `304778fd7e96…`, matching the implementation PR's independent build. |
+| ABI and runtime contracts | The new ABI/root suite passes **32/32**. The checker classifies **54** static pointer stores and recognizes all **7** runtime roots. `rt-abi` checks 33 FFI glue calls, 135 runtime.py functions and 13,608 C uses across **1,751 programs with zero mismatches**; all 494 runtime entries and 70 exception classes agree. |
+| IR, FFI and selected execution | The IR checker and LLVM assembler accept **1,752** units. All **141** FFI checks pass. Seven string-layout consumers pass **14/14** normal and **14/14** per-allocation-GC JIT/AOT checks. These are affected retained probes, not a full local verification run. |
+| Native before/after oracle | The raw 3,520-program comparison has 232 differences, all embedded compiler-home paths. With each compiler home normalized in IR and diagnostics, **3,520/3,520 are identical**: no compile-status, diagnostic or semantic IR delta. |
+| CPython recordings | Pinned CPython still validates **1,586 recordings**, **98 deviations** and 12 pinned library files with zero failures. No recording count changed. |
+| Pinned isolated imports | Fresh `--metadata` sweep remains **148/460**, with 62 overlay exclusions, 312 errors and no timeouts. After checkout and equivalent CPython 3.13.16 stdlib roots are normalized, every outcome retains hash `f6d77161…`: no new/lost success or first-error change. |
+
+A review posted three minutes after merge exposed an uncovered negative control.
+For a `GC_ROOT` holding slot, the landed checker accepts a correct-looking scan
+inside `if (enabled)` when `enabled` is an unwritten, zero-initialized file-static.
+The audit reproduced `check_roots(...) == []` on merged main. Clang's optimized
+runtime may remove that unreachable scan, so the O0 structural inventory can
+claim coverage that executable code does not have. Existing
+[#769](https://github.com/den-run-ai/pystachy/issues/769#issuecomment-6332413017)
+was reopened with the minimal C reproduction rather than filing a duplicate.
+This is a fail-open verification gap; no current runtime scan was shown dead and
+no measured program miscollected an object.
+
+All **32/32** exact implementation-head jobs succeeded:
+[CI](https://github.com/den-run-ai/pystachy/actions/runs/39718404900) 27/27,
+[Installation](https://github.com/den-run-ai/pystachy/actions/runs/39718404896) 3/3,
+and [Lint](https://github.com/den-run-ai/pystachy/actions/runs/39718404940) and
+[Packages](https://github.com/den-run-ai/pystachy/actions/runs/39718404924) 1/1
+each. CI includes the full native verification matrix; it is attributed external
+evidence, not relabeled as a fresh local `make verify`.
+
+The checker also does not prove dynamic counter values, relative active-range
+ordering, backing allocation sizes, non-root lifetime rationales or pointers
+encoded as integers. No broad port/package/upstream suite, unmodified CPython
+regrtest, performance or memory comparison completed. This checkpoint improves
+verification coverage but does not increase measured library compatibility. The
+latest fully evaluated main therefore remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
 
 ## 2026-10-21 — #841: temporary special-character fixture paths
 
