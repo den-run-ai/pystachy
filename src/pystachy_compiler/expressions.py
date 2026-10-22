@@ -2772,7 +2772,17 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     if t == "None":
         return Val("null", "None")  # (None either way)
     r = Val(self.phi(ph), t)
-    if (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
+    if (t == "int" or t == "float") and (e1 == "" or (a.t == t and a.idfrom != "")) and (e2 == "" or (b.t == t and b.idfrom != "")):
+        # Numeric globals snapshot their box at the read, before later effects can rebind
+        # them. Select that same object with the payload, without consulting mutable slots.
+        # A converted numeric payload cannot retain its original type's box.
+        identity = Ins("phi", "dyn", "")
+        if e1 != "":
+            self.incoming(identity, a.idfrom, e1)
+        if e2 != "":
+            self.incoming(identity, b.idfrom, e2)
+        r.idfrom = self.phi(identity)
+    elif (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
         # (x if c else x: the one binding both arms read, whose box its slot still holds here,
         # so that the value keeps its object where it becomes an Any value: dyn_id_read, #797)
         r.idslot = a.idslot

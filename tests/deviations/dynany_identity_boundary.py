@@ -80,11 +80,15 @@ def local_branch() -> None:
     print("a read before a store in a branch that does not run", bys[0] is bw, id(bys[0]) == id(bw))
 
 
+def local_selection() -> None:
+    cx = int("1000")
+    cz = int("1000")
+    cflag = bool(int("1"))
+    cw: Any = cx
+    cy = cx if cflag else cz
+    cv: Any = cy
+    print("a value a conditional chooses from two variables", cw is cv, id(cw) == id(cv))
+
+
 local_branch()
-cx = int("1000")
-cz = int("1000")
-cflag = bool(int("1"))
-cw: Any = cx
-cy = cx if cflag else cz
-cv: Any = cy
-print("a value a conditional chooses from two variables", cw is cv, id(cw) == id(cv))
+local_selection()

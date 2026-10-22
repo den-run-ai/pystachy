@@ -350,7 +350,7 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   argument or a parameter's default value (the parameter receives a new object), a return
   value, an item of a typed container, a typed field or class variable, a variable that a
   closure reads, a comprehension's variable, the name that `from m import x` binds, and a value that a
-  conditional expression chooses from two variables. So is an expression
+  conditional expression chooses from two typed locals. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
   literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`).
 - A typed local's value read before an assignment that a branch of the same expression makes
