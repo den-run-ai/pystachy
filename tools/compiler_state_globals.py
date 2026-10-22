@@ -95,7 +95,19 @@ def assigned(node):
         return node.targets, node.value
     if isinstance(node, (ast.AnnAssign, ast.AugAssign)):
         return [node.target], node.value
+    if isinstance(node, ast.Delete):
+        return node.targets, None
     return [], None
+
+
+def target_leaves(target):
+    if isinstance(target, (ast.Tuple, ast.List)):
+        for item in target.elts:
+            yield from target_leaves(item)
+    elif isinstance(target, ast.Starred):
+        yield from target_leaves(target.value)
+    else:
+        yield target
 
 
 def pairs(node):
@@ -203,7 +215,8 @@ def writes(tree, module, bindings):
         local = {a.arg for a in scope.args.posonlyargs + scope.args.args + scope.args.kwonlyargs}
         local.update(a.arg for a in (scope.args.vararg, scope.args.kwarg) if a is not None)
         for n in nodes:
-            local.update(t.id for t, _ in pairs(n) if isinstance(t, ast.Name))
+            local.update(t.id for root in assigned(n)[0] for t in target_leaves(root)
+                         if isinstance(t, ast.Name))
         for name in list(names):
             if name.split(".")[0] in local - declared:
                 names.pop(name, None)
@@ -221,12 +234,10 @@ def writes(tree, module, bindings):
                         names[target.id] = names.get(target.id, set()) | origin
                         changed = True
         for n in nodes:
-            targets = [target for target, _ in pairs(n)]
-            if isinstance(n, ast.Delete):
-                targets = n.targets
+            targets = [target for root in assigned(n)[0] for target in target_leaves(root)]
             for target in targets:
                 origin = root_name(target, names)
-                if origin and (isinstance(target, ast.Subscript) or isinstance(n, ast.AugAssign)
+                if origin and (isinstance(target, (ast.Subscript, ast.Attribute)) or isinstance(n, ast.AugAssign)
                                or isinstance(target, ast.Name) and target.id in declared):
                     result.update((name, path, root_id(target)) for name in origin)
             # Walk expressions but not bodies again or nested function scopes.

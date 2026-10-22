@@ -62,9 +62,15 @@ class GlobalOwnershipTests(unittest.TestCase):
                          {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
         self.assertEqual(self.scan("def added():\n    alias = KEYWORDS\n    alias |= {'bad': True}\n"),
                          {("lexer.KEYWORDS", "probe.added", "alias")})
-        for assignment in ("KEYWORDS, other = {}, []", "other, (KEYWORDS, last) = [], ({}, [])"):
+        for assignment in ("KEYWORDS, other = {}, []", "other, (KEYWORDS, last) = [], ({}, [])",
+                           "KEYWORDS, other = factory()", "KEYWORDS, *other = factory()",
+                           "[other, KEYWORDS] = factory()"):
             with self.subTest(assignment=assignment):
                 self.assertEqual(self.scan("def added():\n    global KEYWORDS\n    " + assignment + "\n"),
+                                 {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+        for targets in ("KEYWORDS, other", "other, (KEYWORDS, last)"):
+            with self.subTest(targets=targets):
+                self.assertEqual(self.scan("def added():\n    global KEYWORDS\n    del " + targets + "\n"),
                                  {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
 
     def test_import_alias_and_module_qualified_writer(self):
@@ -80,6 +86,11 @@ class GlobalOwnershipTests(unittest.TestCase):
         self.assertEqual(self.scan("def added():\n    src.pystachy_compiler.lexer.KEYWORDS.clear()\n",
                                   "import src.pystachy_compiler.lexer\n"),
                          {("lexer.KEYWORDS", "probe.added", "src.pystachy_compiler.lexer.KEYWORDS")})
+        for operation in ("lex.KEYWORDS = {}", "del lex.KEYWORDS"):
+            with self.subTest(operation=operation):
+                self.assertEqual(self.scan("def added():\n    " + operation + "\n",
+                                          "from src.pystachy_compiler import lexer as lex\n"),
+                                 {("lexer.KEYWORDS", "probe.added", "lex.KEYWORDS")})
 
     def test_local_alias_chain_and_nested_container(self):
         source = "def added():\n    one = KEYWORDS\n    two = one['x']\n    two.clear()\n"
@@ -92,6 +103,8 @@ class GlobalOwnershipTests(unittest.TestCase):
     def test_local_shadow_and_copy_are_not_global_writes(self):
         for source in ("def added(KEYWORDS):\n    KEYWORDS.clear()\n",
                        "def added():\n    KEYWORDS = {}\n    KEYWORDS.clear()\n",
+                       "def added():\n    KEYWORDS, other = factory()\n    KEYWORDS.clear()\n",
+                       "def added():\n    other, *KEYWORDS = factory()\n    KEYWORDS.clear()\n",
                        "def added():\n    copy = dict(KEYWORDS)\n    copy.clear()\n",
                        "def added():\n    value = 0\n    value |= KEYWORDS['x']\n"):
             with self.subTest(source=source):
