@@ -394,6 +394,21 @@ retention of every semantic discovery. The hosted dry-call fixture lives in
 normal differential corpus. Historical investigation and raw evidence are linked
 from [PR #818](https://github.com/den-run-ai/pystachy/pull/818).
 
+`tools/compiler_state_globals.py`, also tested by that Lint pattern, inventories
+module-level containers under the compiler's declaration conventions. Every
+container is classified as a reviewed lookup table, restart-rewound state, or
+currently retained state. It rejects unclassified containers and new writers,
+including direct writes, imported names, simple local aliases and nested
+subscripts. The five rewind classifications are tied to the executable restart
+controls; removing a rewind must still fail those controls. `DYNFILES`, `GLUE`
+and `SPECSHOW` currently retain discoveries across restarts; the inventory records
+that behavior without certifying its safety. This is a hosted drift check, not a
+whole-program effect analysis: arbitrary helper calls, object-attribute aliases
+and unannotated factory results require review. One explicit alias exception
+covers `gen_verify` borrowing `NOLABELS` as `out`; its copy-before-write control
+flow still needs review. The checker has no native
+compilation overhead and does not establish that lookup tables are deeply immutable.
+
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: `make check-fast lint`,
 report-gate tests and recording checks use the pinned CPython and require no compiler bootstrap.
 `make check-repository`, included in `check-fast`, rejects root `research` paths in
