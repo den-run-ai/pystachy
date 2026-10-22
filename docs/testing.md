@@ -399,6 +399,13 @@ retention of every semantic discovery. The hosted dry-call fixture lives in
 normal differential corpus. Historical investigation and raw evidence are linked
 from [PR #818](https://github.com/den-run-ai/pystachy/pull/818).
 
+The runtime-mode controls require `runtime_ir()` to restore the exact entry state
+of `MODULES["_rt"]` on success and failure, including an absent entry or an existing
+false value. Failures during loader construction, loading and generation exercise
+the actual cleanup boundary; removal and incorrect-restoration mutations must fail.
+A real compiler-error sequence checks that a failed runtime compilation cannot
+make a subsequent ordinary program import the internal `_rt` module.
+
 `tools/compiler_state_globals.py`, also tested by that Lint pattern, inventories
 module-level containers under the compiler's declaration conventions. Every
 container is classified as a reviewed lookup table, restart-rewound state, or
