@@ -342,7 +342,7 @@ runner variation:
 | `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the full JIT suite, with compiler and program GC stress. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the full AOT suite, with compiler and program GC stress. |
 | `runtime-cache` | The cached runtime's rules with both compilers. |
-| `contracts` | Runtime, IR, library and resource-bound checks, including 450 seeded dynamic-`Any` differential cases. |
+| `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress. |
 | `benchmarks` | Benchmark correctness/timings and half of the compiler-scaling shapes; extended correctness checks reuse the verified compiler. |
 | `scaling-1` | The other compiler-scaling shapes. |
 
@@ -351,7 +351,8 @@ A failed group leaves the others running. The required check remains
 succeed and rejects missing/unexpected stages, inconsistent source revisions/hashes or
 toolchains, different bootstrap IR, and missing or inconsistent bootstrap provenance.
 Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
-fuzzer programs. The gate requires its complete 3-program/450-case JIT budget and zero mismatches.
+fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
+parity cases, all four execution modes, program GC interval 1 and zero mismatches.
 A failed producer blocks its consumers
 and fails the final gate; there is no fallback to an older compiler.
 
