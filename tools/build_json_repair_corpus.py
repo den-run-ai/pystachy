@@ -18,7 +18,8 @@ UPSTREAM = ROOT / "upstream"
 FILES = ["test_json_repair.py", "test_parse_array.py", "test_parse_comment.py",
          "test_parse_number.py", "test_parse_object.py", "test_parse_string.py",
          "test_strict_mode.py"]
-FLAGS = {"skip_json_loads", "stream_stable", "strict"}
+FLAGS = {"skip_json_loads", "stream_stable", "strict", "logging",
+         "return_objects", "ensure_ascii"}
 
 def value(node, env):
     if isinstance(node, ast.Name):
@@ -26,7 +27,117 @@ def value(node, env):
     if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mult)):
         a, b = value(node.left, env), value(node.right, env)
         return a + b if isinstance(node.op, ast.Add) else a * b
+    if isinstance(node, ast.JoinedStr):
+        parts = []
+        for part in node.values:
+            if isinstance(part, ast.FormattedValue):
+                if part.conversion != -1 or part.format_spec is not None:
+                    raise ValueError("unresolved format specifier")
+                parts.append(str(value(part.value, env)))
+            else:
+                parts.append(value(part, env))
+        return "".join(parts)
     return ast.literal_eval(node)
+
+
+def bind(target, val, env):
+    if isinstance(target, ast.Name):
+        env[target.id] = val
+    elif isinstance(target, (ast.Tuple, ast.List)) and len(target.elts) == len(val):
+        for element, item in zip(target.elts, val):
+            bind(element, item, env)
+    else:
+        raise ValueError("unresolved assignment target")
+
+
+def forget(target, env):
+    for node in ast.walk(target):
+        if isinstance(node, ast.Name):
+            env.pop(node.id, None)
+
+
+def calls_with_env(node, env, helpers=None):
+    """Expand literal loops without executing upstream test source.
+
+    Unknown control flow is traversed as input discovery, not test execution.
+    Bindings are copied for each literal loop iteration so values from the last
+    iteration cannot silently replace earlier inputs.
+    """
+    if isinstance(node, ast.Assign) and len(node.targets) == 1:
+        try:
+            bind(node.targets[0], value(node.value, env), env)
+        except (ValueError, TypeError, KeyError):
+            forget(node.targets[0], env)
+    if isinstance(node, ast.If):
+        try:
+            condition = value(node.test, env)
+        except (ValueError, TypeError, KeyError):
+            for branch in (node.body, node.orelse):
+                nested_env = dict(env)
+                for child in branch:
+                    yield from calls_with_env(child, nested_env, helpers)
+            for child in ast.walk(node):
+                if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Store):
+                    env.pop(child.id, None)
+        else:
+            for child in node.body if condition else node.orelse:
+                yield from calls_with_env(child, env, helpers)
+        return
+    if isinstance(node, ast.For):
+        try:
+            variants = value(node.iter, env)
+            if not isinstance(variants, (list, tuple)) or len(variants) > 100:
+                raise ValueError("unresolved loop")
+        except (ValueError, TypeError, KeyError):
+            variants = None
+        if variants is not None:
+            for variant in variants:
+                nested_env = dict(env)
+                bind(node.target, variant, nested_env)
+                for child in node.body:
+                    yield from calls_with_env(child, nested_env, helpers)
+            for child in node.orelse:
+                yield from calls_with_env(child, dict(env), helpers)
+            return
+        forget(node.target, env)
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id in ("repair_json", "loads")):
+        yield node, dict(env)
+    elif (helpers and isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+          and node.func.id in helpers):
+        helper = helpers[node.func.id]
+        try:
+            if node.keywords or len(node.args) != len(helper.args.args):
+                raise ValueError("unresolved helper arguments")
+            bindings = {arg.arg: value(actual, env) for arg, actual in zip(helper.args.args, node.args)}
+        except (ValueError, TypeError, KeyError):
+            bindings = {}
+        # Only one helper level: never recursively evaluate arbitrary test code.
+        yield from calls_with_env(helper, bindings)
+    for child in ast.iter_child_nodes(node):
+        yield from calls_with_env(child, env, helpers)
+
+
+def request(node, env):
+    api = node.func.id
+    if len(node.args) != 1:
+        raise ValueError("unresolved positional arguments")
+    raw = value(node.args[0], env)
+    if not isinstance(raw, str):
+        raise ValueError("non-string input")
+    # The replay runner defaults to objects for task cases. Extracted calls
+    # retain upstream's actual default serialization and the called API.
+    flags = {"return_objects": False} if api == "repair_json" else {}
+    for kw in node.keywords:
+        if kw.arg not in FLAGS or (api == "loads" and kw.arg in {"return_objects", "ensure_ascii"}):
+            raise ValueError("out-of-scope keyword " + str(kw.arg))
+        flag = value(kw.value, env)
+        if not isinstance(flag, bool):
+            raise ValueError("non-bool flag")
+        flags[kw.arg] = flag
+    if len(raw) > 30000:
+        raise ValueError("large stress case")
+    return raw, flags, api
 
 def typed(obj):
     """Preserve bool/int distinction, float value, key order and code points."""
@@ -90,8 +201,12 @@ def main():
     for filename in FILES:
         path = UPSTREAM / "tests" / filename
         tree = ast.parse(path.read_text())
+        helpers = {func.name: func for func in tree.body if isinstance(func, ast.FunctionDef)
+                   and func.name == "_assert_object_repairs"}
         for func in tree.body:
             if not isinstance(func, ast.FunctionDef):
+                continue
+            if func.name in helpers:
                 continue
             envs = [{}]
             for decorator in func.decorator_list:
@@ -107,35 +222,11 @@ def main():
                 except (ValueError, TypeError, IndexError):
                     pass
             for env in envs:
-                # Literal local setup (raw strings, expected values) aids extraction.
-                for node in ast.walk(func):
-                    if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
-                        try:
-                            env[node.targets[0].id] = value(node.value, env)
-                        except (ValueError, TypeError, KeyError):
-                            pass
-                for node in ast.walk(func):
-                    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
-                            and node.func.id in ("repair_json", "loads")):
-                        continue
+                for node, call_env in calls_with_env(func, env, helpers):
                     source = f"tests/{filename}:{node.lineno} ({func.name})"
                     try:
-                        raw = value(node.args[0], env)
-                        if not isinstance(raw, str):
-                            raise ValueError("non-string input")
-                        flags = {}
-                        for kw in node.keywords:
-                            if kw.arg in FLAGS:
-                                flag = value(kw.value, env)
-                                if not isinstance(flag, bool):
-                                    raise ValueError("non-bool flag")
-                                if flag:
-                                    flags[kw.arg] = flag
-                            elif kw.arg not in ("return_objects", "logging", "ensure_ascii", "indent", "separators"):
-                                raise ValueError("out-of-scope keyword " + str(kw.arg))
-                        if len(raw) > 20000:
-                            raise ValueError("large stress case")
-                        add(raw, flags, source)
+                        raw, flags, api = request(node, call_env)
+                        add(raw, flags, source, api)
                     except (ValueError, TypeError, KeyError, IndexError) as exc:
                         excluded.append({"source": source, "reason": str(exc)})
 

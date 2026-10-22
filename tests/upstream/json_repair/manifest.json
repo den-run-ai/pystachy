@@ -3,7 +3,7 @@
   "tag": "v0.64.1",
   "commit": "ace9b23cb7fc6757775d5fafbfaaa9a88363a573",
   "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
-  "count": 557,
+  "count": 645,
   "excluded_call_variants": [
     {
       "source": "tests/test_json_repair.py:71 (test_missing_opening_brace_declines_integer_conversion_limit)",
@@ -12,46 +12,6 @@
     {
       "source": "tests/test_json_repair.py:394 (test_repair_json_normalizes_real_parser_recursion_error)",
       "reason": "'payload'"
-    },
-    {
-      "source": "tests/test_parse_string.py:22 (_assert_object_repairs)",
-      "reason": "'raw'"
-    },
-    {
-      "source": "tests/test_parse_string.py:23 (_assert_object_repairs)",
-      "reason": "'raw'"
-    },
-    {
-      "source": "tests/test_parse_string.py:467 (test_parse_string_keeps_inline_object_literal_before_next_member)",
-      "reason": "'raw'"
-    },
-    {
-      "source": "tests/test_parse_string.py:468 (test_parse_string_keeps_inline_object_literal_before_next_member)",
-      "reason": "'raw'"
-    },
-    {
-      "source": "tests/test_parse_string.py:480 (test_parse_string_object_value_brace_heuristics)",
-      "reason": "'raw'"
-    },
-    {
-      "source": "tests/test_parse_string.py:486 (test_parse_string_far_quote_comma_payload_keeps_existing_repair_shape)",
-      "reason": "large stress case"
-    },
-    {
-      "source": "tests/test_parse_string.py:510 (test_parse_string_preserves_repeated_escaped_backslashes_during_repair)",
-      "reason": "'skip_json_loads'"
-    },
-    {
-      "source": "tests/test_parse_string.py:511 (test_parse_string_preserves_repeated_escaped_backslashes_during_repair)",
-      "reason": "'skip_json_loads'"
-    },
-    {
-      "source": "tests/test_parse_string.py:510 (test_parse_string_preserves_repeated_escaped_backslashes_during_repair)",
-      "reason": "'skip_json_loads'"
-    },
-    {
-      "source": "tests/test_parse_string.py:511 (test_parse_string_preserves_repeated_escaped_backslashes_during_repair)",
-      "reason": "'skip_json_loads'"
     }
   ],
   "test_sha256": {

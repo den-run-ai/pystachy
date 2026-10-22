@@ -1,14 +1,14 @@
-# json_repair: in-memory prototype
+# json_repair: in-memory repair
 
 Adapted from [json_repair v0.64.1](https://github.com/mangiucugna/json_repair/tree/v0.64.1),
 commit `ace9b23cb7fc6757775d5fafbfaaa9a88363a573`, by Stefano Baccianella and contributors
 under the [MIT license](LICENSE). Pristine files were committed before adaptation;
 [the manifest](../../tests/upstream/json_repair/manifest.json) pins their SHA-256 hashes.
 
-This source-only prototype is not yet included in the `pystachy-ports` wheel.
+This bounded port is included in the `pystachy-ports` wheel.
 It repairs individual strings into native heterogeneous Python values.
-It uses Pystachy's opt-in dynamic `Any` for recursive JSON values, repair logs and
-mixed cache entries. There is no CPython embedding or replacement repair algorithm.
+It uses Pystachy's opt-in dynamic `Any` for recursive JSON values and repair logs,
+and static types for parser state and lookahead caches. There is no CPython embedding.
 
 ## API and scope
 
@@ -51,6 +51,9 @@ Split trace records before repair and validate types and content afterward.
 - Encode ordered string targets with `repr(list_of_targets)` for cache keys:
   boxing a variable-length typed tuple into `Any` is unsupported. The key remains
   injective for these string lists; this adds allocations and is not a speed claim.
+  Cache values use `tuple[int, int | None]` instead of `Any`.
+- Use `str.find` for single-character lookahead with the same escape boundaries;
+  retain the original scan for other targets and negative offsets.
 - Use the native `json._raw_decode` adapter at two call sites, with a guarded
   import falling back to CPython’s `JSONDecoder`. The public decoder keeps its
   class identity; see the [JSON API notes](../../docs/json-prototype.md).
@@ -60,40 +63,32 @@ parser. Changes are marked with `Pystachy port` comments or described above.
 
 ## Validation and limits
 
-The [replay corpus](../../tests/upstream/json_repair/README.md) contains **557**
+The [replay corpus](../../tests/upstream/json_repair/README.md) contains **645**
 input/API/option combinations, with type-sensitive comparisons, dictionary order,
 exact Unicode codepoints, serialized output, logs and error messages. It is not
 the complete upstream suite. The checker retains all cases and fails on every
 mismatch; it does not silently waive known limitations.
 
-On CPython 3.13.16, pristine upstream and adapted sources match **557/557**.
+On CPython 3.13.16, pristine upstream and adapted sources match **645/645**.
 Native JIT, AOT and both modes with collection at every allocation match
-**556/557**. The remaining case contains integer `12345678901234567890`, beyond
+**644/645**. The remaining case contains integer `12345678901234567890`, beyond
 Pystachy's signed 64-bit range; native parsing raises `OverflowError`. This is a
 known runtime limit, not exact full-package parity.
 
 The existing native JSON codec also limits nesting to 256 containers. Unlimited
 integers/depth, schema APIs and Python's exact resource-exhaustion behavior are
-not established by these tests. No full repository verification or broad compiler
-IR comparison is claimed for this draft.
+not established by these tests. Arbitrary-precision integers require a general
+runtime representation; converting this value to a float or string would lose parity.
 
 The small [native regression](../../tests/programs/apps/port_json_repair.py)
 checks mutable `Any` results, repair behavior, Unicode and the fast path. Run:
 
 ```sh
-make test FILES='tests/programs/apps/port_json_repair.py tests/programs/library/json_raw_decode.py tests/programs/inference/dynany_json_raw_decode.py'
+make test FILES='tests/programs/apps/port_json_repair*.py tests/programs/library/json_raw_decode.py tests/programs/inference/dynany_json_raw_decode.py'
 ```
 
 See the replay README for the complete corpus commands and original input provenance.
 
-Validation used source `ce6aee5e1dc1a3c3d8e85e833746e642e2839c9a`, CPython
-3.13.16 and LLVM 18.1.3 on Linux x86-64. The changed compiler reached a
-665,160-line three-stage IR fixed point; runtime IR stayed at 18,709 lines.
-The three focused regressions pass JIT/AOT normally and under GC stress.
-The JSON loader/checker unit group passes 13 tests; repository hygiene and Ruff
-pass. Full `make verify` and corpus-wide `irsame` have not been run locally.
-
-The [small throughput workload](../../bench/json_repair/README.md) measured
-0.321 s AOT versus 0.748 s pristine CPython and 0.690 s adapted CPython per
-20,000 repairs (seven interleaved samples, medians). This is an advisory
-measurement on ten repeated synthetic records, not a general speed guarantee.
+See the [performance report](../../bench/json_repair/PROFILING.md) for typed-cache
+measurements, payload scaling and bottlenecks. The [completion report](../../docs/reports/json-repair-port.md)
+records validation and the minimal upstream contribution strategy.

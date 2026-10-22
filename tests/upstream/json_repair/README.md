@@ -5,20 +5,23 @@ Inputs derive from `mangiucugna/json_repair` **v0.64.1**, commit
 `manifest.json` records all 22 Python source hashes and the seven test-file
 hashes used to extract inputs.
 
-The **557 distinct input/API/option combinations** comprise 350 extracted
+The **645 distinct input/API/option combinations** comprise 438 extracted
 upstream schema-free calls and 207 task-focused cases. This is an API replay
 corpus, **not execution of the complete upstream test suite**. The extractor
 resolves literal calls, simple string construction, local literal assignments
-and literal `pytest.mark.parametrize` decorators. Twelve unresolved or large
-stress call variants remain listed in the manifest. Schema, file, CLI and
-internal-parser tests are outside its scope.
+and loops, literal conditions and string interpolation, literal `pytest.mark.parametrize` decorators, and the upstream
+`_assert_object_repairs` helper. It never executes test source to discover inputs.
+The two resource-dependent calls that remain unresolved are listed in the
+manifest: Python's configurable integer conversion limit and a runtime recursion
+depth search. Schema, file, CLI and internal-parser tests are outside its scope.
 
-The original 466 cases compare repaired objects in default, strict, streaming
-and `skip_json_loads` modes. The remaining 91 exercise serialized string
-returns, `ensure_ascii=False`, repair logs and the `loads` wrapper. Returning
-logs takes priority over `return_objects=False`, matching upstream. Inputs
-cover code strings, nested heterogeneous values, Unicode, incomplete literals,
-comments, multiple records and duplicate keys.
+Extracted calls retain their API, serialization defaults, parsing options,
+`ensure_ascii=False` and repair logging. Unsupported keywords are reported rather
+than silently dropped. Task cases exercise default, strict, streaming and
+`skip_json_loads` modes. Returning logs takes priority over `return_objects=False`,
+matching upstream. Inputs cover code strings, nested heterogeneous values,
+Unicode, incomplete literals, comments, multiple records, duplicate keys and
+long malformed strings with 10,000 commas or 5,000 braces before a far quote.
 
 Pristine CPython 3.13.16 supplies the expected outcomes. Recursive tags retain
 the distinction between booleans, integers, floats, strings, arrays, tuples,
@@ -28,7 +31,7 @@ astral character indistinguishable. The native runner emits round-trip float
 representations, which the host checker converts to exact `float.hex()` values,
 including negative zero. Error classes and exact messages are also compared.
 
-**Case 57 exceeds Pystachy's signed 64-bit integer range.** It stays in the
+**Case 59 exceeds Pystachy's signed 64-bit integer range.** It stays in the
 corpus and the checker fails on it. Report the actual matched count and this
 limitation; there is no silent exclusion or automatic known-failure allowance.
 
@@ -65,4 +68,4 @@ python3.13 tools/json_repair_parity.py /tmp/json_repair_pristine.out
 The builder verifies the pinned commit and rejects tracked source modifications.
 Upstream and adapted runs must be separate processes so Python's module cache
 cannot select the wrong package. Pristine CPython replay was checked at
-**557/557**; see the port guide for native evidence and limitations.
+**645/645**; see the port guide for native evidence and limitations.

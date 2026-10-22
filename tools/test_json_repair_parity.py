@@ -1,5 +1,6 @@
 """Fail-closed controls for the json_repair native parity evidence."""
 import copy
+import ast
 import json
 from pathlib import Path
 import subprocess
@@ -7,8 +8,65 @@ import sys
 import tempfile
 import unittest
 
+from build_json_repair_corpus import calls_with_env, request
+
 
 CHECKER = Path(__file__).with_name("json_repair_parity.py")
+
+
+class JsonRepairExtractionTests(unittest.TestCase):
+    def extract(self, source):
+        return [request(node, env) for node, env in calls_with_env(ast.parse(source), {})]
+
+    def test_preserves_api_and_serialization_options(self):
+        self.assertEqual(self.extract('''
+repair_json('{a: 1}', logging=True, ensure_ascii=False)
+loads('{a: 1}', strict=True)
+'''), [
+            ('{a: 1}', {'return_objects': False, 'logging': True, 'ensure_ascii': False}, 'repair_json'),
+            ('{a: 1}', {'strict': True}, 'loads'),
+        ])
+
+    def test_literal_loops_keep_every_variant(self):
+        self.assertEqual(self.extract('''
+cases = [('a', 'unused'), ('b', 'unused')]
+for raw, expected in cases:
+    for skip in (False, True):
+        repair_json(raw, skip_json_loads=skip, return_objects=True)
+'''), [
+            (raw, {'return_objects': True, 'skip_json_loads': skip}, 'repair_json')
+            for raw in ('a', 'b') for skip in (False, True)
+        ])
+
+    def test_does_not_evaluate_source_calls(self):
+        for prefix in ('', "raw = '{}'; "):
+            with self.subTest(prefix=prefix), self.assertRaises((ValueError, KeyError)):
+                self.extract(prefix + "raw = arbitrary_call()\nrepair_json(raw)")
+
+    def test_literal_helper_expansion(self):
+        tree = ast.parse('''
+def helper(raw, expected):
+    repair_json(raw, return_objects=True)
+def test_example():
+    helper('{a: 1}', {'a': 1})
+''')
+        helper, test = tree.body
+        found = [request(node, env) for node, env in calls_with_env(test, {}, {'helper': helper})]
+        self.assertEqual(found, [('{a: 1}', {'return_objects': True}, 'repair_json')])
+
+    def test_literal_condition_retains_each_input_variant(self):
+        self.assertEqual(self.extract('''
+for fenced in (False, True):
+    raw = '{}'
+    if fenced:
+        raw = f'prefix {raw}'
+    loads(raw)
+'''), [('{}', {}, 'loads'), ('prefix {}', {}, 'loads')])
+
+    def test_unsupported_options_are_not_silently_dropped(self):
+        for source in ("repair_json('{}', indent=2)", "repair_json('{}', True)"):
+            with self.subTest(source=source), self.assertRaises(ValueError):
+                self.extract(source)
 
 
 class JsonRepairParityTests(unittest.TestCase):

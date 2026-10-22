@@ -48,3 +48,7 @@ Use the median `seconds` for each variant. Each run must retain identical output
 witnesses, `records 20000`, `per_round 616` and `checksum 1232000`. Ensure GC stress
 is disabled and other builds/tests are not running before measuring. CPU pinning
 does not isolate a shared host.
+
+The [typing and scaling report](PROFILING.md) adds larger valid, malformed,
+Unicode, logging and escaped-code-string workloads. It separates native code-size
+changes from inconclusive timing differences and identifies quadratic rescanning.

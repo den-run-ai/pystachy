@@ -27,7 +27,8 @@ class StringParseState:
     pending_inline_container: bool = False
     inline_container_stack: list[str] = field(default_factory=list)
     object_value_has_no_future_delimiter: bool = False
-    lookahead_cache: dict[Any, Any] = field(default_factory=dict)
+    # Pystachy port: cache keys and offsets have a fixed type; only JSON values need Any.
+    lookahead_cache: dict[str, tuple[int, int | None]] = field(default_factory=dict)
     object_value_unmatched_opening_braces: int = 0
     regex_character_class_start: int | None = None
 

@@ -371,9 +371,30 @@ class JSONParser:
         Advance from (self.index + idx) until we hit an *unescaped* target character.
         Returns the offset (idx) from self.index to that position, or the distance to the end if not found.
         """
-        targets = set(character) if isinstance(character, list) else {character}
         i = self.index + idx
         n = len(self.json_str)
+        # Pystachy port: use native search while preserving upstream escape boundaries.
+        if (
+            isinstance(self.json_str, str)
+            and isinstance(character, str)
+            and len(character) == 1
+            and character != "\\"
+            and i >= 0
+        ):
+            while i < n:
+                match = self.json_str.find(character, i)
+                if match < 0:
+                    return n - self.index
+                preceding = match - 1
+                # Preserve the scan's escape boundary when idx starts inside a backslash run.
+                while preceding >= i and self.json_str[preceding] == "\\":
+                    preceding -= 1
+                if (match - preceding - 1) % 2 == 0:
+                    return match - self.index
+                i = match + 1
+            return n - self.index
+
+        targets = set(character) if isinstance(character, list) else {character}
         backslashes = 0  # count of consecutive '\' immediately before current char
 
         while i < n:
