@@ -135,6 +135,29 @@ index 8abcf69e..9eb5db98 100644
      elif t.kind == "attr" and self.dotted(t) != "":
          self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
      elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes and t.kids[0].s not in self.ltype:
+diff --git a/tests/ir/dynany_global_constants.calls b/tests/ir/dynany_global_constants.calls
+index ff8c5960..db8cc18f 100644
+--- a/tests/ir/dynany_global_constants.calls
++++ b/tests/ir/dynany_global_constants.calls
+@@ -1,6 +1,6 @@
+ @main.init: pys_dyn_int
+ @f.constants: pys_raise
+-@f.mutable: pys_dyn_int pys_dyn_int pys_raise
++@f.mutable: pys_dyn_int pys_raise
+ @pys_obj_eq:
+ @pys_obj_cmp:
+ @pys_obj_repr:
+diff --git a/tests/ir/dynany_global_constants.py b/tests/ir/dynany_global_constants.py
+index 2eb1ea1b..e05c1922 100644
+--- a/tests/ir/dynany_global_constants.py
++++ b/tests/ir/dynany_global_constants.py
+@@ -1,5 +1,5 @@
+ # pystachy: dynamic-any
+-# Reads of proven integer constants cannot allocate. A mutable global still snapshots.
++# Constants and scalar arithmetic cannot allocate. A mutable-global copy snapshots.
+ SMALL = 17
+ LARGE = 1000
+ MUTABLE = 19
 diff --git a/tests/ir/dynany_scalar_global_reads.calls b/tests/ir/dynany_scalar_global_reads.calls
 new file mode 100644
 index 00000000..3f84aae2

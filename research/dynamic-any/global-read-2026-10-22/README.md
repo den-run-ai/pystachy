@@ -56,3 +56,9 @@ See the validation logs and review.md for performed checks. Full CI status belon
 - Two independent agent reviews found no blocker; final-review.txt records the final review.
 
 Full hosted CI remains a separate merge gate. Check PR #866's current head; this local evidence does not claim the full CI matrix has passed.
+
+## Test-only CI follow-up
+
+Final PR head `bd219ace454d84724f3c01c01542725f3ace3964` differs from measured production commit `a6e1dafb` only in the comment and expected call list of the existing `dynany_global_constants` IR fixture. The expected calls fall from two to one: `value = MUTABLE` still snapshots identity, while `MUTABLE += 1` consumes only the payload. Independent emitted-IR review confirmed the saved value survives rebinding. Full local `make check-ir` now passes for all 1,758 programs; see check-ir-full.log.
+
+The initial GitHub contracts job caught this stale expectation; its other 20 contract steps passed. Lint, installation, packages and unchanged performance smoke passed on the measured production commit. Final-head CI is a fresh run and remains a merge gate. Performance run: https://github.com/den-run-ai/pystachy/actions/runs/39860174637 — merge `7886d0f1` against `db4b8517`, integer global AOT loop 66.1→37.5 ms (-43.3%), float 70.4→35.4 ms (-49.7%). These shared-runner results are separate from the local raw measurements above.
