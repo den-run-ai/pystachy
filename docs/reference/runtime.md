@@ -99,8 +99,10 @@ part is built with `-fexceptions` so exceptions can unwind through runtime frame
 When `PYSTACHY_CFLAGS` enables AddressSanitizer, generated subset definitions
 are marked `sanitize_address` and compiled to bitcode through Clang's ASan
 pipeline first. This supplies the selected target/layout and honors sanitizer
-options without rerunning ASan on the already-instrumented C module. Raw `rt`
-output and ordinary builds retain their existing IR.
+options without rerunning ASan on the already-instrumented C module. The subset's
+ASan constructors use no COMDAT groups, so linking another sanitized C object
+cannot discard a group that still has a renamed initializer referring to it.
+Raw `rt` output and ordinary builds retain their existing IR.
 JIT uses an object compiled from the combined bitcode; AOT links that runtime into
 the program.
 

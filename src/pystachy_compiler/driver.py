@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS
+from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -146,19 +146,6 @@ def address_sanitized(flags: list[str]) -> bool:
         elif flag.startswith("-fno-sanitize=") and any(x in ["address", "all"] for x in flag[14:].split(",")):
             enabled = False
     return enabled
-
-
-def address_runtime_ir(ir: str) -> str:
-    # Attribute every generated definition, including internal helpers and those
-    # with an exception personality. Clang's IR-input pipeline then runs ASan for
-    # this module alone, before linking the already-instrumented C runtime.
-    lines: list[str] = []
-    for line in ir.split("\n"):
-        if line.startswith("define "):
-            end = line.index(")") + 1
-            line = line[:end] + " sanitize_address" + line[end:]
-        lines.append(line)
-    return "\n".join(lines)
 
 
 def q(s: str) -> str:
@@ -603,13 +590,19 @@ def main() -> None:
         # IR input needs sanitize_address attributes as well as the ASan pass.
         # Clang supplies the selected target/layout and sanitizer options (including
         # recovery), then instruments only the subset module: running ASan over
-        # the combined module would instrument runtime.c a second time.
-        subset = rpl
+        # the combined module would instrument runtime.c a second time. Keep the
+        # subset's ASan constructors outside COMDAT groups: llvm-link renames a
+        # duplicate constructor but retains its group name, so a separately
+        # sanitized C object could discard that group while a renamed init-array
+        # entry still references it (a linker error).
+        modules = f"{q(rpl)} {q(rcb)}"
         sanitize = ""
         if asan:
-            subset = rpb
-            sanitize = f"{tc[0]} -O2 -emit-llvm -c -x ir {q(rpl)} -o {q(rpb)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -fexceptions && "
-        code = sh(sanitize + f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {q(subset)} {q(rcb)} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
+            # C goes first so its grouped constructor keeps the group name;
+            # only the ungrouped subset constructor may be renamed by llvm-link.
+            modules = f"{q(rcb)} {q(rpb)}"
+            sanitize = f"{tc[0]} -O2 -emit-llvm -c -x ir {q(rpl)} -o {q(rpb)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -mllvm -asan-with-comdat=0 -fexceptions && "
+        code = sh(sanitize + f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
         for p in RTPARTS:
             os.remove(tmp + "/" + p)
         for d in sub:

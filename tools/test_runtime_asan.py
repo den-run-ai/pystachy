@@ -106,11 +106,18 @@ class RuntimeASan(unittest.TestCase):
                     script = ("import sys; from src.pystachy_compiler import driver; "
                               + ("" if instrument else "driver.address_runtime_ir = lambda ir: ir; ")
                               + "sys.argv = sys.argv[1:]; driver.main()")
-                    build = subprocess.run([sys.executable, "-c", script, str(ROOT / "pystachy.py"),
-                                            "build", str(source), "-o", str(executable)],
-                                           cwd=ROOT, env=env, capture_output=True, text=True, timeout=120)
-                    self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
-                    bitcode = list(cache.glob("runtime-py-*.bc"))
+                    build_command = [sys.executable, "-c", script, str(ROOT / "pystachy.py"),
+                                     "build", str(source), "-o", str(executable)]
+                    for attempt in range(2):
+                        build = subprocess.run(build_command, cwd=ROOT, env=env,
+                                               capture_output=True, text=True, timeout=120)
+                        self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+                        bitcode = list(cache.glob("runtime-py-*.bc"))
+                        if bitcode:
+                            break
+                        # A just-edited compiler deliberately does not publish a
+                        # cache entry until its sources are at least two seconds
+                        # old. The first real build gives those inputs time to settle.
                     self.assertEqual(len(bitcode), 1, str(list(cache.iterdir())))
                     ir = subprocess.run([OPT, "-S", "-passes=verify", str(bitcode[0]), "-o", "-"],
                                         capture_output=True, text=True, timeout=30)
@@ -125,10 +132,10 @@ class RuntimeASan(unittest.TestCase):
                         jitenv = dict(runenv, PYSTACHY_CACHE=str(cache))
                         if "LD_PRELOAD" not in RUN_ENV:
                             triple = subprocess.run([CLANG, "-dumpmachine"], capture_output=True,
-                                                    text=True, check=True).stdout.strip()
+                                                    text=True, check=True, timeout=30).stdout.strip()
                             soname = "libclang_rt.asan-" + triple.split("-")[0] + ".so"
                             library = subprocess.run([CLANG, "-print-file-name=" + soname], capture_output=True,
-                                                     text=True, check=True).stdout.strip()
+                                                     text=True, check=True, timeout=30).stdout.strip()
                             self.assertTrue(Path(library).is_file(), library)
                             jitenv["LD_PRELOAD"] = library
                         for stress in ("", "1"):
@@ -143,23 +150,35 @@ class RuntimeASan(unittest.TestCase):
                     result = subprocess.run([CLANG, "-O2", "-c", str(bitcode[0]), "-o", str(obj)],
                                             capture_output=True, text=True, timeout=60)
                     self.assertEqual(result.returncode, 0, result.stderr)
-                    native = cache / "probe"
-                    probeobj = cache / "probe.o"
-                    result = subprocess.run([CLANG, "-O2", "-c", str(probe), "-o", str(probeobj)],
-                                            capture_output=True, text=True, timeout=30)
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    result = subprocess.run([CLANG, str(probeobj), str(obj), "-o", str(native), "-lm", *flags],
-                                            capture_output=True, text=True, timeout=30)
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    good = subprocess.run([str(native)], env=runenv, capture_output=True, text=True, timeout=30)
-                    self.assertEqual((good.returncode, good.stderr), (0, ""))
-                    bad = subprocess.run([str(native), "bad"], env=runenv, capture_output=True, text=True, timeout=30)
-                    checked[instrument] = bad
-            self.assertEqual(set(checked), {True, False})
-            self.assertNotEqual(checked[True].returncode, 0)
-            self.assertIn("AddressSanitizer: heap-buffer-overflow", checked[True].stderr)
-            self.assertIn("READ of size", checked[True].stderr)
-            self.assertEqual((checked[False].returncode, checked[False].stderr), (0, ""))
+                    for external_asan in (False, True):
+                        probeobj = cache / ("external-asan.o" if external_asan else "probe.o")
+                        result = subprocess.run([CLANG, "-O2", "-c", str(probe), "-o", str(probeobj)]
+                                                + (["-fsanitize=address"] if external_asan else []),
+                                                capture_output=True, text=True, timeout=30)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        # LLVM linking two sanitized modules must not leave a
+                        # renamed constructor in C's COMDAT group. Another ASan
+                        # object can win that group in either native link order.
+                        for order in (0, 1):
+                            native = cache / f"probe-{external_asan}-{order}"
+                            objects = [str(probeobj), str(obj)] if order == 0 else [str(obj), str(probeobj)]
+                            result = subprocess.run([CLANG, *objects, "-o", str(native), "-lm", *flags],
+                                                    capture_output=True, text=True, timeout=30)
+                            self.assertEqual(result.returncode, 0, result.stderr)
+                            good = subprocess.run([str(native)], env=runenv, capture_output=True, text=True, timeout=30)
+                            self.assertEqual((good.returncode, good.stderr), (0, ""))
+                            bad = subprocess.run([str(native), "bad"], env=runenv, capture_output=True, text=True, timeout=30)
+                            checked[instrument, external_asan, order] = bad
+            self.assertEqual(len(checked), 8)
+            for (instrument, external_asan, order), result in checked.items():
+                with self.subTest(instrument=instrument, external_asan=external_asan, order=order):
+                    if instrument:
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertIn("AddressSanitizer: heap-buffer-overflow", result.stderr)
+                        self.assertIn("READ of size", result.stderr)
+                    else:
+                        self.assertEqual((result.returncode, result.stderr), (0, ""))
+
 
 
 if __name__ == "__main__":

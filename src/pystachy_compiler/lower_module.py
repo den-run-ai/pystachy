@@ -23,6 +23,19 @@ define internal void @pys.obj.hooks() {
 """
 
 
+def address_runtime_ir(ir: str) -> str:
+    # Attribute every generated definition, including internal helpers and those
+    # with an exception personality. Clang's IR-input pipeline then runs ASan for
+    # this module alone, before linking the already-instrumented C runtime.
+    lines: list[str] = []
+    for line in ir.split("\n"):
+        if line.startswith("define "):
+            end = line.index(")") + 1
+            line = line[:end] + " sanitize_address" + line[end:]
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def struct_types(ci: ClassInfo) -> list[str]:
     # the LLVM types of the members of class ci's struct, %C.<name>: its fields', then its "is
     # assigned" flags
