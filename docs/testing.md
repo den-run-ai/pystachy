@@ -128,7 +128,7 @@ order and first-error traces. The `contracts` group runs three seeds with 150 ra
 using the verified native compiler in JIT and AOT, both normally and with program GC stress at
 every allocation. `--aot --gc-stress` selects the same configurations locally; the aggregate gate
 requires all four modes, 540 cases including 90 parity cases and zero mismatches. This bounded
-check does not replace the remaining opt-in corpus sweep in #802), `make dictprobe`,
+check complements the full opt-in corpus sweep, `make dynany-optin`), `make dictprobe`,
 `make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe` and `make jitprobe`.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
@@ -323,7 +323,7 @@ A pull request that changes only Markdown files or `docs/` skips the CI, Install
 Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then twenty-three groups
+A bootstrap job checks compiler and runtime IR fixed points once, then twenty-seven groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
@@ -341,6 +341,7 @@ runner variation:
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
 | `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the full JIT suite, with compiler and program GC stress. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the full AOT suite, with compiler and program GC stress. |
+| `dynany-optin-0` through `dynany-optin-3` | Four disjoint quarters of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `runtime-cache` | The cached runtime's rules with both compilers. |
 | `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress. |
 | `benchmarks` | Benchmark correctness/timings and half of the compiler-scaling shapes; extended correctness checks reuse the verified compiler. |
@@ -353,6 +354,16 @@ toolchains, different bootstrap IR, and missing or inconsistent bootstrap proven
 Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
 fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
 parity cases, all four execution modes, program GC interval 1 and zero mismatches.
+The dynamic-`Any` opt-in sweep copies the test fixtures into an isolated directory, adds the
+opt-in pragma to each selected program and records CPython's output on that same source.
+It reuses the ordinary harness's stdin, import-path, `/dev/full`, signal and diagnostic handling.
+The committed exception manifest identifies exact cases, execution modes and observed failure
+signatures; unexpected passes require removing stale exceptions, and new failures fail the job.
+The report gate verifies the full corpus and exception hashes, exact shard membership, every
+case/mode result and complete oracle/check counts. Generated copies and failure logs remain in
+the workflow artifacts. Run locally with `make dynany-optin`, or select a shard with
+`DYNANY_OPTIN="--shard-index 0 --shard-count 4"`. This sweep covers normal JIT/AOT execution;
+program GC stress remains covered by the separate generated parity checks and existing corpus.
 A failed producer blocks its consumers
 and fails the final gate; there is no fallback to an older compiler.
 

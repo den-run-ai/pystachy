@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-STAGE = (ROOT / "tests/verify.sh").read_text().split("# ---- dynany-fuzz:", 1)[1].split("# ---- re-probe:", 1)[0]
+STAGE = (ROOT / "tests/verify.sh").read_text().split("# ---- dynany-fuzz:", 1)[1].split("# ---- dynany-optin:", 1)[0]
 STAGE = STAGE[STAGE.index("if want dynany-fuzz;"):]
 
 

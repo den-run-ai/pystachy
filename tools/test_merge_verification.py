@@ -2,6 +2,8 @@
 import contextlib
 import copy
 import io
+from functools import lru_cache
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -16,6 +18,30 @@ contracts bootstrap check-ir
 """
 COMMIT = "a" * 40
 BUNDLE = "d" * 64
+
+
+@lru_cache(maxsize=4)
+def optin_report(index):
+    tool = merge.dynany_optin
+    corpus = tool.programs()
+    selected = corpus[index::4]
+    allowed = tool.exceptions(tool.ROOT, corpus)
+    rows = []
+    for case in selected:
+        for mode in tool.MODES:
+            exception = allowed.get((case, mode))
+            rows.append({"case": case, "mode": mode,
+                         "result": "expected-failure" if exception else "pass",
+                         "diagnostic": exception["diagnostic"] if exception else ""})
+    known = sum(row["result"] == "expected-failure" for row in rows)
+    return {"schema": 1, "corpus_cases": len(corpus),
+            "corpus_sha256": tool.corpus_digest(tool.ROOT, corpus),
+            "exceptions_sha256": hashlib.sha256((tool.ROOT / tool.MANIFEST).read_bytes()).hexdigest(),
+            "shard_index": index, "shard_count": 4, "modes": list(tool.MODES),
+            "cases": selected, "subset": False, "oracle_cases": len(selected),
+            "expected_checks": len(rows), "completed_checks": len(rows),
+            "passed_checks": len(rows) - known, "expected_failures": known,
+            "failures": [], "results": rows}
 
 
 def report(group, steps):
@@ -45,6 +71,8 @@ def report(group, steps):
         if name == "dynany-fuzz":
             step.update(programs=3, cases=540, parity_cases=90, modes=["jit", "aot", "jit-gc", "aot-gc"],
                         program_gc_interval=1, mismatches=0)
+        if name.startswith("dynany-optin-"):
+            step["optin"] = copy.deepcopy(optin_report(int(name[-1])))
         if name in merge.GC_STEPS:
             step.update(tests_compiler_interval=1000, tests_interval=1,
                         modes=["jit" if name.startswith("gc-jit") else "aot"])
@@ -93,7 +121,7 @@ class ContractTests(unittest.TestCase):
             for group in ("opt-off-0", "opt-off-1", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
                           "hosted-0", "hosted-1", "hosted-2", "native-0", "native-1", "python-free-0", "python-free-1",
                           "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
-                          "scaling-1"):
+                          "scaling-1", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2", "dynany-optin-3"):
                 path = directory / f"verification-{group}" / "verification.json"
                 original = path.read_text()
                 path.unlink()
@@ -250,6 +278,31 @@ class ContractTests(unittest.TestCase):
                     data["sources"][key] = value
                 with self.subTest(key=key, value=value), self.assertRaisesRegex(ValueError, key):
                     merge.validate_report(data, "native-0", groups["native-0"])
+
+    def test_optin_reports_require_exact_shard_modes_and_complete_evidence(self):
+        groups = merge.load_groups()
+        for index in range(4):
+            group = f"dynany-optin-{index}"
+            self.assertEqual(groups[group], ["bootstrap", group])
+            valid = report(group, groups[group])
+            merge.validate_report(valid, group, groups[group])
+            mutations = [lambda d: d.update(shard_count=3),
+                         lambda d: d.update(shard_index=True),
+                         lambda d: d.update(modes=["jit"]),
+                         lambda d: d.update(subset=True),
+                         lambda d: d.update(oracle_cases=d["oracle_cases"] - 1),
+                         lambda d: d.update(completed_checks=d["completed_checks"] - 1),
+                         lambda d: d.update(corpus_sha256="0" * 64),
+                         lambda d: d.update(exceptions_sha256="0" * 64),
+                         lambda d: d["cases"].pop(),
+                         lambda d: d["results"].pop(),
+                         lambda d: d["results"][0].update(mode="aot"),
+                         lambda d: d.update(failures=["incomplete"])]
+            for mutate in mutations:
+                data = copy.deepcopy(valid)
+                mutate(data["steps"][-1]["optin"])
+                with self.subTest(group=group, mutation=mutate), self.assertRaises(ValueError):
+                    merge.validate_report(data, group, groups[group])
 
     def test_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate(self):
         contracts = [CONTRACT.replace("contracts bootstrap check-ir", "contracts bootstrap"),
