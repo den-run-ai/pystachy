@@ -14,7 +14,14 @@ from bench_extended import execute
 from bench_pyperformance import BENCHMARKS, run
 
 ROOT = Path(__file__).resolve().parents[1]
-CASES = ("fannkuch", "nbody", "regex_effbot")
+CASES = {
+    "autograd": ("bench/smoke/ml.py", ["autograd", "40000"]),
+    "numeric": ("bench/smoke/ml.py", ["numeric", "20000"]),
+    "fnmatch": ("bench/smoke/text.py", ["fnmatch", "1000"]),
+    "json": ("bench/smoke/text.py", ["json", "6000"]),
+    "repair_scan": ("bench/smoke/text.py", ["repair_scan", "400"]),
+    "regex_effbot": ("bench/pyperformance/regex_effbot.py", BENCHMARKS["regex_effbot"][0]),
+}
 METRICS = ("build_s", "jit_process_s", "jit_loop_s", "aot_process_s", "aot_loop_s")
 
 
@@ -38,8 +45,9 @@ def classify(first, confirmation):
     return "unconfirmed"
 
 
-def batch(source, arguments, compilers, envs, directory, expected, offset=0):
-    samples = {side: {metric: [] for metric in METRICS} for side in compilers}
+def batch(source, arguments, compilers, envs, directory, expected, offset=0, measure_build=True):
+    metrics = METRICS if measure_build else METRICS[1:]
+    samples = {side: {metric: [] for metric in metrics} for side in compilers}
     samples["cpython"] = []
     for repeat in range(3):
         # Interleave both revisions and CPython; rotate which revision runs first.
@@ -48,33 +56,38 @@ def batch(source, arguments, compilers, envs, directory, expected, offset=0):
         for side in (("base", "head") if (repeat + offset) % 2 == 0 else ("head", "base")):
             compiler, env = compilers[side], envs[side]
             exe = str(directory / side / source.stem)
-            build = execute([compiler, "build", str(source), "-o", exe], env, 60)
+            if measure_build:
+                build = execute([compiler, "build", str(source), "-o", exe], env, 60)
+                samples[side]["build_s"].append(build["wall_s"])
             jit = run([compiler, "run", str(source), *arguments], env, 60, expected)
             aot = run([exe, *arguments], env, 60, expected)
-            values = (build["wall_s"], jit["wall_s"], jit["loop_s"], aot["wall_s"], aot["loop_s"])
-            for metric, value in zip(METRICS, values):
+            values = (jit["wall_s"], jit["loop_s"], aot["wall_s"], aot["loop_s"])
+            for metric, value in zip(METRICS[1:], values):
                 samples[side][metric].append(value)
     return samples
 
 
-def measure(name, compilers, envs, directory):
-    source = ROOT / "bench" / "pyperformance" / f"{name}.py"
-    arguments = BENCHMARKS[name][0]
+def measure(name, compilers, envs, directory, built):
+    path, arguments = CASES[name]
+    source = ROOT / path
+    measure_build = path not in built
     oracle = run([sys.executable, str(source), *arguments], envs["head"], 60)
     # Warm compilation caches and check both modes before collecting any samples.
     for side, compiler in compilers.items():
-        exe = str(directory / side / name)
-        execute([compiler, "build", str(source), "-o", exe], envs[side], 60)
+        exe = str(directory / side / source.stem)
+        if measure_build:
+            execute([compiler, "build", str(source), "-o", exe], envs[side], 60)
         run([compiler, "run", str(source), *arguments], envs[side], 60, oracle["stdout"])
         run([exe, *arguments], envs[side], 60, oracle["stdout"])
-    first = batch(source, arguments, compilers, envs, directory, oracle["stdout"])
-    comparisons = {metric: compare(first["base"][metric], first["head"][metric]) for metric in METRICS}
-    confirmation = (batch(source, arguments, compilers, envs, directory, oracle["stdout"], 3)
+    first = batch(source, arguments, compilers, envs, directory, oracle["stdout"], measure_build=measure_build)
+    comparisons = {metric: compare(first["base"][metric], first["head"][metric]) for metric in first["base"]}
+    confirmation = (batch(source, arguments, compilers, envs, directory, oracle["stdout"], 3, measure_build)
                     if any(c["candidate"] for c in comparisons.values()) else None)
     for metric, result in comparisons.items():
         second = compare(confirmation["base"][metric], confirmation["head"][metric]) if confirmation else None
         result.update(status=classify(result, second), confirmation=second)
-    return {"name": name, "arguments": arguments, "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+    built.add(path)
+    return {"name": name, "source": path, "arguments": arguments, "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
             "output": oracle["stdout"], "samples": first, "confirmation": confirmation, "comparison": comparisons}
 
 
@@ -83,6 +96,7 @@ def summary(report):
              f"Base `{report['revisions']['base']}` → head `{report['revisions']['head']}`.", "",
              "Three pairs; ≥20% and ≥5 ms slower triggers three confirmation pairs. Warnings require",
              "both batches to meet the threshold with non-overlapping base/head ranges.", "",
+             "Build time is measured once per source file, shown on its first workload.", "",
              "| Workload | Metric | Base | Head | Change | Result |",
              "|---|---|---:|---:|---:|---|"]
     for result in report["results"]:
@@ -107,7 +121,7 @@ def main():
     affinity = sorted(os.sched_getaffinity(0))
     os.sched_setaffinity(0, {affinity[0]})
     roots = {"base": args.base.resolve(), "head": ROOT}
-    report = {"schema": 1, "python": sys.version, "platform": platform.platform(),
+    report = {"schema": 2, "python": sys.version, "platform": platform.platform(),
               "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               "cpu": Path("/proc/cpuinfo").read_text().split("model name", 1)[-1].splitlines()[0],
               "affinity": [affinity[0]], "load_average": os.getloadavg(),
@@ -127,9 +141,10 @@ def main():
                 compilers[side] = compiler
             llvm = Path(env.get("PYSTACHY_LLVM", "/usr/lib/llvm-18/bin"))
             report["clang"] = execute([str(llvm / "clang"), "--version"], env, 10)["stdout"]
+            built = set()
             for name in CASES:
                 print(f"Measuring {name}", flush=True)
-                report["results"].append(measure(name, compilers, envs, directory))
+                report["results"].append(measure(name, compilers, envs, directory, built))
         text = summary(report)
         print(text)
         if os.environ.get("GITHUB_STEP_SUMMARY"):

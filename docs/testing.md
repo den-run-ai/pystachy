@@ -324,15 +324,18 @@ Packages workflows; Lint and the DCO check still run, and pushes to `main` run t
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
 The independent [Performance smoke workflow](../.github/workflows/performance.yml) runs on
-the same events (excluding documentation-only PRs). One job measures three existing adapted
-pyperformance workloads: `fannkuch`, `nbody`, and `regex_effbot`. It builds each revision's
+the same events (excluding documentation-only PRs). One job measures six small workloads:
+scalar autograd, dense projection/softmax, fnmatch, mixed JSON parsing, repair-style scanning,
+and the existing adapted pyperformance `regex_effbot`. The [kernel notes](../bench/smoke/README.md)
+map each case to its coverage and limits. It builds each revision's
 native compiler once, then compares the PR merge against its base, or a main push against
 its previous SHA, on one CPU with separate warmed caches and identical head workload sources.
 Manual dispatch accepts a baseline ref; otherwise it compares with the preceding commit.
 This is a performance probe, not another bootstrap verification stage.
 
 Each workload checks output against CPython and records three alternating base/head pairs:
-AOT build, JIT process/loop and AOT process/loop time. A slowdown of at least 20% and 5 ms
+JIT process/loop and AOT process/loop time. AOT build time is measured for each source file
+on its first workload; later modes reuse those binaries. A slowdown of at least 20% and 5 ms
 triggers three more pairs. Both batches must meet the threshold with disjoint sample ranges
 to emit an advisory Actions warning; other threshold crossings are `unconfirmed`.
 Correctness, setup and measurement errors fail the job. Timing warnings do not gate merging.
@@ -344,7 +347,8 @@ dependency. Locally on Linux, use
 Historical absolute times are unsuitable as gates: in the retained
 [October 16 snapshot](benchmarks/pyperformance-2026-10-16-a74faae.json), 16 of 17 usable
 AOT workloads had over 20% within-revision wall-time spread (excluding removed `deltablue`
-and optimized-away `unpack_sequence`). This small monitor does not cover memory, all examples,
+and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
+end-to-end json_repair, all examples,
 or cumulative drift across many commits; broader benchmark history remains under #45.
 
 A bootstrap job checks compiler and runtime IR fixed points once, then twenty-three groups

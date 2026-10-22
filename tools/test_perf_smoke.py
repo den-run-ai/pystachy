@@ -74,6 +74,21 @@ class BatchTests(unittest.TestCase):
                 self.assertRaisesRegex(RuntimeError, "compiler failed"):
             self.batch()
 
+    def test_modes_reuse_binary_but_still_measure_and_validate_execution(self):
+        built = set()
+        compilers, envs = {"base": "base", "head": "head"}, {"base": {}, "head": {}}
+        with mock.patch.object(perf, "execute", return_value=self.record()) as builds, \
+                mock.patch.object(bench_pyperformance, "execute", return_value=self.record()) as runs:
+            first = perf.measure("autograd", compilers, envs, Path("/tmp/perf"), built)
+            self.assertEqual(builds.call_count, 8)  # two warm builds plus three pairs
+            runs.reset_mock()
+            second = perf.measure("numeric", compilers, envs, Path("/tmp/perf"), built)
+            self.assertEqual(builds.call_count, 8)
+        self.assertIn("build_s", first["comparison"])
+        self.assertNotIn("build_s", second["comparison"])
+        self.assertEqual(runs.call_count, 20)  # oracle, four warm runs, three CPython/JIT/AOT pairs
+        self.assertEqual(set(second["comparison"]), set(perf.METRICS[1:]))
+
 
 if __name__ == "__main__":
     unittest.main()

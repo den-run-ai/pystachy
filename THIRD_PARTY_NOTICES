@@ -3,7 +3,7 @@ Third-party notices
 
 Pystachy is distributed under the MIT License (LICENSE), except for the parts below.
 
-Karpathy microGPT benchmark (bench/microgpt/)
+Karpathy microGPT benchmark (bench/microgpt/, bench/smoke/ml.py)
 --------------------------------------------
 
 The pinned upstream microgpt.py and its annotated adaptation derive from Andrej
@@ -15,6 +15,8 @@ The MIT license and attribution are retained in bench/microgpt/LICENSE; this
 license text records the author's grant (the gist has no separate license file).
 The benchmark README documents the source hash and adaptations. The names dataset
 is supplied separately by the benchmark user and is not included here.
+The smoke kernel retains only scalar add/multiply and reverse-mode traversal;
+its deterministic DAG and dense/softmax drivers are original project code.
 
 CPython's port acceptance fixtures (tests/upstream/ports/)
 ---------------------------------------------------------
