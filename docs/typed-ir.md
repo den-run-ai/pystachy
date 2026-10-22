@@ -151,7 +151,7 @@ The exact operation table is `IROPS`; its current groups are:
 | Object layout addresses | `field.addr` |
 | Container payload conversions | `slot.pack`, `slot.unpack` |
 | Fresh empty result layout | `empty.kind` (typed dict/set key kind, or a deferred result hole) |
-| Closed union reads | `union.tag`, `union.payload` |
+| Closed union reads | `union.tag`, `union.payload`, `union.raw` |
 | Numeric promotion and comparison | `num.cast`, `num.cmp`, `int.ucmp` |
 | Native reference identity and null tests | `ptr.cmp` |
 | Calls | `rt`, `call`, `icall`, `init` |
@@ -213,13 +213,29 @@ IR passes; only LLVM lowering chooses float bitcasts, boolean extension/truncati
 pointer conversion. Integer slots need no instruction. These pure operations replace
 LLVM text in the shared container/optional/union conversion helpers, preserving the
 existing representation and allocation behavior. The verifier checks their operand,
-result and metadata contracts; it does not prove that a payload was read with its original
-type. Container typing and union narrowing still establish that frontend contract.
+result and metadata contracts. Closed-union payloads additionally carry the tag proofs
+described below; ordinary container element typing remains a frontend contract.
 
 `union.tag` reads a nonoptional closed union's integer tag. `union.payload` records the
 declared member type and reads its opaque `%slot`; `slot.unpack` then recovers the native
-value. The existing frontend guards still prove that the box is non-null and holds that
-member. The verifier checks operation shape and declared membership, not guard dominance.
+value. With `PYSTACHY_IRCHECK=1`, a control-flow proof requires that the box is non-null
+and holds that member on every incoming path. `union.raw` copies the opaque payload bits
+without declaring a member; `unionslots`
+uses it to carry a box's tag and bits together through split storage or reconstruct the box.
+A raw copy does not establish a type for interpreting the bits. The verifier follows its
+provenance through slots, phis and selects; interpreting it requires the matching member,
+and rebuilding a box requires its tag and payload to agree. A raw copy alone is valid.
+Domains come from definitions, parameter and storage declarations, not narrowed use-site
+annotations. Tests cover missing/wrong guards, different boxes, joins, loop backedges,
+nullable values, aliasing stores, calls and exception edges. Writes discard mutable storage
+facts; previously loaded immutable boxes retain their facts. Non-escaping local slots and
+provably disjoint fresh storage retain facts across unrelated writes.
+
+The finite worklist joins possible tags and common equalities until stable, without a path
+product or an iteration cutoff. Conditional facts survive boolean phis and short-circuit
+expressions and are dropped after their last possible use. Type-name domains have no
+machine-word tag limit. The proof modules are `union_proof.py` and `union_state.py`;
+`tools/test_typed_union_proofs.py` checks malformed IR without lowering or executing it.
 These operations preserve the previous LLVM loads and conservative `rL rD rO` effects.
 Canonicalization retains the equivalence of repeated reads of the same immutable union
 payload, so narrowing a dictionary key still permits the existing lookup fusion. This
@@ -353,7 +369,7 @@ are whole-function IR passes; the others select frontend or lowering choices.
 | `moduleints` | Use stable module-level integer literals directly while preserving required initialization checks |
 | `fieldtbaa` | Give every load and store of an object field a struct-path TBAA tag, so that LLVM knows that two fields at different offsets of one class, or fields of classes neither of which lays out the other, are never the same memory; it keeps such fields in registers across each other's stores ([#701](https://github.com/den-run-ai/pystachy/issues/701)) |
 | `tupleret` | Return a function's new fixed tuple as an LLVM aggregate of its slots to the calls that only read the slots (`a, b = f()`, `f()[0]`, a loop over `f()`), so that neither makes the tuple ([#703](https://github.com/den-run-ai/pystachy/issues/703)) |
-| `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
+| `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload`/`union.raw` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
 | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with

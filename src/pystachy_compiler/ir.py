@@ -212,6 +212,8 @@ class Ins:
         # the opaque eight-byte container payload. Only LLVM lowering chooses its bitcast.
         # union.tag reads a nonoptional union's tag; union.payload reads its member's
         # opaque slot (s: member type, r: address then payload). Narrowing proves those reads safe.
+        # union.raw copies those bits without claiming a member (s: empty); its tag travels
+        # with the bits when unionslots splits storage or rebuilds a box.
         # dyn.type reads a dynamic value's DynType pointer and dyn.payload its slot (s: the type
         # a test proved it holds, r: address then payload); the box never changes (dynamic.py).
         # num.cast promotes one numeric operand; num.cmp records the source comparison

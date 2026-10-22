@@ -36,7 +36,7 @@ def function_with(i):
 
 def union_op(op, union_type="union[int,str]"):
     i = Ins(op, "int" if op == "union.tag" else "%slot",
-            "" if op == "union.tag" else "str")
+            "str" if op == "union.payload" else "")
     i.a = [Val("%a0", union_type)]
     i.r = [1] if op == "union.tag" else [1, 2]
     return i
@@ -316,11 +316,17 @@ class TypedIRTests(unittest.TestCase):
 
     def test_union_reads_keep_conservative_load_effects(self):
         for t in ("union[int,str]", "union[bool,float,int,str]"):
-            for op in ("union.tag", "union.payload"):
+            for op in ("union.tag", "union.payload", "union.raw"):
                 with self.subTest(type=t, op=op):
                     i = union_op(op, t)
                     g = Gen()
-                    g.verify(function_with(i), False)
+                    fn = function_with(i)
+                    fn.f.ptypes = [t]
+                    if op == "union.payload":
+                        with redirect_stderr(StringIO()), self.assertRaises(SystemExit):
+                            g.verify(fn, False)
+                    else:
+                        g.verify(fn, False)
                     self.assertEqual(g.nums(i), 1 if op == "union.tag" else 2)
                     self.assertEqual(g.opfx(i, {}), FXBIT["rL"] | FXBIT["rD"] | FXBIT["rO"])
 
@@ -329,12 +335,12 @@ class TypedIRTests(unittest.TestCase):
                   "union[int,str", "union[int,str]]", "union[int,]", "union[,str]",
                   "union[int,int]", "union[int,None]", "union[int,opt[str]]",
                   "union[int,union[bool,str]]", "union[int,%slot]", "union[int,*T]"):
-            for op in ("union.tag", "union.payload"):
+            for op in ("union.tag", "union.payload", "union.raw"):
                 with self.subTest(type=t, op=op):
                     self.assert_bad(union_op(op, t))
 
     def test_union_read_shapes_and_metadata(self):
-        for op in ("union.tag", "union.payload"):
+        for op in ("union.tag", "union.payload", "union.raw"):
             for operands in ([], [Val("%a0", "union[int,str]")] * 2):
                 with self.subTest(op=op, operands=len(operands)):
                     i = union_op(op)
@@ -356,9 +362,19 @@ class TypedIRTests(unittest.TestCase):
                 i = union_op("union.payload")
                 i.s = member
                 self.assert_bad(i)
-        i = union_op("union.tag")
-        i.s = "str"
-        self.assert_bad(i)
+        for op in ("union.tag", "union.raw"):
+            i = union_op(op)
+            i.s = "str"
+            self.assert_bad(i)
+
+    def test_union_parts_copy_bits_without_claiming_a_member(self):
+        g = Gen()
+        before = {}
+        result = g.uparts(g.fn, {}, "%a0", "union[float,int]", {}, before, {}, {})
+        tag, payload = before["0:0"]
+        self.assertEqual((tag.op, payload.op, payload.s), ("union.tag", "union.raw", ""))
+        self.assertEqual([(a.v, a.t) for a in payload.a], [("%a0", "union[float,int]")])
+        self.assertEqual(result, [f"%t{tag.r[0]}", f"%t{payload.r[1]}"])
 
     def test_optional_union_tag_stays_after_its_null_guard(self):
         g = Gen()

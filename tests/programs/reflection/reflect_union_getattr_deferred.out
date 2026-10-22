@@ -1,0 +1,61 @@
+method
+<bound method Left.method of Left(2)> after
+value
+2 after
+checked
+30 after
+__dict__
+{'value': 5} after
+__class__
+<class '__main__.Left'> after
+missing
+missing after
+method
+<bound method Left.method of Child(3)> after
+value
+3 after
+checked
+40 after
+__dict__
+{'value': 6} after
+__class__
+<class '__main__.Child'> after
+missing
+missing after
+method
+<bound method Right.method of Right(5)> after
+value
+5 after
+checked
+700 after
+__dict__
+{'value': 11} after
+__class__
+<class '__main__.Right'> after
+missing
+missing after
+method
+<bound method Left.method of Left(-2)> after
+value
+-2 after
+checked
+missing after
+__dict__
+{'value': 1} after
+__class__
+<class '__main__.Left'> after
+missing
+missing after
+method
+missing after
+value
+missing after
+checked
+missing after
+__dict__
+missing after
+__class__
+<class 'NoneType'> after
+missing
+missing after
+[exit 0]

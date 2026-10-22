@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins
+from src.pystachy_compiler.union_proof import UnionProof
 from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
 
@@ -95,6 +96,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     # edges of invokes reach, and every invoke's unwind edge goes to one; in a block that a
     # try statement covers, no call that may raise is left a call, nor a raise or throw
     at: dict[str, int] = {}
+    union_reads = False
     lands: dict[str, bool] = {}
     for b in fn.blocks:
         if len(b.code) > 0 and b.code[0].op == "landing":
@@ -116,6 +118,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         out: list[str] = []
         for j in range(len(b.code)):
             i = b.code[j]
+            if i.op == "union.payload" or i.op == "union.raw":
+                union_reads = True
             if i.op not in IROPS:
                 self.bad_ir(fn, b, f"unknown op {i.op}")
             inv = len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume")
@@ -255,7 +259,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 slot = i.t if i.op == "slot.pack" else i.a[0].t
                 if slot != "%slot" or t == "" or t.startswith("%") or t.startswith("*") or t == "#" or (t in ["T", "K", "V", "S"] and t not in self.classes):
                     self.bad_ir(fn, b, f"{i.op} needs a native value type and a %slot")
-            if i.op == "union.tag" or i.op == "union.payload":
+            if i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw":
                 if len(i.a) != 1 or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} needs one union operand and no extra metadata")
                 u = i.a[0].t
@@ -266,7 +270,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     m = ms[j]
                     if m == "" or m == "None" or is_opt(m) or is_union(m) or m.count("[") != m.count("]") or m in ms[:j] or m.startswith("%") or m.startswith("*") or m == "#" or (m in ["T", "K", "V", "S"] and m not in self.classes):
                         self.bad_ir(fn, b, f"{i.op} needs distinct nonoptional union members")
-                if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)):
+                if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)) or (i.op == "union.raw" and (i.t != "%slot" or i.s != "")):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or member")
             if i.op == "dyn.type" or i.op == "dyn.payload":
                 if len(i.a) != 1 or i.a[0].t != "dyn" or i.x != "" or i.k != 0 or len(i.b) != 0:
@@ -300,6 +304,16 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 for l in i.b:
                     if l not in at or b.label not in succ[at[l]]:
                         self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
+    if union_reads:
+        writes: dict[str, bool] = {}
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op in ["rt", "call", "icall", "init", "gen.resume"]:
+                    writes[i.op + "|" + i.s + "|" + i.x] = self.opfx(i, fn.fa) & (RAWW | FXBIT["wG"]) != 0
+        proof = UnionProof(fn, self.utags, writes, self.gtypes)
+        proof.run()
+        for j in range(len(proof.bad)):
+            self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
 
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # a generator op (docs/internals.md#generators): gen.start ends the entry block of a
@@ -334,7 +348,7 @@ def gen_nums(self, i: Ins) -> int:
         return 3
     if i.op == "list.load":
         return 4
-    if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload" or i.op == "tuple.load" or i.op == "dyn.payload":
+    if i.op == "landing" or i.op == "exc.match" or i.op == "union.payload" or i.op == "union.raw" or i.op == "tuple.load" or i.op == "dyn.payload":
         return 2
     if i.op == "dyn.type":
         return 1

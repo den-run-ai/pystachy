@@ -265,8 +265,8 @@ def gen_unionslots(self, fn: IFn) -> int:
     # a ubox's); where its address goes nowhere but to its loads and stores, it becomes two int
     # slots, its value's tag and its payload's bits. A store keeps the parts of what it stores
     # (uparts: a ubox's operands, a union phi's as phis of its incoming values' parts, else what
-    # union.tag and union.payload read of the box where it is made); a load reads them, and the
-    # union.tag and union.payload of what it loaded become them. A load whose value goes
+    # union.tag and union.raw read of the box where it is made); a load reads them, and the
+    # union.tag and union.payload/raw of what it loaded become them. A load whose value goes
     # elsewhere too (a call, a return, a phi: it leaves the local) makes the box there, so a
     # slot is split only where each such load follows a store of a box that goes (upaid): no
     # more boxes than before, also where a store's box was made elsewhere (a call's, a
@@ -301,7 +301,7 @@ def gen_unionslots(self, fn: IFn) -> int:
             elif i.op == "mem.load":
                 for w in uses.get(f"%t{i.r[0]}", []):
                     o = fn.blocks[w[0]].code[w[1]]
-                    if o.op == "union.payload" and f"%t{o.r[0]}" in uses:
+                    if (o.op == "union.payload" or o.op == "union.raw") and f"%t{o.r[0]}" in uses:
                         ok = False  # (its address taken: nothing does)
         if ok:
             split[addr] = s
@@ -350,7 +350,7 @@ def gen_unionslots(self, fn: IFn) -> int:
                 if o.op == "union.tag" or self.tag_read(o):
                     ren[f"%t{o.r[0]}"] = parts[v][0]
                     repl[f"{w[0]}:{w[1]}"] = []
-                elif o.op == "union.payload":
+                elif o.op == "union.payload" or o.op == "union.raw":
                     p = Ins("slot.pack", "%slot", "")
                     p.a = [Val(parts[v][1], "int")]
                     p.r = [o.r[1]]
@@ -408,7 +408,7 @@ def gen_unionslots(self, fn: IFn) -> int:
         for b in fn.blocks:
             code = []
             for i in b.code:
-                pure = (i.op == "rt" and i.s == "ubox") or i.op == "slot.pack" or i.op == "union.tag" or i.op == "union.payload" or (i.op == "phi" and (is_union(i.t) or i.t == "int"))
+                pure = (i.op == "rt" and i.s == "ubox") or i.op == "slot.pack" or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or i.t == "int"))
                 if pure and len([r for r in i.r if f"%t{r}" in used]) == 0:
                     gone += 1
                 else:
@@ -440,7 +440,7 @@ def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[st
 def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
     # the tag and the payload's bits of value v of union t (unionslots): a ubox's operands; a
     # phi's as two phis, put after the phis of its block, of its incoming values' parts; else
-    # what union.tag and union.payload read of the box, put where v is made (a parameter: as the
+    # what union.tag and union.raw read of the box, put where v is made (a parameter: as the
     # function begins), so that they are there wherever v is
     if v in parts:
         return parts[v]
@@ -472,7 +472,7 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
     tg = Ins("union.tag", "int", "")
     tg.a = [Val(v, t)]
     tg.r = [fn.n]
-    pl = Ins("union.payload", "%slot", umembers(t)[0])
+    pl = Ins("union.raw", "%slot", "")
     pl.a = [Val(v, t)]
     pl.r = [fn.n + 1, fn.n + 2]
     fn.n += 2
@@ -486,10 +486,10 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
 
 def gen_uleaves(self, fn: IFn, uses: dict[str, list[list[int]]], i: Ins, split: dict[str, Ins]) -> bool:
     # does the value of load i of a slot that unionslots splits leave the local: go to an op other
-    # than its union.tag, its union.payload, a tag read and a store to a slot that splits too
+    # than its union.tag, its union.payload/raw, a tag read and a store to a slot that splits too
     for w in uses.get(f"%t{i.r[0]}", []):
         o = fn.blocks[w[0]].code[w[1]]
-        if not (o.op == "union.tag" or o.op == "union.payload" or self.tag_read(o) or (o.op == "mem.store" and w[2] == 1 and o.a[0].v in split)):
+        if not (o.op == "union.tag" or o.op == "union.payload" or o.op == "union.raw" or self.tag_read(o) or (o.op == "mem.store" and w[2] == 1 and o.a[0].v in split)):
             return True
     return False
 
@@ -582,7 +582,7 @@ def gen_canon(self, vs: Values, v: str) -> str:
             r = self.same(vs, v, f"field {i.a[0].t} {i.k} {self.canon(vs, i.a[0].v)}")
             vs.fieldtype[r] = i.a[0].t
             vs.fieldindex[r] = i.k
-        elif i.op == "union.payload" or i.op == "dyn.payload":
+        elif i.op == "union.payload" or i.op == "union.raw" or i.op == "dyn.payload":
             # A union box's tag and payload are immutable. Retain the equivalence of
             # repeated narrowed reads expose to dictionary lookup fusion.
             r = self.same(vs, v, f"{i.op} {i.s} {self.canon(vs, i.a[0].v)}")
