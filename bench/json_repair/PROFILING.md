@@ -64,6 +64,44 @@ Other follow-ups supported by source inspection and these probes:
   medians were 0.259/0.256 s over seven interleaved samples. Its usefulness should
   be judged on inputs that actually spend time in `skip_to_character`.
 
+## Incremental escape-state follow-up
+
+The escape normalizer now retains brace/bracket metadata when removing a
+trailing backslash and updates it only for the decoded replacement. Removing a
+backslash cannot change either field; decoded braces and brackets still do.
+For the escaped-fragment probe, the old rebuilding loop visits exactly
+`N * (N + 1)` prefix characters. The replacement performs no prefix rebuilds;
+all append metadata work visits `3 * N + 3` characters. String concatenation and
+slicing still copy growing prefixes, so this does not establish linear total
+runtime.
+
+[Paired samples and source hashes](results/incremental-escape-state.json)
+compare the PR #847 source at `563ed6d5` with the one-file change, on CPython
+3.13.16, shared Linux x86-64, pinned to CPU 0. Seven samples per variant were
+interleaved, with complete output witnesses checked. Input creation, startup,
+validation and compilation are outside the measured loop.
+
+| Escaped fragments | Before | Incremental state | Ratio |
+|---:|---:|---:|---:|
+| 500 | 24.59 ms | 1.61 ms | 15.3x |
+| 1,000 | 99.22 ms | 3.58 ms | 27.7x |
+| 2,000 | 407.35 ms | 7.32 ms | 55.6x |
+| 4,000 | 1,625.34 ms | 19.12 ms | 85.0x |
+
+These are CPython measurements of synthetic malformed inputs. The valid JSON
+control was essentially unchanged. The mixed workload's medians were 270.7
+and 281.2 microseconds per ten records, with overlapping sample ranges;
+no general throughput improvement is established. New native JIT/AOT timings
+and GC-stressed execution of this change remain unmeasured.
+
+The candidate matches all 645 replay cases on CPython 3.13.16. Separate
+CPython 3.12 checks matched 214,841 metadata transitions and 60,000 malformed
+API calls against the unchanged parser. The maintained native-corpus regression
+checks 110 metadata transitions and records 88 public API outcomes, including
+Unicode structural escapes, regex brackets, backslash runs, smart quotes and
+streaming EOF. Its output is recorded with CPython 3.13.16, and IR generation
+passes; those facts do not substitute for native execution.
+
 ## Reproduce
 
 Build the probe using the checkout being measured, then select a mode and size:
