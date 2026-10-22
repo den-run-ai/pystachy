@@ -7,6 +7,5 @@ a parameter's default value False False
 a variable a closure reads False False
 a comprehension's variable [False]
 a folded constant False False
-a read before a store in a branch that does not run False False
-a value a conditional chooses from two variables False False
+repeated reads before a taken store False
 [exit 0]

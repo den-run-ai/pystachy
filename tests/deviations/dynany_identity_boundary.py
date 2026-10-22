@@ -72,23 +72,12 @@ m: Any = 999 + 1
 print("a folded constant", k is m, id(k) == id(m))
 
 
-def local_branch() -> None:
-    bx = int("1000")
-    bflag = bool(int("0"))
-    bys: list[Any] = [bx, (bx := int("2000")) if bflag else 0]
-    bw: Any = bx
-    print("a read before a store in a branch that does not run", bys[0] is bw, id(bys[0]) == id(bw))
+def repeated_stale_reads() -> None:
+    # Both reads precede a taken rebinding before the list boxes its elements.
+    # Neither read had an object yet, and their retired binding has no shared slot.
+    x = int("1000")
+    items: list[Any] = [x, x, (x := int("2000"))]
+    print("repeated reads before a taken store", items[0] is items[1])
 
 
-def local_selection() -> None:
-    cx = int("1000")
-    cz = int("1000")
-    cflag = bool(int("1"))
-    cw: Any = cx
-    cy = cx if cflag else cz
-    cv: Any = cy
-    print("a value a conditional chooses from two variables", cw is cv, id(cw) == id(cv))
-
-
-local_branch()
-local_selection()
+repeated_stale_reads()

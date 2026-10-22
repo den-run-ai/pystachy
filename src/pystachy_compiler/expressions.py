@@ -2808,11 +2808,33 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
             self.incoming(identity, b.idfrom, e2)
         r.idfrom = self.phi(identity)
     elif (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
-        # (x if c else x: the one binding both arms read, whose box its slot still holds here,
-        # so that the value keeps its object where it becomes an Any value: dyn_id_read, #797)
+        # Keep the same-binding fast path, including x = x if flag else x.
         r.idslot = a.idslot
         r.idheld = self.mem_load(Val(a.idslot, "*dyn")).v
         r.idgen = a.idgen
+        r.idcounter = a.idcounter
+        r.idversion = self.mem_load(Val(a.idcounter, "*int")).v if a.idcounter != "" else ""
+    elif (t == "int" or t == "float") and e1 != "" and e2 != "" and a.t == t and b.t == t and a.idcounter != "" and b.idcounter != "":
+        # Select the binding as lazily as its payload. Boxing either arm here would
+        # allocate in scalar-only consumers; selecting just its slot and generation
+        # preserves identity when a later consumer actually needs the object.
+        slot = Ins("phi", "*dyn", "")
+        self.incoming(slot, a.idslot, e1)
+        self.incoming(slot, b.idslot, e2)
+        r.idslot = self.phi(slot)
+        held = Ins("phi", "dyn", "")
+        self.incoming(held, a.idheld, e1)
+        self.incoming(held, b.idheld, e2)
+        r.idheld = self.phi(held)
+        counter = Ins("phi", "*int", "")
+        self.incoming(counter, a.idcounter, e1)
+        self.incoming(counter, b.idcounter, e2)
+        r.idcounter = self.phi(counter)
+        version = Ins("phi", "int", "")
+        self.incoming(version, a.idversion, e1)
+        self.incoming(version, b.idversion, e2)
+        r.idversion = self.phi(version)
+        r.idgen = -1  # (a selected slot requires the runtime generation check)
     return r
 
 def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:

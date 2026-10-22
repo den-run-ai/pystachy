@@ -28,14 +28,22 @@ def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool]) -> 
     return allowed and all(numeric_value(x, names, blocked) for x in n.kids)
 
 
-def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool]) -> bool:
+def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool], noresult: bool = False) -> bool:
     # A bounded body whose local numbers only feed scalar operations and the existing
     # typed numeric return ABI. No globals, containers, callbacks, closures or Any storage.
     k = n.kind
     if k in ["pass", "break", "continue"]:
         return True
     if k == "block":
-        return all(numeric_statement(x, names, blocked) for x in n.kids)
+        return all(numeric_statement(x, names, blocked, noresult) for x in n.kids)
+    if noresult and k == "return":
+        return len(n.kids) == 0 or (len(n.kids) == 1 and n.kids[0].kind == "None")
+    if noresult and k == "expr" and len(n.kids) == 1:
+        value = n.kids[0]
+        if value.kind == "call" and len(value.kids) > 0 and value.kids[0].kind == "name" and value.kids[0].s == "print":
+            # Builtin print consumes scalar values without exposing their objects.
+            # Keyword/expanded arguments, shadowed calls and other values fail closed.
+            return "print" not in names and "print" not in blocked and all(x.kind == "str" or numeric_value(x, names, blocked) for x in value.kids[1:])
     if k in ["return", "expr"]:
         return len(n.kids) == 1 and numeric_value(n.kids[0], names, blocked)
     if k in ["assign", "augassign"]:
@@ -43,12 +51,12 @@ def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool])
             return False
         return (k == "assign" or n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) and numeric_value(n.kids[1], names, blocked)
     if k in ["if", "while"]:
-        return numeric_value(n.kids[0], names, blocked) and all(numeric_statement(x, names, blocked) for x in n.kids[1:])
+        return numeric_value(n.kids[0], names, blocked) and all(numeric_statement(x, names, blocked, noresult) for x in n.kids[1:])
     if k == "for":
         it = n.kids[1]
         if n.kids[0].kind != "name" or n.kids[0].s not in names or it.kind != "call" or it.kids[0].kind != "name" or it.kids[0].s != "range":
             return False
-        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked) for x in n.kids[2:])
+        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked, noresult) for x in n.kids[2:])
     return False
 
 
