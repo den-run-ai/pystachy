@@ -330,7 +330,6 @@ and the existing adapted pyperformance `regex_effbot`. The [kernel notes](../ben
 map each case to its coverage and limits. It builds each revision's
 native compiler once, then compares the PR merge against its base, or a main push against
 its previous SHA, on one CPU with separate warmed caches and identical head workload sources.
-Manual dispatch accepts a baseline ref; otherwise it compares with the preceding commit.
 This is a performance probe, not another bootstrap verification stage.
 
 Each workload checks output against CPython and records three alternating base/head pairs:
@@ -344,12 +343,22 @@ hashes, raw samples and same-run CPython controls. There is no cross-run downloa
 dependency. Locally on Linux, use
 `python3 tools/perf_smoke.py --base /path/to/baseline --json build/perf-smoke.json`.
 
+Weekly runs (Monday 08:23 UTC) compare current `main` against the fixed reference
+`80840d264b2d4e76c21a8deec6db90ce6e3c5b22` from #853. Manual dispatch defaults to this
+reference too, with an optional baseline override. Both revisions are rebuilt and measured
+on the same runner each time; ratios therefore include cumulative changes since the reference.
+These separate runs retain `perf-reference` raw JSON artifacts for 90 days, providing a bounded
+history without adding work to PR or push runs. Download them from the workflow's run pages.
+Compare a series only with matching reference, workload sources/arguments, measurement code
+(including imported helpers), Python/LLVM and CPU/platform; do not gate on old absolute times.
+Changing the reference or measurement inputs starts a new series. Keep the pin explicit rather
+than automatically advancing it after a slowdown. This does not add a permanent history store.
+
 Historical absolute times are unsuitable as gates: in the retained
 [October 16 snapshot](benchmarks/pyperformance-2026-10-16-a74faae.json), 16 of 17 usable
 AOT workloads had over 20% within-revision wall-time spread (excluding removed `deltablue`
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
-end-to-end json_repair, all examples,
-or cumulative drift across many commits; broader benchmark history remains under #45.
+end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
 A bootstrap job checks compiler and runtime IR fixed points once, then twenty-seven groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
