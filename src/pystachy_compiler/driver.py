@@ -123,12 +123,20 @@ def runtime_ir(path: str, src: str, cache: bool) -> str:
     g = Gen()
     g.rtmode = True
     g.rtcache = cache  # (the driver's: then PYSTACHY_IRFX prints the program's summaries only)
+    had_rt = "_rt" in MODULES
+    old_rt = MODULES.get("_rt", False)
     MODULES["_rt"] = True
-    ld = Loader([])
-    ld.rtmode = True
-    ir = g.program(ld.program(path, src))
-    del MODULES["_rt"]
-    return ir
+    try:
+        ld = Loader([])
+        ld.rtmode = True
+        return g.program(ld.program(path, src))
+    finally:
+        # A failed hosted compilation must not admit runtime-only imports in the
+        # next program. Nested callers retain their own temporary configuration.
+        if had_rt:
+            MODULES["_rt"] = old_rt
+        else:
+            del MODULES["_rt"]
 
 
 def q(s: str) -> str:

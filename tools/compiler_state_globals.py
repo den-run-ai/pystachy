@@ -55,7 +55,7 @@ RETAINED = {
     "diagnostics.DYNFILES": "loader file-index opt-ins; currently retained across restarts",
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
     "specs.SPECSHOW": "specialization display names; currently retained across restarts",
-    "specs.MODULES": "driver builtin-module configuration, including temporary runtime mode",
+    "specs.MODULES": "driver builtin-module configuration; runtime_ir restores its temporary _rt entry on every exit",
 }
 # Retained means observed policy, not proof that retaining semantic state is safe.
 # Keep #767 open for those contracts and for indirect mutation/alias effects.
