@@ -238,6 +238,34 @@ class GlobalOwnershipTests(unittest.TestCase):
             "unreviewed container writer: lexer.added_writer writes lexer.CACHE via CACHE",
         ])
 
+    def test_separate_annotation_and_initialization(self):
+        for annotation in ("list[str]", "'dict[str, bool]'", "Optional[set[str]]",
+                           "Annotated[list[int], 'meta']"):
+            declaration = "from typing import Optional, Annotated\n" + f"CACHE: {annotation}\n"
+            self.assertEqual(inventory({"probe": declaration})[1], set())
+            for assignment in ("CACHE = factory()", "CACHE, other = factory(), 1"):
+                self.assertEqual(inventory({"probe": declaration + assignment + "\n"})[1], {"probe.CACHE"})
+
+    def test_separate_annotation_uses_declaration_bindings(self):
+        for source, expected in (
+            ("CACHE: list\nlist = factory\nCACHE = factory()\n", {"probe.CACHE"}),
+            ("list = factory\nCACHE: list\nCACHE = factory()\n", set()),
+            ("CACHE: list\nCACHE: int\nCACHE = factory()\n", set()),
+            ("from typing import List as L\nCACHE: L[str]\nL = object\nCACHE = factory()\n", {"probe.CACHE"}),
+            ("CACHE: list\ndel CACHE\n", set()),
+            ("CACHE = 0\nCACHE: list\n", set()),
+        ):
+            with self.subTest(source=source):
+                self.assertEqual(inventory({"probe": source})[1], expected)
+
+    def test_separate_annotation_full_source(self):
+        sources = read_sources()
+        sources["lexer"] += "\nCACHE: dict[str, bool]\nCACHE = factory()\ndef added_writer():\n    CACHE.clear()\n"
+        self.assertEqual(validate_sources(sources), [
+            "unclassified module container: lexer.CACHE",
+            "unreviewed container writer: lexer.added_writer writes lexer.CACHE via CACHE",
+        ])
+
     def test_annotation_import_order(self):
         sources = (
             ("from typing import Annotated as A\nCACHE: A[list[int], 'meta'] = factory()\nfrom other import A\n", True),

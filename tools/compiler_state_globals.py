@@ -319,10 +319,15 @@ def inventory(sources):
             previous = ({key: set(value) for key, value in names.items()},
                         {key: set(value) for key, value in definite.items()})
             annotations = {name: name for name in BUILTIN_CONTAINERS}
+            container_hints = {}
             for statement in statements(tree.body):
                 nodes = [statement, *(child for child in expression_nodes(statement)
                                       if isinstance(child, ast.NamedExpr))]
                 for node in nodes:
+                    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                        # A declaration alone binds no value; retain its type for
+                        # later initialization, using names at the declaration site.
+                        container_hints[node.target.id] = container_annotation(node.annotation, annotations)
                     for target, origins in import_bindings(node, found, bindings, max_depth).items():
                         names[target] = names.get(target, set()) | origins
                     for target, origins in import_bindings(node, found, proven, max_depth).items():
@@ -330,7 +335,8 @@ def inventory(sources):
                     for target, value in pairs(node):
                         if not isinstance(target, ast.Name):
                             continue
-                        if container(value, getattr(node, "annotation", None), definite, annotations):
+                        if (container(value, getattr(node, "annotation", None), definite, annotations)
+                                or value is not None and container_hints.get(target.id, False)):
                             origin = module + "." + target.id
                             if origin not in found:
                                 found.add(origin)
