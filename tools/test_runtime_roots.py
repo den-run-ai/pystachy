@@ -4,12 +4,14 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
-from runtime_roots import check_roots, compile_inventory, pointer_statics
+from runtime_roots import check_roots, compile_inventory, pointer_statics, scan_roots
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CLANG = str(Path(os.environ["PYSTACHY_LLVM"]) / "clang") if os.environ.get("PYSTACHY_LLVM") else "clang"
+OPT = str(Path(os.environ["PYSTACHY_LLVM"]) / "opt") if os.environ.get("PYSTACHY_LLVM") else "opt"
 PRELUDE = "typedef unsigned long W; typedef struct { long len; } Str; void scan(const W *, const W *);\n"
 VALID = PRELUDE + """
 /* GC_ROOT(value): strong runtime reference. */
@@ -18,7 +20,7 @@ static void mark_roots(void) { scan((const W *)&value, (const W *)(&value + 1));
 """
 
 
-@unittest.skipUnless(shutil.which(CLANG), "clang is required for the runtime root contract")
+@unittest.skipUnless(shutil.which(CLANG) and shutil.which(OPT), "clang and opt are required for the runtime root contract")
 class RuntimeRootTests(unittest.TestCase):
     def problems(self, source):
         with tempfile.TemporaryDirectory() as tmp:
@@ -30,6 +32,8 @@ class RuntimeRootTests(unittest.TestCase):
         source = ROOT / "runtime.c"
         ir = compile_inventory(source)
         self.assertEqual(check_roots(source.read_text(), ir), [])
+        self.assertEqual(scan_roots(ir), {("ch1", 0), ("args", 0), ("warnopts", 0), ("xr", 0),
+                                          ("wr_fired", 1), ("unw", 1), ("protos", 1)})
         self.assertTrue({"warnopts", "xr", "text_hints", "codec.alias", "pys_dyn_none_box", "pys_dyntype_str"} <= pointer_statics(ir))
 
     def test_unused_new_pointer_cannot_disappear(self):
@@ -86,6 +90,55 @@ static _Thread_local Ptr thread;
                 self.assertIn("GC roots: value is not scanned by mark_roots with ROOT storage semantics",
                               self.problems(VALID.replace(scan, replacement)))
 
+    def test_statically_dead_guarded_scans_are_rejected(self):
+        scan = "scan((const W *)&value, (const W *)(&value + 1));"
+        for declarations, guarded in [
+            ("static int enabled;", "if (enabled) SCAN"),
+            ("static int enabled = 0;", "if (enabled != 0) SCAN"),
+            ("static const int enabled = 0;", "if (enabled) SCAN"),
+            ("static int enabled = 1;", "if (!enabled) SCAN"),
+            ("static int enabled;", "if (!enabled) return; SCAN"),
+            ("", "int enabled = 0; if (enabled) SCAN"),
+            ("", "int enabled = 1; if (enabled) return; SCAN"),
+            ("extern int enabled;", "if (enabled) { if (!enabled) { SCAN } }"),
+        ]:
+            with self.subTest(declarations=declarations, guarded=guarded):
+                source = VALID.replace("static Str *value;", "static Str *value; " + declarations)
+                source = source.replace(scan, guarded.replace("SCAN", scan))
+                source += "\nvoid keep(Str *p) { value = p; }\n"
+                self.assertIn("GC roots: value is not scanned by mark_roots with ROOT storage semantics", self.problems(source))
+
+    def test_live_guards_and_unclassified_inventory_are_preserved(self):
+        scan = "scan((const W *)&value, (const W *)(&value + 1));"
+        for declarations, guarded in [
+            ("static int enabled = 1;", "if (enabled) SCAN"),
+            ("static const int enabled = 1;", "if (enabled) SCAN"),
+            ("static int enabled;", "if (!enabled) SCAN"),
+            ("", "int enabled = 1; if (enabled) SCAN"),
+            ("static int enabled; void enable(void) { enabled = 1; }", "if (enabled) SCAN"),
+        ]:
+            with self.subTest(declarations=declarations, guarded=guarded):
+                source = VALID.replace("static Str *value;", "static Str *value; " + declarations)
+                source = source.replace(scan, guarded.replace("SCAN", scan))
+                self.assertEqual(self.problems(source), [])
+                self.assertEqual(self.problems(source + "\nstatic Str *unused;\n"),
+                                 ["GC roots: unclassified static pointer storage unused"])
+
+    def test_simplification_failure_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "roots.c"
+            path.write_text(VALID)
+            ir = compile_inventory(path)
+        failed = mock.Mock(returncode=1, stderr="invalid analysis IR")
+        with mock.patch("runtime_roots.subprocess.run", return_value=failed):
+            with self.assertRaisesRegex(RuntimeError, "cannot simplify root-scan control flow"):
+                check_roots(VALID, ir)
+
+    def test_scan_identity_is_attached_to_mark_roots_not_an_identical_helper(self):
+        source = VALID.replace("static void mark_roots", "static void helper")
+        source += "static void mark_roots(void) { scan((const W *)&value, (const W *)(&value + 1)); }\n"
+        self.assertEqual(self.problems(source), [])
+
     def test_zero_length_scan_is_rejected(self):
         self.assertIn("GC roots: value is not scanned by mark_roots with ROOT storage semantics",
                       self.problems(VALID.replace("(&value + 1)", "&value")))
@@ -129,7 +182,8 @@ static void mark_roots(void) {
 }
 """
         self.assertIn("GC roots: value is not scanned by mark_roots with ROOT storage semantics", self.problems(source))
-        # Even without an alias all dynamic offsets are outside static ROOT coverage.
+        # Even if optimization folds count to zero and repairs this scan, the
+        # original dynamic offsets are outside static ROOT coverage.
         source = source[:source.index("static void mark_roots")] + """
 static void mark_roots(void) { scan((const W *)&value + count - count, (const W *)(&value + 1)); }
 """
@@ -170,6 +224,7 @@ static void mark_roots(void) { SCAN; }
 /* GC_ROOT_RANGE(value): active range of a malloc-backed root array. */
 static Str **value;
 static long count;
+void set_roots(Str **p, long n) { value = p; count = n; }
 static void mark_roots(void) { if (count) scan((const W *)value, (const W *)(value + count)); }
 """
         self.assertEqual(self.problems(source), [])

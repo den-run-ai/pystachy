@@ -4,8 +4,9 @@ Clang's -femit-all-decls keeps unused declarations in the inventory, including a
 new static that no runtime function reads yet. LLVM resolves pointer typedefs and
 aggregate fields for us. Unions are conservatively classified even when their
 selected LLVM storage member has no pointer type. Static roots must be scanned in
-full. Dynamic active-range bounds and the documented non-root reasons still need
-review; this is not a proof of collector correctness.
+full, and scans removed by LLVM's constant/control-flow simplification do not
+count. Dynamic guard conditions, active-range bounds and the documented non-root
+reasons still need review; this is not a proof of collector correctness.
 """
 import os
 from pathlib import Path
@@ -151,6 +152,41 @@ def add_offset(a, b, scale=1):
     return result
 
 
+def live_scan_lines(ir, function):
+    """Original scan calls that survive a separate dead-code simplification.
+
+    Preserve inventory and range proofs from the original IR: optimization must
+    not hide an unclassified global or repair a malformed range. Metadata ties
+    surviving calls back to their original lines even when LLVM rewrites operands.
+    """
+    body = function[1]
+    next_id = 1 + max((int(n) for n in re.findall(r"!(\d+)", ir)), default=-1)
+    lines = body.splitlines()
+    metadata = []
+    for index, line in enumerate(lines):
+        if re.match(r"\s*call void @scan\(", line):
+            identifier = next_id + len(metadata)
+            lines[index] += f", !pystachy.root.scan !{identifier}"
+            metadata.append(f"!{identifier} = !{{i32 {index}}}")
+    if not metadata:
+        return set()
+    analysis = (ir[:function.start(1)] + "\n".join(lines) + "\n" + ir[function.end(1):]
+                + "\n" + "\n".join(metadata) + "\n")
+    # Analyze mark_roots as an entry point even in a standalone regression. Do
+    # not let globalopt discard it merely because the fixture has no caller.
+    analysis = re.sub(r"^(define )internal (?=[^\n]*@mark_roots\()", r"\1", analysis, flags=re.M)
+    analysis = re.sub(r"^(attributes #\d+ = \{[^\n]*)\boptnone\b", r"\1", analysis, flags=re.M)
+    opt = str(Path(os.environ["PYSTACHY_LLVM"]) / "opt") if os.environ.get("PYSTACHY_LLVM") else "opt"
+    result = subprocess.run([opt, "-S", "-passes=globalopt,function(mem2reg,early-cse,sccp,simplifycfg)", "-o", "-"],
+                            input=analysis, capture_output=True, text=True)
+    if result.returncode:
+        raise RuntimeError("cannot simplify root-scan control flow: " + result.stderr.strip())
+    indices = dict(re.findall(r"^!(\d+) = !\{i32 (\d+)\}$", result.stdout, re.M))
+    calls = re.findall(r"^\s*(?:(?:tail|musttail|notail) )?call (?:fastcc )?void @scan\([^\n]*!pystachy\.root\.scan !(\d+)",
+                       result.stdout, re.M)
+    return {int(indices[n]) for n in calls if n in indices}
+
+
 def scan_roots(ir):
     """(Global, dereference depth) covered by a correctly directed scan.
 
@@ -161,6 +197,7 @@ def scan_roots(ir):
     m = re.search(r"^define [^\n]*@mark_roots\([^\n]*\) [^\n]*\{\n(.*?)^}", ir, re.M | re.S)
     if not m:
         return set()
+    live = live_scan_lines(ir, m)
     layout = StorageLayout(ir)
     pointers = {}
     integers = {}
@@ -240,7 +277,7 @@ def scan_roots(ir):
         return (token[1:], 0, {}, True) if token.startswith("@") else pointers.get(token)
 
     scanned = set()
-    for line in m[1].splitlines():
+    for index, line in enumerate(m[1].splitlines()):
         # Do not let control predicates or unrelated integer arithmetic establish
         # pointer provenance. These are the pointer expressions mark_roots uses.
         assign = re.match(r"\s*(%[\w.]+) = (.*)", line)
@@ -269,7 +306,7 @@ def scan_roots(ir):
                     if left is not None and right is not None:
                         integers[name] = add_offset(left, right, 1 if arithmetic[1] == "add" else -1)
         call = re.search(r"\bcall void @scan\((.*)\)", line)
-        if call:
+        if call and index in live:
             start, end = [pointer(value) for value in operands(call[1])]
             if start is None or end is None or start[:2] != end[:2]:
                 continue
