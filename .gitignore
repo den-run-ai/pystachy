@@ -7,3 +7,5 @@ __pycache__/
 /core
 /dist/
 *.egg-info/
+# Local research stays off production branches; CI also checks tracked paths.
+/research/

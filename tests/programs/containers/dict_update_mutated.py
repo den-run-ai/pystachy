@@ -1,8 +1,5 @@
-# Documented deviation: d.update(o) goes on with what is left of o where an __eq__ that the merge
-# calls empties o, where CPython raises RuntimeError: dict mutated during update (here CPython
-# prints "RuntimeError dict mutated during update" and "2 0"); so do dict(o) and o.copy() of an o
-# with many deleted keys, which merge o into a new dict (CPython: "RuntimeError dict mutated
-# during update" twice, then "0 0").
+# A key comparison that changes the source size aborts update, dict(source), and copy.
+# Sparse sources make dict(source) and copy merge entries instead of cloning the table.
 class X:
     def __init__(self, v: int) -> None:
         self.v = v

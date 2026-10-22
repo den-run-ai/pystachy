@@ -45,7 +45,7 @@ is outside this prototype.
 ## Prior art and source provenance
 
 This is an original typed implementation, not a copied VM import subsystem.
-The shared [builtin-module research](builtins-research.md) compares the four
+The historical [builtin-module research](https://github.com/den-run-ai/pystachy/blob/51c90881ba2ed354903412beb576c641a1b19b80/docs/prototypes/builtins-research.md) compares the four
 prototypes and the existing issue boundaries.
 
 - CPython **3.13.16**, [`Python/import.c`](https://github.com/python/cpython/blob/v3.13.16/Python/import.c),

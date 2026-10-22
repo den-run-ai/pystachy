@@ -132,7 +132,7 @@ class StateProbeTests(unittest.TestCase):
 
     def test_real_dry_calls_preserve_emission_and_ir(self):
         for case in ("tests/programs/inference/dynany_eq_template.py",
-                     "research/compiler-state-767/dry_template.py"):
+                     "tools/fixtures/compiler_state_dry_template.py"):
             with self.subTest(case=case):
                 observed = self.run_probe(case)
                 baseline = self.run_probe(case, baseline=True)
@@ -151,7 +151,7 @@ def broken(g, node, want=""):
     g.line += 1
     return result
 Gen.dry = broken
-probe("research/compiler-state-767/dry_template.py")
+probe("tools/fixtures/compiler_state_dry_template.py")
 '''
         result = subprocess.run([sys.executable, "-c", script], cwd=ROOT, text=True,
                                 capture_output=True, timeout=60)
