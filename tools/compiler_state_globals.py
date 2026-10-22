@@ -252,26 +252,36 @@ def container(value, annotation, known, annotations):
     return False
 
 
-def import_bindings(node, containers):
-    """Resolve the same absolute compiler-import spellings at either scope."""
+def import_bindings(node, containers, exports=None, max_depth=None):
+    """Resolve explicit imports through known module exports and re-exports."""
+    if isinstance(node, ast.ImportFrom):
+        if not node.module or not (node.module == PREFIX[:-1] or node.module.startswith(PREFIX)):
+            return {}
+    elif not isinstance(node, ast.Import) or not any(alias.name.startswith(PREFIX) for alias in node.names):
+        return {}
+    symbols = {origin: {origin} for origin in containers}
+    if exports is not None:
+        symbols.update({module + "." + name: origins for module, names in exports.items()
+                        for name, origins in names.items()})
     names = {}
+
+    def add(source, local):
+        for symbol, origins in symbols.items():
+            if symbol == source or symbol.startswith(source + "."):
+                name = local + symbol[len(source):]
+                if max_depth is None or len(name.split(".")) <= max_depth:
+                    names[name] = set(origins)
+
     if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith(PREFIX):
         for alias in node.names:
-            origin = node.module[len(PREFIX):] + "." + alias.name
-            if origin in containers:
-                names[alias.asname or alias.name] = origin
+            add(node.module[len(PREFIX):] + "." + alias.name, alias.asname or alias.name)
     elif isinstance(node, ast.ImportFrom) and node.module == PREFIX[:-1]:
         for alias in node.names:
-            for origin in containers:
-                if origin.startswith(alias.name + "."):
-                    names[(alias.asname or alias.name) + origin[len(alias.name):]] = origin
+            add(alias.name, alias.asname or alias.name)
     elif isinstance(node, ast.Import):
         for alias in node.names:
             if alias.name.startswith(PREFIX):
-                imported = alias.name[len(PREFIX):]
-                for origin in containers:
-                    if origin.startswith(imported + "."):
-                        names[(alias.asname or alias.name) + origin[len(imported):]] = origin
+                add(alias.name[len(PREFIX):], alias.asname or alias.name)
     return names
 
 
@@ -279,25 +289,43 @@ def inventory(sources):
     trees = {name: ast.parse(source) for name, source in sources.items()}
     found = set()
     bindings = {module: {} for module in trees}
-    # Iterate import/assignment aliases to a fixed point across module order.
+    proven = {module: {} for module in trees}
+    # Cyclic module aliases must not grow unreferenced qualifier paths forever.
+    max_depth = max((len(root_id(node).split(".")) for tree in trees.values() for node in ast.walk(tree)
+                     if isinstance(node, (ast.Name, ast.Attribute))), default=1)
+    # Iterate declarations, aliases and explicit re-exports across module order.
     changed = True
     while changed:
         changed = False
         for module, tree in trees.items():
             names = bindings[module]
+            definite = proven[module]
+            previous = ({key: set(value) for key, value in names.items()},
+                        {key: set(value) for key, value in definite.items()})
             annotations = {name: name for name in BUILTIN_CONTAINERS}
             for node in scope_nodes(tree.body):
                 annotation_import(node, annotations)
-                names.update(import_bindings(node, found))
-                known = {name for name, origin in names.items() if origin in found}
+                for target, origins in import_bindings(node, found, bindings, max_depth).items():
+                    names[target] = names.get(target, set()) | origins
+                for target, origins in import_bindings(node, found, proven, max_depth).items():
+                    definite[target] = definite.get(target, set()) | origins
                 for target, value in pairs(node):
-                    if container(value, getattr(node, "annotation", None), known, annotations):
-                        if isinstance(target, ast.Name):
-                            origin = module + "." + target.id
-                            if origin not in found:
-                                found.add(origin)
-                                changed = True
-                            names[target.id] = origin
+                    if not isinstance(target, ast.Name):
+                        continue
+                    if container(value, getattr(node, "annotation", None), definite, annotations):
+                        origin = module + "." + target.id
+                        if origin not in found:
+                            found.add(origin)
+                            changed = True
+                        names[target.id] = {origin}
+                        definite[target.id] = {origin}
+                    else:
+                        # A subscript may be scalar: retain possible source owners
+                        # for later writes without declaring another container.
+                        origins = root_name(value, names)
+                        if origins:
+                            names[target.id] = names.get(target.id, set()) | origins
+            changed |= previous != (names, definite)
     return trees, found, bindings
 
 
@@ -336,17 +364,17 @@ def update_types(node, types):
     annotation_import(node, types)
 
 
-def writes(tree, module, bindings, containers=None):
+def writes(tree, module, bindings, containers=None, exports=None):
     """Conservative simple-local-alias scan; later rebindings do not erase aliases."""
     result = set()
     if containers is None:
-        containers = LOOKUP | REWOUND.keys() | RETAINED.keys() | set(bindings.values())
+        containers = LOOKUP | REWOUND.keys() | RETAINED.keys() | set().union(*bindings.values())
     module_types = {name: name for name in BUILTIN_CONTAINERS}
     for node in scope_nodes(tree.body):
         update_types(node, module_types)
 
     def visit_scope(scope, path, outer=None, default_outer=None, outer_types=None):
-        names = ({name: {origin} for name, origin in bindings.items()}
+        names = ({name: set(origins) for name, origins in bindings.items()}
                  if outer is None else {name: set(origins) for name, origins in outer.items()})
         types = dict(module_types if outer_types is None else outer_types)
         if isinstance(scope, ast.ClassDef):
@@ -366,7 +394,7 @@ def writes(tree, module, bindings, containers=None):
                     if name.split(".")[0] in local:
                         names.pop(name)
                 names.update({name: origin for name, origin in aliases if origin})
-                names.update({name: {origin} for name, origin in import_bindings(child, containers).items()})
+                names.update(import_bindings(child, containers, exports))
             return
         defaults = scope.args.defaults
         positional = scope.args.posonlyargs + scope.args.args
@@ -391,7 +419,7 @@ def writes(tree, module, bindings, containers=None):
         for name in declared:
             names.pop(name, None)
             if name in bindings:
-                names[name] = {bindings[name]}
+                names[name] = set(bindings[name])
             for key in list(types):
                 if key.split(".")[0] == name:
                     types.pop(key)
@@ -414,8 +442,8 @@ def writes(tree, module, bindings, containers=None):
             closure_types.update(later_types)
         names.update(captures)
         for n in nodes:
-            for name, origin in import_bindings(n, containers).items():
-                names.setdefault(name, set()).add(origin)
+            for name, origins in import_bindings(n, containers, exports).items():
+                names.setdefault(name, set()).update(origins)
         # Fixed point handles chains declared in either source order. This can
         # overapproximate a reused local; intentional aliases need review.
         changed = True
@@ -465,7 +493,7 @@ def validate_sources(sources):
     declared = LOOKUP | REWOUND.keys() | RETAINED.keys()
     errors = [f"unclassified module container: {name}" for name in sorted(found - declared)]
     errors += [f"stale container classification: {name}" for name in sorted(declared - found)]
-    actual = set().union(*(writes(tree, name, bindings[name], found) for name, tree in trees.items()))
+    actual = set().union(*(writes(tree, name, bindings[name], found, bindings) for name, tree in trees.items()))
     allowed = {(name, writer, name.split(".")[-1]) for name, writers in WRITERS.items() for writer in writers} | ALIASES
     errors += [f"unreviewed container writer: {writer} writes {name} via {alias}" for name, writer, alias in sorted(actual - allowed)]
     errors += [f"stale container writer: {writer} writes {name} via {alias}" for name, writer, alias in sorted(allowed - actual)]

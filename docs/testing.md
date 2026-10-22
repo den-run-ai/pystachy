@@ -404,7 +404,13 @@ module-level containers under the compiler's declaration conventions. Every
 container is classified as a reviewed lookup table, restart-rewound state, or
 currently retained state. It rejects unclassified containers and new writers,
 including direct writes, imported names, simple local and default-argument aliases,
-assignment expressions and nested subscripts. Container annotations include explicit
+assignment expressions and nested subscripts. Module subscript aliases retain possible
+source owners for later mutation checks without declaring scalar-capable reads as
+new containers. Import and alias propagation can retain multiple possible owners
+across rebindings; reports require review. Explicit re-export chains preserve those
+original owners; qualified
+exports expand only to attribute-path depths referenced in the scanned source, so
+module-object import cycles remain finite. Container annotations include explicit
 builtin/typing import aliases, quoted forms, unions, `Optional` and `Annotated`
 wrappers; metadata is not treated as a type. Direct bound and builtin unbound
 mutator calls include in-place dunders and reinitialization, with explicit import

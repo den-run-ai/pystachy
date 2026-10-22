@@ -1,5 +1,7 @@
 """Drift and negative controls for compiler module-container ownership."""
 import ast
+import subprocess
+import sys
 import unittest
 
 from compiler_state_globals import (
@@ -411,6 +413,87 @@ class GlobalOwnershipTests(unittest.TestCase):
                 "unclassified module container: lexer.NEW_CACHE",
                 "unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE",
             ])
+
+    def test_module_subscript_alias_origins_without_new_declarations(self):
+        for expression, origins in (("KEYWORDS['cache']", {"lexer.KEYWORDS"}),
+                                    ("(KEYWORDS if enabled else OPS)['cache']", {"lexer.KEYWORDS", "lexer.OPS"})):
+            sources = {"probe": "from src.pystachy_compiler.lexer import KEYWORDS, OPS\n"
+                       + f"CACHE = {expression}\nALIAS = CACHE\ndef added():\n    ALIAS.clear()\n",
+                       "lexer": "KEYWORDS = {'cache': {}}\nOPS = {'cache': {}}\n"}
+            trees, found, bindings = inventory(sources)
+            self.assertEqual(found, {"lexer.KEYWORDS", "lexer.OPS"})
+            self.assertEqual(writes(trees["probe"], "probe", bindings["probe"], found),
+                             {(origin, "probe.added", "ALIAS") for origin in origins})
+        sources = {"probe": "TABLE = {'count': 1}\nCOUNT = TABLE['count']\nCOPY = COUNT\ndef read():\n    return COPY\n"}
+        trees, found, bindings = inventory(sources)
+        self.assertEqual(found, {"probe.TABLE"})
+        self.assertEqual(writes(trees["probe"], "probe", bindings["probe"], found), set())
+        sources = {"probe": "TABLE = {'cache': {}}\nCACHE: dict = TABLE['cache']\n"}
+        self.assertEqual(inventory(sources)[1], {"probe.TABLE", "probe.CACHE"})
+
+    def test_reexported_container_imports(self):
+        forms = (
+            "from src.pystachy_compiler.bridge import public as table\ndef added():\n    table.clear()\n",
+            "from src.pystachy_compiler import bridge as b\ndef added():\n    b.public.clear()\n",
+            "def added():\n    from src.pystachy_compiler.bridge import public as table\n    table.clear()\n",
+            "def added():\n    import src.pystachy_compiler.bridge as b\n    b.public.clear()\n",
+        )
+        for consumer in forms:
+            sources = {"consumer": consumer,
+                       "bridge": "from src.pystachy_compiler.lexer import KEYWORDS as public\n",
+                       "lexer": "KEYWORDS = {}\n"}
+            for ordered in (sources, dict(reversed(list(sources.items())))):
+                errors = validate_sources(ordered)
+                self.assertTrue(any("consumer.added writes lexer.KEYWORDS" in error for error in errors))
+                self.assertFalse(any("unclassified module container: bridge." in error for error in errors))
+
+    def test_reexport_cycles_do_not_invent_containers(self):
+        sources = {"a": "from src.pystachy_compiler.b import TABLE\n",
+                   "b": "from src.pystachy_compiler.a import TABLE\n"}
+        self.assertEqual(inventory(sources)[1], set())
+        sources["a"] += "from src.pystachy_compiler.origin import TABLE\n"
+        sources["origin"] = "TABLE = {}\n"
+        sources["consumer"] = "from src.pystachy_compiler.b import TABLE\ndef added():\n    TABLE.clear()\n"
+        self.assertTrue(any("consumer.added writes origin.TABLE" in error for error in validate_sources(sources)))
+
+    def test_module_alias_reexport_cycles_are_bounded(self):
+        sources = {"a": "from src.pystachy_compiler.origin import TABLE\nfrom src.pystachy_compiler import b as B\n",
+                   "b": "from src.pystachy_compiler import a as A\n",
+                   "origin": "TABLE = {}\n",
+                   "consumer": "from src.pystachy_compiler import a\ndef added():\n    a.B.A.TABLE.clear()\n"}
+        for ordered in (sources, dict(reversed(list(sources.items())))):
+            trees, found, bindings = inventory(ordered)
+            self.assertEqual(writes(trees["consumer"], "consumer", bindings["consumer"], found, bindings),
+                             {("origin.TABLE", "consumer.added", "a.B.A.TABLE")})
+            self.assertTrue(all(len(name.split(".")) <= 5 for names in bindings.values() for name in names))
+
+    def test_swapping_reexport_cycle_converges(self):
+        sources = {"origin": "ONE = {}\nTWO = {}\n",
+                   "a": "from src.pystachy_compiler.origin import ONE as X, TWO as Y\nfrom src.pystachy_compiler.b import X as Y, Y as X\n",
+                   "b": "from src.pystachy_compiler.a import X, Y\n",
+                   "consumer": "from src.pystachy_compiler.a import X, Y\ndef added():\n    X.clear()\n    Y.clear()\n"}
+        script = "from compiler_state_globals import inventory, writes\n" + f"sources = {sources!r}\n" + """
+for ordered in (sources, dict(reversed(list(sources.items())))):
+    trees, found, bindings = inventory(ordered)
+    assert found == {"origin.ONE", "origin.TWO"}
+    expected = {(origin, "consumer.added", alias) for origin in found for alias in ("X", "Y")}
+    assert writes(trees["consumer"], "consumer", bindings["consumer"], found, bindings) == expected
+"""
+        subprocess.run([sys.executable, "-c", script], cwd=ROOT / "tools", check=True,
+                       capture_output=True, text=True, timeout=5)
+
+    def test_module_subscript_and_reexport_full_source_controls(self):
+        sources = read_sources()
+        sources["lexer"] += "\nNEW_CACHE = KEYWORDS['cache']\ndef added_writer():\n    NEW_CACHE.clear()\n"
+        self.assertEqual(validate_sources(sources), [
+            "unreviewed container writer: lexer.added_writer writes lexer.KEYWORDS via NEW_CACHE",
+        ])
+        sources = read_sources()
+        sources["bridge"] = "from src.pystachy_compiler.lexer import KEYWORDS\n"
+        sources["consumer"] = "def added_writer():\n    from src.pystachy_compiler.bridge import KEYWORDS\n    KEYWORDS.clear()\n"
+        self.assertEqual(validate_sources(sources), [
+            "unreviewed container writer: consumer.added_writer writes lexer.KEYWORDS via KEYWORDS",
+        ])
 
     def test_local_alias_chain_and_nested_container(self):
         source = "def added():\n    one = KEYWORDS\n    two = one['x']\n    two.clear()\n"
