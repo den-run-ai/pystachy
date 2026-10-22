@@ -191,6 +191,53 @@ class GlobalOwnershipTests(unittest.TestCase):
             "unreviewed container writer: lexer.added_writer writes lexer.KEYWORDS via KEYWORDS",
         ])
 
+    def test_annotation_only_does_not_declare_containers(self):
+        for annotation in ("list[str]", "'dict[str, bool]'", "Optional[set[str]]",
+                           "Annotated[list[int], 'meta']"):
+            sources = {"probe": "from typing import Optional, Annotated\n" + f"CACHE: {annotation}\n"}
+            self.assertEqual(inventory(sources)[1], set())
+            sources["probe"] += "CACHE = []\n"
+            self.assertEqual(inventory(sources)[1], {"probe.CACHE"})
+
+    def test_annotation_only_preserves_existing_origins(self):
+        sources = {"probe": "from src.pystachy_compiler.lexer import KEYWORDS as CACHE\n"
+                   "CACHE: dict[str, bool]\ndef added():\n    CACHE.clear()\n",
+                   "lexer": "KEYWORDS = {}\n"}
+        trees, found, bindings = inventory(sources)
+        self.assertEqual(found, {"lexer.KEYWORDS"})
+        self.assertEqual(writes(trees["probe"], "probe", bindings["probe"], found, bindings),
+                         {("lexer.KEYWORDS", "probe.added", "CACHE")})
+        source = "class C:\n    alias = KEYWORDS\n    alias: dict\n    def method(self, table=alias):\n        table.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.C.method", "table")})
+
+    def test_annotation_only_is_not_a_store_but_shadows_locals(self):
+        for body in ("def added():\n    KEYWORDS: dict\n    KEYWORDS.clear()\n",
+                     "def added():\n    KEYWORDS['new']: list\n"):
+            self.assertEqual(self.scan(body), set())
+        source = "def added():\n    KEYWORDS[KEYWORDS.clear()]: list\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+        source = "def added():\n    lex.KEYWORDS: dict\n"
+        self.assertEqual(self.scan(source, "from src.pystachy_compiler import lexer as lex\n"), set())
+        source = "def added():\n    (KEYWORDS): dict\n    KEYWORDS.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+
+    def test_function_annotations_keep_lexical_shadows_without_runtime_aliases(self):
+        for body in ("local: KEYWORDS.clear()", "local: (alias := KEYWORDS)\n    alias.clear()",
+                     "local: (KEYWORDS := {})\n    KEYWORDS.clear()"):
+            self.assertEqual(self.scan("def added():\n    " + body + "\n"), set())
+        source = "def added():\n    KEYWORDS[(alias := KEYWORDS).clear()]: list\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "alias")})
+
+    def test_annotation_only_full_source(self):
+        sources = read_sources()
+        sources["lexer"] += "\nCACHE: list[str]\nKEYWORDS: dict[str, bool]\n"
+        self.assertEqual(validate_sources(sources), [])
+        sources["lexer"] += "\nCACHE = []\ndef added_writer():\n    CACHE.clear()\n"
+        self.assertEqual(validate_sources(sources), [
+            "unclassified module container: lexer.CACHE",
+            "unreviewed container writer: lexer.added_writer writes lexer.CACHE via CACHE",
+        ])
+
     def test_annotation_import_order(self):
         sources = (
             ("from typing import Annotated as A\nCACHE: A[list[int], 'meta'] = factory()\nfrom other import A\n", True),

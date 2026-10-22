@@ -121,14 +121,28 @@ def assigned(node):
     return [], None
 
 
-def scope_nodes(body):
+def function_expressions(node):
+    """Local variable annotations are lexical syntax, not runtime expressions."""
+    if isinstance(node, ast.AnnAssign):
+        for value in (node.target, node.value):
+            if value is not None:
+                yield value
+                yield from expression_nodes(value)
+    else:
+        yield from expression_nodes(node)
+
+
+def scope_nodes(body, expressions=expression_nodes):
     for node in statements(body):
         yield node
-        yield from (child for child in expression_nodes(node) if isinstance(child, ast.NamedExpr))
+        yield from (child for child in expressions(node) if isinstance(child, ast.NamedExpr))
 
 
 def binding_targets(node):
     """Explicit stores, separate from assignments that can create aliases."""
+    if (isinstance(node, ast.AnnAssign) and node.value is None and not node.simple
+            and isinstance(node.target, ast.Name)):
+        return  # A parenthesized name annotation does not make a function local.
     yield from assigned(node)[0]
     if isinstance(node, (ast.For, ast.AsyncFor)):
         yield node.target
@@ -162,6 +176,8 @@ def target_leaves(target):
 
 def pairs(node):
     """Assignment bindings, including literal tuple/list unpacking."""
+    if isinstance(node, ast.AnnAssign) and node.value is None:
+        return  # An annotation alone neither creates nor replaces a value.
     def unpack(target, value):
         if isinstance(target, ast.Starred):
             # The starred result is a fresh list, never an alias to its iterable.
@@ -386,6 +402,8 @@ def writes(tree, module, bindings, containers=None, exports=None):
             for child in nodes:
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                     visit_scope(child, path + "." + child.name, outer, names, types)
+                if isinstance(child, ast.AnnAssign) and child.value is None:
+                    continue  # Keep existing class values available to method defaults.
                 aliases = [(target.id, root_name(value, names)) for target, value in pairs(child)
                            if isinstance(target, ast.Name)]
                 local = {t.id for root in binding_targets(child) for t in target_leaves(root)
@@ -413,7 +431,8 @@ def writes(tree, module, bindings, containers=None, exports=None):
                     if origin:
                         default_names[expression.target.id] = origin
         # Parameters and local rebinding shadow globals unless declared global.
-        nodes = list(scope_nodes(scope.body))
+        lexical_nodes = list(scope_nodes(scope.body))
+        nodes = list(scope_nodes(scope.body, function_expressions))
         declared = {name for n in nodes if isinstance(n, ast.Global) for name in n.names}
         enclosing = {name for n in nodes if isinstance(n, ast.Nonlocal) for name in n.names}
         for name in declared:
@@ -426,7 +445,7 @@ def writes(tree, module, bindings, containers=None, exports=None):
             types.update({key: kind for key, kind in module_types.items() if key.split(".")[0] == name})
         local = {a.arg for a in scope.args.posonlyargs + scope.args.args + scope.args.kwonlyargs}
         local.update(a.arg for a in (scope.args.vararg, scope.args.kwarg) if a is not None)
-        for n in nodes:
+        for n in lexical_nodes:
             local.update(t.id for root in binding_targets(n) for t in target_leaves(root)
                          if isinstance(t, ast.Name))
         for name in list(names):
@@ -458,13 +477,14 @@ def writes(tree, module, bindings, containers=None, exports=None):
                         names[target.id] = names.get(target.id, set()) | origin
                         changed = True
         for n in nodes:
-            targets = [target for root in binding_targets(n) for target in target_leaves(root)]
+            targets = ([] if isinstance(n, ast.AnnAssign) and n.value is None else
+                       [target for root in binding_targets(n) for target in target_leaves(root)])
             for target in targets:
                 origin = root_name(target, names)
                 if origin and (isinstance(target, (ast.Subscript, ast.Attribute)) or isinstance(n, ast.AugAssign)
                                or isinstance(target, ast.Name) and target.id in declared):
                     result.update((name, path, root_id(target)) for name in origin)
-            for expression in expression_nodes(n):
+            for expression in function_expressions(n):
                 if isinstance(expression, ast.Call) and isinstance(expression.func, ast.Attribute):
                     if expression.func.attr in MUTATORS:
                         receiver = expression.func.value
