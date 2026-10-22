@@ -1,0 +1,3 @@
+tests/run.sh ./pystachy "jit aot" tests/programs/inference/dynany_identity*.py
+selected 9 cases
+18 passed, 0 failed

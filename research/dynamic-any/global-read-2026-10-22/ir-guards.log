@@ -1,0 +1,2 @@
+tools/check_ir.sh ./pystachy tests/ir/dynany_scalar_global_reads.py tests/ir/dynany_numeric_locals.py
+the IR check and llvm-as accept the IR of 2 programs

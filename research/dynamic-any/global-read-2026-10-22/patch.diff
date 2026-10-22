@@ -1,0 +1,514 @@
+diff --git a/docs/dynamic-any.md b/docs/dynamic-any.md
+index 52beb3e6..353f7d72 100644
+--- a/docs/dynamic-any.md
++++ b/docs/dynamic-any.md
+@@ -181,6 +181,12 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
+   (`tests/programs/inference/dynany_identity_constants.py`). This applies to
+   numeric globals in imported typed modules too when the program uses dynamic `Any`. These
+   copies and global reads can allocate before an `Any` crossing, even if none follows.
++  A global read used only by a proven scalar arithmetic expression does not materialize
++  a box. The expression must contain only concrete numeric names, literals, arithmetic
++  and unshadowed numeric conversions; calls to user code, assignment expressions,
++  dynamic operands and unknown syntax retain snapshots. Global stores still update
++  their identity slots, and copies or values kept across calls retain their objects
++  (`tests/programs/inference/dynany_identity_scalar_globals.py`).
+   Closed functions with explicit numeric parameters and return types omit local box slots
+   when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
+   and numeric conversions. Identity tests, `Any` storage, globals, containers, closures and
+diff --git a/src/pystachy_compiler/dynamic.py b/src/pystachy_compiler/dynamic.py
+index c408c9a8..275361bc 100644
+--- a/src/pystachy_compiler/dynamic.py
++++ b/src/pystachy_compiler/dynamic.py
+@@ -401,6 +401,11 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
+     # v, read from an int or float variable whose box slot is slot (idbox): it keeps the slot, the
+     # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
+     # far (dyn_id_held)
++    if slot.startswith("@") and self.fn.scalar_reads:
++        # A proven scalar arithmetic consumer uses only the payload. Its subtree has
++        # no stores or user calls, so it cannot publish an alias or observe this object.
++        # Ordinary reads still snapshot, and every global store still updates its box.
++        return
+     v.idslot = slot
+     v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
+     v.idgen = self.idstores.get(slot, 0)
+diff --git a/src/pystachy_compiler/expressions.py b/src/pystachy_compiler/expressions.py
+index 0e01f1f5..88f19604 100644
+--- a/src/pystachy_compiler/expressions.py
++++ b/src/pystachy_compiler/expressions.py
+@@ -621,6 +621,24 @@ def gen_list_hint_type(self, a: str, b: str) -> str:
+     t = self.union_type([a, b])
+     return "" if t.startswith("!") else t
+ 
++def gen_scalar_read_value(self, n: Node) -> bool:
++    # A bounded, side-effect-free scalar operand tree. Unlike numeric_value's closed
++    # function proof, globals are allowed but walrus stores are not: even an arithmetic
++    # operand can publish an identity through (saved := G). Never infer types here.
++    k = n.kind
++    if k in ["int", "float", "True", "False"]:
++        return True
++    if k == "name":
++        return self.qtype(n.s) in ["int", "float", "bool"]
++    if k == "call":
++        if len(n.kids) != 2 or n.kids[0].kind != "name":
++            return False
++        callee = n.kids[0].s
++        return callee in ["int", "float", "bool"] and callee not in self.assigned and callee not in self.aliases and callee not in self.fglobals and callee not in self.gtypes and not self.bound(callee) and self.scalar_read_value(n.kids[1])
++    allowed = (k == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~", "not"])
++    return allowed and all(self.scalar_read_value(x) for x in n.kids)
++
++
+ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
+     self.line = n.line
+     want = self.rec_type(want)
+@@ -714,8 +732,15 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
+         b = self.expr(n.kids[1], "", resultsoft=resultsoft)
+         return self.arith(n.s, self.expr(n.kids[0], unopt(b.t) if is_dict(unopt(b.t)) else ""), b)
+     if k == "binop":
+-        a = self.expr(n.kids[0], want, resultsoft=resultsoft)
+-        return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
++        scalar_fn = self.fn
++        scalar_held = scalar_fn.scalar_reads
++        if not scalar_held and len(self.gidbox) > 0 and self.scalar_read_value(n):
++            scalar_fn.scalar_reads = True
++        try:
++            a = self.expr(n.kids[0], want, resultsoft=resultsoft)
++            return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
++        finally:
++            scalar_fn.scalar_reads = scalar_held
+     if k == "unary":
+         return self.unary(n)
+     if k == "boolop":
+diff --git a/src/pystachy_compiler/gen.py b/src/pystachy_compiler/gen.py
+index 77445e4d..a9be7e64 100644
+--- a/src/pystachy_compiler/gen.py
++++ b/src/pystachy_compiler/gen.py
+@@ -642,6 +642,7 @@ from src.pystachy_compiler.expressions import (
+     gen_exc_eq as expressions_exc_eq,
+     gen_exc_id as expressions_exc_id,
+     gen_expr as expressions_expr,
++    gen_scalar_read_value as expressions_scalar_read_value,
+     gen_fmt_error as expressions_fmt_error,
+     gen_fmt_raise as expressions_fmt_raise,
+     gen_format_arg as expressions_format_arg,
+@@ -3510,6 +3511,9 @@ class Gen:
+     def expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
+         return expressions_expr(self, n, want, returnctx, resultsoft)
+ 
++    def scalar_read_value(self, n: Node) -> bool:
++        return expressions_scalar_read_value(self, n)
++
+     def list_hint_type(self, a: str, b: str) -> str:
+         return expressions_list_hint_type(self, a, b)
+ 
+diff --git a/src/pystachy_compiler/ir.py b/src/pystachy_compiler/ir.py
+index 5ea264ad..e03dfd91 100644
+--- a/src/pystachy_compiler/ir.py
++++ b/src/pystachy_compiler/ir.py
+@@ -303,6 +303,7 @@ class IFn:
+     def __init__(self, f: FnInfo):
+         self.f = f  # f.ret is final once the IFn is complete
+         self.numeric_only = False  # function_body proved local numeric identity unobservable
++        self.scalar_reads = False  # scoped arithmetic consumer; no identity escapes its operands
+         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
+         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
+         self.blocks: list[Blk] = [Blk("entry")]
+diff --git a/src/pystachy_compiler/statements.py b/src/pystachy_compiler/statements.py
+index 8abcf69e..9eb5db98 100644
+--- a/src/pystachy_compiler/statements.py
++++ b/src/pystachy_compiler/statements.py
+@@ -1151,8 +1151,16 @@ def gen_augassign(self, n: Node) -> None:
+     elif t.kind == "name" and op == "+" and self.owns(t.s):
+         self.str_append(t, n.kids[1], "+=")
+     elif t.kind == "name":
+-        cur = self.read(t)
+-        self.store_name(t.s, self.inplace(op, cur, n.kids[1]))
++        fn = self.fn
++        held = fn.scalar_reads
++        if len(self.gidbox) > 0 and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.scalar_read_value(t) and self.scalar_read_value(n.kids[1]):
++            fn.scalar_reads = True
++        try:
++            cur = self.read(t)
++            value = self.inplace(op, cur, n.kids[1])
++        finally:
++            fn.scalar_reads = held
++        self.store_name(t.s, value)
+     elif t.kind == "attr" and self.dotted(t) != "":
+         self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
+     elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes and t.kids[0].s not in self.ltype:
+diff --git a/tests/ir/dynany_scalar_global_reads.calls b/tests/ir/dynany_scalar_global_reads.calls
+new file mode 100644
+index 00000000..3f84aae2
+--- /dev/null
++++ b/tests/ir/dynany_scalar_global_reads.calls
+@@ -0,0 +1,15 @@
++@main.init:
++@f.integer: pys_mod pys_raise
++@f.floating: pys_fmod pys_f2i pys_raise
++@f.update: pys_raise
++@f.escape: pys_dyn_int
++@f.copy: pys_dyn_int pys_raise
++@f.walrus: pys_dyn_int pys_raise
++@f.callback:
++@f.open_operand: pys_dyn_int pys_raise
++@f.dynamic_operand: pys_dyn_int
++@dyn.op0: pys_dyn_binop
++@pys_obj_eq:
++@pys_obj_cmp:
++@pys_obj_repr:
++@main: pys_init pys_finish
+diff --git a/tests/ir/dynany_scalar_global_reads.py b/tests/ir/dynany_scalar_global_reads.py
+new file mode 100644
+index 00000000..1b51fff8
+--- /dev/null
++++ b/tests/ir/dynany_scalar_global_reads.py
+@@ -0,0 +1,60 @@
++# pystachy: dynamic-any
++# Numeric consumers need no global snapshot; escaping reads still need one.
++from typing import Any
++
++G = 0
++F = 0.0
++H = 0
++
++
++def integer(n: int) -> int:
++    global G
++    total = 0
++    for i in range(n):
++        G = (G * 17 + 3) % 1000003
++        total += G
++    return total
++
++
++def floating(n: int) -> int:
++    global F
++    total = 0
++    for i in range(n):
++        F = (F * 1.25 + 3.0) % 1000.0
++        total += int(F)
++    return total
++
++
++def update(n: int) -> int:
++    global G
++    G += n
++    return G + 1
++
++
++def escape() -> Any:
++    return G
++
++
++def copy() -> int:
++    global H
++    H = G
++    return H + 1
++
++
++def walrus() -> int:
++    global H
++    return (H := G) + 1
++
++
++def callback() -> int:
++    global G
++    G = 1000
++    return 1
++
++
++def open_operand() -> int:
++    return G + callback()
++
++
++def dynamic_operand(x: Any) -> Any:
++    return G + x
+diff --git a/tests/programs/inference/dynany_identity_scalar_globals.out b/tests/programs/inference/dynany_identity_scalar_globals.out
+new file mode 100644
+index 00000000..688de386
+--- /dev/null
++++ b/tests/programs/inference/dynany_identity_scalar_globals.out
+@@ -0,0 +1,27 @@
++scalar reads 5003
++read keeps prior alias True True
++self store 1001
++self store keeps prior alias True True
++copy and rebind 2001
++saved alias across call True True
++rebound global distinct False False
++global walrus 3001
++global walrus publishes alias True True
++local walrus 4001
++local walrus publishes alias True True
++conversions 5000
++int conversion forwards alias True True
++float conversion forwards alias True True
++arithmetic before callback 2001
++callback saved old alias True True
++callback observed old alias True True
++callback replacement distinct False False
++arithmetic after callback 2001
++retained int distinct False False
++retained float distinct False False
++retained int distinct False False
++retained float distinct False False
++retained int distinct False False
++retained float distinct False False
++retained values [2000, 2001, 2002] [-0.0, 0.25, 0.5]
++[exit 0]
+diff --git a/tests/programs/inference/dynany_identity_scalar_globals.py b/tests/programs/inference/dynany_identity_scalar_globals.py
+new file mode 100644
+index 00000000..26fde9c1
+--- /dev/null
++++ b/tests/programs/inference/dynany_identity_scalar_globals.py
+@@ -0,0 +1,124 @@
++# pystachy: dynamic-any
++# Arithmetic can discard global-read identity; copies and published values cannot.
++from typing import Any
++
++G = int("1000")
++H = int("1000")
++F = float("1.5")
++J = float("1.5")
++seen: Any = None
++
++
++def same(label: str, a: Any, b: Any) -> None:
++    print(label, a is b, id(a) == id(b))
++
++
++def churn() -> None:
++    for i in range(20):
++        str([str(i), str(i + 1)])
++
++
++def scalar_reads(n: int) -> int:
++    total = 0
++    for i in range(n):
++        total += G
++        total += int(F)
++    return total + G * 2
++
++
++def self_store() -> int:
++    global G
++    local = G
++    G = local
++    return G + 1
++
++
++def copy_and_rebind() -> int:
++    global G, H
++    local = G
++    H = local
++    G = G + 1
++    return H + G
++
++
++def publish_walrus() -> int:
++    global H
++    return (H := G) + 1
++
++
++def publish_local_walrus() -> int:
++    global H
++    total = (local := G) + 1
++    H = local
++    return total
++
++
++def conversions() -> int:
++    global H, J
++    H = int(G)
++    J = float(F)
++    return H + int(J)
++
++
++def replace_g() -> int:
++    global G, seen
++    seen = G
++    G = int("2000")
++    churn()
++    return 0
++
++
++def advance() -> int:
++    global G, F
++    G = G + 1
++    F = F + 0.25
++    return G + int(F)
++
++
++def run() -> None:
++    global G, H, F
++    original: Any = G
++    H = G
++    print("scalar reads", scalar_reads(3))
++    same("read keeps prior alias", original, G)
++    print("self store", self_store())
++    same("self store keeps prior alias", original, G)
++    print("copy and rebind", copy_and_rebind())
++    same("saved alias across call", original, H)
++    same("rebound global distinct", original, G)
++
++    # These sources have no box before the identity-preserving expression publishes them.
++    G = int("3000")
++    print("global walrus", publish_walrus())
++    same("global walrus publishes alias", G, H)
++    G = int("4000")
++    print("local walrus", publish_local_walrus())
++    same("local walrus publishes alias", G, H)
++    G = int("5000")
++    F = float("-0.0")
++    print("conversions", conversions())
++    same("int conversion forwards alias", G, H)
++    same("float conversion forwards alias", F, J)
++
++    G = int("2000")
++    before: Any = G
++    print("arithmetic before callback", G + 1)
++    old, _ = G, replace_g()
++    same("callback saved old alias", old, before)
++    same("callback observed old alias", old, seen)
++    same("callback replacement distinct", old, G)
++    print("arithmetic after callback", G + 1)
++
++    retained: list[Any] = []
++    floats: list[Any] = []
++    for i in range(3):
++        retained.append(G)
++        floats.append(F)
++        advance()
++        churn()
++        same("retained int distinct", retained[i], G)
++        same("retained float distinct", floats[i], F)
++    print("retained values", retained, floats)
++
++
++run()
+diff --git a/tools/test_numeric_identity.py b/tools/test_numeric_identity.py
+index cdf3b83c..e738f341 100644
+--- a/tools/test_numeric_identity.py
++++ b/tools/test_numeric_identity.py
+@@ -1,4 +1,4 @@
+-"""Identity-slot elision must stay inside its closed numeric function boundary."""
++"""Identity elision must stay inside its numeric function or scalar consumer proof."""
+ import sys
+ import unittest
+ from pathlib import Path
+@@ -8,6 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
+ sys.path.insert(0, str(ROOT))
+ 
+ from src.pystachy_compiler import driver, functions  # noqa: E402
++from src.pystachy_compiler.diagnostics import Rejoin  # noqa: E402
++from src.pystachy_compiler.gen import Gen  # noqa: E402
++from src.pystachy_compiler.syntax import mk  # noqa: E402
+ 
+ 
+ class NumericIdentityTests(unittest.TestCase):
+@@ -103,5 +106,106 @@ class NumericIdentityTests(unittest.TestCase):
+                 NumericIdentityTests().test_observable_or_open_bodies_keep_slots()
+ 
+ 
++class ScalarGlobalIdentityTests(unittest.TestCase):
++    def reads(self, body, extra="", signature=""):
++        generators = []
++        reads = {}
++        original_read = Gen.dyn_id_read
++
++        def make_generator():
++            generator = Gen()
++            generators.append(generator)
++            reads[id(generator)] = []
++            return generator
++
++        def read(generator, value, slot):
++            if generator.curfn.node.s == "target" and slot.startswith("@") and not generator.drying:
++                reads[id(generator)].append(generator.fn.scalar_reads)
++            return original_read(generator, value, slot)
++
++        source = ("# pystachy: dynamic-any\nfrom typing import Any\nG = 1000\nF = 1.5\nH = 0\n" +
++                  "def change() -> None:\n    global G\n    G = 1000\n" +
++                  extra + "def target(" + signature + ") -> int:\n" +
++                  "\n".join("    " + line for line in body.splitlines()) + "\n")
++        with patch.object(driver, "Gen", make_generator), patch.object(Gen, "dyn_id_read", read):
++            driver.compile_program("scalar_identity_probe.py", source, [str(ROOT / "lib")], "")
++        self.assertTrue(all(not fn.scalar_reads for fn in generators[-1].fns))
++        result = reads[id(generators[-1])]
++        self.assertTrue(result, "the target must actually read a numeric global")
++        return result
++
++    def test_scalar_consumers_elide_global_snapshots(self):
++        bodies = [
++            "return G * 17 + 3",
++            "global G\nG += 1\nreturn G + 1",
++            "total = 0\ntotal += int(F)\nreturn total",
++            "return int(-F) + bool(G)",
++        ]
++        for body in bodies:
++            with self.subTest(body=body):
++                self.assertTrue(all(self.reads(body)))
++
++    def test_open_or_publishing_consumers_keep_snapshots(self):
++        cases = [
++            ("return G", "", ""),
++            ("global H\nH = G\nreturn 0", "", ""),
++            ("global H\nreturn (H := G) + 1", "", ""),
++            ("return G + callback()", "def callback() -> int:\n    return 1\n", ""),
++            ("result: Any = G + x\nreturn 1", "", "x: Any"),
++            ("return float(G) + 1", "def float(x: Any) -> int:\n    return 1\n", ""),
++            ("return G if True else H", "", ""),
++            ("items = [G]\nreturn items[0]", "", ""),
++        ]
++        for body, extra, signature in cases:
++            with self.subTest(body=body):
++                self.assertFalse(any(self.reads(body, extra, signature)))
++
++    def test_global_type_cannot_override_an_unbound_local(self):
++        generator = Gen()
++        generator.gtypes["G"] = "int"
++        generator.assigned["G"] = True
++        self.assertFalse(generator.scalar_read_value(mk("name", "G", 0, [])))
++
++    def test_builtin_aliases_and_pending_globals_block_the_proof(self):
++        node = mk("call", "", 0, [mk("name", "int", 0, []), mk("name", "G", 0, [])])
++        for location in ("assigned", "aliases", "fglobals"):
++            generator = Gen()
++            generator.gtypes["G"] = "int"
++            getattr(generator, location)["int"] = True if location == "assigned" else "other"
++            with self.subTest(location=location):
++                self.assertFalse(generator.scalar_read_value(node))
++        generator = Gen()
++        self.assertFalse(generator.scalar_read_value(mk("future_syntax", "", 0, [])))
++
++    def test_restart_and_failure_restore_the_scoped_flag(self):
++        original = Gen.arith
++        for body in ("return G + 1", "global G\nG += 1\nreturn G"):
++            for failure in (Rejoin, RuntimeError):
++                held = []
++
++                def fail_once(generator, *args, held=held, failure=failure, **kwargs):
++                    if generator.curfn.node.s == "target" and generator.fn.scalar_reads and not held:
++                        held.append(generator.fn)
++                        raise failure()
++                    return original(generator, *args, **kwargs)
++
++                with self.subTest(body=body, failure=failure.__name__):
++                    with patch.object(Gen, "arith", fail_once):
++                        if failure is RuntimeError:
++                            with self.assertRaises(RuntimeError):
++                                self.reads(body)
++                        else:
++                            self.reads(body)
++                    self.assertEqual(len(held), 1)
++                    self.assertFalse(held[0].scalar_reads)
++                    # A later hosted compilation still requires a bare global's snapshot.
++                    self.assertEqual(self.reads("return G"), [False])
++
++    def test_unchecked_scalar_proof_is_detected(self):
++        with patch.object(Gen, "scalar_read_value", return_value=True):
++            with self.assertRaises(AssertionError):
++                ScalarGlobalIdentityTests().test_open_or_publishing_consumers_keep_snapshots()
++
++
+ if __name__ == "__main__":
+     unittest.main()

@@ -1,0 +1,16 @@
+Independent final review of PR #866
+Reviewed local commit: 6eb693d18e87bf32af99390b95e6dccf512ae632
+Published candidate reported by root: a6e1dafb, tree 8ba3d616 (matching tested local tree)
+Base: db4b8517b730eb0c365995e315520434dde8a5cc
+
+Conclusion: no correctness or test-design blocker found in the final diff.
+
+The scalar consumer proof uses existing concrete qtype results and has no speculative inference. It excludes unknown syntax, walrus stores, user callbacks, dynamic operands and shadowed numeric conversions. Global read elision is scoped to binary arithmetic and numeric augmented assignment; every persistent global store still updates the identity slot. Ordinary copies and identity-forwarding expressions retain snapshots. The owning IFn is captured and restored in finally, including diagnostics/Rejoin; nested function compilation starts with a fresh IFn. The public documentation matches this bounded scope.
+
+Final tests reviewed: deterministic IR calls guard forbids boxing in integer/float/update kernels and requires it for escape/copy/walrus/callback/dynamic controls. Differential fixture covers aliases surviving calls, self stores, copy/rebind, global/local walrus publication, same-type conversions, callbacks, retained integer/float objects and allocation churn. The 12 maintained unit tests passed locally during this review, including restart/error restoration and the unchecked-proof negative control. Earlier independent hosted probes covered nine consumer/forwarding boundaries and restoration before subsequent reads.
+
+IR oracle audit: irsame-main.log reports 42 of 3518 differing. Independently compared its DIFF filename set against final-integration-irsame.log: the same 40 existing #864 filenames plus exactly the two new fixtures; no removed filenames. No exit-status, diagnostic-message, one-sided IR, or dead-worker markers occur in the final log. Displayed changes occur in dynamic Any programs, five TOML consumers and identity IR fixtures; the two new fixture excerpts show scalar global consumers. The script compares full IR/status/messages before truncating displayed diffs, so its broken-pipe messages arise from the diagnostic head pipelines, not missing comparisons. The excerpts alone are not a line-by-line review of every IR difference.
+
+Reviewed existing benchmark evidence without rerunning timings: no build-time threshold crossing shown in paired measurements. The initial copy_float JIT-process candidate against main is explicitly unconfirmed, with confirmation ratio 1.0269. Preserve that status rather than presenting the initial 26.1% ratio as confirmed regression or claiming every initial comparison was below threshold.
+
+No files in the repository changed by this reviewer. No native execution/build or full CI run performed by this reviewer; root owns those validation gates.

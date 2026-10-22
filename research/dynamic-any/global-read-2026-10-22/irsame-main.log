@@ -1,0 +1,778 @@
+sed: couldn't write 41 items to stdout: Broken pipe
+sed: couldn't write 30 items to stdout: Broken pipe
+sed: couldn't write 36 items to stdout: Broken pipe
+sed: couldn't flush stdout: Broken pipe
+sed: couldn't write 32 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 65 items to stdout: Broken pipe
+sed: couldn't write 43 items to stdout: Broken pipe
+sed: couldn't write 59 items to stdout: Broken pipe
+sed: couldn't write 46 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't flush stdout: Broken pipe
+sed: couldn't write 24 items to stdout: Broken pipe
+sed: couldn't write 42 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 41 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 61 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 58 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 58 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 111 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+DIFF tests/programs/inference/dynany_builtins.py
+  IR from line 114 (in @main.init):
+@@ -111,18 +111,18 @@
+   store ptr zeroinitializer, ptr %__item.300
+   %h.308 = alloca i64
+   store i64 zeroinitializer, ptr %h.308
+-  %h.326 = alloca i64
+-  store i64 zeroinitializer, ptr %h.326
+-  %h.401 = alloca i64
+-  store i64 zeroinitializer, ptr %h.401
+-  %p.409 = alloca ptr
+-  store ptr zeroinitializer, ptr %p.409
+-  %h.481 = alloca i64
+-  store i64 zeroinitializer, ptr %h.481
+-  %h.497 = alloca i64
+-  store i64 zeroinitializer, ptr %h.497
+-  %h.518 = alloca i64
+-  store i64 zeroinitializer, ptr %h.518
+DIFF tests/programs/inference/dynany_call_keywords.py
+  IR from line 464 (in @f.g):
+@@ -461,30 +461,24 @@
+ entry:
+   %a.1 = alloca i64
+   store i64 zeroinitializer, ptr %a.1
+-  %a.box.1 = alloca ptr
+-  store ptr zeroinitializer, ptr %a.box.1
+   %b.2 = alloca i64
+   store i64 zeroinitializer, ptr %b.2
+-  %b.box.2 = alloca ptr
+-  store ptr zeroinitializer, ptr %b.box.2
+   store i64 %a0, ptr %a.1
+   store i64 %a1, ptr %b.2
+   %t3 = load i64, ptr %a.1
+-  %t4 = load ptr, ptr %a.box.1
+-  %t5 = load i64, ptr %b.2
+-  %t6 = load ptr, ptr %b.box.2
+DIFF tests/programs/inference/dynany_call_keywords_errors.py
+  IR from line 165 (in @f.g):
+@@ -162,25 +162,19 @@
+ entry:
+   %a.1 = alloca i64
+   store i64 zeroinitializer, ptr %a.1
+-  %a.box.1 = alloca ptr
+-  store ptr zeroinitializer, ptr %a.box.1
+   %b.2 = alloca i64
+   store i64 zeroinitializer, ptr %b.2
+-  %b.box.2 = alloca ptr
+-  store ptr zeroinitializer, ptr %b.box.2
+   store i64 %a0, ptr %a.1
+   store i64 %a1, ptr %b.2
+   %t3 = load i64, ptr %a.1
+-  %t4 = load ptr, ptr %a.box.1
+-  %t5 = load i64, ptr %b.2
+-  %t6 = load ptr, ptr %b.box.2
+DIFF tests/programs/inference/dynany_call_values.py
+  IR from line 63 (in @f.twice):
+@@ -60,18 +60,15 @@
+ entry:
+   %v.1 = alloca i64
+   store i64 zeroinitializer, ptr %v.1
+-  %v.box.1 = alloca ptr
+-  store ptr zeroinitializer, ptr %v.box.1
+   store i64 %a0, ptr %v.1
+   %t2 = load i64, ptr %v.1
+-  %t3 = load ptr, ptr %v.box.1
+-  %t4 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t2, i64 2)
+-  %t5 = extractvalue {i64, i1} %t4, 0
+-  %t6 = extractvalue {i64, i1} %t4, 1
+-  br i1 %t6, label %L7, label %L8
+-L8:
+-  ret i64 %t5
++  %t3 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t2, i64 2)
+DIFF tests/programs/inference/dynany_deep_displays.py
+  IR from line 22 (in @main.init):
+@@ -19,10 +19,10 @@
+ @s.4 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"OverflowError\00"}, align 8
+ define internal void @main.init() {
+ entry:
+-  %h.127210 = alloca i64
+-  store i64 zeroinitializer, ptr %h.127210
+-  %h.127222 = alloca i64
+-  store i64 zeroinitializer, ptr %h.127222
++  %h.127214 = alloca i64
++  store i64 zeroinitializer, ptr %h.127214
++  %h.127226 = alloca i64
++  store i64 zeroinitializer, ptr %h.127226
+   store i1 true, ptr @g.Any.imp
+   %t39205 = call ptr @pys_list_new_atomic(i64 1)
+   call void @pys_list_append(ptr %t39205, i64 1)
+@@ -2134,1146 +2134,1169 @@
+DIFF tests/programs/inference/dynany_dict_keys.py
+  IR from line 154 (in @main.init):
+@@ -151,8 +151,8 @@
+   store ptr zeroinitializer, ptr %h.96
+   %h.121 = alloca i64
+   store i64 zeroinitializer, ptr %h.121
+-  %h.163 = alloca i64
+-  store i64 zeroinitializer, ptr %h.163
++  %h.155 = alloca i64
++  store i64 zeroinitializer, ptr %h.155
+   store i1 true, ptr @g.Any.imp
+   %t1 = call ptr @pys_dyn_int(i64 7)
+   %t2 = call ptr @pys_dict_new(i64 ptrtoint (ptr @s.3 to i64), i64 2)
+@@ -296,18 +296,18 @@
+   call void @pys_list_append(ptr %t101, i64 %t102)
+   %t103 = ptrtoint ptr @dbs.8 to i64
+   call void @pys_list_append(ptr %t101, i64 %t103)
+-  %t104 = invoke ptr @f.joined(ptr %t101) to label %L407 unwind label %L97
+DIFF tests/programs/inference/dynany_dict_union_effects.py
+  IR from line 90 (in @main.init):
+@@ -87,163 +87,187 @@
+   store ptr %t30, ptr @g.merged
+   %t31 = load i64, ptr @g.before
+   %t32 = load ptr, ptr @g.before.box
+-  %t33 = load ptr, ptr @g.seen
+-  %t37 = load i64, ptr %t33
+-  %t38 = icmp ult i64 0, %t37
+-  br i1 %t38, label %L34, label %L35
++  %t35 = icmp eq ptr %t32, null
++  br i1 %t35, label %L33, label %L34
++L33:
++  %t36 = call ptr @pys_dyn_int(i64 %t31)
++  store ptr %t36, ptr @g.before.box
++  br label %L34
+ L34:
+-  %t40 = getelementptr inbounds {i64, i64, ptr}, ptr %t33, i64 0, i32 2
+DIFF tests/programs/inference/dynany_dict_union_mutation.py
+  IR from line 59 (in @main.init):
+@@ -56,12 +56,12 @@
+   store i64 zeroinitializer, ptr %h.4
+   %h.11 = alloca i64
+   store i64 zeroinitializer, ptr %h.11
+-  %h.47 = alloca ptr
+-  store ptr zeroinitializer, ptr %h.47
+-  %h.124 = alloca i64
+-  store i64 zeroinitializer, ptr %h.124
+-  %h.148 = alloca ptr
+-  store ptr zeroinitializer, ptr %h.148
++  %h.62 = alloca ptr
++  store ptr zeroinitializer, ptr %h.62
++  %h.149 = alloca i64
++  store i64 zeroinitializer, ptr %h.149
++  %h.173 = alloca ptr
++  store ptr zeroinitializer, ptr %h.173
+DIFF tests/programs/inference/dynany_eq_datetime.py
+  IR from line 1239 (in @init.datetime):
+@@ -1236,8 +1236,8 @@
+ entry:
+   %h.5 = alloca ptr
+   store ptr zeroinitializer, ptr %h.5
+-  %h.31 = alloca i64
+-  store i64 zeroinitializer, ptr %h.31
++  %h.32 = alloca i64
++  store i64 zeroinitializer, ptr %h.32
+   %t3 = load i1, ptr @init.datetime.done
+   br i1 %t3, label %L1, label %L2
+ L1:
+@@ -1288,206 +1288,251 @@
+   store i1 true, ptr @g.datetime$sys.imp
+   store i1 true, ptr @g.datetime$NamedTuple.imp
+   store i64 1, ptr @g.datetime$MINYEAR
+-  store ptr null, ptr @g.datetime$MINYEAR.box
+DIFF tests/programs/inference/dynany_float_identity.py
+  IR from line 113 (in @main.init):
+@@ -110,68 +110,51 @@
+   store ptr @dbf.$0x3FF8000000000000, ptr @g.global_literal.box
+   %t1 = load double, ptr @g.global_literal
+   %t2 = load ptr, ptr @g.global_literal.box
+-  %t3 = load ptr, ptr @g.global_literal.box
+-  %t4 = icmp ne ptr %t2, null
+-  %t5 = select i1 %t4, ptr %t2, ptr %t3
+-  %t10 = icmp ne ptr %t5, null
+-  br i1 %t10, label %L6, label %L8
+-L6:
+-  %t11 = load ptr, ptr %t5
+-  %t12 = icmp eq ptr %t11, @pys_dyntype_float
+-  %t13 = getelementptr i64, ptr %t5, i64 1
+-  %t14 = load i64, ptr %t13
+-  %t15 = bitcast double %t1 to i64
+-  %t16 = icmp eq i64 %t14, %t15
+DIFF tests/programs/inference/dynany_float_literal_join.py
+  IR from line 107 (in @main.init):
+@@ -104,10 +104,10 @@
+   %t11 = icmp slt i64 %t9, %t10
+   br i1 %t11, label %L12, label %L8
+ L12:
+-  %t380 = getelementptr inbounds {i64, i64, ptr}, ptr %t1, i64 0, i32 2
+-  %t381 = load ptr, ptr %t380
+-  %t382 = getelementptr inbounds i64, ptr %t381, i64 %t9
+-  %t13 = load i64, ptr %t382
++  %t324 = getelementptr inbounds {i64, i64, ptr}, ptr %t1, i64 0, i32 2
++  %t325 = load ptr, ptr %t324
++  %t326 = getelementptr inbounds i64, ptr %t325, i64 %t9
++  %t13 = load i64, ptr %t326
+   %t14 = trunc i64 %t13 to i1
+   store i1 %t14, ptr @g.flag
+   %t15 = load i1, ptr @g.flag
+@@ -512,120 +512,52 @@
+DIFF tests/programs/inference/dynany_graph.py
+  IR from line 648 (in @main.init):
+@@ -645,38 +645,62 @@
+   store ptr null, ptr @g.seed.box
+   %t334 = load i64, ptr @g.seed
+   %t335 = load ptr, ptr @g.seed.box
+-  %t336 = call ptr @f.build(i64 %t334)
+-  store ptr %t336, ptr @g.gs
+-  %t337 = load i64, ptr @g.total
+-  %t338 = load ptr, ptr @g.total.box
+-  %t339 = load ptr, ptr @g.gs
+-  %t340 = call ptr @pys_dict_new(i64 ptrtoint (ptr @s.6 to i64), i64 0)
+-  %t341 = call ptr @f.copy_value(ptr %t339, ptr %t340)
+-  %t342 = call ptr @pys_dict_new_atomic(i64 0, i64 0)
+-  %t343 = call i64 @f.checksum(ptr %t341, ptr %t342)
+-  %t344 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t337, i64 %t343)
+-  %t345 = extractvalue {i64, i1} %t344, 0
+-  %t346 = extractvalue {i64, i1} %t344, 1
+DIFF tests/programs/inference/dynany_identity_chained.py
+  IR from line 37 (in @main.init):
+@@ -34,185 +34,119 @@
+   store ptr %t2, ptr @g.y.box
+   %t3 = load i64, ptr @g.x
+   %t4 = load ptr, ptr @g.x.box
+-  %t5 = load ptr, ptr @g.x.box
+-  %t6 = icmp ne ptr %t4, null
+-  %t7 = select i1 %t6, ptr %t4, ptr %t5
+-  %t12 = icmp ne ptr %t7, null
+-  br i1 %t12, label %L8, label %L10
+-L8:
+-  %t13 = load ptr, ptr %t7
+-  %t14 = icmp eq ptr %t13, @pys_dyntype_int
+-  %t15 = getelementptr i64, ptr %t7, i64 1
+-  %t16 = load i64, ptr %t15
+-  %t17 = icmp eq i64 %t16, %t3
+-  %t18 = and i1 %t14, %t17
+DIFF tests/programs/inference/dynany_identity_constants.py
+  IR from line 96 (in @init.mods.shapes):
+@@ -93,29 +93,31 @@
+   %t12 = ptrtoint ptr @s.3 to i64
+   call void @pys_list_append(ptr %t8, i64 %t12)
+   store ptr %t8, ptr @g.mods$shapes$__all__
+-  invoke void @pys_write(ptr @s.6, i64 1) to label %L18 unwind label %L6
+-L18:
+-  invoke void @pys_write(ptr @s.4, i64 1) to label %L19 unwind label %L6
+-L19:
+-  invoke void @pys_write(ptr @s.7, i64 1) to label %L20 unwind label %L6
++  invoke void @pys_write(ptr @s.6, i64 1) to label %L20 unwind label %L6
+ L20:
+-  invoke void @pys_write(ptr @s.5, i64 1) to label %L21 unwind label %L6
++  invoke void @pys_write(ptr @s.4, i64 1) to label %L21 unwind label %L6
+ L21:
++  invoke void @pys_write(ptr @s.7, i64 1) to label %L22 unwind label %L6
++L22:
+DIFF tests/programs/inference/dynany_identity_copy.py
+  IR from line 52 (in @main.init):
+@@ -50,120 +50,61 @@
+   store ptr null, ptr @g.G.box
+   %t2 = load i64, ptr @g.G
+   %t3 = load ptr, ptr @g.G.box
++  %t6 = icmp eq ptr %t3, null
++  br i1 %t6, label %L4, label %L5
++L4:
++  %t7 = call ptr @pys_dyn_int(i64 %t2)
++  store ptr %t7, ptr @g.G.box
++  br label %L5
++L5:
++  %t8 = phi ptr [%t3, %entry], [%t7, %L4]
+   store i64 %t2, ptr @g.H
+-  %t4 = load ptr, ptr @g.G.box
+-  %t5 = icmp ne ptr %t3, null
+-  %t6 = select i1 %t5, ptr %t3, ptr %t4
+DIFF tests/programs/inference/dynany_identity_global_snapshot.py
+  IR from line 114 (in @init.mods.shapes):
+@@ -111,9 +111,11 @@
+   call void @pys_write(ptr @s.7, i64 1)
+   call void @pys_write(ptr @s.5, i64 1)
+   store i64 5, ptr @g.mods$shapes$x
+-  store ptr null, ptr @g.mods$shapes$x.box
++  %t9 = call ptr @pys_dyn_int(i64 5)
++  store ptr %t9, ptr @g.mods$shapes$x.box
+   store i64 7, ptr @g.mods$shapes$_private
+-  store ptr null, ptr @g.mods$shapes$_private.box
++  %t10 = call ptr @pys_dyn_int(i64 7)
++  store ptr %t10, ptr @g.mods$shapes$_private.box
+   ret void
+ }
+ define internal void @init.mods() {
+@@ -286,31 +288,15 @@
+ L6:
+DIFF tests/programs/inference/dynany_identity_modules.py
+  IR from line 78 (in @init.mods.shapes):
+@@ -75,9 +75,11 @@
+   call void @pys_write(ptr @s.7, i64 1)
+   call void @pys_write(ptr @s.5, i64 1)
+   store i64 5, ptr @g.mods$shapes$x
+-  store ptr null, ptr @g.mods$shapes$x.box
++  %t9 = call ptr @pys_dyn_int(i64 5)
++  store ptr %t9, ptr @g.mods$shapes$x.box
+   store i64 7, ptr @g.mods$shapes$_private
+-  store ptr null, ptr @g.mods$shapes$_private.box
++  %t10 = call ptr @pys_dyn_int(i64 7)
++  store ptr %t10, ptr @g.mods$shapes$_private.box
+   ret void
+ }
+ define internal void @init.mods() {
+@@ -300,6 +302,7 @@
+ declare ptr @pys_list_new(i64)
+DIFF tests/programs/inference/dynany_identity_scalar_globals.py
+  IR from line 200 (in @f.scalar_reads):
+@@ -197,125 +197,170 @@
+   %t13 = load i64, ptr %total.2
+   %t14 = load ptr, ptr %total.box.2
+   %t15 = load i64, ptr @g.G
+-  %t16 = load ptr, ptr @g.G.box
+-  %t17 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t13, i64 %t15)
+-  %t18 = extractvalue {i64, i1} %t17, 0
+-  %t19 = extractvalue {i64, i1} %t17, 1
+-  br i1 %t19, label %L20, label %L21
+-L21:
+-  store i64 %t18, ptr %total.2
++  %t16 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t13, i64 %t15)
++  %t17 = extractvalue {i64, i1} %t16, 0
++  %t18 = extractvalue {i64, i1} %t16, 1
++  br i1 %t18, label %L19, label %L20
++L20:
+DIFF tests/programs/inference/dynany_identity_select.py
+  IR from line 69 (in @main.init):
+@@ -66,10 +66,10 @@
+ @s.18 = private unnamed_addr global {i64, i64, i64, [8 x i8]} {i64 7, i64 0, i64 8, [8 x i8] c"replace\00"}, align 8
+ define internal void @main.init() {
+ entry:
+-  %h.173 = alloca i64
+-  store i64 zeroinitializer, ptr %h.173
+-  %h.551 = alloca i64
+-  store i64 zeroinitializer, ptr %h.551
++  %h.128 = alloca i64
++  store i64 zeroinitializer, ptr %h.128
++  %h.418 = alloca i64
++  store i64 zeroinitializer, ptr %h.418
+   store i1 true, ptr @g.Any.imp
+   store i1 true, ptr @g.sys.imp
+   %t1 = call i64 @pys_int_str(ptr @s.0, i64 10)
+@@ -77,1124 +77,911 @@
+DIFF tests/programs/inference/dynany_identity_typed.py
+  IR from line 153 (in @init.mods.shapes):
+@@ -150,9 +150,11 @@
+   call void @pys_write(ptr @s.7, i64 1)
+   call void @pys_write(ptr @s.5, i64 1)
+   store i64 5, ptr @g.mods$shapes$x
+-  store ptr null, ptr @g.mods$shapes$x.box
++  %t9 = call ptr @pys_dyn_int(i64 5)
++  store ptr %t9, ptr @g.mods$shapes$x.box
+   store i64 7, ptr @g.mods$shapes$_private
+-  store ptr null, ptr @g.mods$shapes$_private.box
++  %t10 = call ptr @pys_dyn_int(i64 7)
++  store ptr %t10, ptr @g.mods$shapes$_private.box
+   ret void
+ }
+ define internal void @init.mods() {
+@@ -343,10 +345,10 @@
+ }
+DIFF tests/programs/inference/dynany_inferred_annotations.py
+  IR from line 172 (in @f.add):
+@@ -169,25 +169,19 @@
+ entry:
+   %a.1 = alloca i64
+   store i64 zeroinitializer, ptr %a.1
+-  %a.box.1 = alloca ptr
+-  store ptr zeroinitializer, ptr %a.box.1
+   %b.2 = alloca i64
+   store i64 zeroinitializer, ptr %b.2
+-  %b.box.2 = alloca ptr
+-  store ptr zeroinitializer, ptr %b.box.2
+   store i64 %a0, ptr %a.1
+   store i64 %a1, ptr %b.2
+   %t3 = load i64, ptr %a.1
+-  %t4 = load ptr, ptr %a.box.1
+-  %t5 = load i64, ptr %b.2
+-  %t6 = load ptr, ptr %b.box.2
+DIFF tests/programs/inference/dynany_init_result.py
+  IR from line 41 (in @main.init):
+@@ -38,10 +38,10 @@
+   %t9 = icmp slt i64 %t7, %t8
+   br i1 %t9, label %L10, label %L6
+ L10:
+-  %t64 = getelementptr inbounds {i64, i64, ptr}, ptr %t1, i64 0, i32 2
+-  %t65 = load ptr, ptr %t64
+-  %t66 = getelementptr inbounds i64, ptr %t65, i64 %t7
+-  %t11 = load i64, ptr %t66
++  %t74 = getelementptr inbounds {i64, i64, ptr}, ptr %t1, i64 0, i32 2
++  %t75 = load ptr, ptr %t74
++  %t76 = getelementptr inbounds i64, ptr %t75, i64 %t7
++  %t11 = load i64, ptr %t76
+   store i64 %t11, ptr @g.n
+   store ptr null, ptr @g.n.box
+   %t12 = call i64 @pys_try_mark()
+@@ -51,92 +51,108 @@
+DIFF tests/programs/inference/dynany_int_limits.py
+  IR from line 27 (in @main.init):
+@@ -24,12 +24,12 @@
+ entry:
+   %h.5 = alloca i64
+   store i64 zeroinitializer, ptr %h.5
+-  %h.79 = alloca i64
+-  store i64 zeroinitializer, ptr %h.79
+-  %h.142 = alloca i64
+-  store i64 zeroinitializer, ptr %h.142
+-  %e.153 = alloca ptr
+-  store ptr zeroinitializer, ptr %e.153
++  %h.62 = alloca i64
++  store i64 zeroinitializer, ptr %h.62
++  %h.110 = alloca i64
++  store i64 zeroinitializer, ptr %h.110
++  %e.121 = alloca ptr
++  store ptr zeroinitializer, ptr %e.121
+DIFF tests/programs/inference/dynany_json_bad_keys.py
+  IR from line 315 (in @main.init):
+@@ -312,8 +312,8 @@
+   store ptr zeroinitializer, ptr %h.16
+   %h.47 = alloca i64
+   store i64 zeroinitializer, ptr %h.47
+-  %h.81 = alloca ptr
+-  store ptr zeroinitializer, ptr %h.81
++  %h.86 = alloca ptr
++  store ptr zeroinitializer, ptr %h.86
+   store i1 true, ptr @g.Any.imp
+   call void @init.json()
+   store i1 true, ptr @g.json.imp
+@@ -344,18 +344,18 @@
+   br i1 %t21, label %L22, label %L23
+ L23:
+   %t24 = load ptr, ptr @g.plain_doc
+-  invoke void @init._pystachy_json_any() to label %L128 unwind label %L17
+DIFF tests/programs/inference/dynany_layout_forms.py
+  IR from line 231 (in @init.itertools):
+@@ -228,7 +228,8 @@
+   store i1 true, ptr @g.itertools$_takewhile.def
+   store i64 57, ptr @g.itertools$_LINKCELLS
+   store i1 true, ptr @g.itertools$_LINKCELLS.def
+-  store ptr null, ptr @g.itertools$_LINKCELLS.box
++  %t9 = call ptr @pys_dyn_int(i64 57)
++  store ptr %t9, ptr @g.itertools$_LINKCELLS.box
+   store i1 true, ptr @g.itertools$_tee_dataobject.def
+   store i1 true, ptr @g.itertools$_tee.def
+   store i1 true, ptr @g.itertools$_tee_fromiterable.def
+@@ -255,11 +256,11 @@
+   store i1 true, ptr @g.itertools$combinations_with_replacement.def
+   store i1 true, ptr @g.itertools$_combinations_with_replacement.def
+   ret void
+-L9:
+-  %t12 = load ptr, ptr %h.5
+DIFF tests/programs/inference/dynany_method_arity.py
+  IR from line 52 (in @main.init):
+@@ -49,7 +49,8 @@
+ entry:
+   store i1 true, ptr @g.Any.imp
+   store i64 10, ptr @g.G
+-  store ptr null, ptr @g.G.box
++  %t1 = call ptr @pys_dyn_int(i64 10)
++  store ptr %t1, ptr @g.G.box
+   call void @f.main()
+   ret void
+ }
+@@ -369,12 +370,12 @@
+ entry:
+   %x.1 = alloca ptr
+   store ptr zeroinitializer, ptr %x.1
+-  %h.95 = alloca i64
+-  store i64 zeroinitializer, ptr %h.95
+DIFF tests/programs/inference/dynany_narrowing.py
+  IR from line 128 (in @main.init):
+@@ -125,10 +125,10 @@
+   %t62 = icmp slt i64 %t60, %t61
+   br i1 %t62, label %L63, label %L59
+ L63:
+-  %t162 = getelementptr inbounds {i64, i64, ptr}, ptr %t46, i64 0, i32 2
+-  %t163 = load ptr, ptr %t162
+-  %t164 = getelementptr inbounds i64, ptr %t163, i64 %t60
+-  %t64 = load i64, ptr %t164
++  %t158 = getelementptr inbounds {i64, i64, ptr}, ptr %t46, i64 0, i32 2
++  %t159 = load ptr, ptr %t158
++  %t160 = getelementptr inbounds i64, ptr %t159, i64 %t60
++  %t64 = load i64, ptr %t160
+   %t65 = inttoptr i64 %t64 to ptr
+   store ptr %t65, ptr @g.v
+   %t66 = load ptr, ptr @g.v
+@@ -161,10 +161,10 @@
+DIFF tests/programs/inference/dynany_numeric_locals.py
+  IR from line 19:
+@@ -16,15 +16,14 @@
+ @s.4 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
+ @s.5 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c"integer result does not fit in 64 bits\00"}, align 8
+ @s.6 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"OverflowError\00"}, align 8
+-@dbf.$0x0000000000000000 = internal constant {ptr, i64} {ptr @pys_dyntype_float, i64 bitcast (double 0x0000000000000000 to i64)}, align 8
+ define internal void @main.init() {
+ entry:
+   %h.2 = alloca i64
+   store i64 zeroinitializer, ptr %h.2
+-  %h.35 = alloca i64
+-  store i64 zeroinitializer, ptr %h.35
+-  %h.57 = alloca i64
+-  store i64 zeroinitializer, ptr %h.57
++  %h.60 = alloca i64
++  store i64 zeroinitializer, ptr %h.60
++  %h.82 = alloca i64
+DIFF tests/programs/inference/dynany_sort_key.py
+  IR from line 452 (in @f.neg):
+@@ -449,18 +449,15 @@
+ entry:
+   %x.1 = alloca i64
+   store i64 zeroinitializer, ptr %x.1
+-  %x.box.1 = alloca ptr
+-  store ptr zeroinitializer, ptr %x.box.1
+   store i64 %a0, ptr %x.1
+   %t2 = load i64, ptr %x.1
+-  %t3 = load ptr, ptr %x.box.1
+-  %t4 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 0, i64 %t2)
+-  %t5 = extractvalue {i64, i1} %t4, 0
+-  %t6 = extractvalue {i64, i1} %t4, 1
+-  br i1 %t6, label %L7, label %L8
+-L8:
+-  ret i64 %t5
++  %t3 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 0, i64 %t2)
+DIFF tests/programs/inference/dynany_tuple_items.py
+  IR from line 64 (in @main.init):
+@@ -61,10 +61,10 @@
+   %t15 = icmp slt i64 %t13, %t14
+   br i1 %t15, label %L16, label %L12
+ L16:
+-  %t84 = getelementptr inbounds {i64, i64, ptr}, ptr %t1, i64 0, i32 2
+-  %t85 = load ptr, ptr %t84
+-  %t86 = getelementptr inbounds i64, ptr %t85, i64 %t13
+-  %t17 = load i64, ptr %t86
++  %t89 = getelementptr inbounds {i64, i64, ptr}, ptr %t1, i64 0, i32 2
++  %t90 = load ptr, ptr %t89
++  %t91 = getelementptr inbounds i64, ptr %t90, i64 %t13
++  %t17 = load i64, ptr %t91
+   %t18 = inttoptr i64 %t17 to ptr
+   store ptr %t18, ptr @g.s
+   %t19 = load ptr, ptr @g.s
+@@ -77,92 +77,100 @@
+DIFF tests/programs/inference/dynany_tuple_repeat.py
+  IR from line 181 (in @main.init):
+@@ -178,10 +178,10 @@
+   %t117 = icmp slt i64 %t115, %t116
+   br i1 %t117, label %L118, label %L114
+ L118:
+-  %t160 = getelementptr inbounds {i64, i64, ptr}, ptr %t109, i64 0, i32 2
+-  %t161 = load ptr, ptr %t160
+-  %t162 = getelementptr inbounds i64, ptr %t161, i64 %t115
+-  %t119 = load i64, ptr %t162
++  %t147 = getelementptr inbounds {i64, i64, ptr}, ptr %t109, i64 0, i32 2
++  %t148 = load ptr, ptr %t147
++  %t149 = getelementptr inbounds i64, ptr %t148, i64 %t115
++  %t119 = load i64, ptr %t149
+   store i64 %t119, ptr @g.k
+   store ptr null, ptr @g.k.box
+   %t120 = call i64 @pys_try_mark()
+@@ -191,64 +191,48 @@
+DIFF tests/programs/inference/dynany_type_is_function.py
+  IR from line 154 (in @f.g):
+@@ -151,11 +151,8 @@
+ entry:
+   %a.1 = alloca i64
+   store i64 zeroinitializer, ptr %a.1
+-  %a.box.1 = alloca ptr
+-  store ptr zeroinitializer, ptr %a.box.1
+   store i64 %a0, ptr %a.1
+   %t2 = load i64, ptr %a.1
+-  %t3 = load ptr, ptr %a.box.1
+   ret i64 %t2
+ }
+ define internal i64 @m.K.m(ptr nonnull %a0) {
+DIFF tests/programs/library/lib_tomllib.py
+  IR from line 2807 (in @init.re._constants):
+@@ -2804,193 +2804,280 @@
+   store i64 1073741823, ptr @g.re$_constants$MAXGROUPS
+   store ptr @dbi.re._constants$1073741823, ptr @g.re$_constants$MAXGROUPS.box
+   store i64 4, ptr @g.re$_constants$CODESIZE
+-  store ptr null, ptr @g.re$_constants$CODESIZE.box
++  %t8 = call ptr @pys_dyn_int(i64 4)
++  store ptr %t8, ptr @g.re$_constants$CODESIZE.box
+   store i64 0, ptr @g.re$_constants$FAILURE
+-  store ptr null, ptr @g.re$_constants$FAILURE.box
++  %t9 = call ptr @pys_dyn_int(i64 0)
++  store ptr %t9, ptr @g.re$_constants$FAILURE.box
+   store i64 1, ptr @g.re$_constants$SUCCESS
+-  store ptr null, ptr @g.re$_constants$SUCCESS.box
++  %t10 = call ptr @pys_dyn_int(i64 1)
++  store ptr %t10, ptr @g.re$_constants$SUCCESS.box
+   store i64 2, ptr @g.re$_constants$ANY
+DIFF tests/programs/library/lib_tomllib_dynamic.py
+  IR from line 2755 (in @init.re._constants):
+@@ -2752,193 +2752,280 @@
+   store i64 1073741823, ptr @g.re$_constants$MAXGROUPS
+   store ptr @dbi.re._constants$1073741823, ptr @g.re$_constants$MAXGROUPS.box
+   store i64 4, ptr @g.re$_constants$CODESIZE
+-  store ptr null, ptr @g.re$_constants$CODESIZE.box
++  %t8 = call ptr @pys_dyn_int(i64 4)
++  store ptr %t8, ptr @g.re$_constants$CODESIZE.box
+   store i64 0, ptr @g.re$_constants$FAILURE
+-  store ptr null, ptr @g.re$_constants$FAILURE.box
++  %t9 = call ptr @pys_dyn_int(i64 0)
++  store ptr %t9, ptr @g.re$_constants$FAILURE.box
+   store i64 1, ptr @g.re$_constants$SUCCESS
+-  store ptr null, ptr @g.re$_constants$SUCCESS.box
++  %t10 = call ptr @pys_dyn_int(i64 1)
++  store ptr %t10, ptr @g.re$_constants$SUCCESS.box
+   store i64 2, ptr @g.re$_constants$ANY
+DIFF tests/programs/library/lib_tomllib_uncaught.py
+  IR from line 2699 (in @init.re._constants):
+@@ -2696,193 +2696,280 @@
+   store i64 1073741823, ptr @g.re$_constants$MAXGROUPS
+   store ptr @dbi.re._constants$1073741823, ptr @g.re$_constants$MAXGROUPS.box
+   store i64 4, ptr @g.re$_constants$CODESIZE
+-  store ptr null, ptr @g.re$_constants$CODESIZE.box
++  %t8 = call ptr @pys_dyn_int(i64 4)
++  store ptr %t8, ptr @g.re$_constants$CODESIZE.box
+   store i64 0, ptr @g.re$_constants$FAILURE
+-  store ptr null, ptr @g.re$_constants$FAILURE.box
++  %t9 = call ptr @pys_dyn_int(i64 0)
++  store ptr %t9, ptr @g.re$_constants$FAILURE.box
+   store i64 1, ptr @g.re$_constants$SUCCESS
+-  store ptr null, ptr @g.re$_constants$SUCCESS.box
++  %t10 = call ptr @pys_dyn_int(i64 1)
++  store ptr %t10, ptr @g.re$_constants$SUCCESS.box
+   store i64 2, ptr @g.re$_constants$ANY
+DIFF tests/programs/upstream/upstream_tomllib_data.py
+  IR from line 2834 (in @init.re._constants):
+@@ -2831,193 +2831,280 @@
+   store i64 1073741823, ptr @g.re$_constants$MAXGROUPS
+   store ptr @dbi.re._constants$1073741823, ptr @g.re$_constants$MAXGROUPS.box
+   store i64 4, ptr @g.re$_constants$CODESIZE
+-  store ptr null, ptr @g.re$_constants$CODESIZE.box
++  %t8 = call ptr @pys_dyn_int(i64 4)
++  store ptr %t8, ptr @g.re$_constants$CODESIZE.box
+   store i64 0, ptr @g.re$_constants$FAILURE
+-  store ptr null, ptr @g.re$_constants$FAILURE.box
++  %t9 = call ptr @pys_dyn_int(i64 0)
++  store ptr %t9, ptr @g.re$_constants$FAILURE.box
+   store i64 1, ptr @g.re$_constants$SUCCESS
+-  store ptr null, ptr @g.re$_constants$SUCCESS.box
++  %t10 = call ptr @pys_dyn_int(i64 1)
++  store ptr %t10, ptr @g.re$_constants$SUCCESS.box
+   store i64 2, ptr @g.re$_constants$ANY
+DIFF tests/programs/upstream/upstream_tomllib_misc.py
+  IR from line 3297 (in @init.datetime):
+@@ -3294,8 +3294,8 @@
+ entry:
+   %h.5 = alloca ptr
+   store ptr zeroinitializer, ptr %h.5
+-  %h.31 = alloca i64
+-  store i64 zeroinitializer, ptr %h.31
++  %h.32 = alloca i64
++  store i64 zeroinitializer, ptr %h.32
+   %t3 = load i1, ptr @init.datetime.done
+   br i1 %t3, label %L1, label %L2
+ L1:
+@@ -3346,206 +3346,251 @@
+   store i1 true, ptr @g.datetime$sys.imp
+   store i1 true, ptr @g.datetime$NamedTuple.imp
+   store i64 1, ptr @g.datetime$MINYEAR
+-  store ptr null, ptr @g.datetime$MINYEAR.box
+DIFF tests/deviations/dynany_annotation_check.py
+  IR from line 35 (in @f.double):
+@@ -32,18 +32,15 @@
+ entry:
+   %n.1 = alloca i64
+   store i64 zeroinitializer, ptr %n.1
+-  %n.box.1 = alloca ptr
+-  store ptr zeroinitializer, ptr %n.box.1
+   store i64 %a0, ptr %n.1
+   %t2 = load i64, ptr %n.1
+-  %t3 = load ptr, ptr %n.box.1
+-  %t4 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t2, i64 2)
+-  %t5 = extractvalue {i64, i1} %t4, 0
+-  %t6 = extractvalue {i64, i1} %t4, 1
+-  br i1 %t6, label %L7, label %L8
+-L8:
+-  ret i64 %t5
++  %t3 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t2, i64 2)
+DIFF tests/deviations/dynany_builtin_keywords.py
+  IR from line 153 (in @f.g):
+@@ -150,25 +150,19 @@
+ entry:
+   %a.1 = alloca i64
+   store i64 zeroinitializer, ptr %a.1
+-  %a.box.1 = alloca ptr
+-  store ptr zeroinitializer, ptr %a.box.1
+   %b.2 = alloca i64
+   store i64 zeroinitializer, ptr %b.2
+-  %b.box.2 = alloca ptr
+-  store ptr zeroinitializer, ptr %b.box.2
+   store i64 %a0, ptr %a.1
+   store i64 %a1, ptr %b.2
+   %t3 = load i64, ptr %a.1
+-  %t4 = load ptr, ptr %a.box.1
+-  %t5 = load i64, ptr %b.2
+-  %t6 = load ptr, ptr %b.box.2
+DIFF tests/ir/dynany_global_constants.py
+  IR from line 15 (in @main.init):
+@@ -12,7 +12,8 @@
+ define internal void @main.init() {
+ entry:
+   store i64 17, ptr @g.SMALL
+-  store ptr null, ptr @g.SMALL.box
++  %t1 = call ptr @pys_dyn_int(i64 17)
++  store ptr %t1, ptr @g.SMALL.box
+   store i64 1000, ptr @g.LARGE
+   store ptr @dbi.$1000, ptr @g.LARGE.box
+   store i64 19, ptr @g.MUTABLE
+@@ -22,45 +23,47 @@
+ define internal i64 @f.constants() {
+ entry:
+   %t1 = add i64 17, 0
+-  %t2 = load ptr, ptr @g.SMALL.box
+-  %t3 = add i64 1000, 0
+DIFF tests/ir/dynany_numeric_locals.py
+  IR from line 15 (in @f.integer):
+@@ -12,97 +12,66 @@
+ entry:
+   %n.1 = alloca i64
+   store i64 zeroinitializer, ptr %n.1
+-  %n.box.1 = alloca ptr
+-  store ptr zeroinitializer, ptr %n.box.1
+   %seed.2 = alloca i64
+   store i64 zeroinitializer, ptr %seed.2
+-  %seed.box.2 = alloca ptr
+-  store ptr zeroinitializer, ptr %seed.box.2
+-  %x.5 = alloca i64
+-  store i64 zeroinitializer, ptr %x.5
+-  %x.box.5 = alloca ptr
+-  store ptr zeroinitializer, ptr %x.box.5
+-  %total.9 = alloca i64
+-  store i64 zeroinitializer, ptr %total.9
+DIFF tests/ir/dynany_scalar_global_reads.py
+  IR from line 56 (in @f.integer):
+@@ -53,43 +53,41 @@
+   store i64 %t10, ptr %i.12
+   store ptr null, ptr %i.box.12
+   %t13 = load i64, ptr @g.G
+-  %t14 = load ptr, ptr @g.G.box
+-  %t15 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t13, i64 17)
+-  %t16 = extractvalue {i64, i1} %t15, 0
+-  %t17 = extractvalue {i64, i1} %t15, 1
+-  br i1 %t17, label %L18, label %L19
+-L19:
+-  %t20 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t16, i64 3)
+-  %t21 = extractvalue {i64, i1} %t20, 0
+-  %t22 = extractvalue {i64, i1} %t20, 1
+-  br i1 %t22, label %L18, label %L23
+-L23:
+-  %t24 = call i64 @pys_mod(i64 %t21, i64 1000003)
+42 of 3518 differ

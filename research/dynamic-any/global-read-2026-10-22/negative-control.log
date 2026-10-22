@@ -1,0 +1,14 @@
+--- CPython
++++ unsafe-proof
+@@ -6,9 +6,9 @@
+ saved alias across call True True
+ rebound global distinct False False
+ global walrus 3001
+-global walrus publishes alias True True
++global walrus publishes alias False False
+ local walrus 4001
+-local walrus publishes alias True True
++local walrus publishes alias False False
+ conversions 5000
+ int conversion forwards alias True True
+ float conversion forwards alias True True

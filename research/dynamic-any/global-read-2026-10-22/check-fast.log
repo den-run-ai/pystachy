@@ -1,0 +1,40 @@
+ruff check
+All checks passed!
+mypy --config-file mypy.ini
+Success: no issues found in 47 source files
+python3.13 tools/check_repository_hygiene.py
+repository hygiene: tracked paths are clean
+python3.13 -m unittest discover -s tools -p test_repository_hygiene.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.158s
+
+OK
+python3.13 -m unittest discover -s tools -p test_function_summaries.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.037s
+
+OK
+python3.13 -m unittest discover -s tools -p 'test_typed*.py'
+.....................................................................................................................................
+----------------------------------------------------------------------
+Ran 133 tests in 3.491s
+
+OK
+python3.13 -m unittest discover -s tools -p test_json_any_loader.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.430s
+
+OK
+python3.13 -m unittest discover -s tools -p test_numeric_identity.py
+............
+----------------------------------------------------------------------
+Ran 12 tests in 0.091s
+
+OK
+PYTHON="python3.13" tests/record.sh --check
+CPython 3.13.16: 1589 recordings, 98 deviations, 11 files of lib/ checked; 0 failed
+python3.13 tools/check_agent_source.py
+6 pinned AskMe files verified at 9256333b07628f6e4b399f41916f36d463914501
