@@ -27,7 +27,7 @@ class GlobalOwnershipTests(unittest.TestCase):
             with self.subTest(value=value):
                 errors = validate_sources({"added": f"CACHE = {value}\n"})
                 self.assertIn("unclassified module container: added.CACHE", errors)
-        for annotation in ("list[int]", "dict[str, int]", "set[str]"):
+        for annotation in ("list[int]", "dict[str, int]", "set[str]", "list", "dict", "set"):
             errors = validate_sources({"added": f"cache: {annotation} = factory()\n"})
             self.assertIn("unclassified module container: added.cache", errors)
 
@@ -44,8 +44,8 @@ class GlobalOwnershipTests(unittest.TestCase):
 
     def scan(self, body, imports="from src.pystachy_compiler.lexer import KEYWORDS\n"):
         sources = {"probe": imports + body, "lexer": "KEYWORDS = {}\n"}
-        trees, _, bindings = inventory(sources)
-        return writes(trees["probe"], "probe", bindings["probe"])
+        trees, found, bindings = inventory(sources)
+        return writes(trees["probe"], "probe", bindings["probe"], found)
 
     def test_new_direct_writer_of_lookup_table(self):
         for operation in ('KEYWORDS["bad"] = True', 'del KEYWORDS["bad"]',
@@ -95,6 +95,42 @@ class GlobalOwnershipTests(unittest.TestCase):
     def test_local_alias_chain_and_nested_container(self):
         source = "def added():\n    one = KEYWORDS\n    two = one['x']\n    two.clear()\n"
         self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "two")})
+
+    def test_local_imports_and_import_aliases(self):
+        forms = (
+            ("from src.pystachy_compiler.lexer import KEYWORDS", "KEYWORDS"),
+            ("from src.pystachy_compiler.lexer import KEYWORDS as table", "table"),
+            ("from src.pystachy_compiler import lexer as lex", "lex.KEYWORDS"),
+            ("import src.pystachy_compiler.lexer as lex", "lex.KEYWORDS"),
+            ("import src.pystachy_compiler.lexer", "src.pystachy_compiler.lexer.KEYWORDS"),
+        )
+        for imported, expression in forms:
+            with self.subTest(imported=imported):
+                source = f"def added():\n    {imported}\n    {expression}.clear()\n"
+                self.assertEqual(self.scan(source, ""), {("lexer.KEYWORDS", "probe.added", expression)})
+        source = "def added():\n    from src.pystachy_compiler.lexer import KEYWORDS\n    alias = KEYWORDS\n    alias.clear()\n"
+        self.assertEqual(self.scan(source, ""), {("lexer.KEYWORDS", "probe.added", "alias")})
+
+    def test_local_import_shadowing_and_scope(self):
+        source = "def added():\n    from unrelated import KEYWORDS\n    KEYWORDS.clear()\n"
+        self.assertEqual(self.scan(source), set())
+        for imported in ("import unrelated as lex", "from unrelated import lexer as lex"):
+            source = f"def added():\n    {imported}\n    lex.KEYWORDS.clear()\n"
+            self.assertEqual(self.scan(source, "from src.pystachy_compiler import lexer as lex\n"), set())
+        source = "def outer():\n    from src.pystachy_compiler.lexer import KEYWORDS\n    def inner(KEYWORDS):\n        KEYWORDS.clear()\n"
+        self.assertEqual(self.scan(source, ""), set())
+        source = "def outer():\n    from src.pystachy_compiler.lexer import KEYWORDS as alias\n    def inner():\n        alias.clear()\n"
+        self.assertEqual(self.scan(source, ""), {("lexer.KEYWORDS", "probe.outer.inner", "alias")})
+
+    def test_nested_local_class_methods(self):
+        source = "def outer():\n    class C:\n        def method(self):\n            KEYWORDS.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.C.method", "KEYWORDS")})
+        source = "def outer():\n    alias = KEYWORDS\n    class C:\n        alias = {}\n        def method(self):\n            alias.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.C.method", "alias")})
+        source = "def outer():\n    from src.pystachy_compiler.lexer import KEYWORDS as alias\n    class C:\n        class D:\n            def method(self):\n                alias.clear()\n"
+        self.assertEqual(self.scan(source, ""), {("lexer.KEYWORDS", "probe.outer.C.D.method", "alias")})
+        source = "def outer():\n    alias = KEYWORDS\n    class C:\n        def method(self, alias):\n            alias.clear()\n"
+        self.assertEqual(self.scan(source), set())
 
     def test_aliases_do_not_oscillate_or_drop_possible_origins(self):
         source = "def added():\n    a = KEYWORDS\n    b = a\n    a = b\n    a.clear()\n"

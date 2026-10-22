@@ -408,8 +408,10 @@ subscripts. The five rewind classifications are tied to the executable restart
 controls; removing a rewind must still fail those controls. `DYNFILES`, `GLUE`
 and `SPECSHOW` currently retain discoveries across restarts; the inventory records
 that behavior without certifying its safety. This is a hosted drift check, not a
-whole-program effect analysis: arbitrary helper calls, object-attribute aliases
-and unannotated factory results require review. One explicit alias exception
+whole-program effect analysis: arbitrary helper calls, object-attribute aliases,
+unannotated factory results, and effects executed in class bodies require review.
+Method scans include local classes and preserve their enclosing function aliases;
+class fields are not method closure variables. One explicit alias exception
 covers `gen_verify` borrowing `NOLABELS` as `out`; its copy-before-write control
 flow still needs review. The checker has no native
 compilation overhead and does not establish that lookup tables are deeply immutable.

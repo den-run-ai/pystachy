@@ -125,6 +125,8 @@ def pairs(node):
 
 
 def container(value, annotation, known):
+    if isinstance(annotation, ast.Name) and annotation.id in {"list", "dict", "set"}:
+        return True
     if isinstance(annotation, ast.Subscript) and isinstance(annotation.value, ast.Name):
         if annotation.value.id in {"list", "dict", "set"}:
             return True
@@ -142,6 +144,27 @@ def container(value, annotation, known):
     return False
 
 
+def import_bindings(node, containers):
+    """Resolve the same absolute compiler-import spellings at either scope."""
+    names = {}
+    if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith(PREFIX):
+        for alias in node.names:
+            names[alias.asname or alias.name] = node.module[len(PREFIX):] + "." + alias.name
+    elif isinstance(node, ast.ImportFrom) and node.module == PREFIX[:-1]:
+        for alias in node.names:
+            for origin in containers:
+                if origin.startswith(alias.name + "."):
+                    names[(alias.asname or alias.name) + origin[len(alias.name):]] = origin
+    elif isinstance(node, ast.Import):
+        for alias in node.names:
+            if alias.name.startswith(PREFIX):
+                imported = alias.name[len(PREFIX):]
+                for origin in containers:
+                    if origin.startswith(imported + "."):
+                        names[(alias.asname or alias.name) + origin[len(imported):]] = origin
+    return names
+
+
 def inventory(sources):
     trees = {name: ast.parse(source) for name, source in sources.items()}
     found = set()
@@ -153,21 +176,7 @@ def inventory(sources):
         for module, tree in trees.items():
             names = bindings[module]
             for node in statements(tree.body):
-                if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith(PREFIX):
-                    for alias in node.names:
-                        names[alias.asname or alias.name] = node.module[len(PREFIX):] + "." + alias.name
-                elif isinstance(node, ast.ImportFrom) and node.module == PREFIX[:-1]:
-                    for alias in node.names:
-                        for origin in found:
-                            if origin.startswith(alias.name + "."):
-                                names[(alias.asname or alias.name) + origin[len(alias.name):]] = origin
-                elif isinstance(node, ast.Import):
-                    for alias in node.names:
-                        if alias.name.startswith(PREFIX):
-                            imported = alias.name[len(PREFIX):]
-                            for origin in found:
-                                if origin.startswith(imported + "."):
-                                    names[(alias.asname or alias.name) + origin[len(imported):]] = origin
+                names.update(import_bindings(node, found))
                 known = {name for name, origin in names.items() if origin in found}
                 for target, value in pairs(node):
                     if container(value, getattr(node, "annotation", None), known):
@@ -193,15 +202,18 @@ def root_name(node, names):
     return names.get(root_id(node))
 
 
-def writes(tree, module, bindings):
+def writes(tree, module, bindings, containers=None):
     """Conservative simple-local-alias scan; later rebindings do not erase aliases."""
     result = set()
+    if containers is None:
+        containers = LOOKUP | REWOUND.keys() | RETAINED.keys() | set(bindings.values())
 
     def visit_scope(scope, path, outer=None):
         if isinstance(scope, ast.ClassDef):
             for child in scope.body:
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                    visit_scope(child, path + "." + child.name)
+                    # Methods close over an enclosing function, never class fields.
+                    visit_scope(child, path + "." + child.name, outer)
             return
         names = ({name: {origin} for name, origin in bindings.items()}
                  if outer is None else {name: set(origins) for name, origins in outer.items()})
@@ -217,9 +229,15 @@ def writes(tree, module, bindings):
         for n in nodes:
             local.update(t.id for root in assigned(n)[0] for t in target_leaves(root)
                          if isinstance(t, ast.Name))
+            if isinstance(n, (ast.Import, ast.ImportFrom)):
+                local.update(a.asname or (a.name.split(".")[0] if isinstance(n, ast.Import) else a.name)
+                             for a in n.names)
         for name in list(names):
             if name.split(".")[0] in local - declared:
                 names.pop(name, None)
+        for n in nodes:
+            for name, origin in import_bindings(n, containers).items():
+                names.setdefault(name, set()).add(origin)
         # Fixed point handles chains declared in either source order. This can
         # overapproximate a reused local; intentional aliases need review.
         changed = True
@@ -250,7 +268,7 @@ def writes(tree, module, bindings):
                             origin = root_name(expression.func.value, names)
                             if origin:
                                 result.update((name, path, root_id(expression.func.value)) for name in origin)
-            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 visit_scope(n, path + "." + n.name, names)
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
@@ -263,7 +281,7 @@ def validate_sources(sources):
     declared = LOOKUP | REWOUND.keys() | RETAINED.keys()
     errors = [f"unclassified module container: {name}" for name in sorted(found - declared)]
     errors += [f"stale container classification: {name}" for name in sorted(declared - found)]
-    actual = set().union(*(writes(tree, name, bindings[name]) for name, tree in trees.items()))
+    actual = set().union(*(writes(tree, name, bindings[name], found) for name, tree in trees.items()))
     allowed = {(name, writer, name.split(".")[-1]) for name, writers in WRITERS.items() for writer in writers} | ALIASES
     errors += [f"unreviewed container writer: {writer} writes {name} via {alias}" for name, writer, alias in sorted(actual - allowed)]
     errors += [f"stale container writer: {writer} writes {name} via {alias}" for name, writer, alias in sorted(allowed - actual)]
