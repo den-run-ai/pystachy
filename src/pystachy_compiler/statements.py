@@ -6,6 +6,7 @@ from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
+    STR_HEADER_SIZE,
     ABCS,
     ABCSMORE,
     ABCSOTHER,
@@ -1853,7 +1854,7 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
         if "listget" not in self.opts:
             return [Val(self.rt("pys_bytes_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), "int")]
         # (for_seq has tested j against the length, which a bytes never changes: an inline load)
-        p = self.maddr('%byte', s.v, self.scalar('add', [Val(j, 'int'), Val('24', 'int')]))
+        p = self.maddr('%byte', s.v, self.scalar('add', [Val(j, 'int'), Val(str(STR_HEADER_SIZE), 'int')]))
         return [Val(self.scalar_cast('zext', Val(self.mload('%byte', p), '%byte'), 'int'), "int")]
     if s.t == "file":
         return [Val(j, "str")]

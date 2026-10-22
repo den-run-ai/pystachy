@@ -327,6 +327,58 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_payload_definitions_may_follow_consumers_in_block_order(self):
+        for mode in ("int", "float", "address"):
+            with self.subTest(mode=mode):
+                c = Case("later_payload_definition", [U])
+                c.guard(yes="producer", no="miss")
+                c.block("consumer")
+                if mode == "address":
+                    c.op("mach.load", "float", a=[("%future", "%ptr")])
+                else:
+                    c.op("slot.unpack", mode, a=[("%future", "%slot")])
+                consumer = c.b.code[-1]
+                c.ret()
+                c.block("miss")
+                c.ret()
+                c.block("producer")
+                bits = c.op("union.payload", "%slot", "int", [("%a0", U)])
+                address = "%t" + str(c.b.code[-1].r[0])
+                consumer.a[0].v = address if mode == "address" else bits
+                c.op("br", b=["consumer"])
+                self.assertEqual(simple_union_proof(c.fn, c.g.utags), mode == "int")
+                with redirect_stderr(StringIO()):
+                    if mode == "int":
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
+    def test_later_slot_changes_defer_to_full_control_flow_proof(self):
+        for mode in ("store", "escape"):
+            with self.subTest(mode=mode):
+                c = Case("later_slot_change", [U, U, "%ptr"])
+                slot = Ins("slot", U, "local")
+                c.fn.n += 1
+                slot.r = [c.fn.n]
+                c.fn.slots.append(slot)
+                address = "%local." + str(slot.r[0])
+                c.op("mem.store", a=[(address, "*" + U), ("%a0", U)])
+                value = c.op("mem.load", U, a=[(address, "*" + U)])
+                c.guard(value)
+                c.block("hit")
+                value = c.op("mem.load", U, a=[(address, "*" + U)])
+                c.payload(value)
+                c.ret()
+                c.block("miss")
+                if mode == "store":
+                    c.op("mem.store", a=[(address, "*" + U), ("%a1", U)])
+                else:
+                    c.op("icall", "None", a=[("%a2", "%ptr"), (address, "*" + U)])
+                c.ret()
+                self.assertFalse(simple_union_proof(c.fn, c.g.utags))
+                c.g.verify(c.fn, False)
+
     def test_repeated_union_shapes_are_validated_once_but_each_read_is_checked(self):
         for invalid in (False, True):
             with self.subTest(invalid=invalid):
@@ -379,10 +431,11 @@ class UnionProofTests(unittest.TestCase):
                 c = make_case()
                 calls = []
 
-                def observe(fn, tags, at, successors, calls=calls):
+                def observe(fn, tags, at, successors, types, calls=calls):
                     self.assertIsNotNone(at)
                     self.assertIsNotNone(successors)
-                    cached = simple_union_proof(fn, tags, at, successors)
+                    self.assertIsNotNone(types)
+                    cached = simple_union_proof(fn, tags, at, successors, types)
                     self.assertEqual(cached, simple_union_proof(fn, tags))
                     self.assertFalse(cached)
                     calls.append(True)

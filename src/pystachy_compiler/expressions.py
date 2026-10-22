@@ -7,6 +7,7 @@ from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, L
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
+    STR_HEADER_SIZE,
     CHECKED,
     DUNDER,
     FOPS,
@@ -2518,7 +2519,7 @@ def gen_bytes_read(self, o: Val, i: Val) -> Val:
     self.cbr(self.int_ucmp('<', Val(i.v, "int"), Val(self.mload('int', o.v), "int")).v, fast, slow)
     ph = Ins("phi", "int", "")
     self.place(fast)
-    p = self.maddr('%byte', o.v, self.scalar('add', [Val(i.v, 'int'), Val('24', 'int')]))
+    p = self.maddr('%byte', o.v, self.scalar('add', [Val(i.v, 'int'), Val(str(STR_HEADER_SIZE), 'int')]))
     self.incoming(ph, self.scalar_cast('zext', Val(self.mload('%byte', p), '%byte'), 'int'), self.cur)
     self.br(done)
     self.place(slow)

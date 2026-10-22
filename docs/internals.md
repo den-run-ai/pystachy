@@ -153,6 +153,39 @@ registered program globals; buffers that cannot contain pointers are not scanned
 files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.
 
+Runtime static pointer storage is classified beside its declaration with `GC_ROOT`,
+`GC_ROOT_RANGE` or `GC_NO_ROOT` and a reason. `GC_ROOT` scans the storage's address;
+`GC_ROOT_RANGE` scans the contents of a malloc-backed pointer table. The distinction
+prevents scanning a managed object's contents instead of marking its holding pointer.
+`make lint` and `make check-runtime` compare these annotations
+with clang's complete static-storage inventory, including defined external-linkage globals,
+unused definitions, aggregate fields
+and function-local statics. Each root must reach a real `scan` in `mark_roots`; comments
+or dead calls do not count. Static roots require constant offsets covering the exact
+complete storage interval, including all array elements and aggregate padding. Root ranges
+reject provably empty, reversed, negative or unaligned bounds, including equivalent symbolic endpoints, while
+allowing intentional active subranges. Packed static roots and aggregate declarations
+classified as root ranges are unsupported and fail closed. Range offsets support constants,
+integer globals used only by direct loads in `mark_roots`, and their additions/subtractions;
+each endpoint must have nonnegative coefficients, and the end-minus-start expression must
+contain a positive term. This screens the coefficient form without proving nonnegative
+counter values or relative ordering of dynamic bounds; active ranges such as
+`wr_head` to `wr_nfired` still require review. Unsupported arithmetic or untracked local
+loads fail closed. Root-range backing pointers
+must also be used only by direct loads in `mark_roots`. To keep those loads stable without alias analysis,
+`mark_roots` may store only into its local allocations and call only `scan` or the frame-address
+intrinsic; other stores, atomic writes or calls fail closed for root ranges. Static holding-root
+addresses remain valid when their pointer contents change. The check does not prove
+dynamic bounds or backing allocation sizes, non-root lifetime arguments, or pointers hidden
+in integers; those still require review and GC stress coverage. Weak registries and allocator metadata deliberately
+are not strong roots.
+
+`Str`'s named header offsets and size have C static assertions in the runtime and both
+CPython adapters. The compiler uses `STR_HEADER_SIZE` for byte offsets and allocations.
+The `rt-abi` contract compares clang's `offsetof`/`sizeof` probes with that constant and
+checks literal header values against their bytes, so exchanging same-typed cache fields
+cannot pass merely because their LLVM types match.
+
 `runtime.py` is compiled in a restricted runtime mode using `_rt` primitives, then linked with
 `runtime.c`. This reuses the compiler for string methods, formatting and numeric helpers.
 The [runtime guide](runtime-in-subset.md) covers those primitives and their constraints.

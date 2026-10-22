@@ -66,6 +66,9 @@ jobs:
       - name: Router benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_route_bench.py
 
+      - name: Runtime ABI and GC root checker controls
+        run: python3 -m unittest discover -s tools -p 'test_runtime_*.py'
+
       - name: pyperformance runner and port record tests
         run: python3 -m unittest discover -s tools -p test_bench_pyperformance.py
 
