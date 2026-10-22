@@ -86,8 +86,15 @@ make verify
 ```
 
 Subset arithmetic and primitive accesses have checks, but compiler lowering is
-still part of the trusted implementation. C sanitizers instrument `runtime.c`;
-they do not automatically instrument the emitted code of `runtime.py`.
+still part of the trusted implementation. `PYSTACHY_CFLAGS=-fsanitize=address`
+instruments both `runtime.c` and the generated runtime subset during cached
+JIT/AOT builds. The generated functions receive `sanitize_address` attributes
+and run through Clang's ASan pipeline before linking with the C bitcode.
+`tools/test_runtime_asan.py` checks real generated loads/stores, normal and
+GC-stressed JIT/AOT execution, and a bounded-allocation overread that removing
+the attributes hides. The managed allocator still groups small objects into
+arenas: this does not detect every overrun from one managed object into another.
+UBSan still covers C code only. See the [sanitizer settings](internals.md#environment-variables).
 See [testing](testing.md) for the full workflow.
 
 <a id="3-how-other-compilers-and-runtimes-do-it"></a>

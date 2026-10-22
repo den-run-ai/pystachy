@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS
+from src.pystachy_compiler.lower_module import OBJHOOKS, address_runtime_ir
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -134,6 +134,18 @@ def runtime_ir(path: str, src: str, cache: bool) -> str:
             MODULES["_rt"] = old_rt
         else:
             del MODULES["_rt"]
+
+
+def address_sanitized(flags: list[str]) -> bool:
+    # Clang applies enabling/disabling sanitizer lists from left to right. Do not
+    # mistake kernel-address, recovery options or a disabled ASan for address.
+    enabled = False
+    for flag in flags:
+        if flag.startswith("-fsanitize=") and "address" in flag[11:].split(","):
+            enabled = True
+        elif flag.startswith("-fno-sanitize=") and any(x in ["address", "all"] for x in flag[14:].split(",")):
+            enabled = False
+    return enabled
 
 
 def q(s: str) -> str:
@@ -399,6 +411,7 @@ def main() -> None:
     # if clang marked them nounwind. runtime.py goes through the optimizations on the IR as programs
     # do, so the ones PYSTACHY_OPT turns off count too: the cached runtime's key (below) has both
     flags = os.getenv("PYSTACHY_CFLAGS", "").split()
+    asan = address_sanitized(flags)
     on = optimizations()
     off = [o for o in OPTS if o not in on]
     keyed = flags + ["-fexceptions"]
@@ -530,6 +543,7 @@ def main() -> None:
     rsl = tmp + "/runtime-s.ll"
     rcb = tmp + "/runtime-c.bc"
     rpl = tmp + "/rtpy.ll"
+    rpb = tmp + "/rtpy.bc"
     lnk = tmp + "/runtime-l.bc"
     rso = tmp + "/runtime-so.c"
     rto = rtb[:-3] + ".o"  # the runtime as machine code, for the JIT tier
@@ -553,7 +567,7 @@ def main() -> None:
     useso = ""  # (the shared library this run loads, if any: lli links useo without one)
     if rtir != "":
         f = open(rpl, "w", encoding=RAW)
-        f.write(rtir)
+        f.write(address_runtime_ir(rtir) if asan else rtir)
         f.close()
         # clang compiles the bytes hashed: runtime.c's (behind #line, so that its messages, UBSan's too,
         # say runtime.c) from a file of this run's, and beside it, as beside runtime.c, those of the
@@ -573,7 +587,22 @@ def main() -> None:
             f.close()
         # one module, optimized once: LLVM inlines runtime.c's helpers into runtime.py's code. No
         # pipes: a step that fails must fail the build, not hand the next one an empty module
-        code = sh(f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {q(rpl)} {q(rcb)} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
+        # IR input needs sanitize_address attributes as well as the ASan pass.
+        # Clang supplies the selected target/layout and sanitizer options (including
+        # recovery), then instruments only the subset module: running ASan over
+        # the combined module would instrument runtime.c a second time. Keep the
+        # subset's ASan constructors outside COMDAT groups: llvm-link renames a
+        # duplicate constructor but retains its group name, so a separately
+        # sanitized C object could discard that group while a renamed init-array
+        # entry still references it (a linker error).
+        modules = f"{q(rpl)} {q(rcb)}"
+        sanitize = ""
+        if asan:
+            # C goes first so its grouped constructor keeps the group name;
+            # only the ungrouped subset constructor may be renamed by llvm-link.
+            modules = f"{q(rcb)} {q(rpb)}"
+            sanitize = f"{tc[0]} -O2 -emit-llvm -c -x ir {q(rpl)} -o {q(rpb)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -mllvm -asan-with-comdat=0 -fexceptions && "
+        code = sh(sanitize + f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
         for p in RTPARTS:
             os.remove(tmp + "/" + p)
         for d in sub:
@@ -582,7 +611,7 @@ def main() -> None:
     elif not trusted or not os.path.exists(rtb):
         code = 1  # (runtime.c, a file it includes or runtime.py cannot be read)
     if code == 0 and cmd == "run" and (rtir != "" or not os.path.exists(rto)):
-        # (from the bitcode, so runtime.py's part is in it; sanitizer flags instrumented runtime.c already.
+        # (from the bitcode, so runtime.py's part is in it; sanitizer passes instrumented the runtime already.
         # -x ir: clang would take a name not ending in .bc, as part's, for a linker input, and do nothing)
         code = sh(f"{tc[0]} -O2 -fPIC -c -x ir {q(usebc)} -o {q(parto)} -Wno-unused-command-line-argument{ccflags}")
         useo = parto
@@ -786,7 +815,7 @@ def main() -> None:
             # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
             # compiler's (PYSTACHY_GC_STRESS), so that the tests can stress programs without stressing
             # their compilation
-            for p in [ll, obj, rcc, rll, rsl, rcb, rpl, lnk, part, hp, rso, tmp + "/pyembed.c"] + [g[3] for g in glue]:
+            for p in [ll, obj, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, hp, rso, tmp + "/pyembed.c"] + [g[3] for g in glue]:
                 if os.path.exists(p):
                     os.remove(p)
             gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
@@ -799,7 +828,7 @@ def main() -> None:
             fds = f" 7< {q(peo[1])}" if embed else ""
             parts = q(parto) + " " + q(partso) + (" " + q(peo[2]) if peo[2] != "" else "")
             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useso if useso != '' else useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])
-    for p in [ll, bc, obj, rcc, rll, rsl, rcb, rpl, lnk, part, parto, partso, hp, rso, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+    for p in [ll, bc, obj, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)
