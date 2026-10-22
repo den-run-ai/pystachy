@@ -12,6 +12,8 @@ import re
 import subprocess
 import sys
 
+import dynany_optin
+
 ROOT = Path(__file__).resolve().parent.parent
 SUITE_STEPS = {"tests-cpython-0", "tests-cpython-1", "tests-cpython-2", "tests-native-0", "tests-native-1",
                "tests-opt-off-0", "tests-opt-off-1", "runtime-cache", "python-free-0", "python-free-1",
@@ -127,6 +129,12 @@ def validate_report(report, group, expected):
                     integer(step.get("program_gc_interval"), f"{label}.program_gc_interval") != 1 or
                     integer(step.get("mismatches"), f"{label}.mismatches") != 0):
                 raise ValueError(f"{label}: expected 3 programs, 540 cases including 90 parity cases, JIT/AOT with program GC stress, and no mismatches")
+        if step["name"].startswith("dynany-optin-"):
+            optin = step.get("optin")
+            dynany_optin.validate_report(optin, root=ROOT)
+            if (optin["shard_index"] != int(step["name"].rsplit("-", 1)[1]) or
+                    optin["shard_count"] != 4 or optin["modes"] != ["jit", "aot"]):
+                raise ValueError(f"{label}: wrong dynamic Any shard or modes")
         if step["name"] in GC_STEPS:
             mode = "jit" if step["name"].startswith("gc-jit") else "aot"
             if (step.get("modes") != [mode] or

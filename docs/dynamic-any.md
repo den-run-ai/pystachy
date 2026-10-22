@@ -86,7 +86,7 @@ that an `Any` value fills (`xs: list[Any] = [None] * n`, `d: dict[str, Any] = {.
 `tests/errors/inference/dynany_none_*.py`).
 
 An annotation that mentions `Any` where no `Any` value can stand requests inference, as in a
-module that does not opt in, so that the comment rejects no program that compiles without it:
+module that does not opt in. These annotation forms retain inference:
 `Callable[..., Any]`, whose parameters no `Callable` type names, a type argument of a class of the
 program (`box: Box[Any] = Box(3)`: a specialization is its constructor call's), `*args: Any` and
 `**kwargs: Any` of an `__init__` (its class is a class template), the parameters of `__exit__`,
@@ -101,6 +101,12 @@ type it, by an item before it of the same kind (`({"a": [1], "b": []}, 1)`, `[li
 decides with the others whether the items have one type
 (`tests/programs/inference/dynany_display_empty_nested.py`). Functions after a `Callable` item are
 `Callable`s of its type (`tests/programs/inference/dynany_callables.py`).
+
+Opting in can still reject programs that compile with inferred `Any`, including concrete
+container return contexts and nested iterator/generator item types. The
+[corpus sweep](testing.md#continuous-integration) tests every differential program in JIT and
+AOT; its [exact exception list](../tools/dynany_optin_exceptions.json) records current failures
+and their owning issues. These exceptions are compatibility gaps, not equivalent behavior.
 
 [Inferred unions](language/typing.md#inferred-unions) work as in modules that do not opt in: a
 variable or result given an `int` and a `float` is an `int | float`. One that is given an `Any`
