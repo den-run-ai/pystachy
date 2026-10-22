@@ -72,6 +72,9 @@ jobs:
       - name: pyperformance runner and port record tests
         run: python3 -m unittest discover -s tools -p test_bench_pyperformance.py
 
+      - name: Performance smoke comparison tests
+        run: python3 -m unittest discover -s tools -p test_perf_smoke.py
+
       - name: nanoGPT parity checker contract tests
         run: python3 -m unittest discover -s tools -p test_check_nanogpt.py
 

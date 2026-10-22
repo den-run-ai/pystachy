@@ -323,6 +323,30 @@ A pull request that changes only Markdown files or `docs/` skips the CI, Install
 Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
+The independent [Performance smoke workflow](../.github/workflows/performance.yml) runs on
+the same events (excluding documentation-only PRs). One job measures three existing adapted
+pyperformance workloads: `fannkuch`, `nbody`, and `regex_effbot`. It builds each revision's
+native compiler once, then compares the PR merge against its base, or a main push against
+its previous SHA, on one CPU with separate warmed caches and identical head workload sources.
+Manual dispatch accepts a baseline ref; otherwise it compares with the preceding commit.
+This is a performance probe, not another bootstrap verification stage.
+
+Each workload checks output against CPython and records three alternating base/head pairs:
+AOT build, JIT process/loop and AOT process/loop time. A slowdown of at least 20% and 5 ms
+triggers three more pairs. Both batches must meet the threshold with disjoint sample ranges
+to emit an advisory Actions warning; other threshold crossings are `unconfirmed`.
+Correctness, setup and measurement errors fail the job. Timing warnings do not gate merging.
+The step summary and 30-day `perf-smoke` JSON artifacts retain revisions, toolchain, source
+hashes, raw samples and same-run CPython controls. There is no cross-run download or extra
+dependency. Locally on Linux, use
+`python3 tools/perf_smoke.py --base /path/to/baseline --json build/perf-smoke.json`.
+
+Historical absolute times are unsuitable as gates: in the retained
+[October 16 snapshot](benchmarks/pyperformance-2026-10-16-a74faae.json), 16 of 17 usable
+AOT workloads had over 20% within-revision wall-time spread (excluding removed `deltablue`
+and optimized-away `unpack_sequence`). This small monitor does not cover memory, all examples,
+or cumulative drift across many commits; broader benchmark history remains under #45.
+
 A bootstrap job checks compiler and runtime IR fixed points once, then twenty-three groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit and toolchain before using it. No runtime cache is
