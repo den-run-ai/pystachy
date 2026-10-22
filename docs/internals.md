@@ -164,7 +164,9 @@ or dead calls do not count. Static roots require constant offsets covering the e
 complete storage interval, including all array elements and aggregate padding. Root ranges
 reject provably empty, reversed, negative or unaligned bounds, including equivalent symbolic endpoints, while
 allowing intentional active subranges. Packed static roots and aggregate declarations
-classified as root ranges are unsupported and fail closed. The check does not prove
+classified as root ranges are unsupported and fail closed. Range offsets support constants,
+integer globals used only by direct loads in `mark_roots`, and their additions/subtractions;
+unsupported arithmetic or untracked local loads fail closed. The check does not prove
 dynamic bounds or backing allocation sizes, non-root lifetime arguments, or pointers hidden
 in integers; those still require review and GC stress coverage. Weak registries and allocator metadata deliberately
 are not strong roots.

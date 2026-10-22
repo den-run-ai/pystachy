@@ -160,12 +160,23 @@ def scan_roots(ir):
     layout = StorageLayout(ir)
     pointers = {}
     integers = {}
+    excluded = set()
+    for line in m[1].splitlines():
+        names = set(re.findall(r"@([\w.]+)", line))
+        direct = re.match(r"\s*%[\w.]+ = load i\d+, ptr @([\w.]+)(?:,|$)", line)
+        if direct:
+            names.discard(direct[1])
+        # A write or address escape can launder an unknown value through a
+        # global. Current root counters are used only by direct integer loads.
+        excluded.update(names)
 
     def integer(value):
         token = value.split()[-1]
         if re.fullmatch(r"-?\d+", token):
             return {} if int(token) == 0 else {"": int(token)}
-        return integers.get(token, {token: 1})
+        # Unknown arithmetic is not an independent symbolic input: two different
+        # expressions can denote the same offset or reverse an apparent range.
+        return integers.get(token)
 
     def pointer(value):
         gep = re.search(r"getelementptr (?:inbounds )?(.*)", value)
@@ -178,14 +189,17 @@ def scan_roots(ir):
             name, depth, offset, constant = base
             t = args[0]
             for n, index in enumerate(args[2:]):
+                amount = integer(index)
+                if amount is None:
+                    return None
                 constant = constant and bool(re.fullmatch(r"i\d+ -?\d+", index))
                 if n == 0:
-                    offset = add_offset(offset, integer(index), layout.size_align(t)[0])
+                    offset = add_offset(offset, amount, layout.size_align(t)[0])
                     continue
                 array = re.fullmatch(r"\[(\d+) x (.+)\]", layout.types.get(t, t))
                 if array:
                     t = array[2]
-                    offset = add_offset(offset, integer(index), layout.size_align(t)[0])
+                    offset = add_offset(offset, amount, layout.size_align(t)[0])
                     continue
                 fields = layout.fields(t)
                 if fields is None or not re.fullmatch(r"i\d+ \d+", index):
@@ -222,7 +236,11 @@ def scan_roots(ir):
                 if load[1] == "ptr" and base is not None and not base[2] and base[3]:
                     pointers[name] = base[0], base[1] + 1, {}, base[3]
                 elif load[1].startswith("i"):
-                    integers[name] = {"load:" + source: 1}
+                    # Only declared global counters are symbolic inputs. Reloading
+                    # an untracked local must not hide unsupported arithmetic.
+                    global_ = re.fullmatch(r"ptr @([\w.]+)", source)
+                    if global_ and global_[1] not in excluded and re.fullmatch(r"i\d+", layout.globals.get(global_[1], "")):
+                        integers[name] = {"load:" + source: 1}
             elif expression.startswith("getelementptr "):
                 pointers[name] = pointer(expression)
             elif expression.startswith(("bitcast ptr ", "addrspacecast ptr ")):
@@ -230,8 +248,9 @@ def scan_roots(ir):
             else:
                 arithmetic = re.fullmatch(r"(add|sub)(?: n[us]w)* i\d+ (.*)", expression)
                 if arithmetic:
-                    left, right = operands(arithmetic[2])
-                    integers[name] = add_offset(integer(left), integer(right), 1 if arithmetic[1] == "add" else -1)
+                    left, right = [integer(value) for value in operands(arithmetic[2])]
+                    if left is not None and right is not None:
+                        integers[name] = add_offset(left, right, 1 if arithmetic[1] == "add" else -1)
         call = re.search(r"\bcall void @scan\((.*)\)", line)
         if call:
             start, end = [pointer(value) for value in operands(call[1])]

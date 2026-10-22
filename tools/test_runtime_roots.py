@@ -211,6 +211,34 @@ static void mark_roots(void) { SCAN; }
         source = VALID.replace("(const W *)&value", "(const W *)value").replace("(&value + 1)", "(value + 1)")
         self.assertIn("GC roots: value is not scanned by mark_roots with ROOT storage semantics", self.problems(source))
 
+    def test_unknown_range_arithmetic_fails_closed_and_propagates(self):
+        source = PRELUDE + """
+/* GC_ROOT_RANGE(value): active range of a malloc-backed root array. */
+static Str **value;
+static long count;
+static long doubled_global;
+static void mark_roots(void) {
+  SETUP
+  scan((const W *)(START), (const W *)(END));
+}
+"""
+        for setup, start, end in [
+            ("", "value + count * 2", "value + count + count"),
+            ("", "value + count * 2 + 1", "value + count + count"),
+            ("", "value + (count * 2 - 1) + 1", "value + count + count"),
+            ("", "value", "value + count * 2"),
+            ("", "value + (count << 1)", "value + count + count"),
+            ("long doubled = count * 2;", "value + doubled", "value + count + count"),
+            ("long doubled = count * 2;", "value + doubled + 1", "value + count + count"),
+            ("long doubled = count * 2; long copied = doubled;", "value + copied", "value + count + count"),
+            ("doubled_global = count * 2;", "value + doubled_global", "value + count + count"),
+            ("doubled_global = count + count;", "value + doubled_global + 1", "value + count + count"),
+            ("long *alias = &doubled_global; *alias = count * 2;", "value + doubled_global", "value + count + count"),
+        ]:
+            with self.subTest(setup=setup, start=start, end=end):
+                case = source.replace("SETUP", setup).replace("START", start).replace("END", end)
+                self.assertIn("GC roots: value is not scanned by mark_roots with ROOT_RANGE storage semantics", self.problems(case))
+
     def test_malloc_root_table_requires_its_contents(self):
         source = VALID.replace("GC_ROOT(value)", "GC_ROOT_RANGE(value)")
         self.assertIn("GC roots: value is not scanned by mark_roots with ROOT_RANGE storage semantics", self.problems(source))
