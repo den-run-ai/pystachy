@@ -181,6 +181,12 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   (`tests/programs/inference/dynany_identity_constants.py`). This applies to
   numeric globals in imported typed modules too when the program uses dynamic `Any`. These
   copies and global reads can allocate before an `Any` crossing, even if none follows.
+  A global read used only by a proven scalar arithmetic expression does not materialize
+  a box. The expression must contain only concrete numeric names, literals, arithmetic
+  and unshadowed numeric conversions; calls to user code, assignment expressions,
+  dynamic operands and unknown syntax retain snapshots. Global stores still update
+  their identity slots, and copies or values kept across calls retain their objects
+  (`tests/programs/inference/dynany_identity_scalar_globals.py`).
   Closed functions with explicit numeric parameters and return types omit local box slots
   when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
   and numeric conversions. Identity tests, `Any` storage, globals, containers, closures and

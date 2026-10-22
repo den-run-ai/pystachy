@@ -401,6 +401,11 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     # v, read from an int or float variable whose box slot is slot (idbox): it keeps the slot, the
     # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
     # far (dyn_id_held)
+    if slot.startswith("@") and self.fn.scalar_reads:
+        # A proven scalar arithmetic consumer uses only the payload. Its subtree has
+        # no stores or user calls, so it cannot publish an alias or observe this object.
+        # Ordinary reads still snapshot, and every global store still updates its box.
+        return
     v.idslot = slot
     v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
     v.idgen = self.idstores.get(slot, 0)
