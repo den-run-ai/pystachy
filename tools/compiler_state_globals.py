@@ -76,7 +76,10 @@ WRITERS = {
 ALIASES = {("ir.NOLABELS", "ircheck.gen_verify", "out")}
 MUTATORS = {"append", "extend", "insert", "pop", "remove", "clear", "update", "setdefault",
             "sort", "reverse", "add", "discard", "popitem", "difference_update",
-            "intersection_update", "symmetric_difference_update", "__setitem__", "__delitem__"}
+            "intersection_update", "symmetric_difference_update", "__setitem__", "__delitem__",
+            "__iadd__", "__imul__", "__ior__", "__iand__", "__ixor__", "__isub__", "__init__"}
+BUILTIN_CONTAINERS = {"list", "dict", "set"}
+CONTAINER_ANNOTATIONS = BUILTIN_CONTAINERS | {"container"}
 
 
 def statements(body):
@@ -186,9 +189,10 @@ def pairs(node):
 
 def annotation_import(node, names):
     """Only explicit builtin/typing imports; no annotation evaluation."""
-    exports = {"builtins": {name: "container" for name in ("list", "dict", "set")},
-               "typing": {"List": "container", "Dict": "container", "Set": "container", "Annotated": "annotated"},
-               "typing_extensions": {"Annotated": "annotated"}}
+    wrappers = {"Annotated": "annotated", "Optional": "optional", "Union": "union"}
+    exports = {"builtins": {name: name for name in BUILTIN_CONTAINERS},
+               "typing": {"List": "container", "Dict": "container", "Set": "container", **wrappers},
+               "typing_extensions": wrappers}
     if isinstance(node, (ast.Import, ast.ImportFrom)):
         for alias in node.names:
             local = alias.asname or alias.name
@@ -210,12 +214,19 @@ def container_annotation(annotation, names):
         except SyntaxError:
             return False
         return container_annotation(annotation, names)
+    if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
+        return container_annotation(annotation.left, names) or container_annotation(annotation.right, names)
     if isinstance(annotation, ast.Subscript):
         kind = names.get(root_id(annotation.value))
         if kind == "annotated" and isinstance(annotation.slice, ast.Tuple) and annotation.slice.elts:
             return container_annotation(annotation.slice.elts[0], names)
-        return kind == "container"
-    return names.get(root_id(annotation)) == "container"
+        if kind == "optional":
+            return container_annotation(annotation.slice, names)
+        if kind == "union":
+            values = annotation.slice.elts if isinstance(annotation.slice, ast.Tuple) else [annotation.slice]
+            return any(container_annotation(value, names) for value in values)
+        return kind in CONTAINER_ANNOTATIONS
+    return names.get(root_id(annotation)) in CONTAINER_ANNOTATIONS
 
 
 def container(value, annotation, known, annotations):
@@ -236,7 +247,7 @@ def container(value, annotation, known, annotations):
     if isinstance(value, ast.BinOp):
         return container(value.left, None, known, annotations) or container(value.right, None, known, annotations)
     if isinstance(value, ast.Call):
-        return (annotations.get(root_id(value.func)) == "container"
+        return (annotations.get(root_id(value.func)) in CONTAINER_ANNOTATIONS
                 or isinstance(value.func, ast.Attribute) and value.func.attr in {"split", "rsplit", "splitlines"})
     return False
 
@@ -274,7 +285,7 @@ def inventory(sources):
         changed = False
         for module, tree in trees.items():
             names = bindings[module]
-            annotations = {name: "container" for name in ("list", "dict", "set")}
+            annotations = {name: name for name in BUILTIN_CONTAINERS}
             for node in scope_nodes(tree.body):
                 annotation_import(node, annotations)
                 names.update(import_bindings(node, found))
@@ -312,15 +323,32 @@ def root_name(node, names):
     return names.get(root_id(node))
 
 
+def update_types(node, types):
+    """Explicit rebinding invalidates builtin names; only imports restore them."""
+    if isinstance(node, ast.AnnAssign) and node.value is None:
+        return  # Module annotations alone do not bind names; function locals were pruned separately.
+    targets = [target for root in binding_targets(node) for target in target_leaves(root)]
+    for target in targets:
+        key = root_id(target)
+        for name in list(types):
+            if name == key or isinstance(target, ast.Name) and name.startswith(key + "."):
+                types.pop(name)
+    annotation_import(node, types)
+
+
 def writes(tree, module, bindings, containers=None):
     """Conservative simple-local-alias scan; later rebindings do not erase aliases."""
     result = set()
     if containers is None:
         containers = LOOKUP | REWOUND.keys() | RETAINED.keys() | set(bindings.values())
+    module_types = {name: name for name in BUILTIN_CONTAINERS}
+    for node in scope_nodes(tree.body):
+        update_types(node, module_types)
 
-    def visit_scope(scope, path, outer=None, default_outer=None):
+    def visit_scope(scope, path, outer=None, default_outer=None, outer_types=None):
         names = ({name: {origin} for name, origin in bindings.items()}
                  if outer is None else {name: set(origins) for name, origins in outer.items()})
+        types = dict(module_types if outer_types is None else outer_types)
         if isinstance(scope, ast.ClassDef):
             # Class fields can supply method defaults, but are not closures.
             nodes = []
@@ -329,7 +357,7 @@ def writes(tree, module, bindings, containers=None):
                 nodes.extend(n for n in expression_nodes(child) if isinstance(n, ast.NamedExpr))
             for child in nodes:
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                    visit_scope(child, path + "." + child.name, outer, names)
+                    visit_scope(child, path + "." + child.name, outer, names, types)
                 aliases = [(target.id, root_name(value, names)) for target, value in pairs(child)
                            if isinstance(target, ast.Name)]
                 local = {t.id for root in binding_targets(child) for t in target_leaves(root)
@@ -364,6 +392,10 @@ def writes(tree, module, bindings, containers=None):
             names.pop(name, None)
             if name in bindings:
                 names[name] = {bindings[name]}
+            for key in list(types):
+                if key.split(".")[0] == name:
+                    types.pop(key)
+            types.update({key: kind for key, kind in module_types.items() if key.split(".")[0] == name})
         local = {a.arg for a in scope.args.posonlyargs + scope.args.args + scope.args.kwonlyargs}
         local.update(a.arg for a in (scope.args.vararg, scope.args.kwarg) if a is not None)
         for n in nodes:
@@ -372,6 +404,14 @@ def writes(tree, module, bindings, containers=None):
         for name in list(names):
             if name.split(".")[0] in local - declared - enclosing:
                 names.pop(name, None)
+        for name in list(types):
+            if name.split(".")[0] in local - declared - enclosing:
+                types.pop(name)
+        closure_types = dict(types)
+        later_types = dict(types)
+        for n in nodes:
+            update_types(n, later_types)
+            closure_types.update(later_types)
         names.update(captures)
         for n in nodes:
             for name, origin in import_bindings(n, containers).items():
@@ -399,11 +439,21 @@ def writes(tree, module, bindings, containers=None):
             for expression in expression_nodes(n):
                 if isinstance(expression, ast.Call) and isinstance(expression.func, ast.Attribute):
                     if expression.func.attr in MUTATORS:
-                        origin = root_name(expression.func.value, names)
+                        receiver = expression.func.value
+                        origin = root_name(receiver, names)
+                        owner = receiver
+                        while isinstance(owner, ast.Subscript):
+                            owner = owner.value
+                        if (not origin and isinstance(owner, (ast.Name, ast.Attribute))
+                                and types.get(ast.unparse(owner)) in BUILTIN_CONTAINERS and expression.args):
+                            receiver = expression.args[0]
+                            origin = root_name(receiver, names)
                         if origin:
-                            result.update((name, path, root_id(expression.func.value)) for name in origin)
+                            result.update((name, path, root_id(receiver)) for name in origin)
+            update_types(n, types)
             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                visit_scope(n, path + "." + n.name, names)
+                # Bodies may run after later imports; defaults still execute here.
+                visit_scope(n, path + "." + n.name, names, outer_types=types | closure_types)
     for node in statements(tree.body):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             visit_scope(node, module + "." + node.name)

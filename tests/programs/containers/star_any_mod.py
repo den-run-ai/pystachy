@@ -1,5 +1,5 @@
-# An imported module's defs whose *args or **kwargs are annotated Any, as ports/pyfiglet's
-# figlet_format(**kwargs: Any) is, are templates that each call types; a def whose annotation can't
+# An imported module's defs whose *args or **kwargs are annotated Any are templates that each
+# call types (originally exercised by the former pyfiglet port); a def whose annotation can't
 # be typed is left out: the program uses the module's other defs
 import mods.starany
 from mods.starany import collect, double, report

@@ -92,6 +92,103 @@ class GlobalOwnershipTests(unittest.TestCase):
         ):
             self.assertEqual(inventory({"probe": imports + f"CACHE: {annotation} = factory()\n"})[1], set())
 
+    def test_union_container_annotations(self):
+        for imports, annotation in (
+            ("", "dict[str, int] | None"), ("", "None | list[int]"),
+            ("import typing as t\n", "t.Optional[set[str]]"),
+            ("from typing import Union as U\n", "U[int, dict[str, bool]]"),
+            ("from typing import Annotated as A, Optional as O\n", "\"A[O['list[int]'], 'meta']\""),
+            ("from typing_extensions import Optional as O\n", "O[list[int]]"),
+        ):
+            self.assertEqual(inventory({"probe": imports + f"CACHE: {annotation} = factory()\n"})[1],
+                             {"probe.CACHE"})
+        for imports, annotation in (
+            ("", "int | None"), ("from typing import Optional as O\n", "O[tuple[int]]"),
+            ("from typing import Annotated as A\n", "A[int | None, list[int]]"),
+            ("from unrelated import Optional as O\n", "O[list[int]]"),
+            ("from typing import Union as U\n", "U[int, str]"),
+        ):
+            self.assertEqual(inventory({"probe": imports + f"CACHE: {annotation} = factory()\n"})[1], set())
+
+    def test_unbound_builtin_mutators(self):
+        imports = "from src.pystachy_compiler.lexer import KEYWORDS\n"
+        for header, owner in (("", "dict"), ("import builtins as b\n", "b.dict"),
+                              ("from builtins import dict as D\n", "D")):
+            for operation in (f"{owner}.clear(KEYWORDS)", f"{owner}.__setitem__(KEYWORDS, 'bad', True)",
+                              f"{owner}[str, bool].clear(KEYWORDS)"):
+                self.assertEqual(self.scan("def added():\n    " + operation + "\n", imports + header),
+                                 {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+        source = "def outer():\n    from builtins import dict as D\n    def inner():\n        D.clear(KEYWORDS)\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.inner", "KEYWORDS")})
+        source = "def added():\n    list.append(FILES, 'bad')\n"
+        sources = {"probe": "from src.pystachy_compiler.diagnostics import FILES\n" + source,
+                   "diagnostics": "FILES = []\n"}
+        trees, found, bindings = inventory(sources)
+        self.assertEqual(writes(trees["probe"], "probe", bindings["probe"], found),
+                         {("diagnostics.FILES", "probe.added", "FILES")})
+
+    def test_builtin_mutator_shadows_and_copies(self):
+        for prefix, body in (
+            ("dict = Worker\n", "def added():\n    dict.clear(KEYWORDS)\n"),
+            ("", "def added(dict):\n    dict.clear(KEYWORDS)\n"),
+            ("", "def added():\n    dict = Worker\n    dict.clear(KEYWORDS)\n"),
+            ("import builtins as b\n", "def added(b):\n    b.dict.clear(KEYWORDS)\n"),
+            ("", "def added():\n    from unrelated import dict\n    dict.clear(KEYWORDS)\n"),
+            ("", "def added():\n    from builtins import dict as D\n    D = Worker\n    D.clear(KEYWORDS)\n"),
+            ("", "def added():\n    dict.clear(dict(KEYWORDS))\n"),
+            ("", "def added():\n    dict.get(KEYWORDS, 'x')\n"),
+        ):
+            self.assertEqual(self.scan(prefix + body), set())
+        source = "class C:\n    dict = Worker\n    def method(self):\n        dict.clear(KEYWORDS)\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.C.method", "KEYWORDS")})
+
+    def test_builtin_mutator_binding_edges(self):
+        for body in ("def added():\n    (dict := Worker).clear(KEYWORDS)\n",
+                     "def added():\n    (dict := Worker)[str, bool].clear(KEYWORDS)\n",
+                     "def added():\n    dict: object\n    dict.clear(KEYWORDS)\n"):
+            self.assertEqual(self.scan(body), set())
+        source = "dict: object\ndef added():\n    dict.clear(KEYWORDS)\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+        source = "def outer():\n    dict = Worker\n    def inner():\n        global dict\n        dict.clear(KEYWORDS)\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.inner", "KEYWORDS")})
+        source = "list = []\ndef added():\n    list.append(KEYWORDS)\n"
+        self.assertEqual(self.scan(source), {("probe.list", "probe.added", "list")})
+
+    def test_later_builtin_imports_in_nested_bodies(self):
+        source = "def outer():\n    def inner():\n        D.clear(KEYWORDS)\n    from builtins import dict as D\n    inner()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.inner", "KEYWORDS")})
+        self.assertEqual(self.scan(source + "    D = Worker\n"),
+                         {("lexer.KEYWORDS", "probe.outer.inner", "KEYWORDS")})
+        source = "def outer():\n    class C:\n        def method(self):\n            D.clear(KEYWORDS)\n    from builtins import dict as D\n    C().method()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.C.method", "KEYWORDS")})
+        source = "def added():\n    D.clear(KEYWORDS)\n    from builtins import dict as D\n"
+        self.assertEqual(self.scan(source), set())
+
+    def test_inplace_and_reinitializing_mutator_calls(self):
+        forms = (("list", "[]", "__iadd__", "[]"), ("list", "[]", "__imul__", "2"),
+                 ("dict", "{}", "__ior__", "{}"), ("set", "set()", "__ior__", "set()"),
+                 ("set", "set()", "__iand__", "set()"), ("set", "set()", "__ixor__", "set()"),
+                 ("set", "set()", "__isub__", "set()"), ("dict", "{}", "__init__", "{}"))
+        for owner, initial, method, value in forms:
+            for operation in (f"CACHE.{method}({value})", f"{owner}.{method}(CACHE, {value})"):
+                sources = {"probe": f"CACHE = {initial}\ndef added():\n    {operation}\n"}
+                trees, found, bindings = inventory(sources)
+                self.assertEqual(writes(trees["probe"], "probe", bindings["probe"], found),
+                                 {("probe.CACHE", "probe.added", "CACHE")})
+
+    def test_union_declaration_and_unbound_writer_full_source(self):
+        sources = read_sources()
+        sources["lexer"] += "\nNEW_CACHE: dict[str, bool] | None = factory()\ndef added_writer():\n    dict.clear(NEW_CACHE)\n"
+        self.assertEqual(validate_sources(sources), [
+            "unclassified module container: lexer.NEW_CACHE",
+            "unreviewed container writer: lexer.added_writer writes lexer.NEW_CACHE via NEW_CACHE",
+        ])
+        sources = read_sources()
+        sources["lexer"] += "\ndef added_writer():\n    dict.clear(KEYWORDS)\n"
+        self.assertEqual(validate_sources(sources), [
+            "unreviewed container writer: lexer.added_writer writes lexer.KEYWORDS via KEYWORDS",
+        ])
+
     def test_annotation_import_order(self):
         sources = (
             ("from typing import Annotated as A\nCACHE: A[list[int], 'meta'] = factory()\nfrom other import A\n", True),

@@ -318,7 +318,7 @@ class Formatter:
             return repr(value)
         elif conversion == 'a':
             return ascii(value)
-        raise ValueError(f"Unknown conversion specifier {conversion!s}")  # Pystachy port: no str.format()
+        raise ValueError(f"Unknown conversion specifier {conversion!s}")  # Pystachy port: f-string keeps the conversion typed
 
 
     # returns an iterable that contains tuples of the form:

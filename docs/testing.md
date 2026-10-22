@@ -405,8 +405,11 @@ container is classified as a reviewed lookup table, restart-rewound state, or
 currently retained state. It rejects unclassified containers and new writers,
 including direct writes, imported names, simple local and default-argument aliases,
 assignment expressions and nested subscripts. Container annotations include explicit
-builtin/typing import aliases, quoted forms and `Annotated` wrappers; their metadata
-is not treated as a type. Loop, context, exception and pattern targets, plus named
+builtin/typing import aliases, quoted forms, unions, `Optional` and `Annotated`
+wrappers; metadata is not treated as a type. Direct bound and builtin unbound
+mutator calls include in-place dunders and reinitialization, with explicit import
+resolution and lexical builtin-name shadows. Callable alias/effect inference remains
+outside the check. Loop, context, exception and pattern targets, plus named
 definitions, participate in global-rebinding and local-shadow checks without
 inferring aliases from arbitrary iterators or context managers. The five rewind
 classifications are tied to the executable restart controls; removing a rewind must still fail those controls. `DYNFILES`, `GLUE`

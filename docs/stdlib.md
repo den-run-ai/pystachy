@@ -17,10 +17,10 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 
 | Approach | Modules and useful APIs |
 |---|---|
-| Unchanged CPython sources | `bisect`, `colorsys`, `stat` constants and predicates, path-string helpers from `posixpath` / `genericpath`, `curses.ascii`, `this`, `struct`, on a port of `_struct`, and `_opcode_metadata` |
-| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `gettext` (its import, `NullTranslations`, `textdomain()` and `bindtextdomain()`), `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `token`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry), `warnings` (filters and `catch_warnings()`; `warn()` shows no location), `opcode` (on a port of `_opcode` and CPython's tables; `dis` does not compile), `weakref` (its `ref`, without the weak containers), `contextlib` (`contextmanager`, `closing`, `nullcontext`, `suppress`), `tomllib` (`loads()`, compiled with [dynamic `Any`](dynamic-any.md) values; no binary-file `load()`) and the incremental `html.parser` probe |
+| Unchanged CPython sources | `bisect`, `colorsys`, `stat` constants and predicates, path-string helpers from `posixpath` / `genericpath`, `curses.ascii`, `this`, `struct`, on a port of `_struct` |
+| Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `gettext` (its import, `NullTranslations`, `textdomain()` and `bindtextdomain()`), `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `token`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry), `warnings` (filters and `catch_warnings()`; `warn()` shows no location), `weakref` (its `ref`, without the weak containers), `contextlib` (`contextmanager`, `closing`, `nullcontext`, `suppress`), `tomllib` (`loads()`, compiled with [dynamic `Any`](dynamic-any.md) values; no binary-file `load()`) and the incremental `html.parser` probe |
 | Larger port | `re`: CPython's Python parser/compiler plus a matcher adapted from its C engine |
-| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper` / `IncrementalNewlineDecoder` (also as `_io`'s), `csv`, `json` (a bounded native prototype for recursive values), `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`, `itertools` (every function, on generators) and `_opcode`, which CPython builds in, `abc`, and `types` (`MappingProxyType`, a read-only view of a dict, and `GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
+| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper` / `IncrementalNewlineDecoder` (also as `_io`'s), `csv`, `json` (a bounded native prototype for recursive values), `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`, `itertools` (every function, on generators), which CPython builds in, `abc`, and `types` (`MappingProxyType`, a read-only view of a dict, and `GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
 
 The library reference is the authority for each module's limits. For example, `difflib`
 supports matching strings and lists of strings, including `get_grouped_opcodes()`,
@@ -36,6 +36,32 @@ top-level `NAME = namedtuple(...)` with literal arguments.
 See the [builtin module table](language/modules.md#builtin-modules-and-files).
 
 <a id="1-the-changes"></a>
+
+## Library scope
+
+Ship libraries for useful Python tools, data processing and representative CPU workloads.
+A supported subset needs a working API with differential tests; import-only success,
+throwing placeholders or tables for another interpreter are insufficient reasons to add it.
+Keep general library dependencies even when their own API is bounded.
+
+The following additions have been removed from the shipped distribution:
+
+| Removed surface | Reason |
+|---|---|
+| `opcode`, `_opcode` and generated tables | Describe CPython bytecode; no shipped application consumer or native `dis` workflow. |
+| `_imp` | Lock bookkeeping and capability queries did not provide runtime module loading or a working `importlib` workflow. |
+| `_ast` | Constructor-only expression nodes had no parser, AST compilation or shipped application consumer. |
+| `pyaes` port | Block-only `list[int]` API omitted cipher modes, padding and streaming. |
+| `pyfiglet` port | Three embedded fonts without font discovery or a working upstream CLI. |
+
+This deliberately reduces compatibility: programs using those former adapters need a
+separate implementation or CPython. Their earlier test results remain historical evidence.
+The former `pyaes` and `pyfiglet` sources remain in Git history; the ports wheel now omits them.
+
+Retain `gettext`'s existing bounded surface; further localization work needs a working CLI
+consumer. Core collection, parsing, configuration, I/O, text and numeric libraries remain
+in scope. Domain-specific numeric ports can serve reproducible CPU workloads, but their
+scope and adaptations must stay explicit. See the [port guide](../ports/README.md).
 
 ## Porting a library
 

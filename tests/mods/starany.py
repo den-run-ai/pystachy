@@ -1,5 +1,5 @@
-# defs whose *args or **kwargs are annotated Any, as pyfiglet's figlet_format(**kwargs: Any) is: each
-# call types them, as unannotated ones; and one whose annotation Pystachy can't type (complex): left
+# Defs whose *args or **kwargs are annotated Any are typed per call, as unannotated ones;
+# this regression originated in the former pyfiglet port. An untypable annotation (complex) is left
 # out, as a def with such a plain parameter is, so an error only where the program calls it
 from typing import Any
 

@@ -1,9 +1,11 @@
 """Checks of the pyperformance controller and of the ports' records; LLVM is not required."""
 import contextlib
 import io
+import json
 import os
 import re
 import runpy
+import shlex
 import subprocess
 import sys
 import tarfile
@@ -20,6 +22,35 @@ class CensusTests(unittest.TestCase):
     UPSTREAM = ("import math\n\nimport pyperf\n\n\ndef bench_x(loops):\n    t0 = pyperf.perf_counter()\n"
                 "    return pyperf.perf_counter() - t0\n\n\nif __name__ == \"__main__\":\n"
                 "    runner = pyperf.Runner()\n    runner.bench_time_func('x', bench_x)\n")
+
+    def test_census_ignores_callers_module_path(self):
+        source = self.UPSTREAM.encode()
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            archive = directory / "upstream.tar.gz"
+            with tarfile.open(archive, "w:gz") as tar:
+                entry = tarfile.TarInfo(bench.SDIST_DIR + "bm_new/run_benchmark.py")
+                entry.size = len(source)
+                tar.addfile(entry, io.BytesIO(source))
+            compiler = directory / "compiler.py"
+            # A real subprocess makes its result depend on the inherited search path.
+            compiler.write_text("import os, sys\n"
+                                "if 'PYSTACHY_PATH' in os.environ:\n"
+                                "    print('error: external module path', file=sys.stderr)\n"
+                                "    sys.exit(1)\n")
+            report_path = directory / "report.json"
+            with mock.patch.dict(os.environ, PYSTACHY_PATH=str(directory / "external")), \
+                    mock.patch.object(bench, "metadata", return_value={}), \
+                    mock.patch.object(bench, "SDIST_SHA256", bench.digest(archive.read_bytes())), \
+                    mock.patch.dict(bench.UPSTREAM, {"new": bench.digest(source)}, clear=True), \
+                    mock.patch.dict(bench.CENSUS_CALLS, {"new": "bench_x(1)"}, clear=True), \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                status = bench.main(["--census", str(archive), "--json", str(report_path),
+                                     "--compiler", shlex.join([sys.executable, str(compiler)])])
+                self.assertEqual(os.environ["PYSTACHY_PATH"], str(directory / "external"))
+            self.assertEqual(status, 0)
+            report = json.loads(report_path.read_text())
+            self.assertEqual(report["benchmarks"][0]["compile_status"], "compiled")
 
     def test_runner_is_replaced_by_the_call_and_lines_are_kept(self):
         source = bench.census_source(self.UPSTREAM, "a = 1\nbench_x(a)")

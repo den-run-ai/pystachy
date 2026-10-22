@@ -85,23 +85,15 @@ an offset's hour and minute groups matched, which its pattern ensures, and passe
 
 ## `_imp` prototype
 
-The [prototype contract](../docs/prototypes/imp.md) covers recursive one-thread
-lock bookkeeping and capability queries reporting no Python extensions or
-frozen modules. Runtime builtin queries and module loading raise explicitly;
-compiler builtin namespaces are not a runtime importer registry. The prototype
-does not make upstream `importlib` or Python bytecode execution available.
+The former lock/capability prototype has been removed. `_imp` is unavailable:
+Pystachy resolves imports while compiling and has no CPython runtime importer.
+See [scope](../docs/prototypes/imp.md).
 
 ## `_ast` prototype
 
-The [prototype contract](../docs/prototypes/ast.md) covers constructing, inspecting
-and mutating typed expression nodes: constants, names, operators, boolean
-operations, comparisons, calls and keywords, attributes, subscripts and slices,
-starred values, list, tuple, set and dict displays, conditional and assignment
-expressions, `await` and `yield`, with CPython 3.13's `_fields`, `_attributes`,
-`__match_args__` and constructor defaults. Their module is `ast`, as CPython's
-types name it. There is no parser (`ast.parse()`), `compile()` of trees,
-statement node, comprehension, lambda, f-string node or location attribute.
-`keyword` takes its `arg` explicitly, and a list field takes a list, not `None`.
+The former constructor-only prototype has been removed. `_ast` and `ast` are
+unavailable; Pystachy does not expose source parsing or AST compilation through
+these APIs. See [scope](../docs/prototypes/ast.md).
 
 ## `_weakref` prototype
 
@@ -755,8 +747,7 @@ CPython's values for int, bool and float seeds: `seed`, `random`, `getrandbits`,
 `vonmisesvariate`, `gammavariate`, `betavariate`, `paretovariate`, `weibullvariate`
 and `binomialvariate` distributions. `_pyrandom` is the Mersenne Twister of
 `_random.Random` in the subset, which CPython builds in, so no `_random.py` can
-replace it. `binomialvariate` uses a port of CPython's `math.lgamma` algorithm,
-as Pystachy's `math` has none.
+replace it. `binomialvariate` calls `math.lgamma`, provided by the native runtime.
 
 - `seed()`, `seed(None)` and `Random()` use the time, process id and monotonic
   clock, CPython's fallback when it cannot read `os.urandom()`.
@@ -1302,39 +1293,8 @@ Not supported, as compile-time errors:
 
 ## Opcode
 
-`opcode` is CPython 3.13.16's `Lib/opcode.py`, with one annotation, on its `Lib/_opcode_metadata.py`,
-unchanged, and on `_pystachy_opcode`, a port of the C module `_opcode` (`Modules/_opcode.c`) that
-Pystachy loads for `import _opcode`. The port's tables are CPython's: `tools/opcode_tables.py`
-writes `_pystachy_opcode_db.py` from the headers that CPython makes from its `Python/bytecodes.c`,
-`Include/opcode_ids.h` and `Include/internal/pycore_opcode_metadata.h`, once the port on them
-gives what CPython's module gives. The names of `opcode` (`opmap`, `opname`, `cmp_op`, `hasarg`,
-`hasconst`, `hasname`, `hasjump`, `hasjrel`, `hasjabs`, `hasfree`, `haslocal`, `hasexc`,
-`hascompare`, `HAVE_ARGUMENT`, `EXTENDED_ARG` and `stack_effect`) and its private tables
-(`_specializations`, `_specialized_opmap`, `_cache_format`, `_inline_cache_entries`, `_nb_ops` and
-the intrinsics' names) are CPython's. `_opcode`'s functions work as the C module's do, with its
-errors and messages: `stack_effect()` of every opcode, with or without its oparg, of which it
-keeps the low 32 bits as CPython does, and with `jump=` true, false or omitted; `is_valid()`,
-`has_arg()`, `has_const()`, `has_name()`, `has_jump()`, `has_free()`, `has_local()` and
-`has_exc()`, also of numbers no opcode has, and `OverflowError` beyond a C int;
-`get_nb_ops()`, `get_intrinsic1_descs()` and `get_intrinsic2_descs()`, a new list at each call;
-and `get_specialization_stats()`, which gives `None`, as it does in CPython's default build
-([tests](../tests/programs/library/lib_opcode.py), [upstream](../tests/programs/upstream/upstream_opcode.py)).
-
-The tables describe CPython 3.13.16's bytecode, as `opcode`'s do: a program can look up the
-opcodes of CPython's code objects and the stack effects of its instructions. Pystachy compiles a
-program to native code; it has no bytecode, code objects or specializing interpreter of its own.
-
-- `ENABLE_SPECIALIZATION` is 0, where CPython's default build has 1
-  ([deviation](../tests/deviations/lib_opcode_specialization.py)).
-- `get_executor()` raises CPython's `TypeError: expected a code object, not '...'`, as no value
-  of a Pystachy program is a code object.
-- An argument of a type the C function would not convert is a compile-time error: a `float`
-  opcode or oparg ([error test](../tests/errors/library/lib_opcode_float.py),
-  [another](../tests/errors/library/lib_opcode_oparg.py)), and an `int` for `jump=`, for which CPython
-  raises `ValueError` ([error test](../tests/errors/library/lib_opcode_jump.py)). A `bool`, which CPython
-  takes as an int, is one too, as the subset does not convert a `bool` to an `int`.
-- The functions are Python functions, not builtins: their type's name is `function`.
-- `hasjabs`, an empty list that nothing fills in CPython 3.13, is annotated `list[int]`, as nothing
-  else gives its items a type.
-- `dis` does not compile: `dis.py:27` builds a tuple of classes, `types.MethodType` among them,
-  and Pystachy's `types` has only `GenericAlias`.
+`opcode`, `_opcode` and their CPython bytecode tables are not shipped. Pystachy
+compiles native code and does not execute CPython bytecode or expose code objects;
+`dis` remains unavailable. This is an intentional compatibility reduction, not a
+claim that the former table operations were incorrect. See
+[library scope](../docs/stdlib.md#library-scope).
