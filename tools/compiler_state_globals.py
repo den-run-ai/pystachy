@@ -221,7 +221,7 @@ def writes(tree, module, bindings):
                         names[target.id] = names.get(target.id, set()) | origin
                         changed = True
         for n in nodes:
-            targets, _ = assigned(n)
+            targets = [target for target, _ in pairs(n)]
             if isinstance(n, ast.Delete):
                 targets = n.targets
             for target in targets:

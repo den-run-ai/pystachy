@@ -62,6 +62,10 @@ class GlobalOwnershipTests(unittest.TestCase):
                          {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
         self.assertEqual(self.scan("def added():\n    alias = KEYWORDS\n    alias |= {'bad': True}\n"),
                          {("lexer.KEYWORDS", "probe.added", "alias")})
+        for assignment in ("KEYWORDS, other = {}, []", "other, (KEYWORDS, last) = [], ({}, [])"):
+            with self.subTest(assignment=assignment):
+                self.assertEqual(self.scan("def added():\n    global KEYWORDS\n    " + assignment + "\n"),
+                                 {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
 
     def test_import_alias_and_module_qualified_writer(self):
         self.assertEqual(self.scan("def added():\n    renamed.clear()\n",
