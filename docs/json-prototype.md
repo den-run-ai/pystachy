@@ -115,6 +115,10 @@ when called directly from an opt-in module. Ports can retain CPython execution w
 this fallback:
 
 ```python
+# pystachy: dynamic-any
+import json
+from typing import Any
+
 try:
     from json import _raw_decode as raw_decode
 except ImportError:

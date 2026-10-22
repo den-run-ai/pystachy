@@ -85,3 +85,15 @@ make test FILES='tests/programs/apps/port_json_repair.py tests/programs/library/
 ```
 
 See the replay README for the complete corpus commands and original input provenance.
+
+Validation used source `ce6aee5e1dc1a3c3d8e85e833746e642e2839c9a`, CPython
+3.13.16 and LLVM 18.1.3 on Linux x86-64. The changed compiler reached a
+665,160-line three-stage IR fixed point; runtime IR stayed at 18,709 lines.
+The three focused regressions pass JIT/AOT normally and under GC stress.
+The JSON loader/checker unit group passes 13 tests; repository hygiene and Ruff
+pass. Full `make verify` and corpus-wide `irsame` have not been run locally.
+
+The [small throughput workload](../../bench/json_repair/README.md) measured
+0.321 s AOT versus 0.748 s pristine CPython and 0.690 s adapted CPython per
+20,000 repairs (seven interleaved samples, medians). This is an advisory
+measurement on ten repeated synthetic records, not a general speed guarantee.
