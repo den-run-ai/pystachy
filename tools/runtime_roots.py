@@ -280,12 +280,13 @@ def scan_roots(ir):
                     scanned.add((name, depth))
             elif depth == 1 and stable and layout.globals.get(name) == "ptr":
                 distance = add_offset(last, first, -1)
-                # Active dynamic subranges remain a reviewed contract (wr_fired).
-                # Reject constant/affine empty, backward, negative or unaligned
-                # ranges, including separate loads of the same bound.
-                if not distance or (set(distance) <= {""} and distance.get("", 0) <= 0):
+                # Supported bounds add nonnegative terms to the table base.
+                # A distance without a positive term cannot move forward for
+                # nonnegative counters. Their values and relative order remain
+                # a reviewed contract, including wr_head -> wr_nfired.
+                if not any(value > 0 for value in distance.values()):
                     continue
-                if any(set(offset) <= {""} and offset.get("", 0) < 0 for offset in [first, last]):
+                if any(value < 0 for offset in [first, last] for value in offset.values()):
                     continue
                 if any(value % layout.pointer[0] for offset in [first, last] for value in offset.values()):
                     continue

@@ -227,6 +227,36 @@ static void mark_roots(void) { SCAN; }
         source = VALID.replace("(const W *)&value", "(const W *)value").replace("(&value + 1)", "(value + 1)")
         self.assertIn("GC roots: value is not scanned by mark_roots with ROOT storage semantics", self.problems(source))
 
+    def test_range_affine_direction_has_nonnegative_endpoints_and_a_forward_term(self):
+        source = PRELUDE + """
+/* GC_ROOT_RANGE(value): active range of a malloc-backed root array. */
+static Str **value;
+static COUNT count, head;
+static void mark_roots(void) { scan((const W *)(START), (const W *)(END)); }
+"""
+        for count_type in ["long", "unsigned long"]:
+            for start, end in [
+                ("value + count", "value"),
+                ("value + count + 1", "value"),
+                ("value + count + count", "value + count"),
+                ("value + count + head", "value + head"),
+                ("value", "value - count"),
+                ("value - count", "value"),
+                ("value + count - head", "value + count"),
+                ("value + count - 1", "value + count"),
+            ]:
+                with self.subTest(count_type=count_type, start=start, end=end):
+                    case = source.replace("COUNT", count_type).replace("START", start).replace("END", end)
+                    self.assertIn("GC roots: value is not scanned by mark_roots with ROOT_RANGE storage semantics", self.problems(case))
+            # As with wr_head -> wr_nfired, mixed-symbol order remains a reviewed
+            # runtime contract. This screen does not prove the counters' values.
+            for start, end in [("value", "value + count"), ("value + head", "value + count"),
+                               ("value + head + 1", "value + count + 1"),
+                               ("value + count", "value + count + 1")]:
+                with self.subTest(count_type=count_type, start=start, end=end):
+                    case = source.replace("COUNT", count_type).replace("START", start).replace("END", end)
+                    self.assertEqual(self.problems(case), [])
+
     def test_unknown_range_arithmetic_fails_closed_and_propagates(self):
         source = PRELUDE + """
 /* GC_ROOT_RANGE(value): active range of a malloc-backed root array. */

@@ -167,7 +167,11 @@ reject provably empty, reversed, negative or unaligned bounds, including equival
 allowing intentional active subranges. Packed static roots and aggregate declarations
 classified as root ranges are unsupported and fail closed. Range offsets support constants,
 integer globals used only by direct loads in `mark_roots`, and their additions/subtractions;
-unsupported arithmetic or untracked local loads fail closed. Root-range backing pointers
+each endpoint must have nonnegative coefficients, and the end-minus-start expression must
+contain a positive term. This screens the coefficient form without proving nonnegative
+counter values or relative ordering of dynamic bounds; active ranges such as
+`wr_head` to `wr_nfired` still require review. Unsupported arithmetic or untracked local
+loads fail closed. Root-range backing pointers
 must also be used only by direct loads in `mark_roots`. To keep those loads stable without alias analysis,
 `mark_roots` may store only into its local allocations and call only `scan` or the frame-address
 intrinsic; other stores, atomic writes or calls fail closed for root ranges. Static holding-root
