@@ -3544,7 +3544,16 @@ Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
   }
   return dyn_binop(a, b, op, 1);
 }
-Dyn *pys_dyn_unary(Dyn *a, I op) {   /* op 0..2: - + ~ */
+Dyn *pys_dyn_unary(Dyn *a, I op) {   /* op 0..3: - + ~ abs */
+  if (op == 3) {
+    if (dnum(a)) {
+      if (a->v == INT64_MIN) pys_fail(OVF);
+      /* CPython keeps a nonnegative exact int's identity; bool's result is an int. */
+      return DKIND(a) == DK_INT && a->v >= 0 ? a : pys_dyn_int(a->v < 0 ? -a->v : a->v);
+    }
+    if (DKIND(a) == DK_FLOAT) return pys_dyn_float(fabs(dbl(a->v)));
+    failf("TypeError: bad operand type for abs(): '%s'", DNAME(a));
+  }
   if (dnum(a)) {
     if (op == 0) { if (a->v == INT64_MIN) pys_fail(OVF); return pys_dyn_int(-a->v); }
     return pys_dyn_int(op == 1 ? a->v : ~a->v);   /* (+True is 1) */
