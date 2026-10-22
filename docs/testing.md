@@ -403,15 +403,22 @@ from [PR #818](https://github.com/den-run-ai/pystachy/pull/818).
 module-level containers under the compiler's declaration conventions. Every
 container is classified as a reviewed lookup table, restart-rewound state, or
 currently retained state. It rejects unclassified containers and new writers,
-including direct writes, imported names, simple local aliases and nested
-subscripts. The five rewind classifications are tied to the executable restart
-controls; removing a rewind must still fail those controls. `DYNFILES`, `GLUE`
+including direct writes, imported names, simple local and default-argument aliases,
+assignment expressions and nested subscripts. Container annotations include explicit
+builtin/typing import aliases, quoted forms and `Annotated` wrappers; their metadata
+is not treated as a type. Loop, context, exception and pattern targets, plus named
+definitions, participate in global-rebinding and local-shadow checks without
+inferring aliases from arbitrary iterators or context managers. The five rewind
+classifications are tied to the executable restart controls; removing a rewind must still fail those controls. `DYNFILES`, `GLUE`
 and `SPECSHOW` currently retain discoveries across restarts; the inventory records
 that behavior without certifying its safety. This is a hosted drift check, not a
 whole-program effect analysis: arbitrary helper calls, object-attribute aliases,
-unannotated factory results, and effects executed in class bodies require review.
-Method scans include local classes and preserve their enclosing function aliases;
-class fields are not method closure variables. One explicit alias exception
+unannotated factory results, and effects inside class bodies, anonymous function
+bodies or comprehensions require review. Lambda defaults are scanned in their
+defining scope. Method scans include local classes and preserve their enclosing
+function aliases. Straightforward class field/import declarations can supply method
+defaults, but class fields are not method closure variables; conditional class
+initialization and control-flow-sensitive alias retention still require review. One explicit alias exception
 covers `gen_verify` borrowing `NOLABELS` as `out`; its copy-before-write control
 flow still needs review. The checker has no native
 compilation overhead and does not establish that lookup tables are deeply immutable.

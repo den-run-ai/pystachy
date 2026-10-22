@@ -94,6 +94,14 @@ def statements(body):
 
 def expression_nodes(node):
     """Expression descendants, stopping before every statement body or scope."""
+    if isinstance(node, (ast.ListComp, ast.DictComp, ast.SetComp, ast.GeneratorExp)):
+        return  # Comprehension scopes require separate effect/alias review.
+    if isinstance(node, ast.Lambda):
+        for value in node.args.defaults + node.args.kw_defaults:
+            if value is not None:
+                yield value
+                yield from expression_nodes(value)
+        return  # Defaults execute here; the anonymous body does not.
     for child in ast.iter_child_nodes(node):
         if not isinstance(child, ast.stmt):
             yield child
@@ -103,11 +111,40 @@ def expression_nodes(node):
 def assigned(node):
     if isinstance(node, ast.Assign):
         return node.targets, node.value
-    if isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+    if isinstance(node, (ast.AnnAssign, ast.AugAssign, ast.NamedExpr)):
         return [node.target], node.value
     if isinstance(node, ast.Delete):
         return node.targets, None
     return [], None
+
+
+def scope_nodes(body):
+    for node in statements(body):
+        yield node
+        yield from (child for child in expression_nodes(node) if isinstance(child, ast.NamedExpr))
+
+
+def binding_targets(node):
+    """Explicit stores, separate from assignments that can create aliases."""
+    yield from assigned(node)[0]
+    if isinstance(node, (ast.For, ast.AsyncFor)):
+        yield node.target
+    elif isinstance(node, (ast.With, ast.AsyncWith)):
+        yield from (item.optional_vars for item in node.items if item.optional_vars is not None)
+    elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        yield ast.Name(id=node.name)
+    elif isinstance(node, (ast.Import, ast.ImportFrom)):
+        for alias in node.names:
+            yield ast.Name(id=alias.asname or (alias.name.split(".")[0] if isinstance(node, ast.Import) else alias.name))
+    for handler in getattr(node, "handlers", []):
+        if handler.name:
+            yield ast.Name(id=handler.name)
+    for case in getattr(node, "cases", []):
+        for pattern in ast.walk(case.pattern):
+            name = (pattern.name if isinstance(pattern, (ast.MatchAs, ast.MatchStar)) else
+                    pattern.rest if isinstance(pattern, ast.MatchMapping) else None)
+            if name:
+                yield ast.Name(id=name)
 
 
 def target_leaves(target):
@@ -134,20 +171,53 @@ def pairs(node):
         yield from unpack(target, value)
 
 
-def container(value, annotation, known):
-    if isinstance(annotation, ast.Name) and annotation.id in {"list", "dict", "set"}:
+def annotation_import(node, names):
+    """Only explicit builtin/typing imports; no annotation evaluation."""
+    exports = {"builtins": {name: "container" for name in ("list", "dict", "set")},
+               "typing": {"List": "container", "Dict": "container", "Set": "container", "Annotated": "annotated"},
+               "typing_extensions": {"Annotated": "annotated"}}
+    if isinstance(node, (ast.Import, ast.ImportFrom)):
+        for alias in node.names:
+            local = alias.asname or alias.name
+            for name in list(names):
+                if name.split(".")[0] == local.split(".")[0]:
+                    names.pop(name)
+            if isinstance(node, ast.ImportFrom):
+                kind = exports.get(node.module, {}).get(alias.name)
+                if kind:
+                    names[local] = kind
+            else:
+                names.update({local + "." + key: kind for key, kind in exports.get(alias.name, {}).items()})
+
+
+def container_annotation(annotation, names):
+    if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+        try:
+            annotation = ast.parse(annotation.value, mode="eval").body
+        except SyntaxError:
+            return False
+        return container_annotation(annotation, names)
+    if isinstance(annotation, ast.Subscript):
+        kind = names.get(root_id(annotation.value))
+        if kind == "annotated" and isinstance(annotation.slice, ast.Tuple) and annotation.slice.elts:
+            return container_annotation(annotation.slice.elts[0], names)
+        return kind == "container"
+    return names.get(root_id(annotation)) == "container"
+
+
+def container(value, annotation, known, annotations):
+    if container_annotation(annotation, annotations):
         return True
-    if isinstance(annotation, ast.Subscript) and isinstance(annotation.value, ast.Name):
-        if annotation.value.id in {"list", "dict", "set"}:
-            return True
     if isinstance(value, (ast.List, ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp)):
         return True
     if isinstance(value, (ast.Name, ast.Attribute)):
         return root_id(value) in known
+    if isinstance(value, ast.NamedExpr):
+        return container(value.value, None, known, annotations)
     if isinstance(value, ast.Tuple):
-        return any(container(v, None, known) for v in value.elts)
+        return any(container(v, None, known, annotations) for v in value.elts)
     if isinstance(value, ast.BinOp):
-        return container(value.left, None, known) or container(value.right, None, known)
+        return container(value.left, None, known, annotations) or container(value.right, None, known, annotations)
     if isinstance(value, ast.Call):
         return (isinstance(value.func, ast.Name) and value.func.id in {"list", "dict", "set"}
                 or isinstance(value.func, ast.Attribute) and value.func.attr in {"split", "rsplit", "splitlines"})
@@ -187,11 +257,13 @@ def inventory(sources):
         changed = False
         for module, tree in trees.items():
             names = bindings[module]
-            for node in statements(tree.body):
+            annotations = {name: "container" for name in ("list", "dict", "set")}
+            for node in scope_nodes(tree.body):
+                annotation_import(node, annotations)
                 names.update(import_bindings(node, found))
                 known = {name for name, origin in names.items() if origin in found}
                 for target, value in pairs(node):
-                    if container(value, getattr(node, "annotation", None), known):
+                    if container(value, getattr(node, "annotation", None), known, annotations):
                         if isinstance(target, ast.Name):
                             origin = module + "." + target.id
                             if origin not in found:
@@ -202,8 +274,10 @@ def inventory(sources):
 
 
 def root_id(node):
-    while isinstance(node, ast.Subscript):
-        node = node.value
+    if isinstance(node, ast.NamedExpr):
+        return root_id(node.target)
+    if isinstance(node, ast.Subscript):
+        return root_id(node.value)
     if isinstance(node, ast.Attribute):
         parent = root_id(node.value)
         return parent + "." + node.attr if parent else ""
@@ -211,6 +285,8 @@ def root_id(node):
 
 
 def root_name(node, names):
+    if isinstance(node, (ast.NamedExpr, ast.Subscript)):
+        return root_name(node.value, names)
     return names.get(root_id(node))
 
 
@@ -220,17 +296,46 @@ def writes(tree, module, bindings, containers=None):
     if containers is None:
         containers = LOOKUP | REWOUND.keys() | RETAINED.keys() | set(bindings.values())
 
-    def visit_scope(scope, path, outer=None):
-        if isinstance(scope, ast.ClassDef):
-            for child in statements(scope.body):
-                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                    # Methods close over an enclosing function, never class fields.
-                    visit_scope(child, path + "." + child.name, outer)
-            return
+    def visit_scope(scope, path, outer=None, default_outer=None):
         names = ({name: {origin} for name, origin in bindings.items()}
                  if outer is None else {name: set(origins) for name, origins in outer.items()})
+        if isinstance(scope, ast.ClassDef):
+            # Class fields can supply method defaults, but are not closures.
+            nodes = []
+            for child in statements(scope.body):
+                nodes.append(child)
+                nodes.extend(n for n in expression_nodes(child) if isinstance(n, ast.NamedExpr))
+            for child in nodes:
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    visit_scope(child, path + "." + child.name, outer, names)
+                aliases = [(target.id, root_name(value, names)) for target, value in pairs(child)
+                           if isinstance(target, ast.Name)]
+                local = {t.id for root in binding_targets(child) for t in target_leaves(root)
+                         if isinstance(t, ast.Name)}
+                for name in list(names):
+                    if name.split(".")[0] in local:
+                        names.pop(name)
+                names.update({name: origin for name, origin in aliases if origin})
+                names.update({name: {origin} for name, origin in import_bindings(child, containers).items()})
+            return
+        defaults = scope.args.defaults
+        positional = scope.args.posonlyargs + scope.args.args
+        default_names = dict(names if default_outer is None else default_outer)
+        captures = {}
+        for argument, value in (list(zip(positional[len(positional) - len(defaults):], defaults))
+                                + list(zip(scope.args.kwonlyargs, scope.args.kw_defaults))):
+            origin = root_name(value, default_names)
+            if origin:
+                captures[argument.arg] = set(origin)
+            expressions = [] if value is None else [value, *expression_nodes(value)]
+            for expression in expressions:
+                if isinstance(expression, ast.NamedExpr):
+                    origin = root_name(expression.value, default_names)
+                    default_names.pop(expression.target.id, None)
+                    if origin:
+                        default_names[expression.target.id] = origin
         # Parameters and local rebinding shadow globals unless declared global.
-        nodes = list(statements(scope.body))
+        nodes = list(scope_nodes(scope.body))
         declared = {name for n in nodes if isinstance(n, ast.Global) for name in n.names}
         enclosing = {name for n in nodes if isinstance(n, ast.Nonlocal) for name in n.names}
         for name in declared:
@@ -240,14 +345,12 @@ def writes(tree, module, bindings, containers=None):
         local = {a.arg for a in scope.args.posonlyargs + scope.args.args + scope.args.kwonlyargs}
         local.update(a.arg for a in (scope.args.vararg, scope.args.kwarg) if a is not None)
         for n in nodes:
-            local.update(t.id for root in assigned(n)[0] for t in target_leaves(root)
+            local.update(t.id for root in binding_targets(n) for t in target_leaves(root)
                          if isinstance(t, ast.Name))
-            if isinstance(n, (ast.Import, ast.ImportFrom)):
-                local.update(a.asname or (a.name.split(".")[0] if isinstance(n, ast.Import) else a.name)
-                             for a in n.names)
         for name in list(names):
             if name.split(".")[0] in local - declared - enclosing:
                 names.pop(name, None)
+        names.update(captures)
         for n in nodes:
             for name, origin in import_bindings(n, containers).items():
                 names.setdefault(name, set()).add(origin)
@@ -265,7 +368,7 @@ def writes(tree, module, bindings, containers=None):
                         names[target.id] = names.get(target.id, set()) | origin
                         changed = True
         for n in nodes:
-            targets = [target for root in assigned(n)[0] for target in target_leaves(root)]
+            targets = [target for root in binding_targets(n) for target in target_leaves(root)]
             for target in targets:
                 origin = root_name(target, names)
                 if origin and (isinstance(target, (ast.Subscript, ast.Attribute)) or isinstance(n, ast.AugAssign)

@@ -31,6 +31,118 @@ class GlobalOwnershipTests(unittest.TestCase):
             errors = validate_sources({"added": f"cache: {annotation} = factory()\n"})
             self.assertIn("unclassified module container: added.cache", errors)
 
+    def test_annotation_wrappers_and_import_aliases(self):
+        forms = (
+            ("", "'list[int]'"),
+            ("import builtins as b\n", "b.dict[str, int]"),
+            ("from builtins import set as S\n", "S[str]"),
+            ("import typing as t\n", "t.Annotated[t.List[int], 'meta']"),
+            ("from typing import Annotated as A, Dict as D\n", "\"A['D[str, int]', 'meta']\""),
+            ("from typing_extensions import Annotated as A\n", "A[set[int], 'meta']"),
+        )
+        for imports, annotation in forms:
+            with self.subTest(annotation=annotation):
+                self.assertEqual(inventory({"probe": imports + f"CACHE: {annotation} = factory()\n"})[1],
+                                 {"probe.CACHE"})
+        for imports, annotation in (
+            ("from typing import Annotated as A\n", "A[int, list[int]]"),
+            ("from unrelated import Annotated as A\n", "A[list[int], 'meta']"),
+            ("from unrelated import list\n", "list[int]"),
+            ("", "'not valid!'"),
+        ):
+            self.assertEqual(inventory({"probe": imports + f"CACHE: {annotation} = factory()\n"})[1], set())
+
+    def test_annotation_import_order(self):
+        sources = (
+            ("from typing import Annotated as A\nCACHE: A[list[int], 'meta'] = factory()\nfrom other import A\n", True),
+            ("CACHE: list[int] = factory()\nfrom other import list\n", True),
+            ("from other import A\nCACHE: A[list[int], 'meta'] = factory()\nfrom typing import Annotated as A\n", False),
+        )
+        for source, expected in sources:
+            self.assertEqual("probe.CACHE" in inventory({"probe": source})[1], expected)
+
+    def test_named_expression_aliases_and_inventory(self):
+        for body, alias in (
+            ("if (alias := KEYWORDS):\n        alias.clear()", "alias"),
+            ("(alias := KEYWORDS).clear()", "alias"),
+            ("(alias := KEYWORDS)['nested'].clear()", "alias"),
+            ("other = (alias := KEYWORDS)\n    other.clear()", "other"),
+            ("while (alias := KEYWORDS):\n        alias.clear()", "alias"),
+        ):
+            self.assertEqual(self.scan("def added():\n    " + body + "\n"),
+                             {("lexer.KEYWORDS", "probe.added", alias)})
+        self.assertEqual(inventory({"probe": "if (CACHE := {}):\n    pass\n"})[1], {"probe.CACHE"})
+        for body in (
+            "if (KEYWORDS := {}):\n        KEYWORDS.clear()",
+            "if (alias := dict(KEYWORDS)):\n        alias.clear()",
+            "f = lambda: (alias := KEYWORDS)\n    alias.clear()",
+        ):
+            self.assertEqual(self.scan("def added():\n    " + body + "\n"), set())
+
+    def test_default_parameter_aliases(self):
+        for arguments, alias in (("table=KEYWORDS", "table"), ("KEYWORDS=KEYWORDS", "KEYWORDS"),
+                                 ("a, table=KEYWORDS, /, b=0", "table"),
+                                 ("*, first=0, table=KEYWORDS", "table")):
+            self.assertEqual(self.scan(f"def added({arguments}):\n    {alias}.clear()\n"),
+                             {("lexer.KEYWORDS", "probe.added", alias)})
+        source = "def outer():\n    alias = KEYWORDS\n    def inner(table=alias):\n        table.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.inner", "table")})
+        source = "def outer():\n    def inner(table=(alias := KEYWORDS)):\n        table.clear()\n    alias.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.outer.inner", "table"),
+                                            ("lexer.KEYWORDS", "probe.outer", "alias")})
+        for arguments in ("KEYWORDS", "KEYWORDS={}", "KEYWORDS=dict(KEYWORDS)"):
+            self.assertEqual(self.scan(f"def added({arguments}):\n    KEYWORDS.clear()\n"), set())
+
+    def test_method_defaults_use_class_namespace(self):
+        for field in ("KEYWORDS = {}", "from unrelated import KEYWORDS"):
+            source = f"class C:\n    {field}\n    def method(self, table=KEYWORDS):\n        table.clear()\n"
+            self.assertEqual(self.scan(source), set())
+        source = "class C:\n    alias = KEYWORDS\n    def method(self, table=alias):\n        table.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.C.method", "table")})
+        source = "class C:\n    KEYWORDS = {}\n    def method(self, table=KEYWORDS):\n        KEYWORDS.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.C.method", "KEYWORDS")})
+
+    def test_method_default_assignment_expressions(self):
+        source = "class C:\n    def first(self, table=(alias := KEYWORDS)):\n        table.clear()\n    def second(self, table=alias):\n        table.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.C.first", "table"),
+                                            ("lexer.KEYWORDS", "probe.C.second", "table")})
+        source = "class C:\n    def method(self, table=(KEYWORDS := {})):\n        table.clear()\n"
+        self.assertEqual(self.scan(source), set())
+
+    def test_default_captures_follow_argument_order(self):
+        source = "class C:\n    def method(self, first=KEYWORDS, second=(KEYWORDS := {})):\n        first.clear()\n        second.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.C.method", "first")})
+        source = "class C:\n    def method(self, first=(alias := KEYWORDS), second=alias):\n        first.clear()\n        second.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.C.method", "first"),
+                                            ("lexer.KEYWORDS", "probe.C.method", "second")})
+
+    def test_binding_targets_rebind_globals_and_shadow_locals(self):
+        forms = (
+            "for KEYWORDS in values:\n        pass",
+            "with context() as KEYWORDS:\n        pass",
+            "try:\n        pass\n    except Exception as KEYWORDS:\n        pass",
+            "match value:\n        case {'item': KEYWORDS}:\n            pass",
+            "def KEYWORDS():\n        pass",
+            "class KEYWORDS:\n        pass",
+        )
+        for body in forms:
+            with self.subTest(body=body):
+                self.assertEqual(self.scan("def added():\n    global KEYWORDS\n    " + body + "\n"),
+                                 {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+                self.assertEqual(self.scan("def added():\n    " + body + "\n    KEYWORDS.clear()\n"), set())
+        for body in ("for KEYWORDS['x'] in values:\n        pass",
+                     "with context() as KEYWORDS['x']:\n        pass"):
+            self.assertEqual(self.scan("def added():\n    " + body + "\n"),
+                             {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+
+    def test_anonymous_scope_exclusion(self):
+        source = "def added():\n    fn = lambda KEYWORDS: KEYWORDS.clear()\n    [KEYWORDS.clear() for KEYWORDS in values]\n"
+        self.assertEqual(self.scan(source), set())
+        source = "def added():\n    [None for KEYWORDS in values]\n    KEYWORDS.clear()\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+        source = "def added():\n    fn = lambda value=KEYWORDS.clear(): value\n"
+        self.assertEqual(self.scan(source), {("lexer.KEYWORDS", "probe.added", "KEYWORDS")})
+
     def test_conditional_initialization_and_module_aliases(self):
         sources = {"a": "from src.pystachy_compiler.z import TABLE\nALIAS = TABLE\n",
                    "z": "if flag:\n    TABLE = {}\n"}
