@@ -713,7 +713,7 @@ RUNTIME: dict[str, str] = {
     "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
-    "dyn.binop": "%ptr:%ptr,%ptr,int|R A rL|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I rL wL rD|", "dyn.unary": "%ptr:%ptr,int|R A|",
+    "dyn.binop": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary": "%ptr:%ptr,int|R A|",
     "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
     "dyn.iter": "%ptr:%ptr|R A rD|", "dyn.next": "%ptr:%ptr|R A I rL rD|",
@@ -754,11 +754,11 @@ RUNTIME: dict[str, str] = {
     "dict.del": "*V:S,*K|R A I rD wD U?|", "dict.pop_default": "*V:S,*K,*V|R A I rD wD U?|", "dict.popitem": "tuple[K,V]:S|R A rD wD|",
     "dict.setdefault": "*V:S,*K,*V|R? A rD wD U?|", "dict.clear": "None:S|wD|",
     "dict.getbox": "*V:S,*K,*V|R? A rD U?|", "dict.popbox": "*V:S,*K,*V|R A I rD wD U?|",
-    "dict.copy": "S:S|R? A rD U?|", "dict.from": "S:S|R? A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
+    "dict.copy": "S:S|R A rD U?|", "dict.from": "S:S|R A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
     "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
     "dict.find": "int:S,*K|R? rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
-    "dict.update": "None:S,S|R? A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
+    "dict.update": "None:S,S|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
     "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",
     # sets and frozensets (CPython's tables; Set.kind as Dict.kind): their elements are a dict's
     # keys, which hash, compare and print without user code but an object's (U?, as a dict's). A

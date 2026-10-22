@@ -10,6 +10,141 @@ from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_
 from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
 
 
+def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None = None, successors: list[list[str]] | None = None) -> bool:
+    """Certify immutable parameter narrowing without allocating dataflow states.
+
+    This is a sufficient proof, never a rejection rule. Unrecognized sources, mutable
+    storage, nullable values, raw transport and nonlocal control-flow proofs use the
+    general solver. No fact comes from an operand's narrowed type annotation.
+    """
+    aliases: dict[str, str] = {}
+    domains: dict[str, list[str]] = {}
+    for n in range(len(fn.f.ptypes)):
+        t = fn.f.ptypes[n]
+        if is_union(t):
+            ts = umembers(t)
+            for member in ts:
+                if member == "None" or is_opt(member) or is_union(member):
+                    return False
+            v = "%a" + str(n)
+            aliases[v] = v
+            domains[v] = ts
+    if len(domains) == 0:
+        return False
+    slots: dict[str, str] = {}
+    for i in fn.slots:
+        if is_union(i.t):
+            slots["%" + (i.s if i.s != "" else "h") + "." + str(i.r[0])] = ""
+    predecessors: list[int] = [-1] * len(fn.blocks)
+    blocks = {fn.blocks[n].label: n for n in range(len(fn.blocks))} if at is None else at
+    # Only a private slot initialized once from a union parameter in entry is immutable.
+    # Any other store or any escape removes it, including escapes to read-only callees.
+    for bn in range(len(fn.blocks)):
+        b = fn.blocks[bn]
+        if b.handler != "":
+            return False
+        for i in b.code:
+            if i.op == "union.raw" or (i.op == "rt" and i.s in ["ubox", "ubox_opt"]):
+                return False
+            for j in range(len(i.a)):
+                v = i.a[j].v
+                if v in slots:
+                    if j != 0 or i.op not in ["mem.load", "mem.store"]:
+                        del slots[v]
+                    elif i.op == "mem.load" and b.label == "entry" and slots[v] == "":
+                        del slots[v]
+                    elif i.op == "mem.store":
+                        source = i.a[1].v
+                        if b.label == "entry" and slots[v] == "" and source in domains:
+                            slots[v] = source
+                        else:
+                            del slots[v]
+        targets: list[str] = []
+        if successors is None:
+            last = b.code[-1]
+            targets = list(last.b)
+            if last.op == "check":
+                ck = last.x if last.x != "" else last.s
+                if ck in fn.cold:
+                    targets.append(fn.cold[ck])
+        else:
+            targets = successors[bn]
+        for target in targets:
+            if target == "entry" or target not in blocks:
+                return False
+            n = blocks[target]
+            predecessors[n] = bn if predecessors[n] == -1 else -2
+    guards: list[str] = [""] * len(fn.blocks)
+    members: list[str] = [""] * len(fn.blocks)
+    equal: list[bool] = [False] * len(fn.blocks)
+    payloads: dict[str, str] = {}
+    addresses: dict[str, bool] = {}
+    for bn in range(len(fn.blocks)):
+        b = fn.blocks[bn]
+        branch = b.code[-1]
+        tag = ""
+        origin = ""
+        for i in b.code:
+            if i.op == "mem.load" and is_union(i.t) and i.a[0].v in slots and slots[i.a[0].v] != "":
+                aliases["%t" + str(i.r[0])] = slots[i.a[0].v]
+            if i.op == "union.tag" or (i.op == "mach.load" and i.t == "int"):
+                if i.a[0].v not in aliases:
+                    return False
+                tag = "%t" + str(i.r[0])
+                origin = aliases[i.a[0].v]
+            if i.op in ["num.cmp", "scalar.cmp"] and i.s in ["==", "!=", "eq", "ne"] and i.a[0].t == "int" and i.a[1].t == "int" and branch.op == "cbr" and branch.a[0].v == "%t" + str(i.r[0]):
+                x = i.a[0].v
+                y = i.a[1].v
+                if y == tag:
+                    tmp = x
+                    x = y
+                    y = tmp
+                if x == tag and origin != "":
+                    for t in domains[origin]:
+                        if t in utags and str(utags[t]) == y:
+                            guards[bn] = origin
+                            members[bn] = t
+                            equal[bn] = i.s in ["==", "eq"]
+            if i.op == "union.payload":
+                payloads["%t" + str(i.r[1])] = i.s
+                addresses["%t" + str(i.r[0])] = True
+    for bn in range(len(fn.blocks)):
+        b = fn.blocks[bn]
+        for i in b.code:
+            for a in i.a:
+                if a.v in addresses:
+                    return False
+                if a.v in payloads:
+                    # Transport needs the general solver's provenance propagation.
+                    if i.op in ["phi", "select", "slot.pack", "mem.store", "mach.store", "rt"]:
+                        return False
+                    t = i.t if i.op == "slot.unpack" else a.t
+                    if t != payloads[a.v]:
+                        return False
+            if i.op != "union.payload":
+                continue
+            if i.a[0].v not in aliases:
+                return False
+            origin = aliases[i.a[0].v]
+            possible = list(domains[origin])
+            node = bn
+            # Bound this local search independently of function size. Longer proofs
+            # use the general worklist rather than multiplying backward walks.
+            steps = 0
+            while len(possible) > 1 and predecessors[node] >= 0 and steps < 8:
+                parent = predecessors[node]
+                if guards[parent] == origin:
+                    branch = fn.blocks[parent].code[-1]
+                    member = members[parent]
+                    yes = (fn.blocks[node].label == branch.b[0]) == equal[parent]
+                    possible = [t for t in possible if (t == member) == yes]
+                node = parent
+                steps += 1
+            if possible != [i.s]:
+                return False
+    return True
+
+
 class UnionProof:
     def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None):
         self.fn = fn
@@ -55,6 +190,7 @@ class UnionProof:
             v = "%" + (i.s if i.s != "" else "h") + "." + str(i.r[0])
             self.private[v] = True
             self.roots[v] = v
+            self.memtypes[v] = i.t
             self.typebase("MU:" + v, i.t)
         for bn in range(len(fn.blocks)):
             b = fn.blocks[bn]
@@ -101,7 +237,7 @@ class UnionProof:
                         self.bitsneeded[i.a[1].v] = True
         for b in fn.blocks:
             for i in b.code:
-                if i.op == "rt" and len(i.r) == 1:
+                if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
                     self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t)
         # Backward relevance for boxed values and forward/backward transport closure for
         # tags and bits. Literals never become tainted: the same integer spelling in an
@@ -143,6 +279,14 @@ class UnionProof:
             if k not in wanted:
                 del self.base[k]
         for v in self.bitsslots:
+            if v not in self.memtypes and v in self.roots:
+                owner = self.native.get(self.roots[v], "")
+                if owner.startswith("tuple["):
+                    elements = targs(owner)
+                    if len(elements) > 0 and all(t == elements[0] for t in elements):
+                        # A homogeneous fixed tuple keeps one native element contract
+                        # after its element load is lowered to an indexed machine load.
+                        self.memtypes[v] = elements[0]
             if v in self.memtypes:
                 self.base["MB:" + v] = [self.memtypes[v]]
         # Facts matter only while their value or storage address can still be read.
@@ -256,6 +400,11 @@ class UnionProof:
 
     def bits(self, s: UnionState, a: Val) -> str:
         k = "B:" + a.v
+        if self.integer(a.v):
+            # A join may have forgotten an earlier use of this literal. Its kind
+            # is intrinsic, unlike a transported register's possible payloads.
+            s.set(k, ["int"])
+            return k
         opaque = False
         if a.v in self.defs:
             opaque = self.defs[a.v].op in ["phi", "select", "mem.load", "mach.load", "union.payload", "union.raw", "slot.pack"]
@@ -349,7 +498,10 @@ class UnionProof:
         if op in ["mem.load", "mach.load"]:
             addr = a[0].v
             if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d):
-                s.copy("T:" + r, self.box(s, addr))
+                u = self.box(s, addr)
+                if checking and "None" in s.dom(u):
+                    self.error(b, "mach.load needs a nonnull proof for " + addr)
+                s.copy("T:" + r, u)
                 return
             if "U:" + r in self.base:
                 mk = "MU:" + addr
@@ -374,7 +526,16 @@ class UnionProof:
             if addr in self.tagslots:
                 s.copy("MT:" + addr, self.tag(s, v))
             if addr in self.bitsslots:
-                s.copy("MB:" + addr, self.bits(s, a[1]))
+                payload = self.bits(s, a[1])
+                source = self.defs[v] if v in self.defs else None
+                generic = source is not None and (source.op == "list.load" or (source.op == "rt" and source.s in ["list.get", "list.pop", "dict.get", "dict.pop", "set.pop"]))
+                if v not in self.raw and generic and self.native.get(v, "") in ["T", "K", "V", "*T", "*K", "*V"] and addr in self.memtypes:
+                    # Generic runtime element results are instantiated by native
+                    # storage declarations. Container element typing is its own
+                    # contract; opaque union payloads never use this boundary.
+                    s.set("MB:" + addr, [self.memtypes[addr]])
+                else:
+                    s.copy("MB:" + addr, payload)
             if checking and v in self.raw and addr not in self.private:
                 self.checkbits(s, v, t, b, op)
             return

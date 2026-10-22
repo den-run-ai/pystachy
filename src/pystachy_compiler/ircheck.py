@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins
-from src.pystachy_compiler.union_proof import UnionProof
+from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
 
@@ -86,6 +86,26 @@ class EffectSummaries:
         self.calls = [[c for c in cs] for cs in calls]
 
 
+def has_machine_union_tag(fn: IFn) -> bool:
+    # A machine pointer annotation alone says nothing about its source. Recognize
+    # union boxes from parameter and result declarations, not narrowed operands.
+    # Only functions with an integer machine load need this scan.
+    sources: dict[str, bool] = {}
+    for n in range(len(fn.f.ptypes)):
+        t = fn.f.ptypes[n]
+        if is_union(t[4:-1] if is_opt(t) else t):
+            sources["%a" + str(n)] = True
+    for b in fn.blocks:
+        for i in b.code:
+            if len(i.r) == 1 and is_union(i.t[4:-1] if is_opt(i.t) else i.t):
+                sources["%t" + str(i.r[0])] = True
+    for b in fn.blocks:
+        for i in b.code:
+            if i.op == "mach.load" and i.t == "int" and i.a[0].v in sources:
+                return True
+    return False
+
+
 def gen_verify(self, fn: IFn, eh: bool) -> None:
     # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
     # call and init ops call compiled
@@ -96,7 +116,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     # edges of invokes reach, and every invoke's unwind edge goes to one; in a block that a
     # try statement covers, no call that may raise is left a call, nor a raise or throw
     at: dict[str, int] = {}
-    union_reads = False
+    union_types: dict[str, list[str]] = {}
+    union_proofs = False
+    machine_tags = False
     lands: dict[str, bool] = {}
     for b in fn.blocks:
         if len(b.code) > 0 and b.code[0].op == "landing":
@@ -118,8 +140,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         out: list[str] = []
         for j in range(len(b.code)):
             i = b.code[j]
-            if i.op == "union.payload" or i.op == "union.raw":
-                union_reads = True
+            if i.op in ["union.tag", "union.payload", "union.raw"] or (i.op == "rt" and i.s == "ubox"):
+                union_proofs = True
+            elif i.op == "mach.load" and i.t == "int":
+                machine_tags = True
             if i.op not in IROPS:
                 self.bad_ir(fn, b, f"unknown op {i.op}")
             inv = len(i.b) == 2 and (i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume")
@@ -263,13 +287,16 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if len(i.a) != 1 or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} needs one union operand and no extra metadata")
                 u = i.a[0].t
-                ms = umembers(u) if is_union(u) and u.endswith("]") else []
-                if len(ms) < 2:
-                    self.bad_ir(fn, b, f"{i.op} needs a nonoptional closed union")
-                for j in range(len(ms)):
-                    m = ms[j]
-                    if m == "" or m == "None" or is_opt(m) or is_union(m) or m.count("[") != m.count("]") or m in ms[:j] or m.startswith("%") or m.startswith("*") or m == "#" or (m in ["T", "K", "V", "S"] and m not in self.classes):
-                        self.bad_ir(fn, b, f"{i.op} needs distinct nonoptional union members")
+                if u not in union_types:
+                    ms = umembers(u) if is_union(u) and u.endswith("]") else []
+                    if len(ms) < 2:
+                        self.bad_ir(fn, b, f"{i.op} needs a nonoptional closed union")
+                    for j in range(len(ms)):
+                        m = ms[j]
+                        if m == "" or m == "None" or is_opt(m) or is_union(m) or m.count("[") != m.count("]") or m in ms[:j] or m.startswith("%") or m.startswith("*") or m == "#" or (m in ["T", "K", "V", "S"] and m not in self.classes):
+                            self.bad_ir(fn, b, f"{i.op} needs distinct nonoptional union members")
+                    union_types[u] = ms
+                ms = union_types[u]
                 if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)) or (i.op == "union.raw" and (i.t != "%slot" or i.s != "")):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or member")
             if i.op == "dyn.type" or i.op == "dyn.payload":
@@ -304,7 +331,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 for l in i.b:
                     if l not in at or b.label not in succ[at[l]]:
                         self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
-    if union_reads:
+    if (union_proofs or (machine_tags and has_machine_union_tag(fn))) and not simple_union_proof(fn, self.utags, at, succ):
         writes: dict[str, bool] = {}
         raises: dict[str, bool] = {}
         for b in fn.blocks:

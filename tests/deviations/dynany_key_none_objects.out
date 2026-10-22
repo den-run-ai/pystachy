@@ -1,0 +1,6 @@
+sorted: TypeError 'NoneType' object is not callable
+sort: TypeError 'NoneType' object is not callable
+min: TypeError 'NoneType' object is not callable
+max: TypeError 'NoneType' object is not callable
+[2, 1] 2 1
+[exit 0]

@@ -131,9 +131,7 @@ above apply to well-formed text (with the surrogate exception described above).
   share it (`sorted()` gives one). `dict.fromkeys(s)` of a set of objects whose class defines
   `__hash__` calls it again for each element, where CPython takes the hashes the set keeps, and
   a `functools.cache()` or `lru_cache()` function hashes such an argument more than once per
-  call (CPython's, once); `d.update(o)`, and `dict(o)` and `o.copy()` of an `o` with many
-  deleted keys (which merge `o` into a new dict), go on with what is left of `o` where a key's
-  `__eq__` changes `o`, where CPython raises `RuntimeError: dict mutated during update`.
+  call (CPython's, once).
   `hash()` of a NaN is 0, where CPython's is its float object's identity hash.
 
 - `min()` and `max()` stream the items of generator expressions and iterator objects of type
@@ -754,11 +752,11 @@ supported alternatives.
   annotation whose type aliases expand to more than 65,536 nodes
 - in a module that opts in to [dynamic `Any`](../dynamic-any.md): a typed mutable container
   (`list[int]`, `dict[str, int]`, a set) that would become an `Any` value, an operation on `Any`
-  values that the prototype does not implement, keyword or unpacked arguments in a call of an
-  `Any` value or its method, and storage that holds `None` before an `Any` value but cannot be
-  made `Any` from its first store: a generator's or closure's local, a module variable that a
-  function gives the `Any` value, a field that code outside its class's methods gives it, a
-  display of `None` items (`tests/errors/inference/dynany_*.py`)
+  values that the prototype does not implement, an `Any` value unpacked into a call's arguments
+  (`f(*xs)`), and storage that holds `None` before an `Any` value but cannot be made `Any` from
+  its first store: a generator's or closure's local, a module variable that a function gives the
+  `Any` value, a field that code outside its class's methods gives it, a display of `None` items
+  (`tests/errors/inference/dynany_*.py`)
 
 ### Exceptions and exception classes
 

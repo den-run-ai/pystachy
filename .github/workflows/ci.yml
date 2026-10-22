@@ -135,6 +135,7 @@ jobs:
             build/verification.json
             build/extended-smoke.json
             build/verify/*.log
+            build/verify/dynany-fuzz/*.py
           if-no-files-found: error
           retention-days: 7
           overwrite: true

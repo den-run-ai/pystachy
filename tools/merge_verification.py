@@ -119,6 +119,12 @@ def validate_report(report, group, expected):
             if (step.get("ir_identical") is not True or
                     integer(step.get("compiler_interval"), f"{label}.compiler_interval", 1) != 5000):
                 raise ValueError(f"{label}: missing GC-stressed IR identity or wrong interval")
+        if step["name"] == "dynany-fuzz":
+            if (integer(step.get("programs"), f"{label}.programs") != 3 or
+                    integer(step.get("cases"), f"{label}.cases") != 450 or
+                    step.get("modes") != ["jit"] or
+                    integer(step.get("mismatches"), f"{label}.mismatches") != 0):
+                raise ValueError(f"{label}: expected 3 programs, 450 JIT cases and no mismatches")
         if step["name"] in GC_STEPS:
             mode = "jit" if step["name"].startswith("gc-jit") else "aot"
             if (step.get("modes") != [mode] or

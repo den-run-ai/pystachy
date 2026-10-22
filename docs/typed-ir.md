@@ -231,6 +231,13 @@ nullable values, aliasing stores, calls and exception edges. Writes discard muta
 facts; previously loaded immutable boxes retain their facts. Non-escaping local slots and
 provably disjoint fresh storage retain facts across unrelated writes.
 
+Standalone tag reads and box construction also require these proofs. An integer
+machine load whose defined source is a union is checked as a tag read, including its
+nonnull requirement. Simple guards of immutable, nonnullable union parameters can
+be proved by a bounded predecessor walk without allocating dataflow states. Mutable
+slots, nullable sources, raw payload transport and unsupported control-flow shapes
+fall back to the general solver.
+
 The finite worklist joins possible tags and common equalities until stable, without a path
 product or an iteration cutoff. Conditional facts survive boolean phis and short-circuit
 expressions and are dropped after their last possible use. Type-name domains have no

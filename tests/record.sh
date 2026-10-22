@@ -43,7 +43,8 @@ cpython() {
   n=${1##*/}
   in=/dev/null; [ -f "$1.in" ] && in="$1.in"
   o=1; [ -f "$1.full" ] && o=3
-  mp=; [ -f "$1.path" ] && mp=$(cat "$1.path")
+  mp=
+  if [ -f "$1.path" ]; then mp=$(sh tests/prepare_path.sh "$1.py" "$T") || exit 1; fi
   (env -i PATH="$PATH" ${mp:+"PYTHONPATH=$mp"} "$PY" "$1.py" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.out" 2> "$T/$n.stderr"
 }
 

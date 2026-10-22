@@ -67,10 +67,40 @@ class RepositoryHygieneTests(unittest.TestCase):
 
     def test_maintained_reports_benchmarks_and_tests_pass(self):
         for path in ("docs/reports/compatibility.md", "bench/router/results/data.json",
-                     "tests/programs/inference/research_case.py", "tools/research_check.py"):
+                     "tests/programs/inference/research_case.py", "tools/research_check.py",
+                     ".github/workflows/unit-tests.yml", "docs/version-1.2.md"):
             self.write(path)
             self.git("add", path)
         self.assertEqual(self.run_check()[0], 0)
+
+    def test_special_characters_in_tracked_paths_fail(self):
+        for path in ("tests/paths]/fixture.py", "tests/fixtures/[case].py",
+                     "tests/with space/fixture.py", "tests/fixtures/line\nbreak.py",
+                     "tests/tab\tpath/fixture.py", "tests/\u00e9/fixture.py",
+                     "tests/fixtures/case?.py", "tests/pipe|path/fixture.py",
+                     "tests/fixtures/quote\".py", "tests/percent%path/fixture.py",
+                     "tests/fixtures/comma,.py", "tests/back\\slash/fixture.py"):
+            with self.subTest(path=path):
+                self.write(path)
+                self.git("add", "--", path)
+                status, _, errors = self.run_check()
+                self.assertEqual(status, 1)
+                self.assertIn(repr(path), errors)
+                self.assertIn("ASCII letters, digits, '.', '_' and '-'", errors)
+                self.git("rm", "--cached", "--", path)
+                self.assertEqual(self.run_check()[0], 0)
+
+    def test_generated_special_character_paths_are_allowed_until_staged(self):
+        path = "tests/generated/paths]/fixture.py"
+        self.write(path)
+        self.assertEqual(self.run_check()[0], 0)
+        self.write(".gitignore", "/tests/generated/\n")
+        self.git("add", ".gitignore")
+        self.assertEqual(self.run_check()[0], 0)
+        self.git("add", "-f", "--", path)
+        status, _, errors = self.run_check()
+        self.assertEqual(status, 1)
+        self.assertIn(repr(path), errors)
 
     def test_top_level_research_file_fails(self):
         self.write("research")

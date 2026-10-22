@@ -70,7 +70,12 @@ SIG=" $(grep -lE 'kill -INT|KeyboardInterrupt' "$@" | while read -r f; do printf
 program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the path without .py)
   b=${1%.py}; n=${b##*/}; in=/dev/null; [ -f "$b.in" ] && in="$b.in"
   o=1; [ -f "$b.full" ] && o=3
-  mp=$PYSTACHY_PATH; [ -f "$b.path" ] && mp=$(cat "$b.path")
+  mp=$PYSTACHY_PATH
+  if [ -f "$b.path" ]; then
+    mp=$(sh tests/prepare_path.sh "$1" "$T") || {
+      fail=$((fail + 1)); echo "FAIL $n: cannot prepare import path"; return;
+    }
+  fi
   for mode in $MODES; do
     # the program's stderr goes to $n.err, an AOT build's to $n.build, which must stay empty (what
     # pystachy run writes before it becomes the program goes to $n.err: it must be nothing too)
@@ -125,7 +130,12 @@ rejection() { # tests/errors/AREA/NAME.py
   want=${want#"# error: "}
   how=ir
   case $n in rtmode_*) how=rt ;; esac  # compiled as runtime.py is
-  mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")
+  mp=$PYSTACHY_PATH
+  if [ -f "${1%.py}.path" ]; then
+    mp=$(sh tests/prepare_path.sh "$1" "$T") || {
+      fail=$((fail + 1)); echo "FAIL $n: cannot prepare import path"; return;
+    }
+  fi
   PYSTACHY_PATH=$mp $PYS $how "$1" > /dev/null 2> "$T/rej.$n"; st=$?
   if [ $st = 1 ] && diag "$T/rej.$n"; then pass=$((pass + 1)); else
     fail=$((fail + 1)); echo "FAIL $1: expected error '$want', got (exit $st): $(cat "$T/rej.$n")"; fi
