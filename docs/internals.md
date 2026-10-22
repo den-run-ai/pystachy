@@ -160,9 +160,14 @@ prevents scanning a managed object's contents instead of marking its holding poi
 `make lint` and `make check-runtime` compare these annotations
 with clang's complete static inventory, including unused declarations, aggregate fields
 and function-local statics. Each root must reach a real `scan` in `mark_roots`; comments
-or dead calls do not count. The check does not prove dynamic scan bounds, non-root
-lifetime arguments, or pointers hidden in integers; those still require review and GC
-stress coverage. Weak registries and allocator metadata deliberately are not strong roots.
+or dead calls do not count. Static roots require constant offsets covering the exact
+complete storage interval, including all array elements and aggregate padding. Root ranges
+reject provably empty, reversed, negative or unaligned bounds, including equivalent symbolic endpoints, while
+allowing intentional active subranges. Packed static roots and aggregate declarations
+classified as root ranges are unsupported and fail closed. The check does not prove
+dynamic bounds or backing allocation sizes, non-root lifetime arguments, or pointers hidden
+in integers; those still require review and GC stress coverage. Weak registries and allocator metadata deliberately
+are not strong roots.
 
 `Str`'s named header offsets and size have C static assertions in the runtime and both
 CPython adapters. The compiler uses `STR_HEADER_SIZE` for byte offsets and allocations.
