@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import dynany_fuzz as fz
@@ -57,6 +58,53 @@ class GeneratorTest(unittest.TestCase):
         k = [i for i, c in enumerate(cases) if c[1].endswith("=") and c[1] not in ("==", "!=", "<=", ">=")][0]
         self.assertIn(f"    l{k}: Any = r{k}\n", src)
         self.assertIn(f"    inv({k}, r{k}, l{k})\n", src)
+
+    def test_parity_and_evaluation_order(self) -> None:
+        src, pairs = fz.parity_program(1, 0)
+        self.assertEqual(len(pairs), 30)
+        self.assertTrue(all(c[1] == "parity" for c in pairs))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "parity.py")
+            with open(path, "w") as f:
+                f.write(fz.PRELUDE + src)
+            cp = fz.run(fz.CPYTHON + [path], d)
+        self.assertEqual(cp[0], 0, cp[1])
+        self.assertEqual(fz.compare(1, pairs, "reference", cp, cp), [])
+        self.assertIn("26 '0 trace=[1]'", cp[1])
+        self.assertIn("27 '1 trace=[1]'", cp[1])
+        self.assertIn("28 '63 trace=[1, 2]'", cp[1])
+        self.assertIn("29 'ValueError: first trace=[-1]'", cp[1])
+
+    def test_parity_rejects_equality_falling_back_to_identity(self) -> None:
+        # Model #772's wrong object-comparison behavior only in the Any function. The
+        # in-program oracle must fail even though its printed typed result remains correct.
+        src, pairs = fz.parity_program(1, 0)
+        marker = "def parity_any_18(a: Any, b: Any) -> str:"
+        before, after = src.split(marker, 1)
+        broken = before + marker + after.replace("repr(a == b)", "repr(a is b)", 1)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "parity.py")
+            with open(path, "w") as f:
+                f.write(fz.PRELUDE + src)
+            cp = fz.run(fz.CPYTHON + [path], d)
+            with open(path, "w") as f:
+                f.write(fz.PRELUDE + broken)
+            mutant = fz.run(fz.CPYTHON + [path], d)
+        self.assertEqual(mutant[0], 0)
+        bad = fz.compare(1, pairs, "mutant", cp, mutant)
+        self.assertEqual(len(bad), 1)
+        self.assertIn("case 18", bad[0])
+        self.assertIn("INVARIANT: typed/Any parity", bad[0])
+
+    def test_program_gc_environment(self) -> None:
+        cmd = [sys.executable, "-I", "-c", "import os; print(os.getenv('PYSTACHY_GC'), "
+               "os.getenv('PYSTACHY_GC_STRESS'), os.getenv('PYSTACHY_GC_STRESS_PROGRAM'))"]
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(
+                os.environ, {"PYSTACHY_GC": "off", "PYSTACHY_GC_STRESS": "5", "PYSTACHY_GC_STRESS_PROGRAM": "6"}):
+            self.assertEqual(fz.run(cmd, d), (0, "None None 0\n"))
+            self.assertEqual(fz.run(cmd, d, stress=True), (0, "None None 1\n"))
+            self.assertEqual(fz.run(cmd, d, native_program=True), (0, "None None 0\n"))
+            self.assertEqual(fz.run(cmd, d, stress=True, native_program=True), (0, "None 1 1\n"))
 
 
 class CompareTest(unittest.TestCase):
@@ -121,6 +169,17 @@ class CompareTest(unittest.TestCase):
         self.assertEqual(len(fz.compare(1, self.cases, "jit", (0, cp), (0, warn))), 1)
         extra = cp + "7 INVARIANT: is and id() disagree\n"
         self.assertEqual(len(fz.compare(1, self.cases, "jit", (0, cp), (0, extra))), 1)
+
+    def test_reference_must_cover_every_case_once(self) -> None:
+        for out in ("", "0 3\n1 'a1'\n", "0 3\n1 'a1'\n2 5\n2 INVARIANT: wrong\n",
+                    "0 3\n1 'a1'\n2 5\nunexpected warning\n"):
+            with self.subTest(output=out):
+                self.assertTrue(fz.compare(1, self.cases, "jit", (0, out), (0, out)))
+
+    def test_parity_never_uses_expected_deviations(self) -> None:
+        c = [("a * b", "parity", "int", "1", "")]
+        self.assertTrue(fz.compare(1, c, "jit", (0, "0 18446744073709551614\n"),
+                                   (0, "0 OverflowError: integer overflow\n")))
 
     def test_order(self) -> None:
         # (each case's lines alike, but printed in another order, is a mismatch)

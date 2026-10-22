@@ -19,9 +19,14 @@ the first two only.
 
 Deterministic: each program comes from random.Random(SEED). A mismatch prints the seed, the case,
 its expression and both outputs; --keep DIR keeps the programs, and --emit SEED prints one.
-usage: python3 tools/dynany_fuzz.py [--aot] [--keep DIR] [--compiler CMD] [SEEDS [N]]
+Each program also compares concretely annotated and Any functions directly, including side-effect
+traces and the first exception. These parity cases have no expected-difference exemptions.
+--gc-stress repeats the selected modes with a collection at every program allocation, without
+stressing the compiler. AOT binaries are built once and executed in both configurations.
+
+usage: python3 tools/dynany_fuzz.py [--aot] [--gc-stress] [--keep DIR] [--compiler CMD] [SEEDS [N]]
        python3 tools/dynany_fuzz.py --emit SEED [N]
-       (SEEDS programs, seeds 1 to SEEDS, of N cases each: default 3 and 150)
+       (SEEDS programs, seeds 1 to SEEDS, of N random + 30 parity cases: default 3 and 150)
 """
 import os
 import random
@@ -182,11 +187,74 @@ def allowed(op: str, a: str, b: str) -> bool:
     return True
 
 
+def parity_program(seed: int, start: int) -> tuple[str, list[tuple[str, str, str, str, str]]]:
+    # Each pair differs only in its parameter annotations and the helper's return annotation.
+    # Arguments are made afresh for each call, so mutations cannot mask a difference.
+    v = random.Random(seed).randrange(2, 20)
+    recipes = [
+        ("int", "int", str(v), "3", "a + b"),
+        ("int", "int", str(-v), "3", "a // b"),
+        ("int", "int", str(-v), "3", "a % b"),
+        ("int", "int", str(v), "0", "a / b"),
+        ("int", "int", str(v), "2", "a ** b"),
+        ("float", "float", "1.5", "-2.25", "a + b"),
+        ("float", "float", "-0.0", "2.0", "a * b"),
+        ("str", "str", "'ab'", "'cd'", "a + b"),
+        ("str", "str", "'ab'", "'cd'", "a < b"),
+        ("str", "int", "'abc'", "-1", "a[b]"),
+        ("str", "int", "'abc'", "8", "a[b]"),
+        ("list[int]", "list[int]", f"[{v}, 1]", f"[{v}, 1]", "a == b"),
+        ("list[int]", "list[int]", f"[{v}]", "[1, 2]", "a + b"),
+        ("list[int]", "int", f"[{v}, 1]", "-1", "a[b]"),
+        ("dict[str, int]", "str", f"{{'k': {v}}}", "'k'", "a[b]"),
+        ("dict[str, int]", "str", f"{{'k': {v}}}", "'missing'", "a[b]"),
+        ("dict[str, int]", "dict[str, int]", f"{{'k': {v}}}", "{'k': 2, 'x': 3}", "a | b"),
+        ("tuple[int, int]", "tuple[int, int]", f"({v}, 1)", f"({v}, 1)", "a == b"),
+        ("Num", "Num", f"Num({v})", f"Num({v})", "a == b"),
+        ("Num", "Num", f"Num({v})", f"Num({v})", "a != b"),
+        ("Num", "Num", f"Num({v})", f"Num({v + 1})", "a < b"),
+        ("Num", "Num", f"Num({v})", f"Num({v})", "hash(a) == hash(b)"),
+        ("int", "list[int]", str(v), f"[1, {v}]", "a in b"),
+        ("Num", "list[Num]", f"Num({v})", f"[Num(1), Num({v})]", "a in b"),
+    ]
+    # Traces expose evaluation order even when the computed result is commutative.
+    # first-error verifies that the second argument is not touched after the first raises.
+    events = [
+        (str(v), "3", "mark(a, 1, trace) + mark(b, 2, trace)"),
+        (str(v), "3", "mark(a, 1, trace) - mark(b, 2, trace)"),
+        ("0", "3", "mark(a, 1, trace) and mark(b, 2, trace)"),
+        ("1", "3", "mark(a, 1, trace) or mark(b, 2, trace)"),
+        (str(v), "3", "pair(mark(a, 1, trace), mark(b, 2, trace))"),
+        (str(v), "3", "pair(mark(a, -1, trace), mark(b, 2, trace))"),
+    ]
+    recipes += [("int", "int", a, b, expr) for a, b, expr in events]
+    out = ["def parity_pair(a: int, b: int) -> int:", "    return a * 10 + b", ""]
+    for mode, typ in (("typed", "int"), ("any", "Any")):
+        out += [f"def parity_mark_{mode}(x: {typ}, label: int, trace: list[int]) -> {typ}:",
+                "    trace.append(label)", "    if label < 0:", "        raise ValueError('first')",
+                "    return x", ""]
+    cases = []
+    for i, (at, bt, a, b, expr) in enumerate(recipes):
+        k = start + i
+        for mode in ("typed", "any"):
+            atype, btype = (at, bt) if mode == "typed" else ("Any", "Any")
+            expression = expr.replace("mark(", f"parity_mark_{mode}(").replace("pair(", "parity_pair(")
+            out += [f"def parity_{mode}_{i}(a: {atype}, b: {btype}) -> str:",
+                    "    trace: list[int] = []", "    try:", f"        result = repr({expression})",
+                    "    except Exception as e:", "        result = type(e).__name__ + ': ' + str(e)",
+                    "    return result + ' trace=' + repr(trace)", ""]
+        out += [f"pt{k} = parity_typed_{i}({a}, {b})", f"pa{k} = parity_any_{i}({a}, {b})",
+                f"show({k}, pt{k})", f"if pt{k} != pa{k}:",
+                f"    print({k}, 'INVARIANT: typed/Any parity:', pa{k})", ""]
+        cases.append((expr, "parity", at, a, ""))
+    return "\n".join(out), cases
+
+
 def program(seed: int, n: int) -> tuple[str, list[tuple[str, str, str, str, str]]]:
     # the source of program SEED, and its cases: (expression, operator, left operand's kind, its
     # source, its variable)
     rnd = random.Random(seed)
-    out = [PRELUDE.replace("SEED", str(seed)).replace("N cases", f"{n} cases")]
+    out = [PRELUDE.replace("SEED", str(seed)).replace("N cases", f"{n} random + 30 parity cases")]
     names: list[tuple[str, str]] = []
     for i, (src, kind) in enumerate(POOL):
         out.append(f"v{i}: Any = {src}")
@@ -231,7 +299,9 @@ def program(seed: int, n: int) -> tuple[str, list[tuple[str, str, str, str, str]
         out.append(f"    inv({k}, r{k}, {left})")
         out.append("except Exception as e:")
         out.append(f"    fail({k}, e)")
-    out.append("")
+    parity, pairs = parity_program(seed, len(cases))
+    out += ["", parity]
+    cases += pairs
     return "\n".join(out), cases
 
 
@@ -275,9 +345,18 @@ def built(seed: int, r: tuple[int, str]) -> list[str]:
     return [f"seed {seed} aot: the build printed: {r[1][-800:]}"] if r[0] == 0 and r[1] != "" else []
 
 
-def run(cmd: list[str], cwd: str) -> tuple[int, str]:
+def run(cmd: list[str], cwd: str, stress: bool = False, native_program: bool = False) -> tuple[int, str]:
+    env = dict(os.environ)
+    # Explicitly choose the program configuration; caller stress must not replace the normal run.
+    env.pop("PYSTACHY_GC_STRESS", None)
+    env.pop("PYSTACHY_GC", None)
+    env["PYSTACHY_GC_STRESS_PROGRAM"] = "1" if stress else "0"
+    # The driver translates *_PROGRAM for JIT children. A standalone AOT executable reads
+    # the runtime's GC_STRESS directly; setting only *_PROGRAM would leave it unstressed.
+    if native_program and stress:
+        env["PYSTACHY_GC_STRESS"] = "1"
     p = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                       text=True, errors="replace", timeout=600)
+                       text=True, errors="replace", timeout=600, env=env)
     return p.returncode, p.stdout
 
 
@@ -309,6 +388,8 @@ def compare(seed: int, cases: list[tuple[str, str, str, str, str]], mode: str, c
         bad.append(f"seed {seed} {mode}: exit status {ps[0]}, CPython's 0: {ps[1][-800:]}")
     a, ao = by_case(cp[1])
     b, bo = by_case(ps[1])
+    if ao or sorted(a) != list(range(len(cases))) or any(len(lines) != 1 for lines in a.values()):
+        return [f"seed {seed}: CPython did not produce exactly one result for every case"]
     if ao != bo:
         bad.append(f"seed {seed} {mode}: lines of no case differ\n    CPython:  {' | '.join(ao)}\n    Pystachy: {' | '.join(bo)}")
     oa = case_order(cp[1])
@@ -322,7 +403,7 @@ def compare(seed: int, cases: list[tuple[str, str, str, str, str]], mode: str, c
         if x == y:
             continue
         c = cases[k] if k < len(cases) else ("(no such case)", "", "", "", "")
-        if k < len(cases) and len(x) == 1 and len(y) == 1 and any(rule(c, x[0], y[0]) for rule, _ in EXPECTED):
+        if k < len(cases) and c[1] != "parity" and len(x) == 1 and len(y) == 1 and any(rule(c, x[0], y[0]) for rule, _ in EXPECTED):
             continue
         bad.append(f"seed {seed} {mode} case {k}: {c[0]}  (v = {c[3]})\n    CPython:  {' | '.join(x)}\n    Pystachy: {' | '.join(y)}")
     return bad
@@ -337,12 +418,13 @@ def compiler_cmd(compiler: str) -> list[str]:
 def main() -> int:
     args = sys.argv[1:]
     aot = "--aot" in args
+    gc_stress = "--gc-stress" in args
     keep = ""
     compiler = os.path.join(ROOT, "pystachy")
     rest: list[str] = []
     i = 0
     while i < len(args):
-        if args[i] == "--aot":
+        if args[i] in ("--aot", "--gc-stress"):
             pass
         elif args[i] == "--keep":
             i += 1
@@ -360,6 +442,9 @@ def main() -> int:
         i += 1
     seeds = int(rest[0]) if len(rest) > 0 else 3
     n = int(rest[1]) if len(rest) > 1 else 150
+    if seeds < 1 or n < 1:
+        print("seeds and cases must be positive", file=sys.stderr)
+        return 2
     if sys.version_info[:2] != (3, 13):
         print(f"tools/dynany_fuzz.py: CPython {sys.version.split()[0]} runs it; the expected outputs are 3.13's (.python-version)", file=sys.stderr)
         return 2
@@ -368,25 +453,34 @@ def main() -> int:
     cmd = compiler_cmd(compiler)
     bad: list[str] = []
     total = 0
+    parity_total = 0
     for seed in range(1, seeds + 1):
         src, cases = program(seed, n)
         total += len(cases)
+        parity_total += sum(c[1] == "parity" for c in cases)
         path = os.path.join(work, f"dynany_fuzz_{seed}.py")
         with open(path, "w") as f:
             f.write(src)
         cp = run(CPYTHON + [path], work)
         bad += compare(seed, cases, "jit", cp, run(cmd + ["run", path], work))
+        if gc_stress:
+            bad += compare(seed, cases, "jit-gc", cp, run(cmd + ["run", path], work, stress=True))
         if aot:
             exe = os.path.join(work, f"dynany_fuzz_{seed}")
             r = run(cmd + ["build", path, "-o", exe], work)
-            bad += built(seed, r) + compare(seed, cases, "aot", cp, run([exe], work) if r[0] == 0 else r)
+            bad += built(seed, r) + compare(seed, cases, "aot", cp, run([exe], work, native_program=True) if r[0] == 0 else r)
+            if gc_stress:
+                bad += compare(seed, cases, "aot-gc", cp, run([exe], work, stress=True, native_program=True) if r[0] == 0 else r)
     for line in bad:
         print(line)
     if keep == "":
         for f in os.listdir(work):
             os.unlink(os.path.join(work, f))
         os.rmdir(work)
-    print(f"{seeds} programs, {total} cases ({'JIT and AOT' if aot else 'JIT'}): {len(bad)} mismatches")
+    modes = ["JIT"] + (["AOT"] if aot else [])
+    if gc_stress:
+        modes += ["JIT-GC"] + (["AOT-GC"] if aot else [])
+    print(f"{seeds} programs, {total} cases, {parity_total} parity cases ({', '.join(modes)}): {len(bad)} mismatches")
     return 1 if bad else 0
 
 

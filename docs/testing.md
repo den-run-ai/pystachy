@@ -123,8 +123,12 @@ The implementation and exact budgets live in `tests/verify.sh` and its named `to
 Useful individual checks include `make re-fuzz`, `make re-probe`, `make re-specialize-check`
 (matchers generated for random patterns, against CPython's `re`), `make dynany-fuzz`
 (seeded programs on [dynamic `Any`](dynamic-any.md) values against CPython, with identity and
-containment invariants; its default 3 seeded programs of 150 cases run in `make verify`'s
-`contracts` group using the verified native compiler in JIT mode), `make dictprobe`,
+containment invariants, plus 30 strict typed/Any parity cases per program, including evaluation
+order and first-error traces. The `contracts` group runs three seeds with 150 random cases each,
+using the verified native compiler in JIT and AOT, both normally and with program GC stress at
+every allocation. `--aot --gc-stress` selects the same configurations locally; the aggregate gate
+requires all four modes, 540 cases including 90 parity cases and zero mismatches. This bounded
+check does not replace the remaining opt-in corpus sweep in #802), `make dictprobe`,
 `make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe` and `make jitprobe`.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
