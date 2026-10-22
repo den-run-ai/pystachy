@@ -49,7 +49,6 @@ NOT_SAVED: dict = {}
 # the fields Frame holds that gen_enter does not assign, by design: the code that starts a nested
 # function sets them. Each with its reason, in one line.
 NOT_RESET = {
-    "nonecmp": "a nested compile inherits the comparison with None in progress, as on main: main accepts programs that rely on it (nestcomp_nonecmp_one_read), which the function compiled on its own rejects, so resetting it would reject them (#822); Frame still restores it, so the nested compile cannot change it (nestcomp_nonecmp_clobber)",
     "modlevel": "each caller of save() sets it for what it compiles, module code or a function; gen_enter reads it",
     "lenient": "set around helpers compiled leniently (obj_helpers, dyn_xhelper); save()'s callers that compile clear it",
 }
@@ -60,7 +59,7 @@ PROGRAM = """
     classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts bconsts strs bstrs strvals vnodes cmexit rtfns opfxs out fns fll summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
-    xobj impg wide nokey nonereads attrvals attrown hints newhints final xnot newx retseen
+    xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
     template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused intat strglobals strtuples abstracts abcmeta
     constflags late ext libdir prefix csyms csymline cdirect extvars unicode_audit rtmode rtdefs

@@ -434,6 +434,7 @@ class Frame:
         self.nlw: dict[str, bool] = {}
         self.nonevars: dict[str, int] = {}
         self.nonesites: dict[str, list[Node]] = {}
+        self.nonepending: dict[str, bool] = {}
         self.narrowed: dict[str, str] = {}
         self.lkk: dict[str, str] = {}
         self.branch = 0

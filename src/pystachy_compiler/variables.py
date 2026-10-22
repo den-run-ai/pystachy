@@ -513,23 +513,34 @@ def gen_fn_value(self, name: str) -> Val:
     return Val("null", f"fn[f:{name}]")
 
 def gen_none_read(self, name: str) -> str:
-    # a read of local name, which only None has been assigned so far: a binding of another value
-    # in the function's source that can be typed here gives it its type, else only a comparison
-    # with None may read it
+    # A local first assigned None: look ahead where possible, otherwise keep a provisional
+    # read. A later concrete type restarts compilation, including earlier loop iterations
+    # (none_resolve). If no store resolves it, every value that reaches this slot is still None.
     t = self.none_type(name)
     if t != "":
-        self.ltype[name] = t
+        self.none_resolve(name, t)
         return t
     body = self.curfn.node.kids[2].kids if self.curfn.node.kind == "def" else self.curfn.node.kids
     if only_none(body, name):
-        return "None"  # (it is None wherever it is assigned)
-    if not self.nonecmp:
-        gone: dict[str, bool] = {}
-        deleted(body, gone)
-        if bind_count(body, name) == 1 and name not in gone and name not in self.nlw and name not in self.curfn.params:
-            return "None"  # (its one assignment, compiled already, gave it a value of type None)
-        self.err(f"cannot infer the type of '{name}' from None here, before a value of another type is assigned to it; annotate it ({name}: T | None)")
+        return "None"
+    gone: dict[str, bool] = {}
+    deleted(body, gone)
+    if not self.nonecmp and bind_count(body, name) == 1 and name not in gone and name not in self.nlw and name not in self.curfn.params:
+        return "None"
+    # Keep this through dry(): like ltype, it may affect retained inference/specializations.
+    self.nonepending[self.lreg[name]] = True
     return NONEVAR
+
+def gen_none_resolve(self, name: str, t: str) -> None:
+    # All ways a provisional local acquires its payload type come here. Remember the original
+    # slot, not the final type of the source name: a later straight-line rebind may reuse that
+    # name for another slot. Separate hints preserve local_versions' later rebindings.
+    if t != NONEVAR and self.lreg[name] in self.nonepending:
+        if self.final or self.rtmode or name in self.compvars:
+            self.err(f"cannot infer the type of '{name}' from None here; annotate it ({name}: T | None)")
+        self.newhints[f"none:{self.fnkey(self.curfn)}|{name}"] = t
+    self.ltype[name] = t
+
 
 def gen_none_type(self, name: str) -> str:
     # the type of variable name, first assigned None: T | None for the first other value that
@@ -564,14 +575,14 @@ def gen_none_global(self, name: str) -> str:
     # None for the first value of another type that this function's code gives it and that can
     # be typed here (none_type), or its module's code, or else a function that assigns it, which
     # is compiled now if it is no template (as early compiles one); None where no code of the
-    # program gives it another value; NONEVAR, still unknown, for a comparison with None (see
-    # nonecmp); else an error
+    # program gives it another value; otherwise a provisional read. If later inference gives
+    # it another type, none_global_resolve restarts every earlier reader with that type.
     key = "g:" + name
     t = self.none_type(name)
     if t == "":
         t = self.none_arms(name)
     if t != "":
-        self.gtypes[name] = t
+        self.none_global_resolve(name, t)
         return t
     if key not in self.fieldbusy:
         self.fieldbusy[key] = True  # (the function compiled for its type reads it too)
@@ -582,7 +593,7 @@ def gen_none_global(self, name: str) -> str:
                 t = self.none_arms(name)
             self.restore(fr)
         if t != "" and self.gtypes[name] == NONEVAR:
-            self.gtypes[name] = t
+            self.none_global_resolve(name, t)
         fs = self.global_setters(name)
         for f in fs:
             if self.gtypes[name] != NONEVAR:
@@ -608,10 +619,17 @@ def gen_none_global(self, name: str) -> str:
             # already, gave it a value of type None: x = setup(), as for a local)
             self.nonereads[key] = where(self.line)
             return "None"
-    if self.nonecmp:
-        return NONEVAR
-    self.err(f"cannot infer the type of '{short(name)}' from None here, before a value of another type is assigned to it; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
-    return ""
+    self.noneglobalpending[name] = True
+    return NONEVAR
+
+def gen_none_global_resolve(self, name: str, t: str) -> None:
+    # Unlike a local's pending slot, this read can belong to any function compiled earlier.
+    # Keep its hint separate from union joins, which may override a declaration's type.
+    if self.gtypes[name] == NONEVAR and t != NONEVAR and name in self.noneglobalpending:
+        if self.final or self.rtmode:
+            self.err(f"cannot infer the type of '{short(name)}' from None here; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")
+        self.newhints["none-global:" + name] = t
+    self.gtypes[name] = t
 
 def gen_none_arms(self, name: str) -> str:
     # T | None for an arm of a value (a if c else b, a or b) that the code of this function (or
@@ -653,7 +671,7 @@ def gen_none_global_store(self, name: str, v: Val) -> str:
     t = self.optional(v.t)
     if t == "":
         self.err(f"'{short(name)}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
-    self.gtypes[name] = t
+    self.none_global_resolve(name, t)
     return t
 
 def gen_none_values(self, st: Node, name: str, out: list[Node]) -> None:
@@ -1607,6 +1625,8 @@ def gen_default_want(self, r: Node, m: str, args: list[Node], vt: str) -> str:
 def gen_new_global(self, name: str, t: str) -> None:
     if len(self.hints) > 0 and "global:" + name in self.hints:
         t = self.hints["global:" + name]  # (a join's type: as if annotated, see join_hint)
+    elif t == NONEVAR:
+        t = self.hints.get("none-global:" + name, t)
     self.gtypes[name] = t
     self.global_var(f"@g.{name}", t)
     if name in self.gflag:
@@ -1620,6 +1640,8 @@ def gen_new_global(self, name: str, t: str) -> None:
 def gen_declare(self, name: str, t: str) -> None:
     if self.is_global(name):
         if name not in self.gtypes:
+            if t == NONEVAR:
+                t = self.hints.get("none-global:" + name, t)
             self.new_global(name, t)
         old = self.gtypes[name]
     elif name in self.ltype:
@@ -1631,6 +1653,11 @@ def gen_declare(self, name: str, t: str) -> None:
         self.err(f"'{name}' was declared as {old}, not {t}")
 
 def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
+    if v.t == NONEVAR:
+        # A provisional read is null-only on this pass. Its local/global pending entry
+        # forces replay if it later widens; a source that stays unresolved stores only
+        # None. A restarted copy can therefore consume its own inferred payload hint.
+        v = Val("null", "None")
     if name in self.noneglobals and name not in self.ltype:
         if v.t != "None":
             self.err(f"'{name}' is None in its module's code: giving it a {v.t} elsewhere (a function or another module) is not supported")
@@ -1702,7 +1729,7 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         elif name not in self.ltype and v.t == "None":
             # first None: T | None, typed by the first store of another value, or by a read
             # that needs the type before it (see none_read)
-            self.alloca(NONEVAR, name)
+            self.alloca(self.hints.get(f"none:{self.fnkey(self.curfn)}|{name}", NONEVAR), name)
         elif name not in self.ltype:
             self.alloca(v.t, name)
         t = self.ltype[name]
@@ -1712,7 +1739,7 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             if self.optional(v.t) == "":
                 self.err(f"'{name}' is assigned None and {typestr(v.t)}, and None/Optional is only supported for {OPTTYPES}")
             t = self.optional(v.t)
-            self.ltype[name] = t
+            self.none_resolve(name, t)
         if NONE_ITEM in t and same_kind(t, v.t) and "?" not in v.t:
             self.err(f"cannot infer the type of '{short(name)}' from a {tname(t)} of None and a {typestr(v.t)}; annotate it ({short(name)}: {'list[T | None]' if is_list(t) else 'dict[K, V | None]'} = ...)")
         if "?" in t and same_kind(t, v.t) and "?" not in v.t:

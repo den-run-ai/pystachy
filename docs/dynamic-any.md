@@ -43,6 +43,13 @@ list(d)` from a function declared `-> list[str]`). A container of tuples (`list[
 Any]]`) or of typed items (`dict[str, int]`), and one that holds `None` items before its first
 value types it (`ws = [None]`, then `ws[0] = {...}`), keep their typed layouts.
 
+`json.loads()` decodes into these containers, and `json.dumps()` encodes `Any` values, in a module
+that opts in, where the document is `Any` values (#779; [the JSON prototype](json-prototype.md#in-modules-that-opt-in-to-dynamic-any)):
+a document decoded once is the same objects to the typed functions and the `Any` code it passes
+through. Where a `default()` callback changes the dict being encoded, `json.dumps()` writes it
+as CPython does, except a key that the callback deletes and inserts again, which keeps its old
+place where CPython writes it after the others (`tests/deviations/dynany_json_reinsert.py`).
+
 Storage that an unannotated first value types, and that a later store gives an `Any` value, is
 `Any` from that first store, as a CPython variable holds whatever was assigned last
 (`tests/programs/inference/dynany_widen.py`):
