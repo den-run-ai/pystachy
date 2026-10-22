@@ -11,6 +11,7 @@
    The runtime is single-threaded: only the thread that imported the module may call it. When the
    host's interpreter exits (atexit), the references the module's objects own are released and its
    open files closed, as CPython's would be; the module refuses calls after that. */
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,9 @@ typedef int64_t I;
 typedef intptr_t Py_ssize_t;
 typedef struct _object PyObject;
 typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* runtime.c's */
+_Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
+               offsetof(Str, chars1) == 16 && offsetof(Str, s) == 24 && sizeof(Str) == 24,
+               "Str ABI: len, dict_hash, chars1, bytes");
 typedef struct Exc Exc;
 typedef struct { const char *name; void *meth; int flags; const char *doc; } PyMethodDef;
 /* CPython's stable ABI */
