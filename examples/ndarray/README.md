@@ -172,7 +172,9 @@ NumPy's own test suite is the second source of expected results. `tests/programs
 python3 check_upstream.py
 ```
 
-runs the same file against NumPy itself, through a thin layer that gives NumPy arrays this API, to check that the adaptations keep NumPy's assertions. Porting it found one difference, now fixed: `zeros()` of a shape too big to address raised `OverflowError`, where NumPy raises `ValueError: array is too big`.
+runs the same file against NumPy itself through a thin API adapter, checking that the port
+keeps NumPy's assertions. This includes `zeros()` rejecting a shape too large to address with
+`ValueError: array is too big`.
 
 ## Recorded benchmark
 
@@ -224,13 +226,19 @@ The run:
 - **One call per loop.** Each of `lazy`'s loops calls an expression's `at()` from one place: LLVM
   did not inline it from several, and the compensated sum ran at 6.2 ns per item with two calls
   against 2.4 with one.
-- **Against earlier builds** on the same host, alternating with this one: main as #642 merged
+
+<details>
+<summary>Earlier-build comparison and provenance</summary>
+
+On the same host, alternating with the measured build: main as #642 merged
   it, without #657, took 37.8 ms (AOT) for `a + b`, 35.2 for `a * 1.5`, 103.5 for the eager sum
   and 14.6 (JIT 67.4) for `p @ q`. Main just before #681 merged
   ([`0c8b442`](https://github.com/den-run-ai/pystachy/commit/0c8b4427f069d1fd86625ee82548a0b656fa53ef))
   already took 21.1, 12.4 and 46.7 for the first three, the span where list repetition and the
   collection budget for large arrays (#657, #658) landed. `p @ q` took 18.9 there (JIT 92.8)
   and gained from #691's dot-product loop.
+
+</details>
 
 ## What the subset cannot express yet
 

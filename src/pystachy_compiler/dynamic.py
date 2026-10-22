@@ -1413,6 +1413,11 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
     elif key == "slice":
         self.raise_("TypeError", self.sconst(f"slicing an object is not supported: {short(x.t)}.__getitem__ would take a slice object, which Pystachy does not have"))
         return
+    elif key.startswith("callv.") and dup_kw(key) >= 0:
+        # The keyword merge fails before __call__ binds: CPython names the instance with str().
+        msg = self.concat([self.to_str(x), Val(self.sconst(f" got multiple values for keyword argument '{shape_kws(key)[dup_kw(key)]}'"), "str")])
+        self.raise_("TypeError", msg.v)
+        return
     elif key.startswith("callv.") and self.dyn_bind(self.classes[x.t].methods["__call__"], 1, key, an) != "":
         # (arguments that do not fit __call__'s parameters: CPython's TypeError)
         self.raise_("TypeError", self.sconst(self.dyn_bind(self.classes[x.t].methods["__call__"], 1, key, an)))
@@ -1563,7 +1568,12 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     elif key == "contains":
         self.ret_(self.num_cmp("!=", Val(self.rt("pys_dyn_contains", "i64", [f"ptr {o.v}", f"ptr {ps[1].v}"]), "int"), Val("0", "int")))
     elif key.startswith("callv."):
-        msg = self.concat([Val(self.sconst("'"), "str"), self.dyn_type_name(o), Val(self.sconst("' object is not callable"), "str")])
+        dup = dup_kw(key)
+        if dup >= 0:
+            # Duplicate keywords fail during the merge, before checking whether o is callable.
+            msg = self.concat([self.dyn_str(o), Val(self.sconst(f" got multiple values for keyword argument '{shape_kws(key)[dup]}'"), "str")])
+        else:
+            msg = self.concat([Val(self.sconst("'"), "str"), self.dyn_type_name(o), Val(self.sconst("' object is not callable"), "str")])
         self.raise_("TypeError", msg.v)
     else:
         # an attribute or method no boxed value of this type has: AttributeError, naming its type

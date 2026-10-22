@@ -3111,7 +3111,13 @@ void pys_dict_update(Dict *d, Dict *o) {
   if (o == d || !o->len) return;
   if (!d->len && clean(o)) { retable(d, o); return; }
   if ((d->size ? d->size : 8) * 2 / 3 < o->len) build(d, d, keysize(((d->len + o->len) * 3 + 1) / 2));
-  for (I e = 0; e < o->n; e++) if (dlive(o, e)) dset(d, o->keys[e], o->hs[e], o->vals[e]);
+  I used = o->len;
+  for (I e = 0; e < o->n; e++) if (dlive(o, e)) {
+    dset(d, o->keys[e], o->hs[e], o->vals[e]);
+    /* A key comparison can mutate o. Check after insertion, as dict_dict_merge does,
+       so a callback's own exception wins and value-only changes remain allowed. */
+    if (o->len != used) pys_fail("RuntimeError: dict mutated during update");
+  }
 }
 /* d.update(pairs) of a list of (key, value) tuples, and dict.fromkeys(keys, v) of a list: one
    insertion per item, as PyDict_MergeFromSeq2 and _PyDict_FromKeys make them */
