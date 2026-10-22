@@ -12,7 +12,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler import ircheck
-from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, Val
+from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, NOLABELS, Val
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
 from src.pystachy_compiler.union_state import UnionState
@@ -446,6 +446,89 @@ class UnionProofTests(unittest.TestCase):
                         c.g.verify(c.fn, False)
                 self.assertEqual(calls, [True])
 
+    def test_cached_graph_borrows_labels_without_mutating_shared_edges(self):
+        c = Case("borrowed_edges", [U])
+        c.op("union.tag", "int", a=[("%a0", U)])
+        c.op("cbr", a=[("true", "bool")], b=["next", "next"])
+        shared = c.b.code[-1].b
+        c.block("next")
+        c.op("phi", "int", a=[("0", "int")], b=["entry"])
+        c.op("cbr", a=[("true", "bool")], b=["next", "next"])
+        c.b.code[-1].b = shared
+        c.block("unused")
+        c.ret()
+        c.b.code[-1].b = NOLABELS
+        before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
+
+        def observe(fn, tags, at, successors, types):
+            self.assertIs(successors[0], shared)
+            self.assertIs(successors[1], shared)
+            self.assertIs(successors[2], NOLABELS)
+            self.assertEqual(successors, [["next", "next"], ["next", "next"], []])
+            return simple_union_proof(fn, tags, at, successors, types)
+
+        with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
+            c.g.verify(c.fn, False)
+        self.assertEqual(proof.call_count, 1)
+        for instruction, labels, values in before:
+            self.assertIs(instruction.b, labels)
+            self.assertEqual(instruction.b, values)
+        self.assertEqual(NOLABELS, [])
+
+    def test_cached_graph_copies_before_accumulating_edges_and_check_failure(self):
+        for extra, check_labels in [(False, []), (False, ["left", "left"]),
+                                    (True, []), (True, ["left", "left"])]:
+            with self.subTest(extra=extra, check_labels=check_labels):
+                c = Case("accumulated_edges", [U])
+                c.op("union.tag", "int", a=[("%a0", U)])
+                if extra:
+                    # Preserve unusual nonterminal metadata that the structural
+                    # verifier already includes, even when instructions share it.
+                    c.op("ovf", "int", "+", [("0", "int"), ("1", "int")], ["right", "left"])
+                    shared = c.b.code[-1].b
+                    c.op("ovf", "int", "+", [("0", "int"), ("1", "int")])
+                    c.b.code[-1].b = shared
+                c.op("check", s="message", a=[("true", "bool")], b=check_labels)
+                c.b.code[-1].x = "cold-key"
+                c.fn.cold["cold-key"] = "left"
+                for label in ["left", "right"]:
+                    c.block(label)
+                    c.ret()
+                before = [(i, i.b, list(i.b)) for b in c.fn.blocks for i in b.code]
+                expected = (["right", "left", "right", "left"] if extra else []) + check_labels + ["left"]
+
+                def observe(fn, tags, at, successors, types, expected=expected, before=before):
+                    self.assertEqual(successors[0], expected)
+                    for _, labels, _ in before:
+                        self.assertIsNot(successors[0], labels)
+                    self.assertIsNot(successors[0], NOLABELS)
+                    return simple_union_proof(fn, tags, at, successors, types)
+
+                with patch.object(ircheck, "simple_union_proof", side_effect=observe) as proof:
+                    c.g.verify(c.fn, False)
+                self.assertEqual(proof.call_count, 1)
+                for instruction, labels, values in before:
+                    self.assertIs(instruction.b, labels)
+                    self.assertEqual(instruction.b, values)
+                self.assertEqual(NOLABELS, [])
+
+    def test_cached_graph_keeps_invalid_metadata_and_missing_cold_diagnostics(self):
+        for invalid_metadata in [False, True]:
+            with self.subTest(invalid_metadata=invalid_metadata):
+                c = Case("invalid_edges", [U])
+                c.op("union.tag", "int", a=[("%a0", U)], b=["missing"] if invalid_metadata else [])
+                c.op("check", s="message", a=[("true", "bool")])
+                c.b.code[-1].x = "cold-key"
+                before = [(i.b, list(i.b)) for i in c.b.code]
+                error = StringIO()
+                with redirect_stderr(error), self.assertRaises(SystemExit):
+                    c.g.verify(c.fn, False)
+                expected = "union.tag needs one union operand and no extra metadata" if invalid_metadata else "a branch to (none for cold-key), which is no block of it"
+                self.assertIn(expected, error.getvalue())
+                for labels, values in before:
+                    self.assertEqual(labels, values)
+                self.assertEqual(NOLABELS, [])
+
     def test_integer_literal_payload_survives_an_unrelated_join(self):
         for tag in ("int", "float"):
             with self.subTest(tag=tag):
@@ -540,6 +623,49 @@ class UnionProofTests(unittest.TestCase):
                         else:
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
+
+    def test_numeric_metadata_requires_exact_canonical_names(self):
+        for source in ("%a00", "%a+0", "%a-0", "%a٠", "%a０", "%a0x",
+                       "%a9223372036854775808", "%a" + "9" * 200):
+            with self.subTest(source=source):
+                c = basic("noncanonical_parameter", "int")
+                for b in c.fn.blocks:
+                    for i in b.code:
+                        for a in i.a:
+                            if a.v == "%a0":
+                                a.v = source
+                self.assertFalse(simple_union_proof(c.fn, c.g.utags))
+        for suffix in ("01", "+1", "-1", "١", "１", "1x", "9" * 200):
+            with self.subTest(suffix=suffix):
+                c = basic("noncanonical_temporary", "int")
+                c.fn.blocks[0].code[1].a[0].v = "%t" + suffix
+                self.assertFalse(simple_union_proof(c.fn, c.g.utags))
+        # Temporary zero and parameter zero are independent canonical names.
+        c = basic("zero_namespaces", "int")
+        c.fn.blocks[0].code[0].r = [0]
+        c.fn.blocks[0].code[1].a[0].v = "%t0"
+        c.fn.ps = [1, 0, 3, 2]
+        self.assertTrue(simple_union_proof(c.fn, c.g.utags))
+
+    def test_numeric_metadata_bounds_and_collisions_fall_back(self):
+        for number in (-1, 262145, 10 ** 100):
+            with self.subTest(number=number):
+                c = basic("metadata_size_bound", "int")
+                c.fn.n = number
+                self.assertFalse(simple_union_proof(c.fn, c.g.utags))
+        c = basic("sparse_metadata", "int")
+        c.fn.n = 262144
+        self.assertFalse(simple_union_proof(c.fn, c.g.utags))
+        for number in (-1, 999, 2):
+            with self.subTest(result=number):
+                c = basic("invalid_or_duplicate_result", "int")
+                c.fn.blocks[0].code[0].r = [number]
+                self.assertFalse(simple_union_proof(c.fn, c.g.utags))
+        c = basic("slot_temporary_collision", "int")
+        slot = Ins("slot", U, "local")
+        slot.r = [1]
+        c.fn.slots = [slot]
+        self.assertFalse(simple_union_proof(c.fn, c.g.utags))
 
     def test_fast_proof_requires_an_immutable_private_slot(self):
         for mode in ("immutable", "store", "escape", "alias", "optional", "before_init", "scalar_load"):

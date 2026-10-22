@@ -1,7 +1,7 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
-from src.pystachy_compiler.ir import Blk, IFn, Ins
+from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
@@ -151,7 +151,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
         at[l] = j
     succ: list[list[str]] = []
     for b in fn.blocks:
-        out: list[str] = []
+        # Most blocks can borrow their terminator's labels without combining edges.
+        out: list[str] = NOLABELS
+        owned = False
         for j in range(len(b.code)):
             i = b.code[j]
             if i.op not in IROPS:
@@ -309,7 +311,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                         self.bad_ir(fn, b, f"{i.op} needs a nonoptional closed union")
                     for j in range(len(ms)):
                         m = ms[j]
-                        if m == "" or m == "None" or is_opt(m) or is_union(m) or m.count("[") != m.count("]") or m in ms[:j] or m.startswith("%") or m.startswith("*") or m == "#" or ((m == "T" or m == "K" or m == "V" or m == "S") and m not in self.classes):
+                        if m == "" or m == "None" or is_opt(m) or is_union(m) or m.count("[") != m.count("]") or ms.index(m) != j or m.startswith("%") or m.startswith("*") or m == "#" or ((m == "T" or m == "K" or m == "V" or m == "S") and m not in self.classes):
                             self.bad_ir(fn, b, f"{i.op} needs distinct nonoptional union members")
                     union_types[u] = ms
                 ms = union_types[u]
@@ -330,10 +332,19 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} {i.s} numbered {x}, above IFn.n ({fn.n})")
             if (i.op == "call" and i.s not in self.fll and i.s not in self.externs) or (i.op == "init" and "@init." + i.s not in self.fll):
                 self.bad_ir(fn, b, f"a call of {i.s}, which is not compiled")
-            if i.op != "phi":
-                out.extend(i.b)
+            if i.op != "phi" and len(i.b) > 0:
+                if len(out) == 0:
+                    out = i.b
+                else:
+                    if not owned:
+                        out = [l for l in out]
+                        owned = True
+                    out.extend(i.b)
             if i.op == "check":
                 ck = i.x if i.x != "" else i.s
+                if not owned:
+                    out = [l for l in out]
+                    owned = True
                 out.append(fn.cold[ck] if ck in fn.cold else f"(none for {ck})")
         if len(b.code) == 0:
             self.bad_ir(fn, b, "no terminator")

@@ -10,6 +10,54 @@ from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_
 from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
 
 
+def proof_number(v: str, start: int, limit: int) -> int:
+    """Read exactly a canonical nonnegative ASCII integer without slicing or overflow."""
+    if start >= len(v) or (v[start] == "0" and start + 1 != len(v)):
+        return -1
+    n = 0
+    for j in range(start, len(v)):
+        digit = ord(v[j]) - 48
+        if digit < 0 or digit > 9 or n > (limit - digit) // 10:
+            return -1
+        n = n * 10 + digit
+    return n
+
+
+def proof_slot(v: str, definitions: list[Ins | None]) -> int:
+    """Match the declaration's complete slot name, separately from temporary names."""
+    if not v.startswith("%"):
+        return -1
+    dot = v.rfind(".")
+    if dot < 1:
+        return -1
+    n = proof_number(v, dot + 1, len(definitions) - 1)
+    if n < 0:
+        return -1
+    i = definitions[n]
+    if i is None or i.op != "slot":
+        return -1
+    name = i.s if i.s != "" else "h"
+    if dot != len(name) + 1:
+        return -1
+    for j in range(len(name)):
+        if v[j + 1] != name[j]:
+            return -1
+    return n
+
+
+def proof_origin(v: str, fn: IFn, definitions: list[Ins | None], origins: list[int]) -> int:
+    if v.startswith("%a"):
+        n = proof_number(v, 2, len(fn.f.ptypes) - 1)
+        return n if n >= 0 and is_union(fn.f.ptypes[n]) else -1
+    if v.startswith("%t"):
+        n = proof_number(v, 2, len(definitions) - 1)
+        if n >= 0:
+            i = definitions[n]
+            if i is not None and i.op == "mem.load":
+                return origins[n]
+    return -1
+
+
 def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None = None, successors: list[list[str]] | None = None, types: dict[str, list[str]] | None = None) -> bool:
     """Certify immutable parameter narrowing without allocating dataflow states.
 
@@ -17,59 +65,66 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
     storage, nullable values, raw transport and nonlocal control-flow proofs use the
     general solver. No fact comes from an operand's narrowed type annotation.
     """
-    aliases: dict[str, str] = {}
-    domains: dict[str, list[str]] = {}
-    for n in range(len(fn.f.ptypes)):
-        t = fn.f.ptypes[n]
+    domains: dict[str, list[str]] = {} if types is None else types
+    found = False
+    for t in fn.f.ptypes:
         if is_union(t):
-            ts = types[t] if types is not None and t in types else umembers(t)
+            ts = domains[t] if t in domains else umembers(t)
             for member in ts:
-                if member == "None" or is_opt(member) or is_union(member):
+                if member == "" or member == "None" or is_opt(member) or is_union(member):
                     return False
-            v = "%a" + str(n)
-            aliases[v] = v
-            domains[v] = ts
-    if len(domains) == 0:
+            # This cache is local to this proof/verification call; it is never reused
+            # to skip shape validation of another function or a changed instruction.
+            domains[t] = ts
+            found = True
+    if not found:
         return False
-    slots: dict[str, str] = {}
+    size = len(fn.slots) + len(fn.blocks) + 1
+    for b in fn.blocks:
+        size += len(b.code)
+    # IFn.n also numbers labels and slots. Bound both absolute space and sparsity
+    # before allocating: malformed or unusually sparse functions use the solver.
+    if fn.n < 0 or fn.n > 262144 or fn.n > size * 8:
+        return False
+    definitions: list[Ins | None] = [None] * (fn.n + 1)
+    origins: list[int] = [-1] * (fn.n + 1)
     for i in fn.slots:
+        n = i.r[0]
+        if n < 0 or n > fn.n or definitions[n] is not None:
+            return False
+        definitions[n] = i
+        # -2 is an uninitialized union slot; -1 means unusable or unknown.
         if is_union(i.t):
-            slots["%" + (i.s if i.s != "" else "h") + "." + str(i.r[0])] = ""
+            origins[n] = -2
     predecessors: list[int] = [-1] * len(fn.blocks)
     blocks = {fn.blocks[n].label: n for n in range(len(fn.blocks))} if at is None else at
-    payloads: dict[str, str] = {}
-    reads: list[tuple[int, Ins]] = []
-    # Only a private slot initialized once from a union parameter in entry is immutable.
-    # Any other store or any escape removes it, including escapes to read-only callees.
+    # Collect every definition and inspect all slot writes/escapes before deriving
+    # any load alias. A late overwrite or escape must invalidate earlier loads too.
     for bn in range(len(fn.blocks)):
         b = fn.blocks[bn]
-        if b.handler != "":
+        if b.handler != "" or len(b.code) == 0:
             return False
         for i in b.code:
             if i.op == "union.raw" or (i.op == "rt" and (i.s == "ubox" or i.s == "ubox_opt")):
                 return False
-            if i.op == "union.payload":
-                address = "%t" + str(i.r[0])
-                raw = "%t" + str(i.r[1])
-                if address == raw or address in payloads or raw in payloads:
+            for n in i.r:
+                if n < 0 or n > fn.n or definitions[n] is not None:
                     return False
-                payloads[address] = ""
-                payloads[raw] = i.s
-                reads.append((bn, i))
-            if len(slots) > 0:
-                for j in range(len(i.a)):
-                    v = i.a[j].v
-                    if v in slots:
-                        if j != 0 or (i.op != "mem.load" and i.op != "mem.store"):
-                            del slots[v]
-                        elif i.op == "mem.load" and b.label == "entry" and slots[v] == "":
-                            del slots[v]
-                        elif i.op == "mem.store":
-                            source = i.a[1].v
-                            if b.label == "entry" and slots[v] == "" and source in domains:
-                                slots[v] = source
-                            else:
-                                del slots[v]
+                definitions[n] = i
+            for j in range(len(i.a)):
+                n = proof_slot(i.a[j].v, definitions)
+                if n >= 0 and origins[n] != -1:
+                    if j != 0 or (i.op != "mem.load" and i.op != "mem.store"):
+                        origins[n] = -1
+                    elif i.op == "mem.load" and b.label == "entry" and origins[n] == -2:
+                        origins[n] = -1
+                    elif i.op == "mem.store":
+                        source = i.a[1].v
+                        p = proof_number(source, 2, len(fn.f.ptypes) - 1) if source.startswith("%a") else -1
+                        if b.label == "entry" and origins[n] == -2 and p >= 0 and is_union(fn.f.ptypes[p]):
+                            origins[n] = p
+                        else:
+                            origins[n] = -1
         targets = list(b.code[-1].b) if successors is None else successors[bn]
         if successors is None:
             last = b.code[-1]
@@ -82,75 +137,83 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
                 return False
             n = blocks[target]
             predecessors[n] = bn if predecessors[n] == -1 else -2
-    guards: list[str] = [""] * len(fn.blocks)
-    members: list[str] = [""] * len(fn.blocks)
-    equal: list[bool] = [False] * len(fn.blocks)
+    guards: list[int] = [-1] * len(fn.blocks)
     for bn in range(len(fn.blocks)):
         b = fn.blocks[bn]
         branch = b.code[-1]
-        tag = ""
-        origin = ""
+        tag = -1
+        origin = -1
         for i in b.code:
             for a in i.a:
-                if a.v in payloads:
-                    # All extraction definitions were collected before checking uses,
-                    # including uses textually before a definition or in another block.
-                    member = payloads[a.v]
-                    if member == "":
+                n = proof_number(a.v, 2, fn.n) if a.v.startswith("%t") else -1
+                producer = definitions[n] if n >= 0 else None
+                if producer is not None and producer.op == "union.payload":
+                    # Definitions are complete before checking any consumer, even
+                    # a use textually before its producer or in an earlier block.
+                    if n == producer.r[0]:
                         return False
-                    if (i.op == "phi" or i.op == "select" or i.op == "slot.pack" or i.op == "mem.store" or i.op == "mach.store" or i.op == "rt"):
+                    if i.op == "phi" or i.op == "select" or i.op == "slot.pack" or i.op == "mem.store" or i.op == "mach.store" or i.op == "rt":
                         return False
                     t = i.t if i.op == "slot.unpack" else a.t
-                    if t != member:
+                    if t != producer.s:
                         return False
-            if i.op == "mem.load" and is_union(i.t) and i.a[0].v in slots and slots[i.a[0].v] != "":
-                aliases["%t" + str(i.r[0])] = slots[i.a[0].v]
+            if i.op == "mem.load" and is_union(i.t):
+                n = proof_slot(i.a[0].v, definitions)
+                if n >= 0 and origins[n] >= 0:
+                    origins[i.r[0]] = origins[n]
             if i.op == "union.tag" or (i.op == "mach.load" and i.t == "int"):
-                if i.a[0].v not in aliases:
+                origin = proof_origin(i.a[0].v, fn, definitions, origins)
+                if origin < 0:
                     return False
-                tag = "%t" + str(i.r[0])
-                origin = aliases[i.a[0].v]
-            if (i.op == "num.cmp" or i.op == "scalar.cmp") and (i.s == "==" or i.s == "!=" or i.s == "eq" or i.s == "ne") and i.a[0].t == "int" and i.a[1].t == "int" and branch.op == "cbr" and branch.a[0].v == "%t" + str(i.r[0]):
+                tag = i.r[0]
+            if (i.op == "num.cmp" or i.op == "scalar.cmp") and (i.s == "==" or i.s == "!=" or i.s == "eq" or i.s == "ne") and i.a[0].t == "int" and i.a[1].t == "int" and branch.op == "cbr" and branch.a[0].v.startswith("%t") and proof_number(branch.a[0].v, 2, fn.n) == i.r[0]:
                 x = i.a[0].v
                 y = i.a[1].v
-                if y == tag:
-                    tmp = x
+                if y.startswith("%t") and proof_number(y, 2, fn.n) == tag:
                     x = y
-                    y = tmp
-                if x == tag and origin != "":
-                    for t in domains[origin]:
-                        if t in utags and str(utags[t]) == y:
-                            guards[bn] = origin
-                            members[bn] = t
-                            equal[bn] = (i.s == "==" or i.s == "eq")
-    for bn, i in reads:
-        if i.a[0].v not in aliases:
-            return False
-        origin = aliases[i.a[0].v]
-        possible = domains[origin]
-        proven = possible[0] if len(possible) == 1 else ""
-        node = bn
-        # Bound this local search independently of function size. Longer proofs
-        # use the general worklist rather than multiplying backward walks.
-        steps = 0
-        while proven == "" and len(possible) > 1 and predecessors[node] >= 0 and steps < 8:
-            parent = predecessors[node]
-            if guards[parent] == origin:
-                branch = fn.blocks[parent].code[-1]
-                member = members[parent]
-                yes = (fn.blocks[node].label == branch.b[0]) == equal[parent]
-                if len(possible) == 2 and possible[0] != possible[1] and member in possible:
-                    # Either arm leaves a singleton. Keep it as a scalar instead
-                    # of allocating a one-element domain for every payload read.
-                    proven = member if yes else possible[1] if possible[0] == member else possible[0]
-                else:
-                    possible = [t for t in possible if (t == member) == yes]
-                    if len(possible) == 1:
-                        proven = possible[0]
-            node = parent
-            steps += 1
-        if proven == "" or proven != i.s:
-            return False
+                if x.startswith("%t") and proof_number(x, 2, fn.n) == tag and origin >= 0:
+                    guards[bn] = i.r[0]
+                    origins[i.r[0]] = origin
+    for bn in range(len(fn.blocks)):
+        for i in fn.blocks[bn].code:
+            if i.op != "union.payload":
+                continue
+            origin = proof_origin(i.a[0].v, fn, definitions, origins)
+            if origin < 0:
+                return False
+            domain = domains[fn.f.ptypes[origin]]
+            possible = domain
+            proven = possible[0] if len(possible) == 1 else ""
+            node = bn
+            # Bound this local search independently of function size. Longer proofs
+            # use the general worklist rather than multiplying backward walks.
+            steps = 0
+            while proven == "" and len(possible) > 1 and predecessors[node] >= 0 and steps < 8:
+                parent = predecessors[node]
+                guard = guards[parent]
+                if guard >= 0 and origins[guard] == origin:
+                    cmp = definitions[guard]
+                    if cmp is None:
+                        return False
+                    literal = cmp.a[1].v if cmp.a[0].v.startswith("%t") else cmp.a[0].v
+                    value = proof_number(literal, 0, 9223372036854775807)
+                    member = ""
+                    for t in domain:
+                        if value >= 0 and t in utags and utags[t] == value:
+                            member = t
+                    if member != "":
+                        branch = fn.blocks[parent].code[-1]
+                        yes = (fn.blocks[node].label == branch.b[0]) == (cmp.s == "==" or cmp.s == "eq")
+                        if len(possible) == 2 and possible[0] != possible[1] and member in possible:
+                            proven = member if yes else possible[1] if possible[0] == member else possible[0]
+                        else:
+                            possible = [t for t in possible if (t == member) == yes]
+                            if len(possible) == 1:
+                                proven = possible[0]
+                node = parent
+                steps += 1
+            if proven == "" or proven != i.s:
+                return False
     return True
 
 
