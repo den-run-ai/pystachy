@@ -71,6 +71,14 @@ program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the p
   b=${1%.py}; n=${b##*/}; in=/dev/null; [ -f "$b.in" ] && in="$b.in"
   o=1; [ -f "$b.full" ] && o=3
   mp=$PYSTACHY_PATH; [ -f "$b.path" ] && mp=$(cat "$b.path")
+  # Keep hostile path names out of the checkout while exercising the real import
+  # in every native configuration (including Python-free and GC-stress runs).
+  if [ "$n" = closure_paths ]; then
+    if ! { mkdir -p "$T/paths]" && cat "$mp/closure_path_fixture.py" > "$T/paths]/closure_path_fixture.py"; }; then
+      fail=$((fail + 1)); echo "FAIL $n: cannot prepare bracket-path fixture"; return
+    fi
+    mp="$T/paths]"
+  fi
   for mode in $MODES; do
     # the program's stderr goes to $n.err, an AOT build's to $n.build, which must stay empty (what
     # pystachy run writes before it becomes the program goes to $n.err: it must be nothing too)

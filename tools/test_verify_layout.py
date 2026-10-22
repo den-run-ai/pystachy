@@ -71,6 +71,54 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("tests/errors/old.py", result.stderr)
 
+    def test_closure_helper_uses_a_temporary_bracket_path_in_both_modes(self):
+        for name in ("tests/programs/language/closure_paths.py",
+                     "tests/programs/language/closure_paths.path",
+                     "tests/closure_path_modules/closure_path_fixture.py"):
+            self.write(name, (ROOT / name).read_text())
+        self.write("tests/programs/language/closure_paths.out", "ok\n[exit 0]\n")
+        self.write("compiler", f"#!{sys.executable}\n" + '''import os
+from pathlib import Path
+import sys
+
+mode, source = sys.argv[1:3]
+if Path(source).name == "warm.py":
+    sys.exit(0)
+helper = Path(os.environ["PYSTACHY_PATH"])
+assert helper.name == "paths]"
+assert not helper.is_relative_to(Path.cwd())
+assert (helper / "closure_path_fixture.py").read_bytes() == Path(
+    "tests/closure_path_modules/closure_path_fixture.py").read_bytes()
+with open("calls", "a") as log:
+    log.write(mode + " " + str(helper) + "\\n")
+if mode == "run":
+    print("ok")
+else:
+    output = Path(sys.argv[sys.argv.index("-o") + 1])
+    output.write_text("#!/bin/sh\\nprintf 'ok\\\\n'\\n")
+    output.chmod(0o755)
+''')
+        (self.root / "compiler").chmod(0o755)
+        result = self.run_script("tests/run.sh", "./compiler", "jit aot",
+                                 "tests/programs/language/closure_paths.py", PYSTACHY_JOBS="1")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("2 passed, 0 failed", result.stdout)
+        calls = (self.root / "calls").read_text().splitlines()
+        self.assertEqual([call.split(" ", 1)[0] for call in calls], ["run", "build"])
+        for call in calls:
+            self.assertFalse(Path(call.split(" ", 1)[1]).exists())
+        self.assertFalse((self.root / "tests/paths]").exists())
+
+    def test_missing_closure_helper_fails_before_compilation(self):
+        self.write("tests/programs/language/closure_paths.py", "print(1)\n")
+        self.write("tests/programs/language/closure_paths.out", "1\n[exit 0]\n")
+        self.write("tests/programs/language/closure_paths.path", "tests/missing\n")
+        result = self.run_script("tests/run.sh", "true", "jit aot",
+                                 "tests/programs/language/closure_paths.py", PYSTACHY_JOBS="1")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("cannot prepare bracket-path fixture", result.stdout)
+        self.assertIn("0 passed, 1 failed", result.stdout)
+
     def test_check_recordings_fails_on_a_stray_and_on_two_cases_of_one_name(self):
         version = "%d.%d.%d" % sys.version_info[:3]
         self.write(".python-version", version + "\n")
