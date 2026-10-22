@@ -43,7 +43,8 @@ def report(group, steps):
         if name == "gc-self":
             step.update(compiler_interval=5000, ir_identical=True)
         if name == "dynany-fuzz":
-            step.update(programs=3, cases=450, modes=["jit"], mismatches=0)
+            step.update(programs=3, cases=540, parity_cases=90, modes=["jit", "aot", "jit-gc", "aot-gc"],
+                        program_gc_interval=1, mismatches=0)
         if name in merge.GC_STEPS:
             step.update(tests_compiler_interval=1000, tests_interval=1,
                         modes=["jit" if name.startswith("gc-jit") else "aot"])
@@ -219,11 +220,12 @@ class ContractTests(unittest.TestCase):
                 with self.subTest(group=group, mutation=index), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
 
-    def test_dynany_fuzz_requires_full_jit_budget_and_zero_mismatches(self):
+    def test_dynany_fuzz_requires_full_budget_modes_stress_and_zero_mismatches(self):
         groups = merge.load_groups()
         valid = report("contracts", groups["contracts"])
         merge.validate_report(valid, "contracts", groups["contracts"])
-        for key, wrong in (("programs", 2), ("cases", 449), ("modes", ["aot"]),
+        for key, wrong in (("programs", 2), ("cases", 539), ("parity_cases", 89), ("modes", ["jit", "aot"]),
+                           ("program_gc_interval", 0), ("program_gc_interval", True),
                            ("mismatches", 1), ("mismatches", False)):
             for missing in (False, True):
                 data = copy.deepcopy(valid)

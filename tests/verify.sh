@@ -41,8 +41,8 @@
 #   re-fuzz        tools/re_fuzz.py: lib/re, run by CPython, compiles random patterns to the code and
 #                  errors CPython's re does and matches, splits and substitutes as it does, on CPython's
 #                  strs and on Pystachy's UTF-8 ones, and so do test_re's cases too big for gc-stress
-#   dynany-fuzz    tools/dynany_fuzz.py: 3 seeded programs of 150 cases, native JIT against CPython;
-#                  operators, dispatch, identity and containment invariants (sources kept on failure)
+#   dynany-fuzz    tools/dynany_fuzz.py: 3 seeded programs, each with 150 random + 30 typed/Any
+#                  parity cases; JIT/AOT, normal and program GC-stressed (sources kept on failure)
 #   re-probe       tools/re_probe.py: lib/re, run by CPython, enters its matcher and makes contexts no
 #                  more often than fixed limits allow for textwrap's patterns (deterministic counts),
 #                  with the results of CPython's re
@@ -555,12 +555,12 @@ $PY tools/re_fuzz.py > "$L" 2>&1 && r=pass
 step re-fuzz $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) upstream cases and \([0-9]*\) patterns (\([0-9]*\) valid): \([0-9]*\) cases, \([0-9]*\) failed$/, "upstream_cases": \1, "patterns": \2, "valid": \3, "cases": \4, "failed": \5/p' "$L")"
 fi
 
-# ---- dynany-fuzz: three seeded programs of 150 cases, native JIT against CPython
+# ---- dynany-fuzz: seeded differential and typed/Any parity, JIT/AOT and program GC stress
 if want dynany-fuzz; then
 L=$V/dynany-fuzz.log; s=$(now); r=fail
-if $PY tools/dynany_fuzz.py --compiler "$V/pystachy2" --keep "$V/dynany-fuzz" 3 150 > "$L" 2>&1 &&
-    [ "$(tail -1 "$L")" = '3 programs, 450 cases (JIT): 0 mismatches' ]; then r=pass; fi
-step dynany-fuzz $r "$s" "$L" "$(tail -1 "$L" | sed -n 's/^\([0-9]*\) programs, \([0-9]*\) cases (JIT): \([0-9]*\) mismatches$/, "programs": \1, "cases": \2, "modes": ["jit"], "mismatches": \3/p')"
+if $PY tools/dynany_fuzz.py --compiler "$V/pystachy2" --keep "$V/dynany-fuzz" --aot --gc-stress 3 150 > "$L" 2>&1 &&
+    [ "$(tail -1 "$L")" = '3 programs, 540 cases, 90 parity cases (JIT, AOT, JIT-GC, AOT-GC): 0 mismatches' ]; then r=pass; fi
+step dynany-fuzz $r "$s" "$L" "$(tail -1 "$L" | sed -n 's/^\([0-9]*\) programs, \([0-9]*\) cases, \([0-9]*\) parity cases (JIT, AOT, JIT-GC, AOT-GC): \([0-9]*\) mismatches$/, "programs": \1, "cases": \2, "parity_cases": \3, "modes": ["jit", "aot", "jit-gc", "aot-gc"], "program_gc_interval": 1, "mismatches": \4/p')"
 fi
 
 # ---- re-probe: lib/re's matcher entries and contexts for textwrap's patterns, against fixed limits
