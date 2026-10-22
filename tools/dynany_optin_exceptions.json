@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "exceptions": [
+    {
+      "case": "tests/programs/generics/template_return_context_ambiguous.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/generics/template_return_context_ambiguous.py:8: error: expected list[float | int | str] | list[float | int], got list[Any]",
+      "reason": "The heterogeneous template result becomes list[Any] instead of adopting its concrete union-of-list return context.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/782"
+    },
+    {
+      "case": "tests/programs/generics/template_return_context_ambiguous.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/generics/template_return_context_ambiguous.py:8: error: expected list[float | int | str] | list[float | int], got list[Any]",
+      "reason": "The heterogeneous template result becomes list[Any] instead of adopting its concrete union-of-list return context.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/782"
+    },
+    {
+      "case": "tests/programs/generics/template_return_context_local.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/generics/template_return_context_local.py:10: error: expected list[float | int], got list[Any]",
+      "reason": "A mutated template-local heterogeneous list keeps dynamic storage instead of the concrete int-or-float list return context.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/782"
+    },
+    {
+      "case": "tests/programs/generics/template_return_context_local.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/generics/template_return_context_local.py:10: error: expected list[float | int], got list[Any]",
+      "reason": "A mutated template-local heterogeneous list keeps dynamic storage instead of the concrete int-or-float list return context.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/782"
+    },
+    {
+      "case": "tests/programs/inference/any_generators.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/any_generators.py:74: error: nested_outer() yields list[int], but yield from delegates to a generator that yields list[Any]",
+      "reason": "The nested generator yields list[Any], which cannot cross into the outer generator's declared list[int] yield channel.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/773"
+    },
+    {
+      "case": "tests/programs/inference/any_generators.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/any_generators.py:74: error: nested_outer() yields list[int], but yield from delegates to a generator that yields list[Any]",
+      "reason": "The nested generator yields list[Any], which cannot cross into the outer generator's declared list[int] yield channel.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/773"
+    },
+    {
+      "case": "tests/programs/inference/any_iterators.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/any_iterators.py:60: error: expected list[Any], got list[int]",
+      "reason": "An iterator returns an existing typed list[int] through its now-dynamic list[Any] return annotation; that mutable layout crossing is unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/inference/any_iterators.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/any_iterators.py:60: error: expected list[Any], got list[int]",
+      "reason": "An iterator returns an existing typed list[int] through its now-dynamic list[Any] return annotation; that mutable layout crossing is unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/inference/any_methods.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/any_methods.py:41: error: a list[int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it)",
+      "reason": "A method combines its typed list[int] field with a dynamically accessed field, requiring unsupported typed-container boxing while preserving aliases.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/inference/any_methods.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/any_methods.py:41: error: a list[int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it)",
+      "reason": "A method combines its typed list[int] field with a dynamically accessed field, requiring unsupported typed-container boxing while preserving aliases.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    }
+  ]
+}
