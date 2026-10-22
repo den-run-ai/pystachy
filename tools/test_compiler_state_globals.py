@@ -247,6 +247,42 @@ class GlobalOwnershipTests(unittest.TestCase):
         for source, expected in sources:
             self.assertEqual("probe.CACHE" in inventory({"probe": source})[1], expected)
 
+    def test_inventory_constructor_shadows(self):
+        for name in ("list", "dict", "set"):
+            for binding in (f"def {name}(): return 1", f"class {name}: pass",
+                            f"{name} = lambda: 1", f"{name}: object = lambda: 1",
+                            f"({name}, other) = (factory, None)"):
+                with self.subTest(binding=binding):
+                    source = binding + f"\nCACHE = {name}()\n"
+                    self.assertEqual(inventory({"probe": source})[1], set())
+            source = f"{name} = {name}()\n"
+            self.assertEqual(inventory({"probe": source})[1], {f"probe.{name}"})
+            for source in (f"{name} = (CACHE := {name}())\n", f"CACHE = ({name} := {name}())\n"):
+                self.assertEqual(inventory({"probe": source})[1], {f"probe.{name}", "probe.CACHE"})
+            source = f"{name}: object\nCACHE = {name}()\n"
+            self.assertEqual(inventory({"probe": source})[1], {"probe.CACHE"})
+            source = f"def {name}(value=(CACHE := {name}())): return value\nAFTER = {name}()\n"
+            self.assertEqual(inventory({"probe": source})[1], {"probe.CACHE"})
+
+    def test_inventory_annotation_alias_shadows_and_restores(self):
+        for prefix, binding, annotation in (
+            ("from typing import List as L", "L = object", "L[int]"),
+            ("import typing as t", "t = unrelated", "t.List[int]"),
+            ("from typing import Annotated as A", "def A(): pass", "A[list, 'meta']"),
+            ("import builtins as b", "b.list = factory", "b.list"),
+        ):
+            source = f"{prefix}\n{binding}\nCACHE: {annotation} = factory()\n"
+            self.assertEqual(inventory({"probe": source})[1], set())
+        source = "list = factory\nfrom builtins import list\nCACHE = list()\n"
+        self.assertEqual(inventory({"probe": source})[1], {"probe.CACHE"})
+        source = "from typing import List as L\nL = object\nfrom typing import List as L\nCACHE: L[int] = factory()\n"
+        self.assertEqual(inventory({"probe": source})[1], {"probe.CACHE"})
+
+    def test_inventory_constructor_shadow_full_source(self):
+        sources = read_sources()
+        sources["probe"] = "def list(): return 1\nCACHE = list()\n"
+        self.assertEqual(validate_sources(sources), [])
+
     def test_named_expression_aliases_and_inventory(self):
         for body, alias in (
             ("if (alias := KEYWORDS):\n        alias.clear()", "alias"),

@@ -319,28 +319,34 @@ def inventory(sources):
             previous = ({key: set(value) for key, value in names.items()},
                         {key: set(value) for key, value in definite.items()})
             annotations = {name: name for name in BUILTIN_CONTAINERS}
-            for node in scope_nodes(tree.body):
-                annotation_import(node, annotations)
-                for target, origins in import_bindings(node, found, bindings, max_depth).items():
-                    names[target] = names.get(target, set()) | origins
-                for target, origins in import_bindings(node, found, proven, max_depth).items():
-                    definite[target] = definite.get(target, set()) | origins
-                for target, value in pairs(node):
-                    if not isinstance(target, ast.Name):
-                        continue
-                    if container(value, getattr(node, "annotation", None), definite, annotations):
-                        origin = module + "." + target.id
-                        if origin not in found:
-                            found.add(origin)
-                            changed = True
-                        names[target.id] = {origin}
-                        definite[target.id] = {origin}
-                    else:
-                        # A subscript may be scalar: retain possible source owners
-                        # for later writes without declaring another container.
-                        origins = root_name(value, names)
-                        if origins:
-                            names[target.id] = names.get(target.id, set()) | origins
+            for statement in statements(tree.body):
+                nodes = [statement, *(child for child in expression_nodes(statement)
+                                      if isinstance(child, ast.NamedExpr))]
+                for node in nodes:
+                    for target, origins in import_bindings(node, found, bindings, max_depth).items():
+                        names[target] = names.get(target, set()) | origins
+                    for target, origins in import_bindings(node, found, proven, max_depth).items():
+                        definite[target] = definite.get(target, set()) | origins
+                    for target, value in pairs(node):
+                        if not isinstance(target, ast.Name):
+                            continue
+                        if container(value, getattr(node, "annotation", None), definite, annotations):
+                            origin = module + "." + target.id
+                            if origin not in found:
+                                found.add(origin)
+                                changed = True
+                            names[target.id] = {origin}
+                            definite[target.id] = {origin}
+                        else:
+                            # A subscript may be scalar: retain possible source owners
+                            # for later writes without declaring another container.
+                            origins = root_name(value, names)
+                            if origins:
+                                names[target.id] = names.get(target.id, set()) | origins
+                # The statement's RHS/default expressions use the existing names.
+                # Invalidate bindings only after classifying those expressions.
+                for node in nodes:
+                    update_types(node, annotations)
             changed |= previous != (names, definite)
     return trees, found, bindings
 
