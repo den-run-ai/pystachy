@@ -1,5 +1,5 @@
 # pystachy: dynamic-any
-# Reads of proven integer constants cannot allocate. A mutable global still snapshots.
+# Constants and scalar arithmetic cannot allocate. A mutable-global copy snapshots.
 SMALL = 17
 LARGE = 1000
 MUTABLE = 19
