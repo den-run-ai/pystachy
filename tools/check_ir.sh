@@ -68,7 +68,12 @@ tbaa() {
 # .calls lists), attrs (other attributes than its .attrs lists), tbaa (other TBAA tags than its .tbaa
 # lists) or bad (llvm-as rejects the IR); DIR/msg says why
 check() {
-  mp=$PYSTACHY_PATH; [ -f "${1%.py}.path" ] && mp=$(cat "${1%.py}.path")  # (as tests/run.sh)
+  mp=$PYSTACHY_PATH
+  if [ -f "${1%.py}.path" ]; then
+    mp=$(sh tests/prepare_path.sh "$1" "$2") || {
+      echo "cannot prepare import path" > "$2/msg"; echo skip > "$2/result"; return;
+    }
+  fi
   fx=; [ -f "${1%.py}.fx" ] && fx=1
   how=ir; case $1 in runtime.py | */runtime.py) how=rt ;; esac  # (the runtime's part written in the subset)
   opt=$PYSTACHY_OPT; [ -n "$fx" ] || [ -f "${1%.py}.calls" ] || [ -f "${1%.py}.attrs" ] || [ -f "${1%.py}.tbaa" ] && opt=

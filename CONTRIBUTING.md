@@ -28,6 +28,10 @@ Promote useful checks into `tools/` and regression fixtures into their maintaine
 test locations before merging. Curated documentation and reproducible benchmark
 or compatibility reports remain in their established locations.
 `make check-repository` rejects tracked root `research` paths, even when ignored.
+Tracked file and directory names must contain only ASCII letters, digits, dots,
+underscores and hyphens. Tests that need spaces, brackets, Unicode or other special
+characters in paths must create them in temporary directories instead of checking
+them in. `make check-repository` enforces this on the Git index, including staged files.
 Review the full diff for misplaced artifacts elsewhere; the path check cannot
 classify a document's purpose.
 

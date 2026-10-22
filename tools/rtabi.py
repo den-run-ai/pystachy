@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
@@ -74,9 +75,11 @@ progs = [f for f in ["pystachy.py"] + sorted(glob.glob("tests/programs/*/*.py") 
 
 def program(f):
     env = dict(os.environ)
-    if os.path.exists(f[:-3] + ".path"):
-        env["PYSTACHY_PATH"] = open(f[:-3] + ".path").read().strip()
-    r = subprocess.run(COMP + ["ir", f], capture_output=True, text=True, encoding="latin-1", env=env)
+    with tempfile.TemporaryDirectory(prefix="pystachy-rtabi-") as temporary:
+        if os.path.exists(f[:-3] + ".path"):
+            env["PYSTACHY_PATH"] = subprocess.check_output(
+                ["sh", "tests/prepare_path.sh", f, temporary], text=True).rstrip("\n")
+        r = subprocess.run(COMP + ["ir", f], capture_output=True, text=True, encoding="latin-1", env=env)
     return f, sigs(r.stdout) if r.returncode == 0 else {}
 
 

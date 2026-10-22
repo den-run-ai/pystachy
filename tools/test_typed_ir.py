@@ -139,7 +139,7 @@ print(explicit(c))
 
 class ClosurePathTests(unittest.TestCase):
     def test_paths_do_not_change_tuple_layouts_or_closure_types(self):
-        fixture = Path(__file__).resolve().parent.parent / "tests/paths]/closure_path_fixture.py"
+        fixture = Path(__file__).resolve().parent.parent / "tests/closure_path_modules/closure_path_fixture.py"
         source = fixture.read_text() + "\nprint(checks(1))\n"
         expected_ir = None
         for directory in ("ordinary", "x]y", "c[d", "a],b[c", "[id]", "a,b",

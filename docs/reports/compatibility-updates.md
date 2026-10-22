@@ -99,6 +99,50 @@ below records four clean-directory controls for this correction.
 | 2026-10-21 dynamic `Any` numeric object identity (#807), **partial** | `8433b9d7`; compiler/runtime/tests/docs after #819 | Pinned CPython validates 1,563 recordings and 96 deviations. The retained dynamic-`Any` corpus preserves all 87 acceptances and 12 rejections; 65 accepted programs change IR for identity boxes/slots. Exact-tree native CI is green and reports zero mismatches in the 450-case fuzzer, versus five on prior main. Pinned imports remain 148/460. Documented identity boundaries remain under open #797. [Evidence](compatibility-2026-10-21-dynamic-identity-partial.json). |
 | 2026-10-21 dynamic JSON `Any` and `None` loop inference (#823/#835), **partial** | `c39f2ad3`; implementation through `0f69df2b`, plus docs-only #837 | Pinned CPython validates 1,570 recordings and 97 deviations. Six selected programs move from rejection to checked hosted IR: four JSON/`Any` cases and two stale-`None` loop cases; two retained global-loop cases remain accepted. The JSON differential tool passes 22,449 checks, compiler-state contracts pass, and both implementation heads have 32/32 successful jobs. Pinned imports remain 148/460. General typed-container crossings remain under #777. [Evidence](compatibility-2026-10-21-json-any-none-loop-partial.json). |
 | 2026-10-21 dynamic `Any` dict unions and keyword calls (#833/#826), native affected evaluation | `3cbb7e87`; implementation through `511f6e4a`, CI-only #834 and deviation/docs #839 | LLVM 18 rebuild reaches 647,549/18,709 compiler/runtime IR lines. The selected dict-union/keyword corpus passes **36/36** normal and **36/36** GC-stressed JIT/AOT checks; the #839 JSON deviation adds **4/4**. CPython validates 1,586 recordings and 98 deviations, the local 450-case JIT fuzzer has zero mismatches, and imports remain 148/460. Keyword support is still partial under #774; #839 documents live-dictionary-cursor differences. [Evidence](compatibility-2026-10-21-dynany-keywords-native.json). |
+| 2026-10-21 temporary special-character fixture paths (#841), bounded tooling evaluation complete | `42fabd72`; harness/tests/docs only after #839 | All **345** retained `.path` cases preserve their outcomes: **525** JIT/AOT or rejection checks pass, all 345 are identical under the IR oracle, and 178 positive programs pass the IR checker and LLVM assembler. Runtime ABI scanning reports **0 mismatches across 1,751 programs**; pinned CPython still validates 1,586 recordings, 98 deviations and 12 library files. No compiler/runtime/library input or compatibility count changed. [Evidence](compatibility-2026-10-21-path-hygiene.json). |
+
+## 2026-10-21 — #841: temporary special-character fixture paths
+
+Inspected exact [main `42fabd724e63bf7d4ef8c72335688894a8a90d54`](https://github.com/den-run-ai/pystachy/commit/42fabd724e63bf7d4ef8c72335688894a8a90d54),
+the sole merge after the preceding `3cbb7e87` checkpoint. [#841](https://github.com/den-run-ai/pystachy/pull/841)
+changes test harnesses, repository-hygiene checks, fixtures and documentation; it
+does not change compiler, runtime, library or port implementation inputs. The
+existing compiler built from `511f6e4a` was therefore reused, with its SHA-256
+rechecked as `7e58328a...` and kept separate from the evaluated source revision.
+
+The tracked `tests/paths]` fixture moved to an ordinary path. A shared
+`tests/prepare_path.sh` now recreates the hostile bracket-containing path in each
+consumer's temporary directory for execution, CPython recording, `irsame`,
+`check-ir` and runtime-ABI checks. This preserves the path-sensitive closure/tuple
+regression while the repository check newly rejects tracked names outside ASCII
+letters, digits, dots, underscores and hyphens.
+
+[Machine-readable evidence](compatibility-2026-10-21-path-hygiene.json) retains
+the exact source/head/build identities, changed-file hashes, commands, setup
+attempts, toolchain versions, workflow runs and boundaries.
+
+| Fresh measurement | Result and boundary |
+|---|---|
+| All retained `.path` cases | **345** cases selected; **525** JIT/AOT or expected-rejection checks pass with zero failures. The same 345 cases are byte-identical when the reused compiler is compared with itself through `irsame`. |
+| Positive path programs | All **178** pass Pystachy's IR check and LLVM 18's assembler. The focused closure case separately passes **2/2** JIT/AOT, one IR validation and one identical-IR comparison. |
+| Runtime ABI and tool contracts | `rtabi.py` reports **0 mismatches** across 1,751 programs, 13,608 C-runtime uses and 135 subset-runtime functions. Repository hygiene passes with **11/11** unit tests, verification layout with **9/9**, and closure-path typing with **3/3**. |
+| CPython recordings | Pinned CPython **3.13.16** validates all **1,586 recordings**, **98 deviations** and 12 pinned library files with zero failures, unchanged from the preceding checkpoint. |
+| Exact PR-head workflows | CI, Coverage, Variants, Lint, Packages and Installation complete with **75 successful jobs**, one expected skipped coverage-publish job, and no failure or cancellation. Final automated review of `72c8968b` reports no finding after the initial `irsame` coverage gap was fixed. |
+
+Two setup mistakes are retained rather than hidden. Direct package-style invocation
+of `tools.test_repository_hygiene` could not resolve its top-level sibling import;
+the maintained `make check-repository` discovery command passed the checker and all
+11 unit tests. A first recording attempt used bare CPython without
+`typing_extensions` and was stopped after dependency errors; the pinned dependency
+wrapper then completed the full recording inventory with zero failure. Neither is a
+compiler, harness or compatibility regression.
+
+No import sweep, API/port/package/upstream suite, benchmark, memory measurement or
+CPython regrtest was rerun because their inputs did not change. The preceding
+**148/460** isolated-import result is retained rather than presented as fresh.
+This bounded harness evaluation therefore records no compatibility gain, loss or
+new blocker, and the latest fully evaluated marker remains
+**`3c63613b9ad4748dfc030fc923f7704e26b21ba9`**.
 
 ## 2026-10-21 — #833/#826: dynamic `Any` dictionary unions and keyword calls
 
