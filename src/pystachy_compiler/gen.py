@@ -642,6 +642,7 @@ from src.pystachy_compiler.expressions import (
     gen_exc_eq as expressions_exc_eq,
     gen_exc_id as expressions_exc_id,
     gen_expr as expressions_expr,
+    gen_scalar_read_value as expressions_scalar_read_value,
     gen_fmt_error as expressions_fmt_error,
     gen_fmt_raise as expressions_fmt_raise,
     gen_format_arg as expressions_format_arg,
@@ -3509,6 +3510,9 @@ class Gen:
 
     def expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
         return expressions_expr(self, n, want, returnctx, resultsoft)
+
+    def scalar_read_value(self, n: Node) -> bool:
+        return expressions_scalar_read_value(self, n)
 
     def list_hint_type(self, a: str, b: str) -> str:
         return expressions_list_hint_type(self, a, b)

@@ -303,6 +303,7 @@ class IFn:
     def __init__(self, f: FnInfo):
         self.f = f  # f.ret is final once the IFn is complete
         self.numeric_only = False  # function_body proved local numeric identity unobservable
+        self.scalar_reads = False  # scoped arithmetic consumer; no identity escapes its operands
         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]
