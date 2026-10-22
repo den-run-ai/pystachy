@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RTDATA, RTSYM, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -166,7 +166,7 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
             if c == "str":
                 self.runtime("pys_c_str")
                 code.append(f"  call void @pys_c_str(ptr %a{j})")
-            code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 24")  # (bytes after Str's byte length, hash and character-count cache)
+            code.append(f"  %p{j} = getelementptr i8, ptr %a{j}, i64 {STR_HEADER_SIZE}")  # (bytes after Str's byte length, hash and character-count cache)
             cts.append("ptr")
         elif (c == "list[float]" or c == "list[c_int64]") and at:
             self.runtime("pys_c_at")

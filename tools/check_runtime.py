@@ -74,6 +74,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from runtime_roots import check_roots
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LLVM = os.environ.get("PYSTACHY_LLVM", "")
@@ -152,9 +153,10 @@ def load_compiler():
     return m
 
 
-def llvm_ir(src, name, opt="-O0"):
+def llvm_ir(src, name, opt="-O0", all_decls=False):
     # the LLVM IR clang compiles C source file src to, unoptimized (or at level opt)
-    out = subprocess.run([TOOL + "clang", "-S", "-emit-llvm", opt, "-o", "-", src], capture_output=True, text=True)
+    out = subprocess.run([TOOL + "clang", "-S", "-emit-llvm", opt, "-o", "-", src] +
+                         (["-femit-all-decls"] if all_decls else []), capture_output=True, text=True)
     if out.returncode != 0:
         sys.exit(f"check_runtime: clang cannot compile {name}:\n{out.stderr}")
     return out.stdout
@@ -601,7 +603,8 @@ def main():
         bad.append("runtime cache names missing compiler source: " + ", ".join(sorted(obsolete)))
     if len(cached_sources) != len(set(cached_sources)):
         bad.append("runtime cache repeats a compiler source path")
-    ll = llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c")
+    ll = llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c", all_decls=True)
+    bad.extend(check_roots(Path(ROOT, "runtime.c").read_text(), ll))
     fns = functions(ll)
     for f, g in STORES.items():
         fns[f][3].discard(g)

@@ -160,7 +160,10 @@ else:
         self.assertNotIn("FAIL one:", result.stdout)  # (each program's recording is CPython's)
 
     def test_runtime_abi_uses_bracket_path_and_fails_when_preparation_fails(self):
-        for name in ("tools/rtabi.py", "tests/programs/language/closure_paths.py",
+        for name in ("tools/rtabi.py", "tools/strabi.py", "src/__init__.py",
+                     "src/pystachy_compiler/__init__.py", "src/pystachy_compiler/specs.py",
+                     "src/pystachy_compiler/diagnostics.py", "src/pystachy_compiler/names.py",
+                     "tests/programs/language/closure_paths.py",
                      "tests/programs/language/closure_paths.path",
                      "tests/closure_path_modules/closure_path_fixture.py"):
             self.write(name, (ROOT / name).read_text())
@@ -169,7 +172,7 @@ else:
 from pathlib import Path
 import sys
 if sys.argv[1] == "rt":
-    print("@s.0 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1}")
+    print('@s.0 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\\\\00"}, align 8')
 if sys.argv[-1].endswith("closure_paths.py"):
     helper = Path(os.environ["PYSTACHY_PATH"])
     assert helper.name == "paths]"
@@ -180,7 +183,9 @@ print("declare i64 @pys_probe()")
 ''')
         self.write("llvm/clang", f"#!{sys.executable}\n" +
                    'print("%struct.Str = type { i64, i64, i64, [0 x i8] }")\n'
-                   'print("define i64 @pys_probe()")\n')
+                   'print("define i64 @pys_probe()")\n'
+                   'for name, offset in [("len", 0), ("dict_hash", 8), ("chars1", 16), ("s", 24), ("size", 24)]:\n'
+                   '    print(f"@pystachy_abi_str_{name} = constant i64 {offset}")\n')
         for name in ("abi-compiler", "llvm/clang"):
             (self.root / name).chmod(0o755)
 

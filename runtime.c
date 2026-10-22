@@ -57,6 +57,9 @@ __attribute__((unused)) static char *d2s(double f);
 
 typedef int64_t I;
 typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* UTF-8 bytes, NUL-terminated; lazy hash and code-point count + 1 (0: unset) */
+_Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
+               offsetof(Str, chars1) == 16 && offsetof(Str, s) == 24 && sizeof(Str) == 24,
+               "Str ABI: len, dict_hash, chars1, bytes");
 typedef struct { I len, cap; I *a; } List;
 typedef struct { I len; I a[]; } VTuple;                /* immutable homogeneous tuple, counted inline slots */
 typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; I cut, vatomic; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple or object keys; vatomic: the values are ints, floats or bools, whose arrays are atomic; see dicts */
@@ -68,6 +71,7 @@ typedef struct Exc Exc;                                /* a raised exception (se
    They are not GC roots: collect clears them before any object can be reclaimed or
    its address reused, and an owned append invalidates its string's hint. */
 typedef struct { Str *s; I byte, point; } TextHint;
+/* GC_NO_ROOT(text_hints): weak hints cleared before collection and string mutation. */
 static TextHint text_hints[64];
 #ifndef TEXT_PROBE
 #define TEXT_PROBE() ((void)0)
@@ -158,33 +162,46 @@ struct Seg {                           /* header on the first page of a chunk or
 static const short csize[NK / 2] = {16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128,
   136, 168, 200, 232, 264, 328, 392, 456, 520, 648, 776, 904, 1032, 1288, 1544, 1800, 2056,
   2568, 3080, 3592, 4104, 5128, 6152, 7176, 8200};
+/* GC_NO_ROOT(fl, sfl): allocator free lists; marking would retain dead objects. */
 static W *fl[NK], *sfl[NK];            /* free list being allocated from; its stand-in under stress */
+/* GC_NO_ROOT(avail, chunks, pool, bigs, pmap): allocator metadata, not strong references. */
 static Seg *avail[NK], *chunks, *pool, *bigs, ***pmap;
 static uintptr_t gc_lo, gc_hi;         /* bounds of the pages in the page map */
 static I gc_allocd, gc_limit = GC_MIN, gc_live, gc_heap, gc_peak, gc_n, gc_ns, gc_stress, gc_tick;
 static I gc_big, gc_big_limit = BIG_MIN;   /* pointer-free large-object bytes handed out since the last collection */
 static I gc_ext;                       /* malloc'd bytes that heap objects hold: open files' buffers (see I/O) */
 static int gc_off, gc_stats;
+/* GC_NO_ROOT(gc_bottom): stack boundary; mark_roots scans the stack range explicitly. */
 static char *gc_bottom;                /* the stack is scanned from the collector up to here */
+/* GC_NO_ROOT(gc_roots): program root addresses; mark_roots scans their referenced slots. */
 static I **gc_roots, gc_nroots;        /* addresses of the program's pointer-typed globals */
+/* GC_NO_ROOT(mstk): temporary collector work stack, consumed during marking. */
 static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges */
 static I msp, mcap;
+/* GC_ROOT(ch1): cached single-byte strings retained for later reads. */
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
+/* GC_ROOT(args): command-line argument list retained by the runtime. */
 static List *args;
+/* GC_ROOT(warnopts): lazily allocated sys.warnoptions survives its callers. */
 static List *warnopts;                 /* sys.warnoptions, made by its first read (pys_warnoptions) */
+/* GC_ROOT_RANGE(wr_fired): queued weak-reference callbacks must survive until invoked. */
 static void **wr_fired;                /* the fire functions of weak references whose referents died, */
 static I wr_head, wr_nfired, wr_cap;   /* [wr_head, wr_nfired) to run: roots (see weak references) */
+/* GC_ROOT(xr): active exception state outlives the frame that created it. */
 static struct { Exc *cur, *handled, *shown, *pend, *closed; } xr;   /* the exception raised last, the one being
                                      handled, the uncaught one whose str() is being shown, the one a with-file's
                                      close raised while unwinding (see exceptions), the one a generator raised
                                      as close() closed it (see generators) */
 static int eh;                         /* the program has try or with: stored by pys_eh_on alone (see exceptions) */
 typedef void Thrower(Exc *);
+/* GC_NO_ROOT(xthrow): native code address, never a heap object. */
 static Thrower *xthrow;                /* where the funnels send what they raise: NULL until pys_eh_on (ditto),
                                           or until an uncaught exception object is reported */
 typedef struct { void (*fn)(void *); void *arg; } Unwind;
+/* GC_ROOT_RANGE(unw): malloc-backed pending unwind actions contain heap arguments. */
 static Unwind *unw;                    /* unwind actions, malloc'd: their arguments are roots (see exceptions) */
 static I nunw, cunw;
+/* GC_ROOT_RANGE(protos): malloc-backed table retains exception class objects. */
 static Exc **protos;                   /* exception classes' class objects, malloc'd: roots (see exceptions) */
 static I nprotos, cprotos;
 
@@ -423,6 +440,7 @@ static inline void *gc_box(int atomic) { return atomic ? pys_alloc_atomic(15) : 
    frees its fire function forgets it, before the function's slot can be reused. */
 typedef struct WeakRef WeakRef;
 struct WeakRef { WeakRef *next; void *target; void *fire; };
+/* GC_NO_ROOT(weakrefs): weak registry; weakrefs_sweep removes unmarked referents. */
 static WeakRef *weakrefs;
 void *pys_weakref_new(void *target, void *fire) {
   WeakRef *ref = pys_alloc_atomic(sizeof *ref);
@@ -564,6 +582,7 @@ static Str *done(Buf *b) { return pys_str(b->p, b->n); }
 /* float text: CPython converts floats without the C locale (its own dtoa), so a Python that shares the
    process and calls setlocale (an embedded or hosting CPython, or a C function) must not change it:
    then (c_num, set by pys_c_numeric) snprintf and strtod run in the C locale */
+/* GC_NO_ROOT(c_num): libc locale handle, outside the Pystachy heap. */
 static locale_t c_num;
 void pys_c_numeric(void) { if (!c_num) c_num = newlocale(LC_ALL_MASK, "C", (locale_t)0); }
 static double fstrtod(const char *s, char **e) {
@@ -655,6 +674,7 @@ I pys_bytes_get(Str *s, I i) { return (unsigned char)s->s[idx(i, s->len, "IndexE
    str in place but what made it (pys_str_iadd's owned str is one an append allocated, _rt.str_new's
    fill), except hstrd's cached dict_hash, which the bytes determine: str0 is zeroed and writable,
    as a literal is, and the GC skips it as it does a literal (not in its heap) */
+/* GC_NO_ROOT(str0): static empty string; this union contains no heap pointers. */
 static union { Str s; char b[sizeof(Str) + 1]; } str0;
 static Str *short_slice(Str *s, I lo, I n) { return n ? byte1((unsigned char)s->s[lo]) : &str0.s; }
 Str *pys_str_slice(Str *s, I lo, I hi) {      /* all of s is s itself, as in CPython: s[:], a strip that strips nothing */
@@ -1729,6 +1749,7 @@ Str *pys_default_repr(Str *cls, void *p) {
   const char *f = "<%s object at %p>"; int n = snprintf(0, 0, f, cls->s, p);
   Str *s = pys_alloc_atomic(sizeof(Str) + n + 1); s->len = n; snprintf(s->s, n + 1, f, cls->s, p); return s;
 }
+/* GC_NO_ROOT(busy): active repr arguments remain rooted by their callers and unwind actions. */
 static void **busy; static I nbusy, cbusy;   /* objects whose generated __repr__ is running */
 static void unbusy(void *p) { for (I i = nbusy - 1; i >= 0; i--) if (busy[i] == p) { busy[i] = busy[--nbusy]; return; } }
 I pys_repr_enter(void *p) {
@@ -2435,6 +2456,7 @@ typedef struct Undo {                               /* for sort_undo: the list, 
   I *fd, *fs, fn;                                   /* items only in the buffer, and fd, where they go back; */
   struct Undo *outer;                               /* keep_u when the sort began */
 } Undo;
+/* GC_NO_ROOT(keep_u): points to the active sort frame; its stack/unwind action roots the values. */
 static Undo *keep_u;                                /* the Undo of the sort running (a comparison may sort */
                                                     /* another list), NULL if it needs none; set only when eh */
 #define KEEP(dst, src, k) do { Undo *u_ = keep_u; u_->fd = (dst); u_->fs = (src); u_->fn = (k); } while (0)
@@ -3251,17 +3273,18 @@ DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_float, "f");
 DSTR(dd_list, "LA"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
 DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
 DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
-#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0}
+#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
 DTYPE(pys_dyntype_none, DK_NONE, dd_none, dn_none); DTYPE(pys_dyntype_bool, DK_BOOL, dd_bool, dn_bool);
 DTYPE(pys_dyntype_int, DK_INT, dd_int, dn_int); DTYPE(pys_dyntype_float, DK_FLOAT, dd_float, dn_float);
 DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
 DTYPE(pys_dyntype_dict, DK_DICT, dd_dict, dn_dict); DTYPE(pys_dyntype_tuple, DK_TUPLE, dd_tuple, dn_tuple);
-const Dyn pys_dyn_none_box = {&pys_dyntype_none, 0};
+const Dyn pys_dyn_none_box = {&pys_dyntype_none, 0}; /* GC_NO_ROOT(pys_dyn_none_box, pys_dyn_true_box, pys_dyn_false_box): immutable scalar boxes reference only static type descriptors. */
 const Dyn pys_dyn_true_box = {&pys_dyntype_bool, 1}, pys_dyn_false_box = {&pys_dyntype_bool, 0};
 #define DI(v) {&pys_dyntype_int, v}
 #define DI4(v) DI(v), DI(v + 1), DI(v + 2), DI(v + 3)
 #define DI16(v) DI4(v), DI4(v + 4), DI4(v + 8), DI4(v + 12)
 #define DI64(v) DI16(v), DI16(v + 16), DI16(v + 32), DI16(v + 48)
+/* GC_NO_ROOT(smallint): immutable integer boxes reference only static type descriptors. */
 static const Dyn smallint[262] = {DI4(-5), DI(-1), DI64(0), DI64(64), DI64(128), DI64(192), DI(256)};   /* -5 to 256 */
 #define DNONE ((Dyn *)&pys_dyn_none_box)
 #define DKIND(x) ((x)->t->kind)
@@ -3420,6 +3443,7 @@ I pys_dyn_hash(Dyn *x) {
 }
 
 /* arithmetic: op 0..11 = + - * / // % ** << >> & | ^ (the program runs a class's dunders first) */
+/* GC_NO_ROOT(dops): operator names are C string literals. */
 static const char *const dops[] = {"+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"};
 /* (CPython's text names an in-place operator by its own symbol, **= too, and ** as "** or pow()") */
 static _Noreturn void dyn_unsupported(Dyn *a, Dyn *b, I op, int inplace) {
@@ -4079,7 +4103,9 @@ typedef struct {
                                         write whose data CPython keeps (so writing it again fails again) */
   char *pb, *buf; dev_t dev; ino_t ino;   /* the two buffers (malloc'd); the file that was opened */
 } File;
+/* GC_NO_ROOT(std_in, std_out, std_err): static streams; names/modes are static and buffers malloc-backed. */
 static File std_in, std_out, std_err;
+/* GC_NO_ROOT(files): weak open-file registry; files_sweep closes unmarked heap files. */
 static File **files;                   /* the open files, malloc'd: the collector does not see them */
 static I cfiles;
 static const char *errcls(int e) {     /* CPython's OSError subclass for an errno (EWOULDBLOCK is EAGAIN) */
@@ -4221,6 +4247,7 @@ static _Noreturn void kbint_exit(void) {   /* a Ctrl-C noted during a stdio call
   out_flush(); fputs("KeyboardInterrupt\n", stderr);
   kbint = 1; pys_finish(); exit(130);
 }
+/* GC_NO_ROOT(finish_hook): native code address installed by the CPython glue. */
 static int (*finish_hook)(void);       /* lib/pyobj.py: finalize the CPython the program embeds (pys_at_finish); 1 if
                                           flushing its sys.stdout failed, which CPython's exit status 120 shows */
 void pys_at_finish(int (*f)(void)) { finish_hook = f; }
@@ -4229,6 +4256,7 @@ void pys_files_exit(void) {            /* the open files closed in the order the
   for (I i = 0; i < nfiles; i++) if (!files[i]->closed && (e = shut(files[i]))) report(files[i], e);
   nfiles = 0;
 }
+/* GC_NO_ROOT(exit_hook): address of a program global already scanned through gc_roots. */
 static void **exit_hook;               /* the address of atexit's _hook (lib/_pystachy_atexit.py), a Callable */
 void pys_exit_hook(void **hook) { exit_hook = hook; }   /* the program's main gives it, where it imports atexit */
 void pys_finish(void) {                /* at exit, what CPython's shows of its end: stdout flushed after the code (see
@@ -4281,6 +4309,7 @@ static _Noreturn void closed_err(void) { pys_fail("ValueError: I/O operation on 
    sees each write to sys.stdout or sys.stderr (n < 0: a flush) first, and takes it (1) when it goes
    through Python's sys.stdout or sys.stderr; in_hook reads sys.stdin through Python's (kind 0 input(),
    1 readline(), 2 read(n)) */
+/* GC_NO_ROOT(std_hook, in_hook): native code addresses installed by the CPython glue. */
 static int (*std_hook)(const char *, I, I);
 static Str *(*in_hook)(I, Str *, I);
 static void put1(File *f, const char *s, I n) {   /* write(): through CPython's layers, or C stdio's (stderr, a terminal) */
@@ -4373,6 +4402,7 @@ static int codec(Str *e) {             /* encoding= as CPython's codec lookup fi
                                           The name is normalized (lowercase; a run of characters other than ASCII
                                           letters, digits and "." is one "_" between them), then it must be an alias,
                                           or one with "." read as "_", or the codec's module name */
+  /* GC_NO_ROOT(codec.alias, codec.module): codec spellings are C string literals. */
   static const char *alias[2] = {" utf8 u8 utf utf8_ucs2 utf8_ucs4 cp65001 ",
     " latin1 latin l1 iso8859_1 iso_8859_1 iso_8859_1_1987 iso_ir_100 iso8859 8859 cp819 ibm819 csisolatin1 "},
     *module[2] = {" utf_8 ", " latin_1 "};
@@ -4635,6 +4665,7 @@ Str *pys_io_defenc(void) { return cstr(defenc()); }
 Str *pys_io_locenc(void) {
   static char e[40];
   if (!*e) {
+    /* GC_NO_ROOT(pys_io_locenc.utf8): locale candidates are C string literals. */
     static const char *const utf8[] = {"C.UTF-8", "C.utf8", "UTF-8"};   /* (the coercion's, in its order) */
     char old[64]; snprintf(old, sizeof old, "%s", setlocale(LC_CTYPE, 0));   /* (a host's own is put back) */
     const char *l = setlocale(LC_CTYPE, ""), *all = getenv("LC_ALL");
@@ -5272,6 +5303,7 @@ void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
 }
 
 /* ---------- the errno module: the platform's error numbers ---------- */
+/* GC_NO_ROOT(errnos): errno names are C string literals. */
 static const struct { const char *name; int value; } errnos[] = {
 #ifdef EPERM
   {"EPERM", EPERM},
@@ -5626,6 +5658,7 @@ static void abspath(Buf *r, const char *d) {            /* os.path.abspath + "/"
   }
 }
 Str *pys_mkdtemp(void) {     /* like CPython: first usable of $TMPDIR $TEMP $TMP /tmp /var/tmp /usr/tmp cwd, mode 0700 */
+  /* GC_NO_ROOT(pys_mkdtemp.env, pys_mkdtemp.none): environment names and error prefix are C literals. */
   static const char *env[] = {"TMPDIR", "TEMP", "TMP"}, *none = "FileNotFoundError: [Errno 2] No usable temporary directory found in [";
   const char *c[7]; int n = 0; char cwd[4096];
   for (int i = 0; i < 3; i++) { char *v = getenv(env[i]); if (v && *v) c[n++] = v; }
@@ -5775,7 +5808,9 @@ Str *pys_string_at(I a, I n) {         /* ffi.string_at: n bytes at a, as ctypes
    their size would be if it were the heap's */
 #define TRK_BYTES 512
 typedef struct { void *o; I v; } Trk;  /* (a free slot: o is NULL, v the next free one) */
+/* GC_NO_ROOT(trk): weak owner table; values are CPython references, outside this heap. */
 static Trk *trk;
+/* GC_NO_ROOT(dq): queued CPython references, outside the Pystachy heap. */
 static I ctrk, trk_free = -1, *dq, ndq, cdq, trk_gc, trk_exit;
 I pys_track(void *o, I v, I n) {
   gc_allocd += TRK_BYTES + (n > 0 ? n : 0);
@@ -5807,6 +5842,7 @@ I pys_trk_pop(void) {                  /* at exit (pyembed.c): every value not r
   return 0;
 }
 I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), unsigned int (1), unsigned 64-bit (2), or such a result (3) */
+  /* GC_NO_ROOT(pys_c_check.m): conversion error messages are C string literals. */
   static const char *m[] = {"OverflowError: Python int too large to convert to C int", "OverflowError: Python int too large to convert to C unsigned int",
                             "OverflowError: can't convert negative int to unsigned", "OverflowError: C unsigned result is too large for int"};
   if (k == 0 ? v != (int32_t)v : k == 1 ? v < 0 || v > 0xFFFFFFFFLL : v < 0) pys_fail(m[k == 1 && v < 0 ? 2 : k]);
