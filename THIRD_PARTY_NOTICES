@@ -198,7 +198,7 @@ marked in the source; it is derived from Python and is used under the same licen
 notice.
 
 lib/random.py is CPython 3.13.16's Lib/random.py with the edits lib/README.md lists, each
-marked in the source, including a port of m_lgamma() from Modules/mathmodule.c. lib/_pyrandom.py
+marked in the source. lib/_pyrandom.py
 is Pystachy's own _random.Random for it, written after Modules/_randommodule.c and the float hash
 of Python/pyhash.c, whose docstrings and comments it keeps. They are derived from Python and are
 used under the same license and copyright notice; the Mersenne Twister in lib/_pyrandom.py is
@@ -372,59 +372,6 @@ ports/ordered_set/__init__.py is ordered-set 4.1.0's module, edited where
 ports/ordered_set/PORT.md lists (each edit is marked "Pystachy port:"). ordered-set is used under
 the MIT License, whose text and copyright notice ("Copyright (c) 2012-2022 Elia Robyn Lake") are
 in ports/ordered_set/LICENSE.
-
-pyaes (ports/pyaes/)
---------------------
-
-ports/pyaes/__init__.py and aes.py are pyaes 1.6.1's modules, edited where ports/pyaes/PORT.md
-lists (each edit is marked "Pystachy port:"). pyaes is used under the MIT License, whose text and
-copyright notice ("Copyright (c) 2014 Richard Moore") are in ports/pyaes/LICENSE.
-
-pyfiglet (ports/pyfiglet/)
---------------------------
-
-ports/pyfiglet/__init__.py and version.py are pyfiglet 1.0.4's modules, edited where
-ports/pyfiglet/PORT.md lists (each edit is marked "Pystachy port:"). pyfiglet is used under the
-MIT License, whose text and copyright notice (2007-2018, Christopher Jones, Stefano Rivera, Peter
-Waller and various contributors) are in ports/pyfiglet/LICENSE.
-
-ports/pyfiglet/_fontdata.py holds three of the fonts that pyfiglet 1.0.4 ships, standard.flf,
-slant.flf and small.flf, unmodified, as strings. They are FIGlet's fonts: "Standard by Glenn
-Chappell & Ian Chai 3/93", "Slant by Glenn Chappell 3/93" and "Small by Glenn Chappell 4/93",
-modified by John Cowan, Paul Burton and patorjk, as their comment lines say. Each says:
-"Permission is hereby given to modify this font, as long as the modifier's name is placed on a
-comment line." FIGlet distributes them under this license:
-
-Copyright (C) 1991, 1993, 1994 Glenn Chappell and Ian Chai
-Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001 John Cowan
-Copyright (C) 2002 Christiaan Keet
-Copyright (C) 2011 Claudio Matsuoka
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-3. Neither the name of the copyright holders nor the names of their
-   contributors may be used to endorse or promote products derived
-   from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
-OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
-USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 pylev (ports/pylev/)
 --------------------

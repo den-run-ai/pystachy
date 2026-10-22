@@ -40,7 +40,6 @@ observable contract.
 | `codecs` | `Lib/codecs.py` | `2f278497548b8313580b247a1097a0a304e5087a355ebb11a92ec685fa9e63ff` |
 | `weakref` | `Lib/weakref.py` | `56f8d313fb74019e53eb9287400702fbce788b7fe30e097b0b6e06296f3f080c` |
 | `warnings` | `Lib/warnings.py` | `e040f52be0199c69fa8c0d35428ba64e6f9b6412691a689ccbd7c23e07c6ed3f` |
-| `opcode` | `Lib/opcode.py` | `aaf8e6e0291b6ff439c27ad1657d5b1d2fc738f961bee3fa4863a51e494dc843` |
 | `tomllib._parser` | `Lib/tomllib/_parser.py` | `82591be9349687b88926a7b1a28b0f892a132e4043cb249bd1bd1594bdd721e3` |
 | `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
 | `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
@@ -63,8 +62,8 @@ formatted as glibc 2.39's C-locale `wcsftime()` formats them, within its growing
 reading constants. `string` adapts `Formatter` and takes `_string`'s parsers
 from `_pystachy_string`.
 `statistics` also ports `math_sumprod_impl` from `Modules/mathmodule.c` for
-weighted means, and `random` ports its `m_lgamma`, `lanczos_sum` and `m_sinpi`
-for `binomialvariate`. `urllib.parse` includes codec logic corresponding to CPython's
+weighted means. `random.binomialvariate` uses `math.lgamma`, whose native runtime
+implementation follows CPython's algorithm. `urllib.parse` includes codec logic corresponding to CPython's
 `unicodeobject.c`, `stringlib/codecs.h` and `codecs.c`, plus bracketed-host and
 NFKC-delimiter validation. These modules keep CPython-only paths available when
 CPython runs the source.
@@ -152,7 +151,7 @@ Test headers record source-test hashes and exclusions.
 `tools/random_check.py` runs the adapted `lib/random.py` on CPython, with the C `_random`
 and with `_pyrandom` in its place, and compares the values of every supported method with
 CPython's `random` for 1,352 int, bool and float seeds. It also compares `_pyrandom`'s float
-hash with `hash()` and the `lgamma` port with `math.lgamma()`. Its `--upstream DIR` option
+hash with `hash()`. Its `--upstream DIR` option
 runs the pinned `test_random` (SHA-256
 `04ffe61561421e6cf3b85edcea3ebaca995e6a5def1267cf3562acbb3b9b1337`) and its `randv*.pck`
 files from DIR on both generators, as recorded above.
@@ -235,27 +234,6 @@ SHA-256 `7112503c877d5a4ece90994e9a4d02d2e3339f797d4ddb240ec2c687de716fa1`): 20,
 newlines after each call, `text_encoding()` of names, of `None` in and out of UTF-8 mode and of
 `stacklevel`s beyond a C int, `_pystachy__io.py`'s names, and the signatures and docstrings:
 200,769 checks.
-
-`tools/opcode_tables.py` reads CPython 3.13.16's `Include/opcode_ids.h` (SHA-256
-`e30e7b48f764be2bf4530a931ea5a120d4d91d1427a31c5979206a98fa672ca1`) and
-`Include/internal/pycore_opcode_metadata.h`
-(`d2c33fe54ba2416e5badcfc95a940dd1be0be09e27f21756f7009ba630776cce`), which CPython's
-`Tools/cases_generator` makes from `Python/bytecodes.c`, and writes `lib/_pystachy_opcode_db.py`
-once `lib/_pystachy_opcode.py` on those tables gives what CPython's `_opcode` gives: every predicate of
-every opcode, and `stack_effect()` of every real opcode for each `jump`, over 4,000 opargs at the edges
-of a C int and between them (2,708,100 checks). `tools/opcode_check.py` runs `lib/_pystachy_opcode.py`
-on CPython and compares it with the C module (`Modules/_opcode.c`, SHA-256
-`eeb27e6027d9afd5d66aad063f2e080bdbf9fc09187a66385fcbd4d1b1bf1c6f`, whose `stack_effect()` and
-predicates are those of `Python/compile.c`, SHA-256
-`1ac4e5a70e82d97a56cbb6d6b9ae1e40102f9c9b4f0f0615b4ec5823f8b98ea0`, and whose intrinsics' names are
-`Python/intrinsics.c`'s, SHA-256 `f99dd40886e0abec7f3fb8caa151933959a65cca1ba1ff0249d179abff6886b4`):
-the predicates of every number from -1,100 to 1,100 and at the edges of a C int, `stack_effect()` of
-every opcode below 600 for each `jump` over opargs at the edges of a C int and a C long, 200,000 random
-calls, the lists of operators and intrinsics, `get_executor()` of objects that are not code objects,
-and the functions' signatures, docstrings and names: 1,431,973 checks.
-`tests/programs/upstream/upstream_opcode.py` adapts every test of `Lib/test/test__opcode.py` (SHA-256
-`26d8f889040bbd9416970111df4e784a7f1047901428f9e1758bfa6b96c23a60`); its header lists the
-adaptations and the excluded checks.
 
 Regex validation also includes `tests/programs/upstream/upstream_re_*.py`, deterministic
 `tools/re_fuzz.py` comparisons against CPython, and `tools/re_probe.py` checks of

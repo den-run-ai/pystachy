@@ -22,8 +22,6 @@ packages = [
     "iniconfig",
     "jdcal",
     "ordered_set",
-    "pyaes",
-    "pyfiglet",
     "pylev",
     "qrcode",
     "roman",
