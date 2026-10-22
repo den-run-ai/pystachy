@@ -301,9 +301,18 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `Any` takes any operand, also between typed objects of its class
 (`tests/programs/inference/dynany_eq_any_param.py`). One whose parameter has no annotation, or
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
-list compared with an `Any` value's field), the program is compiled again without that call
-(`Gen.xnot`), and the method runs only with objects of its class, as in a module that does not opt
-in (`tests/programs/inference/dynany_eq_template.py`). A normal instance comparison method with
+list compared with an `Any` value's field), the compiler also tries the body against the
+concrete classes of boxed operands, behind exact `DynType` guards. This bounded adapter requires
+the operand to be used exclusively through direct instance fields with the same types as the
+annotated operand class (or the receiver class for an unannotated parameter). Properties,
+whole-operand uses, nested scopes and unsupported syntax retain the fallback. A canonical
+field-typed body is checked once; missing or incompatible fields do not cause per-class retries.
+Typed container fields keep
+their existing storage and aliases: these adapters neither copy nor box their items
+(`tests/programs/inference/dynany_cmp_concrete_body.py`). They are emitted only when the generic
+dynamic body failed, and follow classes discovered by later dispatcher generation. Failed
+concrete attempts have separate `Gen.xnot` keys, so they do not suppress a working adapter or
+typed call (`tests/programs/inference/dynany_eq_template.py`). A normal instance comparison method with
 one concretely annotated operand retains its typed call where that operand fits the annotation.
 For a value of another type, its cross-type helper specializes the same body with an `Any`
 operand, preserving method calls, side effects and exceptions instead of treating the annotation
@@ -311,8 +320,9 @@ as a reason to decline (`tests/programs/inference/dynany_eq_annotated_body.py`,
 `tests/programs/inference/dynany_cmp_annotated_effects.py`). This also handles tuple shapes and
 typed-container annotations when the body can operate on dynamic values. If the dynamic body
 cannot compile, the original typed call remains available to matching values
-(`tests/programs/inference/dynany_cmp_typed_fallback.py`); the unsupported cross-type call still
-uses the documented identity/ordering fallback below. Typed calls and same-hierarchy comparison
+(`tests/programs/inference/dynany_cmp_typed_fallback.py`). If neither its dynamic body nor a
+guarded concrete-class body compiles, the cross-type call still uses the documented
+identity/ordering fallback below. Typed calls and same-hierarchy comparison
 helpers retain their existing behavior.
 A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
 methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
@@ -354,10 +364,12 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
   [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
-- A cross-type comparison method whose body cannot compile for an `Any` operand still does
+- A cross-type comparison method whose body cannot compile for an `Any` operand and falls
+  outside the supported guarded concrete adapter still does
   not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`). Concrete operand annotations alone no
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand lacks a required attribute).
+  Typed container-field comparisons now execute through guarded concrete adapters. Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
   is a correctness gap tracked by #803, not a stable comparison contract.
 - An object is not iterable through an `Any` value yet (iteration of objects is under

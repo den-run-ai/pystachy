@@ -1,0 +1,16 @@
+lt
+lt
+True True
+le
+le
+True True
+gt
+gt
+False False
+ge
+ge
+False False
+ne
+ne
+True True
+[exit 0]
