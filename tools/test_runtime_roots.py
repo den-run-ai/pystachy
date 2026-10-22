@@ -243,6 +243,48 @@ static void mark_roots(void) {
         source = VALID.replace("GC_ROOT(value)", "GC_ROOT_RANGE(value)")
         self.assertIn("GC roots: value is not scanned by mark_roots with ROOT_RANGE storage semantics", self.problems(source))
 
+    def test_root_range_backing_pointer_must_stay_stable(self):
+        source = PRELUDE + """
+/* GC_ROOT_RANGE(value): active range of a malloc-backed root array. */
+static Str **value;
+static long count;
+void move(Str ***);
+EXTRA
+static void mark_roots(void) {
+  SETUP
+  scan((const W *)value, (const W *)(END));
+}
+"""
+        for extra, setup, end in [
+            ("", "", "(value -= 2, value + 1)"),
+            ("", "", "(value = value - 2, value + 1)"),
+            ("", "", "(value = 0, value + 1)"),
+            ("", "Str ***alias = &value;", "(*alias -= 2, value + 1)"),
+            ("", "Str ***alias = &value; Str ***copy = alias;", "(*copy -= 2, value + 1)"),
+            ("", "", "(move(&value), value + 1)"),
+            ("/* GC_NO_ROOT(alias): address of the root pointer. */ static Str ***alias = &value;",
+             "", "(*alias -= 2, value + 1)"),
+            ("static void hidden_move(void) { value -= 2; }", "", "(hidden_move(), value + 1)"),
+            ("static void hidden_move(void) { value -= 2; }", "void (*fn)(void) = hidden_move;", "(fn(), value + 1)"),
+            ("", '__asm__ volatile("# @scan(" ::: "memory");', "value + 1"),
+            ("", '__asm__ volatile("# call ptr @llvm.frameaddress.p0(" ::: "memory");', "value + 1"),
+            ("", '__asm__ goto volatile("# @scan(" ::: "memory" : out); out:;', "value + 1"),
+        ]:
+            with self.subTest(extra=extra, setup=setup, end=end):
+                case = source.replace("EXTRA", extra).replace("SETUP", setup).replace("END", end)
+                self.assertIn("GC roots: value is not scanned by mark_roots with ROOT_RANGE storage semantics", self.problems(case))
+        for end in ["value + 2", "value + count", "value + count + 1"]:
+            # Writes in another function do not invalidate an unchanged scan;
+            # only calls from mark_roots would make those writes relevant here.
+            case = source.replace("EXTRA", "static void resize(void) { value = 0; }").replace("SETUP", "").replace("END", end)
+            self.assertEqual(self.problems(case), [])
+
+    def test_static_holding_root_address_survives_pointer_content_mutation(self):
+        scan = "scan((const W *)&value, (const W *)(&value + 1));"
+        for setup in ["value = 0;", "move(&value);"]:
+            source = "void move(void *);\n" + VALID.replace(scan, setup + scan)
+            self.assertEqual(self.problems(source), [])
+
     def test_unknown_duplicate_and_empty_annotations_fail(self):
         for annotation, expected in [
             ("/* GC_NO_ROOT(missing): no declaration. */", "annotation names no static pointer storage: missing"),

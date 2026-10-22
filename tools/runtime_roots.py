@@ -161,14 +161,27 @@ def scan_roots(ir):
     pointers = {}
     integers = {}
     excluded = set()
+    allocas = {"ptr " + name for name in re.findall(r"^\s*(%[\w.]+) = alloca\b", m[1], re.M)}
+    stable = True
     for line in m[1].splitlines():
         names = set(re.findall(r"@([\w.]+)", line))
-        direct = re.match(r"\s*%[\w.]+ = load i\d+, ptr @([\w.]+)(?:,|$)", line)
+        direct = re.match(r"\s*%[\w.]+ = load (?:i\d+|ptr), ptr @([\w.]+)(?:,|$)", line)
         if direct:
             names.discard(direct[1])
         # A write or address escape can launder an unknown value through a
-        # global. Current root counters are used only by direct integer loads.
+        # global. Current counters and backing pointers use only direct loads.
         excluded.update(names)
+        store = re.match(r"\s*store (.*)", line)
+        if store:
+            destination = operands(store[1])[1]
+            if destination not in allocas:
+                stable = False
+        if re.search(r"\b(?:atomicrmw|cmpxchg)\b", line):
+            stable = False
+        if re.search(r"\b(?:call|invoke|callbr)\b", line):
+            callee = re.match(r"\s*(?:%[\w.]+ = )?(?:(?:tail|musttail|notail) )?(?:call|invoke) (?:void|ptr) @([\w.]+)\(", line)
+            if not callee or (callee[1] != "scan" and not callee[1].startswith("llvm.frameaddress.")):
+                stable = False
 
     def integer(value):
         token = value.split()[-1]
@@ -233,7 +246,7 @@ def scan_roots(ir):
             if load:
                 source = operands(load[2])[0]
                 base = pointer(source)
-                if load[1] == "ptr" and base is not None and not base[2] and base[3]:
+                if load[1] == "ptr" and base is not None and not base[2] and base[3] and base[0] not in excluded:
                     pointers[name] = base[0], base[1] + 1, {}, base[3]
                 elif load[1].startswith("i"):
                     # Only declared global counters are symbolic inputs. Reloading
@@ -261,7 +274,7 @@ def scan_roots(ir):
             if depth == 0:
                 if constant and end[3] and name in layout.globals and not first and last == {"": layout.static_extent(name)}:
                     scanned.add((name, depth))
-            elif depth == 1 and layout.globals.get(name) == "ptr":
+            elif depth == 1 and stable and layout.globals.get(name) == "ptr":
                 distance = add_offset(last, first, -1)
                 # Active dynamic subranges remain a reviewed contract (wr_fired).
                 # Reject constant/affine empty, backward, negative or unaligned
