@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, RTSYM
+from src.pystachy_compiler.specs import CTYPES, NONEVAR, RTSYM
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     RtFn,
@@ -54,6 +54,7 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.lcsoft = []
     self.nonevars = {}
     self.nonesites = {}
+    self.nonepending = {}
     self.narrowed = {}
     self.lkk = {}
     self.branch = 0
@@ -62,6 +63,7 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     # (none of the operation that was compiling when this function's compile began: see Frame)
     self.drying = 0
     self.carried = Val("", "")
+    self.nonecmp = False
     self.fieldcmp = False
     self.cmpnode = self.nokey
     self.stkkey = self.nokey
@@ -167,6 +169,11 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         if self.dyn_widened(f.params[i]):
             # (one that an Any value is assigned later: a dynamic slot from the start, dyn_widen)
             self.mem_store(Val(self.alloca("dyn", f.params[i]), "*dyn"), self.dyn_box(Val(f"%a{i}", t)))
+        elif t == NONEVAR:
+            # A provisional argument is null-only until its producer's inference restarts.
+            # The parameter's later stores can independently reveal its own payload type.
+            pt = self.hints.get(f"none:{self.fnkey(f)}|{f.params[i]}", t)
+            self.mem_store(Val(self.alloca(pt, f.params[i]), "*" + pt), self.coerce(Val("null", "None"), pt))
         else:
             self.mem_store(Val(self.alloca(t, f.params[i]), "*" + t), Val(f"%a{i}", t))
         if f.params[i] in self.lflag:
