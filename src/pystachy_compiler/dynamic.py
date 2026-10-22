@@ -1462,10 +1462,9 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
     t = Val(self.dyn_typeof(o), "dyntype")
     line = self.line
     for bt in ["list[dyn]", "dict[dyn,dyn]", "str", "vtuple[dyn]", "int", "bool", "float"]:
-        # (with keyword arguments, its method of that name whatever the positional ones: the
-        # call's case raises CPython's TypeError once the arguments are evaluated, as its merging
-        # of the keyword arguments does for a name twice, which ** brings, then its binding)
-        if not self.dyn_builtin_takes(bt, m, -1 if len(ks) > 0 else n):
+        # Attribute lookup finds a supported method independently of its call shape. Binding
+        # fails only in call., after every argument has run (including for positional arity).
+        if not self.dyn_builtin_takes(bt, m, -1):
             continue
         hit = self.label()
         nxt = self.label()
@@ -1493,6 +1492,8 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
             for j in range(len(ks)):
                 self.assign(mk("index", "", line, [self.vnode(x), mk("str", ks[j], line, [])]), args[n + j])
             self.dyn_return(f, Val("null", "None"))
+        elif not self.dyn_builtin_takes(bt, m, n):
+            self.raise_("TypeError", self.sconst(builtin_arity(bt, m, n)))
         else:
             x = self.dyn_payload(o, "int" if bt == "bool" else bt)
             r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + self.dyn_call_args(key, args)), "")
@@ -1500,20 +1501,50 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
         self.place(nxt)
 
 
-def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
-    # does builtin type bt (one a box holds) have method m, called with n positional arguments
-    # (n < 0: with any number of them)
+def builtin_limits(bt: str, m: str) -> list[int]:
+    # Positional bounds of a supported boxed builtin method; -1 marks a missing method.
     base = "list" if is_list(bt) else "dict" if is_dict(bt) else "vtuple" if is_vtuple(bt) else "int" if bt == "bool" else bt
     special = {"list.sort": "0 0", "dict.update": "0 1", "dict.pop": "1 2", "dict.setdefault": "2 2", "str.join": "1 1"}
     k = base + "." + m
     if k in special:
-        lo = int(special[k].split(" ")[0])
-        return n < 0 or (lo <= n and n <= int(special[k].split(" ")[1]))
+        return [int(special[k].split(" ")[0]), int(special[k].split(" ")[1])]
     if k not in METHODS:
-        return False
+        return [-1, -1]
     e = METHODS[k]
     ps = [p for p in e[e.find(":") + 1 :].split(",") if p != "" and p != "#"]
-    return n < 0 or (len([p for p in ps if "=" not in p]) <= n and n <= len(ps))
+    return [len([p for p in ps if "=" not in p]), len(ps)]
+
+
+def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
+    # n < 0 asks whether lookup finds the method, without binding any arguments.
+    bounds = builtin_limits(bt, m)
+    return bounds[0] >= 0 and (n < 0 or bounds[0] <= n <= bounds[1])
+
+
+def builtin_arity(bt: str, m: str, n: int) -> str:
+    # CPython's positional binding error. Two shapes remain outside typed-code support even
+    # though CPython accepts them; name that limitation rather than claiming invalid arity.
+    bounds = builtin_limits(bt, m)
+    lo = bounds[0]
+    hi = bounds[1]
+    base = tname("int" if bt == "bool" else bt)
+    if (bt == "str" and m == "replace" and n == 3) or (is_dict(bt) and m == "setdefault" and n == 1):
+        return f"{base}.{m}() with {n} positional argument{'s' if n != 1 else ''} is not supported"
+    if is_list(bt) and m == "sort":
+        return "sort() takes no positional arguments"
+    if bt == "str" and m == "replace":
+        return f"replace() takes {'at least 2 positional' if n < 2 else 'at most 3'} arguments ({n} given)"
+    if is_dict(bt) and m == "setdefault":
+        lo = 1
+    if hi == 0:
+        return f"{base}.{m}() takes no arguments ({n} given)"
+    if lo == hi and hi == 1:
+        return f"{base}.{m}() takes exactly one argument ({n} given)"
+    if bt == "str" and m in ["split", "rsplit", "splitlines", "expandtabs", "encode"]:
+        return f"{m}() takes at most {hi} argument{'s' if hi != 1 else ''} ({n} given)"
+    count = lo if n < lo else hi
+    bound = "" if lo == hi else "at least " if n < lo else "at most "
+    return f"{m} expected {bound}{count} argument{'s' if count != 1 else ''}, got {n}"
 
 
 def gen_dyn_fresh(self, v: Val) -> Val:

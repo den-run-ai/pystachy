@@ -84,6 +84,9 @@ jobs:
       - name: Dynamic Any fuzzer generator and comparison tests
         run: python3 -m unittest discover -s tools -p test_dynany_fuzz.py
 
+      - name: Dynamic Any builtin call binding tests
+        run: python3 -m unittest discover -s tools -p test_dynany_calls.py
+
       - name: Dynamic Any corpus sweep controls
         run: python3 -m unittest discover -s tools -p test_dynany_optin.py
 

@@ -1,0 +1,66 @@
+arg 1
+arg 2
+append TypeError: list.append() takes exactly one argument (2 given)
+append-empty TypeError: list.append() takes exactly one argument (0 given)
+arg 1
+insert TypeError: insert expected 2 arguments, got 1
+arg 1
+clear TypeError: list.clear() takes no arguments (1 given)
+arg 1
+arg 2
+arg 3
+pop TypeError: pop expected at most 1 argument, got 3
+arg 1
+arg 2
+arg 3
+arg 4
+index TypeError: index expected at most 3 arguments, got 4
+arg 1
+sort TypeError: sort() takes no positional arguments
+arg raises
+first-error ValueError: argument first
+missing AttributeError: 'list' object has no attribute 'missing'
+changed [0, 9]
+arg 2
+mutate TypeError: list.append() takes exactly one argument (2 given)
+arg 1
+arg 2
+starred TypeError: list.append() takes exactly one argument (2 given)
+retained [0, 9]
+append AttributeError: 'str' object has no attribute 'append'
+arg 1
+clear TypeError: dict.clear() takes no arguments (1 given)
+arg 1
+arg 2
+arg 3
+pop TypeError: pop expected at most 2 arguments, got 3
+arg 1
+arg 2
+update TypeError: update expected at most 1 argument, got 2
+arg 1
+arg 2
+arg 3
+split TypeError: split() takes at most 2 arguments (3 given)
+arg 1
+arg 2
+splitlines TypeError: splitlines() takes at most 1 argument (2 given)
+arg 1
+arg 2
+strip TypeError: strip expected at most 1 argument, got 2
+arg 1
+arg 2
+arg 3
+arg 4
+index TypeError: index expected at most 3 arguments, got 4
+arg 1
+arg 2
+arg 3
+arg 4
+index TypeError: index expected at most 3 arguments, got 4
+arg 1
+bit-count TypeError: int.bit_count() takes no arguments (1 given)
+arg 1
+bit-count TypeError: int.bit_count() takes no arguments (1 given)
+arg 1
+hex TypeError: float.hex() takes no arguments (1 given)
+[exit 0]

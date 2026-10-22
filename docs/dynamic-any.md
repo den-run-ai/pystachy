@@ -249,7 +249,7 @@ or CPython's `AttributeError`/`TypeError`:
 | `slice`, `module` | a slice, of its bounds and step as `Any` values (an object's `__getitem__` would take a slice object, which Pystachy does not have: `TypeError`), `type(x).__module__` |
 | `getitem`, `setitem`, `delitem`, `contains` | the container protocol |
 | `get.<a>`, `set.<a>` | attribute `a`: a field or property of the class, or a method, which reads as its bound method |
-| `has.<m>.<n>`, `call.<m>.<shape>` | method `m`, called with `n` positional arguments, then the keyword arguments that `<shape>` names (`2-sep-end`: two positional arguments, then `sep=` and `end=`): found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, each class's case binding the arguments to its own method's parameters as a typed call binds them, or raising CPython's `TypeError` where they do not fit; a field's value, read before the arguments as `LOAD_ATTR` reads it (`has.<m>.<n>` gives it) and called as `callv.<shape>` calls it; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` that take `n` positional arguments, with keyword arguments where typed code takes them (`list.sort()`'s and `dict.update()`'s) |
+| `has.<m>.<n>`, `call.<m>.<shape>` | method `m`, called with `n` positional arguments, then the keyword arguments that `<shape>` names (`2-sep-end`: two positional arguments, then `sep=` and `end=`): found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, each class's case binding the arguments to its own method's parameters as a typed call binds them, or raising CPython's `TypeError` where they do not fit; a field's value, read before the arguments as `LOAD_ATTR` reads it (`has.<m>.<n>` gives it) and called as `callv.<shape>` calls it; also supported methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float`, whose positional arity errors run after argument evaluation, with keyword arguments where typed code takes them (`list.sort()`'s and `dict.update()`'s) |
 | `callv.<shape>` | a call of a boxed function value, bound method or object with `__call__`, with the arguments `<shape>` describes, through the function's own calling code (defaults, a closure's env, keyword arguments), or CPython's `TypeError` where the arguments do not fit, worded by the function's qualified name |
 
 Each case calls the class's operation with `Any` arguments: a method whose parameters are
@@ -370,9 +370,14 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (`tests/deviations/dynany_key_none_objects.py`).
 - A builtin type's method that typed code does not support either (`int.to_bytes()`,
   `int.as_integer_ratio()`) raises `AttributeError` where it is called through an `Any` value;
-  typed code rejects it at compile time. So does a builtin type's method called through an
-  `Any` value with arguments it does not take, before they are evaluated, where CPython
-  evaluates them and raises `TypeError`. A class's method raises CPython's `TypeError`.
+  typed code rejects it at compile time. Supported builtin methods evaluate their arguments
+  before raising CPython's positional arity `TypeError`, while missing attributes fail before
+  argument evaluation (`tests/programs/inference/dynany_builtin_arity.py`). The typed subset
+  still lacks three-argument `str.replace()` and one-argument `dict.setdefault()`; those shapes
+  raise an explicit unsupported-call `TypeError` after evaluating their arguments. Static
+  unpacking uses the direct-call error wording: a bool's unpacked `bit_count()`/`bit_length()`
+  arity error names `int` where CPython names `bool`
+  (`tests/deviations/dynany_builtin_star_error.py`).
 - `%` of an `Any` str raises `TypeError`: printf-style formatting is implemented for a str that
   is known as such, which formats `Any` values (`tests/deviations/dynany_str_mod.py`).
 - A slice of an object through an `Any` value raises `TypeError`: its `__getitem__` would take a
