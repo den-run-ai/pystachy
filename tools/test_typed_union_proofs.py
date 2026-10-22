@@ -327,6 +327,59 @@ if "union.raw" in IROPS:
 
 
 class UnionProofTests(unittest.TestCase):
+    def test_payload_source_alias_may_be_defined_later_in_block_order(self):
+        c = Case("later_payload_source_alias", [U])
+        slot = Ins("slot", U, "local")
+        c.fn.n += 1
+        slot.r = [c.fn.n]
+        c.fn.slots.append(slot)
+        address = "%local." + str(slot.r[0])
+        c.op("mem.store", a=[(address, "*" + U), ("%a0", U)])
+        c.guard(yes="loader")
+        c.block("payload")
+        c.payload("%future")
+        payload = c.b.code[0]
+        c.ret()
+        c.block("miss")
+        c.ret()
+        c.block("loader")
+        payload.a[0].v = c.op("mem.load", U, a=[(address, "*" + U)])
+        c.op("br", b=["payload"])
+        self.assertTrue(simple_union_proof(c.fn, c.g.utags))
+        c.g.verify(c.fn, False)
+
+    def test_cached_payload_origin_does_not_alias_raw_bits_or_other_parameters(self):
+        for mode in ("valid", "other_parameter", "raw_bits", "collision"):
+            with self.subTest(mode=mode):
+                c = Case("payload_origin_" + mode, [U, U])
+                values = []
+                for p in range(2):
+                    slot = Ins("slot", U, "local")
+                    c.fn.n += 1
+                    slot.r = [c.fn.n]
+                    c.fn.slots.append(slot)
+                    address = "%local." + str(slot.r[0])
+                    c.op("mem.store", a=[(address, "*" + U), ("%a" + str(p), U)])
+                    values.append(c.op("mem.load", U, a=[(address, "*" + U)]))
+                c.guard(values[0])
+                c.block("hit")
+                c.payload(values[1] if mode == "other_parameter" else values[0])
+                payload = c.b.code[0]
+                if mode == "raw_bits":
+                    c.op("union.tag", "int", a=[("%t" + str(payload.r[1]), U)])
+                elif mode == "collision":
+                    c.op("mem.load", U, a=[("%local.1", "*" + U)])
+                    c.b.code[-1].r = [payload.r[1]]
+                c.finish_pair()
+                self.assertEqual(simple_union_proof(c.fn, c.g.utags), mode == "valid")
+                if mode != "collision":
+                    with redirect_stderr(StringIO()):
+                        if mode == "valid":
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+
     def test_payload_definitions_may_follow_consumers_in_block_order(self):
         for mode in ("int", "float", "address"):
             with self.subTest(mode=mode):

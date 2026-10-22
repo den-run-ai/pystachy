@@ -12,27 +12,20 @@ from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
 
 def proof_number(v: str, start: int, limit: int) -> int:
     """Read exactly a canonical nonnegative ASCII integer without slicing or overflow."""
-    end = len(v)
-    if start >= end:
-        return -1
-    if start + 1 == end:
-        # A single digit needs neither the leading-zero test nor a decimal loop.
-        n = ord(v[start]) - 48
-        return n if n >= 0 and n <= 9 and n <= limit else -1
-    if v[start] == "0":
+    if start >= len(v) or (v[start] == "0" and start + 1 != len(v)):
         return -1
     n = 0
-    if end - start <= 6:
+    if len(v) - start <= 6:
         # Dense metadata IDs are bounded to 262144. Any six ASCII digits fit
         # safely in an integer, so check their range once instead of dividing
         # for an overflow check at every digit. Longer literals keep that check.
-        for j in range(start, end):
+        for j in range(start, len(v)):
             digit = ord(v[j]) - 48
             if digit < 0 or digit > 9:
                 return -1
             n = n * 10 + digit
         return n if n <= limit else -1
-    for j in range(start, end):
+    for j in range(start, len(v)):
         digit = ord(v[j]) - 48
         if digit < 0 or digit > 9 or n > (limit - digit) // 10:
             return -1
@@ -161,6 +154,8 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
         tag = -1
         origin = -1
         for i in b.code:
+            n = -1
+            producer: Ins | None = None
             for a in i.a:
                 n = proof_number(a.v, 2, fn.n) if a.v.startswith("%t") else -1
                 producer = definitions[n] if n >= 0 else None
@@ -174,12 +169,22 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
                     t = i.t if i.op == "slot.unpack" else a.t
                     if t != producer.s:
                         return False
+            if i.op == "union.payload" and len(i.a) == 1 and producer is not None and producer.op == "mem.load":
+                # All definitions are unique and slot writes/escapes were checked
+                # before alias discovery. Cache this already-decoded source in the
+                # payload's otherwise-unused result slot; proof_origin only reads
+                # mem.load entries, so payload bits cannot become union aliases.
+                origins[i.r[1]] = origins[n]
             if i.op == "mem.load" and is_union(i.t):
                 n = proof_slot(i.a[0].v, definitions)
                 if n >= 0 and origins[n] >= 0:
                     origins[i.r[0]] = origins[n]
             if i.op == "union.tag" or (i.op == "mach.load" and i.t == "int"):
-                origin = proof_origin(i.a[0].v, fn, definitions, origins)
+                origin = -1
+                if len(i.a) == 1 and producer is not None and producer.op == "mem.load":
+                    origin = origins[n]
+                if origin < 0:
+                    origin = proof_origin(i.a[0].v, fn, definitions, origins)
                 if origin < 0:
                     return False
                 tag = i.r[0]
@@ -195,7 +200,10 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
         for i in fn.blocks[bn].code:
             if i.op != "union.payload":
                 continue
-            origin = proof_origin(i.a[0].v, fn, definitions, origins)
+            origin = origins[i.r[1]]
+            if origin < 0:
+                # A source defined later in block order was not known above.
+                origin = proof_origin(i.a[0].v, fn, definitions, origins)
             if origin < 0:
                 return False
             domain = domains[fn.f.ptypes[origin]]
