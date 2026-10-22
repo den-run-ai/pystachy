@@ -12,8 +12,6 @@ support for its complete upstream package or dependencies.
 | [iniconfig](iniconfig/PORT.md) | 2.3.1 | INI parsing and configuration access with conversions |
 | [jdcal](jdcal/PORT.md) | 1.4.1 | Gregorian/Julian ↔ split Julian dates |
 | [ordered-set](ordered_set/PORT.md) | 4.1.0 | Insertion-ordered sets of strings |
-| [pyaes](pyaes/PORT.md) | 1.6.1 | AES blocks with integer-list keys/data |
-| [pyfiglet](pyfiglet/PORT.md) | 1.0.4 | ASCII banners in three embedded fonts |
 | [pylev](pylev/PORT.md) | 1.4.0 | Edit distances for strings and typed sequences |
 | [qrcode](qrcode/PORT.md) | 8.2 | QR matrices and terminal text from strings |
 | [roman](roman/PORT.md) | 5.2 | Roman numeral conversions |
