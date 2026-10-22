@@ -752,11 +752,11 @@ supported alternatives.
   annotation whose type aliases expand to more than 65,536 nodes
 - in a module that opts in to [dynamic `Any`](../dynamic-any.md): a typed mutable container
   (`list[int]`, `dict[str, int]`, a set) that would become an `Any` value, an operation on `Any`
-  values that the prototype does not implement, keyword or unpacked arguments in a call of an
-  `Any` value or its method, and storage that holds `None` before an `Any` value but cannot be
-  made `Any` from its first store: a generator's or closure's local, a module variable that a
-  function gives the `Any` value, a field that code outside its class's methods gives it, a
-  display of `None` items (`tests/errors/inference/dynany_*.py`)
+  values that the prototype does not implement, an `Any` value unpacked into a call's arguments
+  (`f(*xs)`), and storage that holds `None` before an `Any` value but cannot be made `Any` from
+  its first store: a generator's or closure's local, a module variable that a function gives the
+  `Any` value, a field that code outside its class's methods gives it, a display of `None` items
+  (`tests/errors/inference/dynany_*.py`)
 
 ### Exceptions and exception classes
 

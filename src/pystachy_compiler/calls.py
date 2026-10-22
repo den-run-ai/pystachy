@@ -205,6 +205,7 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
             callee = callee.kids[0]
         if callee.kind == "name":
             callee.mchk = ""
+    receiver = Val("", "")
     if f.kind == "attr" and not self.static_callee(f) and f.kids[0].kind != "val":
         receiver = self.expr(f.kids[0], "")
         if self.reference_union(receiver.t):
@@ -214,6 +215,33 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
         f = mk("attr", f.s, f.line, [self.vnode(receiver)])
     elif f.kind != "attr" and f.kind != "val" and not self.static_callee(f):
         f = self.vnode(self.expr(f, ""))
+    dynh = Val("", "")
+    if f.kind == "attr" and receiver.t == "dyn":
+        # (o.m(*t, **d) of an Any o: the method is found first, as CPython's LOAD_ATTR finds it,
+        # with the call's shape, which the displays, tuples and **kwargs that the stars unpack
+        # give without evaluating them; then the arguments: dyn_method_found)
+        npos = 0
+        names: list[str] = []
+        known = True
+        for a in args:
+            if a.kind == "kw":
+                names.append(a.s)
+            elif a.kind == "dstar" and a.kids[0].kind == "dict" and len([i for i in range(0, len(a.kids[0].kids), 2) if a.kids[0].kids[i].kind != "str"]) == 0:
+                names = names + [a.kids[0].kids[i].s for i in range(0, len(a.kids[0].kids), 2)]
+            elif a.kind == "dstar" and is_kw(self.dry(a.kids[0])):
+                names = names + kw_names(self.dry(a.kids[0]))
+            elif a.kind == "starred" and (a.kids[0].kind == "list" or a.kids[0].kind == "tuple") and len([x for x in a.kids[0].kids if x.kind == "starred"]) == 0:
+                npos += len(a.kids[0].kids)
+            elif a.kind == "starred" and is_tuple(unopt(self.dry(a.kids[0]))):
+                npos += len(targs(unopt(self.dry(a.kids[0]))))
+            elif a.kind == "starred" or a.kind == "dstar":
+                known = False
+            else:
+                npos += 1
+        if known:
+            dynh = self.dyn_lookup(receiver, f.s, npos, names)
+    dynamic = dynh.v != "" or (f.kind == "val" and self.vnodes[int(f.s)].t == "dyn")
+    aw = "dyn" if dynamic else ""  # (an Any call's arguments are Any values: a display is Any's storage)
     printing = f.kind == "name" and f.s == "print" and not self.bound("print")
     sole = len([a for a in args if a.kind != "kw" and a.kind != "dstar"]) == 1
     who = self.star_who(f)
@@ -224,7 +252,7 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
             continue
         if a.kind == "starred" and (a.kids[0].kind == "list" or a.kids[0].kind == "tuple") and len([x for x in a.kids[0].kids if x.kind == "starred"]) == 0:
             for x in a.kids[0].kids:
-                pos.append(x if pure_arg(x) else self.vnode(self.expr(x, "")))  # (*[a, b] of a display: its items)
+                pos.append(x if pure_arg(x) else self.vnode(self.expr(x, aw)))  # (*[a, b] of a display: its items)
         elif a.kind == "starred":
             v = self.expr(a.kids[0], "")
             self.line = a.line
@@ -243,14 +271,25 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
             else:
                 self.err(f"unpacking a {typestr(v.t)} into the arguments of {who if who != '' else 'a function'} is not supported (a tuple's items are)")
         else:
-            pos.append(a if pure_arg(a) else self.vnode(self.expr(a, "")))
-    for a in args:
+            pos.append(a if pure_arg(a) else self.vnode(self.expr(a, aw)))
+    ka = [a for a in args if a.kind == "kw" or a.kind == "dstar"]
+    for ai in range(len(ka)):
+        a = ka[ai]
         if a.kind == "kw":
-            kws.append(a if pure_arg(a.kids[0]) else mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], ""))]))
+            kws.append(a if pure_arg(a.kids[0]) else mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], aw))]))
         elif a.kind == "dstar" and a.kids[0].kind == "dict" and len([i for i in range(0, len(a.kids[0].kids), 2) if a.kids[0].kids[i].kind != "str"]) == 0:
             d = a.kids[0]
+            pack: list[Node] = []
             for i in range(0, len(d.kids), 2):
-                kws.append(mk("kw", d.kids[i].s, a.line, [self.vnode(self.expr(d.kids[i + 1], ""))]))  # (**{"k": v}: its items)
+                # A dict display evaluates every value, but repeated keys replace their value
+                # at the first key's position. Only a duplicate across mappings is a call error.
+                item = mk("kw", d.kids[i].s, a.line, [self.vnode(self.expr(d.kids[i + 1], aw))])
+                names = [k.s for k in pack]
+                if item.s in names:
+                    pack[names.index(item.s)] = item
+                else:
+                    pack.append(item)
+            kws = kws + pack
         elif a.kind == "dstar":
             v = self.expr(a.kids[0], "")
             if not is_kw(v.t) and is_dict(v.t) and targs(v.t)[0] == "str" and n.kids[0].kind == "name" and self.aliases.get(n.kids[0].s, "") == "dataclasses.replace" and len(pos) == 1:
@@ -260,9 +299,19 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
             names = kw_names(v.t)
             for i in range(len(names)):
                 kws.append(mk("kw", names[i], a.line, [self.vnode(self.tget(self.kw_tuple(v), i))]))
+        if dynamic and (a.kind == "dstar" or ai + 1 == len(ka) or ka[ai + 1].kind == "dstar"):
+            # CPython merges each ** mapping, or group of explicit keywords, before evaluating
+            # the next group. A duplicate raises now, after this whole mapping's values ran.
+            names = [k.s for k in kws]
+            if len([j for j in range(len(names)) if names[j] in names[:j]]) > 0:
+                if dynh.v != "":
+                    return self.dyn_method_found(receiver, f.s, pos + kws, dynh)
+                return self.call(mk("call", n.s, n.line, [f] + pos + kws), want, resultsoft, typeargs)
     out = pos + kws
     if printing and len([a for a in out if a.kind == "starred"]) > 0:
         return self.print_star(n, out)
+    if dynh.v != "":
+        return self.dyn_method_found(receiver, f.s, out, dynh)
     return self.call(mk("call", n.s, n.line, [f] + out), want, resultsoft, typeargs)
 
 def gen_static_callee(self, f: Node) -> bool:
@@ -1343,10 +1392,16 @@ def gen_fname(self, f: FnInfo) -> str:
     return f"{short(f.cls)}.{f.name}" if f.cls != "" else short(f.name)
 
 def gen_arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
+    # CPython's TypeError for a call of f whose arguments do not fit its parameters (arity_error)
+    e = self.arity_error(f, npre, args)
+    if e != "":
+        self.err(e)
+
+def gen_arity_error(self, f: FnInfo, npre: int, args: list[Node]) -> str:
     # CPython's TypeError for a call of f whose arguments do not fit its parameters, in the order
     # its frame setup finds them: a keyword that names no parameter (or a positional-only one)
     # or one already given, too many positional arguments, then the missing positional and
-    # keyword-only ones; npre values (the object of a method) come before args
+    # keyword-only ones; npre values (the object of a method) come before args; "" where they fit
     np = len(f.params)
     last = f.vararg if f.vararg >= 0 else f.npos if f.npos >= 0 else np  # (the positional parameters end there)
     last = min(last, f.kwarg) if f.kwarg >= 0 else last
@@ -1369,25 +1424,25 @@ def gen_arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
         if j < 0 or j < f.posonly:
             po = [k for k in kws if k in f.params and f.params.index(k) < f.posonly]
             if len(po) > 0:
-                self.err(f"{self.fname(f)}() got some positional-only arguments passed as keyword arguments: '{', '.join(po)}'")
-            self.err(f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'")
+                return f"{self.fname(f)}() got some positional-only arguments passed as keyword arguments: '{', '.join(po)}'"
+            return f"{self.fname(f)}() got an unexpected keyword argument '{a.s}'"
         if filled[j]:
-            self.err(f"{self.fname(f)}() got multiple values for argument '{a.s}'")
+            return f"{self.fname(f)}() got multiple values for argument '{a.s}'"
         filled[j] = True
     off = 1 if f.deco == "classmethod" else -1 if f.clo >= 0 else 0  # (cls, which CPython counts and f.params leaves out; a closure's env, the reverse)
     if f.vararg < 0 and given > last:
         if f.name == "__init__" and f.node.kids[0].kind == "noann" and (not self.is_dc(f.cls) or "no-init" in self.classes[f.cls].dcopts):
-            self.err(f"{short(f.cls)}() takes no arguments")
+            return f"{short(f.cls)}() takes no arguments"
         dflt = len([j for j in range(last) if f.defaults[j].kind != "noann"])
         kwg = len([j for j in range(last, np) if filled[j]])
         takes = f"from {last + off - dflt} to {last + off}" if dflt > 0 else str(last + off)
         plural = "s" if dflt > 0 or last + off != 1 else ""
         kwonly = f" positional argument{'s' if given + off != 1 else ''} (and {kwg} keyword-only argument{'s' if kwg != 1 else ''})" if kwg > 0 else ""
-        self.err(f"{self.fname(f)}() takes {takes} positional argument{plural} but {given + off}{kwonly} {'was' if given + off == 1 and kwg == 0 else 'were'} given")
+        return f"{self.fname(f)}() takes {takes} positional argument{plural} but {given + off}{kwonly} {'was' if given + off == 1 and kwg == 0 else 'were'} given"
     if f.vartup != "" and given >= f.vararg and given - f.vararg != len(targs(f.vartup)):
         # *args: *Ts, which a generic class's specialization binds: as many as Ts has types
         n = f.vararg + len(targs(f.vartup)) + off
-        self.err(f"{self.fname(f)}() takes {n} positional argument{'s' if n != 1 else ''} but {given + off} {'was' if given + off == 1 else 'were'} given (its *{f.params[f.vararg]} is a {typestr(f.vartup)})")
+        return f"{self.fname(f)}() takes {n} positional argument{'s' if n != 1 else ''} but {given + off} {'was' if given + off == 1 else 'were'} given (its *{f.params[f.vararg]} is a {typestr(f.vartup)})"
     for kind in ["positional", "keyword-only"]:
         miss = [f.params[j] for j in range(np) if not filled[j] and f.defaults[j].kind == "noann" and j != f.vararg and j != f.kwarg and (j < last) == (kind == "positional")]
         if len(miss) > 0:
@@ -1396,7 +1451,8 @@ def gen_arity(self, f: FnInfo, npre: int, args: list[Node]) -> None:
                 names = f"'{miss[0]}' and '{miss[1]}'"
             elif len(miss) > 2:
                 names = "'" + "', '".join(miss[:-1]) + f"', and '{miss[-1]}'"
-            self.err(f"{self.fname(f)}() missing {len(miss)} required {kind} argument{'s' if len(miss) != 1 else ''}: {names}")
+            return f"{self.fname(f)}() missing {len(miss)} required {kind} argument{'s' if len(miss) != 1 else ''}: {names}"
+    return ""
 
 def gen_kw_type(self, f: FnInfo, name: str) -> str:
     # the type call_fn evaluates keyword argument name of a call of f with: its parameter's, or
