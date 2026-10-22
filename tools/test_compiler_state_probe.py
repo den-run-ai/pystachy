@@ -45,8 +45,8 @@ class StateProbeTests(unittest.TestCase):
 
     def restart_contract(self, compile_fn):
         # Exercise the real driver's catch/rewind path. Synthetic loader/program
-        # effects make each expected rewind necessary, including prefix retention.
-        names = ("FILES", "LAMBDAS", "RENAMED", "LIBS", "LINKDL")
+        # effects make each expected rewind necessary, including link-prefix retention.
+        names = ("LAMBDAS", "RENAMED", "LIBS", "LINKDL")
         saved = {name: getattr(driver, name).copy() for name in names}
         generations = []
 
@@ -67,14 +67,12 @@ class StateProbeTests(unittest.TestCase):
                 generations.append(self)
 
             def program(self, source):
-                test.assertEqual(driver.FILES, ["prefix.py"])
                 test.assertEqual(driver.LAMBDAS, [11])
                 test.assertEqual(driver.RENAMED, {})
                 test.assertEqual(driver.LIBS, ["prefix-lib"])
                 test.assertEqual(driver.LINKDL, ["prefix-dl"])
                 test.assertEqual(self.gtypes, {})
                 if len(generations) == 1:
-                    driver.FILES.append("aborted.py")
                     driver.LAMBDAS[0] += 5
                     driver.RENAMED["tmp"] = "aborted"
                     driver.LIBS.append("aborted-lib")
@@ -88,7 +86,6 @@ class StateProbeTests(unittest.TestCase):
                 return "clean pass"
 
         try:
-            driver.FILES[:] = ["prefix.py"]
             driver.LAMBDAS[:] = [11]
             driver.RENAMED.clear()
             driver.LIBS[:] = ["prefix-lib"]
@@ -111,7 +108,7 @@ class StateProbeTests(unittest.TestCase):
 
     def test_each_missing_rewind_is_detected(self):
         source = inspect.getsource(driver.compile_program)
-        for reset in ("FILES.pop()", "LAMBDAS[0] = lambdas", "RENAMED.clear()",
+        for reset in ("LAMBDAS[0] = lambdas", "RENAMED.clear()",
                       "LIBS.pop()", "LINKDL.pop()"):
             with self.subTest(reset=reset):
                 # break exits a truncation loop without rewinding; removing pop

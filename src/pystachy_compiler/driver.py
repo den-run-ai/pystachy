@@ -5,7 +5,7 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import diagnostics
-from src.pystachy_compiler.diagnostics import FILES, MAXNEST, RAW, Rejoin, fail
+from src.pystachy_compiler.diagnostics import MAXNEST, RAW, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
@@ -79,7 +79,6 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # limit)
     hints: dict[str, str] = {}
     xnot: dict[str, bool] = {}
-    files = len(FILES)
     lambdas = LAMBDAS[0]
     libs = len(LIBS)
     linkdl = len(LINKDL)
@@ -103,10 +102,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
                 passes += 1
             for k in g.newx:
                 xnot[k] = True
-            # (as the loader and lowering found them: the next pass numbers files and lambdas,
-            # and lists C libraries, as the first did)
-            while len(FILES) > files:
-                FILES.pop()
+            # (as parsing and lowering found them: the next pass numbers lambdas and
+            # lists C libraries as the first did; Loader.program rebuilds its file-index space)
             LAMBDAS[0] = lambdas
             RENAMED.clear()
             while len(LIBS) > libs:

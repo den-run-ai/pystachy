@@ -447,8 +447,8 @@ make a subsequent ordinary program import the internal `_rt` module.
 
 `tools/compiler_state_globals.py`, also tested by that Lint pattern, inventories
 module-level containers under the compiler's declaration conventions. Every
-container is classified as a reviewed lookup table, restart-rewound state, or
-currently retained state. It rejects unclassified containers and new writers,
+container is classified as a reviewed lookup table, restart-rewound state,
+load-reset state, or currently retained state. It rejects unclassified containers and new writers,
 including direct writes, imported names, simple local and default-argument aliases,
 assignment expressions and nested subscripts. Module subscript aliases retain possible
 source owners for later mutation checks without declaring scalar-capable reads as
@@ -463,9 +463,15 @@ mutator calls include in-place dunders and reinitialization, with explicit impor
 resolution and lexical builtin-name shadows. Callable alias/effect inference remains
 outside the check. Loop, context, exception and pattern targets, plus named
 definitions, participate in global-rebinding and local-shadow checks without
-inferring aliases from arbitrary iterators or context managers. The five rewind
-classifications are tied to the executable restart controls; removing a rewind must still fail those controls. `DYNFILES`, `GLUE`
-and `SPECSHOW` currently retain discoveries across restarts; the inventory records
+inferring aliases from arbitrary iterators or context managers. The four rewind
+classifications are tied to the executable restart controls; removing a rewind must
+still fail those controls. `Loader.program()` rebuilds `FILES` and `DYNFILES` together
+before parsing each program, including runtime loads and compilation restarts. Hosted
+sequence tests cover both dynamic-Any opt-in directions, successful and failed calls,
+imports, runtime interleaving and removal of either reset. The main source diagnostic
+name remains caller-owned (`diagnostics.SRC`); imported diagnostics use the current
+file table. These process-global tables do not provide concurrent compilation isolation.
+`GLUE` and `SPECSHOW` currently retain discoveries across restarts; the inventory records
 that behavior without certifying its safety. This is a hosted drift check, not a
 whole-program effect analysis: arbitrary helper calls, object-attribute aliases,
 unannotated factory results, and effects inside class bodies, anonymous function

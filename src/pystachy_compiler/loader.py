@@ -290,7 +290,12 @@ class Loader:
         self.docsetm: list[Mod] = []
 
     def program(self, path: str, src: str) -> list[Mod]:
-        # the main program and the modules it imports, in the order their code may first run
+        # the main program and the modules it imports, in the order their code may first run.
+        # A program owns one file-index space, including its dynamic-Any opt-ins.
+        # Rebuild both on every load (also runtime.py and restarted/hosted compilations):
+        # the main parser starts at file zero, and old opt-ins must not apply to new files.
+        FILES.clear()
+        DYNFILES.clear()
         m = Mod("", path, "")
         if dynamic_pragma(src):
             DYNFILES[len(FILES)] = True
