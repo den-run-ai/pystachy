@@ -632,7 +632,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         elif kvals[j].t != "None":
             keyv = kvals[j]  # (key=None: the items themselves)
             self.key_check(keyv, f"{name}()")
-    if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id"]:
+    if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
         return self.dyn_sum(self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))

@@ -1,0 +1,7 @@
+@main.init: pys_dyn_int
+@f.constants: pys_raise
+@f.mutable: pys_dyn_int pys_dyn_int pys_raise
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

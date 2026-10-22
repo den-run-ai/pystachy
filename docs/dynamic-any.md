@@ -175,7 +175,10 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   its box if needed, so copies made before either variable crosses into `Any` still share one
   object (`tests/programs/inference/dynany_identity_copy.py`). A module variable's read also
   materializes and snapshots its box, before later operands can call code that rebinds the
-  variable (`tests/programs/inference/dynany_identity_global_snapshot.py`). This applies to
+  variable (`tests/programs/inference/dynany_identity_global_snapshot.py`). Proven single-binding
+  integer constants and their from-import copies have their cached or literal box ready at
+  initialization, so their reads only load it and cannot allocate
+  (`tests/programs/inference/dynany_identity_constants.py`). This applies to
   numeric globals in imported typed modules too when the program uses dynamic `Any`. These
   copies and global reads can allocate before an `Any` crossing, even if none follows. Any
   other value, such as an int computed there, is a new object, which its first crossing, copy
@@ -227,7 +230,7 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
 Arithmetic, comparisons, truth, `is`, `in`, indexing, slicing (of a `str`, list or tuple, with
 `Any` bounds too, which convert as CPython converts them: once every bound is evaluated and the
 receiver tested, the step first; a dict's slice hashes the slice, then raises its `KeyError`),
-item assignment and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `hash()`,
+item assignment and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `abs()`, `hash()`,
 `id()`, `sum()` (also of a generator), `sorted()`, `min()`, `max()`, `list()`, `str.join()`,
 `dict.update()` (of a dict or of pairs, each an iterable of two), f-strings and `format()`,
 iteration, unpacking, augmented assignment, `type(x).__name__`,
@@ -239,6 +242,11 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 `int`/`float` comparisons are exact, and the error messages are CPython's
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
+
+`abs()` calls a boxed object's `__abs__` method, including inherited methods. Builtin bools
+give ints, nonnegative ints keep their identity, and floats give new float objects with a
+nonnegative sign. The [signed-64-bit integer limit](language/compatibility.md#numbers) still
+applies: `abs(-9223372036854775808)` raises `OverflowError`.
 
 Dict union `d | e` makes a new dict, with the right dict's values taking precedence. `d |= e`
 updates the existing dict through `dict.update()`, accepting a dict or builtin iterable of
@@ -403,7 +411,7 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   class's fields are fixed), as for typed objects.
 - `set`, `bytes` and exception objects, and typed containers other than tuples, cannot become
   `Any` values yet.
-- Rejected at compile time where an argument is an `Any` value: `abs()`, `divmod()`, `round()`,
+- Rejected at compile time where an argument is an `Any` value: `divmod()`, `round()`,
   `chr()`, `ord()`, `bin()`, `hex()`, `oct()`, `dict()`, `tuple()` (`tuple(list(x))` works),
   `reversed()`, `iter()`, `next()`, `getattr()`, `hasattr()`, `setattr()` and `del` of an
   attribute.

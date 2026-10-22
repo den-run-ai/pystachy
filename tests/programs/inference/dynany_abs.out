@@ -1,0 +1,28 @@
+0 int
+1 int
+3 int
+0 int
+5 int
+2.5 float
+2.5 float
+0.0 float
+9223372036854775807 int
+9223372036854775807 int
+inf float
+inf float
+nan float
+True True
+False True
+1.0
+0 int
+1 int
+3 int
+0 int
+5 int
+9223372036854775807 int
+9223372036854775807 int
+bad operand type for abs(): 'NoneType'
+bad operand type for abs(): 'str'
+bad operand type for abs(): 'list'
+bad operand type for abs(): 'dict'
+[exit 0]
