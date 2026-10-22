@@ -30,7 +30,7 @@ class RuntimeRootTests(unittest.TestCase):
         source = ROOT / "runtime.c"
         ir = compile_inventory(source)
         self.assertEqual(check_roots(source.read_text(), ir), [])
-        self.assertTrue({"warnopts", "xr", "text_hints", "codec.alias"} <= pointer_statics(ir))
+        self.assertTrue({"warnopts", "xr", "text_hints", "codec.alias", "pys_dyn_none_box", "pys_dyntype_str"} <= pointer_statics(ir))
 
     def test_unused_new_pointer_cannot_disappear(self):
         self.assertEqual(self.problems(VALID), [])
@@ -51,6 +51,22 @@ static _Thread_local Ptr thread;
         bad = self.problems(source)
         self.assertEqual(set(bad), {f"GC roots: unclassified static pointer storage {name}"
                                     for name in ["alias", "array", "box", "aggregate", "variant", "thread"]})
+
+    def test_external_linkage_definition_requires_classification_and_scan(self):
+        self.assertEqual(self.problems(PRELUDE + "Str *value;\n"),
+                         ["GC roots: unclassified static pointer storage value"])
+        source = VALID.replace("static Str *value", "Str *value")
+        self.assertEqual(self.problems(source), [])
+        scan = "scan((const W *)&value, (const W *)(&value + 1));"
+        self.assertIn("GC roots: value is not scanned by mark_roots with ROOT storage semantics",
+                      self.problems(source.replace(scan, "")))
+        self.assertEqual(self.problems(PRELUDE + "__attribute__((used)) Str *value;\n"),
+                         ["GC roots: unclassified static pointer storage value"])
+
+    def test_extern_declaration_does_not_define_runtime_owned_storage(self):
+        source = PRELUDE + "extern Str *value; Str *read_value(void) { return value; }\n"
+        self.assertEqual(self.problems(source), [])
+        self.assertEqual(self.problems(source.replace("extern Str *value", "extern __attribute__((weak)) Str *value")), [])
 
     def test_function_local_static_requires_classification(self):
         source = PRELUDE + "static void f(void) { static Str *p; }\n"

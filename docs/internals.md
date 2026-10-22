@@ -158,7 +158,8 @@ Runtime static pointer storage is classified beside its declaration with `GC_ROO
 `GC_ROOT_RANGE` scans the contents of a malloc-backed pointer table. The distinction
 prevents scanning a managed object's contents instead of marking its holding pointer.
 `make lint` and `make check-runtime` compare these annotations
-with clang's complete static inventory, including unused declarations, aggregate fields
+with clang's complete static-storage inventory, including defined external-linkage globals,
+unused definitions, aggregate fields
 and function-local statics. Each root must reach a real `scan` in `mark_roots`; comments
 or dead calls do not count. Static roots require constant offsets covering the exact
 complete storage interval, including all array elements and aggregate padding. Root ranges

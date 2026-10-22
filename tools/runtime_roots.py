@@ -42,13 +42,17 @@ def pointer_statics(ir):
         return False
 
     result = set()
-    for name, declaration in re.findall(r"^@([\w.]+) = (?:internal|private) (.+)$", ir, re.M):
+    for name, declaration in re.findall(r"^@([\w.]+) = (.+)$", ir, re.M):
         if name.startswith("."):
             continue  # compiler-created string constants, not C declarations
-        if name.startswith("__const.") and declaration.startswith("unnamed_addr constant "):
+        if name.startswith("__const.") and declaration.startswith("private unnamed_addr constant "):
             continue  # clang's initializer template for an automatic local array
+        if name in {"llvm.used", "llvm.compiler.used"} and 'section "llvm.metadata"' in declaration:
+            continue  # compiler/linker retention metadata, not C-owned storage
         m = re.search(r"\b(?:global|constant) (.+)", declaration)
-        if m and holds_pointer(llvm_type(m[1]), set()):
+        # Definitions need classification regardless of linkage. An external or
+        # extern_weak declaration has no storage owned by this translation unit.
+        if m and not {"external", "extern_weak"}.intersection(declaration[:m.start()].split()) and holds_pointer(llvm_type(m[1]), set()):
             result.add(name)
     return result
 
