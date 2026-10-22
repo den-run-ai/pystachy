@@ -207,26 +207,13 @@ constants are shared (`sconst`); and since records and tables are internal, `glo
 only for classes that reach a reflective site. `RUNTIME` declares `refl.find` without effects
 and `refl.vars` with `A I rO rL rD U` (a field's `__repr__` may run user code).
 
-**The extension path.** The record is the one per-class table format that #485's later steps
-reuse instead of inventing their own:
+**Dynamic values.** Opt-in `Any` values use immutable `{DynType *, payload}` boxes.
+The `DynType` identifies the Python type and payload layout; compiler-generated helpers
+dispatch operations on boxed values. See [dynamic `Any`](dynamic-any.md#representation)
+for the implemented representation and its limits.
 
-- **Interface values (#488)**: an erased `{table, data}` pair for a `Protocol`-typed slot. Its
-  table is a constant per (class, protocol) pair that flows into the slot; it starts with the
-  address of the class's reflection record (so `type(x)`, `isinstance()` against a class and
-  `type(x).__name__` of an erased value read it as here) and continues with the protocol's
-  method specializations. Emission on demand, internal linkage and the "which classes reach this
-  site" decision are `refl_record`'s; #488 adds the whole-program flow of classes into slots.
-- **Object boxes (#487)**: a box `{descriptor, payload}` whose descriptor is the record of the
-  payload's exact type (`@pys.refl.b.int`, `@pys.refl.c.Point`, ...), extended with the existing
-  type descriptor string for builtin containers. `type(v).__name__` is word 0, `isinstance()`
-  compares records (and a hierarchy's class tag), `repr()` uses the descriptor, and a run-time
-  `getattr()` whose value is used becomes `pys_refl_find` plus a load through the field table's
-  offset and descriptor into a new box: the value-free consumers of #489's first version are the
-  same lookup with the value formatted at once.
-- **`Any` and dynamic values**: a dynamic value is such a box; attribute access, method calls by
-  name and `vars()` dispatch through the name table, whose method entries #488's tables supply,
-  and properties through getter and setter thunks added to the name table's entries. As now,
-  only classes whose values reach such a site get records, never every class of the program.
+Type-erased `Protocol` and iterator storage with shared method tables remains a
+[separate proposal](https://github.com/den-run-ai/pystachy/issues/488).
 
 <a id="checked-arithmetic-cheap-errors"></a>
 <a id="exceptions-by-table-driven-unwinding"></a>
