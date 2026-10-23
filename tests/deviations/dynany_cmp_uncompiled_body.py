@@ -1,17 +1,17 @@
 # pystachy: dynamic-any
-# Remaining #803 gap: incompatible typed set fields still fall outside the
+# Remaining #803 gap: incompatible tuple-element set fields still fall outside the
 # guarded structural adapter, so this comparison skips the method side effect.
 from typing import Any
 
 
 class Peer:
     def __init__(self) -> None:
-        self.items: set[str] = {"different storage"}
+        self.items: set[tuple[str, str]] = {("different", "storage")}
 
 
 class Strict:
     def __init__(self) -> None:
-        self.items: set[int] = {3}
+        self.items: set[tuple[int, int]] = {(3, 4)}
 
     def __eq__(self, other: "Strict") -> bool:
         print("comparison ran")

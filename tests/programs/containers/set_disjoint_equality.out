@@ -1,0 +1,18 @@
+sets False True True False False True True False False True True False False
+frozen False True True False False True True False False True True False False
+mixed int/str False True True False False True True False False
+mixed int/bytes False True True False False True True False False
+mixed str/bytes False True True False False True True False False
+compatible True True True True False
+sets True False False True True False False True True False False True True
+frozen True False False True True False False True True False False True True
+mixed int/str True False False True True False False True True
+mixed int/bytes True False False True True False False True True
+mixed str/bytes True False False True True False False True True
+compatible True True True True False
+one empty False False True True
+numeric control True True
+tuple control True
+right operand ran
+right mutation False 1
+[exit 0]

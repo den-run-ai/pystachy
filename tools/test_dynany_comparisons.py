@@ -60,6 +60,46 @@ class ConcreteComparisonTests(unittest.TestCase):
                 self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
                 self.assertFalse(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
 
+    def test_scalar_set_fields_do_not_add_failed_restarts(self):
+        own = "self.items: set[int] = {0}"
+        peer = "self.items: set[str] = {''}"
+        results = []
+        for count in [1, 20]:
+            extra = ""
+            for index in range(count):
+                extra += (f"class Compatible{index}:\n    def __init__(self):\n        {peer}\n"
+                          f"compatible{index}: Any = Compatible{index}()\n")
+            result = self.compile(0, fields=peer, own_fields=own, extra=extra)
+            results.append(result[1])
+            self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+            self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
+            for index in range(count):
+                self.assertTrue(result[2].dyn_supports(f"Compatible{index}", "cmp.Strict.__eq__", "__eq__", 1))
+        self.assertEqual(results[0], results[1])
+        self.assertLessEqual(results[1], 3)
+
+    def test_scalar_set_adapters_check_actual_operand_pairs(self):
+        own = "self.items: set[int] = {0}\nself.other: set[str] = {''}"
+        peer = "self.items: set[str] = {''}\nself.other: list[int] = [0]"
+        for body in ["return self.items == other.items == other.other",
+                     "return self.items == other.items and other.items != other.other", "return self.items < other.items",
+                     "return self.items | other.items == self.items"]:
+            with self.subTest(body=body):
+                results = []
+                for count in [1, 20]:
+                    extra = ""
+                    for index in range(count):
+                        extra += (f"class Incompatible{index}:\n    def __init__(self):\n        " +
+                                  peer.replace("\n", "\n        ") + "\n" +
+                                  f"incompatible{index}: Any = Incompatible{index}()\n")
+                    result = self.compile(0, fields=own, own_fields=own, extra=extra, body=body)
+                    results.append(result[1])
+                    self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+                    for index in range(count):
+                        self.assertFalse(result[2].dyn_supports(f"Incompatible{index}", "cmp.Strict.__eq__", "__eq__", 1))
+                self.assertEqual(results[0], results[1])
+                self.assertLessEqual(results[1], 3)
+
     def test_differing_field_operations_do_not_add_restarts_per_class(self):
         results = []
         for count in [1, 20]:
@@ -168,7 +208,7 @@ class ComparisonEqualitiesTests(unittest.TestCase):
     def supported(self, source):
         module = Parser(Lexer("def compare(self, other):\n    " + source + "\n", 1).file()).module()
         body = module.kids[0].kids[2]
-        return comparison_equalities(body, "self", "other", ["items"], ["items"], ["items"])
+        return comparison_equalities(body, "self", "other", ["items"], {"items": "list[int]"}, {"items": "list[str]"})
 
     def test_direct_builtin_field_equality(self):
         for source in ("return self.items == other.items", "return other.items != self.items",

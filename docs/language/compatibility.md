@@ -344,8 +344,9 @@ above apply to well-formed text (with the surrogate exception described above).
   adapter still falls back to identity (or `TypeError` for
   an ordering) where CPython runs the method
   (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand has an incompatible typed
-  set field). Guarded concrete adapters now execute direct equality comparisons between closed
-  builtin fields with different layouts and preserve the effects and exceptions preceding a missing field read. Concrete operand annotations alone no
+  tuple-element set field). Guarded concrete adapters now execute direct equality comparisons between closed
+  builtin fields with different layouts, including scalar sets of `int`, `str` or `bytes`,
+  and preserve the effects and exceptions preceding a missing field read. Concrete operand annotations alone no
   longer suppress normal instance comparison methods. The prototype's other differences, such as
   `in` of an `Any` item in a typed container and function values printing as `<function>`, are
   listed in its
