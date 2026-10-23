@@ -4,6 +4,7 @@ equal integers True False
 equal floats True False
 zeros True False [-0.0, -0.0, 0.0]
 star list True False True
+star tuple True False True
 inferred mixed list True False
 dict values True False True
 nan keys 2 ['replacement', 'new']

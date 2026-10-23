@@ -21,6 +21,9 @@ def lists() -> None:
     stars: list[Any] = [x, *[True], x, (x := int("2000"))]
     print("star list", stars[0] is stars[2], stars[0] is stars[3], stars[3] is x)
     x = int("1000")
+    star_tuple: tuple[Any, ...] = (x, *[True], x, (x := int("2000")))
+    print("star tuple", star_tuple[0] is star_tuple[2], star_tuple[0] is star_tuple[3], star_tuple[3] is x)
+    x = int("1000")
     mixed = [x, x, "marker", (x := int("2000"))]
     print("inferred mixed list", mixed[0] is mixed[1], mixed[0] is mixed[3])
 

@@ -69,3 +69,17 @@ def inferred_starred_reads() -> None:
 
 
 inferred_starred_reads()
+
+
+def retyped_display_reads() -> None:
+    # Reusing one name for int and float storage takes a broader type-join path;
+    # its display reads still lack the numeric binding object's provenance.
+    x = int("1000")
+    values: dict[str, Any] = {"a": x, "b": x, "c": (x := int("2000"))}
+    print("retyped dict values", values["a"] is values["b"], values["c"] is x)
+    x = float("nan")
+    keys: dict[Any, str] = {x: "a", x: "b", (x := float("nan")): "c"}
+    print("retyped NaN keys", len(keys))
+
+
+retyped_display_reads()
