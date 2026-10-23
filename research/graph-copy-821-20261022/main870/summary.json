@@ -1,0 +1,535 @@
+{
+  "schema": 1,
+  "comparisons": [
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "aot",
+      "phase": "construction",
+      "metric": "cpu_time",
+      "unit": "s",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.010138472,
+          "head_median": 0.010421424,
+          "ratio": 1.0279087420668518,
+          "percent": 2.790874206685179,
+          "base_min": 0.008732658,
+          "base_max": 0.012537937,
+          "head_min": 0.007852738,
+          "head_max": 0.011243609,
+          "ratio_ci_low": 0.8744173678242638,
+          "ratio_ci_high": 1.193275909379388
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.008131102,
+          "head_median": 0.007982791,
+          "ratio": 0.9817600369544005,
+          "percent": -1.8239963045599494,
+          "base_min": 0.007615464,
+          "base_max": 0.010704206,
+          "head_min": 0.007382177,
+          "head_max": 0.010770424,
+          "ratio_ci_low": 0.9092739308667529,
+          "ratio_ci_high": 1.0266661688441516
+        }
+      },
+      "attribution": "identical executable; source attribution unresolved",
+      "status": "no confirmed threshold crossing",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    },
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "aot",
+      "phase": "processing",
+      "metric": "cpu_time",
+      "unit": "s",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.064645607,
+          "head_median": 0.070855522,
+          "ratio": 1.0960608970691545,
+          "percent": 9.606089706915455,
+          "base_min": 0.057921091,
+          "base_max": 0.085507433,
+          "head_min": 0.061279152,
+          "head_max": 0.088730044,
+          "ratio_ci_low": 0.8199026159515279,
+          "ratio_ci_high": 1.3255587034707559
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.064481032,
+          "head_median": 0.061548474,
+          "ratio": 0.9545206100299388,
+          "percent": -4.547938997006118,
+          "base_min": 0.059724396,
+          "base_max": 0.085348877,
+          "head_min": 0.058379063,
+          "head_max": 0.087697773,
+          "ratio_ci_low": 0.761935704924468,
+          "ratio_ci_high": 1.3600553570544593
+        }
+      },
+      "attribution": "identical executable; source attribution unresolved",
+      "status": "no confirmed threshold crossing",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    },
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "aot",
+      "phase": "whole_process",
+      "metric": "cpu_time",
+      "unit": "s",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.079523,
+          "head_median": 0.082985,
+          "ratio": 1.0435345749028584,
+          "percent": 4.353457490285839,
+          "base_min": 0.068829,
+          "base_max": 0.099455,
+          "head_min": 0.071641,
+          "head_max": 0.10332,
+          "ratio_ci_low": 0.8343974661907395,
+          "ratio_ci_high": 1.2658476164128618
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.075395,
+          "head_median": 0.071785,
+          "ratio": 0.9521188407719344,
+          "percent": -4.788115922806558,
+          "base_min": 0.070246,
+          "base_max": 0.09967,
+          "head_min": 0.068423,
+          "head_max": 0.100521,
+          "ratio_ci_low": 0.7746426852608369,
+          "ratio_ci_high": 1.3134823264142186
+        }
+      },
+      "attribution": "identical executable; source attribution unresolved",
+      "status": "no confirmed threshold crossing",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    },
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "aot",
+      "phase": "whole_process",
+      "metric": "elapsed_time",
+      "unit": "s",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.0809611290023895,
+          "head_median": 0.08416314699570648,
+          "ratio": 1.0395500659732955,
+          "percent": 3.9550065973295467,
+          "base_min": 0.07014285799232312,
+          "base_max": 0.1009195990045555,
+          "head_min": 0.07281176300602965,
+          "head_max": 0.10494373099936638,
+          "ratio_ci_low": 0.8339623603925277,
+          "ratio_ci_high": 1.2629874391325138
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.07669568299024832,
+          "head_median": 0.07295657700160518,
+          "ratio": 0.9512475038638283,
+          "percent": -4.8752496136171715,
+          "base_min": 0.07221774599747732,
+          "base_max": 0.10129742800199892,
+          "head_min": 0.07045921600365546,
+          "head_max": 0.10217851999914274,
+          "ratio_ci_low": 0.7771600382511614,
+          "ratio_ci_high": 1.3277234393087662
+        }
+      },
+      "attribution": "identical executable; source attribution unresolved",
+      "status": "no confirmed threshold crossing",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    },
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "aot",
+      "phase": "whole_process",
+      "metric": "peak_rss",
+      "unit": "KiB",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 49408,
+          "head_median": 49408,
+          "ratio": 1.0,
+          "percent": 0.0,
+          "base_min": 49408,
+          "base_max": 49408,
+          "head_min": 49408,
+          "head_max": 49408,
+          "ratio_ci_low": 1.0,
+          "ratio_ci_high": 1.0
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 49408,
+          "head_median": 49408,
+          "ratio": 1.0,
+          "percent": 0.0,
+          "base_min": 49408,
+          "base_max": 49408,
+          "head_min": 49408,
+          "head_max": 49408,
+          "ratio_ci_low": 1.0,
+          "ratio_ci_high": 1.0
+        }
+      },
+      "attribution": "identical executable; source attribution unresolved",
+      "status": "no confirmed threshold crossing",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    },
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "jit",
+      "phase": "construction",
+      "metric": "cpu_time",
+      "unit": "s",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.008852877,
+          "head_median": 0.009884995,
+          "ratio": 1.1165856026238703,
+          "percent": 11.65856026238703,
+          "base_min": 0.00802218,
+          "base_max": 0.011641461,
+          "head_min": 0.008251962,
+          "head_max": 0.011531137,
+          "ratio_ci_low": 0.8491197969052167,
+          "ratio_ci_high": 1.237441502314045
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.009504799,
+          "head_median": 0.008964734,
+          "ratio": 0.9431797558265042,
+          "percent": -5.682024417349584,
+          "base_min": 0.008573301,
+          "base_max": 0.011637876,
+          "head_min": 0.008025525,
+          "head_max": 0.011584287,
+          "ratio_ci_low": 0.7566782804697352,
+          "ratio_ci_high": 1.1333537464949586
+        }
+      },
+      "attribution": "requires change review; timing alone is not causation",
+      "status": "no confirmed threshold crossing",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    },
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "jit",
+      "phase": "processing",
+      "metric": "cpu_time",
+      "unit": "s",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.066179312,
+          "head_median": 0.072578263,
+          "ratio": 1.0966911079401973,
+          "percent": 9.66911079401973,
+          "base_min": 0.060435816,
+          "base_max": 0.090562193,
+          "head_min": 0.061626049,
+          "head_max": 0.089415424,
+          "ratio_ci_low": 0.8117832570595988,
+          "ratio_ci_high": 1.25866302762773
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.068365268,
+          "head_median": 0.067147343,
+          "ratio": 0.9821850329029645,
+          "percent": -1.781496709703545,
+          "base_min": 0.063675712,
+          "base_max": 0.090685615,
+          "head_min": 0.057715414,
+          "head_max": 0.091192781,
+          "ratio_ci_low": 0.8442212791442578,
+          "ratio_ci_high": 1.0174784666660013
+        }
+      },
+      "attribution": "requires change review; timing alone is not causation",
+      "status": "no confirmed threshold crossing",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    },
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "jit",
+      "phase": "whole_process",
+      "metric": "cpu_time",
+      "unit": "s",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.205782,
+          "head_median": 0.260859,
+          "ratio": 1.2676473160917865,
+          "percent": 26.76473160917865,
+          "base_min": 0.191195,
+          "base_max": 0.258125,
+          "head_min": 0.205257,
+          "head_max": 0.332807,
+          "ratio_ci_low": 1.0735479484296138,
+          "ratio_ci_high": 1.2893249394673125
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.200523,
+          "head_median": 0.210666,
+          "ratio": 1.0505827261710625,
+          "percent": 5.058272617106252,
+          "base_min": 0.190713,
+          "base_max": 0.259635,
+          "head_min": 0.182106,
+          "head_max": 0.262862,
+          "ratio_ci_low": 0.9081551742194162,
+          "ratio_ci_high": 1.09485796251832
+        }
+      },
+      "attribution": "requires change review; timing alone is not causation",
+      "status": "candidate / not confirmed",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    },
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "jit",
+      "phase": "whole_process",
+      "metric": "elapsed_time",
+      "unit": "s",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.20748377300333232,
+          "head_median": 0.2626026840007398,
+          "ratio": 1.2656540807965848,
+          "percent": 26.565408079658482,
+          "base_min": 0.19283495799754746,
+          "base_max": 0.25989825699070934,
+          "head_min": 0.20677417299884837,
+          "head_max": 0.3354515929968329,
+          "ratio_ci_low": 1.0722857263332835,
+          "ratio_ci_high": 1.2907035117546957
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 0.20183723499940243,
+          "head_median": 0.2119537979888264,
+          "ratio": 1.0501223819750303,
+          "percent": 5.012238197503027,
+          "base_min": 0.19215092799277045,
+          "base_max": 0.2613599750038702,
+          "head_min": 0.18458964700403158,
+          "head_max": 0.2657695789966965,
+          "ratio_ci_low": 0.9145470458143072,
+          "ratio_ci_high": 1.093942467207898
+        }
+      },
+      "attribution": "requires change review; timing alone is not causation",
+      "status": "candidate / not confirmed",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    },
+    {
+      "comparison_id": "main46-main870",
+      "environment_id": "d07ea3311862224fea6b6f9c996c4b41377a1b1a52ea9cead6501df3b9c0c08b",
+      "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+      "base_sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workload": "list_graph",
+      "mode": "jit",
+      "phase": "whole_process",
+      "metric": "peak_rss",
+      "unit": "KiB",
+      "direction": "lower",
+      "batches": {
+        "initial": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 109616,
+          "head_median": 109340,
+          "ratio": 0.997482119398628,
+          "percent": -0.25178806013720356,
+          "base_min": 109100,
+          "base_max": 109932,
+          "head_min": 108976,
+          "head_max": 109868,
+          "ratio_ci_low": 0.9969727915967612,
+          "ratio_ci_high": 1.0
+        },
+        "confirmation": {
+          "n": 5,
+          "failed": 0,
+          "base_median": 109656,
+          "head_median": 109432,
+          "ratio": 0.9979572481213979,
+          "percent": -0.20427518786021448,
+          "base_min": 109064,
+          "base_max": 109932,
+          "head_min": 109080,
+          "head_max": 109868,
+          "ratio_ci_low": 0.9964341592984755,
+          "ratio_ci_high": 1.0019333187422486
+        }
+      },
+      "attribution": "requires change review; timing alone is not causation",
+      "status": "no confirmed threshold crossing",
+      "correctness_failures": 0,
+      "evidence": [
+        "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+      ],
+      "notes": [
+        "Arguments ['graph', '4000']; lineages {'base': 'unknown', 'head': 'main'}"
+      ],
+      "prs": []
+    }
+  ]
+}

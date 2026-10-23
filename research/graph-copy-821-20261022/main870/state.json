@@ -1,0 +1,11 @@
+{
+  "completed_workloads": {
+    "39b7787108a24c7ce556ebeb83fafa9ddb4fd4a055bdb26aad0087f93000aead": {
+      "id": "main46-main870",
+      "workload": "list_graph",
+      "raw": "/workspace/scratch/c42abc2bbcbe/replay/results-main870/raw/main46-main870--list_graph--20261023T014614-2.json"
+    }
+  },
+  "blocked_workloads": {},
+  "deferred_workloads": {}
+}

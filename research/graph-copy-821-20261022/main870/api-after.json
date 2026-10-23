@@ -1,0 +1,13 @@
+{
+  "checked": "2026-10-23T01:46:50.977Z",
+  "pr871": {
+    "state": "open",
+    "merged": false,
+    "head_sha": "551246b3b25705b3db6542fddae1e5f0d691cc56",
+    "base_sha": "2fc641a21cd071f6636b964ca1680edd79480b83"
+  },
+  "main": {
+    "sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+    "url": "https://github.com/den-run-ai/pystachy/commit/2fc641a21cd071f6636b964ca1680edd79480b83"
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "frozen_main": "2fc641a21cd071f6636b964ca1680edd79480b83",
+  "created": "2026-10-22T20:06:00Z",
+  "repository": "/workspace/scratch/bada75685416/pystachy-integrated",
+  "remote": "https://github.com/den-run-ai/pystachy.git",
+  "python": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+  "python_version": "3.13.16",
+  "llvm": "/workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin",
+  "library_path": "/workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/x86_64-linux-gnu",
+  "cpu": 0,
+  "toolchain": {
+    "clang": {
+      "sha256": "37f126a5e97442563fa0963660a72a11f2b31a9d608664d9e5675f2ebac99eca",
+      "version": "Ubuntu clang version 18.1.3 (1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin\n"
+    },
+    "opt": {
+      "sha256": "68bce89007caf00c1c73c3e88f2ff90dde243799f9557d5a729b3a8b3d7ea370",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: znver4\n"
+    },
+    "lli": {
+      "sha256": "44669e8442edb76ada08c806e80695c597240aedb7aa005986058d0111893370",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n"
+    },
+    "llvm-link": {
+      "sha256": "1eb44d783a8c7bd55af1af5abf786eacb994cef08110caaa52259da14558952c",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n"
+    },
+    "llvm-as": {
+      "sha256": "5daefabd373e614b6cc406c57fe37bc7ba20d0b80b4619cbef72b9fb5958910d",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n"
+    }
+  },
+  "lock_path": "/workspace/scratch/b3b3275b86ee/pystachy-performance.lock",
+  "output_dir": "/workspace/scratch/c42abc2bbcbe/replay/results-main870",
+  "revisions": {
+    "46fd53536afac60760b15f068641f7f238f964fe": {
+      "sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "path": "/workspace/scratch/c42abc2bbcbe/baseline",
+      "verified_existing": true,
+      "binary_sha256": "2fa706edfab88b52b475fc23743ef3bdce21a4c6f4bcd8d938c4d53a7dd677f8",
+      "provenance": "Copied clean 46fd5353 native fixed-point compiler from /workspace/scratch/bada75685416/pystachy-audit after base-bootstrap.log reported compiler 670942/runtime 18709 fixed points; CPython 3.13.16 LLVM18.1.3. Private source tree verified identical."
+    },
+    "2fc641a21cd071f6636b964ca1680edd79480b83": {
+      "sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "path": "/workspace/scratch/c42abc2bbcbe/memo-audit/main870-home",
+      "verified_existing": true,
+      "binary_sha256": "1b94b85fdb1d349efe6fddfb5224b0ed67fed16fc2f63e3ce84dd1ebb06acd00",
+      "lineage": "main",
+      "provenance": {
+        "source_checkout": "/workspace/scratch/bada75685416/pystachy-comparisons",
+        "source_sha": "3bf7477ebac3d689f7ad13fd6670d5e39d750658",
+        "source_tree": "fd2126dc205ad90f033f008a981c0e45a2518199",
+        "comparison_published_sha": "934e61edebdcd3b23fdea963bb5536af87bbdaad",
+        "target_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+        "target_tree": "fd2126dc205ad90f033f008a981c0e45a2518199",
+        "binary_sha256": "1b94b85fdb1d349efe6fddfb5224b0ed67fed16fc2f63e3ce84dd1ebb06acd00",
+        "fixed_point_ir_sha256": {
+          "stage1.ll": "6cd67a125c2488597751a96c2211e2c7e36215e9a4af9c25cc89a7fbc79b2384",
+          "stage2.ll": "6cd67a125c2488597751a96c2211e2c7e36215e9a4af9c25cc89a7fbc79b2384",
+          "stage3.ll": "6cd67a125c2488597751a96c2211e2c7e36215e9a4af9c25cc89a7fbc79b2384",
+          "rt1.ll": "5896225a2f56695c0cf0730fd27af5e4e30ead0eab54ab76a99386ad7bcffc4f",
+          "rt2.ll": "5896225a2f56695c0cf0730fd27af5e4e30ead0eab54ab76a99386ad7bcffc4f",
+          "rt3.ll": "5896225a2f56695c0cf0730fd27af5e4e30ead0eab54ab76a99386ad7bcffc4f"
+        },
+        "bootstrap_log_sha256": "9c3e2e026137b8af778376f239e3eb88d616872f5ff28f955a4b20b80a252b49",
+        "identity": "All tracked source trees identical; native binary equals successful stage2 payload; private copy verified clean before measurement."
+      }
+    }
+  },
+  "workloads": {
+    "list_graph": {
+      "source": "sources/dynany_bench.py",
+      "args": [
+        "graph",
+        "4000"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "construction_cpu",
+        "processing_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388"
+    }
+  },
+  "comparisons": [
+    {
+      "id": "main46-main870",
+      "base": "46fd53536afac60760b15f068641f7f238f964fe",
+      "head": "2fc641a21cd071f6636b964ca1680edd79480b83",
+      "workloads": [
+        "list_graph"
+      ]
+    }
+  ],
+  "notes": [
+    "Independent incremental replay after #870 merged; no splicing with previous cohort."
+  ],
+  "measure_compile": false,
+  "samples": 5,
+  "confirmation_samples": 5,
+  "initial_status": {
+    "state": "queued",
+    "reason": "Another session running measure-identity-constants.py observed 2026-10-22T20:12Z; no historical builds or timings launched."
+  }
+}

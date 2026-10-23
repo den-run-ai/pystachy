@@ -1,0 +1,7 @@
+{
+  "sha": "46fd53536afac60760b15f068641f7f238f964fe",
+  "tree": "4447449e26bcebdf6f78827ff11694dfdfa6b796",
+  "binary_sha256": "2fa706edfab88b52b475fc23743ef3bdce21a4c6f4bcd8d938c4d53a7dd677f8",
+  "cohort_id": "5f115cf5d6edb21da217ec1d3b8fd215a2320e92ee53dc2623b40dfaf9cd3e83",
+  "provenance": "Copied clean 46fd5353 native fixed-point compiler from /workspace/scratch/bada75685416/pystachy-audit after base-bootstrap.log reported compiler 670942/runtime 18709 fixed points; CPython 3.13.16 LLVM18.1.3. Private source tree verified identical."
+}

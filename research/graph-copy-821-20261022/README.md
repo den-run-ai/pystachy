@@ -77,4 +77,23 @@ For the V2 instruction comparison, use `reproduce_callgrind.py --help`. It accep
 
 The next allocation-avoidance experiment must preserve observable integer identity, including a stored user key's comparison method observing or retaining the query object, and preserve callback order, exceptions and mutation/restart behavior. A stack box or a newly boxed substitute passed to user code is not an established safe replacement. No safe allocation reduction is implemented by this work. The separate direct builtin-number hash-dispatch idea has low semantic scope but no measured benefit here; the profile motivates testing it, not accepting it.
 
+## Latest-main checkpoint after #870
+
+A separate incremental cohort compares previous main `46fd53536afac60760b15f068641f7f238f964fe` with merged #870 main `2fc641a21cd071f6636b964ca1680edd79480b83`. GitHub API reads at 2026-10-23 01:45:41 UTC and 01:46:50 UTC confirm that main revision; #871 remained open at `551246b3b25705b3db6542fddae1e5f0d691cc56`. The raw run lasted 01:46:15–01:46:36 UTC. The exact manifest's `created` and `initial_status` fields are inherited historical-campaign metadata, **not this run's date or status**; use these raw/API timestamps for chronology.
+
+The frozen `graph 4000` workload and toolchain are unchanged: CPU 0, CPython 3.13.16, LLVM 18.1.3, private caches, shared lock and quiet preflight. All checksums matched `670230`; final source/compiler identity checks and foreign-work scan passed. Five initial pairs triggered five confirmation pairs because whole-process JIT CPU and wall time initially exceeded 20%. Medians below keep the independent batches separate; percentage is `100 × (head/base − 1)`.
+
+| CPU metric | Initial 46fd → 2fc, ms | Initial change | Confirmation 46fd → 2fc, ms | Confirmation change |
+|---|---:|---:|---:|---:|
+| JIT processing |66.179 → 72.578|+9.67%|68.365 → 67.147|−1.78%|
+| AOT processing |64.646 → 70.856|+9.61%|64.481 → 61.548|−4.55%|
+| JIT whole process |205.782 → 260.859|+26.76%|200.523 → 210.666|+5.06%|
+| AOT whole process |79.523 → 82.985|+4.35%|75.395 → 71.785|−4.79%|
+
+There is no repeatable incremental ≥20% degradation among the ten recorded metrics. The initial whole-JIT CPU crossing did not confirm: its paired-bootstrap 95% ratio interval is 1.074–1.289 initially and 0.908–1.095 on confirmation. Processing intervals also overlap 1; they do not establish a speedup or regression. Whole-process JIT includes compiler/startup work and is distinct from the processing-only metric that identified #821. Both newly built AOT executables are byte-identical, SHA256 `1b37725f6e0407562e5608849b6feb755de4867f3a34c581c7db6a3b966e95af`: #870 did not change this workload's AOT executable, and its observed AOT timing differences cannot be attributed to changed generated code.
+
+Compiler reuse was verified before measurement. Local build commit `3bf7477ebac3d689f7ad13fd6670d5e39d750658`, published comparison commit `934e61edebdcd3b23fdea963bb5536af87bbdaad`, and merged `2fc641a2` have identical tracked tree `fd2126dc205ad90f033f008a981c0e45a2518199`. The native compiler equals the successful stage-two build, SHA256 `1b94b85fdb1d349efe6fddfb5224b0ed67fed16fc2f63e3ce84dd1ebb06acd00`; all three compiler IR stages and all three runtime IR stages match. The run used an isolated clean clone with a copied, hash-verified compiler and made no changes to the correctness session's checkouts.
+
+`main870/` retains the exact executed manifest, raw process records, normalized pairs, build identities, bootstrap log/provenance, API snapshots, pre/postflight checks and summary. Its `aggregate.py` reproduces the descriptive 4,000-resample paired-bootstrap summary with `python3 aggregate.py pairs.jsonl --output report`. The raw and manifest files were copied without mutation; original absolute paths remain provenance. This cohort compares 46fd to 2fc only. It does not replace the earlier parent-to-46fd persistence result or independently remeasure original-parent-to-2fc; do not splice medians between cohorts.
+
 No whole-application, retained-memory, default-on, or full regression-free claim. The maintained guard and the rejected runtime experiment have separate outcomes; the underlying allocation/hash/layout costs remain open under #780.

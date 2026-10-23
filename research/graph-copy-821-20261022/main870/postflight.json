@@ -1,0 +1,20 @@
+{
+  "checked": "2026-10-23T01:46:36Z",
+  "foreign_work": [],
+  "source_identity": {
+    "checked": "2026-10-23T01:46:36Z",
+    "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388",
+    "revisions": {
+      "base": {
+        "sha": "46fd53536afac60760b15f068641f7f238f964fe",
+        "status": "",
+        "binary_sha256": "2fa706edfab88b52b475fc23743ef3bdce21a4c6f4bcd8d938c4d53a7dd677f8"
+      },
+      "head": {
+        "sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+        "status": "",
+        "binary_sha256": "1b94b85fdb1d349efe6fddfb5224b0ed67fed16fc2f63e3ce84dd1ebb06acd00"
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+  "tree": "fd2126dc205ad90f033f008a981c0e45a2518199",
+  "binary_sha256": "1b94b85fdb1d349efe6fddfb5224b0ed67fed16fc2f63e3ce84dd1ebb06acd00",
+  "cohort_id": "5f115cf5d6edb21da217ec1d3b8fd215a2320e92ee53dc2623b40dfaf9cd3e83",
+  "provenance": {
+    "source_checkout": "/workspace/scratch/bada75685416/pystachy-comparisons",
+    "source_sha": "3bf7477ebac3d689f7ad13fd6670d5e39d750658",
+    "source_tree": "fd2126dc205ad90f033f008a981c0e45a2518199",
+    "comparison_published_sha": "934e61edebdcd3b23fdea963bb5536af87bbdaad",
+    "target_sha": "2fc641a21cd071f6636b964ca1680edd79480b83",
+    "target_tree": "fd2126dc205ad90f033f008a981c0e45a2518199",
+    "binary_sha256": "1b94b85fdb1d349efe6fddfb5224b0ed67fed16fc2f63e3ce84dd1ebb06acd00",
+    "fixed_point_ir_sha256": {
+      "stage1.ll": "6cd67a125c2488597751a96c2211e2c7e36215e9a4af9c25cc89a7fbc79b2384",
+      "stage2.ll": "6cd67a125c2488597751a96c2211e2c7e36215e9a4af9c25cc89a7fbc79b2384",
+      "stage3.ll": "6cd67a125c2488597751a96c2211e2c7e36215e9a4af9c25cc89a7fbc79b2384",
+      "rt1.ll": "5896225a2f56695c0cf0730fd27af5e4e30ead0eab54ab76a99386ad7bcffc4f",
+      "rt2.ll": "5896225a2f56695c0cf0730fd27af5e4e30ead0eab54ab76a99386ad7bcffc4f",
+      "rt3.ll": "5896225a2f56695c0cf0730fd27af5e4e30ead0eab54ab76a99386ad7bcffc4f"
+    },
+    "bootstrap_log_sha256": "9c3e2e026137b8af778376f239e3eb88d616872f5ff28f955a4b20b80a252b49",
+    "identity": "All tracked source trees identical; native binary equals successful stage2 payload; private copy verified clean before measurement."
+  }
+}
