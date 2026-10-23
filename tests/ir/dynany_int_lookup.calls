@@ -1,0 +1,11 @@
+@main.init:
+@f.contains: pys_dict_find_int_nobox pys_dyn_int pys_dict_has
+@f.getitem: pys_dict_find_int_nobox pys_dict_val pys_dyn_int pys_dict_getitem
+@f.typed_contains: pys_dict_has
+@f.typed_getitem: pys_dict_getitem
+@f.dynamic_contains: pys_dict_has
+@f.dynamic_getitem: pys_dict_getitem
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

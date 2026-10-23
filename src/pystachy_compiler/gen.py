@@ -335,6 +335,7 @@ from src.pystachy_compiler.containers import (
     gen_none_container as containers_none_container,
     gen_affix_any as containers_affix_any,
     gen_bool_find as containers_bool_find,
+    gen_int_any_lookup as containers_int_any_lookup,
     gen_dkey as containers_dkey,
     gen_elem_problem as containers_elem_problem,
     gen_fromkeys as containers_fromkeys,
@@ -4281,6 +4282,9 @@ class Gen:
 
     def bool_find(self, d: str, k: Val, key: str) -> str:
         return containers_bool_find(self, d, k, key)
+
+    def int_any_lookup(self, d: Val, k: Val, get: bool) -> str:
+        return containers_int_any_lookup(self, d, k, get)
 
     def store_key(self, k: Val, kt: str) -> Val:
         return containers_store_key(self, k, kt)
