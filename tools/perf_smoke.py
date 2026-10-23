@@ -24,6 +24,7 @@ CASES = {
     "copy_float": ("bench/smoke/identity.py", ["float", "6000000", "123"]),
     "global_int": ("bench/smoke/identity.py", ["global_int", "6000000", "123"]),
     "global_float": ("bench/smoke/identity.py", ["global_float", "6000000", "123"]),
+    "graph_copy": ("tools/dynany_bench.py", ["graph-smoke", "4000"]),
     "regex_effbot": ("bench/pyperformance/regex_effbot.py", BENCHMARKS["regex_effbot"][0]),
 }
 METRICS = ("build_s", "jit_process_s", "jit_loop_s", "aot_process_s", "aot_loop_s")
@@ -92,6 +93,7 @@ def measure(name, compilers, envs, directory, built):
         result.update(status=classify(result, second), confirmation=second)
     built.add(path)
     return {"name": name, "source": path, "arguments": arguments, "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+            "loop_clock": "process_time_ns" if name == "graph_copy" else "perf_counter",
             "output": oracle["stdout"], "samples": first, "confirmation": confirmation, "comparison": comparisons}
 
 
@@ -101,6 +103,7 @@ def summary(report):
              "Three pairs; ≥20% and ≥5 ms slower triggers three confirmation pairs. Warnings require",
              "both batches to meet the threshold with non-overlapping base/head ranges.", "",
              "Build time is measured once per source file, shown on its first workload.", "",
+             "graph_copy loop time measures processing CPU seconds; other loop times measure wall seconds.", "",
              "| Workload | Metric | Base | Head | Change | Result |",
              "|---|---|---:|---:|---:|---|"]
     for result in report["results"]:

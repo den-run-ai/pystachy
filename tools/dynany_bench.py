@@ -9,6 +9,8 @@ Build once, then alternate the modes, each with the same N:
   graph N    the heterogeneous object graph of tests/programs/inference/dynany_graph.py: N graphs built, then each
              deep-copied and checksummed through its Any values
 Each prints a checksum, the construction CPU nanoseconds and the processing CPU nanoseconds.
+The graph-smoke mode uses the same graph processing, printing its checksum to stdout
+and processing CPU seconds to stderr for tools/perf_smoke.py; construction is untimed.
 Use PYSTACHY_GC=stats in a separate untimed run to report the heap peak (docs/dynamic-any.md).
 """
 import sys
@@ -259,6 +261,20 @@ def graph(n: int) -> None:
     print(total, built - start, end - built)
 
 
+def graph_smoke(n: int) -> None:
+    # Keep graph()'s historical output and timing protocol unchanged.
+    graphs: list[Any] = []
+    for seed in range(n):
+        graphs.append(build(seed))
+    start = process_time_ns()
+    total = 0
+    for g in graphs:
+        total = (total + checksum(copy_value(g, {}), {})) % 1000003
+    elapsed = process_time_ns() - start
+    print(total)
+    print("seconds", elapsed / 1000000000, file=sys.stderr)
+
+
 mode = sys.argv[1]
 n = int(sys.argv[2])
 assert n > 0 and n <= 10000000
@@ -270,5 +286,7 @@ elif mode == "dyn":
     dyn(n)
 elif mode == "generic":
     generic(n)
+elif mode == "graph-smoke":
+    graph_smoke(n)
 else:
     graph(n)
