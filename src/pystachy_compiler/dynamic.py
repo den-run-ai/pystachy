@@ -192,6 +192,17 @@ def comparison_fields(n: Node, parameter: str, out: list[str]) -> bool:
     return True
 
 
+def comparison_reads(n: Node, parameter: str, missing: list[str]) -> bool:
+    # A missing field can be read (and raise), but never invent storage for an
+    # assignment. Keep writes to other fields and through existing containers.
+    if n.kind in ["assign", "annassign", "augassign"]:
+        for target in n.kids[:-1] if n.kind == "assign" else n.kids[:1]:
+            fields: list[str] = []
+            if not comparison_fields(target, parameter, fields) or any(a in missing for a in fields):
+                return False
+    return all(comparison_reads(kid, parameter, missing) for kid in n.kids)
+
+
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
@@ -1443,7 +1454,12 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         fields: list[str] = []
         if not comparison_fields(method.node.kids[2], method.params[1], fields):
             return False
-        return all(a in ci.ftypes and a not in ci.methods and ci.ftypes[a] == self.classes[canonical].ftypes[a] for a in fields)
+        if all(a in ci.ftypes and a not in ci.methods and ci.ftypes[a] == self.classes[canonical].ftypes[a] for a in fields):
+            return True
+        # Only truly absent fields get runtime AttributeError. Properties,
+        # custom lookup hooks and incompatible storage keep their prior path.
+        missing = [a for a in fields if a not in ci.ftypes and a not in ci.methods]
+        return len(missing) > 0 and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or (a not in ci.methods and ci.ftypes.get(a, "") == self.classes[canonical].ftypes[a]) for a in fields) and comparison_reads(method.node.kids[2], method.params[1], missing)
     if key.startswith("get."):
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and (ci.methods[a].prop or (ci.methods[a].deco == "" and ci.methods[a].bad == "")))  # (a method's: the bound method)
@@ -1545,7 +1561,12 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         self.xtry = attempt
         # Preserve typed storage and aliasing; no field is copied or reboxed. Keep
         # each failed arm separate from the generic and annotated typed attempts.
-        method = self.instance(self.classes[receiver.t].methods[dunder], [receiver.t, x.t], [])
+        original = self.classes[receiver.t].methods[dunder]
+        canonical = original.ptypes[1] if original.ptypes[1] in self.classes else receiver.t
+        fields: list[str] = []
+        comparison_fields(original.node.kids[2], original.params[1], fields)
+        missing = any(a not in self.classes[x.t].ftypes for a in fields)
+        method = self.instance(original, [receiver.t, x.t], [], cmpfields=canonical if missing else "")
         condition = self.truth(self.call_fn(method, [receiver, x], [], direct=True))
         self.xtry = ""
         self.ret_(Val(self.select(condition, Val("1", "int"), Val("0", "int")), "int"))

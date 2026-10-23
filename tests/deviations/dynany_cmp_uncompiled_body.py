@@ -1,12 +1,12 @@
 # pystachy: dynamic-any
-# Remaining #803 gap: this body also fails for the concrete operand class,
-# because Peer has no items attribute. The fallback still skips its side effect
-# and AttributeError, although concrete adapters now support typed fields.
+# Remaining #803 gap: incompatible typed field layouts still fall outside the
+# guarded structural adapter, so this comparison skips the method side effect.
 from typing import Any
 
 
 class Peer:
-    pass
+    def __init__(self) -> None:
+        self.items = ["different storage"]
 
 
 class Strict:
