@@ -222,7 +222,7 @@ stack exhaustion ends the host process.
 
 | Area | Behavior |
 |---|---|
-| Strings | Byte-indexed UTF-8 inside Pystachy. Invalid UTF-8 returned from C is kept as bytes in a string; the twin's decode raises `UnicodeDecodeError`. |
+| Strings | UTF-8 storage inside Pystachy; lengths, indexing, slicing, iteration and search positions count code points. Invalid UTF-8 returned from C is kept as bytes in a string; the twin's decode raises `UnicodeDecodeError`. |
 | Process symbol lookup | `@extern("")` sees different libraries in CPython, `lli` and an AOT executable. Name a library explicitly. |
 | Library interposition | `lli`'s libraries can affect global bindings. JIT opens the named library with `RTLD_DEEPBIND` to bind its internal calls like AOT; CPython's process may still bind differently. |
 | C output | Foreign stdio and subset `print` interleave according to their separate buffers and flushes. |
