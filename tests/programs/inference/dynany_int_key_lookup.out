@@ -1,0 +1,30 @@
+mixed float false
+one key 2 int int
+collision minus one minus two missing
+large 4 exact float next int
+bounds maximum minimum
+rounded False False
+holes 40 -1 69 False
+refilled 80 110 69 400
+pop 120 -1 400 80
+lookup -1 custom 2
+query True True True
+retained 1000 True
+lookup 0 missing 0
+query True True True
+retained 1000 True
+lookup 1 custom 66
+query True True True
+retained 1000 True
+lookup 2 replacement 2
+query True True True
+retained 1000 True
+lookup 3 ValueError comparison callback 2
+query True True True
+retained 1000 True
+filled hole 0 3 filled query False
+values ['custom', 'filled', 'query']
+default query
+filled hole 1 3 filled query False
+values ['custom', 'filled', 'query']
+[exit 0]

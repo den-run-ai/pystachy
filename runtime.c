@@ -1737,6 +1737,7 @@ I pys_dyn_cmp(Dyn *a, Dyn *b, I op);
 I pys_dyn_hash(Dyn *x);
 static int dyn_eqitem(Dyn *a, Dyn *b);
 static int dyn_keyeq(Dyn *a, Dyn *b);
+static int dyn_intkey(Dyn *a);
 static uint64_t hdyn(Dyn *x);
 DynIter *pys_dyn_iter(Dyn *o);
 Dyn *pys_dyn_next(DynIter *it);
@@ -2952,7 +2953,38 @@ static I dfind(Dict *d, I k, uint64_t h, I *free) {
   return dlook(d, k, h, free, d->size * 2 - 1, 1);
 }
 __attribute__((noinline)) static I dfindi(Dict *d, I k, uint64_t h, I *free) { return d->size ? dlook(d, k, h, free, d->size * 2 - 1, 0) : -1; }
-__attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) { return dlook(d, k, h, free, d->size - 1, 2); }
+/* An exact int lookup in an Any table: all its earlier hash-matching int
+   comparisons are pure. The first other type returns -2 for the generic lookup, so
+   user comparisons run in the same order, with the original key box, and retain
+   dlook's mutation/restart rules. The table's layout, hashes and probe sequence
+   stay unchanged. */
+static inline __attribute__((always_inline)) I dlook_int(Dict *d, I k, uint64_t h, I *free) {
+  Dyn *key = (Dyn *)k; const DynType *type = key->t; I value = key->v;
+  I f = -1; uint64_t m = d->size - 1;
+  for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
+    DICT_PROBE();
+    int32_t e = d->idx[i];
+    if (!e) { if (free) *free = f < 0 ? (I)i : f; return -1; }
+    if (e < 0) { if (f < 0) f = i; }
+    else {
+      I x = d->keys[e - 1];
+      if (x == k) return i;
+      if (d->hs[e - 1] == h) {
+        Dyn *stored = (Dyn *)x;
+        if (stored->t != type) return -2;
+        if (stored->v == value) return i;
+      }
+    }
+  }
+}
+__attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) {
+  const char *s = kdesc(d->kind);
+  if (*s == 'A' && !s[1] && dyn_intkey((Dyn *)k)) {
+    I found = dlook_int(d, k, h, free);
+    if (found != -2) return found;
+  }
+  return dlook(d, k, h, free, d->size - 1, 2);
+}
 /* dfind of key k, which it hashes (hsh) into *hp first: one test of the kind for both */
 static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp, I *free) {
   if (d->kind == 1) return dfindi(d, k, *hp = hstrd((Str *)k), free);
@@ -3289,6 +3321,7 @@ static const Dyn smallint[262] = {DI4(-5), DI(-1), DI64(0), DI64(64), DI64(128),
 #define DNONE ((Dyn *)&pys_dyn_none_box)
 #define DKIND(x) ((x)->t->kind)
 #define DNAME(x) ((x)->t->name->s)
+static int dyn_intkey(Dyn *x) { return x->t == &pys_dyntype_int; }
 static int dnum(const Dyn *x) { return DKIND(x) == DK_INT || DKIND(x) == DK_BOOL; }   /* an int or a bool: its value is v */
 Dyn *pys_dyn_int(I v) {
   if ((uint64_t)v + 5 < 262) return (Dyn *)&smallint[v + 5];   /* (unsigned: v + 5 overflows from INT64_MAX - 4) */
