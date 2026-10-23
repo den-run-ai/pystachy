@@ -171,12 +171,34 @@ def gen_dyn_xhelper(self, c: str) -> None:
     self.lenient = False
 
 
+def comparison_fields(n: Node, parameter: str, out: list[str]) -> bool:
+    # A bounded structural adapter: the operand is used only through direct
+    # fields. Reject rebinding, escaping the object, and nested scopes, whose
+    # meaning could depend on the concrete class beyond those field types.
+    if n.kind not in ["block", "return", "raise", "if", "pass", "expr", "assign", "annassign", "augassign",
+                      "name", "attr", "call", "kw", "int", "float", "str", "bytes", "True", "False", "None",
+                      "binop", "unary", "boolop", "cmp", "ifexp", "index", "slice", "sliceitem", "omit",
+                      "list", "tuple", "dict", "set", "noann"]:
+        return False
+    if n.kind == "name" and n.s in [parameter, "locals", "vars", "eval", "exec"]:
+        return False
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == parameter:
+        if n.s not in out:
+            out.append(n.s)
+        return True
+    for kid in n.kids:
+        if not comparison_fields(kid, parameter, out):
+            return False
+    return True
+
+
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
     # concrete annotation keeps its ordinary method for a matching operand. For another value,
     # specialize the same body with an Any parameter: Python annotations do not decline rich
-    # comparisons. If that body cannot compile, retain the existing documented fallback (3).
+    # comparisons. If that body cannot compile, try guarded concrete class adapters before
+    # retaining the documented fallback (3) for bodies that still cannot compile.
     # The two attempts have separate restart keys, so failure of the dynamic body cannot remove
     # a supported typed call. A NamedTuple without the method (!= also where it defines __eq__:
     # tuple's __ne__) compares its fields with a tuple, as tuple's methods do, which decline any
@@ -221,7 +243,30 @@ def gen_dyn_xbody(self, c: str) -> None:
                 self.place(dynamic)
             key = f"{c}.{m}" + (":dynamic" if adapt else "")
             if key in self.xnot:
-                self.ret_(Val("3", "int"))
+                fields: list[str] = []
+                canonical = ps[1] if len(ps) == 2 and ps[1] in self.classes else c
+                shape = f"{c}.{m}:concrete-shape"
+                supported = len(ps) == 2 and method.deco == "" and shape not in self.xnot
+                if supported:
+                    supported = comparison_fields(method.node.kids[2], method.params[1], fields) and len(fields) > 0
+                if supported:
+                    supported = all(a in self.classes[canonical].ftypes and a not in self.classes[canonical].methods for a in fields)
+                if supported:
+                    # A typed field (notably a list's storage) cannot become Any. Retry
+                    # the original body against the guarded concrete class instead of
+                    # losing its effects. Establish the canonical field-typed body once;
+                    # incompatible classes never trigger whole-program retries.
+                    self.xtry = shape
+                    self.instance(method, [c, canonical], [])
+                    self.xtry = ""
+                    f = self.dyn_dispatcher(f"cmp.{c}.{m}", [DYN, c], "int", m)
+                    result = self.dyn_call(f, [b, a])
+                    if inv:
+                        flip = Val(self.scalar("xor", [result, Val("1", "int")]), "int")
+                        result = Val(self.select(self.num_cmp("<", result, Val("2", "int")).v, flip, result), "int")
+                    self.ret_(result)
+                else:
+                    self.ret_(Val("3", "int"))
                 self.place(nxt)
                 continue
             self.xtry = key
@@ -1379,6 +1424,17 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
     # method, whatever the arguments: a call that does not fit raises its TypeError) the
     # operation runs
     ci = self.classes[c]
+    if key.startswith("cmp."):
+        own = self.dynfns[key].ptypes[1]
+        # Same-hierarchy comparisons already use the typed helper, not @o.x.
+        if self.derives(c, own) or self.derives(own, c):
+            return False
+        method = self.classes[own].methods[dunder]
+        canonical = method.ptypes[1] if method.ptypes[1] in self.classes else own
+        fields: list[str] = []
+        if not comparison_fields(method.node.kids[2], method.params[1], fields):
+            return False
+        return all(a in ci.ftypes and a not in ci.methods and ci.ftypes[a] == self.classes[canonical].ftypes[a] for a in fields)
     if key.startswith("get."):
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and (ci.methods[a].prop or (ci.methods[a].deco == "" and ci.methods[a].bad == "")))  # (a method's: the bound method)
@@ -1471,6 +1527,20 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
     line = self.line
     xn = self.vnode(x)
     an = self.dyn_call_args(key, args) if key.startswith("call") else [self.vnode(a) for a in args]
+    if key.startswith("cmp."):
+        receiver = args[0]
+        attempt = f"{receiver.t}.{dunder}:concrete:{x.t}"
+        if attempt in self.xnot:
+            self.ret_(Val("3", "int"))
+            return
+        self.xtry = attempt
+        # Preserve typed storage and aliasing; no field is copied or reboxed. Keep
+        # each failed arm separate from the generic and annotated typed attempts.
+        method = self.instance(self.classes[receiver.t].methods[dunder], [receiver.t, x.t], [])
+        condition = self.truth(self.call_fn(method, [receiver, x], [], direct=True))
+        self.xtry = ""
+        self.ret_(Val(self.select(condition, Val("1", "int"), Val("0", "int")), "int"))
+        return
     if key == "un3":
         fm = self.classes[x.t].methods[dunder]
         own = 0 if fm.deco != "" else 1
@@ -1657,6 +1727,9 @@ def gen_dyn_fresh(self, v: Val) -> Val:
 def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     # what dispatcher key does for the builtin types: runtime.c's helper, or an AttributeError
     if self.term:
+        return
+    if key.startswith("cmp."):
+        self.ret_(Val("3", "int"))
         return
     o = ps[0]
     if key.startswith("op") or key.startswith("iop"):
