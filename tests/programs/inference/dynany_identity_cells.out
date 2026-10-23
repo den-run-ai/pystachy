@@ -1,0 +1,13 @@
+shared True True
+self assignment True
+replaced False False True
+delayed True True False
+local copy True False
+escaped True
+nan True False True False
+negative zero False True
+positive zero False True
+loop cell True True
+branch cell True True
+branch cell True True
+[exit 0]

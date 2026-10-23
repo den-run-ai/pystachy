@@ -1,0 +1,12 @@
+binding [True, True, True]
+iterations False False
+float binding [True, True, True]
+shadow [True, True, True] True
+empty [] True
+nested [[True, True, True], [True, True, True], [True, True, True]] True
+clauses [True, True, True, True, True, True, True, True, True] True
+short circuit True True True
+dict {0: True, 1: True, 2: True}
+set {1}
+iterable [True, True] True
+[exit 0]

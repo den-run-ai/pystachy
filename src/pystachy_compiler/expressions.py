@@ -734,7 +734,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "binop":
         scalar_fn = self.fn
         scalar_held = scalar_fn.scalar_reads
-        if not scalar_held and len(self.gidbox) > 0 and self.scalar_read_value(n):
+        if not scalar_held and (len(self.gidbox) > 0 or len(self.idbox) > 0) and self.scalar_read_value(n):
             scalar_fn.scalar_reads = True
         try:
             a = self.expr(n.kids[0], want, resultsoft=resultsoft)
@@ -791,6 +791,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
+        if self.curfn.cmpfields != "" and tc.kind == "name" and tc.s == self.curfn.params[1] and n.s in self.classes[self.curfn.cmpfields].ftypes and o.t in self.classes and n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods:
+            # The concrete comparison arm proves this exact class lacks the
+            # field. Raise at the read, after earlier effects and only on paths
+            # that reach it. The unreachable value retains the body's type.
+            self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{n.s}'"))
+            return Val("undef", self.classes[self.curfn.cmpfields].ftypes[n.s])
         if o.t == "dyn":
             return self.dyn_getattr(o, n.s)  # (its box's class's attribute: dynamic.py)
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):
@@ -2687,9 +2693,11 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
         self.err(comp_unbound(n, names))
     saved: list[str] = []
     held: list[int] = []
+    boxes: list[str] = []
     for nm in names:
         saved.append(self.ltype.get(nm, "") + " " + self.lreg.get(nm, ""))
         held.append(self.compvars.get(nm, 0))
+        boxes.append(self.idbox.get(nm, ""))
     app = mk("lcappend" if mode == "" else "reduce" if mode.startswith("#") else "anyall", mode[1:] if mode.startswith("#") else mode if mode != "" or kind == "list" else kind, n.line, [n.kids[0]])
     body = [app]
     for j in range(len(n.kids) - 1, 2, -1):
@@ -2734,6 +2742,10 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
             self.compvars[nm] = held[i]
         elif nm in self.compvars:
             del self.compvars[nm]
+        if boxes[i] != "":
+            self.idbox[nm] = boxes[i]
+        else:
+            self.idbox.pop(nm, "")
     if mode == "any" or mode == "all":
         return Val(self.mload('bool', res), "bool")
     if mode != "":

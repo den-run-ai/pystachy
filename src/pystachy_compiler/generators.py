@@ -677,9 +677,11 @@ def gen_hidden_loop(self, loop: Node, own: list[str], names: list[str]) -> None:
     # its target's, and names, those of the compfor loops in its body too
     saved: list[str] = []
     held: list[int] = []
+    boxes: list[str] = []
     for nm in names:
         saved.append(self.ltype.get(nm, "") + " " + self.lreg.get(nm, ""))
         held.append(self.compvars.get(nm, 0))
+        boxes.append(self.idbox.get(nm, ""))
     pre = self.narrowed
     share = self.compshare
     self.compshare = {}
@@ -699,6 +701,10 @@ def gen_hidden_loop(self, loop: Node, own: list[str], names: list[str]) -> None:
             self.compvars[nm] = held[i]
         elif nm in self.compvars:
             del self.compvars[nm]
+        if boxes[i] != "":
+            self.idbox[nm] = boxes[i]
+        else:
+            self.idbox.pop(nm, "")
 
 
 def gen_gen_next(self, h: Val, done: str) -> str:

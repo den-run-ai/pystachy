@@ -164,7 +164,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   value in each module, shared by its functions. Positive and negative zero have distinct
   boxes; computed floats, including NaNs, are not interned
   (`tests/programs/inference/dynany_float_identity.py`). An int or float variable of typed code
-  (a local or a parameter of a module that opts in, or any module's variable in a program where one does)
+  (a local, parameter, closure cell or comprehension variable of a module that opts in,
+  or any module's variable in a program where one does)
   holds one object, as CPython's name does. Beside it is a box
   slot, null until the variable has a box. Each time the variable becomes an `Any` value, it
   gives the slot's box where that box holds its value, else a new box, which the slot then
@@ -181,10 +182,17 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   (`tests/programs/inference/dynany_identity_constants.py`). This applies to
   numeric globals in imported typed modules too when the program uses dynamic `Any`. These
   copies and global reads can allocate before an `Any` crossing, even if none follows.
-  A global read used only by a proven scalar arithmetic expression does not materialize
+  A numeric closure cell shares its box slot with every reader and nonlocal writer,
+  including closures created before its first box. Its reads also snapshot before
+  later operands can rebind the cell. The box remains reachable after the creating
+  function returns (`tests/programs/inference/dynany_identity_cells.py`). Cells use
+  the existing 16-byte scanned allocation class; the second word now holds the box.
+  Copies into or out of a cell can materialize a box even when no `Any` crossing
+  follows, including in a factory that returns a closure with only scalar uses.
+  A global or closure-cell read used only by a proven scalar arithmetic expression does not materialize
   a box. The expression must contain only concrete numeric names, literals, arithmetic
   and unshadowed numeric conversions; calls to user code, assignment expressions,
-  dynamic operands and unknown syntax retain snapshots. Global stores still update
+  dynamic operands and unknown syntax retain snapshots. Global and cell stores still update
   their identity slots, and copies or values kept across calls retain their objects
   (`tests/programs/inference/dynany_identity_scalar_globals.py`).
   Local numeric bindings carry stack generation counters, so a read before an assignment
@@ -193,6 +201,9 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   generation lazily, and a local assignment expression keeps its target's provenance
   (`tests/programs/inference/dynany_identity_expressions.py`). No box is materialized solely
   to produce these expression results.
+  Comprehension targets have their own box slots, renewed for each iteration and
+  restored to the enclosing scope after shadowing, including empty comprehensions
+  and short-circuit reductions (`tests/programs/inference/dynany_identity_comprehensions.py`).
   Closed functions with explicit numeric parameters and numeric return types omit local box
   slots when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
   and numeric conversions. Functions proven to return only `None`, including inferred numeric
@@ -203,7 +214,7 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   existing typed numeric return boundary; extending identity preservation across that
   boundary must revisit this proof. Any
   other value, such as an int computed there, is a new object, which its first crossing, copy
-  or global read boxes. A float that `isinstance()` narrows an
+  or global or closure-cell read boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
   (`tests/programs/inference/dynany_identity_typed.py`). Where typed code's numbers still cross
   into `Any` as new objects, see the [deviations](#deviations).
@@ -312,13 +323,18 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
 list compared with an `Any` value's field), the compiler also tries the body against the
 concrete classes of boxed operands, behind exact `DynType` guards. This bounded adapter requires
-the operand to be used exclusively through direct instance fields with the same types as the
-annotated operand class (or the receiver class for an unannotated parameter). Properties,
-whole-operand uses, nested scopes and unsupported syntax retain the fallback. A canonical
-field-typed body is checked once; missing or incompatible fields do not cause per-class retries.
-Typed container fields keep
+the operand to be used exclusively through direct instance fields. Present fields must have the
+same types as the annotated operand class (or the receiver class for an unannotated parameter).
+A missing field read raises `AttributeError` only when execution reaches that read, preserving
+earlier effects and exceptions and branches that never read it. This uses a separate concrete
+specialization and does not change an ordinary typed call. Properties, custom attribute lookup,
+missing-field writes, whole-operand uses, nested scopes and unsupported syntax retain the fallback.
+A canonical field-typed body is checked once; incompatible fields are filtered before
+specialization. Typed container fields keep
 their existing storage and aliases: these adapters neither copy nor box their items
-(`tests/programs/inference/dynany_cmp_concrete_body.py`). They are emitted only when the generic
+(`tests/programs/inference/dynany_cmp_concrete_body.py`). Missing reads, their evaluation order,
+and reflected comparisons are covered by `tests/programs/inference/dynany_cmp_missing_fields.py`,
+`dynany_cmp_missing_effects.py` and `dynany_cmp_missing_order.py`. Adapters are emitted only when the generic
 dynamic body failed, and follow classes discovered by later dispatcher generation. Failed
 concrete attempts have separate `Gen.xnot` keys, so they do not suppress a working adapter or
 typed call (`tests/programs/inference/dynany_eq_template.py`). A normal instance comparison method with
@@ -377,8 +393,9 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   outside the supported guarded concrete adapter still does
   not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand lacks a required attribute).
-  Typed container-field comparisons now execute through guarded concrete adapters. Concrete operand annotations alone no
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand has an incompatible typed
+  container field). Typed container-field comparisons and missing-field reads now execute
+  through guarded concrete adapters. Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
   is a correctness gap tracked by #803, not a stable comparison contract.
 - An object is not iterable through an `Any` value yet (iteration of objects is under
@@ -390,8 +407,8 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - An int or float of typed code that no variable's box slot holds is a new object where it
   becomes an `Any` value, where CPython's names, containers and classes hold one object: an
   argument or a parameter's default value (the parameter receives a new object), a return
-  value, an item of a typed container, a typed field or class variable, a variable that a
-  closure reads, a comprehension's variable, and the name that `from m import x` binds. So is an expression
+  value, an item of a typed container, a typed field or class variable, and the name
+  that `from m import x` binds. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
   literal `1000` there). Repeated reads of an unboxed local before a taken store in the
   same expression can also become distinct objects: `[x, x, (x := value)]` boxes the two

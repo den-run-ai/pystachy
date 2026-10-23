@@ -192,6 +192,17 @@ def comparison_fields(n: Node, parameter: str, out: list[str]) -> bool:
     return True
 
 
+def comparison_reads(n: Node, parameter: str, missing: list[str]) -> bool:
+    # A missing field can be read (and raise), but never invent storage for an
+    # assignment. Keep writes to other fields and through existing containers.
+    if n.kind in ["assign", "annassign", "augassign"]:
+        for target in n.kids[:-1] if n.kind == "assign" else n.kids[:1]:
+            fields: list[str] = []
+            if not comparison_fields(target, parameter, fields) or any(a in missing for a in fields):
+                return False
+    return all(comparison_reads(kid, parameter, missing) for kid in n.kids)
+
+
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
@@ -443,7 +454,7 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # initialization. Mutable globals retain lazy boxing and snapshot reads.
         b = self.dyn_box(v).v
     step = "1"
-    if slot.startswith("%") and b != "null":
+    if slot.startswith("%") and ".box." in slot and b != "null":
         # Boxing a conditional or alias copy may reveal the destination's own object.
         # Keep its generation so earlier unboxed reads can find that newly made box.
         # Compare objects, not payloads: equal replacements must still retire reads.
@@ -453,7 +464,7 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         step = self.select(self.scalar("and", [same, bound]), Val("0", "int"), Val("1", "int"))
     self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1
-    if slot.startswith("%"):
+    if slot.startswith("%") and ".box." in slot:
         counter = Val(slot.replace(".box.", ".boxgen."), "*int")
         # Machine add deliberately wraps, without signed-overflow flags. A local read
         # can survive only the finite stores in its expression, not 2**64 rebindings.
@@ -465,7 +476,8 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     # v, read from an int or float variable whose box slot is slot (idbox): it keeps the slot, the
     # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
     # far (dyn_id_held)
-    if slot.startswith("@") and self.fn.scalar_reads:
+    local = slot.startswith("%") and ".box." in slot
+    if not local and self.fn.scalar_reads:
         # A proven scalar arithmetic consumer uses only the payload. Its subtree has
         # no stores or user calls, so it cannot publish an alias or observe this object.
         # Ordinary reads still snapshot, and every global store still updates its box.
@@ -473,7 +485,7 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     v.idslot = slot
     v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
     v.idgen = self.idstores.get(slot, 0)
-    if slot.startswith("%"):
+    if local:
         v.idcounter = slot.replace(".box.", ".boxgen.")
         v.idversion = self.mem_load(Val(v.idcounter, "*int")).v
     if slot.startswith("@g.") and slot[3:-4] in self.intglobals:
@@ -481,8 +493,9 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         # Initialization guards precede this read; dyn_id_store made its box ready.
         v.idfrom = v.idheld
         v.idslot = ""
-    elif slot.startswith("@"):
-        # Another operand can call code that rebinds a global, beyond idstores' local view.
+    elif not local:
+        # Another operand can call code that rebinds a global or a shared closure cell,
+        # beyond idstores' local view.
         # Snapshot its object now, while the read still names this binding. A null lazy box
         # cannot be recovered later: even an equal new value is a different object. Keeping
         # only idfrom also prevents a later self-assignment from taking the idslot fast path.
@@ -1443,7 +1456,12 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         fields: list[str] = []
         if not comparison_fields(method.node.kids[2], method.params[1], fields):
             return False
-        return all(a in ci.ftypes and a not in ci.methods and ci.ftypes[a] == self.classes[canonical].ftypes[a] for a in fields)
+        if all(a in ci.ftypes and a not in ci.methods and ci.ftypes[a] == self.classes[canonical].ftypes[a] for a in fields):
+            return True
+        # Only truly absent fields get runtime AttributeError. Properties,
+        # custom lookup hooks and incompatible storage keep their prior path.
+        missing = [a for a in fields if a not in ci.ftypes and a not in ci.methods]
+        return len(missing) > 0 and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or (a not in ci.methods and ci.ftypes.get(a, "") == self.classes[canonical].ftypes[a]) for a in fields) and comparison_reads(method.node.kids[2], method.params[1], missing)
     if key.startswith("get."):
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and (ci.methods[a].prop or (ci.methods[a].deco == "" and ci.methods[a].bad == "")))  # (a method's: the bound method)
@@ -1545,7 +1563,12 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         self.xtry = attempt
         # Preserve typed storage and aliasing; no field is copied or reboxed. Keep
         # each failed arm separate from the generic and annotated typed attempts.
-        method = self.instance(self.classes[receiver.t].methods[dunder], [receiver.t, x.t], [])
+        original = self.classes[receiver.t].methods[dunder]
+        canonical = original.ptypes[1] if original.ptypes[1] in self.classes else receiver.t
+        fields: list[str] = []
+        comparison_fields(original.node.kids[2], original.params[1], fields)
+        missing = any(a not in self.classes[x.t].ftypes for a in fields)
+        method = self.instance(original, [receiver.t, x.t], [], cmpfields=canonical if missing else "")
         condition = self.truth(self.call_fn(method, [receiver, x], [], direct=True))
         self.xtry = ""
         self.ret_(Val(self.select(condition, Val("1", "int"), Val("0", "int")), "int"))
