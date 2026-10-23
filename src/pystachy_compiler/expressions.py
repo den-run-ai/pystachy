@@ -791,6 +791,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
+        if self.curfn.cmpfields != "" and tc.kind == "name" and tc.s == self.curfn.params[1] and n.s in self.classes[self.curfn.cmpfields].ftypes and o.t in self.classes and n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods:
+            # The concrete comparison arm proves this exact class lacks the
+            # field. Raise at the read, after earlier effects and only on paths
+            # that reach it. The unreachable value retains the body's type.
+            self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{n.s}'"))
+            return Val("undef", self.classes[self.curfn.cmpfields].ftypes[n.s])
         if o.t == "dyn":
             return self.dyn_getattr(o, n.s)  # (its box's class's attribute: dynamic.py)
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):

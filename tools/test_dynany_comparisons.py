@@ -8,7 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.pystachy_compiler import driver  # noqa: E402
-from src.pystachy_compiler.dynamic import comparison_fields  # noqa: E402
+from src.pystachy_compiler.dynamic import comparison_fields, comparison_reads  # noqa: E402
+from src.pystachy_compiler.lexer import Lexer  # noqa: E402
+from src.pystachy_compiler.parser import Parser  # noqa: E402
 from src.pystachy_compiler.syntax import mk  # noqa: E402
 
 
@@ -41,12 +43,13 @@ class ConcreteComparisonTests(unittest.TestCase):
         self.assertLessEqual(large[1], 3)
         self.assertFalse(any(":concrete:" in key for key in large[2].xnot))
 
-    def test_incompatible_fields_are_filtered_before_specialization(self):
+    def test_missing_and_incompatible_fields_do_not_add_failed_restarts(self):
         for fields in ["self.missing = [3]", "self.items = 'different type'"]:
             with self.subTest(fields=fields):
                 result = self.compile(20, fields=fields)
                 self.assertLessEqual(result[1], 3)
                 self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+                self.assertEqual(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1), fields == "self.missing = [3]")
 
     def test_operand_escapes_and_nested_scopes_are_not_adapted(self):
         bodies = [
@@ -76,6 +79,35 @@ class ConcreteComparisonTests(unittest.TestCase):
                 # These binders can carry the name in .s, not a name child.
                 node = mk(kind, "other", 1, [field])
                 self.assertFalse(comparison_fields(node, "other", []))
+
+
+class ComparisonReadsTests(unittest.TestCase):
+    def read_only_missing(self, source):
+        body = Parser(Lexer(source + "\n", 1).file()).module()
+        fields = []
+        self.assertTrue(comparison_fields(body, "other", fields))
+        return comparison_reads(body, "other", ["missing"])
+
+    def test_reads_keep_evaluation_and_control_flow(self):
+        for source in ("result = other.missing", "print(other.missing)",
+                       "result = other.missing if flag else other.present",
+                       "other.present = other.missing", "other.present[0] = other.missing"):
+            with self.subTest(source=source):
+                self.assertTrue(self.read_only_missing(source))
+
+    def test_every_assignment_target_is_checked(self):
+        for source in ("other.missing = [3]", "local = other.missing = [3]",
+                       "other.missing = local = [3]", "other.present = other.missing = [3]",
+                       "other.missing: list[int] = [3]", "other.missing += [3]",
+                       "other.missing[0] = 3", "local, other.missing = ([3], [4])"):
+            with self.subTest(source=source):
+                self.assertFalse(self.read_only_missing(source))
+
+    def test_existing_field_writes_remain_allowed(self):
+        for source in ("other.present = [3]", "other.present += [3]",
+                       "local = other.present = [3]", "other.present[0] = 3"):
+            with self.subTest(source=source):
+                self.assertTrue(self.read_only_missing(source))
 
 
 if __name__ == "__main__":
