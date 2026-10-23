@@ -1,0 +1,15 @@
+int selection True True True True True
+int selection False False False False True
+float selection 1000.25 True True True True True
+float selection 1000.25 False False False False True
+float selection nan True True True True True
+float selection nan False False False False True
+float selection -0.0 True True True True True
+float selection -0.0 False False False False True
+float selection 0.0 True True True True True
+float selection 0.0 False False False False True
+int alias True True True True True
+NaN alias True True True True True
+int replacement False False False True
+float replacement False False False True
+[exit 0]

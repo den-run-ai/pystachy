@@ -442,13 +442,22 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # Proven single-binding integer globals have their cached/literal box at
         # initialization. Mutable globals retain lazy boxing and snapshot reads.
         b = self.dyn_box(v).v
+    step = "1"
+    if slot.startswith("%") and b != "null":
+        # Boxing a conditional or alias copy may reveal the destination's own object.
+        # Keep its generation so earlier unboxed reads can find that newly made box.
+        # Compare objects, not payloads: equal replacements must still retire reads.
+        old = self.mem_load(Val(slot, "*" + DYN))
+        same = self.ptr_cmp("==", old, Val(b, DYN))
+        bound = self.ptr_cmp("!=", old, Val("null", DYN))
+        step = self.select(self.scalar("and", [same, bound]), Val("0", "int"), Val("1", "int"))
     self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1
     if slot.startswith("%"):
         counter = Val(slot.replace(".box.", ".boxgen."), "*int")
         # Machine add deliberately wraps, without signed-overflow flags. A local read
         # can survive only the finite stores in its expression, not 2**64 rebindings.
-        serial = self.scalar("add", [self.mem_load(counter), Val("1", "int")])
+        serial = self.scalar("add", [self.mem_load(counter), Val(step, "int")])
         self.mem_store(counter, Val(serial, "int"))
 
 
