@@ -1,0 +1,33 @@
+integers 10
+-9223372036854775808 True -9223372036854775808 -9223372036854775808
+-2305843009213693952 True -2305843009213693952 -2305843009213693952
+-2 True -2 -2
+-1 True -1 -1
+0 True 0 0
+1 True 1 1
+1000 True 1000 1000
+2305843009213693951 True 2305843009213693951 2305843009213693951
+2305843009213693952 True 2305843009213693952 2305843009213693952
+9223372036854775807 True 9223372036854775807 9223372036854775807
+miss False True missing
+missing key 1234
+bool false true True True
+float True float float
+mixed 1000 False
+resized 47 3 True None
+clear False empty
+callback True custom custom
+captured 3 True True True
+callbacks ['eq', 'eq', 'eq']
+retained True True 2
+collision fallback custom ['eq'] True
+order getitem custom
+['receiver', 'query', 'eq']
+order get custom
+['receiver', 'query', 'default', 'eq']
+order has True
+['query', 'receiver', 'eq']
+restart replaced replaced 1 ['eq']
+restart identity True
+exception comparison ['eq'] True
+[exit 0]

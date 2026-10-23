@@ -2434,6 +2434,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
             self.stkkey = n.kids[1]  # (memo[(i, j)])
         kval = self.expr(n.kids[1], kv[0])
         self.stkkey = self.nokey
+        if kv[0] == "dyn" and kval.t == "int":
+            return self.from_slot(self.int_any_lookup(self.unwrap(o, sub), kval, True), kv[1])
         kx = self.dkey(kval, kv[0])
         o = self.unwrap(o, sub)
         if bool_for_int(kval.t, kv[0]):
@@ -4036,8 +4038,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             if ok != "true":
                 r = self.select(ok, Val(r, "int"), Val("0", "int"))
         elif is_dict(b.t):
-            s = self.to_slot(self.dkey(a, targs(b.t)[0]))
-            r = self.rt("pys_dict_has", "i64", [f"ptr {b.v}", f"i64 {s}"], self.key_fx(targs(b.t)[0]))
+            if targs(b.t)[0] == "dyn" and a.t == "int":
+                r = self.int_any_lookup(b, a, False)
+            else:
+                s = self.to_slot(self.dkey(a, targs(b.t)[0]))
+                r = self.rt("pys_dict_has", "i64", [f"ptr {b.v}", f"i64 {s}"], self.key_fx(targs(b.t)[0]))
         elif is_set(b.t):
             s = self.to_slot(self.dkey(a, selem(b.t)))
             r = self.rt("pys_set_has", "i64", [f"ptr {b.v}", f"i64 {s}"], self.key_fx(selem(b.t)))

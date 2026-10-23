@@ -26,6 +26,8 @@
    CPython's index, KTAG) and every dict's values, and the 8 slots of a new set whatever its kind
    (the compiler may change the kind of an empty set); so ints that are the addresses of strs
    nothing else holds keep none of them alive (#210), and objects that are keys or elements stay.
+   Integer queries in Any dictionaries also check the allocation-free guarded probe,
+   including identical probe counts and fallback before any user comparison.
    --hash-cache runs only these checks, also under GC stress.
    runtime.c's dict hash functions are in runtime.py, so the build links its IR (pystachy rt).
    usage: make dictprobe   (build/dictprobe [N...] or build/dictprobe --hash-cache) */
@@ -50,8 +52,15 @@ I counted_hash_str(Str *s) {
 #define LIMIT 3.0
 /* the programs' callbacks, which objects hashed by identity (P000) never call; an H000 object of
    the storage check (skey) hashes as its int field, which its __eq__ compares (c < 0: hash(a)) */
-I pys_obj_eq(I c, I a, I b) { return c < 0 ? ((I *)a)[1] * 7 : a == b || ((I *)a)[1] == ((I *)b)[1]; }
-I pys_obj_cmp(I c, I op, I a, I b) { (void)c; (void)op; return a < b ? -1 : a > b; }
+static I int_guard_calls, int_guard_hashes, int_guard_seen;
+I pys_obj_eq(I c, I a, I b) {
+  if (c == -92) { int_guard_hashes++; return 1000; }
+  return c < 0 ? ((I *)a)[1] * 7 : a == b || ((I *)a)[1] == ((I *)b)[1];
+}
+I pys_obj_cmp(I c, I op, I a, I b) {
+  if (c == -92) { int_guard_calls++; int_guard_seen = b; return 0; }
+  (void)op; return a < b ? -1 : a > b;
+}
 Str *pys_obj_repr(I c, I a, I b) { (void)c; (void)a; (void)b; return cstr("<object>"); }
 
 static const char *pats[] = {"i", "-i", "i << 46", "i << 32", "i * 1000", "(i // 128) << 32 | i % 128",
@@ -151,6 +160,68 @@ static void any_keys(void) {
   if (pys_dict_get(dict, (I)pys_dyn_float(1.0), -1) != 1 || pys_dict_get(dict, (I)dbool(1), -1) != 1) any_bad("1.0 or True");
   if (!dict_keyeqs) any_bad("1.0 and True were not compared by dkeyeq");
   printf("Any keys: boxed strs and ints found without dkeyeq, one hash per probe str; 1.0 and True take it\n");
+}
+
+/* No allocation on hits, misses or fallback, even in the allocator's already-filled
+   freelists (gc_allocd alone counts batches and would miss such an allocation). */
+static I int_nobox(I value) {
+  W *before[NK], *stress_before[NK];
+  memcpy(before, fl, sizeof before); memcpy(stress_before, sfl, sizeof stress_before);
+  I allocated = gc_allocd, collections = gc_n, ticks = gc_tick;
+  Dict saved = *dict;
+  I found = pys_dict_find_int_nobox(dict, value);
+  if (memcmp(before, fl, sizeof before) || memcmp(stress_before, sfl, sizeof stress_before) ||
+      allocated != gc_allocd || collections != gc_n || ticks != gc_tick) any_bad("integer probe allocated");
+  if (memcmp(&saved, dict, sizeof saved)) any_bad("integer probe mutated the table");
+  return found;
+}
+
+static void int_queries(void) {
+  I vals[] = {0, 1, -1, -2, 1000, 1008, 1016, 1024, INT64_MIN, INT64_MAX,
+              ((I)1 << 61) - 1, ((I)1 << 61), -((I)1 << 61)};
+  I n = sizeof vals / sizeof *vals;
+  dict = pys_dict_new((I)cstr("A"), 0);
+  if (int_nobox(1000) != -1) any_bad("empty integer probe");
+  keys = pys_list_new(n);
+  for (I i = 0; i < n; i++) {
+    Dyn *key = i < 2 ? dbool(i) : pys_dyn_int(vals[i]);
+    pys_list_append(keys, (I)key); pys_dict_set(dict, (I)key, 100 + i);
+  }
+  for (I deleted = 0; deleted < 2; deleted++) {
+    for (I i = 0; i < n; i++) {
+      dict_slots = 0;
+      I expected = pys_dict_find(dict, keys->a[i]), slots = dict_slots;
+      dict_slots = 0; dict_keyeqs = 0;
+      if (int_nobox(vals[i]) != expected || dict_slots != slots || dict_keyeqs) any_bad("integer hit/hole probes");
+    }
+    if (!deleted) for (I i = 0; i < n; i += 2) pys_dict_pop(dict, keys->a[i]);
+  }
+  for (I i = 2000; i < 2010; i++) if (int_nobox(i) != -1) any_bad("integer miss");
+
+  /* An equal float must fall back, including its numeric hash's zero case. */
+  dict = pys_dict_new((I)cstr("A"), 0);
+  pys_dict_set(dict, (I)pys_dyn_float(0.0), 7);
+  if (int_nobox(0) != -2) any_bad("float fallback");
+
+  /* A colliding user key comes before the integer. The guarded probe must stop
+     there without callbacks; the normal fallback observes the original query. */
+  DSTR(desc, "O091"); DSTR(name, "IntProbeKey");
+  static const DynType type = {DK_OBJ, (Str *)&desc, (Str *)&name, 91, 0, DF_HASH | DF_X};
+  dict = pys_dict_new((I)cstr("A"), 0);
+  Dyn *object = pys_dyn_ref(&type, (void *)1);
+  pys_dict_set(dict, (I)object, 9);
+  Dyn *query = pys_dyn_int(1000);
+  pys_list_append(keys, (I)query);
+  pys_dict_set(dict, (I)query, 11);
+  int_guard_calls = int_guard_hashes = int_guard_seen = 0;
+  dict_keyeqs = 0;
+  if (int_nobox(1000) != -2 || int_guard_calls || int_guard_hashes || dict_keyeqs) any_bad("callback before fallback");
+  I e = pys_dict_find(dict, (I)query);
+  /* Hash 1000 in eight slots probes 0, 0, 1: the colliding object is compared
+     twice, as CPython's perturb sequence requires, before the integer hit. */
+  if (e < 0 || pys_dict_val(dict, e) != 11 || int_guard_calls != 2 || int_guard_hashes || int_guard_seen != (I)query)
+    any_bad("fallback lost query identity or comparison order");
+  printf("Any integer probes: no allocations, unchanged slots, guarded fallback preserves query identity\n");
 }
 
 #define MIB ((I)1 << 20)
@@ -355,6 +426,7 @@ int main(int argc, char **argv) {
   gc_init(__builtin_frame_address(0), roots, 2);
   hash_cache();
   any_keys();
+  int_queries();
   storage();
   values();
   if (argc == 2 && !strcmp(argv[1], "--hash-cache")) return 0;

@@ -3442,6 +3442,27 @@ I pys_dyn_hash(Dyn *x) {
   failf("TypeError: unhashable type: '%s'", DNAME(x));
 }
 
+/* A typed integer query in a canonical Any dictionary, without materializing its box.
+   Return the entry, -1 for absence, or -2 before a comparison that needs the original
+   query object. The caller boxes its original value on that last path and repeats the
+   ordinary lookup. All comparisons before the fallback were pure, so this preserves
+   callback order, identity and mutation restarts. Hashes and probe order stay unchanged;
+   this helper neither allocates nor mutates the dictionary. */
+LOOKUP I pys_dict_find_int_nobox(Dict *d, I value) {
+  if (!d->size) return -1;
+  uint64_t h = (uint64_t)hint(value), m = d->size - 1;
+  for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
+    DICT_PROBE();
+    int32_t e = d->idx[i];
+    if (!e) return -1;
+    if (e > 0 && d->hs[e - 1] == h) {
+      Dyn *key = (Dyn *)d->keys[e - 1];
+      if (key->t != &pys_dyntype_int && key->t != &pys_dyntype_bool) return -2;
+      if (key->v == value) return e - 1;
+    }
+  }
+}
+
 /* arithmetic: op 0..11 = + - * / // % ** << >> & | ^ (the program runs a class's dunders first) */
 /* GC_NO_ROOT(dops): operator names are C string literals. */
 static const char *const dops[] = {"+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"};
