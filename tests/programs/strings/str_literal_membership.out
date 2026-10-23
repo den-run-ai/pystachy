@@ -1,0 +1,25 @@
+True False
+False True
+True False
+False True
+False True
+False True
+False True
+True False
+False True
+True False
+False True
+True False
+False True
+True False
+False True
+False True
+True False
+False True
+True ['needle']
+False ['needle']
+True ['needle', 'a', 'b']
+True True
+True
+True
+[exit 0]
