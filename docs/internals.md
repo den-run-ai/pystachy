@@ -104,9 +104,11 @@ metadata and exception-handler metadata. Runtime signatures and effects come fro
 `RUNTIME` table. Whole-program effect summaries support list-read and dictionary-lookup
 optimizations and identify calls that need exceptional edges.
 
-This separation is already used by JIT and AOT. It is incomplete: most loads, stores and
-arithmetic remain `raw` instructions containing LLVM text. There is no second backend yet.
-See [typed IR](typed-ir.md) for the exact boundary between shipped machinery and future work.
+JIT and AOT share this IR. Every function instruction is a registered typed operation,
+including loads, stores and arithmetic; there is no `raw` instruction containing LLVM text.
+The frontend still resolves, types and specializes code while building IR, and LLVM lowering
+owns module layouts and ABI wrappers. Further frontend/backend separation and a second
+backend remain future work. See [typed IR](typed-ir.md) for the implemented boundary.
 
 Locals start in entry-block `alloca` slots. LLVM's `mem2reg` builds SSA form; expression joins
 also use explicit `phi` instructions. Each function's typed IR is released after lowering,
@@ -146,7 +148,8 @@ identity (their addresses, which the non-moving collector keeps stable) from tho
 their class's `__hash__`; a dict of the latter keeps CPython's hashes and an index of CPython's
 size (other dicts' have twice the slots), so that its lookups probe CPython's slots in CPython's
 order and call `__eq__` as often. Specialized code still has static types; these descriptors
-do not introduce a dynamic `Any` type.
+do not by themselves make storage dynamic. Experimental opt-in `Any` uses the
+[separate boxes and dispatchers](dynamic-any.md#representation) described below.
 
 The collector is conservative, non-moving mark-and-sweep. It scans stack/register roots and
 registered program globals; buffers that cannot contain pointers are not scanned. Unreachable
