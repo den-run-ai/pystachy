@@ -339,10 +339,14 @@ above apply to well-formed text (with the surrogate exception described above).
   that keeps its first type, that receives an `Any` value of another type raises `TypeError`
   where CPython, which does not check annotations, goes on
   (`tests/deviations/dynany_annotation_check.py`), also an item of a tuple that a typed tuple
-  receives (`tests/deviations/dynany_tuple_item_check.py`). A comparison method annotated with a
-  class does not run with a value of another type, and the comparison is identity's (or
-  `TypeError` for an ordering) where CPython runs the method
-  (`tests/deviations/dynany_eq_annotated_body.py`). The prototype's other differences, such as
+  receives (`tests/deviations/dynany_tuple_item_check.py`). A cross-type comparison method whose
+  body cannot compile for an `Any` operand and falls outside the supported guarded concrete
+  adapter still falls back to identity (or `TypeError` for
+  an ordering) where CPython runs the method
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand has an incompatible typed
+  container field). Guarded concrete adapters now execute comparisons of typed container
+  fields and preserve the effects and exceptions preceding a missing field read. Concrete operand annotations alone no
+  longer suppress normal instance comparison methods. The prototype's other differences, such as
   `in` of an `Any` item in a typed container and function values printing as `<function>`, are
   listed in its
   [deviations](../dynamic-any.md#deviations).

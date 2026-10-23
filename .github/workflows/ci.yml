@@ -70,7 +70,8 @@ jobs:
       matrix:
         group: [hosted-0, hosted-1, hosted-2, native-0, native-1, opt-off-0, opt-off-1, python-free-0,
                 python-free-1, python-free-2, ubsan-0, ubsan-1, ubsan-2, gc-self, gc-jit-0, gc-jit-1, gc-aot-0,
-                gc-aot-1, gc-aot-2, runtime-cache, contracts, benchmarks, scaling-1]
+                gc-aot-1, gc-aot-2, runtime-cache, dynany-optin-0, dynany-optin-1, dynany-optin-2,
+                dynany-optin-3, contracts, benchmarks, scaling-1]
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -89,10 +90,14 @@ jobs:
         # New groups keep the full setup until their dependencies have been checked.
         run: |
           case "$VERIFY_GROUP" in
-            hosted-[012]|native-[01]|opt-off-[01]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|contracts|scaling-1)
+            hosted-[012]|native-[01]|opt-off-[01]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[0123]|contracts|scaling-1)
               tools/setup.sh --minimal ;;
             *) tools/setup.sh --verify ;;
           esac
+
+      - name: Dynamic Any sweep CPython oracle dependency
+        if: startsWith(matrix.group, 'dynany-optin-')
+        run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)"
 
       # No run-id or token: download-artifact can only select this workflow run here.
       - name: Download verified bootstrap
@@ -136,6 +141,8 @@ jobs:
             build/extended-smoke.json
             build/verify/*.log
             build/verify/dynany-fuzz/*.py
+            build/verify/dynany-optin-*.json
+            build/verify/dynany-optin-*/tests/programs/*/*
           if-no-files-found: error
           retention-days: 7
           overwrite: true

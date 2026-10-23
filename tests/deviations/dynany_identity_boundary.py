@@ -1,15 +1,12 @@
 # Documented deviation (docs/dynamic-any.md): in a module that compiles typing.Any as dynamic
 # values, an int or float variable of typed code holds one object (#797), but these values do not
-# keep their object where they become Any values: a copy of a variable made before the variable
-# first became one, an argument or a parameter's default value (the parameter receives a new
-# object), a return value, an item of a typed container, a typed field or class variable, a
-# variable that a closure reads and a comprehension's variable. Each is a new object there, where
+# keep their object where they become Any values: an argument or a parameter's default value
+# (the parameter receives a new object), a return value, an item of a typed container, a typed
+# field or class variable.
+# Each is a new object there, where
 # CPython's names, containers and classes hold one (it prints True for each). So is the value of
 # an expression of literals, which CPython's compiler folds into one constant (999 + 1 is 1000
-# there), and a float literal, where CPython's equal constants are one object. `is` and id() still
-# agree. The other way round, a module variable that has no box yet, read in an expression that
-# then calls a function which rebinds it to an equal value, gives the new binding the read value's
-# box: one object where CPython has two (it prints False there).
+# there). `is` and id() still agree.
 # pystachy: dynamic-any
 from typing import Any
 
@@ -19,10 +16,6 @@ class Box:
 
     def __init__(self, n: int) -> None:
         self.n = n
-
-
-def same(a: Any, b: Any) -> bool:
-    return a is b and id(a) == id(b)
 
 
 def callee(a: Any, n: int) -> None:
@@ -40,27 +33,8 @@ def give(a: Any) -> int:
     return n
 
 
-G = int("1000")
-
-
-def rebind() -> int:
-    global G
-    G = int("1000")
-    return 0
-
-
-def rebound() -> None:
-    a: list[Any] = [G, rebind()]
-    b: Any = G
-    print("a module variable that a call rebinds", a[0] is b, id(a[0]) == id(b))
-
-
 def run() -> None:
     n = int("1000")
-    m = n
-    a: Any = n
-    b: Any = m
-    print("a copy made before the variable became Any", a is b, id(a) == id(b))
     callee(n, n)
     r: Any = int("1000")
     g2: Any = give(r)
@@ -77,35 +51,20 @@ def run() -> None:
     h: Any = Box.K
     print("a class variable", g is h, id(g) == id(h))
     dflt(1000)
-    k = int("1000")
-
-    def inner() -> None:
-        g: Any = k
-        h: Any = k
-        print("a variable a closure reads", g is h, id(g) == id(h))
-
-    inner()
-    print("a comprehension's variable", [same(i, i) for i in xs])
 
 
 run()
-rebind()
-rebound()
 k: Any = 1000
 m: Any = 999 + 1
 print("a folded constant", k is m, id(k) == id(m))
-h: Any = 1.5
-j: Any = 1.5
-print("a float literal", h is j, id(h) == id(j))
-bx = int("1000")
-bflag = bool(int("0"))
-bys: list[Any] = [bx, (bx := int("2000")) if bflag else 0]
-bw: Any = bx
-print("a read before a store in a branch that does not run", bys[0] is bw, id(bys[0]) == id(bw))
-cx = int("1000")
-cz = int("1000")
-cflag = bool(int("1"))
-cw: Any = cx
-cy = cx if cflag else cz
-cv: Any = cy
-print("a value a conditional chooses from two variables", cw is cv, id(cw) == id(cv))
+
+
+def repeated_stale_reads() -> None:
+    # Both reads precede a taken rebinding before the list boxes its elements.
+    # Neither read had an object yet, and their retired binding has no shared slot.
+    x = int("1000")
+    items: list[Any] = [x, x, (x := int("2000"))]
+    print("repeated reads before a taken store", items[0] is items[1])
+
+
+repeated_stale_reads()

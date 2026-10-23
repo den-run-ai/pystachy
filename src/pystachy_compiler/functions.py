@@ -1,6 +1,6 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, str_appends
+from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, str_appends
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
@@ -133,6 +133,19 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
     if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
         f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
         self.ret = f.ret
+    scalar_none = f.ret == "None" or (f.infer and f.ret == "")
+    scalar_return = not f.infer and f.ret in ["int", "float", "bool"] and f.node.kind == "def" and len(f.node.kids) == 3 and all(p.kids[0].kind != "noann" for p in f.node.kids[0].kids)
+    if not self.modlevel and not self.rtmode and self.dyn_policy(f.node.line) and (scalar_none or scalar_return) and f.node.kind == "def" and len(f.node.kids) == 3 and f.clo < 0 and not f.gen and f.vararg < 0 and f.kwarg < 0 and all(t in ["int", "float", "bool"] for t in f.ptypes):
+        names = dict(self.assigned)
+        for p in f.params:
+            names[p] = True
+        blocked: dict[str, bool] = {}
+        for nm in ["int", "float", "bool", "range", "print"]:
+            if nm in self.mvars or nm in self.gtypes or nm in self.funcs or nm in self.classes or nm in self.aliases or nm in self.fglobals:
+                blocked[nm] = True
+        # This belongs to the fresh IFn, so dynamic widening/restarts recompute it and
+        # nested function compilation saves/restores it with the existing Frame.
+        self.fn.numeric_only = all(numeric_statement(n, names, blocked, scalar_none) for n in body)
     if takes_self(f):
         # callers check the receiver, so self is never None inside a method
         self.nn["%a0"] = True
@@ -140,9 +153,15 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             self.selfname = f.params[0]
     if not self.modlevel:
         # the variables that the defs and lambdas in it take: each lives in a cell, which the
-        # closures share with it (see closure)
+        # closures share with it (see closure). Opt-in cells reserve a second word
+        # for a numeric binding's box: every closure and nonlocal writer shares it.
+        # Like runtime.c's gc_box, request 15 for the 16-byte scanned slot. Only the
+        # base and second-word addresses escape; no one-past-cell pointer is made.
         for cv in self.cellvars(f, body):
-            self.cells[cv] = self.rt("pys_alloc", "ptr", ["i64 8"])
+            self.cells[cv] = self.rt("pys_alloc", "ptr", ["i64 15" if self.dyn_policy(f.node.line) else "i64 8"])
+            if self.dyn_policy(f.node.line):
+                # Define the address before any branch or loop can first bind the cell.
+                self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '1', True)
         lf: dict[str, bool] = {}
         for st in body if f.clo < 0 or self.closures[f.clo].name != "<lambda>" else []:
             lambda_flags(st, False, lf)
@@ -191,6 +210,8 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             a = self.maddr('%ptr', env, f'{i}', True)
             self.lreg[c.caps[i]] = self.mload('%ptr', a)
             self.ltype[c.caps[i]] = c.ctypes[i]
+            if c.ctypes[i] in ["int", "float"] and self.dyn_policy(f.node.line):
+                self.idbox[c.caps[i]] = self.maddr('%ptr', self.lreg[c.caps[i]], '1', True)
         for j in range(len(c.iflags)):
             a = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + j}', True)
             self.iflag[c.iflags[j]] = self.mload('%ptr', a)

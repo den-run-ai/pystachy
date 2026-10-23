@@ -42,25 +42,27 @@ syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.
 utils.DECRUNS
 """.split())
 
-# These five rewind boundaries have executable removal controls in
+# These four rewind boundaries have executable removal controls in
 # test_compiler_state_probe.py. This inventory does not substitute for them.
 REWOUND = {
-    "diagnostics.FILES": "truncate appended file names to the entry length",
     "syntax.LAMBDAS": "restore the entry counter",
     "names.RENAMED": "clear class display-name discoveries",
     "specs.LIBS": "truncate appended link libraries to the entry length",
     "specs.LINKDL": "truncate appended dynamic-link requirements to the entry length",
 }
+RESET = {
+    "diagnostics.FILES": "loader rebuilds the program file-index space before parsing",
+    "diagnostics.DYNFILES": "loader resets file-index opt-ins with the file table",
+}
 RETAINED = {
-    "diagnostics.DYNFILES": "loader file-index opt-ins; currently retained across restarts",
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
     "specs.SPECSHOW": "specialization display names; currently retained across restarts",
-    "specs.MODULES": "driver builtin-module configuration, including temporary runtime mode",
+    "specs.MODULES": "driver builtin-module configuration; runtime_ir restores its temporary _rt entry on every exit",
 }
 # Retained means observed policy, not proof that retaining semantic state is safe.
 # Keep #767 open for those contracts and for indirect mutation/alias effects.
 WRITERS = {
-    "diagnostics.FILES": {"loader.Loader.program", "loader.Loader.parse", "driver.compile_program"},
+    "diagnostics.FILES": {"loader.Loader.program", "loader.Loader.parse"},
     "diagnostics.DYNFILES": {"loader.Loader.program", "loader.Loader.parse"},
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
     "names.RENAMED": {"program.gen_program", "driver.compile_program"},
@@ -396,7 +398,7 @@ def writes(tree, module, bindings, containers=None, exports=None):
     """Conservative simple-local-alias scan; later rebindings do not erase aliases."""
     result = set()
     if containers is None:
-        containers = LOOKUP | REWOUND.keys() | RETAINED.keys() | set().union(*bindings.values())
+        containers = LOOKUP | REWOUND.keys() | RESET.keys() | RETAINED.keys() | set().union(*bindings.values())
     module_types = {name: name for name in BUILTIN_CONTAINERS}
     for node in scope_nodes(tree.body):
         update_types(node, module_types)
@@ -522,7 +524,7 @@ def writes(tree, module, bindings, containers=None, exports=None):
 
 def validate_sources(sources):
     trees, found, bindings = inventory(sources)
-    declared = LOOKUP | REWOUND.keys() | RETAINED.keys()
+    declared = LOOKUP | REWOUND.keys() | RESET.keys() | RETAINED.keys()
     errors = [f"unclassified module container: {name}" for name in sorted(found - declared)]
     errors += [f"stale container classification: {name}" for name in sorted(declared - found)]
     actual = set().union(*(writes(tree, name, bindings[name], found, bindings) for name, tree in trees.items()))

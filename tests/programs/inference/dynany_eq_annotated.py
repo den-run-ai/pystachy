@@ -1,7 +1,7 @@
 # pystachy: dynamic-any
 # A comparison method whose parameter is annotated with a class runs with an object of the class,
-# of a subclass, or None, through Any values. With a value of another type, which its body is not
-# compiled for, the comparison gives what the method gives here, as one that declines the value:
+# of a subclass, or None, through Any values. With a value of another type, its dynamic body
+# runs the type check and preserves the method's result:
 # False for ==, True for != (without __ne__, as object.__ne__ inverts __eq__) and the ordering's
 # TypeError, without the other operand's method, which CPython does not run either. A NamedTuple's
 # != is tuple's, also where its class defines __eq__ (#772).

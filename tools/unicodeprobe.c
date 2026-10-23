@@ -150,30 +150,11 @@ static void locality(void) {
   if (current != before || text_hint_slot(current)->s == current) bad("owned append retained a position hint");
   if (pys_text_len(current) != 3 || pys_ord(pys_text_get(current, 2)) != 0x1F98A) bad("raw append changed cached segmentation");
 }
-static void short_case(void) {
-  /* Mapping a byte must reuse the existing character cache, not allocate a fresh
-     one-byte result at every parser character. Also cover raw bytes above ASCII;
-     this is runtime.py's byte contract, not Unicode's public chr() semantics. */
-  for (I c = 0; c < 256; c++) {
-    Str *s = pys_chr(c);
-    I lower = c >= 'A' && c <= 'Z' ? c + 32 : c;
-    I upper = c >= 'a' && c <= 'z' ? c - 32 : c;
-    I swap = lower != c ? lower : upper;
-    if (pys_str_lower(s) != pys_chr(lower) || pys_str_casefold(s) != pys_chr(lower) ||
-        pys_str_upper(s) != pys_chr(upper) || pys_str_swapcase(s) != pys_chr(swap))
-      bad("one-byte case mapping missed the character cache");
-    if (s->len != 1 || (unsigned char)s->s[0] != c) bad("case mapping changed its input");
-  }
-  current = cstr("");
-  if (pys_str_lower(current) != current || pys_str_upper(current) != current ||
-      pys_str_casefold(current) != current || pys_str_swapcase(current) != current)
-    bad("empty case mapping allocated a result");
-}
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 2);
   held = pys_list_new(32);
-  cache(); seams(); slice_seams(); cursors(); locality(); short_case();
+  cache(); seams(); slice_seams(); cursors(); locality();
   if (gc_stress && gc_n <= 3) bad("GC stress did not add allocation-triggered collections");
-  puts("unicodeprobe: length/position caches, linear nearby indexing/search, raw seam invalidation, cursors, short case mapping and GC passed");
+  puts("unicodeprobe: length/position caches, linear nearby indexing/search, raw seam invalidation, cursors and GC passed");
   return 0;
 }

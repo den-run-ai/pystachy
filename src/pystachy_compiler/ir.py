@@ -9,10 +9,12 @@ class Val:
         self.v = v
         self.t = t
         self.infer_from = ""  # direct recursive call whose inferred return still defaults to None
-        self.lit = False  # an int literal's own value, as gen_expr made it (dyn_box: its constant box)
+        self.lit = False  # a numeric literal's own value, as gen_expr made it (dyn_box: its constant box)
         self.idslot = ""  # the box slot of the int or float variable it was read from (dyn_box: idbox)
         self.idheld = ""  # the box that slot held then, null where it held none yet (dyn_id_read)
         self.idgen = 0  # the stores into that slot that the compiler had emitted then (idstores)
+        self.idcounter = ""  # local binding generation slot (possibly selected by a phi)
+        self.idversion = ""  # that slot's generation at the read
         self.idfrom = ""  # the box of the Any value that an int or float was read from (dyn_box)
 
 
@@ -121,6 +123,7 @@ class FnInfo:
         self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
+        self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
         self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
         self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
@@ -302,6 +305,8 @@ class IFn:
     # one compiled function: a function, a method, a module's code, a helper or a template's function
     def __init__(self, f: FnInfo):
         self.f = f  # f.ret is final once the IFn is complete
+        self.numeric_only = False  # function_body proved local numeric identity unobservable
+        self.scalar_reads = False  # scoped arithmetic consumer; no identity escapes its operands
         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]

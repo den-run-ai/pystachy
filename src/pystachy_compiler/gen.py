@@ -335,6 +335,7 @@ from src.pystachy_compiler.containers import (
     gen_none_container as containers_none_container,
     gen_affix_any as containers_affix_any,
     gen_bool_find as containers_bool_find,
+    gen_int_any_lookup as containers_int_any_lookup,
     gen_dkey as containers_dkey,
     gen_elem_problem as containers_elem_problem,
     gen_fromkeys as containers_fromkeys,
@@ -642,6 +643,7 @@ from src.pystachy_compiler.expressions import (
     gen_exc_eq as expressions_exc_eq,
     gen_exc_id as expressions_exc_id,
     gen_expr as expressions_expr,
+    gen_scalar_read_value as expressions_scalar_read_value,
     gen_fmt_error as expressions_fmt_error,
     gen_fmt_raise as expressions_fmt_raise,
     gen_format_arg as expressions_format_arg,
@@ -3510,6 +3512,9 @@ class Gen:
     def expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
         return expressions_expr(self, n, want, returnctx, resultsoft)
 
+    def scalar_read_value(self, n: Node) -> bool:
+        return expressions_scalar_read_value(self, n)
+
     def list_hint_type(self, a: str, b: str) -> str:
         return expressions_list_hint_type(self, a, b)
 
@@ -4008,8 +4013,8 @@ class Gen:
     def fn_sig(self, t: str) -> list[str]:
         return templates_fn_sig(self, t)
 
-    def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False) -> FnInfo:
-        return templates_instance(self, f, ts, nnp, want, resultsoft)
+    def instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "") -> FnInfo:
+        return templates_instance(self, f, ts, nnp, want, resultsoft, cmpfields)
 
     def dotted(self, n: Node) -> str:
         return builtins_dotted(self, n)
@@ -4277,6 +4282,9 @@ class Gen:
 
     def bool_find(self, d: str, k: Val, key: str) -> str:
         return containers_bool_find(self, d, k, key)
+
+    def int_any_lookup(self, d: Val, k: Val, get: bool) -> str:
+        return containers_int_any_lookup(self, d, k, get)
 
     def store_key(self, k: Val, kt: str) -> Val:
         return containers_store_key(self, k, kt)

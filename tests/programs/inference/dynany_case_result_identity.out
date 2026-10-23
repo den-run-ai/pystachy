@@ -1,0 +1,13 @@
+lower True False False
+upper True False False
+swapcase True False False
+casefold True False False
+lower True False False
+upper True False False
+swapcase True False False
+casefold True False False
+lower True False False
+upper True False False
+swapcase True False False
+casefold True False False
+[exit 0]

@@ -3308,8 +3308,8 @@ static Dyn *ddict(Dict *d) { return pys_dyn_ref(&pys_dyntype_dict, d); }
 static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) if (a == b) return 1; return 0; }
 /* does x have type t as a typed variable, argument or field of type t takes it (pys_dyn_unbox):
    x's type is t; or t is a class's, and x an object of a class that derives from it, or None (a
-   class's values may be None). A comparison method annotated with t declines another value (the
-   program's @o.x.<class>) */
+   class's values may be None). The program's @o.x.<class> uses this to retain the typed call
+   when a concrete comparison-operand annotation matches. */
 I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
 /* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
    type): the same DynType, or both a function's or both a bound method's, as each def's boxes
@@ -3347,8 +3347,8 @@ I pys_dyn_truth(Dyn *x) {
    class both are objects of (dhier); an object and another value, an object of an unrelated class
    among them, as CPython's do_richcompare: the left operand's method, else the right one's reflected
    method (dobj), else identity for == and != and TypeError for an ordering. There is no
-   NotImplemented (#499): the first method that runs gives the result, and one annotated with a type
-   that the other value does not have, which cannot run with it, gives identity's (or TypeError) */
+   NotImplemented (#499): the first method that runs gives the result. The remaining unsupported
+   dynamic-body fallback gives identity's result (or TypeError); see docs/dynamic-any.md. */
 static const DynType *dhier(Dyn *a, Dyn *b) {
   if (DKIND(a) != DK_OBJ || DKIND(b) != DK_OBJ) return 0;
   return derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
@@ -3356,7 +3356,7 @@ static const DynType *dhier(Dyn *a, Dyn *b) {
 /* comparison k (0 ==, 1 !=, 2 <, 3 <=, 4 >, 5 >=) of the object a with b by a's class's own method,
    which the program's helper calls with b as an Any value (pys_obj_cmp(-1 - id, 1 + k, a, b)): 0 or 1,
    its result, 2 where a is no object or its class has no such method, as object's methods decline,
-   or 3 where its method's parameter is annotated with a type that b does not have (pys_dyn_isa) */
+   or 3 where its method's body cannot compile for b */
 static I dobj(Dyn *a, Dyn *b, I k) { return DKIND(a) == DK_OBJ && (a->t->flags & DF_X) ? pys_obj_cmp(-1 - a->t->cls, 1 + k, a->v, (I)b) : 2; }
 I pys_dyn_eq(Dyn *a, Dyn *b) {
   int ka = DKIND(a), kb = DKIND(b);
@@ -3440,6 +3440,27 @@ I pys_dyn_hash(Dyn *x) {
   case DK_FUNC: return hptr(x->v);
   }
   failf("TypeError: unhashable type: '%s'", DNAME(x));
+}
+
+/* A typed integer query in a canonical Any dictionary, without materializing its box.
+   Return the entry, -1 for absence, or -2 before a comparison that needs the original
+   query object. The caller boxes its original value on that last path and repeats the
+   ordinary lookup. All comparisons before the fallback were pure, so this preserves
+   callback order, identity and mutation restarts. Hashes and probe order stay unchanged;
+   this helper neither allocates nor mutates the dictionary. */
+LOOKUP I pys_dict_find_int_nobox(Dict *d, I value) {
+  if (!d->size) return -1;
+  uint64_t h = (uint64_t)hint(value), m = d->size - 1;
+  for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
+    DICT_PROBE();
+    int32_t e = d->idx[i];
+    if (!e) return -1;
+    if (e > 0 && d->hs[e - 1] == h) {
+      Dyn *key = (Dyn *)d->keys[e - 1];
+      if (key->t != &pys_dyntype_int && key->t != &pys_dyntype_bool) return -2;
+      if (key->v == value) return e - 1;
+    }
+  }
 }
 
 /* arithmetic: op 0..11 = + - * / // % ** << >> & | ^ (the program runs a class's dunders first) */
@@ -3544,7 +3565,16 @@ Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
   }
   return dyn_binop(a, b, op, 1);
 }
-Dyn *pys_dyn_unary(Dyn *a, I op) {   /* op 0..2: - + ~ */
+Dyn *pys_dyn_unary(Dyn *a, I op) {   /* op 0..3: - + ~ abs */
+  if (op == 3) {
+    if (dnum(a)) {
+      if (a->v == INT64_MIN) pys_fail(OVF);
+      /* CPython keeps a nonnegative exact int's identity; bool's result is an int. */
+      return DKIND(a) == DK_INT && a->v >= 0 ? a : pys_dyn_int(a->v < 0 ? -a->v : a->v);
+    }
+    if (DKIND(a) == DK_FLOAT) return pys_dyn_float(fabs(dbl(a->v)));
+    failf("TypeError: bad operand type for abs(): '%s'", DNAME(a));
+  }
   if (dnum(a)) {
     if (op == 0) { if (a->v == INT64_MIN) pys_fail(OVF); return pys_dyn_int(-a->v); }
     return pys_dyn_int(op == 1 ? a->v : ~a->v);   /* (+True is 1) */

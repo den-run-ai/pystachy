@@ -1,0 +1,66 @@
+name: Performance smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  schedule:
+    - cron: '23 8 * * 1'
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Baseline commit or ref (default is the pinned performance reference)
+        required: false
+
+concurrency:
+  group: perf-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+      # Deliberately fixed: changing this starts a new cumulative comparison series.
+      PERF_REFERENCE: 80840d264b2d4e76c21a8deec6db90ce6e3c5b22
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          path: head
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Select baseline
+        working-directory: head
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before || inputs.base }}
+        run: |
+          if [ -z "$BASE" ]; then BASE=$PERF_REFERENCE; fi
+          git check-ref-format --allow-onelevel "$BASE"
+          echo "PERF_BASE=$BASE" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ env.PERF_BASE }}
+          path: base
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version-file: head/.python-version
+      - run: tools/setup.sh --minimal
+        working-directory: head
+      - name: Paired performance smoke
+        working-directory: head
+        run: python3 tools/perf_smoke.py --base ../base --json ../perf-smoke.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'perf-reference' || 'perf-smoke' }}
+          path: perf-smoke.json
+          if-no-files-found: error
+          retention-days: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}

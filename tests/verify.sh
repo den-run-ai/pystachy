@@ -43,6 +43,8 @@
 #                  strs and on Pystachy's UTF-8 ones, and so do test_re's cases too big for gc-stress
 #   dynany-fuzz    tools/dynany_fuzz.py: 3 seeded programs, each with 150 random + 30 typed/Any
 #                  parity cases; JIT/AOT, normal and program GC-stressed (sources kept on failure)
+#   dynany-optin-0/-1/-2/-3 tests/programs corpus with dynamic Any enabled, fresh CPython
+#                  oracle and JIT/AOT; four disjoint shards, exact reviewed exceptions only
 #   re-probe       tools/re_probe.py: lib/re, run by CPython, enters its matcher and makes contexts no
 #                  more often than fixed limits allow for textwrap's patterns (deterministic counts),
 #                  with the results of CPython's re
@@ -103,7 +105,7 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted-0) echo 'bootstrap tests-cpython-0' ;;
     hosted-1) echo 'bootstrap tests-cpython-1' ;;
     hosted-2) echo 'bootstrap tests-cpython-2' ;;
@@ -132,6 +134,8 @@ plan() {
     gc-aot) echo 'bootstrap gc-aot-0 gc-aot-1 gc-aot-2' ;;
     gc-stress) echo 'bootstrap gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
     runtime-cache) echo 'bootstrap runtime-cache' ;;
+    dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3) echo "bootstrap $1" ;;
+    dynany-optin) echo 'bootstrap dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3' ;; # local alias
     contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks scaling-0' ;;
     scaling-1) echo 'bootstrap scaling-1' ;;
@@ -139,10 +143,10 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted-0|hosted-1|hosted-2|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted-0|hosted-1|hosted-2|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3|dynany-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all bootstrap hosted-0 hosted-1 hosted-2 native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache contracts benchmarks scaling-1; do
+  for g in all bootstrap hosted-0 hosted-1 hosted-2 native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 contracts benchmarks scaling-1; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
@@ -562,6 +566,33 @@ if $PY tools/dynany_fuzz.py --compiler "$V/pystachy2" --keep "$V/dynany-fuzz" --
     [ "$(tail -1 "$L")" = '3 programs, 540 cases, 90 parity cases (JIT, AOT, JIT-GC, AOT-GC): 0 mismatches' ]; then r=pass; fi
 step dynany-fuzz $r "$s" "$L" "$(tail -1 "$L" | sed -n 's/^\([0-9]*\) programs, \([0-9]*\) cases, \([0-9]*\) parity cases (JIT, AOT, JIT-GC, AOT-GC): \([0-9]*\) mismatches$/, "programs": \1, "cases": \2, "parity_cases": \3, "modes": ["jit", "aot", "jit-gc", "aot-gc"], "program_gc_interval": 1, "mismatches": \4/p')"
 fi
+
+# ---- dynany-optin: full program corpus opts into dynamic Any in four disjoint shards
+for optin_index in 0 1 2 3; do
+optin_name=dynany-optin-$optin_index
+if want "$optin_name"; then
+L=$V/$optin_name.log; s=$(now); r=fail; optin_fields=
+if $PY tools/dynany_optin.py --compiler "$V/pystachy2" --modes jit aot \
+    --jobs "${PYSTACHY_JOBS:-2}" --shard-index "$optin_index" --shard-count 4 \
+    --report "$V/$optin_name.json" --keep "$V/$optin_name" > "$L" 2>&1; then
+  if optin_fields=$($PY - "$V/$optin_name.json" "$optin_index" <<'PYOPTIN'
+import json
+import sys
+sys.path.insert(0, "tools")
+import dynany_optin
+from merge_verification import unique_object, invalid_constant
+with open(sys.argv[1]) as stream:
+    report = json.load(stream, object_pairs_hook=unique_object, parse_constant=invalid_constant)
+dynany_optin.validate_report(report)
+if report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != 4 or report["modes"] != ["jit", "aot"]:
+    raise ValueError("dynamic Any sweep: wrong shard or execution modes")
+print(', "optin": ' + json.dumps(report, sort_keys=True))
+PYOPTIN
+  ); then r=pass; fi
+fi
+step "$optin_name" "$r" "$s" "$L" "$optin_fields"
+fi
+done
 
 # ---- re-probe: lib/re's matcher entries and contexts for textwrap's patterns, against fixed limits
 if want re-probe; then

@@ -621,6 +621,24 @@ def gen_list_hint_type(self, a: str, b: str) -> str:
     t = self.union_type([a, b])
     return "" if t.startswith("!") else t
 
+def gen_scalar_read_value(self, n: Node) -> bool:
+    # A bounded, side-effect-free scalar operand tree. Unlike numeric_value's closed
+    # function proof, globals are allowed but walrus stores are not: even an arithmetic
+    # operand can publish an identity through (saved := G). Never infer types here.
+    k = n.kind
+    if k in ["int", "float", "True", "False"]:
+        return True
+    if k == "name":
+        return self.qtype(n.s) in ["int", "float", "bool"]
+    if k == "call":
+        if len(n.kids) != 2 or n.kids[0].kind != "name":
+            return False
+        callee = n.kids[0].s
+        return callee in ["int", "float", "bool"] and callee not in self.assigned and callee not in self.aliases and callee not in self.fglobals and callee not in self.gtypes and not self.bound(callee) and self.scalar_read_value(n.kids[1])
+    allowed = (k == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~", "not"])
+    return allowed and all(self.scalar_read_value(x) for x in n.kids)
+
+
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
     self.line = n.line
     want = self.rec_type(want)
@@ -647,7 +665,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         lit.lit = True
         return lit
     if k == "float":
-        return Val(fbits(n.s), "float")
+        lit = Val(fbits(n.s), "float")
+        lit.lit = True
+        return lit
     if k == "str":
         self.modchk(n)
         return Val(self.sconst(n.s), "str")
@@ -712,8 +732,15 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         b = self.expr(n.kids[1], "", resultsoft=resultsoft)
         return self.arith(n.s, self.expr(n.kids[0], unopt(b.t) if is_dict(unopt(b.t)) else ""), b)
     if k == "binop":
-        a = self.expr(n.kids[0], want, resultsoft=resultsoft)
-        return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
+        scalar_fn = self.fn
+        scalar_held = scalar_fn.scalar_reads
+        if not scalar_held and (len(self.gidbox) > 0 or len(self.idbox) > 0) and self.scalar_read_value(n):
+            scalar_fn.scalar_reads = True
+        try:
+            a = self.expr(n.kids[0], want, resultsoft=resultsoft)
+            return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
+        finally:
+            scalar_fn.scalar_reads = scalar_held
     if k == "unary":
         return self.unary(n)
     if k == "boolop":
@@ -764,6 +791,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
+        if self.curfn.cmpfields != "" and tc.kind == "name" and tc.s == self.curfn.params[1] and n.s in self.classes[self.curfn.cmpfields].ftypes and o.t in self.classes and n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods:
+            # The concrete comparison arm proves this exact class lacks the
+            # field. Raise at the read, after earlier effects and only on paths
+            # that reach it. The unreachable value retains the body's type.
+            self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{n.s}'"))
+            return Val("undef", self.classes[self.curfn.cmpfields].ftypes[n.s])
         if o.t == "dyn":
             return self.dyn_getattr(o, n.s)  # (its box's class's attribute: dynamic.py)
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):
@@ -2401,6 +2434,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
             self.stkkey = n.kids[1]  # (memo[(i, j)])
         kval = self.expr(n.kids[1], kv[0])
         self.stkkey = self.nokey
+        if kv[0] == "dyn" and kval.t == "int":
+            return self.from_slot(self.int_any_lookup(self.unwrap(o, sub), kval, True), kv[1])
         kx = self.dkey(kval, kv[0])
         o = self.unwrap(o, sub)
         if bool_for_int(kval.t, kv[0]):
@@ -2660,9 +2695,11 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
         self.err(comp_unbound(n, names))
     saved: list[str] = []
     held: list[int] = []
+    boxes: list[str] = []
     for nm in names:
         saved.append(self.ltype.get(nm, "") + " " + self.lreg.get(nm, ""))
         held.append(self.compvars.get(nm, 0))
+        boxes.append(self.idbox.get(nm, ""))
     app = mk("lcappend" if mode == "" else "reduce" if mode.startswith("#") else "anyall", mode[1:] if mode.startswith("#") else mode if mode != "" or kind == "list" else kind, n.line, [n.kids[0]])
     body = [app]
     for j in range(len(n.kids) - 1, 2, -1):
@@ -2707,6 +2744,10 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
             self.compvars[nm] = held[i]
         elif nm in self.compvars:
             del self.compvars[nm]
+        if boxes[i] != "":
+            self.idbox[nm] = boxes[i]
+        else:
+            self.idbox.pop(nm, "")
     if mode == "any" or mode == "all":
         return Val(self.mload('bool', res), "bool")
     if mode != "":
@@ -2770,12 +2811,44 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     if t == "None":
         return Val("null", "None")  # (None either way)
     r = Val(self.phi(ph), t)
-    if (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
-        # (x if c else x: the one binding both arms read, whose box its slot still holds here,
-        # so that the value keeps its object where it becomes an Any value: dyn_id_read, #797)
+    if (t == "int" or t == "float") and (e1 == "" or (a.t == t and a.idfrom != "")) and (e2 == "" or (b.t == t and b.idfrom != "")):
+        # Numeric globals snapshot their box at the read, before later effects can rebind
+        # them. Select that same object with the payload, without consulting mutable slots.
+        # A converted numeric payload cannot retain its original type's box.
+        identity = Ins("phi", "dyn", "")
+        if e1 != "":
+            self.incoming(identity, a.idfrom, e1)
+        if e2 != "":
+            self.incoming(identity, b.idfrom, e2)
+        r.idfrom = self.phi(identity)
+    elif (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
+        # Keep the same-binding fast path, including x = x if flag else x.
         r.idslot = a.idslot
         r.idheld = self.mem_load(Val(a.idslot, "*dyn")).v
         r.idgen = a.idgen
+        r.idcounter = a.idcounter
+        r.idversion = self.mem_load(Val(a.idcounter, "*int")).v if a.idcounter != "" else ""
+    elif (t == "int" or t == "float") and e1 != "" and e2 != "" and a.t == t and b.t == t and a.idcounter != "" and b.idcounter != "":
+        # Select the binding as lazily as its payload. Boxing either arm here would
+        # allocate in scalar-only consumers; selecting just its slot and generation
+        # preserves identity when a later consumer actually needs the object.
+        slot = Ins("phi", "*dyn", "")
+        self.incoming(slot, a.idslot, e1)
+        self.incoming(slot, b.idslot, e2)
+        r.idslot = self.phi(slot)
+        held = Ins("phi", "dyn", "")
+        self.incoming(held, a.idheld, e1)
+        self.incoming(held, b.idheld, e2)
+        r.idheld = self.phi(held)
+        counter = Ins("phi", "*int", "")
+        self.incoming(counter, a.idcounter, e1)
+        self.incoming(counter, b.idcounter, e2)
+        r.idcounter = self.phi(counter)
+        version = Ins("phi", "int", "")
+        self.incoming(version, a.idversion, e1)
+        self.incoming(version, b.idversion, e2)
+        r.idversion = self.phi(version)
+        r.idgen = -1  # (a selected slot requires the runtime generation check)
     return r
 
 def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
@@ -3980,8 +4053,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             if ok != "true":
                 r = self.select(ok, Val(r, "int"), Val("0", "int"))
         elif is_dict(b.t):
-            s = self.to_slot(self.dkey(a, targs(b.t)[0]))
-            r = self.rt("pys_dict_has", "i64", [f"ptr {b.v}", f"i64 {s}"], self.key_fx(targs(b.t)[0]))
+            if targs(b.t)[0] == "dyn" and a.t == "int":
+                r = self.int_any_lookup(b, a, False)
+            else:
+                s = self.to_slot(self.dkey(a, targs(b.t)[0]))
+                r = self.rt("pys_dict_has", "i64", [f"ptr {b.v}", f"i64 {s}"], self.key_fx(targs(b.t)[0]))
         elif is_set(b.t):
             s = self.to_slot(self.dkey(a, selem(b.t)))
             r = self.rt("pys_set_has", "i64", [f"ptr {b.v}", f"i64 {s}"], self.key_fx(selem(b.t)))

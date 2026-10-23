@@ -1,0 +1,5 @@
+__eq__ ran
+__eq__ ran
+True True
+TypeError: Loose orders only Loose objects
+[exit 0]

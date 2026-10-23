@@ -1,0 +1,19 @@
+eq 3
+True
+[3, 8]
+eq 3
+True
+[3, 8]
+eq 3
+False
+[3, 8]
+eq -1
+comparison failed
+[3, 8]
+eq 3
+True
+[3, 8]
+eq 3
+True
+[3, 8]
+[exit 0]

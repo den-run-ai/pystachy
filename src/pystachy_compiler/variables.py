@@ -121,7 +121,7 @@ def gen_load_name(self, name: str) -> Val:
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
             return self.narrow_val(Val(r, t), self.narrowed[name])  # known not to be None here, or a member
         val = Val(r, t)
-        if name in self.idbox and name not in self.compvars and (t == "int" or t == "float"):
+        if name in self.idbox and (t == "int" or t == "float"):
             self.dyn_id_read(val, self.idbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
     self.read_ahead(name)
@@ -1755,7 +1755,7 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.mem_store(Val(self.lflag[name], "*bool"), Val("true", "bool"))
         if name in self.owned:
             self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (a value others may hold: str_append)
-        if name in self.idbox and name not in self.compvars and (t == "int" or t == "float"):
+        if name in self.idbox and (t == "int" or t == "float"):
             self.dyn_id_store(self.idbox[name], v, t)  # (the object it now holds: dyn_box)
         # (a local a closure assigns (nonlocal) keeps its declared type: a call may run the
         # closure, as narrowable says)
@@ -2062,6 +2062,10 @@ def gen_walrus(self, n: Node, want: str) -> Val:
     else:
         v = self.expr(e, tt if tt != "" else want)
     self.assign(t, v)
+    if n.s in self.idbox and n.s not in self.compvars and (v.t == "int" or v.t == "float"):
+        # The expression and its target are the same new binding. Keep it lazy:
+        # materializing here would allocate even for a scalar-only consumer.
+        return self.load_name(n.s)
     return v
 
 def gen_star_assign(self, t: Node, v: Val) -> None:

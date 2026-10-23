@@ -161,7 +161,7 @@ def gen_dyn_xhelper(self, c: str) -> None:
     # @o.x.<class>(op, a, b): comparison op (1 ==, 2 !=, 3 <, 4 <=, 5 >, 6 >=, XCMP) of the object a
     # of class c with b, an Any value that is no object of c's hierarchy (pys_dyn_eq, through
     # pys_obj_cmp(-1 - id, op, a, b): gen_dispatch): 0 or 1, its result, 2 where c has no method
-    # for op, as object's own methods decline, or 3 where its method does not take b (dyn_xbody)
+    # for op, as object's own methods decline, or 3 where its body cannot compile for b (dyn_xbody)
     f = FnInfo("x", f"@o.x.{c}", self.classes[c].node, "")
     f.params = ["op", "a", "b"]
     f.ptypes = ["int", c, DYN]
@@ -171,13 +171,47 @@ def gen_dyn_xhelper(self, c: str) -> None:
     self.lenient = False
 
 
+def comparison_fields(n: Node, parameter: str, out: list[str]) -> bool:
+    # A bounded structural adapter: the operand is used only through direct
+    # fields. Reject rebinding, escaping the object, and nested scopes, whose
+    # meaning could depend on the concrete class beyond those field types.
+    if n.kind not in ["block", "return", "raise", "if", "pass", "expr", "assign", "annassign", "augassign",
+                      "name", "attr", "call", "kw", "int", "float", "str", "bytes", "True", "False", "None",
+                      "binop", "unary", "boolop", "cmp", "ifexp", "index", "slice", "sliceitem", "omit",
+                      "list", "tuple", "dict", "set", "noann"]:
+        return False
+    if n.kind == "name" and n.s in [parameter, "locals", "vars", "eval", "exec"]:
+        return False
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == parameter:
+        if n.s not in out:
+            out.append(n.s)
+        return True
+    for kid in n.kids:
+        if not comparison_fields(kid, parameter, out):
+            return False
+    return True
+
+
+def comparison_reads(n: Node, parameter: str, missing: list[str]) -> bool:
+    # A missing field can be read (and raise), but never invent storage for an
+    # assignment. Keep writes to other fields and through existing containers.
+    if n.kind in ["assign", "annassign", "augassign"]:
+        for target in n.kids[:-1] if n.kind == "assign" else n.kids[:1]:
+            fields: list[str] = []
+            if not comparison_fields(target, parameter, fields) or any(a in missing for a in fields):
+                return False
+    return all(comparison_reads(kid, parameter, missing) for kid in n.kids)
+
+
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
-    # method annotated with a type that b's value does not have (dyn_isa), or that no Any value has
-    # (list[int]), cannot run with it: 3, and the comparison is identity's, or TypeError for an
-    # ordering, without b's reflected method, as a method that returns no NotImplemented (#499)
-    # decides in CPython. A NamedTuple without the method (!= also where it defines __eq__:
+    # concrete annotation keeps its ordinary method for a matching operand. For another value,
+    # specialize the same body with an Any parameter: Python annotations do not decline rich
+    # comparisons. If that body cannot compile, try guarded concrete class adapters before
+    # retaining the documented fallback (3) for bodies that still cannot compile.
+    # The two attempts have separate restart keys, so failure of the dynamic body cannot remove
+    # a supported typed call. A NamedTuple without the method (!= also where it defines __eq__:
     # tuple's __ne__) compares its fields with a tuple, as tuple's methods do, which decline any
     # other value
     line = self.line
@@ -197,22 +231,61 @@ def gen_dyn_xbody(self, c: str) -> None:
         nxt = self.label()
         self.cbr(self.num_cmp("==", op, Val(str(k + 1), "int")).v, hit, nxt)
         self.place(hit)
-        ps = self.classes[c].methods[m].ptypes if self.dyn_xmethod(c, m) else []
-        takes = self.dyn_isa(b, ps[1]) if len(ps) >= 2 else ""
-        if takes == "false" or f"{c}.{m}" in self.xnot:
-            self.ret_(Val("3", "int"))
-            self.place(nxt)
-            continue
-        if takes != "":
-            run = self.label()
-            decline = self.label()
-            self.cbr(takes, run, decline)
-            self.place(decline)
-            self.ret_(Val("3", "int"))
-            self.place(run)
         if self.dyn_xmethod(c, m):
-            self.xtry = f"{c}.{m}"
-            r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
+            method = self.classes[c].methods[m]
+            ps = method.ptypes
+            adapt = len(ps) == 2 and ps[1] != "" and ps[1] != DYN and method.deco == ""
+            takes = self.dyn_isa(b, ps[1]) if adapt else ""
+            if takes != "" and takes != "false":
+                run = self.label()
+                dynamic = self.label()
+                self.cbr(takes, run, dynamic)
+                self.place(run)
+                if f"{c}.{m}" in self.xnot:
+                    self.ret_(Val("3", "int"))
+                else:
+                    self.xtry = f"{c}.{m}"
+                    r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
+                    self.xtry = ""
+                    if inv:
+                        r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
+                    if not self.term:
+                        self.ret_(Val(self.select(r, Val("1", "int"), Val("0", "int")), "int"))
+                self.place(dynamic)
+            key = f"{c}.{m}" + (":dynamic" if adapt else "")
+            if key in self.xnot:
+                fields: list[str] = []
+                canonical = ps[1] if len(ps) == 2 and ps[1] in self.classes else c
+                shape = f"{c}.{m}:concrete-shape"
+                supported = len(ps) == 2 and method.deco == "" and shape not in self.xnot
+                if supported:
+                    supported = comparison_fields(method.node.kids[2], method.params[1], fields) and len(fields) > 0
+                if supported:
+                    supported = all(a in self.classes[canonical].ftypes and a not in self.classes[canonical].methods for a in fields)
+                if supported:
+                    # A typed field (notably a list's storage) cannot become Any. Retry
+                    # the original body against the guarded concrete class instead of
+                    # losing its effects. Establish the canonical field-typed body once;
+                    # incompatible classes never trigger whole-program retries.
+                    self.xtry = shape
+                    self.instance(method, [c, canonical], [])
+                    self.xtry = ""
+                    f = self.dyn_dispatcher(f"cmp.{c}.{m}", [DYN, c], "int", m)
+                    result = self.dyn_call(f, [b, a])
+                    if inv:
+                        flip = Val(self.scalar("xor", [result, Val("1", "int")]), "int")
+                        result = Val(self.select(self.num_cmp("<", result, Val("2", "int")).v, flip, result), "int")
+                    self.ret_(result)
+                else:
+                    self.ret_(Val("3", "int"))
+                self.place(nxt)
+                continue
+            self.xtry = key
+            if adapt:
+                method = self.instance(method, [c, DYN], [])
+                r = self.truth(self.call_fn(method, [a, b], [], direct=True))
+            else:
+                r = self.truth(self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(a)]), self.vnode(b)]), ""))
             self.xtry = ""
             if inv:
                 r = self.scalar("xor", [Val(r, "bool"), Val("true", "bool")])
@@ -248,6 +321,9 @@ def gen_dyn_box(self, v: Val) -> Val:
         # changed since the read, so that each crossing of one binding into Any gives one object,
         # as CPython's name holds one (#797)
         kept = self.idstores.get(v.idslot, 0) == v.idgen
+        live = "true" if kept else "false"
+        if not kept and v.idcounter != "":
+            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
         b = self.dyn_id_held(v)
         chk = self.label()
         hit = self.label()
@@ -266,11 +342,12 @@ def gen_dyn_box(self, v: Val) -> Val:
         ph = Ins("phi", DYN, "")
         self.incoming(ph, b.v, hit)
         self.incoming(ph, nb, self.cur)
-        if kept:
+        if kept or v.idcounter != "":
             # (not over a box: that is another object's, as where a call has given a module
             # variable a new binding since the read)
             keep = self.label()
-            self.cbr(self.ptr_cmp("==", b, Val("null", DYN)).v, keep, end)
+            empty = self.ptr_cmp("==", b, Val("null", DYN)).v
+            self.cbr(self.scalar("and", [Val(empty, "bool"), Val(live, "bool")]), keep, end)
             self.place(keep)
             self.mem_store(Val(v.idslot, "*" + DYN), Val(nb, DYN))
             self.incoming(ph, nb, keep)
@@ -292,6 +369,18 @@ def gen_dyn_box(self, v: Val) -> Val:
         return Val(g, DYN)
     if t == "int":
         return Val(self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]), DYN)
+    if t == "float" and v.lit:
+        # As with int literals, equal constants in one compiled module share an object.
+        # Key by exact IEEE bits: 0.0 and -0.0 are distinct constants, while 1.5 and 15e-1
+        # share one. A computed float (including NaN) is not a literal and stays a new box.
+        g = "@dbf." + self.curfn.mod + "$" + v.v
+        if g not in self.dynboxes:
+            self.dynboxes[g] = True
+            d = Data("dynfloat", g)
+            d.refs = [self.rtdata("pys_dyntype_float")]
+            d.items = [Val(v.v, "float")]
+            self.consts.append(d)
+        return Val(g, DYN)
     if t == "float":
         return Val(self.rt("pys_dyn_float", "ptr", [f"double {v.v}"]), DYN)
     if t == "str" and v.v.startswith("@s."):
@@ -343,8 +432,9 @@ def gen_dyn_box(self, v: Val) -> Val:
 def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     # the box that an int or float variable's binding has as an Any value, where store_name gives
     # it v (its box slot, idbox): the box of the Any value it unboxes, the box of the binding it
-    # copies, an int literal's constant box, else none yet, a new object that its first crossing
-    # boxes (dyn_box)
+    # copies, a numeric literal's constant box, else none yet, a new object that its first crossing
+    # boxes (dyn_box). A copy must give both bindings a box now: copying a null lazy slot would
+    # let their later crossings create two objects for one Python value.
     if v.idslot == slot and self.idstores.get(slot, 0) == v.idgen:
         return  # (x = x, x := x: the binding's own object, read with no store since, is no new binding)
     b = "null"
@@ -353,20 +443,81 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     elif v.idfrom != "":
         b = v.idfrom
     elif v.idslot != "":
-        b = self.dyn_id_held(v).v
-    elif v.lit and t == "int" and (int(v.v) < -5 or int(v.v) > 256):
         b = self.dyn_box(v).v
+    elif v.lit and v.t == t and (t == "float" or (t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
+        # store_name can retain t until a pending type join restarts compilation to widen
+        # it. A provisional int slot may receive a float literal: its LLVM hex bits
+        # must not be parsed as an int or given the provisional destination's identity.
+        b = self.dyn_box(v).v
+    if b == "null" and slot.startswith("@g.") and slot[3:-4] in self.intglobals:
+        # Proven single-binding integer globals have their cached/literal box at
+        # initialization. Mutable globals retain lazy boxing and snapshot reads.
+        b = self.dyn_box(v).v
+    step = "1"
+    if slot.startswith("%") and ".box." in slot and b != "null":
+        # Boxing a conditional or alias copy may reveal the destination's own object.
+        # Keep its generation so earlier unboxed reads can find that newly made box.
+        # Compare objects, not payloads: equal replacements must still retire reads.
+        old = self.mem_load(Val(slot, "*" + DYN))
+        same = self.ptr_cmp("==", old, Val(b, DYN))
+        bound = self.ptr_cmp("!=", old, Val("null", DYN))
+        step = self.select(self.scalar("and", [same, bound]), Val("0", "int"), Val("1", "int"))
     self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1
+    if slot.startswith("%") and ".box." in slot:
+        counter = Val(slot.replace(".box.", ".boxgen."), "*int")
+        # Machine add deliberately wraps, without signed-overflow flags. A local read
+        # can survive only the finite stores in its expression, not 2**64 rebindings.
+        serial = self.scalar("add", [self.mem_load(counter), Val(step, "int")])
+        self.mem_store(counter, Val(serial, "int"))
 
 
 def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     # v, read from an int or float variable whose box slot is slot (idbox): it keeps the slot, the
     # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
     # far (dyn_id_held)
+    local = slot.startswith("%") and ".box." in slot
+    if not local and self.fn.scalar_reads:
+        # A proven scalar arithmetic consumer uses only the payload. Its subtree has
+        # no stores or user calls, so it cannot publish an alias or observe this object.
+        # Ordinary reads still snapshot, and every global store still updates its box.
+        return
     v.idslot = slot
     v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
     v.idgen = self.idstores.get(slot, 0)
+    if local:
+        v.idcounter = slot.replace(".box.", ".boxgen.")
+        v.idversion = self.mem_load(Val(v.idcounter, "*int")).v
+    if slot.startswith("@g.") and slot[3:-4] in self.intglobals:
+        # module_ints excludes rebinding/deletion across the whole import graph.
+        # Initialization guards precede this read; dyn_id_store made its box ready.
+        v.idfrom = v.idheld
+        v.idslot = ""
+    elif not local:
+        # Another operand can call code that rebinds a global or a shared closure cell,
+        # beyond idstores' local view.
+        # Snapshot its object now, while the read still names this binding. A null lazy box
+        # cannot be recovered later: even an equal new value is a different object. Keeping
+        # only idfrom also prevents a later self-assignment from taking the idslot fast path.
+        # The payload and this box were just loaded, with no user code between them.
+        # store_name pairs every numeric global store with dyn_id_store: its box is
+        # either null or exactly this binding's type and payload. Unlike a delayed
+        # local read, it needs neither dyn_box's stale-value checks nor a slot reload.
+        start = self.cur
+        make = self.label()
+        end = self.label()
+        self.cbr(self.ptr_cmp("==", Val(v.idheld, DYN), Val("null", DYN)).v, make, end)
+        self.place(make)
+        b = self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]) if v.t == "int" else self.rt("pys_dyn_float", "ptr", [f"double {v.v}"])
+        self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
+        made = self.cur
+        self.br(end)
+        self.place(end)
+        ph = Ins("phi", DYN, "")
+        self.incoming(ph, v.idheld, start)
+        self.incoming(ph, b, made)
+        v.idfrom = self.phi(ph)
+        v.idslot = ""
 
 
 def gen_dyn_id_held(self, v: Val) -> Val:
@@ -376,8 +527,13 @@ def gen_dyn_id_held(self, v: Val) -> Val:
     # Not after one (x, y = y, x), whose box is another object's
     b = Val(v.idheld, DYN)
     if self.idstores.get(v.idslot, 0) != v.idgen:
-        return b
-    now = self.mem_load(Val(v.idslot, "*" + DYN))
+        if v.idcounter == "":
+            return b
+        live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
+        now = self.mem_load(Val(v.idslot, "*" + DYN))
+        now = Val(self.select(live, now, Val("null", DYN)), DYN)
+    else:
+        now = self.mem_load(Val(v.idslot, "*" + DYN))
     return Val(self.select(self.ptr_cmp("!=", b, Val("null", DYN)).v, b, now), DYN)
 
 
@@ -567,7 +723,7 @@ def gen_dyn_unboxable(self, t: str) -> bool:
 def gen_dyn_isa(self, v: Val, t: str) -> str:
     # i1: does dyn_unbox take box v as a value of static type t without an error: "" where it
     # takes any value (t is dyn, or a template's ""), "false" where no Any value has t
-    # (dyn_unboxable: dyn_xbody's comparison method annotated t never runs)
+    # (dyn_unboxable: dyn_xbody then needs its dynamic-operand specialization)
     if t == "" or t == DYN:
         return ""
     if not self.dyn_unboxable(t):
@@ -1290,6 +1446,22 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
     # method, whatever the arguments: a call that does not fit raises its TypeError) the
     # operation runs
     ci = self.classes[c]
+    if key.startswith("cmp."):
+        own = self.dynfns[key].ptypes[1]
+        # Same-hierarchy comparisons already use the typed helper, not @o.x.
+        if self.derives(c, own) or self.derives(own, c):
+            return False
+        method = self.classes[own].methods[dunder]
+        canonical = method.ptypes[1] if method.ptypes[1] in self.classes else own
+        fields: list[str] = []
+        if not comparison_fields(method.node.kids[2], method.params[1], fields):
+            return False
+        if all(a in ci.ftypes and a not in ci.methods and ci.ftypes[a] == self.classes[canonical].ftypes[a] for a in fields):
+            return True
+        # Only truly absent fields get runtime AttributeError. Properties,
+        # custom lookup hooks and incompatible storage keep their prior path.
+        missing = [a for a in fields if a not in ci.ftypes and a not in ci.methods]
+        return len(missing) > 0 and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or (a not in ci.methods and ci.ftypes.get(a, "") == self.classes[canonical].ftypes[a]) for a in fields) and comparison_reads(method.node.kids[2], method.params[1], missing)
     if key.startswith("get."):
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and (ci.methods[a].prop or (ci.methods[a].deco == "" and ci.methods[a].bad == "")))  # (a method's: the bound method)
@@ -1382,6 +1554,33 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
     line = self.line
     xn = self.vnode(x)
     an = self.dyn_call_args(key, args) if key.startswith("call") else [self.vnode(a) for a in args]
+    if key.startswith("cmp."):
+        receiver = args[0]
+        attempt = f"{receiver.t}.{dunder}:concrete:{x.t}"
+        if attempt in self.xnot:
+            self.ret_(Val("3", "int"))
+            return
+        self.xtry = attempt
+        # Preserve typed storage and aliasing; no field is copied or reboxed. Keep
+        # each failed arm separate from the generic and annotated typed attempts.
+        original = self.classes[receiver.t].methods[dunder]
+        canonical = original.ptypes[1] if original.ptypes[1] in self.classes else receiver.t
+        fields: list[str] = []
+        comparison_fields(original.node.kids[2], original.params[1], fields)
+        missing = any(a not in self.classes[x.t].ftypes for a in fields)
+        method = self.instance(original, [receiver.t, x.t], [], cmpfields=canonical if missing else "")
+        condition = self.truth(self.call_fn(method, [receiver, x], [], direct=True))
+        self.xtry = ""
+        self.ret_(Val(self.select(condition, Val("1", "int"), Val("0", "int")), "int"))
+        return
+    if key == "un3":
+        fm = self.classes[x.t].methods[dunder]
+        own = 0 if fm.deco != "" else 1
+        if fm.bad == "" and len(fm.defaults) >= len(fm.params) and not self.dyn_takes(fm, own, len(an)):
+            # A boxed class's abs signature must fail only if this arm is selected,
+            # after the operand has been evaluated, as an ordinary dynamic call does.
+            self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, len(an))))
+            return
     if key.startswith("get."):
         r = self.expr(mk("attr", key[4:], line, [xn]), "")
     elif key.startswith("set."):
@@ -1462,10 +1661,9 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
     t = Val(self.dyn_typeof(o), "dyntype")
     line = self.line
     for bt in ["list[dyn]", "dict[dyn,dyn]", "str", "vtuple[dyn]", "int", "bool", "float"]:
-        # (with keyword arguments, its method of that name whatever the positional ones: the
-        # call's case raises CPython's TypeError once the arguments are evaluated, as its merging
-        # of the keyword arguments does for a name twice, which ** brings, then its binding)
-        if not self.dyn_builtin_takes(bt, m, -1 if len(ks) > 0 else n):
+        # Attribute lookup finds a supported method independently of its call shape. Binding
+        # fails only in call., after every argument has run (including for positional arity).
+        if not self.dyn_builtin_takes(bt, m, -1):
             continue
         hit = self.label()
         nxt = self.label()
@@ -1493,6 +1691,8 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
             for j in range(len(ks)):
                 self.assign(mk("index", "", line, [self.vnode(x), mk("str", ks[j], line, [])]), args[n + j])
             self.dyn_return(f, Val("null", "None"))
+        elif not self.dyn_builtin_takes(bt, m, n):
+            self.raise_("TypeError", self.sconst(builtin_arity(bt, m, n)))
         else:
             x = self.dyn_payload(o, "int" if bt == "bool" else bt)
             r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + self.dyn_call_args(key, args)), "")
@@ -1500,20 +1700,50 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
         self.place(nxt)
 
 
-def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
-    # does builtin type bt (one a box holds) have method m, called with n positional arguments
-    # (n < 0: with any number of them)
+def builtin_limits(bt: str, m: str) -> list[int]:
+    # Positional bounds of a supported boxed builtin method; -1 marks a missing method.
     base = "list" if is_list(bt) else "dict" if is_dict(bt) else "vtuple" if is_vtuple(bt) else "int" if bt == "bool" else bt
     special = {"list.sort": "0 0", "dict.update": "0 1", "dict.pop": "1 2", "dict.setdefault": "2 2", "str.join": "1 1"}
     k = base + "." + m
     if k in special:
-        lo = int(special[k].split(" ")[0])
-        return n < 0 or (lo <= n and n <= int(special[k].split(" ")[1]))
+        return [int(special[k].split(" ")[0]), int(special[k].split(" ")[1])]
     if k not in METHODS:
-        return False
+        return [-1, -1]
     e = METHODS[k]
     ps = [p for p in e[e.find(":") + 1 :].split(",") if p != "" and p != "#"]
-    return n < 0 or (len([p for p in ps if "=" not in p]) <= n and n <= len(ps))
+    return [len([p for p in ps if "=" not in p]), len(ps)]
+
+
+def gen_dyn_builtin_takes(self, bt: str, m: str, n: int) -> bool:
+    # n < 0 asks whether lookup finds the method, without binding any arguments.
+    bounds = builtin_limits(bt, m)
+    return bounds[0] >= 0 and (n < 0 or bounds[0] <= n <= bounds[1])
+
+
+def builtin_arity(bt: str, m: str, n: int) -> str:
+    # CPython's positional binding error. Two shapes remain outside typed-code support even
+    # though CPython accepts them; name that limitation rather than claiming invalid arity.
+    bounds = builtin_limits(bt, m)
+    lo = bounds[0]
+    hi = bounds[1]
+    base = tname("int" if bt == "bool" else bt)
+    if (bt == "str" and m == "replace" and n == 3) or (is_dict(bt) and m == "setdefault" and n == 1):
+        return f"{base}.{m}() with {n} positional argument{'s' if n != 1 else ''} is not supported"
+    if is_list(bt) and m == "sort":
+        return "sort() takes no positional arguments"
+    if bt == "str" and m == "replace":
+        return f"replace() takes {'at least 2 positional' if n < 2 else 'at most 3'} arguments ({n} given)"
+    if is_dict(bt) and m == "setdefault":
+        lo = 1
+    if hi == 0:
+        return f"{base}.{m}() takes no arguments ({n} given)"
+    if lo == hi and hi == 1:
+        return f"{base}.{m}() takes exactly one argument ({n} given)"
+    if bt == "str" and m in ["split", "rsplit", "splitlines", "expandtabs", "encode"]:
+        return f"{m}() takes at most {hi} argument{'s' if hi != 1 else ''} ({n} given)"
+    count = lo if n < lo else hi
+    bound = "" if lo == hi else "at least " if n < lo else "at most "
+    return f"{m} expected {bound}{count} argument{'s' if count != 1 else ''}, got {n}"
 
 
 def gen_dyn_fresh(self, v: Val) -> Val:
@@ -1529,6 +1759,9 @@ def gen_dyn_fresh(self, v: Val) -> Val:
 def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     # what dispatcher key does for the builtin types: runtime.c's helper, or an AttributeError
     if self.term:
+        return
+    if key.startswith("cmp."):
+        self.ret_(Val("3", "int"))
         return
     o = ps[0]
     if key.startswith("op") or key.startswith("iop"):
@@ -1601,7 +1834,7 @@ def gen_dyn_dispatchers(self) -> bool:
 
 
 def gen_dyn_builtin(self, name: str, v: Val) -> Val:
-    # builtin name (len, str, repr, int, float, bool) of the dyn value v
+    # builtin name (len, str, repr, int, float, bool, id, abs) of the dyn value v
     if name == "len":
         return self.dyn_len(v)
     if name == "str":
@@ -1614,6 +1847,8 @@ def gen_dyn_builtin(self, name: str, v: Val) -> Val:
         return self.dyn_float(v)
     if name == "id":
         return Val(self.rt("pys_dyn_id", "i64", [f"ptr {v.v}"]), "int")
+    if name == "abs":
+        return self.dyn_call(self.dyn_dispatcher("un3", [DYN], DYN, "__abs__"), [v])
     return Val(self.dyn_truth(v), "bool")
 
 

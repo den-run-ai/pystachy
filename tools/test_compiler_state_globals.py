@@ -5,7 +5,7 @@ import sys
 import unittest
 
 from compiler_state_globals import (
-    ALIASES, LOOKUP, RETAINED, REWOUND, ROOT, WRITERS, inventory, read_sources,
+    ALIASES, LOOKUP, RESET, RETAINED, REWOUND, ROOT, WRITERS, inventory, read_sources,
     validate_sources, writes,
 )
 
@@ -17,7 +17,9 @@ class GlobalOwnershipTests(unittest.TestCase):
         self.assertFalse(LOOKUP & REWOUND.keys())
         self.assertFalse(LOOKUP & RETAINED.keys())
         self.assertFalse(REWOUND.keys() & RETAINED.keys())
-        self.assertEqual(WRITERS.keys(), REWOUND.keys() | RETAINED.keys())
+        self.assertFalse(RESET.keys() & (LOOKUP | REWOUND.keys() | RETAINED.keys()))
+        self.assertEqual(WRITERS.keys(), REWOUND.keys() | RESET.keys() | RETAINED.keys())
+        self.assertTrue(all(RESET.values()))
         self.assertTrue(all(REWOUND.values()))
         self.assertTrue(all(RETAINED.values()))
 
@@ -716,6 +718,14 @@ for ordered in (sources, dict(reversed(list(sources.items())))):
         actual = writes(trees["ircheck"], "ircheck", bindings["ircheck"])
         self.assertEqual(actual, {("ir.NOLABELS", "ircheck.gen_verify", "NOLABELS")})
         self.assertFalse(actual & ALIASES)
+
+    def test_reset_registry_has_existing_executable_controls(self):
+        tree = ast.parse((ROOT / "tools/test_compiler_state_files.py").read_text())
+        controls = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)
+                        and n.name == "test_each_missing_reset_is_detected")
+        loop = next(n for n in controls.body if isinstance(n, ast.For))
+        self.assertEqual(set(ast.literal_eval(loop.iter)),
+                         {name.split(".")[-1] + ".clear()" for name in RESET})
 
     def test_rewound_registry_has_existing_executable_controls(self):
         # Tie this classification to the real restart/removal-control harness.

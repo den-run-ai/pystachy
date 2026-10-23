@@ -2,4 +2,16 @@ True True
 True True
 True True True
 True True True
+selected int True True
+unselected int False
+selected float True True
+nested selection True
+selected int True True
+unselected int False
+selected float True True
+nested selection True
+effecting arm True False
+replace
+effecting arm True False
+terminating arms True True
 [exit 0]

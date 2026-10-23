@@ -1,0 +1,21 @@
+argument
+base -4
+4
+argument
+base -7
+7
+argument
+override -9
+42
+argument
+label
+absolute
+argument
+raising
+absolute failure
+argument
+bad operand type for abs(): 'Missing'
+True
+base -12
+12
+[exit 0]

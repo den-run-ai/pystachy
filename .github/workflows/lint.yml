@@ -66,11 +66,17 @@ jobs:
       - name: Router benchmark validation tests
         run: python3 -m unittest discover -s tools -p test_route_bench.py
 
-      - name: Runtime ABI and GC root checker controls
+      - name: Install sanitizer runtime for generated-code controls
+        run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
+
+      - name: Runtime ABI, ASan and GC root checker controls
         run: python3 -m unittest discover -s tools -p 'test_runtime_*.py'
 
       - name: pyperformance runner and port record tests
         run: python3 -m unittest discover -s tools -p test_bench_pyperformance.py
+
+      - name: Performance smoke comparison tests
+        run: python3 -m unittest discover -s tools -p test_perf_smoke.py
 
       - name: nanoGPT parity checker contract tests
         run: python3 -m unittest discover -s tools -p test_check_nanogpt.py
@@ -80,6 +86,12 @@ jobs:
 
       - name: Dynamic Any fuzzer generator and comparison tests
         run: python3 -m unittest discover -s tools -p test_dynany_fuzz.py
+
+      - name: Dynamic Any builtin call binding tests
+        run: python3 -m unittest discover -s tools -p test_dynany_calls.py
+
+      - name: Dynamic Any corpus sweep controls
+        run: python3 -m unittest discover -s tools -p test_dynany_optin.py
 
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py

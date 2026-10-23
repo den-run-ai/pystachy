@@ -850,17 +850,6 @@ def pys_str_isascii(s: str) -> int:
 def mapcase(s: str, how: int) -> str:
     # 0 lower, 1 upper, 2 swap: ASCII letters only (one loop per case, which LLVM vectorizes)
     n = len(s)
-    if n == 0:
-        return s
-    if n == 1:
-        # Runtime strings hold bytes: chr() reuses the one-byte cache, including raw
-        # non-ASCII bytes. Public Unicode characters with several bytes take the loop.
-        c = _rt.byte(s, 0)
-        if how == 0:
-            return chr(c | 32 if upc(c) else c)
-        if how == 1:
-            return chr(c & 223 if lowc(c) else c)
-        return chr(c ^ 32 if lowc(c | 32) else c)
     r = _rt.str_new(n)
     if how == 0:
         for i in range(n):

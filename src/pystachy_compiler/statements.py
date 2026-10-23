@@ -1151,8 +1151,16 @@ def gen_augassign(self, n: Node) -> None:
     elif t.kind == "name" and op == "+" and self.owns(t.s):
         self.str_append(t, n.kids[1], "+=")
     elif t.kind == "name":
-        cur = self.read(t)
-        self.store_name(t.s, self.inplace(op, cur, n.kids[1]))
+        fn = self.fn
+        held = fn.scalar_reads
+        if (len(self.gidbox) > 0 or len(self.idbox) > 0) and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.scalar_read_value(t) and self.scalar_read_value(n.kids[1]):
+            fn.scalar_reads = True
+        try:
+            cur = self.read(t)
+            value = self.inplace(op, cur, n.kids[1])
+        finally:
+            fn.scalar_reads = held
+        self.store_name(t.s, value)
     elif t.kind == "attr" and self.dotted(t) != "":
         self.err(f"assigning to {self.dotted(t)} is not supported; change its value in place")
     elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes and t.kids[0].s not in self.ltype:
@@ -1408,6 +1416,7 @@ def gen_hide(self, names: list[str]) -> None:
     for nm in names:
         if nm in self.ltype:
             del self.ltype[nm]
+        self.idbox.pop(nm, "")
         self.compvars[nm] = self.compvars.get(nm, 0) + 1
 
 def gen_iterarg(self, arg: IterArg | None) -> None:

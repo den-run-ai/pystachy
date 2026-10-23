@@ -714,6 +714,30 @@ def gen_bool_find(self, d: str, k: Val, key: str) -> str:
     self.place(l2)
     return e
 
+
+def gen_int_any_lookup(self, d: Val, k: Val, get: bool) -> str:
+    # An integer read of boxed keys can search without materializing the query's
+    # identity. The pure probe stops before a comparison could run user code;
+    # only that fallback boxes the original Val, retaining its binding/alias
+    # identity. A missing getitem also falls back for the usual KeyError.
+    e = self.rt("pys_dict_find_int_nobox", "i64", [f"ptr {d.v}", f"i64 {k.v}"])
+    fast = self.label()
+    slow = self.label()
+    end = self.label()
+    self.cbr(self.num_cmp(">=", Val(e, "int"), Val("0" if get else "-1", "int")).v, fast, slow)
+    self.place(fast)
+    value = self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"]) if get else self.scalar("add", [Val(e, "int"), Val("1", "int")])
+    ph = Ins("phi", "int", "")
+    self.incoming(ph, value, self.cur)
+    self.br(end)
+    self.place(slow)
+    key = self.to_slot(self.dkey(k, "dyn"))
+    value = self.rt("pys_dict_getitem" if get else "pys_dict_has", "i64", [f"ptr {d.v}", f"i64 {key}"], self.key_fx("dyn"))
+    self.incoming(ph, value, self.cur)
+    self.br(end)
+    self.place(end)
+    return self.phi(ph)
+
 def gen_store_key(self, k: Val, kt: str) -> Val:
     # k as a key stored into a dict whose keys have type kt (d[k] = v, d[k] op= v, a display,
     # setdefault): a bool is rejected where the keys hold an int, as it is where an int is

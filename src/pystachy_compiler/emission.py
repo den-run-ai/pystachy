@@ -585,17 +585,19 @@ def gen_alloca(self, t: str, name: str) -> str:
             i.r = [self.n]
             self.fn.slots.append(i)
             self.owned[name] = f"%{name}.own.{self.n}"
-        if name not in self.compvars:
-            # (a comprehension's variable has none, and the function's variable of its name keeps
-            # its own)
-            self.idbox.pop(name, "")
-        if (t == "int" or t == "float") and name not in self.compvars and self.dyn_policy(self.line):
+        self.idbox.pop(name, "")
+        if (t == "int" or t == "float") and self.dyn_policy(self.line) and not self.fn.numeric_only:
             # the box of its binding as an Any value (idbox): null, as each slot is where the
             # function begins, until a store or its first crossing gives it one (dyn_box)
             i = Ins("slot", "dyn", name + ".box")
             i.r = [self.n]
             self.fn.slots.append(i)
             self.idbox[name] = f"%{name}.box.{self.n}"
+            # Local generations distinguish an emitted store from one that actually runs.
+            # This stack-only counter is dead when the value never needs identity.
+            i = Ins("slot", "int", name + ".boxgen")
+            i.r = [self.n]
+            self.fn.slots.append(i)
     return r
 
 # ---- value conversions

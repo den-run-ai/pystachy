@@ -578,7 +578,7 @@ def contextual_result(n: Node) -> bool:
             return True
     return False
 
-def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False) -> FnInfo:
+def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "", resultsoft: bool = False, cmpfields: str = "") -> FnInfo:
     # the function template f compiles to for arguments of types ts, compiled when first
     # needed, in the middle of the function that calls it: its first return statement
     # decides what it returns; nnp: the parameters whose objects are known not to be None
@@ -592,12 +592,14 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     locals = local_result(body.kids, f.params) if context and not resultsoft else []
     want = want if context and (contextual_result(body) or len(locals) > 0) else ""
     key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "")
+    if cmpfields != "":
+        key += " fields " + cmpfields  # never reuse the ordinary typed call's specialization
     if key in f.insts and f.insts[key].ll in self.building:
         # Recursion into the active argument specialization must retain its
         # inference cycle, including the diagnostic for an open empty result.
         want = ""
     mode = " ~ " if resultsoft else " -> "
-    size = len(ts) + len(nnp) + len(want) + (len(mode) if want != "" else 0)
+    size = len(ts) + len(nnp) + len(want) + (len(mode) if want != "" else 0) + (len(cmpfields) + 8 if cmpfields != "" else 0)
     for t in ts:
         size += len(t)
     for p in nnp:
@@ -667,6 +669,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.rsoft = resultsoft and want != ""
     g.rlocals = locals if want != "" else []
     g.inst = True
+    g.cmpfields = cmpfields
     g.ikey = key
     g.npos = f.npos
     g.posonly = f.posonly

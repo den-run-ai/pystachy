@@ -1,0 +1,16 @@
+300 300 300 300 300 300
+-2.5 -2 -2 -3 -2 -2
+2.5 2 2 2 3 2
+-300 -300 -300 -300 -300 -300
+global 2.5 2 2
+int result 1000 1000 False False
+round result 1000 1000 False False
+floor result 1000 1000 False False
+ceil result 1000 1000 False False
+trunc result 1000 1000 False False
+float result 1000.0 1000.0 False False
+abs result 1.5 1.5 False False
+round float result 1.5 1.5 False False
+chained literal 1.5 1.5 True True
+chained computed 1.5 1.5 True True
+[exit 0]

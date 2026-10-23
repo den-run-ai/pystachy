@@ -128,7 +128,7 @@ order and first-error traces. The `contracts` group runs three seeds with 150 ra
 using the verified native compiler in JIT and AOT, both normally and with program GC stress at
 every allocation. `--aot --gc-stress` selects the same configurations locally; the aggregate gate
 requires all four modes, 540 cases including 90 parity cases and zero mismatches. This bounded
-check does not replace the remaining opt-in corpus sweep in #802), `make dictprobe`,
+check complements the full opt-in corpus sweep, `make dynany-optin`), `make dictprobe`,
 `make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe` and `make jitprobe`.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
@@ -323,7 +323,49 @@ A pull request that changes only Markdown files or `docs/` skips the CI, Install
 Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then twenty-three groups
+The independent [Performance smoke workflow](../.github/workflows/performance.yml) runs on
+the same events (excluding documentation-only PRs). One job measures eleven small workloads:
+scalar autograd, dense projection/softmax, fnmatch, mixed JSON parsing, repair-style scanning,
+integer/float copies and mutable-global reads in a dynamic-Any opt-in module without observed identity,
+heterogeneous cyclic graph deep-copy/checksum processing, and the
+existing adapted pyperformance `regex_effbot`. The [kernel notes](../bench/smoke/README.md)
+map each case to its coverage and limits. It builds each revision's
+native compiler once, then compares the PR merge against its base, or a main push against
+its previous SHA, on one CPU with separate warmed caches and identical head workload sources.
+This is a performance probe, not another bootstrap verification stage.
+
+Each workload checks output against CPython and records three alternating base/head pairs:
+JIT process/loop and AOT process/loop time. AOT build time is measured for each source file
+on its first workload; later modes reuse those binaries. The graph case's loop metric is
+processing CPU time, excluding graph construction; other loop metrics are wall time.
+Each result records its `loop_clock`. A slowdown of at least 20% and 5 ms
+triggers three more pairs. Both batches must meet the threshold with disjoint sample ranges
+to emit an advisory Actions warning; other threshold crossings are `unconfirmed`.
+Correctness, setup and measurement errors fail the job. Timing warnings do not gate merging.
+Peak RSS and retained-memory costs remain separate measurements; this suite records timing.
+The step summary and 30-day `perf-smoke` JSON artifacts retain revisions, toolchain, source
+hashes, raw samples and same-run CPython controls. There is no cross-run download or extra
+dependency. Locally on Linux, use
+`python3 tools/perf_smoke.py --base /path/to/baseline --json build/perf-smoke.json`.
+
+Weekly runs (Monday 08:23 UTC) compare current `main` against the fixed reference
+`80840d264b2d4e76c21a8deec6db90ce6e3c5b22` from #853. Manual dispatch defaults to this
+reference too, with an optional baseline override. Both revisions are rebuilt and measured
+on the same runner each time; ratios therefore include cumulative changes since the reference.
+These separate runs retain `perf-reference` raw JSON artifacts for 90 days, providing a bounded
+history without adding work to PR or push runs. Download them from the workflow's run pages.
+Compare a series only with matching reference, workload sources/arguments, measurement code
+(including imported helpers), Python/LLVM and CPU/platform; do not gate on old absolute times.
+Changing the reference or measurement inputs starts a new series. Keep the pin explicit rather
+than automatically advancing it after a slowdown. This does not add a permanent history store.
+
+Historical absolute times are unsuitable as gates: in the retained
+[October 16 snapshot](benchmarks/pyperformance-2026-10-16-a74faae.json), 16 of 17 usable
+AOT workloads had over 20% within-revision wall-time spread (excluding removed `deltablue`
+and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
+end-to-end json_repair or all examples; broader benchmark history remains under #45.
+
+A bootstrap job checks compiler and runtime IR fixed points once, then twenty-seven groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
@@ -341,6 +383,7 @@ runner variation:
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
 | `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the full JIT suite, with compiler and program GC stress. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the full AOT suite, with compiler and program GC stress. |
+| `dynany-optin-0` through `dynany-optin-3` | Four disjoint quarters of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `runtime-cache` | The cached runtime's rules with both compilers. |
 | `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress. |
 | `benchmarks` | Benchmark correctness/timings and half of the compiler-scaling shapes; extended correctness checks reuse the verified compiler. |
@@ -353,6 +396,16 @@ toolchains, different bootstrap IR, and missing or inconsistent bootstrap proven
 Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
 fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
 parity cases, all four execution modes, program GC interval 1 and zero mismatches.
+The dynamic-`Any` opt-in sweep copies the test fixtures into an isolated directory, adds the
+opt-in pragma to each selected program and records CPython's output on that same source.
+It reuses the ordinary harness's stdin, import-path, `/dev/full`, signal and diagnostic handling.
+The committed exception manifest identifies exact cases, execution modes and observed failure
+signatures; unexpected passes require removing stale exceptions, and new failures fail the job.
+The report gate verifies the full corpus and exception hashes, exact shard membership, every
+case/mode result and complete oracle/check counts. Generated copies and failure logs remain in
+the workflow artifacts. Run locally with `make dynany-optin`, or select a shard with
+`DYNANY_OPTIN="--shard-index 0 --shard-count 4"`. This sweep covers normal JIT/AOT execution;
+program GC stress remains covered by the separate generated parity checks and existing corpus.
 A failed producer blocks its consumers
 and fails the final gate; there is no fallback to an older compiler.
 
@@ -399,10 +452,17 @@ retention of every semantic discovery. The hosted dry-call fixture lives in
 normal differential corpus. Historical investigation and raw evidence are linked
 from [PR #818](https://github.com/den-run-ai/pystachy/pull/818).
 
+The runtime-mode controls require `runtime_ir()` to restore the exact entry state
+of `MODULES["_rt"]` on success and failure, including an absent entry or an existing
+false value. Failures during loader construction, loading and generation exercise
+the actual cleanup boundary; removal and incorrect-restoration mutations must fail.
+A real compiler-error sequence checks that a failed runtime compilation cannot
+make a subsequent ordinary program import the internal `_rt` module.
+
 `tools/compiler_state_globals.py`, also tested by that Lint pattern, inventories
 module-level containers under the compiler's declaration conventions. Every
-container is classified as a reviewed lookup table, restart-rewound state, or
-currently retained state. It rejects unclassified containers and new writers,
+container is classified as a reviewed lookup table, restart-rewound state,
+load-reset state, or currently retained state. It rejects unclassified containers and new writers,
 including direct writes, imported names, simple local and default-argument aliases,
 assignment expressions and nested subscripts. Module subscript aliases retain possible
 source owners for later mutation checks without declaring scalar-capable reads as
@@ -417,9 +477,15 @@ mutator calls include in-place dunders and reinitialization, with explicit impor
 resolution and lexical builtin-name shadows. Callable alias/effect inference remains
 outside the check. Loop, context, exception and pattern targets, plus named
 definitions, participate in global-rebinding and local-shadow checks without
-inferring aliases from arbitrary iterators or context managers. The five rewind
-classifications are tied to the executable restart controls; removing a rewind must still fail those controls. `DYNFILES`, `GLUE`
-and `SPECSHOW` currently retain discoveries across restarts; the inventory records
+inferring aliases from arbitrary iterators or context managers. The four rewind
+classifications are tied to the executable restart controls; removing a rewind must
+still fail those controls. `Loader.program()` rebuilds `FILES` and `DYNFILES` together
+before parsing each program, including runtime loads and compilation restarts. Hosted
+sequence tests cover both dynamic-Any opt-in directions, successful and failed calls,
+imports, runtime interleaving and removal of either reset. The main source diagnostic
+name remains caller-owned (`diagnostics.SRC`); imported diagnostics use the current
+file table. These process-global tables do not provide concurrent compilation isolation.
+`GLUE` and `SPECSHOW` currently retain discoveries across restarts; the inventory records
 that behavior without certifying its safety. This is a hosted drift check, not a
 whole-program effect analysis: arbitrary helper calls, object-attribute aliases,
 unannotated factory results, and effects inside class bodies, anonymous function

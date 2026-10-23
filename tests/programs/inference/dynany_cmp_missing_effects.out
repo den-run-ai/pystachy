@@ -1,0 +1,33 @@
+entered 0
+True
+count 1
+entered 1
+False
+count 2
+entered 2
+first error
+count 3
+entered 3
+True
+count 4
+entered 4
+before read
+'Peer' object has no attribute 'items'
+count 5
+entered 5
+'Peer' object has no attribute 'items'
+count 6
+entered 4
+before read
+'Peer' object has no attribute 'items'
+entered 4
+before read
+'Peer' object has no attribute 'items'
+entered 4
+before read
+'Peer' object has no attribute 'items'
+count 9
+entered 4
+before read
+True
+[exit 0]

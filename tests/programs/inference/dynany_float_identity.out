@@ -1,0 +1,26 @@
+literal True False True
+repeated call True False True
+another function True False True
+computed False True False
+computed twice False True False
+typed literal True False True
+typed copy before boxing True False True
+typed reassignment False True False
+negative literal True False True
+positive zero True False True
+negative zero True False True
+signed zero False True False
+infinity True False True
+signed infinity False True False
+computed infinity False True False
+literal values [1.5, -1.5, 0.0, -0.0, inf, -inf, 5e-324, 1.7976931348623157e+308]
+one nan True False True
+two nans False True False
+nan equality False
+retained literal True False True
+retained computed False True False
+typed global True False True
+one imported module True False True
+two imported modules False True False
+main and imported module False True False
+[exit 0]

@@ -23,7 +23,8 @@ appears: parameters, returns, locals, module variables, fields, and the items of
 display whose items have no one type (`[1, "two", [3]]`) is a container of `Any` values instead
 of a compile error, and so are the displays among its items. Concrete annotations and
 unannotated code keep their static types, layouts and templates: boxing is selective, at the
-boundary where a concrete value flows into `Any` storage.
+boundary where a concrete value flows into `Any` storage, and when numeric copies or global
+reads need to preserve its object identity (see [representation](#representation)).
 
 A list whose items are `Any` values or `Any`'s containers is a `list[Any]`, and a dict whose
 values are is a `dict[Any, Any]`: `dict[str, Any]`, `list[dict[str, Any]]`, `dict[str, list[Any]]`
@@ -86,7 +87,7 @@ that an `Any` value fills (`xs: list[Any] = [None] * n`, `d: dict[str, Any] = {.
 `tests/errors/inference/dynany_none_*.py`).
 
 An annotation that mentions `Any` where no `Any` value can stand requests inference, as in a
-module that does not opt in, so that the comment rejects no program that compiles without it:
+module that does not opt in. These annotation forms retain inference:
 `Callable[..., Any]`, whose parameters no `Callable` type names, a type argument of a class of the
 program (`box: Box[Any] = Box(3)`: a specialization is its constructor call's), `*args: Any` and
 `**kwargs: Any` of an `__init__` (its class is a class template), the parameters of `__exit__`,
@@ -101,6 +102,12 @@ type it, by an item before it of the same kind (`({"a": [1], "b": []}, 1)`, `[li
 decides with the others whether the items have one type
 (`tests/programs/inference/dynany_display_empty_nested.py`). Functions after a `Callable` item are
 `Callable`s of its type (`tests/programs/inference/dynany_callables.py`).
+
+Opting in can still reject programs that compile with inferred `Any`, including concrete
+container return contexts and nested iterator/generator item types. The
+[corpus sweep](testing.md#continuous-integration) tests every differential program in JIT and
+AOT; its [exact exception list](../tools/dynany_optin_exceptions.json) records current failures
+and their owning issues. These exceptions are compatibility gaps, not equivalent behavior.
 
 [Inferred unions](language/typing.md#inferred-unions) work as in modules that do not opt in: a
 variable or result given an `int` and a `float` is an `int | float`. One that is given an `Any`
@@ -153,16 +160,61 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   functions included, as CPython caches the former and makes a module's equal constants one
   object, and another module's another; an int computed at run time gets a new box, as
   `int("1000") is int("1000")` is `False` in CPython (`tests/programs/inference/dynany_identity.py`
-  and `dynany_identity_modules.py`). An int or float variable of typed code (a local or a
-  parameter of a module that opts in, or any module's variable in a program where one does)
+  and `dynany_identity_modules.py`). A float literal likewise has one constant box per exact
+  value in each module, shared by its functions. Positive and negative zero have distinct
+  boxes; computed floats, including NaNs, are not interned
+  (`tests/programs/inference/dynany_float_identity.py`). An int or float variable of typed code
+  (a local, parameter, closure cell or comprehension variable of a module that opts in,
+  or any module's variable in a program where one does)
   holds one object, as CPython's name does. Beside it is a box
   slot, null until the variable has a box. Each time the variable becomes an `Any` value, it
   gives the slot's box where that box holds its value, else a new box, which the slot then
   holds. A value read before a store gives the variable a new binding (`x, y = y, x`) keeps the
   object it read: the box the slot held at the read, else a new one that the slot does not take.
   A store gives the slot the box of the `Any` value it unboxes, the slot's box of the
-  variable it copies, or an int literal's constant box; any other value, such as an int computed
-  there, is a new object, which its first crossing boxes. A float that `isinstance()` narrows an
+  variable it copies, or a numeric literal's constant box. Copying a numeric variable materializes
+  its box if needed, so copies made before either variable crosses into `Any` still share one
+  object (`tests/programs/inference/dynany_identity_copy.py`). A module variable's read also
+  materializes and snapshots its box, before later operands can call code that rebinds the
+  variable (`tests/programs/inference/dynany_identity_global_snapshot.py`). Proven single-binding
+  integer constants and their from-import copies have their cached or literal box ready at
+  initialization, so their reads only load it and cannot allocate
+  (`tests/programs/inference/dynany_identity_constants.py`). This applies to
+  numeric globals in imported typed modules too when the program uses dynamic `Any`. These
+  copies and global reads can allocate before an `Any` crossing, even if none follows.
+  A numeric closure cell shares its box slot with every reader and nonlocal writer,
+  including closures created before its first box. Its reads also snapshot before
+  later operands can rebind the cell. The box remains reachable after the creating
+  function returns (`tests/programs/inference/dynany_identity_cells.py`). Cells use
+  the existing 16-byte scanned allocation class; the second word now holds the box.
+  Copies into or out of a cell can materialize a box even when no `Any` crossing
+  follows, including in a factory that returns a closure with only scalar uses.
+  A global or closure-cell read used only by a proven scalar arithmetic expression does not materialize
+  a box. The expression must contain only concrete numeric names, literals, arithmetic
+  and unshadowed numeric conversions; calls to user code, assignment expressions,
+  dynamic operands and unknown syntax retain snapshots. Global and cell stores still update
+  their identity slots, and copies or values kept across calls retain their objects
+  (`tests/programs/inference/dynany_identity_scalar_globals.py`).
+  Local numeric bindings carry stack generation counters, so a read before an assignment
+  in a skipped branch still shares its binding's object; equal-valued replacements remain
+  distinct. A conditional selection between same-typed numeric locals carries the selected slot and
+  generation lazily, and a local assignment expression keeps its target's provenance
+  (`tests/programs/inference/dynany_identity_expressions.py`). No box is materialized solely
+  to produce these expression results.
+  Comprehension targets have their own box slots, renewed for each iteration and
+  restored to the enclosing scope after shadowing, including empty comprehensions
+  and short-circuit reductions (`tests/programs/inference/dynany_identity_comprehensions.py`).
+  Closed functions with explicit numeric parameters and numeric return types omit local box
+  slots when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
+  and numeric conversions. Functions proven to return only `None`, including inferred numeric
+  specializations, may also omit them and print numeric
+  values and literal strings through the unshadowed builtin, without keyword or expanded
+  arguments (`tests/ir/dynany_identity_scalar_expressions.py`). Identity tests, `Any` storage, globals, containers, closures and
+  other calls prevent that proof (`tests/ir/dynany_numeric_locals.py`). This relies on the
+  existing typed numeric return boundary; extending identity preservation across that
+  boundary must revisit this proof. Any
+  other value, such as an int computed there, is a new object, which its first crossing, copy
+  or global or closure-cell read boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
   (`tests/programs/inference/dynany_identity_typed.py`). Where typed code's numbers still cross
   into `Any` as new objects, see the [deviations](#deviations).
@@ -210,7 +262,7 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
 Arithmetic, comparisons, truth, `is`, `in`, indexing, slicing (of a `str`, list or tuple, with
 `Any` bounds too, which convert as CPython converts them: once every bound is evaluated and the
 receiver tested, the step first; a dict's slice hashes the slice, then raises its `KeyError`),
-item assignment and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `hash()`,
+item assignment and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `abs()`, `hash()`,
 `id()`, `sum()` (also of a generator), `sorted()`, `min()`, `max()`, `list()`, `str.join()`,
 `dict.update()` (of a dict or of pairs, each an iterable of two), f-strings and `format()`,
 iteration, unpacking, augmented assignment, `type(x).__name__`,
@@ -222,6 +274,11 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 `int`/`float` comparisons are exact, and the error messages are CPython's
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
+
+`abs()` calls a boxed object's `__abs__` method, including inherited methods. Builtin bools
+give ints, nonnegative ints keep their identity, and floats give new float objects with a
+nonnegative sign. The [signed-64-bit integer limit](language/compatibility.md#numbers) still
+applies: `abs(-9223372036854775808)` raises `OverflowError`.
 
 Dict union `d | e` makes a new dict, with the right dict's values taking precedence. `d |= e`
 updates the existing dict through `dict.update()`, accepting a dict or builtin iterable of
@@ -243,7 +300,7 @@ or CPython's `AttributeError`/`TypeError`:
 | `slice`, `module` | a slice, of its bounds and step as `Any` values (an object's `__getitem__` would take a slice object, which Pystachy does not have: `TypeError`), `type(x).__module__` |
 | `getitem`, `setitem`, `delitem`, `contains` | the container protocol |
 | `get.<a>`, `set.<a>` | attribute `a`: a field or property of the class, or a method, which reads as its bound method |
-| `has.<m>.<n>`, `call.<m>.<shape>` | method `m`, called with `n` positional arguments, then the keyword arguments that `<shape>` names (`2-sep-end`: two positional arguments, then `sep=` and `end=`): found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, each class's case binding the arguments to its own method's parameters as a typed call binds them, or raising CPython's `TypeError` where they do not fit; a field's value, read before the arguments as `LOAD_ATTR` reads it (`has.<m>.<n>` gives it) and called as `callv.<shape>` calls it; also the methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float` that take `n` positional arguments, with keyword arguments where typed code takes them (`list.sort()`'s and `dict.update()`'s) |
+| `has.<m>.<n>`, `call.<m>.<shape>` | method `m`, called with `n` positional arguments, then the keyword arguments that `<shape>` names (`2-sep-end`: two positional arguments, then `sep=` and `end=`): found before the arguments are evaluated, as CPython's `LOAD_ATTR` finds it, then called, each class's case binding the arguments to its own method's parameters as a typed call binds them, or raising CPython's `TypeError` where they do not fit; a field's value, read before the arguments as `LOAD_ATTR` reads it (`has.<m>.<n>` gives it) and called as `callv.<shape>` calls it; also supported methods of `list`, `dict`, `str`, `tuple`, `int`, `bool` and `float`, whose positional arity errors run after argument evaluation, with keyword arguments where typed code takes them (`list.sort()`'s and `dict.update()`'s) |
 | `callv.<shape>` | a call of a boxed function value, bound method or object with `__call__`, with the arguments `<shape>` describes, through the function's own calling code (defaults, a closure's env, keyword arguments), or CPython's `TypeError` where the arguments do not fit, worded by the function's qualified name |
 
 Each case calls the class's operation with `Any` arguments: a method whose parameters are
@@ -264,18 +321,34 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `Any` takes any operand, also between typed objects of its class
 (`tests/programs/inference/dynany_eq_any_param.py`). One whose parameter has no annotation, or
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
-list compared with an `Any` value's field), the program is compiled again without that call
-(`Gen.xnot`), and the method runs only with objects of its class, as in a module that does not opt
-in (`tests/programs/inference/dynany_eq_template.py`). One whose parameter is annotated with a class (or
-another concrete type) runs where the other value has that type (an object of the class or of a
-subclass, or `None`, as such a parameter takes an `Any` value; for a tuple's shape, a tuple of its
-length whose items have its item types); its body is compiled for that type, so it does not run
-with another value (`pys_dyn_isa`), nor with any where no `Any` value has the type (`list[int]`),
-and the comparison is identity's, or `TypeError` for an ordering, without the other operand's
-reflected method: what CPython gives where the method declines the value, as `lib/datetime.py`'s
-methods decline a `str` (`tests/programs/inference/dynany_eq_annotated.py`,
-`tests/programs/inference/dynany_eq_annotated_tuple.py`,
-`tests/programs/inference/dynany_eq_annotated_container.py`, `tests/programs/inference/dynany_eq_datetime.py`).
+list compared with an `Any` value's field), the compiler also tries the body against the
+concrete classes of boxed operands, behind exact `DynType` guards. This bounded adapter requires
+the operand to be used exclusively through direct instance fields. Present fields must have the
+same types as the annotated operand class (or the receiver class for an unannotated parameter).
+A missing field read raises `AttributeError` only when execution reaches that read, preserving
+earlier effects and exceptions and branches that never read it. This uses a separate concrete
+specialization and does not change an ordinary typed call. Properties, custom attribute lookup,
+missing-field writes, whole-operand uses, nested scopes and unsupported syntax retain the fallback.
+A canonical field-typed body is checked once; incompatible fields are filtered before
+specialization. Typed container fields keep
+their existing storage and aliases: these adapters neither copy nor box their items
+(`tests/programs/inference/dynany_cmp_concrete_body.py`). Missing reads, their evaluation order,
+and reflected comparisons are covered by `tests/programs/inference/dynany_cmp_missing_fields.py`,
+`dynany_cmp_missing_effects.py` and `dynany_cmp_missing_order.py`. Adapters are emitted only when the generic
+dynamic body failed, and follow classes discovered by later dispatcher generation. Failed
+concrete attempts have separate `Gen.xnot` keys, so they do not suppress a working adapter or
+typed call (`tests/programs/inference/dynany_eq_template.py`). A normal instance comparison method with
+one concretely annotated operand retains its typed call where that operand fits the annotation.
+For a value of another type, its cross-type helper specializes the same body with an `Any`
+operand, preserving method calls, side effects and exceptions instead of treating the annotation
+as a reason to decline (`tests/programs/inference/dynany_eq_annotated_body.py`,
+`tests/programs/inference/dynany_cmp_annotated_effects.py`). This also handles tuple shapes and
+typed-container annotations when the body can operate on dynamic values. If the dynamic body
+cannot compile, the original typed call remains available to matching values
+(`tests/programs/inference/dynany_cmp_typed_fallback.py`). If neither its dynamic body nor a
+guarded concrete-class body compiles, the cross-type call still uses the documented
+identity/ordering fallback below. Typed calls and same-hierarchy comparison
+helpers retain their existing behavior.
 A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
 methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
 rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
@@ -316,12 +389,15 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
   [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
-- A comparison method does not run with a value of another type that an `Any` value brings it
-  where its parameter is annotated with a class (or another concrete type) that the value does
-  not have, or with a type that no `Any` value has (`list[int]`), or where its body does not
-  compile for an `Any` value: the comparison is identity's, or `TypeError` for an ordering, where
+- A cross-type comparison method whose body cannot compile for an `Any` operand and falls
+  outside the supported guarded concrete adapter still does
+  not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
-  (`tests/deviations/dynany_eq_annotated_body.py`).
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand has an incompatible typed
+  container field). Typed container-field comparisons and missing-field reads now execute
+  through guarded concrete adapters. Concrete operand annotations alone no
+  longer suppress normal instance comparison methods; the remaining unsupported-body fallback
+  is a correctness gap tracked by #803, not a stable comparison contract.
 - An object is not iterable through an `Any` value yet (iteration of objects is under
   [next steps](#next-steps)): a `for` loop over one, and a pair of `dict.update()` that is one,
   raise `TypeError` where CPython calls its `__iter__` (`tests/deviations/dynany_iter_object.py`).
@@ -331,22 +407,12 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - An int or float of typed code that no variable's box slot holds is a new object where it
   becomes an `Any` value, where CPython's names, containers and classes hold one object: an
   argument or a parameter's default value (the parameter receives a new object), a return
-  value, an item of a typed container, a typed field or class variable, a variable that a
-  closure reads, a comprehension's variable, and a copy of a variable made before the variable
-  first became an `Any` value (also the name that `from m import x` binds), and a value that a
-  conditional expression chooses from two variables. So is an expression
+  value, an item of a typed container, a typed field or class variable, and the name
+  that `from m import x` binds. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
-  literal `1000` there), and a float literal at each evaluation, where CPython's equal
-  constants are one object (`tests/deviations/dynany_identity_boundary.py`).
-- A module's int or float variable that has no box yet, read in an expression that then calls a
-  function which rebinds the variable to an equal value, can give the new binding the box that
-  the read value gets where it becomes an `Any` value: `[G, rebind()][0] is G` is `True`, where
-  CPython holds two objects (`tests/deviations/dynany_identity_boundary.py`). The compiler sees
-  a store between the read and the crossing in the function itself, not in the call. So does a
-  value read before an assignment that a branch of the same expression makes but does not run:
-  with `flag` false, `ys: list[Any] = [x, (x := v) if flag else 0]` then `a: Any = x` gives
-  `ys[0] is a` as `False`, where CPython keeps one object. The compiler counts the stores it
-  emits, not those that run; following the run-time path would take a generation on every store.
+  literal `1000` there). Repeated reads of an unboxed local before a taken store in the
+  same expression can also become distinct objects: `[x, x, (x := value)]` boxes the two
+  retired reads separately (`tests/deviations/dynany_identity_boundary.py`).
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional and keyword arguments, and what a
@@ -364,9 +430,14 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (`tests/deviations/dynany_key_none_objects.py`).
 - A builtin type's method that typed code does not support either (`int.to_bytes()`,
   `int.as_integer_ratio()`) raises `AttributeError` where it is called through an `Any` value;
-  typed code rejects it at compile time. So does a builtin type's method called through an
-  `Any` value with arguments it does not take, before they are evaluated, where CPython
-  evaluates them and raises `TypeError`. A class's method raises CPython's `TypeError`.
+  typed code rejects it at compile time. Supported builtin methods evaluate their arguments
+  before raising CPython's positional arity `TypeError`, while missing attributes fail before
+  argument evaluation (`tests/programs/inference/dynany_builtin_arity.py`). The typed subset
+  still lacks three-argument `str.replace()` and one-argument `dict.setdefault()`; those shapes
+  raise an explicit unsupported-call `TypeError` after evaluating their arguments. Static
+  unpacking uses the direct-call error wording: a bool's unpacked `bit_count()`/`bit_length()`
+  arity error names `int` where CPython names `bool`
+  (`tests/deviations/dynany_builtin_star_error.py`).
 - `%` of an `Any` str raises `TypeError`: printf-style formatting is implemented for a str that
   is known as such, which formats `Any` values (`tests/deviations/dynany_str_mod.py`).
 - A slice of an object through an `Any` value raises `TypeError`: its `__getitem__` would take a
@@ -386,7 +457,7 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   class's fields are fixed), as for typed objects.
 - `set`, `bytes` and exception objects, and typed containers other than tuples, cannot become
   `Any` values yet.
-- Rejected at compile time where an argument is an `Any` value: `abs()`, `divmod()`, `round()`,
+- Rejected at compile time where an argument is an `Any` value: `divmod()`, `round()`,
   `chr()`, `ord()`, `bin()`, `hex()`, `oct()`, `dict()`, `tuple()` (`tuple(list(x))` works),
   `reversed()`, `iter()`, `next()`, `getattr()`, `hasattr()`, `setattr()` and `del` of an
   attribute.
