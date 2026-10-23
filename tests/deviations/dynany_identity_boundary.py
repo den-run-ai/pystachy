@@ -2,7 +2,7 @@
 # values, an int or float variable of typed code holds one object (#797), but these values do not
 # keep their object where they become Any values: an argument or a parameter's default value
 # (the parameter receives a new object), a return value, an item of a typed container, a typed
-# field or class variable, a variable that a closure reads and a comprehension's variable.
+# field or class variable.
 # Each is a new object there, where
 # CPython's names, containers and classes hold one (it prints True for each). So is the value of
 # an expression of literals, which CPython's compiler folds into one constant (999 + 1 is 1000
@@ -16,10 +16,6 @@ class Box:
 
     def __init__(self, n: int) -> None:
         self.n = n
-
-
-def same(a: Any, b: Any) -> bool:
-    return a is b and id(a) == id(b)
 
 
 def callee(a: Any, n: int) -> None:
@@ -55,15 +51,6 @@ def run() -> None:
     h: Any = Box.K
     print("a class variable", g is h, id(g) == id(h))
     dflt(1000)
-    k = int("1000")
-
-    def inner() -> None:
-        g: Any = k
-        h: Any = k
-        print("a variable a closure reads", g is h, id(g) == id(h))
-
-    inner()
-    print("a comprehension's variable", [same(i, i) for i in xs])
 
 
 run()
