@@ -3685,6 +3685,21 @@ def gen_compare(self, n: Node) -> Val:
         return self.num_cmp('!=' if ops[0] == 'in' else '==', Val(hit, "int"), Val('0', "int"))
     if len(ops) == 1:
         w = a.t
+        rhs = n.kids[1]
+        if (ops[0] == "in" or ops[0] == "not in") and unopt(a.t) == "str" and rhs.kind == "list" and 0 < len(rhs.kids) <= 8 and all(e.kind == "str" or e.kind == "None" for e in rhs.kids):
+            # A short list of string/None literals cannot escape or run user code.
+            # Compare its items directly, in order, without allocating the list.
+            # The needle was evaluated once above; retain tuple membership's
+            # item-first equality and stop at the first match.
+            end = self.label()
+            ph = Ins("phi", "bool", "")
+            for e in rhs.kids:
+                self.titem_eq(self.expr(e, ""), a, end, ph, "true")
+            self.incoming(ph, "false", self.cur)
+            self.br(end)
+            self.place(end)
+            found = self.phi(ph)
+            return Val(found if ops[0] == "in" else self.scalar('xor', [Val(found, 'bool'), Val('true', 'bool')]), "bool")
         if (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "list" and (is_list(a.t) or is_dict(a.t)):
             w = self.ctype("list", [a.t])  # (xs in [[1], [2]]: a list of such)
         if (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "set" and folds(mk("tuple", "", n.line, n.kids[1].kids)):

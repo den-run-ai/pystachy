@@ -1,0 +1,11 @@
+ASCII characters 128
+bytes 256
+'' '' '' '' ''
+'\x00' '\x00' '\x00' '\x00' '\x00'
+'t' 't' 'T' 'T' 't'
+'F' 'f' 'F' 'f' 'f'
+'None' 'none' 'NONE' 'nONE' 'none'
+'aZ!' 'az!' 'AZ!' 'Az!' 'az!'
+'中🌲' '中🌲' '中🌲' '中🌲' '中🌲'
+'\ud800' '\ud800' '\ud800' '\ud800' '\ud800'
+[exit 0]
