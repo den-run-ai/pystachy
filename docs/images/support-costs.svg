@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1135" viewBox="0 0 1200 1135" role="img" aria-labelledby="title desc">
+  <title id="title">Representation determines the cost of the same Python syntax</title>
+  <desc id="desc">Supported syntax branches to concrete native storage, closed value unions including a separate recursive JSON prototype, and experimental dynamic Any. Execution costs include boxing, tag checks, collection and identity tracking. Imported opt-in modules can activate typed identity bookkeeping. The shared compilation lane separately identifies frontend work, generated IR volume and LLVM cost. No automatic CPython fallback is provided.</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#66758a"/></marker></defs>
+  <style>
+    text { font-family: "DejaVu Sans", Arial, sans-serif; fill: #18263b; }
+    .title { font-size: 29px; font-weight: 700; }
+    .sub { font-size: 17px; fill: #45556d; }
+    .head { font-size: 20px; font-weight: 700; }
+    .body { font-size: 16px; }
+    .small { font-size: 15px; }
+    .green { fill: #145232; }
+    .yellow { fill: #654800; }
+    .red { fill: #812c26; }
+    .edge { fill: none; stroke: #66758a; stroke-width: 2; marker-end: url(#arrow); }
+    .join { fill: none; stroke: #66758a; stroke-width: 2; }
+  </style>
+  <rect width="1200" height="1135" fill="#ffffff"/>
+  <text x="35" y="47" class="title">Where compatibility adds cost</text>
+  <text x="35" y="79" class="sub">The source construct alone does not determine execution, heap, compiler or IR cost.</text>
+  <rect x="35" y="110" width="1130" height="82" rx="14" fill="#f0f4fa" stroke="#b4c1d3" stroke-width="2"/>
+  <text x="600" y="144" class="head" text-anchor="middle">Same supported syntax: a + b · xs[i] · obj.field · calls / loops</text>
+  <text x="600" y="172" class="body" text-anchor="middle">Types and module policy choose lowering; imported opt-in modules can activate typed identity work.</text>
+  <path d="M600 192 V214 H205 V240" class="edge"/>
+  <path d="M600 214 V240" class="edge"/>
+  <path d="M600 214 H995 V240" class="edge"/>
+  <rect x="35" y="248" width="340" height="99" rx="14" fill="#e5f4e9" stroke="#248049" stroke-width="2"/>
+  <text x="55" y="285" class="head green">G KEEP · Concrete native</text>
+  <text x="55" y="317" class="body green">Explicit types / inferred specialization</text>
+  <rect x="430" y="248" width="340" height="99" rx="14" fill="#fff4ce" stroke="#ae7b00" stroke-width="2"/>
+  <text x="450" y="285" class="head yellow">Y BOUND · Closed unions</text>
+  <text x="450" y="312" class="body yellow">A known finite set of value types</text>
+  <text x="450" y="336" class="small yellow">Recursive JSON uses this path (PROTO).</text>
+  <rect x="825" y="248" width="340" height="99" rx="14" fill="#fff4ce" stroke="#ae7b00" stroke-width="2"/>
+  <text x="845" y="285" class="head yellow">Y PROTO · Dynamic Any</text>
+  <text x="845" y="317" class="body yellow">Per-module experimental opt-in</text>
+  <path d="M205 347 V382" class="edge"/>
+  <path d="M600 347 V382" class="edge"/>
+  <path d="M995 347 V382" class="edge"/>
+  <rect x="35" y="390" width="340" height="184" rx="14" fill="#e5f4e9" stroke="#248049" stroke-width="2"/>
+  <text x="55" y="426" class="head green">Values and storage</text>
+  <text x="55" y="458" class="body green">int64 / float / bool</text>
+  <text x="55" y="485" class="body green">Typed slots and concrete fields</text>
+  <text x="55" y="512" class="body green">Numeric arrays can be pointer-free.</text>
+  <text x="55" y="551" class="small green">No per-item scalar box for list[int].</text>
+  <rect x="430" y="390" width="340" height="184" rx="14" fill="#fff4ce" stroke="#ae7b00" stroke-width="2"/>
+  <text x="450" y="426" class="head yellow">Tags and payloads</text>
+  <text x="450" y="458" class="body yellow">Numeric locals may split into slots.</text>
+  <text x="450" y="485" class="body yellow">Container items can be heap boxes.</text>
+  <text x="450" y="512" class="body yellow">Narrowing uses typed operations.</text>
+  <text x="450" y="551" class="small yellow">Local and container costs differ.</text>
+  <rect x="825" y="390" width="340" height="184" rx="14" fill="#fff4ce" stroke="#ae7b00" stroke-width="2"/>
+  <text x="845" y="426" class="head yellow">Runtime boxes</text>
+  <text x="845" y="458" class="body yellow">DynType + payload</text>
+  <text x="845" y="485" class="body yellow">Canonical boxes for some constants</text>
+  <text x="845" y="512" class="body yellow">Mutable aliases keep one layout.</text>
+  <text x="845" y="551" class="small yellow">Narrowed payloads can stay typed.</text>
+  <path d="M205 574 V610" class="edge"/>
+  <path d="M600 574 V610" class="edge"/>
+  <path d="M995 574 V610" class="edge"/>
+  <rect x="35" y="618" width="340" height="186" rx="14" fill="#e5f4e9" stroke="#248049" stroke-width="2"/>
+  <text x="55" y="655" class="head green">Execution to protect</text>
+  <text x="55" y="687" class="body green">Direct arithmetic and concrete calls</text>
+  <text x="55" y="714" class="body green">Typed list / dictionary fast paths</text>
+  <text x="55" y="741" class="body green">Small, optimizable native kernels</text>
+  <text x="55" y="779" class="small green">Still measure allocation and startup.</text>
+  <rect x="430" y="618" width="340" height="186" rx="14" fill="#fff4ce" stroke="#ae7b00" stroke-width="2"/>
+  <text x="450" y="655" class="head yellow">Execution / heap cost</text>
+  <text x="450" y="687" class="body yellow">Tag checks / boxed item allocation</text>
+  <text x="450" y="714" class="body yellow">Descriptors, GC and aliases</text>
+  <text x="450" y="741" class="body yellow">Narrowing avoids generic arithmetic.</text>
+  <text x="450" y="779" class="small yellow">#758: union-valued list items</text>
+  <rect x="825" y="618" width="340" height="186" rx="14" fill="#fff4ce" stroke="#ae7b00" stroke-width="2"/>
+  <text x="845" y="655" class="head yellow">Execution / heap cost</text>
+  <text x="845" y="687" class="body yellow">Boxing / GC / generic hashing</text>
+  <text x="845" y="714" class="body yellow">Dispatch + identity snapshots</text>
+  <text x="845" y="741" class="body yellow">Mixed dictionaries / object dispatch</text>
+  <text x="845" y="779" class="small yellow">#780 / #799 / #858</text>
+  <path d="M205 804 V834 H600 M995 804 V834 H600" class="join"/>
+  <path d="M600 804 V856" class="edge"/>
+  <rect x="35" y="864" width="1130" height="128" rx="14" fill="#f0f4fa" stroke="#b4c1d3" stroke-width="2"/>
+  <text x="600" y="897" class="head" text-anchor="middle">Compilation: infer / specialize → typed IR → LLVM → JIT or AOT</text>
+  <text x="55" y="927" class="body">Frontend work: class pairs (#625), nested traversal (#781), safe retries (#767 / #801).</text>
+  <text x="55" y="953" class="body">IR volume: specialization, field errors (#786), dispatch generation (#799), exception cleanup.</text>
+  <text x="55" y="979" class="small">Measure frontend time, raw/optimized IR and LLVM time separately; smaller IR alone does not prove faster execution.</text>
+  <rect x="35" y="1014" width="1130" height="70" rx="10" fill="#fce9e7" stroke="#ba4036"/>
+  <text x="55" y="1042" class="body red" font-weight="700">R FIX · Missing comparison effects and remaining identity boundaries are correctness gaps (#803 / #858).</text>
+  <text x="55" y="1068" class="small red">Narrowing is not a relayout of an aliased container or a complete fix for typed-boundary identity.</text>
+  <text x="35" y="1117" class="small">Snapshot f5a09d4, 23 October 2026 · no automatic CPython fallback · evidence: docs/support-surface.md</text>
+</svg>

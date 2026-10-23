@@ -3,6 +3,8 @@
 Pystachy's largest measured gains are on compute-heavy loops. String processing, regex
 matching, allocation and exceptions have different costs, so measure the workload you intend
 to run.
+The [support-surface diagrams](support-surface.md) connect these costs to concrete storage,
+boxed unions, dynamic `Any`, generators and exceptions.
 
 ## Benchmarks
 
