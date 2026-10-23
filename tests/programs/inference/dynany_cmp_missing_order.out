@@ -1,0 +1,25 @@
+eq
+'Peer' object has no attribute 'items'
+ne
+'Peer' object has no attribute 'items'
+lt
+'Peer' object has no attribute 'items'
+le
+'Peer' object has no attribute 'items'
+gt
+'Peer' object has no attribute 'items'
+ge
+'Peer' object has no attribute 'items'
+eq
+'Peer' object has no attribute 'items'
+ne
+'Peer' object has no attribute 'items'
+gt
+'Peer' object has no attribute 'items'
+ge
+'Peer' object has no attribute 'items'
+lt
+'Peer' object has no attribute 'items'
+le
+'Peer' object has no attribute 'items'
+[exit 0]

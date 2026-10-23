@@ -187,6 +187,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   later operands can rebind the cell. The box remains reachable after the creating
   function returns (`tests/programs/inference/dynany_identity_cells.py`). Cells use
   the existing 16-byte scanned allocation class; the second word now holds the box.
+  Copies into or out of a cell can materialize a box even when no `Any` crossing
+  follows, including in a factory that returns a closure with only scalar uses.
   A global or closure-cell read used only by a proven scalar arithmetic expression does not materialize
   a box. The expression must contain only concrete numeric names, literals, arithmetic
   and unshadowed numeric conversions; calls to user code, assignment expressions,
@@ -321,13 +323,18 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
 list compared with an `Any` value's field), the compiler also tries the body against the
 concrete classes of boxed operands, behind exact `DynType` guards. This bounded adapter requires
-the operand to be used exclusively through direct instance fields with the same types as the
-annotated operand class (or the receiver class for an unannotated parameter). Properties,
-whole-operand uses, nested scopes and unsupported syntax retain the fallback. A canonical
-field-typed body is checked once; missing or incompatible fields do not cause per-class retries.
-Typed container fields keep
+the operand to be used exclusively through direct instance fields. Present fields must have the
+same types as the annotated operand class (or the receiver class for an unannotated parameter).
+A missing field read raises `AttributeError` only when execution reaches that read, preserving
+earlier effects and exceptions and branches that never read it. This uses a separate concrete
+specialization and does not change an ordinary typed call. Properties, custom attribute lookup,
+missing-field writes, whole-operand uses, nested scopes and unsupported syntax retain the fallback.
+A canonical field-typed body is checked once; incompatible fields are filtered before
+specialization. Typed container fields keep
 their existing storage and aliases: these adapters neither copy nor box their items
-(`tests/programs/inference/dynany_cmp_concrete_body.py`). They are emitted only when the generic
+(`tests/programs/inference/dynany_cmp_concrete_body.py`). Missing reads, their evaluation order,
+and reflected comparisons are covered by `tests/programs/inference/dynany_cmp_missing_fields.py`,
+`dynany_cmp_missing_effects.py` and `dynany_cmp_missing_order.py`. Adapters are emitted only when the generic
 dynamic body failed, and follow classes discovered by later dispatcher generation. Failed
 concrete attempts have separate `Gen.xnot` keys, so they do not suppress a working adapter or
 typed call (`tests/programs/inference/dynany_eq_template.py`). A normal instance comparison method with
@@ -386,8 +393,9 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   outside the supported guarded concrete adapter still does
   not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand lacks a required attribute).
-  Typed container-field comparisons now execute through guarded concrete adapters. Concrete operand annotations alone no
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand has an incompatible typed
+  container field). Typed container-field comparisons and missing-field reads now execute
+  through guarded concrete adapters. Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
   is a correctness gap tracked by #803, not a stable comparison contract.
 - An object is not iterable through an `Any` value yet (iteration of objects is under

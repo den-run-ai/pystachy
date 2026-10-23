@@ -123,6 +123,7 @@ class FnInfo:
         self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
+        self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
         self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
         self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
