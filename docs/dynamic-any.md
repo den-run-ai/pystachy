@@ -164,7 +164,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   value in each module, shared by its functions. Positive and negative zero have distinct
   boxes; computed floats, including NaNs, are not interned
   (`tests/programs/inference/dynany_float_identity.py`). An int or float variable of typed code
-  (a local or a parameter of a module that opts in, or any module's variable in a program where one does)
+  (a local, parameter, closure cell or comprehension variable of a module that opts in,
+  or any module's variable in a program where one does)
   holds one object, as CPython's name does. Beside it is a box
   slot, null until the variable has a box. Each time the variable becomes an `Any` value, it
   gives the slot's box where that box holds its value, else a new box, which the slot then
@@ -181,10 +182,15 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   (`tests/programs/inference/dynany_identity_constants.py`). This applies to
   numeric globals in imported typed modules too when the program uses dynamic `Any`. These
   copies and global reads can allocate before an `Any` crossing, even if none follows.
-  A global read used only by a proven scalar arithmetic expression does not materialize
+  A numeric closure cell shares its box slot with every reader and nonlocal writer,
+  including closures created before its first box. Its reads also snapshot before
+  later operands can rebind the cell. The box remains reachable after the creating
+  function returns (`tests/programs/inference/dynany_identity_cells.py`). Cells use
+  the existing 16-byte scanned allocation class; the second word now holds the box.
+  A global or closure-cell read used only by a proven scalar arithmetic expression does not materialize
   a box. The expression must contain only concrete numeric names, literals, arithmetic
   and unshadowed numeric conversions; calls to user code, assignment expressions,
-  dynamic operands and unknown syntax retain snapshots. Global stores still update
+  dynamic operands and unknown syntax retain snapshots. Global and cell stores still update
   their identity slots, and copies or values kept across calls retain their objects
   (`tests/programs/inference/dynany_identity_scalar_globals.py`).
   Local numeric bindings carry stack generation counters, so a read before an assignment
@@ -193,6 +199,9 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   generation lazily, and a local assignment expression keeps its target's provenance
   (`tests/programs/inference/dynany_identity_expressions.py`). No box is materialized solely
   to produce these expression results.
+  Comprehension targets have their own box slots, renewed for each iteration and
+  restored to the enclosing scope after shadowing, including empty comprehensions
+  and short-circuit reductions (`tests/programs/inference/dynany_identity_comprehensions.py`).
   Closed functions with explicit numeric parameters and numeric return types omit local box
   slots when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
   and numeric conversions. Functions proven to return only `None`, including inferred numeric
@@ -203,7 +212,7 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   existing typed numeric return boundary; extending identity preservation across that
   boundary must revisit this proof. Any
   other value, such as an int computed there, is a new object, which its first crossing, copy
-  or global read boxes. A float that `isinstance()` narrows an
+  or global or closure-cell read boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
   (`tests/programs/inference/dynany_identity_typed.py`). Where typed code's numbers still cross
   into `Any` as new objects, see the [deviations](#deviations).
@@ -390,8 +399,8 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - An int or float of typed code that no variable's box slot holds is a new object where it
   becomes an `Any` value, where CPython's names, containers and classes hold one object: an
   argument or a parameter's default value (the parameter receives a new object), a return
-  value, an item of a typed container, a typed field or class variable, a variable that a
-  closure reads, a comprehension's variable, and the name that `from m import x` binds. So is an expression
+  value, an item of a typed container, a typed field or class variable, and the name
+  that `from m import x` binds. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
   literal `1000` there). Repeated reads of an unboxed local before a taken store in the
   same expression can also become distinct objects: `[x, x, (x := value)]` boxes the two

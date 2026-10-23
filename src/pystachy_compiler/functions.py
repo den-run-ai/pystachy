@@ -153,9 +153,15 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             self.selfname = f.params[0]
     if not self.modlevel:
         # the variables that the defs and lambdas in it take: each lives in a cell, which the
-        # closures share with it (see closure)
+        # closures share with it (see closure). Opt-in cells reserve a second word
+        # for a numeric binding's box: every closure and nonlocal writer shares it.
+        # Like runtime.c's gc_box, request 15 for the 16-byte scanned slot. Only the
+        # base and second-word addresses escape; no one-past-cell pointer is made.
         for cv in self.cellvars(f, body):
-            self.cells[cv] = self.rt("pys_alloc", "ptr", ["i64 8"])
+            self.cells[cv] = self.rt("pys_alloc", "ptr", ["i64 15" if self.dyn_policy(f.node.line) else "i64 8"])
+            if self.dyn_policy(f.node.line):
+                # Define the address before any branch or loop can first bind the cell.
+                self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '1', True)
         lf: dict[str, bool] = {}
         for st in body if f.clo < 0 or self.closures[f.clo].name != "<lambda>" else []:
             lambda_flags(st, False, lf)
@@ -204,6 +210,8 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             a = self.maddr('%ptr', env, f'{i}', True)
             self.lreg[c.caps[i]] = self.mload('%ptr', a)
             self.ltype[c.caps[i]] = c.ctypes[i]
+            if c.ctypes[i] in ["int", "float"] and self.dyn_policy(f.node.line):
+                self.idbox[c.caps[i]] = self.maddr('%ptr', self.lreg[c.caps[i]], '1', True)
         for j in range(len(c.iflags)):
             a = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + j}', True)
             self.iflag[c.iflags[j]] = self.mload('%ptr', a)

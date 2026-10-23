@@ -443,7 +443,7 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # initialization. Mutable globals retain lazy boxing and snapshot reads.
         b = self.dyn_box(v).v
     step = "1"
-    if slot.startswith("%") and b != "null":
+    if slot.startswith("%") and ".box." in slot and b != "null":
         # Boxing a conditional or alias copy may reveal the destination's own object.
         # Keep its generation so earlier unboxed reads can find that newly made box.
         # Compare objects, not payloads: equal replacements must still retire reads.
@@ -453,7 +453,7 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         step = self.select(self.scalar("and", [same, bound]), Val("0", "int"), Val("1", "int"))
     self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1
-    if slot.startswith("%"):
+    if slot.startswith("%") and ".box." in slot:
         counter = Val(slot.replace(".box.", ".boxgen."), "*int")
         # Machine add deliberately wraps, without signed-overflow flags. A local read
         # can survive only the finite stores in its expression, not 2**64 rebindings.
@@ -465,7 +465,8 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     # v, read from an int or float variable whose box slot is slot (idbox): it keeps the slot, the
     # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
     # far (dyn_id_held)
-    if slot.startswith("@") and self.fn.scalar_reads:
+    local = slot.startswith("%") and ".box." in slot
+    if not local and self.fn.scalar_reads:
         # A proven scalar arithmetic consumer uses only the payload. Its subtree has
         # no stores or user calls, so it cannot publish an alias or observe this object.
         # Ordinary reads still snapshot, and every global store still updates its box.
@@ -473,7 +474,7 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     v.idslot = slot
     v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
     v.idgen = self.idstores.get(slot, 0)
-    if slot.startswith("%"):
+    if local:
         v.idcounter = slot.replace(".box.", ".boxgen.")
         v.idversion = self.mem_load(Val(v.idcounter, "*int")).v
     if slot.startswith("@g.") and slot[3:-4] in self.intglobals:
@@ -481,8 +482,9 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         # Initialization guards precede this read; dyn_id_store made its box ready.
         v.idfrom = v.idheld
         v.idslot = ""
-    elif slot.startswith("@"):
-        # Another operand can call code that rebinds a global, beyond idstores' local view.
+    elif not local:
+        # Another operand can call code that rebinds a global or a shared closure cell,
+        # beyond idstores' local view.
         # Snapshot its object now, while the read still names this binding. A null lazy box
         # cannot be recovered later: even an equal new value is a different object. Keeping
         # only idfrom also prevents a later self-assignment from taking the idslot fast path.

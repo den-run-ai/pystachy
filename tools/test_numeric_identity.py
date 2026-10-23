@@ -1,4 +1,5 @@
 """Identity elision must stay inside its numeric function or scalar consumer proof."""
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -234,6 +235,19 @@ class ScalarGlobalIdentityTests(unittest.TestCase):
         with patch.object(Gen, "scalar_read_value", return_value=True):
             with self.assertRaises(AssertionError):
                 ScalarGlobalIdentityTests().test_open_or_publishing_consumers_keep_snapshots()
+
+
+class CellIdentityAllocationTests(unittest.TestCase):
+    def test_cells_keep_the_existing_allocation_class(self):
+        path = ROOT / "tests/ir/dynany_identity_cells.py"
+        ir = driver.compile_program(str(path), path.read_text(), [str(ROOT / "lib")], "")
+        for name in ("integer", "floating", "observed"):
+            body = re.search(r"define[^\n]*@f\." + name + r"\([^\n]*\n(.*?)\n}", ir, re.S)
+            self.assertIsNotNone(body)
+            # One shared cell and one one-capture environment. Like gc_box, the
+            # cell requests 15 bytes to use the allocator's 16-byte scanned slot;
+            # requesting 16 would silently grow it into the 24-byte class.
+            self.assertEqual(re.findall(r"@pys_alloc\(i64 (\d+)\)", body[1]), ["15", "8"])
 
 
 if __name__ == "__main__":

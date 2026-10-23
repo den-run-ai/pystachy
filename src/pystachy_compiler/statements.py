@@ -1153,7 +1153,7 @@ def gen_augassign(self, n: Node) -> None:
     elif t.kind == "name":
         fn = self.fn
         held = fn.scalar_reads
-        if len(self.gidbox) > 0 and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.scalar_read_value(t) and self.scalar_read_value(n.kids[1]):
+        if (len(self.gidbox) > 0 or len(self.idbox) > 0) and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.scalar_read_value(t) and self.scalar_read_value(n.kids[1]):
             fn.scalar_reads = True
         try:
             cur = self.read(t)
@@ -1416,6 +1416,7 @@ def gen_hide(self, names: list[str]) -> None:
     for nm in names:
         if nm in self.ltype:
             del self.ltype[nm]
+        self.idbox.pop(nm, "")
         self.compvars[nm] = self.compvars.get(nm, 0) + 1
 
 def gen_iterarg(self, arg: IterArg | None) -> None:
