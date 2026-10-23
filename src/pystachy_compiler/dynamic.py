@@ -203,6 +203,20 @@ def comparison_reads(n: Node, parameter: str, missing: list[str]) -> bool:
     return all(comparison_reads(kid, parameter, missing) for kid in n.kids)
 
 
+def comparison_equalities(n: Node, receiver: str, parameter: str, different: list[str], own: list[str], peer: list[str]) -> bool:
+    # A newly different field layout is safe only as a direct equality operand
+    # with another closed builtin field. Other uses could fail once per boxed
+    # class and restart the entire program, even when the canonical body works.
+    if n.kind == "cmp" and all(op in ["==", "!="] for op in n.s.split(",")):
+        if all(kid.kind == "attr" and kid.kids[0].kind == "name" and
+               ((kid.kids[0].s == receiver and kid.s in own) or
+                (kid.kids[0].s == parameter and kid.s in peer)) for kid in n.kids):
+            return True
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == parameter and n.s in different:
+        return False
+    return all(comparison_equalities(kid, receiver, parameter, different, own, peer) for kid in n.kids)
+
+
 def gen_dyn_xbody(self, c: str) -> None:
     # the body of @o.x.<class> (dyn_xhelper): c's own method, which takes b as its parameter's type
     # takes an Any value; != is not == where c has no __ne__, as object.__ne__ inverts __eq__. A
@@ -1456,12 +1470,24 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         fields: list[str] = []
         if not comparison_fields(method.node.kids[2], method.params[1], fields):
             return False
-        # Retry builtin value fields with their actual storage types: paired
-        # equality descriptors can compare different closed builtin trees.
-        # Keep user-class/container callbacks outside the added allowance.
+        # Retry direct equality of builtin fields with their actual layouts.
+        # Filter other differing-field uses before attempting a specialization,
+        # so incompatible operations do not add a failed restart per class.
         compatible = [a for a in fields if a in ci.ftypes and a not in ci.methods and
                       (ci.ftypes[a] == self.classes[canonical].ftypes[a] or
                        (self.ueq_type(ci.ftypes[a]) and self.ueq_type(self.classes[canonical].ftypes[a])))]
+        different = [a for a in compatible if ci.ftypes[a] != self.classes[canonical].ftypes[a]]
+        if len(different) > 0:
+            receiver = self.classes[own]
+            # Top-level unions and variadic tuples take coercion paths before
+            # paired equality; they can still reject a different builtin type.
+            # Nested occurrences stay safe under a container's own descriptor.
+            own_fields = [a for a in receiver.ftypes if a not in receiver.methods and self.ueq_type(receiver.ftypes[a]) and
+                          not is_union(unopt(receiver.ftypes[a])) and not is_vtuple(unopt(receiver.ftypes[a]))]
+            peer_fields = [a for a in ci.ftypes if a not in ci.methods and self.ueq_type(ci.ftypes[a]) and
+                           not is_union(unopt(ci.ftypes[a])) and not is_vtuple(unopt(ci.ftypes[a]))]
+            if not comparison_equalities(method.node.kids[2], method.params[0], method.params[1], different, own_fields, peer_fields):
+                return False
         if len(compatible) == len(fields):
             return True
         # Only truly absent fields get runtime AttributeError. Properties,
