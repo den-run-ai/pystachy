@@ -1,0 +1,2917 @@
+{
+  "observed_at": "2026-10-23T03:08:46.979Z",
+  "repository": "den-run-ai/pystachy",
+  "pull_request": 873,
+  "head": "7509f866530f67de2d20dd724b2ab352b8f6863e",
+  "base": "585791693be83ff2a758219487757f8870b7ed0e",
+  "test_merge": "5c463bd377d274bd156ab9cc1fb693589df342ba",
+  "head_and_test_merge_tree": "4a1711472e17dcf288a6328b5d8cb1dee4ea85e4",
+  "readiness": {
+    "mergeable": true,
+    "mergeable_state": "clean",
+    "draft": true,
+    "note": "All applicable CI passed; draft-to-ready and bot review are tracked separately."
+  },
+  "check_runs": {
+    "total": 38,
+    "success": 37,
+    "expected_skipped": [
+      {
+        "id": 120212545799,
+        "name": "DCO certified (fork pull requests)",
+        "reason": "fork-only DCO; same-repository PR"
+      }
+    ],
+    "pages_inspected": [
+      1,
+      2
+    ],
+    "page_2_count": 0,
+    "checks": [
+      {
+        "id": 120217932117,
+        "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213625125,
+        "name": "verify (gc-aot-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213625095,
+        "name": "verify (gc-self)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213625072,
+        "name": "verify (dynany-optin-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213625024,
+        "name": "verify (dynany-optin-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213625023,
+        "name": "verify (dynany-optin-3)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213625019,
+        "name": "verify (scaling-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213625002,
+        "name": "verify (gc-aot-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624998,
+        "name": "verify (dynany-optin-2)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624967,
+        "name": "verify (contracts)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624959,
+        "name": "verify (benchmarks)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624958,
+        "name": "verify (gc-aot-2)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624940,
+        "name": "verify (runtime-cache)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624932,
+        "name": "verify (ubsan-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624927,
+        "name": "verify (opt-off-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624895,
+        "name": "verify (python-free-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624887,
+        "name": "verify (opt-off-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624884,
+        "name": "verify (gc-jit-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624867,
+        "name": "verify (hosted-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624864,
+        "name": "verify (native-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624855,
+        "name": "verify (gc-jit-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624840,
+        "name": "verify (hosted-2)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624796,
+        "name": "verify (ubsan-2)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624794,
+        "name": "verify (ubsan-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624785,
+        "name": "verify (python-free-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624782,
+        "name": "verify (native-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624779,
+        "name": "verify (hosted-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624769,
+        "name": "verify (python-free-2)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212732096,
+        "name": "Install (ubuntu-24.04)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212732000,
+        "name": "Install (macos-15)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212731793,
+        "name": "Install (macos-15-intel)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212701619,
+        "name": "smoke",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212696407,
+        "name": "verify (bootstrap)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212696364,
+        "name": "upstream port preservation (CPython)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212696162,
+        "name": "upstream large regex (JIT and AOT, normal GC)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212692391,
+        "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212690251,
+        "name": "source wheels (CPython, JIT and AOT)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212545799,
+        "name": "DCO certified (fork pull requests)",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "workflow_runs": [
+    {
+      "id": 39891646155,
+      "name": "Packages",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39891646155"
+    },
+    {
+      "id": 39891646229,
+      "name": "Lint",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39891646229"
+    },
+    {
+      "id": 39891646165,
+      "name": "Performance smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39891646165"
+    },
+    {
+      "id": 39891646216,
+      "name": "Installation",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39891646216"
+    },
+    {
+      "id": 39891646181,
+      "name": "CI",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39891646181"
+    },
+    {
+      "id": 39891643644,
+      "name": "DCO",
+      "status": "completed",
+      "conclusion": "skipped",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39891643644"
+    }
+  ],
+  "full_ci": {
+    "run": 39891646181,
+    "pages_inspected": [
+      1,
+      2
+    ],
+    "page_2_count": 0,
+    "total_jobs": 31,
+    "successful_jobs": 31,
+    "failed_steps": [],
+    "aggregate_log_excerpt": [
+      "2026-10-23T03:08:00.1109785Z verification: 48 checks passed across 28 groups"
+    ],
+    "jobs": [
+      {
+        "id": 120212696162,
+        "name": "upstream large regex (JIT and AOT, normal GC)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run tools/setup.sh --minimal",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run make port-check-large",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120212696364,
+        "name": "upstream port preservation (CPython)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run make port-check",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Upload port report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120212696407,
+        "name": "verify (bootstrap)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run tools/setup.sh --minimal",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify compiler and runtime fixed points",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Package verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Upload bootstrap report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624769,
+        "name": "verify (python-free-2)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624779,
+        "name": "verify (hosted-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624782,
+        "name": "verify (native-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624785,
+        "name": "verify (python-free-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624794,
+        "name": "verify (ubsan-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624796,
+        "name": "verify (ubsan-2)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624840,
+        "name": "verify (hosted-2)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624855,
+        "name": "verify (gc-jit-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624864,
+        "name": "verify (native-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624867,
+        "name": "verify (hosted-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624884,
+        "name": "verify (gc-jit-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624887,
+        "name": "verify (opt-off-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624895,
+        "name": "verify (python-free-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624927,
+        "name": "verify (opt-off-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624932,
+        "name": "verify (ubsan-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624940,
+        "name": "verify (runtime-cache)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624958,
+        "name": "verify (gc-aot-2)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624959,
+        "name": "verify (benchmarks)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624967,
+        "name": "verify (contracts)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213624998,
+        "name": "verify (dynany-optin-2)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213625002,
+        "name": "verify (gc-aot-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213625019,
+        "name": "verify (scaling-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213625023,
+        "name": "verify (dynany-optin-3)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213625024,
+        "name": "verify (dynany-optin-1)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213625072,
+        "name": "verify (dynany-optin-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213625095,
+        "name": "verify (gc-self)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120213625125,
+        "name": "verify (gc-aot-0)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "LLVM 18 toolchain",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Dynamic Any sweep CPython oracle dependency",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Download verified bootstrap",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Extended subset benchmark correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Upload group report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 120217932117,
+        "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require complete verification reports",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require every verification group",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Upload combined verification report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "performance": {
+    "run_url": "https://github.com/den-run-ai/pystachy/actions/runs/39891646165",
+    "source": "completed job 120212701619 log; rounded values as emitted in summary",
+    "comparisons": 49,
+    "ok": 49,
+    "warning": 0,
+    "unconfirmed": 0,
+    "metrics": [
+      {
+        "workload": "autograd",
+        "metric": "build_s",
+        "base_seconds": 0.8779,
+        "head_seconds": 0.8794,
+        "change_percent": 0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "autograd",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1239,
+        "head_seconds": 0.1243,
+        "change_percent": 0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "autograd",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0346,
+        "head_seconds": 0.0342,
+        "change_percent": -1.1,
+        "status": "ok"
+      },
+      {
+        "workload": "autograd",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0389,
+        "head_seconds": 0.0387,
+        "change_percent": -0.5,
+        "status": "ok"
+      },
+      {
+        "workload": "autograd",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0336,
+        "head_seconds": 0.0335,
+        "change_percent": -0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "numeric",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1634,
+        "head_seconds": 0.1621,
+        "change_percent": -0.8,
+        "status": "ok"
+      },
+      {
+        "workload": "numeric",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0745,
+        "head_seconds": 0.0742,
+        "change_percent": -0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "numeric",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0464,
+        "head_seconds": 0.0459,
+        "change_percent": -1.1,
+        "status": "ok"
+      },
+      {
+        "workload": "numeric",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0413,
+        "head_seconds": 0.0408,
+        "change_percent": -1.2,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "build_s",
+        "base_seconds": 5.5635,
+        "head_seconds": 5.5487,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "jit_process_s",
+        "base_seconds": 1.5968,
+        "head_seconds": 1.5919,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0296,
+        "head_seconds": 0.0297,
+        "change_percent": 0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0332,
+        "head_seconds": 0.0328,
+        "change_percent": -1.4,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0276,
+        "head_seconds": 0.0272,
+        "change_percent": -1.3,
+        "status": "ok"
+      },
+      {
+        "workload": "json",
+        "metric": "jit_process_s",
+        "base_seconds": 1.5827,
+        "head_seconds": 1.5728,
+        "change_percent": -0.6,
+        "status": "ok"
+      },
+      {
+        "workload": "json",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.034,
+        "head_seconds": 0.0342,
+        "change_percent": 0.8,
+        "status": "ok"
+      },
+      {
+        "workload": "json",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0378,
+        "head_seconds": 0.0378,
+        "change_percent": 0,
+        "status": "ok"
+      },
+      {
+        "workload": "json",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0323,
+        "head_seconds": 0.0321,
+        "change_percent": -0.6,
+        "status": "ok"
+      },
+      {
+        "workload": "repair_scan",
+        "metric": "jit_process_s",
+        "base_seconds": 1.6507,
+        "head_seconds": 1.6413,
+        "change_percent": -0.6,
+        "status": "ok"
+      },
+      {
+        "workload": "repair_scan",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0924,
+        "head_seconds": 0.0927,
+        "change_percent": 0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "repair_scan",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0963,
+        "head_seconds": 0.0972,
+        "change_percent": 0.9,
+        "status": "ok"
+      },
+      {
+        "workload": "repair_scan",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0899,
+        "head_seconds": 0.0911,
+        "change_percent": 1.2,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "build_s",
+        "base_seconds": 0.6702,
+        "head_seconds": 0.6696,
+        "change_percent": -0.1,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1048,
+        "head_seconds": 0.1053,
+        "change_percent": 0.5,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0337,
+        "head_seconds": 0.0337,
+        "change_percent": -0.1,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0385,
+        "head_seconds": 0.0384,
+        "change_percent": -0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0358,
+        "head_seconds": 0.0357,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_float",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1177,
+        "head_seconds": 0.1183,
+        "change_percent": 0.5,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_float",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0464,
+        "head_seconds": 0.0465,
+        "change_percent": 0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_float",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0363,
+        "head_seconds": 0.0364,
+        "change_percent": 0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_float",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0337,
+        "head_seconds": 0.0338,
+        "change_percent": 0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "global_int",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1165,
+        "head_seconds": 0.1161,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "global_int",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0449,
+        "head_seconds": 0.0449,
+        "change_percent": 0,
+        "status": "ok"
+      },
+      {
+        "workload": "global_int",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0384,
+        "head_seconds": 0.0383,
+        "change_percent": -0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "global_int",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0357,
+        "head_seconds": 0.0357,
+        "change_percent": 0,
+        "status": "ok"
+      },
+      {
+        "workload": "global_float",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1171,
+        "head_seconds": 0.1176,
+        "change_percent": 0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "global_float",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0464,
+        "head_seconds": 0.0463,
+        "change_percent": -0.1,
+        "status": "ok"
+      },
+      {
+        "workload": "global_float",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0348,
+        "head_seconds": 0.0362,
+        "change_percent": 4.2,
+        "status": "ok"
+      },
+      {
+        "workload": "global_float",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0321,
+        "head_seconds": 0.0336,
+        "change_percent": 4.8,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "build_s",
+        "base_seconds": 1.3493,
+        "head_seconds": 1.362,
+        "change_percent": 0.9,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "jit_process_s",
+        "base_seconds": 0.227,
+        "head_seconds": 0.2139,
+        "change_percent": -5.8,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0676,
+        "head_seconds": 0.055,
+        "change_percent": -18.6,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "aot_process_s",
+        "base_seconds": 0.083,
+        "head_seconds": 0.0703,
+        "change_percent": -15.3,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0652,
+        "head_seconds": 0.0526,
+        "change_percent": -19.3,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "build_s",
+        "base_seconds": 5.5987,
+        "head_seconds": 5.5775,
+        "change_percent": -0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "jit_process_s",
+        "base_seconds": 1.806,
+        "head_seconds": 1.8133,
+        "change_percent": 0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.3062,
+        "head_seconds": 0.3091,
+        "change_percent": 0.9,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "aot_process_s",
+        "base_seconds": 0.2532,
+        "head_seconds": 0.2524,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.2456,
+        "head_seconds": 0.2448,
+        "change_percent": -0.3,
+        "status": "ok"
+      }
+    ]
+  },
+  "review": {
+    "review_threads": [],
+    "submitted_reviews": [],
+    "note": "No review threads or submitted reviews at final CI snapshot. Bot review may follow draft-to-ready."
+  },
+  "mutations_performed": "None; read-only CI audit."
+}
