@@ -42,6 +42,21 @@ adapt selected cases of that commit's Lib/test/test_contextlib.py and
 Lib/test/test_generators.py. They preserve the upstream assertions for the supported
 cases and disclose adaptations and exclusions; the same PSF license applies.
 
+CPython's dynamic core regression cases
+--------------------------------------
+
+The tests/programs/upstream/upstream_json_decode_core.py,
+upstream_json_encode_dynamic.py, upstream_json_recursion_dynamic.py,
+upstream_dict_dynamic_values.py, upstream_deque_dynamic.py and
+upstream_difflib_context.py programs adapt
+selected methods from CPython 3.13.16's Lib/test/test_json/test_decode.py,
+Lib/test/test_json/test_dump.py, Lib/test/test_json/test_recursion.py,
+Lib/test/test_dict.py, Lib/test/test_deque.py and Lib/test/test_difflib.py at commit
+cbc944f4bc59639a444dd971c737788ba2283a91. They use the Python Software Foundation
+License Version 2, included at tests/upstream/CPYTHON-LICENSE.txt. Their headers
+and tests/upstream/core-sweep.md identify exact sources, hashes, adaptations and
+exclusions; these are selected differential cases, not the full upstream suite.
+
 CPython's sequence regression (tests/programs/upstream/upstream_slice_none.py)
 ------------------------------------------------------------
 
@@ -461,7 +476,7 @@ Kuhn's code that wcwidth derives from.
 pyperformance (bench/pyperformance/)
 ------------------------------------
 
-The Python files in bench/pyperformance/ are the run_benchmark.py files of 18 benchmarks from
+The Python files in bench/pyperformance/ are the run_benchmark.py files of 22 benchmarks from
 pyperformance 1.14.0 (https://github.com/python/pyperformance), edited where
 bench/pyperformance/README.md lists (each edit is marked "Pystachy port:"); that README records
 the sdist's and each file's SHA-256. pyperformance is used under the MIT License, whose text is in

@@ -122,7 +122,7 @@ The microGPT timings measure training and inference, excluding startup and compi
 Parameters, losses and generated names are checked against the original CPython program;
 the adapted source also runs under CPython.
 
-Performance depends on your workload. See the [18 adapted pyperformance benchmarks](docs/pyperformance.md)
+Performance depends on your workload. See the [22 adapted pyperformance benchmarks](docs/pyperformance.md)
 for more comparisons and the [performance guide](docs/performance.md) for startup, memory use
 and reproduction instructions. JIT compiles each run; AOT builds once.
 The [caching guide](docs/caching.md) covers regex and text processing.
