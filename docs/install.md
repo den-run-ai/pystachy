@@ -7,7 +7,9 @@ the Docker image includes LLVM. Neither requires Python to run the compiler.
 ## Native release packages
 
 Download the matching archive and `SHA256SUMS` from
-[GitHub Releases](https://github.com/den-run-ai/pystachy/releases).
+[GitHub Releases](https://github.com/den-run-ai/pystachy/releases). The current prerelease is
+[v0.1.0-alpha.3](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.3); read its
+[known issues and workarounds](releases/v0.1.0-alpha.3.md#known-issues-and-workarounds) before adoption.
 
 | Package target | Requirements |
 |---|---|
@@ -38,7 +40,7 @@ export PATH="$HOME/.local/bin:$PATH"
 pystachy run demo.py
 ```
 
-Replace `VERSION` with the release tag, such as `v0.1.0-alpha.2`, and use your
+Replace `VERSION` with the release tag, such as `v0.1.0-alpha.3`, and use your
 platform's archive name. Keep the complete extracted directory: it contains the
 runtime and libraries alongside the compiler. The directory can be moved, and its
 launcher resolves symlinks. `manifest.json` records the source commit and file hashes.
