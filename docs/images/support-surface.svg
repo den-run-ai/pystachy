@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1030" viewBox="0 0 1200 1030" role="img" aria-labelledby="title desc">
+  <title id="title">Pystachy inside the CPython feature surface</title>
+  <desc id="desc">A concrete native core is nested inside the larger bounded Pystachy surface. Experimental dynamic Any has local comparison, identity and iteration gaps. A separate region lists CPython features with no native contract. Area is schematic, not a coverage measurement.</desc>
+  <style>
+    text { font-family: "DejaVu Sans", Arial, sans-serif; fill: #18263b; }
+    .title { font-size: 30px; font-weight: 700; }
+    .sub { font-size: 17px; fill: #45556d; }
+    .head { font-size: 20px; font-weight: 700; }
+    .body { font-size: 17px; }
+    .small { font-size: 15px; }
+    .green { fill: #145232; }
+    .yellow { fill: #654800; }
+    .red { fill: #812c26; }
+  </style>
+  <rect width="1200" height="1030" fill="#ffffff"/>
+  <text x="38" y="47" class="title">CPython support surface</text>
+  <text x="38" y="79" class="sub">Native compilation · schematic subsets · snapshot f5a09d4, 23 October 2026</text>
+  <rect x="38" y="103" width="18" height="18" rx="4" fill="#e5f4e9" stroke="#248049"/>
+  <text x="65" y="118" class="body green">G KEEP</text>
+  <rect x="219" y="103" width="18" height="18" rx="4" fill="#fff4ce" stroke="#ae7b00"/>
+  <text x="246" y="118" class="body yellow">Y BOUND / PROTO</text>
+  <rect x="484" y="103" width="18" height="18" rx="4" fill="#fce9e7" stroke="#ba4036"/>
+  <text x="511" y="118" class="body red">R GAP: OUT or FIX</text>
+  <rect x="20" y="146" width="1160" height="807" rx="22" fill="#f5f7fb" stroke="#c5cfdc" stroke-width="2"/>
+  <text x="40" y="179" class="head">CPython feature universe</text>
+  <rect x="40" y="198" width="770" height="731" rx="18" fill="#fff4ce" stroke="#ae7b00" stroke-width="2"/>
+  <text x="62" y="233" class="head yellow">Pystachy native surface</text>
+  <text x="62" y="260" class="small yellow">Supported restrictions and experimental opt-in are labelled separately.</text>
+  <rect x="60" y="283" width="730" height="270" rx="14" fill="#e5f4e9" stroke="#248049" stroke-width="2"/>
+  <text x="82" y="319" class="head green">G KEEP · Concrete native core</text>
+  <text x="82" y="357" class="head green">Concrete scalars</text>
+  <text x="82" y="383" class="body green">Checked int64; float; bool</text>
+  <text x="440" y="357" class="head green">Typed container operations</text>
+  <text x="440" y="383" class="body green">Concrete keys/items; known shapes</text>
+  <text x="82" y="421" class="head green">Predictable storage</text>
+  <text x="82" y="447" class="body green">Numeric lists; known class fields</text>
+  <text x="440" y="421" class="head green">Direct consumer lowering</text>
+  <text x="440" y="447" class="body green">sum(x * x for x in xs)</text>
+  <text x="82" y="485" class="head green">Known calls + loops</text>
+  <text x="82" y="511" class="body green">Specialized def; if / for / while</text>
+  <text x="440" y="485" class="head green">Typed IR fast paths</text>
+  <text x="440" y="511" class="body green">Native arithmetic; proven checks</text>
+  <text x="82" y="538" class="small green">Protect these paths; green is not a universal speed or CPython-parity guarantee.</text>
+  <text x="62" y="588" class="head yellow">Y BOUND · Supported with cost / contract limits</text>
+  <text x="62" y="617" class="body yellow">Strings + dictionaries · classes / properties / inheritance</text>
+  <text x="62" y="643" class="body yellow">Generators + cleanup · exceptions + native unwinding</text>
+  <text x="62" y="669" class="body yellow">Closed value unions · boxed items · retained memory</text>
+  <text x="62" y="710" class="head yellow">Y PROTO · Dynamic Any / recursive JSON</text>
+  <text x="62" y="738" class="body yellow">Mixed records; boxed values; dynamic calls and identity tracking</text>
+  <rect x="60" y="760" width="730" height="145" rx="12" fill="#fce9e7" stroke="#ba4036" stroke-width="2"/>
+  <text x="82" y="793" class="head red">R FIX · Local gaps inside experimental Any</text>
+  <text x="82" y="822" class="body red">Some cross-type comparison bodies still skipped (#803)</text>
+  <text x="82" y="848" class="body red">Identity lost at remaining typed boundaries (#858)</text>
+  <text x="82" y="874" class="body red">Object iteration through Any can raise instead (#773)</text>
+  <rect x="835" y="198" width="325" height="731" rx="18" fill="#fce9e7" stroke="#ba4036" stroke-width="2"/>
+  <text x="855" y="234" class="head red">R OUT · No native support</text>
+  <text x="855" y="275" class="body red" font-weight="700">Dynamic object model</text>
+  <text x="855" y="302" class="body red">Multiple inheritance</text>
+  <text x="855" y="328" class="body red">General metaclasses</text>
+  <text x="855" y="354" class="body red">Runtime-named value lookup</text>
+  <text x="855" y="400" class="body red" font-weight="700">Runtime / value extensions</text>
+  <text x="855" y="427" class="small red">Native async / shared-heap threads</text>
+  <text x="855" y="453" class="body red">Big integers / complex</text>
+  <text x="855" y="479" class="small red">match; bytearray / memoryview</text>
+  <text x="855" y="505" class="small red">CPython bytecode execution</text>
+  <text x="855" y="551" class="body red" font-weight="700">Unimplemented API details</text>
+  <text x="855" y="578" class="small red">Async generator / frame APIs</text>
+  <text x="855" y="604" class="body red">Exception groups / except*</text>
+  <text x="855" y="630" class="body red">Full traceback APIs</text>
+  <text x="855" y="656" class="body red">General finalizer semantics</text>
+  <path d="M855 700 H1140" stroke="#d6a29c"/>
+  <text x="855" y="735" class="body red" font-weight="700">Interop is explicit</text>
+  <text x="855" y="765" class="body red">CPython bridge / extensions</text>
+  <text x="855" y="791" class="body red">do not add these features</text>
+  <text x="855" y="817" class="body red">to the native subset.</text>
+  <text x="40" y="987" class="body">Preserve the native core. Keep useful extensions bounded. Fix local correctness gaps.</text>
+  <text x="40" y="1014" class="small">Detailed contracts, cost dimensions and evidence: docs/support-surface.md</text>
+</svg>

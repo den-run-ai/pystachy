@@ -11,6 +11,7 @@ at specific compiler revisions.
 | [Installation](install.md) | Native releases, Docker, Linux/macOS source setup, uv and custom prefixes |
 | [Packages and apps](packages.md) | Source wheels, dependency locks, CPython reuse and standalone deployment |
 | [Language](language.md) | Supported Python, types, inference and compatibility limits |
+| [CPython support surface](support-surface.md) | Color-labelled diagrams of the native core, bounded features, costs and compatibility gaps |
 | [Dynamic `Any` (prototype)](dynamic-any.md) | Opt-in runtime-typed `Any` values: representation, contract, deviations and costs |
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
