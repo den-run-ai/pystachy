@@ -324,9 +324,10 @@ Packages workflows; Lint and the DCO check still run, and pushes to `main` run t
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
 The independent [Performance smoke workflow](../.github/workflows/performance.yml) runs on
-the same events (excluding documentation-only PRs). One job measures ten small workloads:
+the same events (excluding documentation-only PRs). One job measures eleven small workloads:
 scalar autograd, dense projection/softmax, fnmatch, mixed JSON parsing, repair-style scanning,
-integer/float copies and mutable-global reads in a dynamic-Any opt-in module without observed identity, and the
+integer/float copies and mutable-global reads in a dynamic-Any opt-in module without observed identity,
+heterogeneous cyclic graph deep-copy/checksum processing, and the
 existing adapted pyperformance `regex_effbot`. The [kernel notes](../bench/smoke/README.md)
 map each case to its coverage and limits. It builds each revision's
 native compiler once, then compares the PR merge against its base, or a main push against
@@ -335,7 +336,9 @@ This is a performance probe, not another bootstrap verification stage.
 
 Each workload checks output against CPython and records three alternating base/head pairs:
 JIT process/loop and AOT process/loop time. AOT build time is measured for each source file
-on its first workload; later modes reuse those binaries. A slowdown of at least 20% and 5 ms
+on its first workload; later modes reuse those binaries. The graph case's loop metric is
+processing CPU time, excluding graph construction; other loop metrics are wall time.
+Each result records its `loop_clock`. A slowdown of at least 20% and 5 ms
 triggers three more pairs. Both batches must meet the threshold with disjoint sample ranges
 to emit an advisory Actions warning; other threshold crossings are `unconfirmed`.
 Correctness, setup and measurement errors fail the job. Timing warnings do not gate merging.
