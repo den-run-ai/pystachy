@@ -907,6 +907,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         jt = ""
         for e in n.kids:
             v = self.expr(e, et, returnctx, resultsoft)
+            if et == "dyn" and v.idslot != "":
+                # A later item may rebind this local before the display stores its
+                # items. Capture its object now, while repeated reads share its slot.
+                v.idfrom = self.dyn_box(v).v
             if et == "" and v.t != "None":
                 et = v.t
             jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
@@ -967,9 +971,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         kj = ""
         for i in range(0, len(n.kids), 2):
             a = self.expr(n.kids[i], kv[0], returnctx, resultsoft)
+            if kv[0] == "dyn" and a.idslot != "":
+                a.idfrom = self.dyn_box(a).v
             if kv[0] == "":
                 kv[0] = a.t
             b = self.expr(n.kids[i + 1], kv[1], returnctx, resultsoft)
+            if kv[1] == "dyn" and b.idslot != "":
+                b.idfrom = self.dyn_box(b).v
             if kv[1] == "" and b.t != "None":
                 kv[1] = b.t
             jt = b.t if jt == "" else self.join(jt, b.t) or "-"

@@ -1,0 +1,13 @@
+list True False True
+ids True False
+equal integers True False
+equal floats True False
+zeros True False [-0.0, -0.0, 0.0]
+star list True False True
+star tuple True False True
+inferred mixed list True False
+dict values True False True
+nan keys 2 ['replacement', 'new']
+key precedes value 1 False True
+nan set 2 True
+[exit 0]

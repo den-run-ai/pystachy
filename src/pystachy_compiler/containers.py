@@ -110,6 +110,10 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         if e.kind == "starred":
             self.err("unpacking in a set display ({*xs}) is not supported: use set(xs) or s.update(xs)")
         v = self.expr(e, et, returnctx, resultsoft)
+        if et == "dyn" and v.idslot != "":
+            # BUILD_SET inserts after evaluating every item; a later walrus must
+            # not split repeated reads of one numeric object into separate boxes.
+            v.idfrom = self.dyn_box(v).v
         if et == "" and v.t != "None":
             et = v.t
         jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
@@ -188,6 +192,8 @@ def gen_star_display(self, n: Node, want: str) -> Val:
     lists: list[bool] = []
     for x in n.kids:
         v = self.star_items(x.kids[0]) if x.kind == "starred" else self.expr(x, ew)
+        if x.kind != "starred" and ew == "dyn" and v.idslot != "":
+            v.idfrom = self.dyn_box(v).v
         if x.kind == "starred" and is_tuple(v.t):
             for i in range(len(targs(v.t))):
                 parts.append(self.tget(v, i))

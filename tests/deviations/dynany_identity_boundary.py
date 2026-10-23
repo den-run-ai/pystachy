@@ -59,12 +59,27 @@ m: Any = 999 + 1
 print("a folded constant", k is m, id(k) == id(m))
 
 
-def repeated_stale_reads() -> None:
-    # Both reads precede a taken rebinding before the list boxes its elements.
-    # Neither read had an object yet, and their retired binding has no shared slot.
+def inferred_starred_reads() -> None:
+    # This display infers dynamic storage only after evaluating its items. The
+    # explicit list[Any] form captures each object before the later rebinding.
     x = int("1000")
-    items: list[Any] = [x, x, (x := int("2000"))]
-    print("repeated reads before a taken store", items[0] is items[1])
+    marker: list[Any] = ["marker"]
+    items = [x, *marker, x, (x := int("2000"))]
+    print("inferred starred reads before a taken store", items[0] is items[2])
 
 
-repeated_stale_reads()
+inferred_starred_reads()
+
+
+def retyped_display_reads() -> None:
+    # Reusing one name for int and float storage takes a broader type-join path;
+    # its display reads still lack the numeric binding object's provenance.
+    x = int("1000")
+    values: dict[str, Any] = {"a": x, "b": x, "c": (x := int("2000"))}
+    print("retyped dict values", values["a"] is values["b"], values["c"] is x)
+    x = float("nan")
+    keys: dict[Any, str] = {x: "a", x: "b", (x := float("nan")): "c"}
+    print("retyped NaN keys", len(keys))
+
+
+retyped_display_reads()
