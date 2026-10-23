@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+<title id="title">Compatibility payoff versus implementation complexity and runtime cost</title>
+<desc id="desc">An ordinal three-by-three map places nine representative Pystachy paths by implementation complexity and runtime CPU/memory overhead. Circle area shows estimated compatibility payoff, not API counts. Blue B outlines denote documented bounded contracts, not full CPython parity. Red GAP outlines identify known semantic gaps in the associated dynamic Any contract. M badges point to historical matched measurements, while S badges denote structural source/test evidence. All placements and payoff sizes are qualitative estimates. Compilation is excluded from the vertical axis.</desc>
+<style>
+text {font-family: "DejaVu Sans", Arial, sans-serif; fill:#18263b;}
+.title {font-size:28px;font-weight:700;}
+.head {font-size:20px;font-weight:700;}
+.body {font-size:17px;}
+.small {font-size:15px;fill:#45556d;}
+.label {font-size:16px;font-weight:700;}
+.id {font-size:25px;font-weight:700;}
+.badge {font-size:13px;font-weight:700;}
+.low {fill:#145232;}.medium {fill:#765600;}.high {fill:#912f29;}
+</style>
+<rect width="1200" height="1200" fill="#fff"/>
+
+<text x="35" y="45" class="title" >Compatibility payoff versus implementation and runtime cost</text>
+<text x="35" y="79" class="body" >Circle area = estimated payoff · outline = correctness boundary · badge = cost evidence</text>
+<text x="35" y="109" class="small" >Ordinal bins and sizes; no measured scores, coverage percentages or between-bin ratios.</text>
+<rect x="150" y="170" width="1005" height="690" rx="12" fill="#f7f9fc" stroke="#afbdcf" stroke-width="2"/>
+<path d="M485 170 V860" stroke="#d6dee9" stroke-width="2"/>
+<path d="M820 170 V860" stroke="#d6dee9" stroke-width="2"/>
+<path d="M150 400 H1155" stroke="#d6dee9" stroke-width="2"/>
+<path d="M150 630 H1155" stroke="#d6dee9" stroke-width="2"/>
+<text x="317" y="148" class="head low" text-anchor="middle">LOW</text>
+<text x="652" y="148" class="head medium" text-anchor="middle">MEDIUM</text>
+<text x="987" y="148" class="head high" text-anchor="middle">HIGH</text>
+<text x="133" y="285" class="label high" text-anchor="end">HIGH</text>
+<text x="133" y="515" class="label medium" text-anchor="end">MEDIUM</text>
+<text x="133" y="745" class="label low" text-anchor="end">LOW</text>
+<text x="33" y="515" class="head" text-anchor="middle" transform="rotate(-90 33 515)">Runtime CPU/memory overhead</text>
+<text x="652" y="892" class="head" text-anchor="middle">Implementation complexity →</text>
+<g><title>A: Native typed core; B; evidence M; estimated payoff large</title>
+<circle cx="317" cy="740" r="48" fill="#e4effb" stroke="#4c79a8" stroke-width="3" />
+<text x="317" y="737" class="id" text-anchor="middle">A</text>
+<text x="317" y="759" class="badge" text-anchor="middle">B · M</text>
+<text x="317" y="812" class="label" text-anchor="middle">Native typed core</text>
+</g>
+<g><title>B: Numeric-union locals; B; evidence S; estimated payoff medium</title>
+<circle cx="652" cy="740" r="34" fill="#e4effb" stroke="#4c79a8" stroke-width="3" />
+<text x="652" y="737" class="id" text-anchor="middle">B</text>
+<text x="652" y="759" class="badge" text-anchor="middle">B · S</text>
+<text x="652" y="798" class="label" text-anchor="middle">Numeric-union locals</text>
+</g>
+<g><title>C: Boxed union items; B; evidence M; estimated payoff medium</title>
+<circle cx="652" cy="275" r="34" fill="#e4effb" stroke="#4c79a8" stroke-width="3" />
+<text x="652" y="272" class="id" text-anchor="middle">C</text>
+<text x="652" y="294" class="badge" text-anchor="middle">B · M</text>
+<text x="652" y="333" class="label" text-anchor="middle">Boxed union items</text>
+</g>
+<g><title>D: Generator frames; B; evidence S; estimated payoff medium</title>
+<circle cx="880" cy="435" r="34" fill="#e4effb" stroke="#4c79a8" stroke-width="3" />
+<text x="880" y="432" class="id" text-anchor="middle">D</text>
+<text x="880" y="454" class="badge" text-anchor="middle">B · S</text>
+<text x="880" y="493" class="label" text-anchor="middle">Generator frames</text>
+</g>
+<g><title>E: Successful cleanup paths; B; evidence S; estimated payoff large</title>
+<circle cx="987" cy="740" r="48" fill="#e4effb" stroke="#4c79a8" stroke-width="3" />
+<text x="987" y="737" class="id" text-anchor="middle">E</text>
+<text x="987" y="759" class="badge" text-anchor="middle">B · S</text>
+<text x="987" y="812" class="label" text-anchor="middle">Successful cleanup paths</text>
+</g>
+<g><title>F: Repeated unwinding; B; evidence S; estimated payoff large</title>
+<circle cx="885" cy="245" r="48" fill="#e4effb" stroke="#4c79a8" stroke-width="3" />
+<text x="885" y="242" class="id" text-anchor="middle">F</text>
+<text x="885" y="264" class="badge" text-anchor="middle">B · S</text>
+<text x="885" y="317" class="label" text-anchor="middle">Repeated unwinding</text>
+</g>
+<g><title>G: Recursive JSON; B; evidence S; estimated payoff large</title>
+<circle cx="1085" cy="450" r="48" fill="#e4effb" stroke="#4c79a8" stroke-width="3" />
+<text x="1085" y="447" class="id" text-anchor="middle">G</text>
+<text x="1085" y="469" class="badge" text-anchor="middle">B · S</text>
+<text x="1085" y="522" class="label" text-anchor="middle">Recursive JSON</text>
+</g>
+<g><title>H: Any: narrowed payloads; GAP; evidence M; estimated payoff large</title>
+<circle cx="972" cy="548" r="48" fill="#fff0ee" stroke="#b8473e" stroke-width="3" stroke-dasharray="7 4"/>
+<text x="972" y="545" class="id" text-anchor="middle">H</text>
+<text x="972" y="567" class="badge" text-anchor="middle">GAP · M</text>
+<text x="972" y="620" class="label" text-anchor="middle">Any: narrowed payloads</text>
+</g>
+<g><title>I: Any arithmetic; GAP; evidence M; estimated payoff large</title>
+<circle cx="1050" cy="300" r="48" fill="#fff0ee" stroke="#b8473e" stroke-width="3" stroke-dasharray="7 4"/>
+<text x="1050" y="297" class="id" text-anchor="middle">I</text>
+<text x="1050" y="319" class="badge" text-anchor="middle">GAP · M</text>
+<text x="1050" y="372" class="label" text-anchor="middle">Any arithmetic</text>
+</g>
+<path d="M35 918 H1165" stroke="#d6dee9"/>
+<text x="45" y="950" class="head" >Estimated payoff</text>
+<circle cx="93" cy="1030" r="34" fill="#e4effb" stroke="#4c79a8" stroke-width="2"/>
+<text x="93" y="1099" class="body" text-anchor="middle">Medium</text>
+<circle cx="220" cy="1030" r="48" fill="#e4effb" stroke="#4c79a8" stroke-width="2"/>
+<text x="220" y="1099" class="body" text-anchor="middle">Large</text>
+<text x="45" y="1133" class="small" >Use cases, not API counts.</text>
+<text x="350" y="950" class="head" >Correctness boundary</text>
+<rect x="350" y="977" width="82" height="29" rx="7" fill="#e4effb" stroke="#4c79a8"/>
+<text x="391" y="998" class="label" text-anchor="middle">B</text>
+<text x="448" y="998" class="small" >Documented subset / limits</text>
+<rect x="350" y="1032" width="82" height="29" rx="7" fill="#fff0ee" stroke="#b8473e" stroke-dasharray="5 3"/>
+<text x="391" y="1053" class="label high" text-anchor="middle">GAP</text>
+<text x="448" y="1053" class="small" >Known accepted semantic gaps</text>
+<text x="350" y="1100" class="small" >B is not a blanket parity guarantee.</text>
+<text x="350" y="1133" class="small" >Any gaps are contract-wide; see the key.</text>
+<text x="800" y="950" class="head" >Evidence badge</text>
+<text x="800" y="998" class="label" >M</text>
+<text x="830" y="998" class="small" >Matched historical cost measurements</text>
+<text x="800" y="1053" class="label" >S</text>
+<text x="830" y="1053" class="small" >Source/tests; no matched cost sample</text>
+<text x="800" y="1100" class="small" >Placement and payoff remain estimates.</text>
+<text x="800" y="1133" class="small" >Point spacing only separates labels.</text>
+<text x="35" y="1180" class="small" >Snapshot f5a09d4 · 23 October 2026 · selected paths · correctness is a gate, never a performance trade-off.</text>
+</svg>

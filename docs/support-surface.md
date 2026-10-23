@@ -179,6 +179,84 @@ trackers own implementation scope and promotion decisions.
 | **Contain implementation cost** | Union-item boxing, Any bookkeeping, dispatch generation, class-pair analysis and speculative retries | Allocation counts, separate frontend/backend timing, raw/optimized IR and scaling bounds. Preserve verified reset/ownership boundaries (#767); the rejected #801 partial-rollback approach is not a safe shortcut. |
 | **Defer expansion until justified** | Unavailable general object/runtime facilities | A concrete consumer and an explicit contract/cost evaluation. Red OUT is not a request to remove already-supported features. |
 
+## 7. Compatibility payoff, correctness and evidence
+
+![Ordinal bubble map of nine representative paths. Horizontal position is implementation complexity; vertical position is runtime CPU/memory overhead excluding compilation. Circle area estimates compatibility payoff. Separate outlines identify bounded contracts or known dynamic-Any gaps, and M/S badges distinguish historical measurements from structural evidence.](images/support-payoff.svg)
+
+The bubble map adds **compatibility payoff** to complexity versus runtime cost. The
+two circle sizes mean medium or large estimated utility across useful application
+patterns. They are engineering judgments, not counts of unchanged applications, working
+APIs, import successes or annotations removed. A larger circle is not a measured multiple
+of a smaller one. Empty cells mean no example is plotted, not that no feature belongs there.
+Positions within a low/medium/high cell only separate labels.
+
+**B** denotes an implemented, documented subset with limits; it does not certify full
+CPython parity. **GAP** identifies accepted-program deviations in the associated dynamic
+contract. On H/I it refers to remaining comparison, identity and iteration boundaries
+([#803](https://github.com/den-run-ai/pystachy/issues/803),
+[#858](https://github.com/den-run-ai/pystachy/issues/858),
+[#773](https://github.com/den-run-ai/pystachy/issues/773)), not a failed checksum in the
+illustrated numeric scan. Correctness remains a gate regardless of estimated payoff.
+
+**M** means a linked historical report contains matched cost measurements for that path;
+**S** means structural source/test evidence without a matched cost sample here. M does
+not validate the estimated complexity bin or payoff size. Neither badge establishes a
+current-main performance bound. All measurements retain their original revisions.
+
+| Key / path | Estimated payoff and consumer | Impact scope | Cost evidence / boundary |
+|---|---|---|---|
+| **A — Native typed core** | **Large:** numeric/application kernels | Ordinary typed code | **M:** adapted [microGPT](../bench/microgpt/README.md#measured-snapshot) and concrete [list storage](union-value-costs.md#boxing-measurement); int64/NaN limits still apply. |
+| **B — Numeric-union locals** | **Medium:** mixed numeric functions | Ordinary typed code | **S:** split tag/payload [IR representation](typed-ir.md#optimizations); no matched timing sample is assigned to this bubble. |
+| **C — Boxed union items** | **Medium:** heterogeneous sequences | Ordinary typed code | **M:** [one-million-item comparison](union-value-costs.md#boxing-measurement) at `2438e7e0`; peak heap is not retained live memory. |
+| **D — Generator frames** | **Medium:** lazy/stateful APIs | Supported native generators | **S:** [yield/resumption/cleanup contract](language/semantics.md#generators); no blanket measured slowdown claim. |
+| **E — Successful cleanup paths** | **Large:** resource/error handling | Ordinary typed code | **S:** [exception lowering](typed-ir.md#exception-lowering); successful calls can retain exceptional edges without actually unwinding. |
+| **F — Repeated unwinding** | **Large:** same error semantics as E | Frequently throwing call paths | **S:** [local versus cross-function mechanism](performance.md#costs-to-watch); throw frequency changes cost, not compatibility payoff. |
+| **G — Recursive JSON** | **Large:** input-selected nested values | Closed-union native prototype | **S:** [JSON API and representation](json-prototype.md#values-and-ownership); this is separate from dynamic Any and has codec/type-graph limits. |
+| **H — Any, narrowed payloads** | **Large, potential:** mixed-data processing | Opt-in modules plus typed crossings | **M:** [dynamic scan](dynamic-any.md#measurements) at `bc79f24c`; remaining contract gaps and application/retention acceptance stay open. |
+| **I — Any, generic arithmetic** | **Large, potential:** same mixed-data reach as H | Opt-in modules plus typed crossings | **M:** same [benchmark report](dynamic-any.md#measurements), with an Any accumulator; generic addition dispatches and boxes. |
+
+E/F and H/I are alternative execution scenarios for overlapping semantics; their payoff
+is not additive. G/H/I do not establish unchanged third-party package support. The map
+contains selected implemented paths, not design estimates for unavailable native async,
+general metaclasses or multiple inheritance, whose runtime cost is unmeasured.
+
+The remaining dimensions should stay explicit instead of being folded into one score:
+
+| Dimension | Representation | What to check |
+|---|---|---|
+| Compatibility payoff | Ordinal circle area | Useful consumers, executed APIs and avoided adaptations; estimate broad reach separately from verified consumers. |
+| Correctness boundary | B / GAP outline | Results, effects, first exceptions, aliases and identity within the stated contract. |
+| Impact scope | Companion-table scope | Ordinary typed code, a native prototype, or opt-in modules including imported-module and typed-boundary effects. |
+| Compilation scaling | Separate view below | Frontend work/retries, raw/optimized IR, LLVM time and binary size. |
+| Memory behavior | Separate allocation/heap/RSS observations | Allocation traffic, peak managed heap, peak RSS and repeated-use retained live memory are different quantities. |
+| Evidence confidence | M / S badge plus revision | Historical matched measurements versus structural evidence; payoff estimates remain estimates in either case. |
+
+## 8. Compilation scaling is a separate view
+
+![Three independent zero-based bar panels reproduce historical PR 792 results: method instances 962 to 62, LLVM IR lines 197808 to 26898, and AOT build 32.4 to 1.9 seconds. The panels have different units and scales; these are not current-main timings or runtime-speed measurements.](images/support-compilation.svg)
+
+The historical [#792 experiment](https://github.com/den-run-ai/pystachy/pull/792) uses an
+ordinary base class whose comparison takes `other: object`, 30 subclasses and 40 comparison
+sites, comparing `554f3d1` with `570eb4e`. LLVM was 18.1.3; AOT builds used one CPU.
+The bars reproduce reported values; no new timing or confidence interval is implied.
+Each panel starts at zero and has its own units and scale. Sharing specialization reduced
+generated work while retaining the feature; this does not establish execution speed or
+whole-compiler linear scaling.
+
+| Remaining pressure | Measure separately | Correctness boundary |
+|---|---|---|
+| Class-pair analysis ([#625](https://github.com/den-run-ai/pystachy/issues/625)) | Frontend CPU and pair counts as classes/sites grow | Preserve subclass/reflected-method priority and first errors. |
+| Field-error and dispatcher IR ([#786](https://github.com/den-run-ai/pystachy/issues/786), [#799](https://github.com/den-run-ai/pystachy/issues/799)) | Raw/optimized IR, LLVM CPU and code size as classes/fields grow | Preserve concrete error names and dynamic fallbacks. |
+| Nested displays ([#781](https://github.com/den-run-ai/pystachy/issues/781)) | Traversal counts and frontend CPU as depth grows | Retain the fixed deep-nesting acceptance; the old exponential timeout is historical. |
+| Safe retries ([#801](https://github.com/den-run-ai/pystachy/issues/801), [#767](https://github.com/den-run-ai/pystachy/issues/767)) | Restart counts and frontend CPU, separately from emitted IR | Preserve reset/ownership boundaries and existing bounded adapter controls; partial rollback was unsound. |
+
+For memory, the [union report](union-value-costs.md#boxing-measurement) records allocation
+representation and peak heap, and the [dynamic report](dynamic-any.md#measurements) also
+records peak RSS. These short processes do not establish service-lifetime retention.
+Use repeated calls, explicit cache/input bounds and post-collection live-memory evidence
+for [#202](https://github.com/den-run-ai/pystachy/issues/202); keep its acceptance separate
+from the bubble map and from fast scalar throughput.
+
 ## Using the map
 
 For a performance-sensitive component, start with the concrete representation that fits
