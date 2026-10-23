@@ -107,7 +107,8 @@ class ProcessTests(unittest.TestCase):
                 while True:
                     try:
                         state = stat.read_text().rsplit(")", 1)[1].split()[0]
-                    except FileNotFoundError:
+                    except (FileNotFoundError, ProcessLookupError):
+                        # /proc can report ENOENT or ESRCH when the process disappears mid-read.
                         state = None
                     if state not in ("R", "D") or time.monotonic() > deadline:
                         break
