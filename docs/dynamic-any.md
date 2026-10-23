@@ -326,7 +326,13 @@ concrete classes of boxed operands, behind exact `DynType` guards. This bounded 
 the operand to be used exclusively through direct instance fields. Present fields must have the
 same types as the annotated operand class (or the receiver class for an unannotated parameter),
 or both types must be closed builtin value trees: numbers, strings, `None`, and lists, dicts
-or tuples of these, including optional and union members. Equality reads each tree with
+or tuples of these, including optional and union members. A field with a different type
+may only appear as a direct `==` or `!=` operand against another closed builtin instance
+field. Arithmetic, indexing, calls and other uses of that field retain the fallback.
+The new allowance also excludes top-level union and variable-length tuple operands,
+whose existing comparison coercions can reject a different field type; these types
+may still occur inside a supported container field.
+Equality reads each tree with
 its own descriptor, so differently typed empty containers can be equal and numeric leaves
 retain exact comparison. It neither converts nor copies their storage. Existing tuple-shape
 conversion restrictions and unboxed numeric identity limitations still apply.
@@ -334,8 +340,9 @@ A missing field read raises `AttributeError` only when execution reaches that re
 earlier effects and exceptions and branches that never read it. This uses a separate concrete
 specialization and does not change an ordinary typed call. Properties, custom attribute lookup,
 missing-field writes, whole-operand uses, nested scopes and unsupported syntax retain the fallback.
-A canonical field-typed body is checked once; unsupported field types are filtered before
-specialization. A concrete body that needs an unsupported operation still retains the fallback. Typed container fields keep
+A canonical field-typed body is checked once; unsupported field types and uses of differently
+typed fields are filtered before specialization, avoiding a failed whole-program restart per
+boxed class. A concrete body that needs an unsupported operation still retains the fallback. Typed container fields keep
 their existing storage and aliases: these adapters neither copy nor box their items
 (`tests/programs/inference/dynany_cmp_concrete_body.py`, `dynany_cmp_builtin_fields.py`
 and `dynany_cmp_incompatible_body.py`). Missing reads, their evaluation order,
