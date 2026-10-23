@@ -1,0 +1,19 @@
+conditional True True False True
+self assignment True True
+conditional False True True True
+self assignment True True
+escaped True True False
+new bindings False False
+escaped ids True False
+escaped False False True
+new bindings False False
+escaped ids False True
+first exception 1000
+loop 0 True False
+loop 1 True False
+loop 2 True False
+callback True True False
+nested tuple True False
+callback False True True
+nested tuple True False
+[exit 0]

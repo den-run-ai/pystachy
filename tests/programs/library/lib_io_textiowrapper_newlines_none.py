@@ -1,5 +1,5 @@
-# error: cannot compare str | None == tuple[str,str]
-# (newlines is CPython's tuple of the kinds of newline read once there are several: not supported)
+# Before any read, None is unequal to the tuple of newline kinds. Multiple
+# decoded newline kinds still raise the library's documented NotImplementedError.
 from io import TextIOWrapper
 
 

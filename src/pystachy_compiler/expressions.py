@@ -907,6 +907,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         jt = ""
         for e in n.kids:
             v = self.expr(e, et, returnctx, resultsoft)
+            if et == "dyn" and v.idslot != "":
+                # A later item may rebind this local before the display stores its
+                # items. Capture its object now, while repeated reads share its slot.
+                v.idfrom = self.dyn_box(v).v
             if et == "" and v.t != "None":
                 et = v.t
             jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
@@ -967,9 +971,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         kj = ""
         for i in range(0, len(n.kids), 2):
             a = self.expr(n.kids[i], kv[0], returnctx, resultsoft)
+            if kv[0] == "dyn" and a.idslot != "":
+                a.idfrom = self.dyn_box(a).v
             if kv[0] == "":
                 kv[0] = a.t
             b = self.expr(n.kids[i + 1], kv[1], returnctx, resultsoft)
+            if kv[1] == "dyn" and b.idslot != "":
+                b.idfrom = self.dyn_box(b).v
             if kv[1] == "" and b.t != "None":
                 kv[1] = b.t
             jt = b.t if jt == "" else self.join(jt, b.t) or "-"
@@ -4103,9 +4111,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.tuple_order(op, a, b)  # (of different lengths, which no one tuple type holds)
     # T and T | None (also as items): None == None, None == x is False, and None < x raises
     ct = self.wider(a.t, b.t)
-    if eq and ct == "" and self.numeric_comparable(a.t, b.t):
-        # Equality reads each operand using its own descriptor, preserving exact
-        # numeric comparison without changing either container's stored type.
+    if eq and ct == "" and self.ueq_type(a.t) and self.ueq_type(b.t):
+        # Equality reads closed builtin value trees using their own descriptors.
+        # Different item types still permit equal empty containers, and matching
+        # numeric leaves compare exactly without changing either stored layout.
         r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
         return self.num_cmp("!=" if op == "==" else "==", Val(r, "int"), Val("0", "int"))
     if ct == "" and self.boxwider(a.t, b.t) != "":

@@ -116,10 +116,15 @@ uses `bool`; their bodies are checked against those contracts. An unannotated `_
 infers `int` or `bool`. Constructors keep their `None` result contract.
 There is no implicit `int` to `float`
 conversion in an assignment, argument or return: write `1.0`, or convert explicitly.
-Arithmetic and numeric list searches may mix integers and floats. Equality and
-membership also compare matching list, dict and tuple shapes with different numeric
-item types exactly, including nested containers. This does not widen their stored types;
-ordering between containers with different numeric item types remains unsupported.
+Arithmetic and numeric list searches may mix integers and floats. Equality also compares
+closed builtin value trees with different layouts: numbers, strings, `None`, and lists, dicts
+or tuples of these, including optional and union members. Each operand keeps its own layout;
+empty containers can compare equal despite different item types, while numeric leaves compare
+exactly. Membership supports matching list, dict and tuple shapes with different numeric item
+types, including nested containers. These operations do not widen stored types; ordering
+between containers with different numeric item types remains unsupported. Unboxed numeric
+items retain the existing [NaN identity limitation](compatibility.md#numbers). Fixed-to-variable
+length tuple conversions retain their existing item-type restrictions.
 
 Parameter, return, class-body and module-level annotations follow CPython 3.13's evaluation
 timing. They are checked even in unused imported definitions. A name must be bound when its

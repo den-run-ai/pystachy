@@ -201,6 +201,11 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   generation lazily, and a local assignment expression keeps its target's provenance
   (`tests/programs/inference/dynany_identity_expressions.py`). No box is materialized solely
   to produce these expression results.
+  Displays whose item storage is already dynamic capture int- or float-typed binding objects as
+  each item is evaluated. Thus repeated reads in `[x, x, (x := value)]` keep the old
+  object together, and a repeated NaN key or set item stays one entry even when a
+  later item rebinds its name. Later items and hashing retain their evaluation order
+  (`tests/programs/inference/dynany_identity_display_reads.py`).
   Comprehension targets have their own box slots, renewed for each iteration and
   restored to the enclosing scope after shadowing, including empty comprehensions
   and short-circuit reductions (`tests/programs/inference/dynany_identity_comprehensions.py`).
@@ -324,15 +329,28 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 list compared with an `Any` value's field), the compiler also tries the body against the
 concrete classes of boxed operands, behind exact `DynType` guards. This bounded adapter requires
 the operand to be used exclusively through direct instance fields. Present fields must have the
-same types as the annotated operand class (or the receiver class for an unannotated parameter).
+same types as the annotated operand class (or the receiver class for an unannotated parameter),
+or both types must be closed builtin value trees: numbers, strings, `None`, and lists, dicts
+or tuples of these, including optional and union members. A field with a different type
+may only appear as a direct `==` or `!=` operand against another closed builtin instance
+field. Arithmetic, indexing, calls and other uses of that field retain the fallback.
+The new allowance also excludes top-level union and variable-length tuple operands,
+whose existing comparison coercions can reject a different field type; these types
+may still occur inside a supported container field.
+Equality reads each tree with
+its own descriptor, so differently typed empty containers can be equal and numeric leaves
+retain exact comparison. It neither converts nor copies their storage. Existing tuple-shape
+conversion restrictions and unboxed numeric identity limitations still apply.
 A missing field read raises `AttributeError` only when execution reaches that read, preserving
 earlier effects and exceptions and branches that never read it. This uses a separate concrete
 specialization and does not change an ordinary typed call. Properties, custom attribute lookup,
 missing-field writes, whole-operand uses, nested scopes and unsupported syntax retain the fallback.
-A canonical field-typed body is checked once; incompatible fields are filtered before
-specialization. Typed container fields keep
+A canonical field-typed body is checked once; unsupported field types and uses of differently
+typed fields are filtered before specialization, avoiding a failed whole-program restart per
+boxed class. A concrete body that needs an unsupported operation still retains the fallback. Typed container fields keep
 their existing storage and aliases: these adapters neither copy nor box their items
-(`tests/programs/inference/dynany_cmp_concrete_body.py`). Missing reads, their evaluation order,
+(`tests/programs/inference/dynany_cmp_concrete_body.py`, `dynany_cmp_builtin_fields.py`
+and `dynany_cmp_incompatible_body.py`). Missing reads, their evaluation order,
 and reflected comparisons are covered by `tests/programs/inference/dynany_cmp_missing_fields.py`,
 `dynany_cmp_missing_effects.py` and `dynany_cmp_missing_order.py`. Adapters are emitted only when the generic
 dynamic body failed, and follow classes discovered by later dispatcher generation. Failed
@@ -394,7 +412,7 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
   (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand has an incompatible typed
-  container field). Typed container-field comparisons and missing-field reads now execute
+  set field). Closed builtin container-field comparisons and missing-field reads now execute
   through guarded concrete adapters. Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
   is a correctness gap tracked by #803, not a stable comparison contract.
@@ -410,9 +428,14 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   value, an item of a typed container, a typed field or class variable, and the name
   that `from m import x` binds. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
-  literal `1000` there). Repeated reads of an unboxed local before a taken store in the
-  same expression can also become distinct objects: `[x, x, (x := value)]` boxes the two
-  retired reads separately (`tests/deviations/dynany_identity_boundary.py`).
+  literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`). Displays
+  whose dynamic item storage is known before evaluating their items preserve the
+  int- or float-typed binding objects; this does not change typed container storage
+  or calling conventions. Numeric locals whose inferred storage joins different
+  types can still lose identity in displays. An inferred starred display that discovers dynamic storage only
+  after evaluating its items can still split repeated reads before rebinding:
+  `[x, *dynamic_items, x, (x := value)]`. An explicit `list[Any]` destination avoids
+  this remaining display case.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional and keyword arguments, and what a
