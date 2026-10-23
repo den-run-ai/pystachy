@@ -340,9 +340,11 @@ above apply to well-formed text (with the surrogate exception described above).
   where CPython, which does not check annotations, goes on
   (`tests/deviations/dynany_annotation_check.py`), also an item of a tuple that a typed tuple
   receives (`tests/deviations/dynany_tuple_item_check.py`). A cross-type comparison method whose
-  body cannot compile for an `Any` operand still falls back to identity (or `TypeError` for
+  body cannot compile for an `Any` operand and falls outside the supported guarded concrete
+  adapter still falls back to identity (or `TypeError` for
   an ordering) where CPython runs the method
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`). Concrete operand annotations alone no
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand lacks a required attribute).
+  Guarded concrete adapters now execute comparisons of typed container fields. Concrete operand annotations alone no
   longer suppress normal instance comparison methods. The prototype's other differences, such as
   `in` of an `Any` item in a typed container and function values printing as `<function>`, are
   listed in its

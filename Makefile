@@ -321,6 +321,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p 'test_typed*.py'
 	$(PY) -m unittest discover -s tools -p test_json_any_loader.py
 	$(PY) -m unittest discover -s tools -p test_numeric_identity.py
+	$(PY) -m unittest discover -s tools -p test_dynany_comparisons.py
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py

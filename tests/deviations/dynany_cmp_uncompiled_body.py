@@ -1,13 +1,12 @@
 # pystachy: dynamic-any
-# Retained #803 deviation: comparing a typed container with an Any field cannot
-# compile. The dynamic comparison still declines that body, although CPython
-# runs it and prints "comparison ran" followed by True.
+# Remaining #803 gap: this body also fails for the concrete operand class,
+# because Peer has no items attribute. The fallback still skips its side effect
+# and AttributeError, although concrete adapters now support typed fields.
 from typing import Any
 
 
 class Peer:
-    def __init__(self) -> None:
-        self.items = [3]
+    pass
 
 
 class Strict:
@@ -21,4 +20,7 @@ class Strict:
 
 x: Any = Strict()
 y: Any = Peer()
-print(x == y)
+try:
+    print(x == y)
+except AttributeError:
+    print("missing items")
