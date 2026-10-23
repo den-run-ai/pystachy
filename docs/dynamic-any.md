@@ -201,6 +201,11 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   generation lazily, and a local assignment expression keeps its target's provenance
   (`tests/programs/inference/dynany_identity_expressions.py`). No box is materialized solely
   to produce these expression results.
+  Displays whose item storage is already dynamic capture numeric binding objects as
+  each item is evaluated. Thus repeated reads in `[x, x, (x := value)]` keep the old
+  object together, and a repeated NaN key or set item stays one entry even when a
+  later item rebinds its name. Later items and hashing retain their evaluation order
+  (`tests/programs/inference/dynany_identity_display_reads.py`).
   Comprehension targets have their own box slots, renewed for each iteration and
   restored to the enclosing scope after shadowing, including empty comprehensions
   and short-circuit reductions (`tests/programs/inference/dynany_identity_comprehensions.py`).
@@ -410,9 +415,13 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   value, an item of a typed container, a typed field or class variable, and the name
   that `from m import x` binds. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
-  literal `1000` there). Repeated reads of an unboxed local before a taken store in the
-  same expression can also become distinct objects: `[x, x, (x := value)]` boxes the two
-  retired reads separately (`tests/deviations/dynany_identity_boundary.py`).
+  literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`). Displays
+  whose dynamic item storage is known before evaluating their items preserve the
+  numeric binding objects; this does not change typed container storage or calling
+  conventions. An inferred starred display that discovers dynamic storage only
+  after evaluating its items can still split repeated reads before rebinding:
+  `[x, *dynamic_items, x, (x := value)]`. An explicit `list[Any]` destination avoids
+  this remaining display case.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional and keyword arguments, and what a

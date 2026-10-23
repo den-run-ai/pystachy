@@ -5,5 +5,5 @@ a typed field False False
 a class variable False False
 a parameter's default value False False
 a folded constant False False
-repeated reads before a taken store False
+inferred starred reads before a taken store False
 [exit 0]
