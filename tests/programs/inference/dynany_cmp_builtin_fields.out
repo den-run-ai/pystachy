@@ -1,0 +1,33 @@
+comparison ran 1
+comparison ran 1
+comparison ran 1
+comparison ran 1
+False False True False
+4
+comparison ran 1
+True
+[3, 4] ['three', 'four']
+comparison ran 0
+comparison ran 0
+comparison ran 0
+comparison ran 0
+True True False True
+4
+comparison ran 0
+True
+[4] ['four']
+comparison ran 1
+comparison ran 1
+comparison ran 1
+True True False
+3
+comparison ran 1
+first error
+1
+comparison ran 1
+'Missing' object has no attribute 'items'
+1
+comparison ran 0
+True
+1
+[exit 0]

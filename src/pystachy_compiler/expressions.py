@@ -4103,9 +4103,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.tuple_order(op, a, b)  # (of different lengths, which no one tuple type holds)
     # T and T | None (also as items): None == None, None == x is False, and None < x raises
     ct = self.wider(a.t, b.t)
-    if eq and ct == "" and self.numeric_comparable(a.t, b.t):
-        # Equality reads each operand using its own descriptor, preserving exact
-        # numeric comparison without changing either container's stored type.
+    if eq and ct == "" and self.ueq_type(a.t) and self.ueq_type(b.t):
+        # Equality reads closed builtin value trees using their own descriptors.
+        # Different item types still permit equal empty containers, and matching
+        # numeric leaves compare exactly without changing either stored layout.
         r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
         return self.num_cmp("!=" if op == "==" else "==", Val(r, "int"), Val("0", "int"))
     if ct == "" and self.boxwider(a.t, b.t) != "":

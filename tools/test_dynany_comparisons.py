@@ -8,16 +8,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.pystachy_compiler import driver  # noqa: E402
-from src.pystachy_compiler.dynamic import comparison_fields, comparison_reads  # noqa: E402
+from src.pystachy_compiler.dynamic import comparison_equalities, comparison_fields, comparison_reads  # noqa: E402
 from src.pystachy_compiler.lexer import Lexer  # noqa: E402
 from src.pystachy_compiler.parser import Parser  # noqa: E402
 from src.pystachy_compiler.syntax import mk  # noqa: E402
 
 
 class ConcreteComparisonTests(unittest.TestCase):
-    def compile(self, count, body="return self.items == other.items", fields="self.items = [3]", extra=""):
+    def compile(self, count, body="return self.items == other.items", fields="self.items = [3]", extra="", own_fields="self.items = [3]"):
         source = ("# pystachy: dynamic-any\nfrom typing import Any\n"
-                  "class Strict:\n    def __init__(self):\n        self.items = [3]\n"
+                  "class Strict:\n    def __init__(self):\n        " + own_fields.replace("\n", "\n        ") + "\n"
                   "    def __eq__(self, other):\n        " + body.replace("\n", "\n        ") + "\n"
                   "class Peer:\n    def __init__(self):\n        " + fields.replace("\n", "\n        ") + "\n"
                   "x: Any = Strict()\ny: Any = Peer()\nprint(x == y)\n" + extra)
@@ -43,13 +43,67 @@ class ConcreteComparisonTests(unittest.TestCase):
         self.assertLessEqual(large[1], 3)
         self.assertFalse(any(":concrete:" in key for key in large[2].xnot))
 
-    def test_missing_and_incompatible_fields_do_not_add_failed_restarts(self):
-        for fields in ["self.missing = [3]", "self.items = 'different type'"]:
+    def test_missing_and_builtin_equality_fields_do_not_add_failed_restarts(self):
+        for fields in ["self.missing = [3]", "self.items = 'different type'", "self.items = ['x']",
+                       "self.items = {1: 'x'}", "self.items = (1, 'x')"]:
             with self.subTest(fields=fields):
                 result = self.compile(20, fields=fields)
                 self.assertLessEqual(result[1], 3)
                 self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
-                self.assertEqual(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1), fields == "self.missing = [3]")
+                self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
+
+    def test_unsupported_field_types_do_not_add_failed_restarts(self):
+        for fields in ["self.items = b'x'", "self.items: set[int] = {3}", "self.items = object()"]:
+            with self.subTest(fields=fields):
+                result = self.compile(20, fields=fields)
+                self.assertLessEqual(result[1], 3)
+                self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+                self.assertFalse(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
+
+    def test_differing_field_operations_do_not_add_restarts_per_class(self):
+        results = []
+        for count in [1, 20]:
+            extra = ""
+            for index in range(count):
+                extra += (f"class Incompatible{index}:\n    def __init__(self):\n"
+                          "        self.items = ['x']\n"
+                          f"incompatible{index}: Any = Incompatible{index}()\n")
+            result = self.compile(0, body="return self.items + other.items == self.items", extra=extra)
+            results.append(result[1])
+            self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+            # The preexisting adapter still accepts the matching list[int].
+            self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
+            for index in range(count):
+                self.assertFalse(result[2].dyn_supports(f"Incompatible{index}", "cmp.Strict.__eq__", "__eq__", 1))
+        self.assertEqual(results[0], results[1])
+        self.assertLessEqual(results[1], 3)
+
+    def test_tuple_and_union_coercions_do_not_add_restarts_per_class(self):
+        pairs = [
+            ("self.items: tuple[int, ...] = (1, 2)", "self.items = ('1', '2')"),
+            ("self.items = (1, 2)", "self.items: tuple[str, ...] = ('1', '2')"),
+            ("self.items: int | list[int] = [1]", "self.items = ('1', '2')"),
+            ("self.items = (1, 2)", "self.items: str | list[str] = ['x']"),
+        ]
+        for own, peer in pairs:
+            with self.subTest(own=own, peer=peer):
+                results = []
+                for count in [1, 20]:
+                    extra = ""
+                    for index in range(count):
+                        extra += (f"class Incompatible{index}:\n    def __init__(self):\n"
+                                  f"        self.force = [1]\n        {peer}\n"
+                                  f"incompatible{index}: Any = Incompatible{index}()\n")
+                    fields = "self.force = [1]\n" + own
+                    result = self.compile(0, body="return self.force == other.force and self.items == other.items",
+                                          fields=fields, extra=extra, own_fields=fields)
+                    results.append(result[1])
+                    self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+                    self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
+                    for index in range(count):
+                        self.assertFalse(result[2].dyn_supports(f"Incompatible{index}", "cmp.Strict.__eq__", "__eq__", 1))
+                self.assertEqual(results[0], results[1])
+                self.assertLessEqual(results[1], 3)
 
     def test_operand_escapes_and_nested_scopes_are_not_adapted(self):
         bodies = [
@@ -108,6 +162,28 @@ class ComparisonReadsTests(unittest.TestCase):
                        "local = other.present = [3]", "other.present[0] = 3"):
             with self.subTest(source=source):
                 self.assertTrue(self.read_only_missing(source))
+
+
+class ComparisonEqualitiesTests(unittest.TestCase):
+    def supported(self, source):
+        module = Parser(Lexer("def compare(self, other):\n    " + source + "\n", 1).file()).module()
+        body = module.kids[0].kids[2]
+        return comparison_equalities(body, "self", "other", ["items"], ["items"], ["items"])
+
+    def test_direct_builtin_field_equality(self):
+        for source in ("return self.items == other.items", "return other.items != self.items",
+                       "return self.items == other.items != self.items", "print('effect'); return self.items == other.items",
+                       "return self.items == other.items and self.marker == other.marker"):
+            with self.subTest(source=source):
+                self.assertTrue(self.supported(source))
+
+    def test_other_uses_of_differing_field_are_rejected(self):
+        for source in ("return self.items + other.items == self.items", "return self.items[0] + other.items[0] > 0",
+                       "return self.items < other.items", "return self.callback == other.items",
+                       "return callback() == other.items", "return self.items == other.items[0]",
+                       "other.items = self.items", "return other.items", "print(other.items)"):
+            with self.subTest(source=source):
+                self.assertFalse(self.supported(source))
 
 
 if __name__ == "__main__":
