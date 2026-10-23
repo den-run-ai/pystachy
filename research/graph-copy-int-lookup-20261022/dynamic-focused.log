@@ -1,0 +1,6 @@
+selected 124 cases
+248 passed, 0 failed
+selected 124 cases
+248 passed, 0 failed
+tools/check_ir.sh ./pystachy tests/ir/dynany_int_lookup.py
+the IR check and llvm-as accept the IR of 1 programs

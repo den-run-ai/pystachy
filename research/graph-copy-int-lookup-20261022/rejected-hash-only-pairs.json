@@ -1,0 +1,86 @@
+[
+  {
+    "round": 0,
+    "name": "pystachy",
+    "build_cpu_ns": 8607011,
+    "process_cpu_ns": 50394709,
+    "stderr": ""
+  },
+  {
+    "round": 0,
+    "name": "hash-candidate",
+    "build_cpu_ns": 10489645,
+    "process_cpu_ns": 59758237,
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "name": "hash-candidate",
+    "build_cpu_ns": 13226677,
+    "process_cpu_ns": 89253244,
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "name": "pystachy",
+    "build_cpu_ns": 9702844,
+    "process_cpu_ns": 59535039,
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "name": "pystachy",
+    "build_cpu_ns": 9046476,
+    "process_cpu_ns": 62800418,
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "name": "hash-candidate",
+    "build_cpu_ns": 8396668,
+    "process_cpu_ns": 59803650,
+    "stderr": ""
+  },
+  {
+    "round": 3,
+    "name": "hash-candidate",
+    "build_cpu_ns": 8180807,
+    "process_cpu_ns": 62576825,
+    "stderr": ""
+  },
+  {
+    "round": 3,
+    "name": "pystachy",
+    "build_cpu_ns": 8378110,
+    "process_cpu_ns": 58786825,
+    "stderr": ""
+  },
+  {
+    "round": 4,
+    "name": "pystachy",
+    "build_cpu_ns": 8517268,
+    "process_cpu_ns": 79315785,
+    "stderr": ""
+  },
+  {
+    "round": 4,
+    "name": "hash-candidate",
+    "build_cpu_ns": 8884124,
+    "process_cpu_ns": 52870477,
+    "stderr": ""
+  },
+  {
+    "round": 5,
+    "name": "hash-candidate",
+    "build_cpu_ns": 8519491,
+    "process_cpu_ns": 51549379,
+    "stderr": ""
+  },
+  {
+    "round": 5,
+    "name": "pystachy",
+    "build_cpu_ns": 8470858,
+    "process_cpu_ns": 49451053,
+    "stderr": ""
+  }
+]

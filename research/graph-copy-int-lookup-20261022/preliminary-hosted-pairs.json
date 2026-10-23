@@ -1,0 +1,86 @@
+[
+  {
+    "round": 0,
+    "name": "baseline",
+    "build_cpu_ns": 10257210,
+    "process_cpu_ns": 65917692,
+    "stderr": ""
+  },
+  {
+    "round": 0,
+    "name": "pystachy",
+    "build_cpu_ns": 9871314,
+    "process_cpu_ns": 58063863,
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "name": "pystachy",
+    "build_cpu_ns": 9307004,
+    "process_cpu_ns": 52279527,
+    "stderr": ""
+  },
+  {
+    "round": 1,
+    "name": "baseline",
+    "build_cpu_ns": 9218662,
+    "process_cpu_ns": 80746522,
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "name": "baseline",
+    "build_cpu_ns": 8664387,
+    "process_cpu_ns": 64045514,
+    "stderr": ""
+  },
+  {
+    "round": 2,
+    "name": "pystachy",
+    "build_cpu_ns": 8652790,
+    "process_cpu_ns": 52192356,
+    "stderr": ""
+  },
+  {
+    "round": 3,
+    "name": "pystachy",
+    "build_cpu_ns": 9201676,
+    "process_cpu_ns": 52453566,
+    "stderr": ""
+  },
+  {
+    "round": 3,
+    "name": "baseline",
+    "build_cpu_ns": 8510167,
+    "process_cpu_ns": 71589050,
+    "stderr": ""
+  },
+  {
+    "round": 4,
+    "name": "baseline",
+    "build_cpu_ns": 9057252,
+    "process_cpu_ns": 66174404,
+    "stderr": ""
+  },
+  {
+    "round": 4,
+    "name": "pystachy",
+    "build_cpu_ns": 9096970,
+    "process_cpu_ns": 51971828,
+    "stderr": ""
+  },
+  {
+    "round": 5,
+    "name": "pystachy",
+    "build_cpu_ns": 9729393,
+    "process_cpu_ns": 56123833,
+    "stderr": ""
+  },
+  {
+    "round": 5,
+    "name": "baseline",
+    "build_cpu_ns": 8893679,
+    "process_cpu_ns": 71946162,
+    "stderr": ""
+  }
+]

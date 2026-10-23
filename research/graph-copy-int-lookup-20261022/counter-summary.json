@@ -1,0 +1,179 @@
+{
+  "instrumented_not_timing": true,
+  "checksum": "670230",
+  "categories": [
+    "raw-int",
+    "raw-str",
+    "Any-int (boxed plus no-box)",
+    "Any-other",
+    "typed-other"
+  ],
+  "category_counts": [
+    "lookup invocations",
+    "lookup probe slots",
+    "hash-matching slots"
+  ],
+  "notes": [
+    "slots_total includes lookup and table rebuild/insertion probes, including no-box helper",
+    "fallback adds both a no-box invocation and the ordinary lookup invocation",
+    "instrumented elapsed time must not be used as native speed evidence"
+  ],
+  "profiles": [
+    {
+      "name": "base",
+      "commit": "32d7c40b330e8306a7f391a4a4adad735f594d37",
+      "processing": {
+        "int_calls": 288000,
+        "int_allocs": 284000,
+        "ref_calls": 356000,
+        "keyeqs": 0,
+        "slots_total": 2249029,
+        "nobox_calls": 0,
+        "nobox_probes": 0,
+        "nobox_hits": 0,
+        "nobox_misses": 0,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          360000,
+          442508,
+          72000
+        ],
+        "cat1": [
+          68000,
+          68000,
+          68000
+        ],
+        "cat2": [
+          432000,
+          1060248,
+          144000
+        ],
+        "cat3": [
+          156000,
+          164000,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      },
+      "construction": {
+        "int_calls": 38000,
+        "int_allocs": 11357,
+        "ref_calls": 214000,
+        "keyeqs": 0,
+        "slots_total": 84000,
+        "nobox_calls": 0,
+        "nobox_probes": 0,
+        "nobox_hits": 0,
+        "nobox_misses": 0,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          0,
+          0,
+          0
+        ],
+        "cat1": [
+          0,
+          0,
+          0
+        ],
+        "cat2": [
+          0,
+          0,
+          0
+        ],
+        "cat3": [
+          52000,
+          44000,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "head",
+      "commit": "53e19cad367be3fa308ac30e7e1abc10b9c8c487",
+      "processing": {
+        "int_calls": 148000,
+        "int_allocs": 144000,
+        "ref_calls": 356000,
+        "keyeqs": 0,
+        "slots_total": 2247998,
+        "nobox_calls": 288000,
+        "nobox_probes": 665774,
+        "nobox_hits": 144000,
+        "nobox_misses": 144000,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          360000,
+          433355,
+          72000
+        ],
+        "cat1": [
+          68000,
+          68000,
+          68000
+        ],
+        "cat2": [
+          432000,
+          1070300,
+          144000
+        ],
+        "cat3": [
+          156000,
+          164000,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      },
+      "construction": {
+        "int_calls": 38000,
+        "int_allocs": 11357,
+        "ref_calls": 214000,
+        "keyeqs": 0,
+        "slots_total": 84000,
+        "nobox_calls": 0,
+        "nobox_probes": 0,
+        "nobox_hits": 0,
+        "nobox_misses": 0,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          0,
+          0,
+          0
+        ],
+        "cat1": [
+          0,
+          0,
+          0
+        ],
+        "cat2": [
+          0,
+          0,
+          0
+        ],
+        "cat3": [
+          52000,
+          44000,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}

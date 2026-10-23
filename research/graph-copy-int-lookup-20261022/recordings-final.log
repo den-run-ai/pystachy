@@ -1,0 +1,8 @@
+PYTHON="/workspace/scratch/5b514d4819ab/validation-venv/bin/python" tests/record.sh --check
+FAIL sys_prefix: tests/programs/library/sys_prefix.out (<) is not what CPython prints (>)
+1c1
+< True True
+---
+> True False
+CPython 3.13.16: 1601 recordings, 98 deviations, 11 files of lib/ checked; 1 failed
+make: *** [Makefile:253: check-recordings] Error 1

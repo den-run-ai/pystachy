@@ -1,0 +1,4853 @@
+{
+  "comparison_id": "graph-initial",
+  "workload_id": "list_graph",
+  "started": "2026-10-23T02:41:43Z",
+  "cohort": {
+    "python": "3.13.16",
+    "python_sha256": "44db706d51fb08f679c5aeb5ba81f50646eec5bea7bb4b0f7d3e20ffaf48b9ca",
+    "toolchain": {
+      "clang": {
+        "sha256": "37f126a5e97442563fa0963660a72a11f2b31a9d608664d9e5675f2ebac99eca",
+        "version": "Ubuntu clang version 18.1.3 (1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin\n"
+      },
+      "opt": {
+        "sha256": "68bce89007caf00c1c73c3e88f2ff90dde243799f9557d5a729b3a8b3d7ea370",
+        "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: znver4\n"
+      },
+      "lli": {
+        "sha256": "44669e8442edb76ada08c806e80695c597240aedb7aa005986058d0111893370",
+        "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n"
+      },
+      "llvm-link": {
+        "sha256": "1eb44d783a8c7bd55af1af5abf786eacb994cef08110caaa52259da14558952c",
+        "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n"
+      },
+      "llvm-as": {
+        "sha256": "5daefabd373e614b6cc406c57fe37bc7ba20d0b80b4619cbef72b9fb5958910d",
+        "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n"
+      }
+    },
+    "cpu": 0,
+    "thread_settings": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1"
+    },
+    "host": [
+      "Linux",
+      "5667f182433e",
+      "6.18.55",
+      "#1 SMP Wed Oct 14 19:45:18 UTC 2026",
+      "x86_64"
+    ],
+    "cpuinfo": "\t: AMD EPYC 9V74 80-Core Processor"
+  },
+  "cohort_id": "5f115cf5d6edb21da217ec1d3b8fd215a2320e92ee53dc2623b40dfaf9cd3e83",
+  "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388",
+  "arguments": [
+    "graph",
+    "4000"
+  ],
+  "environment_policy": {
+    "policy": "strip-build-overrides-v1",
+    "removed_names": [],
+    "effective_overrides": "absent/default"
+  },
+  "protocol_id": "948ed67b095a8f523db5f468de6392ec7a133f2bdb3884f2452dab0902668114",
+  "measurement_environment_id": "ce5ee5530351727d3487ba1c4b284bfd0dc6bf0547522daf63231fccd5fd7fcb",
+  "workload_sha256": "e4d6564c8bffa67a0bf07a1c2c3cf4de22f789833906380e918c5bc4b5a0c3c0",
+  "base_is_anchor": false,
+  "parser": "numeric",
+  "revisions": {
+    "base": {
+      "sha": "32d7c40b330e8306a7f391a4a4adad735f594d37",
+      "tree": "47b561ed490bb2b31a8896d6d05d8eddc92d01a0",
+      "binary_sha256": "7fc99777ea83b2671100fd44a299f26469dfd5af4f0e2038399554903ab943ec",
+      "cohort_id": "5f115cf5d6edb21da217ec1d3b8fd215a2320e92ee53dc2623b40dfaf9cd3e83",
+      "provenance": "Fresh CPython3.13.16/LLVM18.1.3 make fixed point; logs outside repo; compiler and runtime stage1/2/3 equal."
+    },
+    "head": {
+      "sha": "199d50fe6815668486be5de764a339ac4f30c65c",
+      "tree": "3f29caf7b1b1fe3324cacafb4692002c6bc62710",
+      "binary_sha256": "7a83c2d889faa45c4ed187a01ca10235d2d4c5f2ef3e4e2c142bf689efb04b03",
+      "cohort_id": "5f115cf5d6edb21da217ec1d3b8fd215a2320e92ee53dc2623b40dfaf9cd3e83",
+      "provenance": "Fresh CPython3.13.16/LLVM18.1.3 make fixed point; logs outside repo; compiler and runtime stage1/2/3 equal."
+    },
+    "anchor": {
+      "sha": "f4b9396167e41616707938ca34d99f359a706622",
+      "tree": "5f9968b68acb75deea657f047f10571e05703d54",
+      "binary_sha256": "39fb1e12edeab89e0879b5b0cf8ba52aad6af2993808c085cb511e46f3f92a19",
+      "cohort_id": "5f115cf5d6edb21da217ec1d3b8fd215a2320e92ee53dc2623b40dfaf9cd3e83",
+      "provenance": "Prior historical campaign build: see original results/builds/f4b9396167e41616707938ca34d99f359a706622.json"
+    }
+  },
+  "lineages": {
+    "base": "main",
+    "head": "candidate",
+    "anchor": "main"
+  },
+  "notes": [
+    "RSS is process peak, not managed heap or allocation totals",
+    "JIT process timing includes compilation, startup, execution; cache warm",
+    "Setup build is diagnostic; only paired build samples support compile-time comparison"
+  ],
+  "setup": {
+    "base": {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "build",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 5.415991132991621,
+      "load": [
+        0.75341796875,
+        0.71142578125,
+        0.57080078125
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "\nWATCH_RSS_KIB 113604 CPU_S 5.412522000\n",
+      "timed_out": false,
+      "rss_kib": 113604,
+      "cpu_s": 5.412522,
+      "binary_sha256": "1b37725f6e0407562e5608849b6feb755de4867f3a34c581c7db6a3b966e95af"
+    },
+    "head": {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 5.7090655459905975,
+      "load": [
+        1.01904296875,
+        0.7705078125,
+        0.591796875
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "\nWATCH_RSS_KIB 112644 CPU_S 5.707447000\n",
+      "timed_out": false,
+      "rss_kib": 112644,
+      "cpu_s": 5.707447,
+      "binary_sha256": "e60dd66815e4e20f91668caabaa46bc6519ea0f703e55350e7626940b1f1ac71"
+    },
+    "anchor": {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "build",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 5.4425257469993085,
+      "load": [
+        1.015625,
+        0.7783203125,
+        0.5966796875
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "\nWATCH_RSS_KIB 112476 CPU_S 5.440864000\n",
+      "timed_out": false,
+      "rss_kib": 112476,
+      "cpu_s": 5.440864,
+      "binary_sha256": "8906073fdcb30e494c4bdd8fbd8de06bc7feaacf54f023f646b5b5fb8082a9af"
+    }
+  },
+  "oracle": {
+    "command": [
+      "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+      "graph",
+      "4000"
+    ],
+    "cwd": "/workspace/scratch/5b514d4819ab/replay",
+    "wall_s": 0.29073767800582573,
+    "load": [
+      0.75341796875,
+      0.71142578125,
+      0.57080078125
+    ],
+    "returncode": 0,
+    "stdout": "670230 24009135 229652005\n",
+    "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.287373000\n",
+    "timed_out": false,
+    "rss_kib": 28468,
+    "cpu_s": 0.287373,
+    "checksum": "670230",
+    "construction_cpu_s": 0.024009135,
+    "processing_cpu_s": 0.229652005
+  },
+  "events": [
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.29073767800582573,
+      "load": [
+        0.75341796875,
+        0.71142578125,
+        0.57080078125
+      ],
+      "returncode": 0,
+      "stdout": "670230 24009135 229652005\n",
+      "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.287373000\n",
+      "timed_out": false,
+      "rss_kib": 28468,
+      "cpu_s": 0.287373
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "build",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 5.415991132991621,
+      "load": [
+        0.75341796875,
+        0.71142578125,
+        0.57080078125
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "\nWATCH_RSS_KIB 113604 CPU_S 5.412522000\n",
+      "timed_out": false,
+      "rss_kib": 113604,
+      "cpu_s": 5.412522,
+      "binary_sha256": "1b37725f6e0407562e5608849b6feb755de4867f3a34c581c7db6a3b966e95af"
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.1048037479922641,
+      "load": [
+        1.01904296875,
+        0.7705078125,
+        0.591796875
+      ],
+      "returncode": 0,
+      "stdout": "670230 10859056 86227206\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.101009000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.101009
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 4.194236130002537,
+      "load": [
+        1.01904296875,
+        0.7705078125,
+        0.591796875
+      ],
+      "returncode": 0,
+      "stdout": "670230 10119994 74736349\n",
+      "stderr": "\nWATCH_RSS_KIB 113720 CPU_S 4.189397000\n",
+      "timed_out": false,
+      "rss_kib": 113720,
+      "cpu_s": 4.189397
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 5.7090655459905975,
+      "load": [
+        1.01904296875,
+        0.7705078125,
+        0.591796875
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "\nWATCH_RSS_KIB 112644 CPU_S 5.707447000\n",
+      "timed_out": false,
+      "rss_kib": 112644,
+      "cpu_s": 5.707447,
+      "binary_sha256": "e60dd66815e4e20f91668caabaa46bc6519ea0f703e55350e7626940b1f1ac71"
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.0754660640086513,
+      "load": [
+        1.015625,
+        0.7783203125,
+        0.5966796875
+      ],
+      "returncode": 0,
+      "stdout": "670230 9853863 61701942\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.074277000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.074277
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 4.358305686007952,
+      "load": [
+        1.015625,
+        0.7783203125,
+        0.5966796875
+      ],
+      "returncode": 0,
+      "stdout": "670230 13207679 55048501\n",
+      "stderr": "\nWATCH_RSS_KIB 115020 CPU_S 4.356545000\n",
+      "timed_out": false,
+      "rss_kib": 115020,
+      "cpu_s": 4.356545
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "build",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 5.4425257469993085,
+      "load": [
+        1.015625,
+        0.7783203125,
+        0.5966796875
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "\nWATCH_RSS_KIB 112476 CPU_S 5.440864000\n",
+      "timed_out": false,
+      "rss_kib": 112476,
+      "cpu_s": 5.440864,
+      "binary_sha256": "8906073fdcb30e494c4bdd8fbd8de06bc7feaacf54f023f646b5b5fb8082a9af"
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.06647650300874375,
+      "load": [
+        1.0126953125,
+        0.7861328125,
+        0.6015625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8128909 54714934\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.065243000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.065243
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 4.0201023499976145,
+      "load": [
+        1.0126953125,
+        0.7861328125,
+        0.6015625
+      ],
+      "returncode": 0,
+      "stdout": "670230 9504919 49712001\n",
+      "stderr": "\nWATCH_RSS_KIB 113928 CPU_S 4.017359000\n",
+      "timed_out": false,
+      "rss_kib": 113928,
+      "cpu_s": 4.017359
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.2991074239980662,
+      "load": [
+        1.0126953125,
+        0.7861328125,
+        0.6015625
+      ],
+      "returncode": 0,
+      "stdout": "670230 25617180 234438072\n",
+      "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.297642000\n",
+      "timed_out": false,
+      "rss_kib": 28468,
+      "cpu_s": 0.297642
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.28172412399726454,
+      "load": [
+        1.0126953125,
+        0.7861328125,
+        0.6015625
+      ],
+      "returncode": 0,
+      "stdout": "670230 9921719 82712270\n",
+      "stderr": "\nWATCH_RSS_KIB 109456 CPU_S 0.279671000\n",
+      "timed_out": false,
+      "rss_kib": 109456,
+      "cpu_s": 0.279671
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.09868266800185665,
+      "load": [
+        1.0126953125,
+        0.7861328125,
+        0.6015625
+      ],
+      "returncode": 0,
+      "stdout": "670230 12683934 80364352\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.096790000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.09679
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.21716082199418452,
+      "load": [
+        1.0126953125,
+        0.7861328125,
+        0.6015625
+      ],
+      "returncode": 0,
+      "stdout": "670230 10833037 62953983\n",
+      "stderr": "\nWATCH_RSS_KIB 109264 CPU_S 0.215003000\n",
+      "timed_out": false,
+      "rss_kib": 109264,
+      "cpu_s": 0.215003
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.0775103920022957,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8731477 63742131\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.076079000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.076079
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.21219641600328032,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 9739749 51482920\n",
+      "stderr": "\nWATCH_RSS_KIB 109632 CPU_S 0.209274000\n",
+      "timed_out": false,
+      "rss_kib": 109632,
+      "cpu_s": 0.209274
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.06836711100186221,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 11784705 50667095\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.065661000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.065661
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.4643612719955854,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 30445122 351713658\n",
+      "stderr": "\nWATCH_RSS_KIB 28612 CPU_S 0.461622000\n",
+      "timed_out": false,
+      "rss_kib": 28612,
+      "cpu_s": 0.461622
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.17459677001170348,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 9404540 47943547\n",
+      "stderr": "\nWATCH_RSS_KIB 109848 CPU_S 0.173175000\n",
+      "timed_out": false,
+      "rss_kib": 109848,
+      "cpu_s": 0.173175
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.06333926100342069,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8474944 51214530\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.062068000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.062068
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.2236532509996323,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 11407403 68973479\n",
+      "stderr": "\nWATCH_RSS_KIB 108928 CPU_S 0.222366000\n",
+      "timed_out": false,
+      "rss_kib": 108928,
+      "cpu_s": 0.222366
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.07932434399845079,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 11932635 63430932\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.077865000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.077865
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.24663749600586016,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 10484778 90892530\n",
+      "stderr": "\nWATCH_RSS_KIB 108972 CPU_S 0.245108000\n",
+      "timed_out": false,
+      "rss_kib": 108972,
+      "cpu_s": 0.245108
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.08769889498944394,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 9387784 73322723\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.086475000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.086475
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.34452309799962677,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 30970049 262196981\n",
+      "stderr": "\nWATCH_RSS_KIB 28612 CPU_S 0.343123000\n",
+      "timed_out": false,
+      "rss_kib": 28612,
+      "cpu_s": 0.343123
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.2513709659979213,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 10655963 82492082\n",
+      "stderr": "\nWATCH_RSS_KIB 109868 CPU_S 0.249188000\n",
+      "timed_out": false,
+      "rss_kib": 109868,
+      "cpu_s": 0.249188
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.09280128398677334,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 9638788 79260708\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.091431000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.091431
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.1897819570003776,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8799839 57220961\n",
+      "stderr": "\nWATCH_RSS_KIB 108596 CPU_S 0.188260000\n",
+      "timed_out": false,
+      "rss_kib": 108596,
+      "cpu_s": 0.18826
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.08402267600467894,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 10764875 68795894\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.082761000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.082761
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.21040481299860403,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 16931111 50402551\n",
+      "stderr": "\nWATCH_RSS_KIB 109928 CPU_S 0.208840000\n",
+      "timed_out": false,
+      "rss_kib": 109928,
+      "cpu_s": 0.20884
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.05751479699392803,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8448866 45108945\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.056085000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.056085
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.34493070900498424,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 23553416 279394370\n",
+      "stderr": "\nWATCH_RSS_KIB 28612 CPU_S 0.343645000\n",
+      "timed_out": false,
+      "rss_kib": 28612,
+      "cpu_s": 0.343645
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.19838526099920273,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 9427794 61587612\n",
+      "stderr": "\nWATCH_RSS_KIB 110372 CPU_S 0.196703000\n",
+      "timed_out": false,
+      "rss_kib": 110372,
+      "cpu_s": 0.196703
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.06703019299311563,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 11087537 50800112\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.064483000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.064483
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.18720462299825158,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 9088559 50384023\n",
+      "stderr": "\nWATCH_RSS_KIB 109348 CPU_S 0.185752000\n",
+      "timed_out": false,
+      "rss_kib": 109348,
+      "cpu_s": 0.185752
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.06534810599987395,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8729363 52601846\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.064042000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.064042
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.20004801999311894,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8316699 72088049\n",
+      "stderr": "\nWATCH_RSS_KIB 109044 CPU_S 0.198719000\n",
+      "timed_out": false,
+      "rss_kib": 109044,
+      "cpu_s": 0.198719
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.0763039809971815,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 7723485 64698897\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.075008000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.075008
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.331550185001106,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 23467458 266453123\n",
+      "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.330185000\n",
+      "timed_out": false,
+      "rss_kib": 28468,
+      "cpu_s": 0.330185
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.20110676699550822,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8457498 62847268\n",
+      "stderr": "\nWATCH_RSS_KIB 109044 CPU_S 0.199781000\n",
+      "timed_out": false,
+      "rss_kib": 109044,
+      "cpu_s": 0.199781
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.07286592799937353,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 7982680 61073296\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.071568000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.071568
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.19224482600111514,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8946597 52249102\n",
+      "stderr": "\nWATCH_RSS_KIB 109380 CPU_S 0.190946000\n",
+      "timed_out": false,
+      "rss_kib": 109380,
+      "cpu_s": 0.190946
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.062438045992166735,
+      "load": [
+        1.01123046875,
+        0.7900390625,
+        0.60400390625
+      ],
+      "returncode": 0,
+      "stdout": "670230 7962110 50149634\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.061171000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.061171
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.22032018199388403,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 9586150 64345394\n",
+      "stderr": "\nWATCH_RSS_KIB 110064 CPU_S 0.218537000\n",
+      "timed_out": false,
+      "rss_kib": 110064,
+      "cpu_s": 0.218537
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.061943483000504784,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 9206184 49026610\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.060736000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.060736
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.35685197499697097,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 26213268 271982515\n",
+      "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.355355000\n",
+      "timed_out": false,
+      "rss_kib": 28468,
+      "cpu_s": 0.355355
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.20859487699635793,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 12934548 59314456\n",
+      "stderr": "\nWATCH_RSS_KIB 110412 CPU_S 0.206956000\n",
+      "timed_out": false,
+      "rss_kib": 110412,
+      "cpu_s": 0.206956
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.06586863400298171,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 8966647 52076123\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.064671000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.064671
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.22946893199696206,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 9289017 70544029\n",
+      "stderr": "\nWATCH_RSS_KIB 109312 CPU_S 0.227780000\n",
+      "timed_out": false,
+      "rss_kib": 109312,
+      "cpu_s": 0.22778
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.08630262600490823,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 11010972 70022607\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.084740000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.08474
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.26395350199891254,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 11802311 92429995\n",
+      "stderr": "\nWATCH_RSS_KIB 109540 CPU_S 0.262146000\n",
+      "timed_out": false,
+      "rss_kib": 109540,
+      "cpu_s": 0.262146
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.07751581899356097,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 8913116 64657884\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.076047000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.076047
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.30667446400912013,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 24632382 227122562\n",
+      "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.302547000\n",
+      "timed_out": false,
+      "rss_kib": 28468,
+      "cpu_s": 0.302547
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.2502331050054636,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 9590907 76326919\n",
+      "stderr": "\nWATCH_RSS_KIB 109432 CPU_S 0.246266000\n",
+      "timed_out": false,
+      "rss_kib": 109432,
+      "cpu_s": 0.246266
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.09208520699758083,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 8293244 76976891\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.090591000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.090591
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.20751541800564155,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 8633350 57264212\n",
+      "stderr": "\nWATCH_RSS_KIB 109264 CPU_S 0.206232000\n",
+      "timed_out": false,
+      "rss_kib": 109264,
+      "cpu_s": 0.206232
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.06331674700777512,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 8680491 50780383\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.061985000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.061985
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.1848815349949291,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 9776122 52097676\n",
+      "stderr": "\nWATCH_RSS_KIB 110148 CPU_S 0.182364000\n",
+      "timed_out": false,
+      "rss_kib": 110148,
+      "cpu_s": 0.182364
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.06156174799252767,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 12384899 45388041\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.060135000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.060135
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.33520773600321263,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 27700483 265699119\n",
+      "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.333947000\n",
+      "timed_out": false,
+      "rss_kib": 28468,
+      "cpu_s": 0.333947
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.18492909100314137,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 9240384 50776468\n",
+      "stderr": "\nWATCH_RSS_KIB 109988 CPU_S 0.183646000\n",
+      "timed_out": false,
+      "rss_kib": 109988,
+      "cpu_s": 0.183646
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.07158316401182674,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 8740340 59068980\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.070329000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.070329
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.21561038600339089,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 9459991 64187455\n",
+      "stderr": "\nWATCH_RSS_KIB 108620 CPU_S 0.214211000\n",
+      "timed_out": false,
+      "rss_kib": 108620,
+      "cpu_s": 0.214211
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.07270873499510344,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 10930292 55214899\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.071506000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.071506
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.258215581998229,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 12018733 89089077\n",
+      "stderr": "\nWATCH_RSS_KIB 109596 CPU_S 0.256584000\n",
+      "timed_out": false,
+      "rss_kib": 109596,
+      "cpu_s": 0.256584
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.1000010720017599,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 10963932 83922773\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.098468000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.098468
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.36108218200388364,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 32436298 281617252\n",
+      "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.359542000\n",
+      "timed_out": false,
+      "rss_kib": 28468,
+      "cpu_s": 0.359542
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.2554390909936046,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 11980816 87406588\n",
+      "stderr": "\nWATCH_RSS_KIB 109064 CPU_S 0.253701000\n",
+      "timed_out": false,
+      "rss_kib": 109064,
+      "cpu_s": 0.253701
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.10340309199818876,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 10977472 87219464\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.101876000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.101876
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.22531960198830348,
+      "load": [
+        1.1708984375,
+        0.8271484375,
+        0.6171875
+      ],
+      "returncode": 0,
+      "stdout": "670230 9407333 66260988\n",
+      "stderr": "\nWATCH_RSS_KIB 109140 CPU_S 0.223651000\n",
+      "timed_out": false,
+      "rss_kib": 109140,
+      "cpu_s": 0.223651
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.08378758000617381,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 10948940 67755740\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.082197000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.082197
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.22042984300060198,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 12423327 61751415\n",
+      "stderr": "\nWATCH_RSS_KIB 110192 CPU_S 0.218586000\n",
+      "timed_out": false,
+      "rss_kib": 110192,
+      "cpu_s": 0.218586
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.07760439701087307,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 11006125 61269889\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.075502000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.075502
+    },
+    {
+      "command": [
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/replay",
+      "wall_s": 0.3542331619973993,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 27184214 285838568\n",
+      "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.352602000\n",
+      "timed_out": false,
+      "rss_kib": 28468,
+      "cpu_s": 0.352602
+    },
+    {
+      "command": [
+        "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.2040510430088034,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 9045364 53228830\n",
+      "stderr": "\nWATCH_RSS_KIB 110044 CPU_S 0.200862000\n",
+      "timed_out": false,
+      "rss_kib": 110044,
+      "cpu_s": 0.200862
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "wall_s": 0.059757556999102235,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8392372 47913262\n",
+      "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.058557000\n",
+      "timed_out": false,
+      "rss_kib": 49792,
+      "cpu_s": 0.058557
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.19425192500057165,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8827810 63697961\n",
+      "stderr": "\nWATCH_RSS_KIB 108884 CPU_S 0.192845000\n",
+      "timed_out": false,
+      "rss_kib": 108884,
+      "cpu_s": 0.192845
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+      "wall_s": 0.07452434299921151,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 10956621 59523558\n",
+      "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.073055000\n",
+      "timed_out": false,
+      "rss_kib": 48512,
+      "cpu_s": 0.073055
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.20197852900309954,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8619921 65408704\n",
+      "stderr": "\nWATCH_RSS_KIB 109144 CPU_S 0.199787000\n",
+      "timed_out": false,
+      "rss_kib": 109144,
+      "cpu_s": 0.199787
+    },
+    {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+      "wall_s": 0.07327109501056839,
+      "load": [
+        1.2373046875,
+        0.8466796875,
+        0.625
+      ],
+      "returncode": 0,
+      "stdout": "670230 8862642 60531830\n",
+      "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.072032000\n",
+      "timed_out": false,
+      "rss_kib": 49408,
+      "cpu_s": 0.072032
+    }
+  ],
+  "pairs": [
+    {
+      "round": 0,
+      "order": [
+        "base",
+        "head",
+        "anchor"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.2991074239980662,
+        "load": [
+          1.0126953125,
+          0.7861328125,
+          0.6015625
+        ],
+        "returncode": 0,
+        "stdout": "670230 25617180 234438072\n",
+        "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.297642000\n",
+        "timed_out": false,
+        "rss_kib": 28468,
+        "cpu_s": 0.297642,
+        "checksum": "670230",
+        "construction_cpu_s": 0.02561718,
+        "processing_cpu_s": 0.234438072
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.28172412399726454,
+          "load": [
+            1.0126953125,
+            0.7861328125,
+            0.6015625
+          ],
+          "returncode": 0,
+          "stdout": "670230 9921719 82712270\n",
+          "stderr": "\nWATCH_RSS_KIB 109456 CPU_S 0.279671000\n",
+          "timed_out": false,
+          "rss_kib": 109456,
+          "cpu_s": 0.279671,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009921719,
+          "processing_cpu_s": 0.08271227
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.09868266800185665,
+          "load": [
+            1.0126953125,
+            0.7861328125,
+            0.6015625
+          ],
+          "returncode": 0,
+          "stdout": "670230 12683934 80364352\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.096790000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.09679,
+          "checksum": "670230",
+          "construction_cpu_s": 0.012683934,
+          "processing_cpu_s": 0.080364352
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.21716082199418452,
+          "load": [
+            1.0126953125,
+            0.7861328125,
+            0.6015625
+          ],
+          "returncode": 0,
+          "stdout": "670230 10833037 62953983\n",
+          "stderr": "\nWATCH_RSS_KIB 109264 CPU_S 0.215003000\n",
+          "timed_out": false,
+          "rss_kib": 109264,
+          "cpu_s": 0.215003,
+          "checksum": "670230",
+          "construction_cpu_s": 0.010833037,
+          "processing_cpu_s": 0.062953983
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.0775103920022957,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8731477 63742131\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.076079000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.076079,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008731477,
+          "processing_cpu_s": 0.063742131
+        }
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.21219641600328032,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 9739749 51482920\n",
+          "stderr": "\nWATCH_RSS_KIB 109632 CPU_S 0.209274000\n",
+          "timed_out": false,
+          "rss_kib": 109632,
+          "cpu_s": 0.209274,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009739749,
+          "processing_cpu_s": 0.05148292
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.06836711100186221,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 11784705 50667095\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.065661000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.065661,
+          "checksum": "670230",
+          "construction_cpu_s": 0.011784705,
+          "processing_cpu_s": 0.050667095
+        }
+      }
+    },
+    {
+      "round": 1,
+      "order": [
+        "anchor",
+        "head",
+        "base"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.4643612719955854,
+        "load": [
+          1.01123046875,
+          0.7900390625,
+          0.60400390625
+        ],
+        "returncode": 0,
+        "stdout": "670230 30445122 351713658\n",
+        "stderr": "\nWATCH_RSS_KIB 28612 CPU_S 0.461622000\n",
+        "timed_out": false,
+        "rss_kib": 28612,
+        "cpu_s": 0.461622,
+        "checksum": "670230",
+        "construction_cpu_s": 0.030445122,
+        "processing_cpu_s": 0.351713658
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.17459677001170348,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 9404540 47943547\n",
+          "stderr": "\nWATCH_RSS_KIB 109848 CPU_S 0.173175000\n",
+          "timed_out": false,
+          "rss_kib": 109848,
+          "cpu_s": 0.173175,
+          "checksum": "670230",
+          "construction_cpu_s": 0.00940454,
+          "processing_cpu_s": 0.047943547
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.06333926100342069,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8474944 51214530\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.062068000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.062068,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008474944,
+          "processing_cpu_s": 0.05121453
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.2236532509996323,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 11407403 68973479\n",
+          "stderr": "\nWATCH_RSS_KIB 108928 CPU_S 0.222366000\n",
+          "timed_out": false,
+          "rss_kib": 108928,
+          "cpu_s": 0.222366,
+          "checksum": "670230",
+          "construction_cpu_s": 0.011407403,
+          "processing_cpu_s": 0.068973479
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.07932434399845079,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 11932635 63430932\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.077865000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.077865,
+          "checksum": "670230",
+          "construction_cpu_s": 0.011932635,
+          "processing_cpu_s": 0.063430932
+        }
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.24663749600586016,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 10484778 90892530\n",
+          "stderr": "\nWATCH_RSS_KIB 108972 CPU_S 0.245108000\n",
+          "timed_out": false,
+          "rss_kib": 108972,
+          "cpu_s": 0.245108,
+          "checksum": "670230",
+          "construction_cpu_s": 0.010484778,
+          "processing_cpu_s": 0.09089253
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.08769889498944394,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 9387784 73322723\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.086475000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.086475,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009387784,
+          "processing_cpu_s": 0.073322723
+        }
+      }
+    },
+    {
+      "round": 2,
+      "order": [
+        "base",
+        "head",
+        "anchor"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.34452309799962677,
+        "load": [
+          1.01123046875,
+          0.7900390625,
+          0.60400390625
+        ],
+        "returncode": 0,
+        "stdout": "670230 30970049 262196981\n",
+        "stderr": "\nWATCH_RSS_KIB 28612 CPU_S 0.343123000\n",
+        "timed_out": false,
+        "rss_kib": 28612,
+        "cpu_s": 0.343123,
+        "checksum": "670230",
+        "construction_cpu_s": 0.030970049,
+        "processing_cpu_s": 0.262196981
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.2513709659979213,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 10655963 82492082\n",
+          "stderr": "\nWATCH_RSS_KIB 109868 CPU_S 0.249188000\n",
+          "timed_out": false,
+          "rss_kib": 109868,
+          "cpu_s": 0.249188,
+          "checksum": "670230",
+          "construction_cpu_s": 0.010655963,
+          "processing_cpu_s": 0.082492082
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.09280128398677334,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 9638788 79260708\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.091431000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.091431,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009638788,
+          "processing_cpu_s": 0.079260708
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.1897819570003776,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8799839 57220961\n",
+          "stderr": "\nWATCH_RSS_KIB 108596 CPU_S 0.188260000\n",
+          "timed_out": false,
+          "rss_kib": 108596,
+          "cpu_s": 0.18826,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008799839,
+          "processing_cpu_s": 0.057220961
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.08402267600467894,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 10764875 68795894\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.082761000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.082761,
+          "checksum": "670230",
+          "construction_cpu_s": 0.010764875,
+          "processing_cpu_s": 0.068795894
+        }
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.21040481299860403,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 16931111 50402551\n",
+          "stderr": "\nWATCH_RSS_KIB 109928 CPU_S 0.208840000\n",
+          "timed_out": false,
+          "rss_kib": 109928,
+          "cpu_s": 0.20884,
+          "checksum": "670230",
+          "construction_cpu_s": 0.016931111,
+          "processing_cpu_s": 0.050402551
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.05751479699392803,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8448866 45108945\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.056085000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.056085,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008448866,
+          "processing_cpu_s": 0.045108945
+        }
+      }
+    },
+    {
+      "round": 3,
+      "order": [
+        "anchor",
+        "head",
+        "base"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.34493070900498424,
+        "load": [
+          1.01123046875,
+          0.7900390625,
+          0.60400390625
+        ],
+        "returncode": 0,
+        "stdout": "670230 23553416 279394370\n",
+        "stderr": "\nWATCH_RSS_KIB 28612 CPU_S 0.343645000\n",
+        "timed_out": false,
+        "rss_kib": 28612,
+        "cpu_s": 0.343645,
+        "checksum": "670230",
+        "construction_cpu_s": 0.023553416,
+        "processing_cpu_s": 0.27939437
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.19838526099920273,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 9427794 61587612\n",
+          "stderr": "\nWATCH_RSS_KIB 110372 CPU_S 0.196703000\n",
+          "timed_out": false,
+          "rss_kib": 110372,
+          "cpu_s": 0.196703,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009427794,
+          "processing_cpu_s": 0.061587612
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.06703019299311563,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 11087537 50800112\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.064483000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.064483,
+          "checksum": "670230",
+          "construction_cpu_s": 0.011087537,
+          "processing_cpu_s": 0.050800112
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.18720462299825158,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 9088559 50384023\n",
+          "stderr": "\nWATCH_RSS_KIB 109348 CPU_S 0.185752000\n",
+          "timed_out": false,
+          "rss_kib": 109348,
+          "cpu_s": 0.185752,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009088559,
+          "processing_cpu_s": 0.050384023
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.06534810599987395,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8729363 52601846\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.064042000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.064042,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008729363,
+          "processing_cpu_s": 0.052601846
+        }
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.20004801999311894,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8316699 72088049\n",
+          "stderr": "\nWATCH_RSS_KIB 109044 CPU_S 0.198719000\n",
+          "timed_out": false,
+          "rss_kib": 109044,
+          "cpu_s": 0.198719,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008316699,
+          "processing_cpu_s": 0.072088049
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.0763039809971815,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 7723485 64698897\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.075008000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.075008,
+          "checksum": "670230",
+          "construction_cpu_s": 0.007723485,
+          "processing_cpu_s": 0.064698897
+        }
+      }
+    },
+    {
+      "round": 4,
+      "order": [
+        "base",
+        "head",
+        "anchor"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.331550185001106,
+        "load": [
+          1.01123046875,
+          0.7900390625,
+          0.60400390625
+        ],
+        "returncode": 0,
+        "stdout": "670230 23467458 266453123\n",
+        "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.330185000\n",
+        "timed_out": false,
+        "rss_kib": 28468,
+        "cpu_s": 0.330185,
+        "checksum": "670230",
+        "construction_cpu_s": 0.023467458,
+        "processing_cpu_s": 0.266453123
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.20110676699550822,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8457498 62847268\n",
+          "stderr": "\nWATCH_RSS_KIB 109044 CPU_S 0.199781000\n",
+          "timed_out": false,
+          "rss_kib": 109044,
+          "cpu_s": 0.199781,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008457498,
+          "processing_cpu_s": 0.062847268
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.07286592799937353,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 7982680 61073296\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.071568000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.071568,
+          "checksum": "670230",
+          "construction_cpu_s": 0.00798268,
+          "processing_cpu_s": 0.061073296
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.19224482600111514,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8946597 52249102\n",
+          "stderr": "\nWATCH_RSS_KIB 109380 CPU_S 0.190946000\n",
+          "timed_out": false,
+          "rss_kib": 109380,
+          "cpu_s": 0.190946,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008946597,
+          "processing_cpu_s": 0.052249102
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.062438045992166735,
+          "load": [
+            1.01123046875,
+            0.7900390625,
+            0.60400390625
+          ],
+          "returncode": 0,
+          "stdout": "670230 7962110 50149634\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.061171000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.061171,
+          "checksum": "670230",
+          "construction_cpu_s": 0.00796211,
+          "processing_cpu_s": 0.050149634
+        }
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.22032018199388403,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 9586150 64345394\n",
+          "stderr": "\nWATCH_RSS_KIB 110064 CPU_S 0.218537000\n",
+          "timed_out": false,
+          "rss_kib": 110064,
+          "cpu_s": 0.218537,
+          "checksum": "670230",
+          "construction_cpu_s": 0.00958615,
+          "processing_cpu_s": 0.064345394
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.061943483000504784,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 9206184 49026610\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.060736000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.060736,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009206184,
+          "processing_cpu_s": 0.04902661
+        }
+      }
+    }
+  ],
+  "summary": {
+    "jit.construction_cpu_s": {
+      "base": 0.009921719,
+      "head": 0.009088559,
+      "ratio": 0.9160266482048119,
+      "percent": -8.397335179518805,
+      "base_samples": [
+        0.009921719,
+        0.010484778,
+        0.010655963,
+        0.008316699,
+        0.008457498
+      ],
+      "head_samples": [
+        0.010833037,
+        0.011407403,
+        0.008799839,
+        0.009088559,
+        0.008946597
+      ],
+      "base_range": [
+        0.008316699,
+        0.010655963
+      ],
+      "head_range": [
+        0.008799839,
+        0.011407403
+      ]
+    },
+    "jit.cpu_s": {
+      "base": 0.245108,
+      "head": 0.190946,
+      "ratio": 0.779028020301255,
+      "percent": -22.097197969874504,
+      "base_samples": [
+        0.279671,
+        0.245108,
+        0.249188,
+        0.198719,
+        0.199781
+      ],
+      "head_samples": [
+        0.215003,
+        0.222366,
+        0.18826,
+        0.185752,
+        0.190946
+      ],
+      "base_range": [
+        0.198719,
+        0.279671
+      ],
+      "head_range": [
+        0.185752,
+        0.222366
+      ]
+    },
+    "jit.processing_cpu_s": {
+      "base": 0.082492082,
+      "head": 0.057220961,
+      "ratio": 0.6936539800268346,
+      "percent": -30.634601997316537,
+      "base_samples": [
+        0.08271227,
+        0.09089253,
+        0.082492082,
+        0.072088049,
+        0.062847268
+      ],
+      "head_samples": [
+        0.062953983,
+        0.068973479,
+        0.057220961,
+        0.050384023,
+        0.052249102
+      ],
+      "base_range": [
+        0.062847268,
+        0.09089253
+      ],
+      "head_range": [
+        0.050384023,
+        0.068973479
+      ]
+    },
+    "jit.rss_kib": {
+      "base": 109044,
+      "head": 109264,
+      "ratio": 1.0020175342063755,
+      "percent": 0.20175342063755153,
+      "base_samples": [
+        109456,
+        108972,
+        109868,
+        109044,
+        109044
+      ],
+      "head_samples": [
+        109264,
+        108928,
+        108596,
+        109348,
+        109380
+      ],
+      "base_range": [
+        108972,
+        109868
+      ],
+      "head_range": [
+        108596,
+        109380
+      ]
+    },
+    "jit.wall_s": {
+      "base": 0.24663749600586016,
+      "head": 0.19224482600111514,
+      "ratio": 0.7794630950865126,
+      "percent": -22.053690491348743,
+      "base_samples": [
+        0.28172412399726454,
+        0.24663749600586016,
+        0.2513709659979213,
+        0.20004801999311894,
+        0.20110676699550822
+      ],
+      "head_samples": [
+        0.21716082199418452,
+        0.2236532509996323,
+        0.1897819570003776,
+        0.18720462299825158,
+        0.19224482600111514
+      ],
+      "base_range": [
+        0.20004801999311894,
+        0.28172412399726454
+      ],
+      "head_range": [
+        0.18720462299825158,
+        0.2236532509996323
+      ]
+    },
+    "aot.construction_cpu_s": {
+      "base": 0.009387784,
+      "head": 0.008731477,
+      "ratio": 0.9300892521600411,
+      "percent": -6.991074783995888,
+      "base_samples": [
+        0.012683934,
+        0.009387784,
+        0.009638788,
+        0.007723485,
+        0.00798268
+      ],
+      "head_samples": [
+        0.008731477,
+        0.011932635,
+        0.010764875,
+        0.008729363,
+        0.00796211
+      ],
+      "base_range": [
+        0.007723485,
+        0.012683934
+      ],
+      "head_range": [
+        0.00796211,
+        0.011932635
+      ]
+    },
+    "aot.cpu_s": {
+      "base": 0.086475,
+      "head": 0.076079,
+      "ratio": 0.8797802833188783,
+      "percent": -12.021971668112174,
+      "base_samples": [
+        0.09679,
+        0.086475,
+        0.091431,
+        0.075008,
+        0.071568
+      ],
+      "head_samples": [
+        0.076079,
+        0.077865,
+        0.082761,
+        0.064042,
+        0.061171
+      ],
+      "base_range": [
+        0.071568,
+        0.09679
+      ],
+      "head_range": [
+        0.061171,
+        0.082761
+      ]
+    },
+    "aot.processing_cpu_s": {
+      "base": 0.073322723,
+      "head": 0.063430932,
+      "ratio": 0.8650924216221483,
+      "percent": -13.490757837785171,
+      "base_samples": [
+        0.080364352,
+        0.073322723,
+        0.079260708,
+        0.064698897,
+        0.061073296
+      ],
+      "head_samples": [
+        0.063742131,
+        0.063430932,
+        0.068795894,
+        0.052601846,
+        0.050149634
+      ],
+      "base_range": [
+        0.061073296,
+        0.080364352
+      ],
+      "head_range": [
+        0.050149634,
+        0.068795894
+      ]
+    },
+    "aot.rss_kib": {
+      "base": 49408,
+      "head": 48512,
+      "ratio": 0.9818652849740933,
+      "percent": -1.813471502590669,
+      "base_samples": [
+        49408,
+        49408,
+        49408,
+        49408,
+        49408
+      ],
+      "head_samples": [
+        48512,
+        48512,
+        48512,
+        48512,
+        48512
+      ],
+      "base_range": [
+        49408,
+        49408
+      ],
+      "head_range": [
+        48512,
+        48512
+      ]
+    },
+    "aot.wall_s": {
+      "base": 0.08769889498944394,
+      "head": 0.0775103920022957,
+      "ratio": 0.8838240437536345,
+      "percent": -11.617595624636545,
+      "base_samples": [
+        0.09868266800185665,
+        0.08769889498944394,
+        0.09280128398677334,
+        0.0763039809971815,
+        0.07286592799937353
+      ],
+      "head_samples": [
+        0.0775103920022957,
+        0.07932434399845079,
+        0.08402267600467894,
+        0.06534810599987395,
+        0.062438045992166735
+      ],
+      "base_range": [
+        0.07286592799937353,
+        0.09868266800185665
+      ],
+      "head_range": [
+        0.062438045992166735,
+        0.08402267600467894
+      ]
+    }
+  },
+  "anchor_summary": {
+    "jit.construction_cpu_s": {
+      "base": 0.00958615,
+      "head": 0.009088559,
+      "ratio": 0.9480927170970619,
+      "percent": -5.190728290293811,
+      "base_samples": [
+        0.009739749,
+        0.00940454,
+        0.016931111,
+        0.009427794,
+        0.00958615
+      ],
+      "head_samples": [
+        0.010833037,
+        0.011407403,
+        0.008799839,
+        0.009088559,
+        0.008946597
+      ],
+      "base_range": [
+        0.00940454,
+        0.016931111
+      ],
+      "head_range": [
+        0.008799839,
+        0.011407403
+      ]
+    },
+    "jit.cpu_s": {
+      "base": 0.20884,
+      "head": 0.190946,
+      "ratio": 0.9143171806167402,
+      "percent": -8.568281938325983,
+      "base_samples": [
+        0.209274,
+        0.173175,
+        0.20884,
+        0.196703,
+        0.218537
+      ],
+      "head_samples": [
+        0.215003,
+        0.222366,
+        0.18826,
+        0.185752,
+        0.190946
+      ],
+      "base_range": [
+        0.173175,
+        0.218537
+      ],
+      "head_range": [
+        0.185752,
+        0.222366
+      ]
+    },
+    "jit.processing_cpu_s": {
+      "base": 0.05148292,
+      "head": 0.057220961,
+      "ratio": 1.1114552360277932,
+      "percent": 11.145523602779317,
+      "base_samples": [
+        0.05148292,
+        0.047943547,
+        0.050402551,
+        0.061587612,
+        0.064345394
+      ],
+      "head_samples": [
+        0.062953983,
+        0.068973479,
+        0.057220961,
+        0.050384023,
+        0.052249102
+      ],
+      "base_range": [
+        0.047943547,
+        0.064345394
+      ],
+      "head_range": [
+        0.050384023,
+        0.068973479
+      ]
+    },
+    "jit.rss_kib": {
+      "base": 109928,
+      "head": 109264,
+      "ratio": 0.9939596827014046,
+      "percent": -0.6040317298595443,
+      "base_samples": [
+        109632,
+        109848,
+        109928,
+        110372,
+        110064
+      ],
+      "head_samples": [
+        109264,
+        108928,
+        108596,
+        109348,
+        109380
+      ],
+      "base_range": [
+        109632,
+        110372
+      ],
+      "head_range": [
+        108596,
+        109380
+      ]
+    },
+    "jit.wall_s": {
+      "base": 0.21040481299860403,
+      "head": 0.19224482600111514,
+      "ratio": 0.9136902491027648,
+      "percent": -8.630975089723524,
+      "base_samples": [
+        0.21219641600328032,
+        0.17459677001170348,
+        0.21040481299860403,
+        0.19838526099920273,
+        0.22032018199388403
+      ],
+      "head_samples": [
+        0.21716082199418452,
+        0.2236532509996323,
+        0.1897819570003776,
+        0.18720462299825158,
+        0.19224482600111514
+      ],
+      "base_range": [
+        0.17459677001170348,
+        0.22032018199388403
+      ],
+      "head_range": [
+        0.18720462299825158,
+        0.2236532509996323
+      ]
+    },
+    "aot.construction_cpu_s": {
+      "base": 0.009206184,
+      "head": 0.008731477,
+      "ratio": 0.9484360729700819,
+      "percent": -5.156392702991807,
+      "base_samples": [
+        0.011784705,
+        0.008474944,
+        0.008448866,
+        0.011087537,
+        0.009206184
+      ],
+      "head_samples": [
+        0.008731477,
+        0.011932635,
+        0.010764875,
+        0.008729363,
+        0.00796211
+      ],
+      "base_range": [
+        0.008448866,
+        0.011784705
+      ],
+      "head_range": [
+        0.00796211,
+        0.011932635
+      ]
+    },
+    "aot.cpu_s": {
+      "base": 0.062068,
+      "head": 0.076079,
+      "ratio": 1.2257362892311658,
+      "percent": 22.573628923116583,
+      "base_samples": [
+        0.065661,
+        0.062068,
+        0.056085,
+        0.064483,
+        0.060736
+      ],
+      "head_samples": [
+        0.076079,
+        0.077865,
+        0.082761,
+        0.064042,
+        0.061171
+      ],
+      "base_range": [
+        0.056085,
+        0.065661
+      ],
+      "head_range": [
+        0.061171,
+        0.082761
+      ]
+    },
+    "aot.processing_cpu_s": {
+      "base": 0.050667095,
+      "head": 0.063430932,
+      "ratio": 1.2519157058441972,
+      "percent": 25.191570584419722,
+      "base_samples": [
+        0.050667095,
+        0.05121453,
+        0.045108945,
+        0.050800112,
+        0.04902661
+      ],
+      "head_samples": [
+        0.063742131,
+        0.063430932,
+        0.068795894,
+        0.052601846,
+        0.050149634
+      ],
+      "base_range": [
+        0.045108945,
+        0.05121453
+      ],
+      "head_range": [
+        0.050149634,
+        0.068795894
+      ]
+    },
+    "aot.rss_kib": {
+      "base": 49792,
+      "head": 48512,
+      "ratio": 0.974293059125964,
+      "percent": -2.570694087403602,
+      "base_samples": [
+        49792,
+        49792,
+        49792,
+        49792,
+        49792
+      ],
+      "head_samples": [
+        48512,
+        48512,
+        48512,
+        48512,
+        48512
+      ],
+      "base_range": [
+        49792,
+        49792
+      ],
+      "head_range": [
+        48512,
+        48512
+      ]
+    },
+    "aot.wall_s": {
+      "base": 0.06333926100342069,
+      "head": 0.0775103920022957,
+      "ratio": 1.2237337596677942,
+      "percent": 22.37337596677942,
+      "base_samples": [
+        0.06836711100186221,
+        0.06333926100342069,
+        0.05751479699392803,
+        0.06703019299311563,
+        0.061943483000504784
+      ],
+      "head_samples": [
+        0.0775103920022957,
+        0.07932434399845079,
+        0.08402267600467894,
+        0.06534810599987395,
+        0.062438045992166735
+      ],
+      "base_range": [
+        0.05751479699392803,
+        0.06836711100186221
+      ],
+      "head_range": [
+        0.062438045992166735,
+        0.08402267600467894
+      ]
+    }
+  },
+  "confirmation": [
+    {
+      "round": 5,
+      "order": [
+        "anchor",
+        "head",
+        "base"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.35685197499697097,
+        "load": [
+          1.1708984375,
+          0.8271484375,
+          0.6171875
+        ],
+        "returncode": 0,
+        "stdout": "670230 26213268 271982515\n",
+        "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.355355000\n",
+        "timed_out": false,
+        "rss_kib": 28468,
+        "cpu_s": 0.355355,
+        "checksum": "670230",
+        "construction_cpu_s": 0.026213268,
+        "processing_cpu_s": 0.271982515
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.20859487699635793,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 12934548 59314456\n",
+          "stderr": "\nWATCH_RSS_KIB 110412 CPU_S 0.206956000\n",
+          "timed_out": false,
+          "rss_kib": 110412,
+          "cpu_s": 0.206956,
+          "checksum": "670230",
+          "construction_cpu_s": 0.012934548,
+          "processing_cpu_s": 0.059314456
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.06586863400298171,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 8966647 52076123\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.064671000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.064671,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008966647,
+          "processing_cpu_s": 0.052076123
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.22946893199696206,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 9289017 70544029\n",
+          "stderr": "\nWATCH_RSS_KIB 109312 CPU_S 0.227780000\n",
+          "timed_out": false,
+          "rss_kib": 109312,
+          "cpu_s": 0.22778,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009289017,
+          "processing_cpu_s": 0.070544029
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.08630262600490823,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 11010972 70022607\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.084740000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.08474,
+          "checksum": "670230",
+          "construction_cpu_s": 0.011010972,
+          "processing_cpu_s": 0.070022607
+        }
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.26395350199891254,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 11802311 92429995\n",
+          "stderr": "\nWATCH_RSS_KIB 109540 CPU_S 0.262146000\n",
+          "timed_out": false,
+          "rss_kib": 109540,
+          "cpu_s": 0.262146,
+          "checksum": "670230",
+          "construction_cpu_s": 0.011802311,
+          "processing_cpu_s": 0.092429995
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.07751581899356097,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 8913116 64657884\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.076047000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.076047,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008913116,
+          "processing_cpu_s": 0.064657884
+        }
+      }
+    },
+    {
+      "round": 6,
+      "order": [
+        "base",
+        "head",
+        "anchor"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.30667446400912013,
+        "load": [
+          1.1708984375,
+          0.8271484375,
+          0.6171875
+        ],
+        "returncode": 0,
+        "stdout": "670230 24632382 227122562\n",
+        "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.302547000\n",
+        "timed_out": false,
+        "rss_kib": 28468,
+        "cpu_s": 0.302547,
+        "checksum": "670230",
+        "construction_cpu_s": 0.024632382,
+        "processing_cpu_s": 0.227122562
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.2502331050054636,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 9590907 76326919\n",
+          "stderr": "\nWATCH_RSS_KIB 109432 CPU_S 0.246266000\n",
+          "timed_out": false,
+          "rss_kib": 109432,
+          "cpu_s": 0.246266,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009590907,
+          "processing_cpu_s": 0.076326919
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.09208520699758083,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 8293244 76976891\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.090591000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.090591,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008293244,
+          "processing_cpu_s": 0.076976891
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.20751541800564155,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 8633350 57264212\n",
+          "stderr": "\nWATCH_RSS_KIB 109264 CPU_S 0.206232000\n",
+          "timed_out": false,
+          "rss_kib": 109264,
+          "cpu_s": 0.206232,
+          "checksum": "670230",
+          "construction_cpu_s": 0.00863335,
+          "processing_cpu_s": 0.057264212
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.06331674700777512,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 8680491 50780383\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.061985000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.061985,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008680491,
+          "processing_cpu_s": 0.050780383
+        }
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.1848815349949291,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 9776122 52097676\n",
+          "stderr": "\nWATCH_RSS_KIB 110148 CPU_S 0.182364000\n",
+          "timed_out": false,
+          "rss_kib": 110148,
+          "cpu_s": 0.182364,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009776122,
+          "processing_cpu_s": 0.052097676
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.06156174799252767,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 12384899 45388041\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.060135000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.060135,
+          "checksum": "670230",
+          "construction_cpu_s": 0.012384899,
+          "processing_cpu_s": 0.045388041
+        }
+      }
+    },
+    {
+      "round": 7,
+      "order": [
+        "anchor",
+        "head",
+        "base"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.33520773600321263,
+        "load": [
+          1.1708984375,
+          0.8271484375,
+          0.6171875
+        ],
+        "returncode": 0,
+        "stdout": "670230 27700483 265699119\n",
+        "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.333947000\n",
+        "timed_out": false,
+        "rss_kib": 28468,
+        "cpu_s": 0.333947,
+        "checksum": "670230",
+        "construction_cpu_s": 0.027700483,
+        "processing_cpu_s": 0.265699119
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.18492909100314137,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 9240384 50776468\n",
+          "stderr": "\nWATCH_RSS_KIB 109988 CPU_S 0.183646000\n",
+          "timed_out": false,
+          "rss_kib": 109988,
+          "cpu_s": 0.183646,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009240384,
+          "processing_cpu_s": 0.050776468
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.07158316401182674,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 8740340 59068980\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.070329000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.070329,
+          "checksum": "670230",
+          "construction_cpu_s": 0.00874034,
+          "processing_cpu_s": 0.05906898
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.21561038600339089,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 9459991 64187455\n",
+          "stderr": "\nWATCH_RSS_KIB 108620 CPU_S 0.214211000\n",
+          "timed_out": false,
+          "rss_kib": 108620,
+          "cpu_s": 0.214211,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009459991,
+          "processing_cpu_s": 0.064187455
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.07270873499510344,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 10930292 55214899\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.071506000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.071506,
+          "checksum": "670230",
+          "construction_cpu_s": 0.010930292,
+          "processing_cpu_s": 0.055214899
+        }
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.258215581998229,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 12018733 89089077\n",
+          "stderr": "\nWATCH_RSS_KIB 109596 CPU_S 0.256584000\n",
+          "timed_out": false,
+          "rss_kib": 109596,
+          "cpu_s": 0.256584,
+          "checksum": "670230",
+          "construction_cpu_s": 0.012018733,
+          "processing_cpu_s": 0.089089077
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.1000010720017599,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 10963932 83922773\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.098468000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.098468,
+          "checksum": "670230",
+          "construction_cpu_s": 0.010963932,
+          "processing_cpu_s": 0.083922773
+        }
+      }
+    },
+    {
+      "round": 8,
+      "order": [
+        "base",
+        "head",
+        "anchor"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.36108218200388364,
+        "load": [
+          1.1708984375,
+          0.8271484375,
+          0.6171875
+        ],
+        "returncode": 0,
+        "stdout": "670230 32436298 281617252\n",
+        "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.359542000\n",
+        "timed_out": false,
+        "rss_kib": 28468,
+        "cpu_s": 0.359542,
+        "checksum": "670230",
+        "construction_cpu_s": 0.032436298,
+        "processing_cpu_s": 0.281617252
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.2554390909936046,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 11980816 87406588\n",
+          "stderr": "\nWATCH_RSS_KIB 109064 CPU_S 0.253701000\n",
+          "timed_out": false,
+          "rss_kib": 109064,
+          "cpu_s": 0.253701,
+          "checksum": "670230",
+          "construction_cpu_s": 0.011980816,
+          "processing_cpu_s": 0.087406588
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.10340309199818876,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 10977472 87219464\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.101876000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.101876,
+          "checksum": "670230",
+          "construction_cpu_s": 0.010977472,
+          "processing_cpu_s": 0.087219464
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.22531960198830348,
+          "load": [
+            1.1708984375,
+            0.8271484375,
+            0.6171875
+          ],
+          "returncode": 0,
+          "stdout": "670230 9407333 66260988\n",
+          "stderr": "\nWATCH_RSS_KIB 109140 CPU_S 0.223651000\n",
+          "timed_out": false,
+          "rss_kib": 109140,
+          "cpu_s": 0.223651,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009407333,
+          "processing_cpu_s": 0.066260988
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.08378758000617381,
+          "load": [
+            1.2373046875,
+            0.8466796875,
+            0.625
+          ],
+          "returncode": 0,
+          "stdout": "670230 10948940 67755740\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.082197000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.082197,
+          "checksum": "670230",
+          "construction_cpu_s": 0.01094894,
+          "processing_cpu_s": 0.06775574
+        }
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.22042984300060198,
+          "load": [
+            1.2373046875,
+            0.8466796875,
+            0.625
+          ],
+          "returncode": 0,
+          "stdout": "670230 12423327 61751415\n",
+          "stderr": "\nWATCH_RSS_KIB 110192 CPU_S 0.218586000\n",
+          "timed_out": false,
+          "rss_kib": 110192,
+          "cpu_s": 0.218586,
+          "checksum": "670230",
+          "construction_cpu_s": 0.012423327,
+          "processing_cpu_s": 0.061751415
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.07760439701087307,
+          "load": [
+            1.2373046875,
+            0.8466796875,
+            0.625
+          ],
+          "returncode": 0,
+          "stdout": "670230 11006125 61269889\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.075502000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.075502,
+          "checksum": "670230",
+          "construction_cpu_s": 0.011006125,
+          "processing_cpu_s": 0.061269889
+        }
+      }
+    },
+    {
+      "round": 9,
+      "order": [
+        "anchor",
+        "head",
+        "base"
+      ],
+      "cpython": {
+        "command": [
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+          "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+          "graph",
+          "4000"
+        ],
+        "cwd": "/workspace/scratch/5b514d4819ab/replay",
+        "wall_s": 0.3542331619973993,
+        "load": [
+          1.2373046875,
+          0.8466796875,
+          0.625
+        ],
+        "returncode": 0,
+        "stdout": "670230 27184214 285838568\n",
+        "stderr": "\nWATCH_RSS_KIB 28468 CPU_S 0.352602000\n",
+        "timed_out": false,
+        "rss_kib": 28468,
+        "cpu_s": 0.352602,
+        "checksum": "670230",
+        "construction_cpu_s": 0.027184214,
+        "processing_cpu_s": 0.285838568
+      },
+      "anchor": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.2040510430088034,
+          "load": [
+            1.2373046875,
+            0.8466796875,
+            0.625
+          ],
+          "returncode": 0,
+          "stdout": "670230 9045364 53228830\n",
+          "stderr": "\nWATCH_RSS_KIB 110044 CPU_S 0.200862000\n",
+          "timed_out": false,
+          "rss_kib": 110044,
+          "cpu_s": 0.200862,
+          "checksum": "670230",
+          "construction_cpu_s": 0.009045364,
+          "processing_cpu_s": 0.05322883
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-anchor",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+          "wall_s": 0.059757556999102235,
+          "load": [
+            1.2373046875,
+            0.8466796875,
+            0.625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8392372 47913262\n",
+          "stderr": "\nWATCH_RSS_KIB 49792 CPU_S 0.058557000\n",
+          "timed_out": false,
+          "rss_kib": 49792,
+          "cpu_s": 0.058557,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008392372,
+          "processing_cpu_s": 0.047913262
+        }
+      },
+      "head": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.19425192500057165,
+          "load": [
+            1.2373046875,
+            0.8466796875,
+            0.625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8827810 63697961\n",
+          "stderr": "\nWATCH_RSS_KIB 108884 CPU_S 0.192845000\n",
+          "timed_out": false,
+          "rss_kib": 108884,
+          "cpu_s": 0.192845,
+          "checksum": "670230",
+          "construction_cpu_s": 0.00882781,
+          "processing_cpu_s": 0.063697961
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-head",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/pystachy",
+          "wall_s": 0.07452434299921151,
+          "load": [
+            1.2373046875,
+            0.8466796875,
+            0.625
+          ],
+          "returncode": 0,
+          "stdout": "670230 10956621 59523558\n",
+          "stderr": "\nWATCH_RSS_KIB 48512 CPU_S 0.073055000\n",
+          "timed_out": false,
+          "rss_kib": 48512,
+          "cpu_s": 0.073055,
+          "checksum": "670230",
+          "construction_cpu_s": 0.010956621,
+          "processing_cpu_s": 0.059523558
+        }
+      },
+      "base": {
+        "jit": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+            "run",
+            "/workspace/scratch/5b514d4819ab/replay/sources/dynany_bench.py",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.20197852900309954,
+          "load": [
+            1.2373046875,
+            0.8466796875,
+            0.625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8619921 65408704\n",
+          "stderr": "\nWATCH_RSS_KIB 109144 CPU_S 0.199787000\n",
+          "timed_out": false,
+          "rss_kib": 109144,
+          "cpu_s": 0.199787,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008619921,
+          "processing_cpu_s": 0.065408704
+        },
+        "aot": {
+          "command": [
+            "/workspace/scratch/5b514d4819ab/replay/results/executables/graph-initial/list_graph-base",
+            "graph",
+            "4000"
+          ],
+          "cwd": "/workspace/scratch/5b514d4819ab/baseline",
+          "wall_s": 0.07327109501056839,
+          "load": [
+            1.2373046875,
+            0.8466796875,
+            0.625
+          ],
+          "returncode": 0,
+          "stdout": "670230 8862642 60531830\n",
+          "stderr": "\nWATCH_RSS_KIB 49408 CPU_S 0.072032000\n",
+          "timed_out": false,
+          "rss_kib": 49408,
+          "cpu_s": 0.072032,
+          "checksum": "670230",
+          "construction_cpu_s": 0.008862642,
+          "processing_cpu_s": 0.06053183
+        }
+      }
+    }
+  ],
+  "confirmation_summary": {
+    "jit.construction_cpu_s": {
+      "base": 0.011802311,
+      "head": 0.009289017,
+      "ratio": 0.7870506886320824,
+      "percent": -21.29493113679176,
+      "base_samples": [
+        0.011802311,
+        0.009590907,
+        0.012018733,
+        0.011980816,
+        0.008619921
+      ],
+      "head_samples": [
+        0.009289017,
+        0.00863335,
+        0.009459991,
+        0.009407333,
+        0.00882781
+      ],
+      "base_range": [
+        0.008619921,
+        0.012018733
+      ],
+      "head_range": [
+        0.00863335,
+        0.009459991
+      ]
+    },
+    "jit.cpu_s": {
+      "base": 0.253701,
+      "head": 0.214211,
+      "ratio": 0.8443443265891739,
+      "percent": -15.565567341082609,
+      "base_samples": [
+        0.262146,
+        0.246266,
+        0.256584,
+        0.253701,
+        0.199787
+      ],
+      "head_samples": [
+        0.22778,
+        0.206232,
+        0.214211,
+        0.223651,
+        0.192845
+      ],
+      "base_range": [
+        0.199787,
+        0.262146
+      ],
+      "head_range": [
+        0.192845,
+        0.22778
+      ]
+    },
+    "jit.processing_cpu_s": {
+      "base": 0.087406588,
+      "head": 0.064187455,
+      "ratio": 0.7343548863845367,
+      "percent": -26.564511361546327,
+      "base_samples": [
+        0.092429995,
+        0.076326919,
+        0.089089077,
+        0.087406588,
+        0.065408704
+      ],
+      "head_samples": [
+        0.070544029,
+        0.057264212,
+        0.064187455,
+        0.066260988,
+        0.063697961
+      ],
+      "base_range": [
+        0.065408704,
+        0.092429995
+      ],
+      "head_range": [
+        0.057264212,
+        0.070544029
+      ]
+    },
+    "jit.rss_kib": {
+      "base": 109432,
+      "head": 109140,
+      "ratio": 0.9973316762921266,
+      "percent": -0.2668323707873399,
+      "base_samples": [
+        109540,
+        109432,
+        109596,
+        109064,
+        109144
+      ],
+      "head_samples": [
+        109312,
+        109264,
+        108620,
+        109140,
+        108884
+      ],
+      "base_range": [
+        109064,
+        109596
+      ],
+      "head_range": [
+        108620,
+        109312
+      ]
+    },
+    "jit.wall_s": {
+      "base": 0.2554390909936046,
+      "head": 0.21561038600339089,
+      "ratio": 0.8440774869841244,
+      "percent": -15.592251301587556,
+      "base_samples": [
+        0.26395350199891254,
+        0.2502331050054636,
+        0.258215581998229,
+        0.2554390909936046,
+        0.20197852900309954
+      ],
+      "head_samples": [
+        0.22946893199696206,
+        0.20751541800564155,
+        0.21561038600339089,
+        0.22531960198830348,
+        0.19425192500057165
+      ],
+      "base_range": [
+        0.20197852900309954,
+        0.26395350199891254
+      ],
+      "head_range": [
+        0.19425192500057165,
+        0.22946893199696206
+      ]
+    },
+    "aot.construction_cpu_s": {
+      "base": 0.008913116,
+      "head": 0.01094894,
+      "ratio": 1.2284076634927674,
+      "percent": 22.84076634927674,
+      "base_samples": [
+        0.008913116,
+        0.008293244,
+        0.010963932,
+        0.010977472,
+        0.008862642
+      ],
+      "head_samples": [
+        0.011010972,
+        0.008680491,
+        0.010930292,
+        0.01094894,
+        0.010956621
+      ],
+      "base_range": [
+        0.008293244,
+        0.010977472
+      ],
+      "head_range": [
+        0.008680491,
+        0.011010972
+      ]
+    },
+    "aot.cpu_s": {
+      "base": 0.090591,
+      "head": 0.073055,
+      "ratio": 0.806426686977735,
+      "percent": -19.3573313022265,
+      "base_samples": [
+        0.076047,
+        0.090591,
+        0.098468,
+        0.101876,
+        0.072032
+      ],
+      "head_samples": [
+        0.08474,
+        0.061985,
+        0.071506,
+        0.082197,
+        0.073055
+      ],
+      "base_range": [
+        0.072032,
+        0.101876
+      ],
+      "head_range": [
+        0.061985,
+        0.08474
+      ]
+    },
+    "aot.processing_cpu_s": {
+      "base": 0.076976891,
+      "head": 0.059523558,
+      "ratio": 0.7732652907481025,
+      "percent": -22.673470925189754,
+      "base_samples": [
+        0.064657884,
+        0.076976891,
+        0.083922773,
+        0.087219464,
+        0.06053183
+      ],
+      "head_samples": [
+        0.070022607,
+        0.050780383,
+        0.055214899,
+        0.06775574,
+        0.059523558
+      ],
+      "base_range": [
+        0.06053183,
+        0.087219464
+      ],
+      "head_range": [
+        0.050780383,
+        0.070022607
+      ]
+    },
+    "aot.rss_kib": {
+      "base": 49408,
+      "head": 48512,
+      "ratio": 0.9818652849740933,
+      "percent": -1.813471502590669,
+      "base_samples": [
+        49408,
+        49408,
+        49408,
+        49408,
+        49408
+      ],
+      "head_samples": [
+        48512,
+        48512,
+        48512,
+        48512,
+        48512
+      ],
+      "base_range": [
+        49408,
+        49408
+      ],
+      "head_range": [
+        48512,
+        48512
+      ]
+    },
+    "aot.wall_s": {
+      "base": 0.09208520699758083,
+      "head": 0.07452434299921151,
+      "ratio": 0.8092976649460032,
+      "percent": -19.07023350539968,
+      "base_samples": [
+        0.07751581899356097,
+        0.09208520699758083,
+        0.1000010720017599,
+        0.10340309199818876,
+        0.07327109501056839
+      ],
+      "head_samples": [
+        0.08630262600490823,
+        0.06331674700777512,
+        0.07270873499510344,
+        0.08378758000617381,
+        0.07452434299921151
+      ],
+      "base_range": [
+        0.07327109501056839,
+        0.10340309199818876
+      ],
+      "head_range": [
+        0.06331674700777512,
+        0.08630262600490823
+      ]
+    }
+  },
+  "anchor_confirmation_summary": {
+    "jit.construction_cpu_s": {
+      "base": 0.009776122,
+      "head": 0.009289017,
+      "ratio": 0.9501740056026305,
+      "percent": -4.982599439736946,
+      "base_samples": [
+        0.012934548,
+        0.009776122,
+        0.009240384,
+        0.012423327,
+        0.009045364
+      ],
+      "head_samples": [
+        0.009289017,
+        0.00863335,
+        0.009459991,
+        0.009407333,
+        0.00882781
+      ],
+      "base_range": [
+        0.009045364,
+        0.012934548
+      ],
+      "head_range": [
+        0.00863335,
+        0.009459991
+      ]
+    },
+    "jit.cpu_s": {
+      "base": 0.200862,
+      "head": 0.214211,
+      "ratio": 1.0664585635909232,
+      "percent": 6.645856359092317,
+      "base_samples": [
+        0.206956,
+        0.182364,
+        0.183646,
+        0.218586,
+        0.200862
+      ],
+      "head_samples": [
+        0.22778,
+        0.206232,
+        0.214211,
+        0.223651,
+        0.192845
+      ],
+      "base_range": [
+        0.182364,
+        0.218586
+      ],
+      "head_range": [
+        0.192845,
+        0.22778
+      ]
+    },
+    "jit.processing_cpu_s": {
+      "base": 0.05322883,
+      "head": 0.064187455,
+      "ratio": 1.2058776230850838,
+      "percent": 20.587762308508385,
+      "base_samples": [
+        0.059314456,
+        0.052097676,
+        0.050776468,
+        0.061751415,
+        0.05322883
+      ],
+      "head_samples": [
+        0.070544029,
+        0.057264212,
+        0.064187455,
+        0.066260988,
+        0.063697961
+      ],
+      "base_range": [
+        0.050776468,
+        0.061751415
+      ],
+      "head_range": [
+        0.057264212,
+        0.070544029
+      ]
+    },
+    "jit.rss_kib": {
+      "base": 110148,
+      "head": 109140,
+      "ratio": 0.9908486763263972,
+      "percent": -0.9151323673602829,
+      "base_samples": [
+        110412,
+        110148,
+        109988,
+        110192,
+        110044
+      ],
+      "head_samples": [
+        109312,
+        109264,
+        108620,
+        109140,
+        108884
+      ],
+      "base_range": [
+        109988,
+        110412
+      ],
+      "head_range": [
+        108620,
+        109312
+      ]
+    },
+    "jit.wall_s": {
+      "base": 0.2040510430088034,
+      "head": 0.21561038600339089,
+      "ratio": 1.0566492717907292,
+      "percent": 5.6649271790729205,
+      "base_samples": [
+        0.20859487699635793,
+        0.1848815349949291,
+        0.18492909100314137,
+        0.22042984300060198,
+        0.2040510430088034
+      ],
+      "head_samples": [
+        0.22946893199696206,
+        0.20751541800564155,
+        0.21561038600339089,
+        0.22531960198830348,
+        0.19425192500057165
+      ],
+      "base_range": [
+        0.1848815349949291,
+        0.22042984300060198
+      ],
+      "head_range": [
+        0.19425192500057165,
+        0.22946893199696206
+      ]
+    },
+    "aot.construction_cpu_s": {
+      "base": 0.008966647,
+      "head": 0.01094894,
+      "ratio": 1.2210740536568465,
+      "percent": 22.107405365684652,
+      "base_samples": [
+        0.008966647,
+        0.012384899,
+        0.00874034,
+        0.011006125,
+        0.008392372
+      ],
+      "head_samples": [
+        0.011010972,
+        0.008680491,
+        0.010930292,
+        0.01094894,
+        0.010956621
+      ],
+      "base_range": [
+        0.008392372,
+        0.012384899
+      ],
+      "head_range": [
+        0.008680491,
+        0.011010972
+      ]
+    },
+    "aot.cpu_s": {
+      "base": 0.064671,
+      "head": 0.073055,
+      "ratio": 1.1296407972661624,
+      "percent": 12.96407972661624,
+      "base_samples": [
+        0.064671,
+        0.060135,
+        0.070329,
+        0.075502,
+        0.058557
+      ],
+      "head_samples": [
+        0.08474,
+        0.061985,
+        0.071506,
+        0.082197,
+        0.073055
+      ],
+      "base_range": [
+        0.058557,
+        0.075502
+      ],
+      "head_range": [
+        0.061985,
+        0.08474
+      ]
+    },
+    "aot.processing_cpu_s": {
+      "base": 0.052076123,
+      "head": 0.059523558,
+      "ratio": 1.143010550151746,
+      "percent": 14.301055015174601,
+      "base_samples": [
+        0.052076123,
+        0.045388041,
+        0.05906898,
+        0.061269889,
+        0.047913262
+      ],
+      "head_samples": [
+        0.070022607,
+        0.050780383,
+        0.055214899,
+        0.06775574,
+        0.059523558
+      ],
+      "base_range": [
+        0.045388041,
+        0.061269889
+      ],
+      "head_range": [
+        0.050780383,
+        0.070022607
+      ]
+    },
+    "aot.rss_kib": {
+      "base": 49792,
+      "head": 48512,
+      "ratio": 0.974293059125964,
+      "percent": -2.570694087403602,
+      "base_samples": [
+        49792,
+        49792,
+        49792,
+        49792,
+        49792
+      ],
+      "head_samples": [
+        48512,
+        48512,
+        48512,
+        48512,
+        48512
+      ],
+      "base_range": [
+        49792,
+        49792
+      ],
+      "head_range": [
+        48512,
+        48512
+      ]
+    },
+    "aot.wall_s": {
+      "base": 0.06586863400298171,
+      "head": 0.07452434299921151,
+      "ratio": 1.1314086609999834,
+      "percent": 13.140866099998338,
+      "base_samples": [
+        0.06586863400298171,
+        0.06156174799252767,
+        0.07158316401182674,
+        0.07760439701087307,
+        0.059757556999102235
+      ],
+      "head_samples": [
+        0.08630262600490823,
+        0.06331674700777512,
+        0.07270873499510344,
+        0.08378758000617381,
+        0.07452434299921151
+      ],
+      "base_range": [
+        0.059757556999102235,
+        0.07760439701087307
+      ],
+      "head_range": [
+        0.06331674700777512,
+        0.08630262600490823
+      ]
+    }
+  },
+  "completion_identity_validation": {
+    "checked": "2026-10-23T02:42:25Z",
+    "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388",
+    "revisions": {
+      "base": {
+        "sha": "32d7c40b330e8306a7f391a4a4adad735f594d37",
+        "status": "",
+        "binary_sha256": "7fc99777ea83b2671100fd44a299f26469dfd5af4f0e2038399554903ab943ec"
+      },
+      "head": {
+        "sha": "199d50fe6815668486be5de764a339ac4f30c65c",
+        "status": "",
+        "binary_sha256": "7a83c2d889faa45c4ed187a01ca10235d2d4c5f2ef3e4e2c142bf689efb04b03"
+      },
+      "anchor": {
+        "sha": "f4b9396167e41616707938ca34d99f359a706622",
+        "status": "",
+        "binary_sha256": "39fb1e12edeab89e0879b5b0cf8ba52aad6af2993808c085cb511e46f3f92a19"
+      }
+    }
+  },
+  "status": "complete",
+  "finished": "2026-10-23T02:42:25Z"
+}

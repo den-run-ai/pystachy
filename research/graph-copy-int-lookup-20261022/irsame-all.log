@@ -1,0 +1,93 @@
+sed: couldn't write 55 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+DIFF tests/programs/inference/dynany_containers.py
+  IR from line 90 (in @main.init):
+@@ -87,15 +87,15 @@
+ @s.40 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c"' object has no attribute 'startswith'\00"}, align 8
+ define internal void @main.init() {
+ entry:
+-  %stk.144 = alloca [2 x i64], align 8
+-  %h.178 = alloca i64
+-  store i64 zeroinitializer, ptr %h.178
+-  %h.180 = alloca i64
+-  store i64 zeroinitializer, ptr %h.180
+-  %h.202 = alloca i64
+-  store i64 zeroinitializer, ptr %h.202
+-  %h.204 = alloca i64
+-  store i64 zeroinitializer, ptr %h.204
++  %stk.151 = alloca [2 x i64], align 8
++  %h.185 = alloca i64
++  store i64 zeroinitializer, ptr %h.185
+DIFF tests/programs/inference/dynany_dict_keys.py
+  IR from line 299 (in @main.init):
+@@ -296,18 +296,18 @@
+   call void @pys_list_append(ptr %t101, i64 %t102)
+   %t103 = ptrtoint ptr @dbs.8 to i64
+   call void @pys_list_append(ptr %t101, i64 %t103)
+-  %t104 = invoke ptr @f.joined(ptr %t101) to label %L404 unwind label %L97
+-L404:
++  %t104 = invoke ptr @f.joined(ptr %t101) to label %L467 unwind label %L97
++L467:
+   %t105 = ptrtoint ptr %t104 to i64
+-  %t106 = invoke i64 @pys_dict_getitem(ptr %t100, i64 %t105) to label %L405 unwind label %L97
+-L405:
++  %t106 = invoke i64 @pys_dict_getitem(ptr %t100, i64 %t105) to label %L468 unwind label %L97
++L468:
+   %t107 = inttoptr i64 %t106 to ptr
+-  %t108 = invoke ptr @dyn.str(ptr %t107) to label %L406 unwind label %L97
+-L406:
+DIFF tests/programs/inference/dynany_graph.py
+  IR from line 719 (in @f.copy_value):
+@@ -716,28 +716,28 @@
+   store ptr zeroinitializer, ptr %k.box.37
+   %k.boxgen.37 = alloca i64
+   store i64 zeroinitializer, ptr %k.boxgen.37
+-  %y.101 = alloca ptr
+-  store ptr zeroinitializer, ptr %y.101
+-  %h.134 = alloca i64
+-  store i64 zeroinitializer, ptr %h.134
+-  %item.145 = alloca ptr
+-  store ptr zeroinitializer, ptr %item.145
+-  %d.160 = alloca ptr
+-  store ptr zeroinitializer, ptr %d.160
+-  %h.193 = alloca i64
+-  store i64 zeroinitializer, ptr %h.193
+-  %h.195 = alloca i64
+-  store i64 zeroinitializer, ptr %h.195
+DIFF tests/programs/inference/dynany_int_lookup.py
+  IR from line 133 (in @f.pure_keys):
+@@ -130,18 +130,18 @@
+   store i64 zeroinitializer, ptr %k.boxgen.16
+   %h.54 = alloca i64
+   store i64 zeroinitializer, ptr %h.54
+-  %h.171 = alloca ptr
+-  store ptr zeroinitializer, ptr %h.171
+-  %error.189 = alloca ptr
+-  store ptr zeroinitializer, ptr %error.189
+-  %alias.192 = alloca ptr
+-  store ptr zeroinitializer, ptr %alias.192
+-  %h.252 = alloca i64
+-  store i64 zeroinitializer, ptr %h.252
+-  %h.290 = alloca i64
+-  store i64 zeroinitializer, ptr %h.290
+-  %copied.338 = alloca ptr
+-  store ptr zeroinitializer, ptr %copied.338
+DIFF tests/ir/dynany_int_lookup.py
+  IR from line 25 (in @f.contains):
+@@ -22,35 +22,45 @@
+   %t4 = load ptr, ptr %k.box.2
+   %t5 = load i64, ptr %k.boxgen.2
+   %t6 = load ptr, ptr %d.1
+-  %t7 = load ptr, ptr %k.box.2
+-  %t8 = icmp ne ptr %t4, null
+-  %t9 = select i1 %t8, ptr %t4, ptr %t7
+-  %t14 = icmp ne ptr %t9, null
+-  br i1 %t14, label %L10, label %L12
++  %t7 = call i64 @pys_dict_find_int_nobox(ptr %t6, i64 %t3)
++  %t11 = icmp sge i64 %t7, -1
++  br i1 %t11, label %L8, label %L9
++L8:
++  %t12 = add i64 %t7, 1
++  br label %L10
++L9:
+5 of 3533 differ

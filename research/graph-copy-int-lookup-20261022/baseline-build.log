@@ -1,0 +1,16 @@
+make: Entering directory '/workspace/scratch/5b514d4819ab/baseline'
+mkdir -p build
+/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1
+build/pystachy1 build pystachy.py -o build/pystachy2
+/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13 pystachy.py ir pystachy.py -o build/stage1.ll
+build/pystachy1 ir pystachy.py -o build/stage2.ll
+build/pystachy2 ir pystachy.py -o build/stage3.ll
+cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
+fixed point: stage1 == stage2 == stage3 (671981 lines of IR)
+/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13 pystachy.py rt runtime.py -o build/rt1.ll
+build/pystachy1 rt runtime.py -o build/rt2.ll
+build/pystachy2 rt runtime.py -o build/rt3.ll
+cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (18709 lines)
+cp build/pystachy2 pystachy
+make: Leaving directory '/workspace/scratch/5b514d4819ab/baseline'

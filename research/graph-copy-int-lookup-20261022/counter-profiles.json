@@ -1,0 +1,470 @@
+[
+  {
+    "name": "base",
+    "commit": "32d7c40b330e8306a7f391a4a4adad735f594d37",
+    "tree": "47b561ed490bb2b31a8896d6d05d8eddc92d01a0",
+    "compiler": "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+    "compiler_sha256": "7fc99777ea83b2671100fd44a299f26469dfd5af4f0e2038399554903ab943ec",
+    "input_status": "",
+    "runtime_sha256": "073455d89d52b351dce8bff8b208b020ecd3360db9b3e746b339193af904890e",
+    "instrumented_runtime_sha256": "346879f40daf8fc4eca648ae3a9fbb2943dda7fcb127a6f9ef3e360a0c247135",
+    "instrumentation_sha256": "373ba778995ab535b88eb73ee9d9febfef6225c84c40ddd8a17dde248a43a093",
+    "workload_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388",
+    "instrumented_not_timing": true,
+    "environment_removed": {
+      "policy": "strip-build-overrides-v1",
+      "removed_names": [],
+      "effective_overrides": "absent/default"
+    },
+    "cpu": 0,
+    "build": {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "build",
+        "/workspace/scratch/c42abc2bbcbe/replay/sources/dynany_bench.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/counter-results/graph-base"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "finished": "2026-10-23T02:46:57Z"
+    },
+    "run": {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/counter-results/graph-base",
+        "graph",
+        "4000"
+      ],
+      "returncode": 0,
+      "stdout": "670230 7924944 64088660\n",
+      "stderr": "MEMO_PROFILE snapshot=0 int_calls=1 int_allocs=1 ref_calls=0 keyeqs=0 slots_total=6 nobox_calls=0 nobox_probes=0 nobox_hits=0 nobox_misses=0 nobox_fallbacks=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=0,0,0 cat4=0,0,0\nMEMO_PROFILE snapshot=1 int_calls=38001 int_allocs=11358 ref_calls=214000 keyeqs=0 slots_total=84006 nobox_calls=0 nobox_probes=0 nobox_hits=0 nobox_misses=0 nobox_fallbacks=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=52000,44000,0 cat4=0,0,0\nMEMO_PROFILE snapshot=2 int_calls=326001 int_allocs=295358 ref_calls=570000 keyeqs=0 slots_total=2333035 nobox_calls=0 nobox_probes=0 nobox_hits=0 nobox_misses=0 nobox_fallbacks=0 cat0=360000,442508,72000 cat1=68006,68006,68000 cat2=432000,1060248,144000 cat3=208000,208000,0 cat4=0,0,0\n",
+      "finished": "2026-10-23T02:46:57Z"
+    },
+    "snapshots": [
+      {
+        "snapshot": 0,
+        "int_calls": 1,
+        "int_allocs": 1,
+        "ref_calls": 0,
+        "keyeqs": 0,
+        "slots_total": 6,
+        "nobox_calls": 0,
+        "nobox_probes": 0,
+        "nobox_hits": 0,
+        "nobox_misses": 0,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          0,
+          0,
+          0
+        ],
+        "cat1": [
+          6,
+          6,
+          0
+        ],
+        "cat2": [
+          0,
+          0,
+          0
+        ],
+        "cat3": [
+          0,
+          0,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "snapshot": 1,
+        "int_calls": 38001,
+        "int_allocs": 11358,
+        "ref_calls": 214000,
+        "keyeqs": 0,
+        "slots_total": 84006,
+        "nobox_calls": 0,
+        "nobox_probes": 0,
+        "nobox_hits": 0,
+        "nobox_misses": 0,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          0,
+          0,
+          0
+        ],
+        "cat1": [
+          6,
+          6,
+          0
+        ],
+        "cat2": [
+          0,
+          0,
+          0
+        ],
+        "cat3": [
+          52000,
+          44000,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "snapshot": 2,
+        "int_calls": 326001,
+        "int_allocs": 295358,
+        "ref_calls": 570000,
+        "keyeqs": 0,
+        "slots_total": 2333035,
+        "nobox_calls": 0,
+        "nobox_probes": 0,
+        "nobox_hits": 0,
+        "nobox_misses": 0,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          360000,
+          442508,
+          72000
+        ],
+        "cat1": [
+          68006,
+          68006,
+          68000
+        ],
+        "cat2": [
+          432000,
+          1060248,
+          144000
+        ],
+        "cat3": [
+          208000,
+          208000,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "construction": {
+      "int_calls": 38000,
+      "int_allocs": 11357,
+      "ref_calls": 214000,
+      "keyeqs": 0,
+      "slots_total": 84000,
+      "nobox_calls": 0,
+      "nobox_probes": 0,
+      "nobox_hits": 0,
+      "nobox_misses": 0,
+      "nobox_fallbacks": 0,
+      "cat0": [
+        0,
+        0,
+        0
+      ],
+      "cat1": [
+        0,
+        0,
+        0
+      ],
+      "cat2": [
+        0,
+        0,
+        0
+      ],
+      "cat3": [
+        52000,
+        44000,
+        0
+      ],
+      "cat4": [
+        0,
+        0,
+        0
+      ]
+    },
+    "processing": {
+      "int_calls": 288000,
+      "int_allocs": 284000,
+      "ref_calls": 356000,
+      "keyeqs": 0,
+      "slots_total": 2249029,
+      "nobox_calls": 0,
+      "nobox_probes": 0,
+      "nobox_hits": 0,
+      "nobox_misses": 0,
+      "nobox_fallbacks": 0,
+      "cat0": [
+        360000,
+        442508,
+        72000
+      ],
+      "cat1": [
+        68000,
+        68000,
+        68000
+      ],
+      "cat2": [
+        432000,
+        1060248,
+        144000
+      ],
+      "cat3": [
+        156000,
+        164000,
+        0
+      ],
+      "cat4": [
+        0,
+        0,
+        0
+      ]
+    },
+    "executable_sha256": "4ace3e7f028073a72d1104cd4e526f200d649dbeb63bd334b3fa81a8c1d4f75f"
+  },
+  {
+    "name": "head",
+    "commit": "53e19cad367be3fa308ac30e7e1abc10b9c8c487",
+    "tree": "8a7202e7c59f5e1d113c58fb83772b74298af797",
+    "compiler": "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+    "compiler_sha256": "7a83c2d889faa45c4ed187a01ca10235d2d4c5f2ef3e4e2c142bf689efb04b03",
+    "input_status": "",
+    "runtime_sha256": "566022b48cbebf46d38b0e7b3af7d3ad4610b7928676547be258cae9915c83d5",
+    "instrumented_runtime_sha256": "be6a0474d8b2e358c545dc8a22f8900f2110611ff80f62d36061b591ec702920",
+    "instrumentation_sha256": "373ba778995ab535b88eb73ee9d9febfef6225c84c40ddd8a17dde248a43a093",
+    "workload_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388",
+    "instrumented_not_timing": true,
+    "environment_removed": {
+      "policy": "strip-build-overrides-v1",
+      "removed_names": [],
+      "effective_overrides": "absent/default"
+    },
+    "cpu": 0,
+    "build": {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/c42abc2bbcbe/replay/sources/dynany_bench.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/counter-results/graph-head"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "finished": "2026-10-23T02:47:03Z"
+    },
+    "run": {
+      "command": [
+        "/workspace/scratch/5b514d4819ab/counter-results/graph-head",
+        "graph",
+        "4000"
+      ],
+      "returncode": 0,
+      "stdout": "670230 10837828 52787985\n",
+      "stderr": "MEMO_PROFILE snapshot=0 int_calls=1 int_allocs=1 ref_calls=0 keyeqs=0 slots_total=6 nobox_calls=0 nobox_probes=0 nobox_hits=0 nobox_misses=0 nobox_fallbacks=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=0,0,0 cat4=0,0,0\nMEMO_PROFILE snapshot=1 int_calls=38001 int_allocs=11358 ref_calls=214000 keyeqs=0 slots_total=84006 nobox_calls=0 nobox_probes=0 nobox_hits=0 nobox_misses=0 nobox_fallbacks=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=52000,44000,0 cat4=0,0,0\nMEMO_PROFILE snapshot=2 int_calls=186001 int_allocs=155358 ref_calls=570000 keyeqs=0 slots_total=2332004 nobox_calls=288000 nobox_probes=665774 nobox_hits=144000 nobox_misses=144000 nobox_fallbacks=0 cat0=360000,433355,72000 cat1=68006,68006,68000 cat2=432000,1070300,144000 cat3=208000,208000,0 cat4=0,0,0\n",
+      "finished": "2026-10-23T02:47:03Z"
+    },
+    "snapshots": [
+      {
+        "snapshot": 0,
+        "int_calls": 1,
+        "int_allocs": 1,
+        "ref_calls": 0,
+        "keyeqs": 0,
+        "slots_total": 6,
+        "nobox_calls": 0,
+        "nobox_probes": 0,
+        "nobox_hits": 0,
+        "nobox_misses": 0,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          0,
+          0,
+          0
+        ],
+        "cat1": [
+          6,
+          6,
+          0
+        ],
+        "cat2": [
+          0,
+          0,
+          0
+        ],
+        "cat3": [
+          0,
+          0,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "snapshot": 1,
+        "int_calls": 38001,
+        "int_allocs": 11358,
+        "ref_calls": 214000,
+        "keyeqs": 0,
+        "slots_total": 84006,
+        "nobox_calls": 0,
+        "nobox_probes": 0,
+        "nobox_hits": 0,
+        "nobox_misses": 0,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          0,
+          0,
+          0
+        ],
+        "cat1": [
+          6,
+          6,
+          0
+        ],
+        "cat2": [
+          0,
+          0,
+          0
+        ],
+        "cat3": [
+          52000,
+          44000,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "snapshot": 2,
+        "int_calls": 186001,
+        "int_allocs": 155358,
+        "ref_calls": 570000,
+        "keyeqs": 0,
+        "slots_total": 2332004,
+        "nobox_calls": 288000,
+        "nobox_probes": 665774,
+        "nobox_hits": 144000,
+        "nobox_misses": 144000,
+        "nobox_fallbacks": 0,
+        "cat0": [
+          360000,
+          433355,
+          72000
+        ],
+        "cat1": [
+          68006,
+          68006,
+          68000
+        ],
+        "cat2": [
+          432000,
+          1070300,
+          144000
+        ],
+        "cat3": [
+          208000,
+          208000,
+          0
+        ],
+        "cat4": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "construction": {
+      "int_calls": 38000,
+      "int_allocs": 11357,
+      "ref_calls": 214000,
+      "keyeqs": 0,
+      "slots_total": 84000,
+      "nobox_calls": 0,
+      "nobox_probes": 0,
+      "nobox_hits": 0,
+      "nobox_misses": 0,
+      "nobox_fallbacks": 0,
+      "cat0": [
+        0,
+        0,
+        0
+      ],
+      "cat1": [
+        0,
+        0,
+        0
+      ],
+      "cat2": [
+        0,
+        0,
+        0
+      ],
+      "cat3": [
+        52000,
+        44000,
+        0
+      ],
+      "cat4": [
+        0,
+        0,
+        0
+      ]
+    },
+    "processing": {
+      "int_calls": 148000,
+      "int_allocs": 144000,
+      "ref_calls": 356000,
+      "keyeqs": 0,
+      "slots_total": 2247998,
+      "nobox_calls": 288000,
+      "nobox_probes": 665774,
+      "nobox_hits": 144000,
+      "nobox_misses": 144000,
+      "nobox_fallbacks": 0,
+      "cat0": [
+        360000,
+        433355,
+        72000
+      ],
+      "cat1": [
+        68000,
+        68000,
+        68000
+      ],
+      "cat2": [
+        432000,
+        1070300,
+        144000
+      ],
+      "cat3": [
+        156000,
+        164000,
+        0
+      ],
+      "cat4": [
+        0,
+        0,
+        0
+      ]
+    },
+    "executable_sha256": "1b1833d7bb3a8a5dd1b9b6b1be950990f4c391576b23147fb4145e08c02b1517"
+  }
+]

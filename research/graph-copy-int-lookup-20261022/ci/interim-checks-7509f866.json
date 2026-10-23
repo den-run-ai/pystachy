@@ -1,0 +1,682 @@
+{
+  "observed_at": "2026-10-23T03:00:18.239Z",
+  "repository": "den-run-ai/pystachy",
+  "pull_request": 873,
+  "head": "7509f866530f67de2d20dd724b2ab352b8f6863e",
+  "base": "585791693be83ff2a758219487757f8870b7ed0e",
+  "test_merge": "5c463bd377d274bd156ab9cc1fb693589df342ba",
+  "head_and_test_merge_tree": "4a1711472e17dcf288a6328b5d8cb1dee4ea85e4",
+  "workflow_runs": [
+    {
+      "name": "CI",
+      "id": 39891646181,
+      "status": "in_progress"
+    },
+    {
+      "name": "Performance smoke",
+      "id": 39891646165,
+      "status": "success"
+    },
+    {
+      "name": "Packages",
+      "id": 39891646155,
+      "status": "success"
+    },
+    {
+      "name": "Installation",
+      "id": 39891646216,
+      "status": "success"
+    },
+    {
+      "name": "Lint",
+      "id": 39891646229,
+      "status": "success"
+    },
+    {
+      "name": "DCO",
+      "id": 39891643644,
+      "status": "skipped",
+      "reason": "same-repository PR; fork-only certification check"
+    }
+  ],
+  "check_runs": {
+    "total": 37,
+    "pages_inspected": [
+      1,
+      2
+    ],
+    "page_2_count": 0,
+    "checks": [
+      {
+        "id": 120213625125,
+        "name": "verify (gc-aot-0)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213625095,
+        "name": "verify (gc-self)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213625072,
+        "name": "verify (dynany-optin-0)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213625024,
+        "name": "verify (dynany-optin-1)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213625023,
+        "name": "verify (dynany-optin-3)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213625019,
+        "name": "verify (scaling-1)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213625002,
+        "name": "verify (gc-aot-1)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624998,
+        "name": "verify (dynany-optin-2)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624967,
+        "name": "verify (contracts)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624959,
+        "name": "verify (benchmarks)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624958,
+        "name": "verify (gc-aot-2)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624940,
+        "name": "verify (runtime-cache)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624932,
+        "name": "verify (ubsan-1)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624927,
+        "name": "verify (opt-off-1)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624895,
+        "name": "verify (python-free-1)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624887,
+        "name": "verify (opt-off-0)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624884,
+        "name": "verify (gc-jit-1)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624867,
+        "name": "verify (hosted-0)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624864,
+        "name": "verify (native-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624855,
+        "name": "verify (gc-jit-0)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624840,
+        "name": "verify (hosted-2)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624796,
+        "name": "verify (ubsan-2)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624794,
+        "name": "verify (ubsan-0)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624785,
+        "name": "verify (python-free-0)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624782,
+        "name": "verify (native-1)",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 120213624779,
+        "name": "verify (hosted-1)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120213624769,
+        "name": "verify (python-free-2)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212732096,
+        "name": "Install (ubuntu-24.04)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212732000,
+        "name": "Install (macos-15)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212731793,
+        "name": "Install (macos-15-intel)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212701619,
+        "name": "smoke",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212696407,
+        "name": "verify (bootstrap)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212696364,
+        "name": "upstream port preservation (CPython)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212696162,
+        "name": "upstream large regex (JIT and AOT, normal GC)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212692391,
+        "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212690251,
+        "name": "source wheels (CPython, JIT and AOT)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 120212545799,
+        "name": "DCO certified (fork pull requests)",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "performance": {
+    "run_url": "https://github.com/den-run-ai/pystachy/actions/runs/39891646165",
+    "source": "completed job 120212701619 log; rounded values as emitted in summary",
+    "comparisons": 49,
+    "ok": 49,
+    "warning": 0,
+    "unconfirmed": 0,
+    "metrics": [
+      {
+        "workload": "autograd",
+        "metric": "build_s",
+        "base_seconds": 0.8779,
+        "head_seconds": 0.8794,
+        "change_percent": 0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "autograd",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1239,
+        "head_seconds": 0.1243,
+        "change_percent": 0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "autograd",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0346,
+        "head_seconds": 0.0342,
+        "change_percent": -1.1,
+        "status": "ok"
+      },
+      {
+        "workload": "autograd",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0389,
+        "head_seconds": 0.0387,
+        "change_percent": -0.5,
+        "status": "ok"
+      },
+      {
+        "workload": "autograd",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0336,
+        "head_seconds": 0.0335,
+        "change_percent": -0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "numeric",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1634,
+        "head_seconds": 0.1621,
+        "change_percent": -0.8,
+        "status": "ok"
+      },
+      {
+        "workload": "numeric",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0745,
+        "head_seconds": 0.0742,
+        "change_percent": -0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "numeric",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0464,
+        "head_seconds": 0.0459,
+        "change_percent": -1.1,
+        "status": "ok"
+      },
+      {
+        "workload": "numeric",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0413,
+        "head_seconds": 0.0408,
+        "change_percent": -1.2,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "build_s",
+        "base_seconds": 5.5635,
+        "head_seconds": 5.5487,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "jit_process_s",
+        "base_seconds": 1.5968,
+        "head_seconds": 1.5919,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0296,
+        "head_seconds": 0.0297,
+        "change_percent": 0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0332,
+        "head_seconds": 0.0328,
+        "change_percent": -1.4,
+        "status": "ok"
+      },
+      {
+        "workload": "fnmatch",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0276,
+        "head_seconds": 0.0272,
+        "change_percent": -1.3,
+        "status": "ok"
+      },
+      {
+        "workload": "json",
+        "metric": "jit_process_s",
+        "base_seconds": 1.5827,
+        "head_seconds": 1.5728,
+        "change_percent": -0.6,
+        "status": "ok"
+      },
+      {
+        "workload": "json",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.034,
+        "head_seconds": 0.0342,
+        "change_percent": 0.8,
+        "status": "ok"
+      },
+      {
+        "workload": "json",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0378,
+        "head_seconds": 0.0378,
+        "change_percent": 0,
+        "status": "ok"
+      },
+      {
+        "workload": "json",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0323,
+        "head_seconds": 0.0321,
+        "change_percent": -0.6,
+        "status": "ok"
+      },
+      {
+        "workload": "repair_scan",
+        "metric": "jit_process_s",
+        "base_seconds": 1.6507,
+        "head_seconds": 1.6413,
+        "change_percent": -0.6,
+        "status": "ok"
+      },
+      {
+        "workload": "repair_scan",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0924,
+        "head_seconds": 0.0927,
+        "change_percent": 0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "repair_scan",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0963,
+        "head_seconds": 0.0972,
+        "change_percent": 0.9,
+        "status": "ok"
+      },
+      {
+        "workload": "repair_scan",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0899,
+        "head_seconds": 0.0911,
+        "change_percent": 1.2,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "build_s",
+        "base_seconds": 0.6702,
+        "head_seconds": 0.6696,
+        "change_percent": -0.1,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1048,
+        "head_seconds": 0.1053,
+        "change_percent": 0.5,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0337,
+        "head_seconds": 0.0337,
+        "change_percent": -0.1,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0385,
+        "head_seconds": 0.0384,
+        "change_percent": -0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_int",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0358,
+        "head_seconds": 0.0357,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_float",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1177,
+        "head_seconds": 0.1183,
+        "change_percent": 0.5,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_float",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0464,
+        "head_seconds": 0.0465,
+        "change_percent": 0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_float",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0363,
+        "head_seconds": 0.0364,
+        "change_percent": 0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "copy_float",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0337,
+        "head_seconds": 0.0338,
+        "change_percent": 0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "global_int",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1165,
+        "head_seconds": 0.1161,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "global_int",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0449,
+        "head_seconds": 0.0449,
+        "change_percent": 0,
+        "status": "ok"
+      },
+      {
+        "workload": "global_int",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0384,
+        "head_seconds": 0.0383,
+        "change_percent": -0.2,
+        "status": "ok"
+      },
+      {
+        "workload": "global_int",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0357,
+        "head_seconds": 0.0357,
+        "change_percent": 0,
+        "status": "ok"
+      },
+      {
+        "workload": "global_float",
+        "metric": "jit_process_s",
+        "base_seconds": 0.1171,
+        "head_seconds": 0.1176,
+        "change_percent": 0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "global_float",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0464,
+        "head_seconds": 0.0463,
+        "change_percent": -0.1,
+        "status": "ok"
+      },
+      {
+        "workload": "global_float",
+        "metric": "aot_process_s",
+        "base_seconds": 0.0348,
+        "head_seconds": 0.0362,
+        "change_percent": 4.2,
+        "status": "ok"
+      },
+      {
+        "workload": "global_float",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0321,
+        "head_seconds": 0.0336,
+        "change_percent": 4.8,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "build_s",
+        "base_seconds": 1.3493,
+        "head_seconds": 1.362,
+        "change_percent": 0.9,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "jit_process_s",
+        "base_seconds": 0.227,
+        "head_seconds": 0.2139,
+        "change_percent": -5.8,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.0676,
+        "head_seconds": 0.055,
+        "change_percent": -18.6,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "aot_process_s",
+        "base_seconds": 0.083,
+        "head_seconds": 0.0703,
+        "change_percent": -15.3,
+        "status": "ok"
+      },
+      {
+        "workload": "graph_copy",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.0652,
+        "head_seconds": 0.0526,
+        "change_percent": -19.3,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "build_s",
+        "base_seconds": 5.5987,
+        "head_seconds": 5.5775,
+        "change_percent": -0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "jit_process_s",
+        "base_seconds": 1.806,
+        "head_seconds": 1.8133,
+        "change_percent": 0.4,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "jit_loop_s",
+        "base_seconds": 0.3062,
+        "head_seconds": 0.3091,
+        "change_percent": 0.9,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "aot_process_s",
+        "base_seconds": 0.2532,
+        "head_seconds": 0.2524,
+        "change_percent": -0.3,
+        "status": "ok"
+      },
+      {
+        "workload": "regex_effbot",
+        "metric": "aot_loop_s",
+        "base_seconds": 0.2456,
+        "head_seconds": 0.2448,
+        "change_percent": -0.3,
+        "status": "ok"
+      }
+    ]
+  },
+  "review": {
+    "review_threads": [],
+    "submitted_reviews": [],
+    "note": "Draft at initial audit. Review readiness is separate from passing CI."
+  },
+  "note": "Interim snapshot. CI is incomplete and no merge readiness is claimed."
+}

@@ -1,0 +1,172 @@
+{
+  "source_sha256": "c1dad9010a672f76c39eb22c9f1f8bd9318a972a71b2f32abd460971beee5a1c",
+  "cpython_stdout": "False\nTrue value True True\nTrue integer True\nTrue again True\n",
+  "records": [
+    {
+      "revision": "baseline",
+      "local_commit": "32d7c40b330e8306a7f391a4a4adad735f594d37",
+      "compiler_sha256": "7fc99777ea83b2671100fd44a299f26469dfd5af4f0e2038399554903ab943ec",
+      "name": "jit",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/independent-review/lookup_local.py"
+      ],
+      "returncode": 0,
+      "stdout": "False\nTrue value True True\nTrue integer True\nTrue again True\n",
+      "stderr": "",
+      "extra_environment": {},
+      "matches_cpython": true
+    },
+    {
+      "revision": "baseline",
+      "local_commit": "32d7c40b330e8306a7f391a4a4adad735f594d37",
+      "compiler_sha256": "7fc99777ea83b2671100fd44a299f26469dfd5af4f0e2038399554903ab943ec",
+      "name": "jit_gc",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/independent-review/lookup_local.py"
+      ],
+      "returncode": 0,
+      "stdout": "False\nTrue value True True\nTrue integer True\nTrue again True\n",
+      "stderr": "",
+      "extra_environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "matches_cpython": true
+    },
+    {
+      "revision": "baseline",
+      "local_commit": "32d7c40b330e8306a7f391a4a4adad735f594d37",
+      "compiler_sha256": "7fc99777ea83b2671100fd44a299f26469dfd5af4f0e2038399554903ab943ec",
+      "name": "build",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/baseline/pystachy",
+        "build",
+        "/workspace/scratch/5b514d4819ab/independent-review/lookup_local.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/independent-review/baseline-local"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "extra_environment": {}
+    },
+    {
+      "revision": "baseline",
+      "local_commit": "32d7c40b330e8306a7f391a4a4adad735f594d37",
+      "compiler_sha256": "7fc99777ea83b2671100fd44a299f26469dfd5af4f0e2038399554903ab943ec",
+      "name": "aot",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/independent-review/baseline-local"
+      ],
+      "returncode": 0,
+      "stdout": "False\nTrue value True True\nTrue integer True\nTrue again True\n",
+      "stderr": "",
+      "extra_environment": {},
+      "matches_cpython": true
+    },
+    {
+      "revision": "baseline",
+      "local_commit": "32d7c40b330e8306a7f391a4a4adad735f594d37",
+      "compiler_sha256": "7fc99777ea83b2671100fd44a299f26469dfd5af4f0e2038399554903ab943ec",
+      "name": "aot_gc",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/independent-review/baseline-local"
+      ],
+      "returncode": 0,
+      "stdout": "False\nTrue value True True\nTrue integer True\nTrue again True\n",
+      "stderr": "",
+      "extra_environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "matches_cpython": true
+    },
+    {
+      "revision": "candidate",
+      "local_commit": "78b691adfa44ac19c58d0ca16d73ffed2715b0e4",
+      "compiler_sha256": "7a83c2d889faa45c4ed187a01ca10235d2d4c5f2ef3e4e2c142bf689efb04b03",
+      "name": "jit",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/independent-review/lookup_local.py"
+      ],
+      "returncode": 0,
+      "stdout": "False\nTrue value True True\nTrue integer True\nTrue again True\n",
+      "stderr": "",
+      "extra_environment": {},
+      "matches_cpython": true,
+      "matches_baseline": true
+    },
+    {
+      "revision": "candidate",
+      "local_commit": "78b691adfa44ac19c58d0ca16d73ffed2715b0e4",
+      "compiler_sha256": "7a83c2d889faa45c4ed187a01ca10235d2d4c5f2ef3e4e2c142bf689efb04b03",
+      "name": "jit_gc",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/5b514d4819ab/independent-review/lookup_local.py"
+      ],
+      "returncode": 0,
+      "stdout": "False\nTrue value True True\nTrue integer True\nTrue again True\n",
+      "stderr": "",
+      "extra_environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "matches_cpython": true,
+      "matches_baseline": true
+    },
+    {
+      "revision": "candidate",
+      "local_commit": "78b691adfa44ac19c58d0ca16d73ffed2715b0e4",
+      "compiler_sha256": "7a83c2d889faa45c4ed187a01ca10235d2d4c5f2ef3e4e2c142bf689efb04b03",
+      "name": "build",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/pystachy/pystachy",
+        "build",
+        "/workspace/scratch/5b514d4819ab/independent-review/lookup_local.py",
+        "-o",
+        "/workspace/scratch/5b514d4819ab/independent-review/candidate-local"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "extra_environment": {}
+    },
+    {
+      "revision": "candidate",
+      "local_commit": "78b691adfa44ac19c58d0ca16d73ffed2715b0e4",
+      "compiler_sha256": "7a83c2d889faa45c4ed187a01ca10235d2d4c5f2ef3e4e2c142bf689efb04b03",
+      "name": "aot",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/independent-review/candidate-local"
+      ],
+      "returncode": 0,
+      "stdout": "False\nTrue value True True\nTrue integer True\nTrue again True\n",
+      "stderr": "",
+      "extra_environment": {},
+      "matches_cpython": true,
+      "matches_baseline": true
+    },
+    {
+      "revision": "candidate",
+      "local_commit": "78b691adfa44ac19c58d0ca16d73ffed2715b0e4",
+      "compiler_sha256": "7a83c2d889faa45c4ed187a01ca10235d2d4c5f2ef3e4e2c142bf689efb04b03",
+      "name": "aot_gc",
+      "command": [
+        "/workspace/scratch/5b514d4819ab/independent-review/candidate-local"
+      ],
+      "returncode": 0,
+      "stdout": "False\nTrue value True True\nTrue integer True\nTrue again True\n",
+      "stderr": "",
+      "extra_environment": {
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "matches_cpython": true,
+      "matches_baseline": true
+    }
+  ]
+}

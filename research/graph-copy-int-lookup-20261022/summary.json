@@ -1,0 +1,52 @@
+{
+  "processing_only": true,
+  "samples_per_revision_per_mode": 15,
+  "metrics": {
+    "jit": {
+      "median_seconds": {
+        "anchor": 0.05148292,
+        "base": 0.076326919,
+        "head": 0.057938696
+      },
+      "comparisons": {
+        "base": {
+          "median_ratio": 0.7590860047685143,
+          "paired_bootstrap_95_percent": [
+            0.6815740570107081,
+            0.8588273424216168
+          ]
+        },
+        "anchor": {
+          "median_ratio": 1.125396461583764,
+          "paired_bootstrap_95_percent": [
+            1.0070940760414249,
+            1.2671808995525475
+          ]
+        }
+      }
+    },
+    "aot": {
+      "median_seconds": {
+        "anchor": 0.04902661,
+        "base": 0.06946702,
+        "head": 0.05590751
+      },
+      "comparisons": {
+        "base": {
+          "median_ratio": 0.8048065110609322,
+          "paired_bootstrap_95_percent": [
+            0.695675490545858,
+            0.9205924214903166
+          ]
+        },
+        "anchor": {
+          "median_ratio": 1.1403503118000613,
+          "paired_bootstrap_95_percent": [
+            1.0357718594045153,
+            1.2938062003471176
+          ]
+        }
+      }
+    }
+  }
+}

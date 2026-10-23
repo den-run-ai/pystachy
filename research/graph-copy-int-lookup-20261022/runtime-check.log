@@ -1,0 +1,76 @@
+make: Entering directory '/workspace/scratch/5b514d4819ab/pystachy'
+mkdir -p build
+./pystachy rt runtime.py -o build/dictprobe-rt.ll
+"/workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin/"clang -O2 -S -emit-llvm tools/dictprobe.c -o build/dictprobe.ll
+"/workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin/"llvm-link build/dictprobe-rt.ll build/dictprobe.ll -o build/dictprobe.bc
+"/workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin/"clang -O2 build/dictprobe.bc -o build/dictprobe -lm
+build/dictprobe
+string cache: one hash per string, cached hits/misses/tuples, zero hash normalized
+Any keys: boxed strs and ints found without dkeyeq, one hash per probe str; 1.0 and True take it
+Any integer probes: no allocations, unchanged slots, guarded fallback preserves query identity
+storage: the key tables of ints are never scanned; those of strs, tuples and objects, and pys_dict_new's values, are
+values: the value arrays of dicts of numbers are never scanned, also in their copies; other dicts' are
+keys                              n  insert    hit   miss  deleted  longest  ns/op
+i                              4000    2.75   1.12   1.28     1.78        7   12.6
+i                              8000    2.74   1.12   1.32     1.79        9   10.9
+i                             16000    2.76   1.14   1.30     1.79        9   13.0
+i                             30000    2.86   1.12   1.30     1.77        9   12.7
+-i                             4000    2.75   1.12   1.31     1.78        8   10.3
+-i                             8000    2.75   1.13   1.31     1.78        7   11.6
+-i                            16000    2.76   1.13   1.33     1.79       10   11.6
+-i                            30000    2.88   1.13   1.30     1.78       10   15.9
+i << 46                        4000    2.68   1.00   1.12     1.66        6    9.0
+i << 46                        8000    2.52   1.00   1.03     1.67        7    8.8
+i << 46                       16000    2.45   1.00   1.09     1.67        8    8.4
+i << 46                       30000    2.50   1.00   1.05     1.65        9    9.9
+i << 32                        4000    2.82   1.18   1.42     1.84        9   21.1
+i << 32                        8000    2.88   1.19   1.37     1.85        9   12.6
+i << 32                       16000    2.89   1.18   1.31     1.84        8   12.9
+i << 32                       30000    2.98   1.15   1.27     1.80       10   13.5
+i * 1000                       4000    2.65   1.11   1.42     1.77        9   12.7
+i * 1000                       8000    2.69   1.12   1.34     1.78        8   10.8
+i * 1000                      16000    2.71   1.12   1.26     1.79        8   12.7
+i * 1000                      30000    2.82   1.11   1.26     1.76       10   13.9
+(i // 128) << 32 | i % 128     4000    2.96   1.22   1.35     1.90        8   13.2
+(i // 128) << 32 | i % 128     8000    2.96   1.21   1.29     1.87        9   13.8
+(i // 128) << 32 | i % 128    16000    2.91   1.16   1.29     1.83        8   12.2
+(i // 128) << 32 | i % 128    30000    2.95   1.13   1.29     1.78        9   15.6
+random                         4000    2.83   1.15   1.32     1.80        8   11.5
+random                         8000    2.82   1.15   1.33     1.81        9   11.6
+random                        16000    2.81   1.14   1.32     1.80        9   11.8
+random                        30000    2.91   1.13   1.30     1.78        9   15.0
+f"k{i}"                        4000    2.75   1.12   1.32     1.80        7   21.9
+f"k{i}"                        8000    2.76   1.13   1.32     1.80        7   12.1
+f"k{i}"                       16000    2.77   1.14   1.32     1.80        8   13.2
+f"k{i}"                       30000    2.89   1.14   1.30     1.79        9   26.5
+f"{i:08}"                      4000    2.71   1.12   1.33     1.80       10   24.7
+f"{i:08}"                      8000    2.75   1.14   1.33     1.79        8   24.1
+f"{i:08}"                     16000    2.78   1.15   1.32     1.81        8   26.0
+f"{i:08}"                     30000    2.89   1.14   1.29     1.79        8   15.8
+"x" * 64 + str(i)              4000    2.80   1.12   1.32     1.80       10   11.7
+"x" * 64 + str(i)              8000    2.79   1.14   1.32     1.81        9   12.2
+"x" * 64 + str(i)             16000    2.80   1.14   1.31     1.81        8   13.9
+"x" * 64 + str(i)             30000    2.90   1.13   1.30     1.78       10   18.5
+str(i) + "x" * 64              4000    2.82   1.16   1.31     1.80        9   25.3
+str(i) + "x" * 64              8000    2.82   1.15   1.33     1.81        8   13.1
+str(i) + "x" * 64             16000    2.81   1.15   1.32     1.81       10   14.4
+str(i) + "x" * 64             30000    2.92   1.14   1.30     1.78        8   15.7
+letter case of i's bits        4000    2.80   1.15   1.29     1.81        7   13.8
+letter case of i's bits        8000    2.78   1.13   1.34     1.79        8   12.5
+letter case of i's bits       16000    2.79   1.14   1.33     1.80        9   14.8
+letter case of i's bits       30000    2.90   1.14   1.30     1.79       10   16.9
+objects, by identity           4000    2.88   1.19   1.34     1.85        8   16.9
+objects, by identity           8000    2.84   1.14   1.37     1.81        8   16.1
+objects, by identity          16000    2.88   1.18   1.37     1.84        9   18.4
+objects, by identity          30000    3.01   1.15   1.31     1.80        9   21.5
+i << s, -(i << s): s <= 56     8000    3.00   1.27   1.57     1.93       11   10.6
+worst average: 1.93 slots per lookup (limit 3.0)
+PYSTACHY_GC_STRESS=1 build/dictprobe --hash-cache
+string cache: one hash per string, cached hits/misses/tuples, zero hash normalized
+Any keys: boxed strs and ints found without dkeyeq, one hash per probe str; 1.0 and True take it
+Any integer probes: no allocations, unchanged slots, guarded fallback preserves query identity
+storage: the key tables of ints are never scanned; those of strs, tuples and objects, and pys_dict_new's values, are
+values: the value arrays of dicts of numbers are never scanned, also in their copies; other dicts' are
+/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13 tools/check_runtime.py
+495 RUNTIME entries, 70 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (171 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python
+make: Leaving directory '/workspace/scratch/5b514d4819ab/pystachy'

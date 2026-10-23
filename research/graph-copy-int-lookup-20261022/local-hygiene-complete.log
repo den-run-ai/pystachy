@@ -1,0 +1,57 @@
+ruff check
+All checks passed!
+/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13 tools/runtime_roots.py
+54 static pointer stores: 0 GC root problems
+shellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh
+"/workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin/"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c pyext.c pyembed.c
+"/workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin/"clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
+PYTHON="/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13" tests/record.sh --check
+FAIL typevar_templates: tests/programs/generics/typevar_templates.out (<) is not what CPython prints (>)
+1,11c1
+< mods: init mods
+< mods.shapes: init mods.shapes
+< a a [1]
+< e None
+< dflt y None
+< [1] ['a', 'b'] 1.5 [1] s True
+< {1: 'a', 2: 'b'} {'x': 1}
+< 2 1
+< 1 y (1, 2) ('p', 'q')
+FAIL typevar_templates: CPython writes to stderr, and there is no tests/programs/generics/typevar_templates.err: 'ModuleNotFoundError: No module named 'typing_extensions''
+FAIL any_annotated: tests/programs/inference/any_annotated.out (<) is not what CPython prints (>)
+1,2c1
+< 3 s 4 v 5 6
+< [exit 0]
+---
+> [exit 1]
+FAIL any_annotated: CPython writes to stderr, and there is no tests/programs/inference/any_annotated.err: 'ModuleNotFoundError: No module named 'typing_extensions''
+FAIL any_templates: tests/programs/inference/any_templates.out (<) is not what CPython prints (>)
+1,13c1
+< <1> <a> <[1, 2]> <None> 42
+< ['a=1', 'b=2'] ['x=y']
+< 6 0.75 abc
+< None None 3 None None 'k' [1] 2
+< none 9 (1, 'b', 2)
+< int 2
+< int 3
+< str A bool none other [1] other 2.5
+< 4 7 <1.5>
+FAIL any_templates: CPython writes to stderr, and there is no tests/programs/inference/any_templates.err: 'ModuleNotFoundError: No module named 'typing_extensions''
+FAIL any_variables: tests/programs/inference/any_variables.out (<) is not what CPython prints (>)
+1,4c1
+< 5 ['ann'] {'one': 1} 3 [2, 4] alias 2.5 True
+< 3
+< 2 text 11 4 5 7
+< [exit 0]
+---
+> [exit 1]
+FAIL any_variables: CPython writes to stderr, and there is no tests/programs/inference/any_variables.err: 'ModuleNotFoundError: No module named 'typing_extensions''
+FAIL dynany_annotated: tests/programs/inference/dynany_annotated.out (<) is not what CPython prints (>)
+1,2c1
+< 3 s 4 v 5 6 now a str
+< [exit 0]
+---
+> [exit 1]
+FAIL dynany_annotated: CPython writes to stderr, and there is no tests/programs/inference/dynany_annotated.err: 'ModuleNotFoundError: No module named 'typing_extensions''
+CPython 3.13.16: 1601 recordings, 98 deviations, 11 files of lib/ checked; 10 failed
+make: *** [Makefile:253: check-recordings] Error 1
