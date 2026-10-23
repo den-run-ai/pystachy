@@ -596,6 +596,11 @@ def gen_alloca(self, t: str, name: str) -> str:
             i.r = [self.n]
             self.fn.slots.append(i)
             self.idbox[name] = f"%{name}.box.{self.n}"
+            # Local generations distinguish an emitted store from one that actually runs.
+            # This stack-only counter is dead when the value never needs identity.
+            i = Ins("slot", "int", name + ".boxgen")
+            i.r = [self.n]
+            self.fn.slots.append(i)
     return r
 
 # ---- value conversions

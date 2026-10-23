@@ -1,0 +1,35 @@
+int selection True False
+opposite False
+float selection True False
+nested True
+int selection False True
+opposite False
+float selection False True
+nested True
+conditional store False True
+float store False True
+selection before store False False
+selection before skipped store True False
+conditional store True False
+float store True False
+selection before store False True
+selection before skipped store False True
+assigned result True
+float assigned result True
+successive stores False True
+result then read True
+a read before a store in a branch that does not run True True
+a value a conditional chooses from two variables True True
+same-slot delayed True True 0
+same-slot delayed True False 1000
+same-slot delayed True True 0
+same-slot delayed True False 1000
+NaN selection False True False True
+signed zero False True
+NaN selection False True True False
+signed zero False True
+NaN selection True False False True
+signed zero True False
+NaN selection True False True False
+signed zero True False
+[exit 0]

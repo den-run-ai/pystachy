@@ -2062,6 +2062,10 @@ def gen_walrus(self, n: Node, want: str) -> Val:
     else:
         v = self.expr(e, tt if tt != "" else want)
     self.assign(t, v)
+    if n.s in self.idbox and n.s not in self.compvars and (v.t == "int" or v.t == "float"):
+        # The expression and its target are the same new binding. Keep it lazy:
+        # materializing here would allocate even for a scalar-only consumer.
+        return self.load_name(n.s)
     return v
 
 def gen_star_assign(self, t: Node, v: Val) -> None:

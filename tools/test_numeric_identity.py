@@ -42,6 +42,35 @@ class NumericIdentityTests(unittest.TestCase):
             with self.subTest(source=source):
                 self.assertTrue(self.decision(source))
 
+    def test_scalar_none_functions_and_builtin_print(self):
+        bodies = [
+            "for i in range(x):\n    print(n := i + 1000)\nreturn",
+            "n = x + 1000\nm = x + 2000\nchosen = n if x else m\nprint('chosen', chosen)\nreturn None",
+        ]
+        for body in bodies:
+            for header in ("def target(x: int) -> None:", "def target(x: int):", "def target(x):"):
+                source = (header + "\n" +
+                          "\n".join("    " + line for line in body.splitlines()) + "\ntarget(2)\n")
+                with self.subTest(body=body, header=header):
+                    self.assertTrue(self.decision(source))
+
+    def test_inferred_numeric_return_does_not_use_none_proof(self):
+        for header in ("def target(x):", "def target(x: int):"):
+            source = header + "\n    n = x + 1000\n    print(n)\n    return n\nprint(target(2))\n"
+            with self.subTest(header=header):
+                self.assertFalse(self.decision(source))
+
+    def test_print_proof_rejects_shadowing_keywords_and_objects(self):
+        programs = [
+            "from typing import Any\ndef print(x: Any) -> None:\n    pass\ndef target(x: int) -> None:\n    print(x)\ntarget(2)\n",
+            "def target(x: int) -> None:\n    print(x, end='')\ntarget(2)\n",
+            "def target(x: int) -> None:\n    print([x])\ntarget(2)\n",
+            "def target(x: int) -> None:\n    print(*[x])\ntarget(2)\n",
+        ]
+        for source in programs:
+            with self.subTest(source=source):
+                self.assertFalse(self.decision(source))
+
     def test_observable_or_open_bodies_keep_slots(self):
         bodies = [
             "observed: Any = n\nreturn m",

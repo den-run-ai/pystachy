@@ -187,9 +187,18 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   dynamic operands and unknown syntax retain snapshots. Global stores still update
   their identity slots, and copies or values kept across calls retain their objects
   (`tests/programs/inference/dynany_identity_scalar_globals.py`).
-  Closed functions with explicit numeric parameters and return types omit local box slots
-  when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
-  and numeric conversions. Identity tests, `Any` storage, globals, containers, closures and
+  Local numeric bindings carry stack generation counters, so a read before an assignment
+  in a skipped branch still shares its binding's object; equal-valued replacements remain
+  distinct. A conditional selection between same-typed numeric locals carries the selected slot and
+  generation lazily, and a local assignment expression keeps its target's provenance
+  (`tests/programs/inference/dynany_identity_expressions.py`). No box is materialized solely
+  to produce these expression results.
+  Closed functions with explicit numeric parameters and numeric return types omit local box
+  slots when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
+  and numeric conversions. Functions proven to return only `None`, including inferred numeric
+  specializations, may also omit them and print numeric
+  values and literal strings through the unshadowed builtin, without keyword or expanded
+  arguments (`tests/ir/dynany_identity_scalar_expressions.py`). Identity tests, `Any` storage, globals, containers, closures and
   other calls prevent that proof (`tests/ir/dynany_numeric_locals.py`). This relies on the
   existing typed numeric return boundary; extending identity preservation across that
   boundary must revisit this proof. Any
@@ -382,16 +391,11 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   becomes an `Any` value, where CPython's names, containers and classes hold one object: an
   argument or a parameter's default value (the parameter receives a new object), a return
   value, an item of a typed container, a typed field or class variable, a variable that a
-  closure reads, a comprehension's variable, the name that `from m import x` binds, and a value that a
-  conditional expression chooses from two typed locals. So is an expression
+  closure reads, a comprehension's variable, and the name that `from m import x` binds. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
-  literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`).
-- A typed local's value read before an assignment that a branch of the same expression makes
-  but does not run can lose its binding's box
-  (`tests/deviations/dynany_identity_boundary.py`):
-  with `flag` false, `ys: list[Any] = [x, (x := v) if flag else 0]` then `a: Any = x` gives
-  `ys[0] is a` as `False`, where CPython keeps one object. The compiler counts the stores it
-  emits, not those that run; following the run-time path would take a generation on every store.
+  literal `1000` there). Repeated reads of an unboxed local before a taken store in the
+  same expression can also become distinct objects: `[x, x, (x := value)]` boxes the two
+  retired reads separately (`tests/deviations/dynany_identity_boundary.py`).
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional and keyword arguments, and what a

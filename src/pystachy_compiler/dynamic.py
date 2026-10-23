@@ -310,6 +310,9 @@ def gen_dyn_box(self, v: Val) -> Val:
         # changed since the read, so that each crossing of one binding into Any gives one object,
         # as CPython's name holds one (#797)
         kept = self.idstores.get(v.idslot, 0) == v.idgen
+        live = "true" if kept else "false"
+        if not kept and v.idcounter != "":
+            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
         b = self.dyn_id_held(v)
         chk = self.label()
         hit = self.label()
@@ -328,11 +331,12 @@ def gen_dyn_box(self, v: Val) -> Val:
         ph = Ins("phi", DYN, "")
         self.incoming(ph, b.v, hit)
         self.incoming(ph, nb, self.cur)
-        if kept:
+        if kept or v.idcounter != "":
             # (not over a box: that is another object's, as where a call has given a module
             # variable a new binding since the read)
             keep = self.label()
-            self.cbr(self.ptr_cmp("==", b, Val("null", DYN)).v, keep, end)
+            empty = self.ptr_cmp("==", b, Val("null", DYN)).v
+            self.cbr(self.scalar("and", [Val(empty, "bool"), Val(live, "bool")]), keep, end)
             self.place(keep)
             self.mem_store(Val(v.idslot, "*" + DYN), Val(nb, DYN))
             self.incoming(ph, nb, keep)
@@ -438,8 +442,23 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # Proven single-binding integer globals have their cached/literal box at
         # initialization. Mutable globals retain lazy boxing and snapshot reads.
         b = self.dyn_box(v).v
+    step = "1"
+    if slot.startswith("%") and b != "null":
+        # Boxing a conditional or alias copy may reveal the destination's own object.
+        # Keep its generation so earlier unboxed reads can find that newly made box.
+        # Compare objects, not payloads: equal replacements must still retire reads.
+        old = self.mem_load(Val(slot, "*" + DYN))
+        same = self.ptr_cmp("==", old, Val(b, DYN))
+        bound = self.ptr_cmp("!=", old, Val("null", DYN))
+        step = self.select(self.scalar("and", [same, bound]), Val("0", "int"), Val("1", "int"))
     self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
     self.idstores[slot] = self.idstores.get(slot, 0) + 1
+    if slot.startswith("%"):
+        counter = Val(slot.replace(".box.", ".boxgen."), "*int")
+        # Machine add deliberately wraps, without signed-overflow flags. A local read
+        # can survive only the finite stores in its expression, not 2**64 rebindings.
+        serial = self.scalar("add", [self.mem_load(counter), Val(step, "int")])
+        self.mem_store(counter, Val(serial, "int"))
 
 
 def gen_dyn_id_read(self, v: Val, slot: str) -> None:
@@ -454,6 +473,9 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     v.idslot = slot
     v.idheld = self.mem_load(Val(slot, "*" + DYN)).v
     v.idgen = self.idstores.get(slot, 0)
+    if slot.startswith("%"):
+        v.idcounter = slot.replace(".box.", ".boxgen.")
+        v.idversion = self.mem_load(Val(v.idcounter, "*int")).v
     if slot.startswith("@g.") and slot[3:-4] in self.intglobals:
         # module_ints excludes rebinding/deletion across the whole import graph.
         # Initialization guards precede this read; dyn_id_store made its box ready.
@@ -492,8 +514,13 @@ def gen_dyn_id_held(self, v: Val) -> Val:
     # Not after one (x, y = y, x), whose box is another object's
     b = Val(v.idheld, DYN)
     if self.idstores.get(v.idslot, 0) != v.idgen:
-        return b
-    now = self.mem_load(Val(v.idslot, "*" + DYN))
+        if v.idcounter == "":
+            return b
+        live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
+        now = self.mem_load(Val(v.idslot, "*" + DYN))
+        now = Val(self.select(live, now, Val("null", DYN)), DYN)
+    else:
+        now = self.mem_load(Val(v.idslot, "*" + DYN))
     return Val(self.select(self.ptr_cmp("!=", b, Val("null", DYN)).v, b, now), DYN)
 
 

@@ -1,0 +1,10 @@
+@f.inferred_assigned.1: pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_raise
+@f.inferred_selected.1: pys_mod pys_str_int pys_write pys_write pys_raise
+@main.init:
+@f.assigned: pys_str_int pys_write pys_write pys_raise
+@f.selected: pys_mod pys_str_int pys_write pys_write pys_raise
+@f.unchanged: pys_mod pys_str_int pys_write pys_write pys_raise
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

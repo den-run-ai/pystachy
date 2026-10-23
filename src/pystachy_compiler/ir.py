@@ -13,6 +13,8 @@ class Val:
         self.idslot = ""  # the box slot of the int or float variable it was read from (dyn_box: idbox)
         self.idheld = ""  # the box that slot held then, null where it held none yet (dyn_id_read)
         self.idgen = 0  # the stores into that slot that the compiler had emitted then (idstores)
+        self.idcounter = ""  # local binding generation slot (possibly selected by a phi)
+        self.idversion = ""  # that slot's generation at the read
         self.idfrom = ""  # the box of the Any value that an int or float was read from (dyn_box)
 
 
