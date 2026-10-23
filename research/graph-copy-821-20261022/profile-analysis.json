@@ -1,0 +1,119 @@
+[
+  {
+    "revision": "f4b9396167e41616707938ca34d99f359a706622",
+    "name": "parent821",
+    "phase": "processing",
+    "instrumented_not_timing": true,
+    "counts": {
+      "int_calls": 4000,
+      "int_allocs": 0,
+      "ref_calls": 356000,
+      "keyeqs": 0,
+      "cat0": [
+        720000,
+        868606,
+        144000
+      ],
+      "cat1": [
+        68000,
+        68000,
+        68000
+      ],
+      "cat2": [
+        0,
+        0,
+        0
+      ],
+      "cat3": [
+        156000,
+        164000,
+        0
+      ],
+      "cat4": [
+        0,
+        0,
+        0
+      ]
+    },
+    "raw_int_probes_per_lookup": 1.2063972222222221,
+    "any_int_probes_per_lookup": null
+  },
+  {
+    "revision": "185849790523815d0f63ab1a8b33c17549bf31b4",
+    "name": "821",
+    "phase": "processing",
+    "instrumented_not_timing": true,
+    "counts": {
+      "int_calls": 436000,
+      "int_allocs": 432000,
+      "ref_calls": 356000,
+      "keyeqs": 0,
+      "cat0": [
+        360000,
+        442217,
+        72000
+      ],
+      "cat1": [
+        68000,
+        68000,
+        68000
+      ],
+      "cat2": [
+        432000,
+        1063184,
+        144000
+      ],
+      "cat3": [
+        156000,
+        164000,
+        0
+      ],
+      "cat4": [
+        0,
+        0,
+        0
+      ]
+    },
+    "raw_int_probes_per_lookup": 1.2283805555555556,
+    "any_int_probes_per_lookup": 2.461074074074074
+  },
+  {
+    "revision": "46fd53536afac60760b15f068641f7f238f964fe",
+    "name": "main",
+    "phase": "processing",
+    "instrumented_not_timing": true,
+    "counts": {
+      "int_calls": 288000,
+      "int_allocs": 284000,
+      "ref_calls": 356000,
+      "keyeqs": 0,
+      "cat0": [
+        360000,
+        439603,
+        72000
+      ],
+      "cat1": [
+        68000,
+        68000,
+        68000
+      ],
+      "cat2": [
+        432000,
+        1060062,
+        144000
+      ],
+      "cat3": [
+        156000,
+        164000,
+        0
+      ],
+      "cat4": [
+        0,
+        0,
+        0
+      ]
+    },
+    "raw_int_probes_per_lookup": 1.2211194444444444,
+    "any_int_probes_per_lookup": 2.453847222222222
+  }
+]

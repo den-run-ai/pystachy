@@ -1,0 +1,29 @@
+[
+  {
+    "name": "parent821",
+    "revision": "f4b9396167e41616707938ca34d99f359a706622",
+    "source": "ca9d5556aeb742a74693b472580dc623c999816363ca8e0134a260f240b9e3e2",
+    "binary": "7ef8d3c54ca063b82aa0de3489e2de6bf4ee49840564a5fafc8fc5c95bbcdb9e",
+    "stdout": "670230 8449476 60511243\n",
+    "stderr": "MEMO_PROFILE snapshot=0 int_calls=0 int_allocs=0 ref_calls=0 keyeqs=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=0,0,0 cat4=0,0,0\nMEMO_PROFILE snapshot=1 int_calls=62000 int_allocs=18843 ref_calls=258000 keyeqs=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=52000,44000,0 cat4=0,0,0\nMEMO_PROFILE snapshot=2 int_calls=66000 int_allocs=18843 ref_calls=614000 keyeqs=0 cat0=720000,868606,144000 cat1=68006,68006,68000 cat2=0,0,0 cat3=208000,208000,0 cat4=0,0,0\n",
+    "returncode": 0
+  },
+  {
+    "name": "821",
+    "revision": "185849790523815d0f63ab1a8b33c17549bf31b4",
+    "source": "ca9d5556aeb742a74693b472580dc623c999816363ca8e0134a260f240b9e3e2",
+    "binary": "7bbf52413a73ffa365a12f955af085ef0f8571567f500641af9a7914709ad014",
+    "stdout": "670230 11444933 84204753\n",
+    "stderr": "MEMO_PROFILE snapshot=0 int_calls=0 int_allocs=0 ref_calls=0 keyeqs=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=0,0,0 cat4=0,0,0\nMEMO_PROFILE snapshot=1 int_calls=62000 int_allocs=18843 ref_calls=214000 keyeqs=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=52000,44000,0 cat4=0,0,0\nMEMO_PROFILE snapshot=2 int_calls=498000 int_allocs=450843 ref_calls=570000 keyeqs=0 cat0=360000,442217,72000 cat1=68006,68006,68000 cat2=432000,1063184,144000 cat3=208000,208000,0 cat4=0,0,0\n",
+    "returncode": 0
+  },
+  {
+    "name": "main",
+    "revision": "46fd53536afac60760b15f068641f7f238f964fe",
+    "source": "335877a2092da001d0cd46b18dc07961d43fcceb76b02d525b4f7084fbca7ccf",
+    "binary": "29328d2c79bff1d49400eb8c494bff9dcddb0c3e694d24e2c446db4f0311845b",
+    "stdout": "670230 9876031 86450964\n",
+    "stderr": "MEMO_PROFILE snapshot=0 int_calls=1 int_allocs=1 ref_calls=0 keyeqs=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=0,0,0 cat4=0,0,0\nMEMO_PROFILE snapshot=1 int_calls=38001 int_allocs=11358 ref_calls=214000 keyeqs=0 cat0=0,0,0 cat1=6,6,0 cat2=0,0,0 cat3=52000,44000,0 cat4=0,0,0\nMEMO_PROFILE snapshot=2 int_calls=326001 int_allocs=295358 ref_calls=570000 keyeqs=0 cat0=360000,439603,72000 cat1=68006,68006,68000 cat2=432000,1060062,144000 cat3=208000,208000,0 cat4=0,0,0\n",
+    "returncode": 0
+  }
+]

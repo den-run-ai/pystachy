@@ -1,0 +1,505 @@
+{
+  "schema": 1,
+  "frozen_main": "88aee5a3325763a5e94ff3a349a4fc1e063abf98",
+  "created": "2026-10-22T20:06:00Z",
+  "repository": "/workspace/scratch/b3b3275b86ee/history-campaign/repository",
+  "remote": "https://github.com/den-run-ai/pystachy.git",
+  "python": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+  "python_version": "3.13.16",
+  "llvm": "/workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin",
+  "library_path": "/workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/x86_64-linux-gnu",
+  "cpu": 0,
+  "toolchain": {
+    "clang": {
+      "sha256": "37f126a5e97442563fa0963660a72a11f2b31a9d608664d9e5675f2ebac99eca",
+      "version": "Ubuntu clang version 18.1.3 (1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/b1b1cddbdc9c/llvm18/usr/lib/llvm-18/bin\n"
+    },
+    "opt": {
+      "sha256": "68bce89007caf00c1c73c3e88f2ff90dde243799f9557d5a729b3a8b3d7ea370",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: znver4\n"
+    },
+    "lli": {
+      "sha256": "44669e8442edb76ada08c806e80695c597240aedb7aa005986058d0111893370",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n"
+    },
+    "llvm-link": {
+      "sha256": "1eb44d783a8c7bd55af1af5abf786eacb994cef08110caaa52259da14558952c",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n"
+    },
+    "llvm-as": {
+      "sha256": "5daefabd373e614b6cc406c57fe37bc7ba20d0b80b4619cbef72b9fb5958910d",
+      "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n"
+    }
+  },
+  "lock_path": "/workspace/scratch/b3b3275b86ee/pystachy-performance.lock",
+  "output_dir": "/workspace/scratch/c42abc2bbcbe/replay/results",
+  "revisions": {
+    "896467802db0baa461ec187ea0497223bfe63e0a": {
+      "sha": "896467802db0baa461ec187ea0497223bfe63e0a",
+      "parents": [
+        "824dcca09a93f10b583e3ed166beac42bcbac376",
+        "61750071ac8289662d1728453b448c2801c9ef3b"
+      ],
+      "date": "2026-10-21T11:03:04+02:00",
+      "title": "Merge pull request #813 from den-run-ai/claude/festive-einstein-8ucfv8-dynint",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/896467802db0baa461ec187ea0497223bfe63e0a",
+      "label": "#813"
+    },
+    "617c7ec06aef0f50d255d84bc44a477c80e609b3": {
+      "sha": "617c7ec06aef0f50d255d84bc44a477c80e609b3",
+      "parents": [
+        "896467802db0baa461ec187ea0497223bfe63e0a",
+        "c4b845c0b7dae8c49ec41ee700dff5715d0e606e"
+      ],
+      "date": "2026-10-21T15:22:26+02:00",
+      "title": "Merge pull request #815 from den-run-ai/claude/festive-einstein-8ucfv8-boxslots",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/617c7ec06aef0f50d255d84bc44a477c80e609b3",
+      "label": "#815"
+    },
+    "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85": {
+      "sha": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
+      "parents": [
+        "617c7ec06aef0f50d255d84bc44a477c80e609b3",
+        "b5294f09f8a298bfaec65ce299b1e791d41a0fa2"
+      ],
+      "date": "2026-10-21T15:48:09+02:00",
+      "title": "Merge pull request #817 from den-run-ai/claude/festive-einstein-8ucfv8-emptyany",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
+      "label": "#817"
+    },
+    "185849790523815d0f63ab1a8b33c17549bf31b4": {
+      "sha": "185849790523815d0f63ab1a8b33c17549bf31b4",
+      "parents": [
+        "f4b9396167e41616707938ca34d99f359a706622",
+        "2e9b3a1bcd8a5d3b1ed766e38ebdcbbac90c87a0"
+      ],
+      "date": "2026-10-21T19:17:27+02:00",
+      "title": "Merge pull request #821 from den-run-ai/claude/festive-einstein-8ucfv8-anylayout",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/185849790523815d0f63ab1a8b33c17549bf31b4",
+      "label": "#821",
+      "path": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/185849790523815d0f63ab1a8b33c17549bf31b4",
+      "verified_existing": true,
+      "binary_sha256": "cb6d999f3f0cc78ca3e0f798684c8fb8447f3b1a981340755a301ca6718d46f2",
+      "provenance": "Prior historical campaign build: see original results/builds/185849790523815d0f63ab1a8b33c17549bf31b4.json"
+    },
+    "8433b9d78e02c1b3e4abdba632999da33e2fac56": {
+      "sha": "8433b9d78e02c1b3e4abdba632999da33e2fac56",
+      "parents": [
+        "4046df597cc41faa382c5012d233b73c4f56c095",
+        "13f7f674ce323866d067d2afe0520e95257b87e8"
+      ],
+      "date": "2026-10-22T01:05:30+02:00",
+      "title": "Merge pull request #807 from den-run-ai/claude/festive-einstein-8ucfv8-identity",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/8433b9d78e02c1b3e4abdba632999da33e2fac56",
+      "label": "#807"
+    },
+    "b9b97bd86b409f1fa58333c9873ff5a1ec7fa21f": {
+      "sha": "b9b97bd86b409f1fa58333c9873ff5a1ec7fa21f",
+      "parents": [
+        "8433b9d78e02c1b3e4abdba632999da33e2fac56",
+        "d7787e95cbfa1dd520405d6801b4a5badfa7d292"
+      ],
+      "date": "2026-10-22T01:57:28+02:00",
+      "title": "Merge pull request #823 from den-run-ai/claude/festive-einstein-8ucfv8-jsonany",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/b9b97bd86b409f1fa58333c9873ff5a1ec7fa21f",
+      "label": "#823"
+    },
+    "117185e11db60581a88deaded9238614140d8db1": {
+      "sha": "117185e11db60581a88deaded9238614140d8db1",
+      "parents": [
+        "42fabd724e63bf7d4ef8c72335688894a8a90d54",
+        "d7b8f8189743aa514b0efd3f0fd584d44b967b46"
+      ],
+      "date": "2026-10-22T05:57:05+02:00",
+      "title": "Merge pull request #842: check runtime string ABI and GC root coverage",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/117185e11db60581a88deaded9238614140d8db1",
+      "label": "#842",
+      "path": "/workspace/scratch/b3b3275b86ee/anchor1",
+      "binary_sha256": "2b6f8a1b1138dbf81f36c6fb18194c9888492aeb25edc53fb949a8554d04874f",
+      "verified_existing": true
+    },
+    "f5decc7d7b7f7bd390909bd67c7998b22f4c9e3b": {
+      "sha": "f5decc7d7b7f7bd390909bd67c7998b22f4c9e3b",
+      "parents": [
+        "117185e11db60581a88deaded9238614140d8db1",
+        "999f5a3ab9ffa64d3c4cedd0d8acc45445baf5be"
+      ],
+      "date": "2026-10-22T08:22:24+02:00",
+      "title": "Merge pull request #840 from den-run-ai/codex/union-proofs-768",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/f5decc7d7b7f7bd390909bd67c7998b22f4c9e3b",
+      "label": "#840"
+    },
+    "f4ea4fc694bb0acebbca7b02f77684a3c0fd4971": {
+      "sha": "f4ea4fc694bb0acebbca7b02f77684a3c0fd4971",
+      "parents": [
+        "37aa9dfef2de99e4ed65c30d327d2d551c1946aa",
+        "b4b7272fa92299782fa3613f178a9b4f6fc329a0"
+      ],
+      "date": "2026-10-22T16:25:40+02:00",
+      "title": "Merge pull request #849 from den-run-ai/codex/compiler-state-boundaries",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/f4ea4fc694bb0acebbca7b02f77684a3c0fd4971",
+      "label": "#849",
+      "path": "/workspace/scratch/b3b3275b86ee/current",
+      "binary_sha256": "5afdfaa1a6ffe7eace2173817b047e8073768a2d46e3f689b62fc000f12c68be",
+      "verified_existing": true
+    },
+    "a9e566cc0d362c02a46122e2c336da514e4ea071": {
+      "sha": "a9e566cc0d362c02a46122e2c336da514e4ea071",
+      "parents": [
+        "aa5612b54dfbb16d959664033b41a0b805d8cdd7",
+        "7951621b3a92524077abd4e0266ac6045bccc94e"
+      ],
+      "date": "2026-10-22T19:30:37+02:00",
+      "title": "Merge pull request #856 from den-run-ai/codex/hosted-state-lifetimes",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/a9e566cc0d362c02a46122e2c336da514e4ea071",
+      "label": "#856"
+    },
+    "0239df6bfe8969a844fcdb9217a423c9e89e7d41": {
+      "sha": "0239df6bfe8969a844fcdb9217a423c9e89e7d41",
+      "parents": [
+        "a9e566cc0d362c02a46122e2c336da514e4ea071",
+        "07ea2003611ef642892fa418ebe35e9b25156918"
+      ],
+      "date": "2026-10-22T19:34:17+02:00",
+      "title": "Merge pull request #857 from den-run-ai/codex/any-call-side-effects",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/0239df6bfe8969a844fcdb9217a423c9e89e7d41",
+      "label": "#857",
+      "path": "/workspace/scratch/b3b3275b86ee/newmain",
+      "binary_sha256": "bf4c85e654cca07bcdb4a2d8951cac209a1dbcd7422ff78984311cce2b6d8f9b",
+      "verified_existing": true
+    },
+    "4b07215f769dd3051b412e96b0c6711601ae983c": {
+      "sha": "4b07215f769dd3051b412e96b0c6711601ae983c",
+      "parents": [
+        "0239df6bfe8969a844fcdb9217a423c9e89e7d41",
+        "0f1c9cd8e64eeb1e046648ef9b1c6a7d411fb176"
+      ],
+      "date": "2026-10-22T19:57:20+02:00",
+      "title": "Merge pull request #859 from den-run-ai/codex/any-float-literal-identity",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/4b07215f769dd3051b412e96b0c6711601ae983c",
+      "label": "#859"
+    },
+    "3939db4748270199f5319c4e1dd7f683a1081c0c": {
+      "sha": "3939db4748270199f5319c4e1dd7f683a1081c0c",
+      "parents": [
+        "4b07215f769dd3051b412e96b0c6711601ae983c",
+        "615c234253ebfdbe39597d4c52e0c55402dd50e6"
+      ],
+      "date": "2026-10-22T19:58:14+02:00",
+      "title": "Merge pull request #860 from den-run-ai/codex/runtime-asan-ir",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/3939db4748270199f5319c4e1dd7f683a1081c0c",
+      "label": "#860",
+      "path": "/workspace/scratch/b3b3275b86ee/latest4",
+      "binary_sha256": "f3e313da2a5355576178214e07625418349bdaca856b5175d6b20277e754021d",
+      "verified_existing": true
+    },
+    "88aee5a3325763a5e94ff3a349a4fc1e063abf98": {
+      "sha": "88aee5a3325763a5e94ff3a349a4fc1e063abf98",
+      "parents": [
+        "3939db4748270199f5319c4e1dd7f683a1081c0c",
+        "63614aa8f4e0153ce2dcf2b421f59b892191f0a8"
+      ],
+      "date": "2026-10-22T21:58:13+02:00",
+      "title": "Merge pull request #863 from den-run-ai/codex/dynamic-any-abs",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/88aee5a3325763a5e94ff3a349a4fc1e063abf98",
+      "label": "#863"
+    },
+    "3c63613b9ad4748dfc030fc923f7704e26b21ba9": {
+      "sha": "3c63613b9ad4748dfc030fc923f7704e26b21ba9",
+      "parents": [
+        "3ab11f03a9b1deedd90141cdf5d7e6345b0af5f0",
+        "b57c93d9ad8f1dd380b4b45f2c170dcbf8b3f469"
+      ],
+      "date": "2026-10-20T08:39:07+02:00",
+      "title": "Merge pull request #761 from den-run-ai/claude/dynamic-any-prototype",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/3c63613b9ad4748dfc030fc923f7704e26b21ba9",
+      "label": "#761"
+    },
+    "554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab": {
+      "sha": "554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab",
+      "parents": [
+        "161418792189ccaaf01ccd554c5e2263a50a92f7",
+        "e647b02447df971cf1696119715f7b28f6d3fc3b"
+      ],
+      "date": "2026-10-20T20:17:50+02:00",
+      "title": "Merge pull request #785 from den-run-ai/claude/happy-pascal-4xkiv7",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab",
+      "label": "#785"
+    },
+    "100979652775ab55ff2ecfd83750270395ece789": {
+      "sha": "100979652775ab55ff2ecfd83750270395ece789",
+      "parents": [
+        "870bfa154f940026a7135f5c285fb0df7148ee88",
+        "c4d28c11d41c8ed876c5cafb5f2140e9db6c0d30"
+      ],
+      "date": "2026-10-21T00:21:37+02:00",
+      "title": "Merge pull request #791 from den-run-ai/claude/happy-pascal-4xkiv7-null-checks",
+      "lineage": "main",
+      "url": "https://github.com/den-run-ai/pystachy/commit/100979652775ab55ff2ecfd83750270395ece789",
+      "label": "#791"
+    },
+    "f4b9396167e41616707938ca34d99f359a706622": {
+      "label": "first parent of merge #821",
+      "lineage": "main",
+      "pr": null,
+      "path": "/workspace/scratch/b3b3275b86ee/history-campaign/worktrees/f4b9396167e41616707938ca34d99f359a706622",
+      "verified_existing": true,
+      "binary_sha256": "39fb1e12edeab89e0879b5b0cf8ba52aad6af2993808c085cb511e46f3f92a19",
+      "provenance": "Prior historical campaign build: see original results/builds/f4b9396167e41616707938ca34d99f359a706622.json"
+    },
+    "46fd53536afac60760b15f068641f7f238f964fe": {
+      "sha": "46fd53536afac60760b15f068641f7f238f964fe",
+      "path": "/workspace/scratch/c42abc2bbcbe/baseline",
+      "verified_existing": true,
+      "binary_sha256": "2fa706edfab88b52b475fc23743ef3bdce21a4c6f4bcd8d938c4d53a7dd677f8",
+      "provenance": "Copied clean 46fd5353 native fixed-point compiler from /workspace/scratch/bada75685416/pystachy-audit after base-bootstrap.log reported compiler 670942/runtime 18709 fixed points; CPython 3.13.16 LLVM18.1.3. Private source tree verified identical."
+    }
+  },
+  "workloads": {
+    "copy_int": {
+      "source": "sources/numeric_copy.py",
+      "args": [
+        "int",
+        "2000000",
+        "123"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "loop_elapsed",
+        "loop_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "8212d34ac76603a4408855579a936b3504844326fa5f69765b64632dc3d7d232"
+    },
+    "copy_float": {
+      "source": "sources/numeric_copy.py",
+      "args": [
+        "float",
+        "1000000",
+        "123"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "loop_elapsed",
+        "loop_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "8212d34ac76603a4408855579a936b3504844326fa5f69765b64632dc3d7d232"
+    },
+    "plain_int": {
+      "source": "sources/numeric_plain.py",
+      "args": [
+        "int",
+        "2000000",
+        "123"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "loop_elapsed",
+        "loop_cpu"
+      ],
+      "source_sha256": "5d77d5eccac57dbe5d4f72556ab007d568bc17e76591f503e0d062370a084dec"
+    },
+    "plain_float": {
+      "source": "sources/numeric_plain.py",
+      "args": [
+        "float",
+        "1000000",
+        "123"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "loop_elapsed",
+        "loop_cpu"
+      ],
+      "source_sha256": "5d77d5eccac57dbe5d4f72556ab007d568bc17e76591f503e0d062370a084dec"
+    },
+    "global_int": {
+      "source": "sources/numeric_global.py",
+      "args": [
+        "int",
+        "2000000",
+        "123"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "loop_elapsed",
+        "loop_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "7d04e1500195bd5cfb98f10ed30dc72e0f74603500a02910d1bb2d1f7eb0bea4"
+    },
+    "global_float": {
+      "source": "sources/numeric_global.py",
+      "args": [
+        "float",
+        "1000000",
+        "123"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "loop_elapsed",
+        "loop_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "7d04e1500195bd5cfb98f10ed30dc72e0f74603500a02910d1bb2d1f7eb0bea4"
+    },
+    "list_typed": {
+      "source": "sources/dynany_bench.py",
+      "args": [
+        "typed",
+        "4000000"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "construction_cpu",
+        "processing_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388"
+    },
+    "list_union": {
+      "source": "sources/dynany_bench.py",
+      "args": [
+        "union",
+        "4000000"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "construction_cpu",
+        "processing_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388"
+    },
+    "list_dyn": {
+      "source": "sources/dynany_bench.py",
+      "args": [
+        "dyn",
+        "4000000"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "construction_cpu",
+        "processing_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388"
+    },
+    "list_generic": {
+      "source": "sources/dynany_bench.py",
+      "args": [
+        "generic",
+        "4000000"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "construction_cpu",
+        "processing_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388"
+    },
+    "list_graph": {
+      "source": "sources/dynany_bench.py",
+      "args": [
+        "graph",
+        "4000"
+      ],
+      "parser": "numeric",
+      "timing_phases": [
+        "construction_cpu",
+        "processing_cpu"
+      ],
+      "required_policy": "dynamic-any",
+      "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388"
+    },
+    "fnmatch": {
+      "source": "sources/text.py",
+      "args": [
+        "fnmatch",
+        "1000"
+      ],
+      "parser": "smoke",
+      "required_policy": "dynamic-any",
+      "source_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302"
+    },
+    "json": {
+      "source": "sources/text.py",
+      "args": [
+        "json",
+        "6000"
+      ],
+      "parser": "smoke",
+      "required_policy": "dynamic-any",
+      "source_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302"
+    },
+    "repair_scan": {
+      "source": "sources/text.py",
+      "args": [
+        "repair_scan",
+        "400"
+      ],
+      "parser": "smoke",
+      "required_policy": "dynamic-any",
+      "source_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302"
+    },
+    "autograd": {
+      "source": "sources/ml.py",
+      "args": [
+        "autograd",
+        "40000"
+      ],
+      "parser": "smoke",
+      "source_sha256": "e8814f71feb22de983f5e2c92854e9e7a50737acfddd8b17db7f758f825be946"
+    },
+    "numeric": {
+      "source": "sources/ml.py",
+      "args": [
+        "numeric",
+        "20000"
+      ],
+      "parser": "smoke",
+      "source_sha256": "e8814f71feb22de983f5e2c92854e9e7a50737acfddd8b17db7f758f825be946"
+    }
+  },
+  "comparisons": [
+    {
+      "id": "parent-821-current",
+      "base": "f4b9396167e41616707938ca34d99f359a706622",
+      "head": "46fd53536afac60760b15f068641f7f238f964fe",
+      "anchor": "185849790523815d0f63ab1a8b33c17549bf31b4",
+      "workloads": [
+        "list_graph"
+      ]
+    }
+  ],
+  "notes": [
+    "PR864 is separate from main; prior cohorts imported, never spliced into controlled history.",
+    "No revision can be declared regression-free from pending workloads.",
+    "Full pyperformance/extended/JSON/TOML/scaling rotation retained in existing watch; core history is first wave."
+  ],
+  "measure_compile": false,
+  "samples": 5,
+  "confirmation_samples": 5,
+  "initial_status": {
+    "state": "queued",
+    "reason": "Another session running measure-identity-constants.py observed 2026-10-22T20:12Z; no historical builds or timings launched."
+  }
+}
