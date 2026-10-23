@@ -463,16 +463,20 @@ They do not implement the historical proposal to represent all compiled containe
 CPython objects. See the [FFI guide](ffi.md) for the actual boundary contract and limitations.
 Explicit [closed scalar unions](language/typing.md#closed-scalar-unions) are supported.
 [Bounded native reference unions](language/typing.md#native-reference-unions) also
-support explicitly declared class/file alternatives. General dynamic values remain
-outside the current language.
+support explicitly declared class/file alternatives. Experimental [dynamic `Any`](dynamic-any.md)
+supports boxed values whose types are determined at runtime in modules that opt in with
+`# pystachy: dynamic-any`. Modules without the comment retain inference-only `Any`.
+This is bounded compiled support, without runtime compilation or unrestricted Python dynamism.
 
-Mixed scalar/list/dict unions permit finite, explicitly written nesting. Recursive
-JSON aliases remain a separate representation milestone: annotations expand type
-aliases where they name them (a recursive alias is rejected), and type operations
-compare expanded canonical strings. A recursive alias must retain its declaration and use a finite reference
-to its type graph, with cycle-safe equivalence and descriptor traversal. Repeated
-string expansion or a chosen maximum JSON depth would not provide recursive
-types. Mutable list/dict element types must remain invariant through that change.
+Mixed scalar/list/dict unions permit finite, explicitly written nesting. The
+[recursive value-alias prototype](language/typing.md#recursive-value-aliases-prototype)
+also supports nongeneric module-level PEP 695 closed recursive unions such as
+`type Tree = int | list[Tree]` and the native JSON codec's recursive value type.
+Named edges retain a finite type graph rather than repeatedly expanding canonical strings.
+Recursive aliases are nominal, and existing mutable list/dict storage remains invariant.
+Mutual recursion, generic recursive aliases and recursive shapes outside that documented
+form remain unsupported. Runtime traversals have recursion guards; the
+[JSON codec's depth and integer limits](json-prototype.md) are separate from the type graph.
 
 <a id="appendix-a-how-this-design-was-chosen"></a>
 <a id="appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs"></a>
