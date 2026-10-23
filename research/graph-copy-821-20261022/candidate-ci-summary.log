@@ -1,0 +1,65 @@
+2026-10-23T01:29:53.6786329Z Building base compiler at f38555e0fd850f0ef77de0fe6ba9c853b3f7110e
+2026-10-23T01:31:14.9419602Z Building head compiler at a8882876ab091cff9052c31b2e5da482e38aef8d
+2026-10-23T01:36:08.2916049Z ## Performance smoke (advisory)
+2026-10-23T01:36:08.2916571Z
+2026-10-23T01:36:08.2917756Z Base `f38555e0fd850f0ef77de0fe6ba9c853b3f7110e` → head `a8882876ab091cff9052c31b2e5da482e38aef8d`.
+2026-10-23T01:36:08.2918671Z
+2026-10-23T01:36:08.2919671Z Three pairs; ≥20% and ≥5 ms slower triggers three confirmation pairs. Warnings require
+2026-10-23T01:36:08.2921448Z both batches to meet the threshold with non-overlapping base/head ranges.
+2026-10-23T01:36:08.2921980Z
+2026-10-23T01:36:08.2922316Z Build time is measured once per source file, shown on its first workload.
+2026-10-23T01:36:08.2922833Z
+2026-10-23T01:36:08.2923304Z graph_copy loop time measures processing CPU seconds; other loop times measure wall seconds.
+2026-10-23T01:36:08.2923850Z
+2026-10-23T01:36:08.2923998Z | Workload | Metric | Base | Head | Change | Result |
+2026-10-23T01:36:08.2924343Z |---|---|---:|---:|---:|---|
+2026-10-23T01:36:08.2924646Z | autograd | build_s | 0.8479s | 0.8566s | +1.0% | ok |
+2026-10-23T01:36:08.2925043Z | autograd | jit_process_s | 0.1187s | 0.1187s | +0.0% | ok |
+2026-10-23T01:36:08.2925702Z | autograd | jit_loop_s | 0.0341s | 0.0336s | -1.3% | ok |
+2026-10-23T01:36:08.2926115Z | autograd | aot_process_s | 0.0368s | 0.0373s | +1.3% | ok |
+2026-10-23T01:36:08.2926518Z | autograd | aot_loop_s | 0.0322s | 0.0324s | +0.7% | ok |
+2026-10-23T01:36:08.2926927Z | numeric | jit_process_s | 0.1594s | 0.1592s | -0.1% | ok |
+2026-10-23T01:36:08.2927332Z | numeric | jit_loop_s | 0.0737s | 0.0739s | +0.2% | ok |
+2026-10-23T01:36:08.2927724Z | numeric | aot_process_s | 0.0449s | 0.0448s | -0.3% | ok |
+2026-10-23T01:36:08.2928115Z | numeric | aot_loop_s | 0.0404s | 0.0403s | -0.2% | ok |
+2026-10-23T01:36:08.2928486Z | fnmatch | build_s | 5.2892s | 5.2899s | +0.0% | ok |
+2026-10-23T01:36:08.2928876Z | fnmatch | jit_process_s | 1.5057s | 1.5033s | -0.2% | ok |
+2026-10-23T01:36:08.2929272Z | fnmatch | jit_loop_s | 0.0295s | 0.0290s | -1.5% | ok |
+2026-10-23T01:36:08.2929664Z | fnmatch | aot_process_s | 0.0314s | 0.0316s | +0.8% | ok |
+2026-10-23T01:36:08.2930062Z | fnmatch | aot_loop_s | 0.0262s | 0.0263s | +0.4% | ok |
+2026-10-23T01:36:08.2930962Z | json | jit_process_s | 1.5159s | 1.5082s | -0.5% | ok |
+2026-10-23T01:36:08.2931328Z | json | jit_loop_s | 0.0338s | 0.0337s | -0.3% | ok |
+2026-10-23T01:36:08.2931648Z | json | aot_process_s | 0.0367s | 0.0368s | +0.4% | ok |
+2026-10-23T01:36:08.2931963Z | json | aot_loop_s | 0.0315s | 0.0315s | +0.1% | ok |
+2026-10-23T01:36:08.2932307Z | repair_scan | jit_process_s | 1.5649s | 1.5626s | -0.1% | ok |
+2026-10-23T01:36:08.2932694Z | repair_scan | jit_loop_s | 0.0920s | 0.0910s | -1.1% | ok |
+2026-10-23T01:36:08.2933065Z | repair_scan | aot_process_s | 0.0968s | 0.0956s | -1.2% | ok |
+2026-10-23T01:36:08.2933430Z | repair_scan | aot_loop_s | 0.0908s | 0.0899s | -1.0% | ok |
+2026-10-23T01:36:08.2933776Z | copy_int | build_s | 0.6497s | 0.6556s | +0.9% | ok |
+2026-10-23T01:36:08.2934111Z | copy_int | jit_process_s | 0.1025s | 0.1007s | -1.7% | ok |
+2026-10-23T01:36:08.2934452Z | copy_int | jit_loop_s | 0.0337s | 0.0336s | -0.2% | ok |
+2026-10-23T01:36:08.2934798Z | copy_int | aot_process_s | 0.0383s | 0.0381s | -0.5% | ok |
+2026-10-23T01:36:08.2935145Z | copy_int | aot_loop_s | 0.0357s | 0.0356s | -0.2% | ok |
+2026-10-23T01:36:08.2935493Z | copy_float | jit_process_s | 0.1137s | 0.1149s | +1.0% | ok |
+2026-10-23T01:36:08.2935848Z | copy_float | jit_loop_s | 0.0462s | 0.0463s | +0.2% | ok |
+2026-10-23T01:36:08.2936202Z | copy_float | aot_process_s | 0.0351s | 0.0361s | +2.7% | ok |
+2026-10-23T01:36:08.2936557Z | copy_float | aot_loop_s | 0.0326s | 0.0336s | +3.3% | ok |
+2026-10-23T01:36:08.2936912Z | global_int | jit_process_s | 0.1135s | 0.1131s | -0.4% | ok |
+2026-10-23T01:36:08.2937275Z | global_int | jit_loop_s | 0.0449s | 0.0449s | +0.0% | ok |
+2026-10-23T01:36:08.2937650Z | global_int | aot_process_s | 0.0382s | 0.0381s | -0.4% | ok |
+2026-10-23T01:36:08.2938007Z | global_int | aot_loop_s | 0.0358s | 0.0357s | -0.3% | ok |
+2026-10-23T01:36:08.2938374Z | global_float | jit_process_s | 0.1145s | 0.1148s | +0.3% | ok |
+2026-10-23T01:36:08.2938755Z | global_float | jit_loop_s | 0.0462s | 0.0463s | +0.2% | ok |
+2026-10-23T01:36:08.2939143Z | global_float | aot_process_s | 0.0362s | 0.0345s | -4.8% | ok |
+2026-10-23T01:36:08.2939515Z | global_float | aot_loop_s | 0.0337s | 0.0320s | -5.1% | ok |
+2026-10-23T01:36:08.2939868Z | graph_copy | build_s | 1.3051s | 1.3082s | +0.2% | ok |
+2026-10-23T01:36:08.2940223Z | graph_copy | jit_process_s | 0.2162s | 0.2202s | +1.8% | ok |
+2026-10-23T01:36:08.2940829Z | graph_copy | jit_loop_s | 0.0633s | 0.0652s | +3.0% | ok |
+2026-10-23T01:36:08.2941371Z | graph_copy | aot_process_s | 0.0753s | 0.0784s | +4.1% | ok |
+2026-10-23T01:36:08.2941724Z | graph_copy | aot_loop_s | 0.0585s | 0.0611s | +4.5% | ok |
+2026-10-23T01:36:08.2942068Z | regex_effbot | build_s | 5.3336s | 5.3658s | +0.6% | ok |
+2026-10-23T01:36:08.2942435Z | regex_effbot | jit_process_s | 1.7487s | 1.7434s | -0.3% | ok |
+2026-10-23T01:36:08.2942804Z | regex_effbot | jit_loop_s | 0.3085s | 0.3051s | -1.1% | ok |
+2026-10-23T01:36:08.2943327Z | regex_effbot | aot_process_s | 0.2514s | 0.2513s | -0.0% | ok |
+2026-10-23T01:36:08.2943704Z | regex_effbot | aot_loop_s | 0.2440s | 0.2441s | +0.0% | ok |
+2026-10-23T01:36:08.2943927Z

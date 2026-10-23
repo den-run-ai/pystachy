@@ -1,0 +1,441 @@
+{
+  "schema": 1,
+  "workload_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388",
+  "arguments": [
+    "graph",
+    "4000"
+  ],
+  "expected_checksum": "670230",
+  "tool": "Valgrind/Callgrind 3.22.0",
+  "mode": "native AOT",
+  "metric": "Ir (executed machine instructions)",
+  "timing_claim": false,
+  "cpu_affinity": [
+    0
+  ],
+  "qualifications": [
+    "All profiles include construction, deep-copy/checksum, startup and runtime GC.",
+    "Self counts exclude callees; inclusive counts contain callees and must not be summed with them.",
+    "Recursive function variants with apostrophe suffixes are excluded from headline tables; inclusive recursive counts overlap.",
+    "Top-level copy/checksum inclusive attribution depends on where GC runs; use whole-program totals and runtime self counts for comparisons.",
+    "Parent-to-main spans #821 and later changes; the total instruction delta is not attributed exclusively to #821.",
+    "Counter profiles separately count AOT processing between snapshots 1 and 2, and do not directly measure JIT allocations or instructions."
+  ],
+  "initial_profiles": {
+    "parent821": {
+      "self": {
+        "total": 321622429,
+        "f.graph": 7563913,
+        "f.copy_value": 264000,
+        "f.checksum": 480000,
+        "dfindc": 7600000,
+        "dfindi": 32197530,
+        "pys_dict_has": 6552000,
+        "pys_dict_getitem": 4248000,
+        "pys_dict_find": 6480000,
+        "pys_dyn_hash": 6640000,
+        "gc_slow": 24188595,
+        "collect": 7605144,
+        "scan": 51672948
+      },
+      "inclusive": {
+        "total": 321622429,
+        "f.graph": 321370025,
+        "f.copy_value": 186527989,
+        "f.checksum": 92497217,
+        "dfindc": 7600000,
+        "dfindi": 32197530,
+        "pys_dict_has": 15318330,
+        "pys_dict_getitem": 19512000,
+        "pys_dict_find": 15255474,
+        "pys_dyn_hash": 14560048,
+        "gc_slow": 105427614,
+        "collect": 65895154,
+        "scan": 51673898
+      }
+    },
+    "main": {
+      "self": {
+        "total": 443285844,
+        "f.graph": 7257609,
+        "f.copy_value": 312014,
+        "f.checksum": 480000,
+        "dfindc": 43248781,
+        "dfindi": 17697380,
+        "pys_dict_has": 13968000,
+        "pys_dict_getitem": 7056000,
+        "pys_dict_find": 0,
+        "pys_dyn_hash": 26944000,
+        "gc_slow": 26775408,
+        "collect": 13808105,
+        "scan": 95379679
+      },
+      "inclusive": {
+        "total": 443285844,
+        "f.graph": 443029680,
+        "f.copy_value": 248209788,
+        "f.checksum": 153535597,
+        "dfindc": 43248781,
+        "dfindi": 17697380,
+        "pys_dict_has": 56813087,
+        "pys_dict_getitem": 34677810,
+        "pys_dict_find": 0,
+        "pys_dyn_hash": 34864048,
+        "gc_slow": 163414128,
+        "collect": 119645012,
+        "scan": 95380629
+      }
+    },
+    "v2": {
+      "self": {
+        "total": 444836489,
+        "f.graph": 7257606,
+        "f.copy_value": 312015,
+        "f.checksum": 480000,
+        "dfindc": 45096960,
+        "dfindi": 17684286,
+        "pys_dict_has": 13968000,
+        "pys_dict_getitem": 7056000,
+        "pys_dict_find": 0,
+        "pys_dyn_hash": 26944000,
+        "gc_slow": 26753969,
+        "collect": 13811358,
+        "scan": 95407368
+      },
+      "inclusive": {
+        "total": 444836489,
+        "f.graph": 444572667,
+        "f.copy_value": 310120342,
+        "f.checksum": 92731079,
+        "dfindc": 45096960,
+        "dfindi": 17684286,
+        "pys_dict_has": 56959652,
+        "pys_dict_getitem": 34653400,
+        "pys_dict_find": 0,
+        "pys_dyn_hash": 34864048,
+        "gc_slow": 163123416,
+        "collect": 119849402,
+        "scan": 95408318
+      }
+    }
+  },
+  "initial_provenance": [
+    {
+      "label": "parent821",
+      "side": "base",
+      "command": [
+        "/workspace/scratch/7a97409d2924/valgrind/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--callgrind-out-file=/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/parent821.out",
+        "/workspace/scratch/c42abc2bbcbe/replay/results/executables/parent-821-current/list_graph-base",
+        "graph",
+        "4000"
+      ],
+      "exe_sha256": "8906073fdcb30e494c4bdd8fbd8de06bc7feaacf54f023f646b5b5fb8082a9af",
+      "before": {
+        "time": 1792719071.7329159,
+        "load": [
+          1.55712890625,
+          2.642578125,
+          2.3466796875
+        ]
+      },
+      "after": {
+        "time": 1792719073.5443451,
+        "load": [
+          1.55712890625,
+          2.642578125,
+          2.3466796875
+        ],
+        "foreign_work": []
+      },
+      "stdout": "670230 190900168 1496775651\n",
+      "stderr": "==5== Callgrind, a call-graph generating cache profiler\n==5== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==5== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==5== Command: /workspace/scratch/c42abc2bbcbe/replay/results/executables/parent-821-current/list_graph-base graph 4000\n==5== \n==5== For interactive control, run 'callgrind_control -h'.\n==5== \n==5== Events    : Ir\n==5== Collected : 321622429\n==5== \n==5== I   refs:      321,622,429\n",
+      "returncode": 0,
+      "instruction_profile_only": true
+    },
+    {
+      "label": "main",
+      "side": "head",
+      "command": [
+        "/workspace/scratch/7a97409d2924/valgrind/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--callgrind-out-file=/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/main.out",
+        "/workspace/scratch/c42abc2bbcbe/replay/results/executables/parent-821-current/list_graph-head",
+        "graph",
+        "4000"
+      ],
+      "exe_sha256": "1b37725f6e0407562e5608849b6feb755de4867f3a34c581c7db6a3b966e95af",
+      "before": {
+        "time": 1792719073.5718393,
+        "load": [
+          1.55712890625,
+          2.642578125,
+          2.3466796875
+        ]
+      },
+      "after": {
+        "time": 1792719076.5682616,
+        "load": [
+          1.5927734375,
+          2.6318359375,
+          2.3447265625
+        ],
+        "foreign_work": []
+      },
+      "stdout": "670230 191573350 2695142134\n",
+      "stderr": "==8== Callgrind, a call-graph generating cache profiler\n==8== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==8== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==8== Command: /workspace/scratch/c42abc2bbcbe/replay/results/executables/parent-821-current/list_graph-head graph 4000\n==8== \n==8== For interactive control, run 'callgrind_control -h'.\n==8== \n==8== Events    : Ir\n==8== Collected : 443285844\n==8== \n==8== I   refs:      443,285,844\n",
+      "returncode": 0,
+      "instruction_profile_only": true
+    }
+  ],
+  "v2_build_profile_provenance": {
+    "source_sha256": "2546632715f4df66b2953200f1a41c9d52671e4eee416c9d53a9307acc6dd388",
+    "compiler_sha256": "2fa706edfab88b52b475fc23743ef3bdce21a4c6f4bcd8d938c4d53a7dd677f8",
+    "home_commit": "024d5b35c46f37d59ef7aa867da38332bbd34697",
+    "home_status": "",
+    "runtime_sha256": "7cfe8daaf9bb2a084d9a50198a795d59b952ac9bb91a0535a656252bc0fbf6b5",
+    "instruction_profile_only": true,
+    "build": {
+      "command": [
+        "/workspace/scratch/c42abc2bbcbe/baseline/pystachy",
+        "build",
+        "/workspace/scratch/c42abc2bbcbe/replay/sources/dynany_bench.py",
+        "-o",
+        "/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/graph-v2"
+      ],
+      "stdout": "",
+      "stderr": "",
+      "returncode": 0,
+      "before": {
+        "time": 1792719142.8586214,
+        "load": [
+          0.6865234375,
+          2.15966796875,
+          2.19873046875
+        ]
+      },
+      "after": {
+        "time": 1792719148.3626888,
+        "load": [
+          0.7919921875,
+          2.15673828125,
+          2.197265625
+        ],
+        "foreign_work": []
+      }
+    },
+    "binary_sha256": "8b7ad188b135360d8cee95f74dad45837253cde84abe26509765eb14fbf8a9bc",
+    "profile": {
+      "command": [
+        "/workspace/scratch/7a97409d2924/valgrind/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--callgrind-out-file=/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/v2.out",
+        "/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/graph-v2",
+        "graph",
+        "4000"
+      ],
+      "stdout": "670230 187044223 2136194419\n",
+      "stderr": "==43== Callgrind, a call-graph generating cache profiler\n==43== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==43== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==43== Command: /workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/graph-v2 graph 4000\n==43== \n==43== For interactive control, run 'callgrind_control -h'.\n==43== \n==43== Events    : Ir\n==43== Collected : 444836489\n==43== \n==43== I   refs:      444,836,489\n",
+      "returncode": 0,
+      "before": {
+        "time": 1792719148.3645704,
+        "load": [
+          0.7919921875,
+          2.15673828125,
+          2.197265625
+        ]
+      },
+      "after": {
+        "time": 1792719150.8029814,
+        "load": [
+          0.80908203125,
+          2.13720703125,
+          2.1904296875
+        ],
+        "foreign_work": []
+      }
+    }
+  },
+  "confirmation_records": [
+    {
+      "sample": 0,
+      "label": "main",
+      "command": [
+        "/workspace/scratch/7a97409d2924/valgrind/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--callgrind-out-file=/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/main-0.out",
+        "/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/main/graph",
+        "graph",
+        "4000"
+      ],
+      "exe_sha256": "1b37725f6e0407562e5608849b6feb755de4867f3a34c581c7db6a3b966e95af",
+      "stdout": "670230 196492969 2281591661\n",
+      "stderr": "==5== Callgrind, a call-graph generating cache profiler\n==5== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==5== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==5== Command: /workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/main/graph graph 4000\n==5== \n==5== For interactive control, run 'callgrind_control -h'.\n==5== \n==5== Events    : Ir\n==5== Collected : 443025628\n==5== \n==5== I   refs:      443,025,628\n",
+      "returncode": 0,
+      "foreign_work_after": [],
+      "instruction_profile_only": true,
+      "PROGRAM TOTALS": 443025628,
+      "dfindc": 43248781,
+      "f.copy_value": 248421125,
+      "f.checksum": 153068266,
+      "collect": 119837959,
+      "scan": 95423194
+    },
+    {
+      "sample": 0,
+      "label": "cand",
+      "command": [
+        "/workspace/scratch/7a97409d2924/valgrind/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--callgrind-out-file=/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/cand-0.out",
+        "/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/cand/graph",
+        "graph",
+        "4000"
+      ],
+      "exe_sha256": "8b7ad188b135360d8cee95f74dad45837253cde84abe26509765eb14fbf8a9bc",
+      "stdout": "670230 259870241 2344540157\n",
+      "stderr": "==8== Callgrind, a call-graph generating cache profiler\n==8== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==8== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==8== Command: /workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/cand/graph graph 4000\n==8== \n==8== For interactive control, run 'callgrind_control -h'.\n==8== \n==8== Events    : Ir\n==8== Collected : 445187961\n==8== \n==8== I   refs:      445,187,961\n",
+      "returncode": 0,
+      "foreign_work_after": [],
+      "instruction_profile_only": true,
+      "PROGRAM TOTALS": 445187961,
+      "dfindc": 45073416,
+      "f.copy_value": 249174507,
+      "f.checksum": 154036981,
+      "collect": 119791890,
+      "scan": 95380639
+    },
+    {
+      "sample": 1,
+      "label": "cand",
+      "command": [
+        "/workspace/scratch/7a97409d2924/valgrind/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--callgrind-out-file=/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/cand-1.out",
+        "/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/cand/graph",
+        "graph",
+        "4000"
+      ],
+      "exe_sha256": "8b7ad188b135360d8cee95f74dad45837253cde84abe26509765eb14fbf8a9bc",
+      "stdout": "670230 190301825 2058712306\n",
+      "stderr": "==11== Callgrind, a call-graph generating cache profiler\n==11== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==11== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==11== Command: /workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/cand/graph graph 4000\n==11== \n==11== For interactive control, run 'callgrind_control -h'.\n==11== \n==11== Events    : Ir\n==11== Collected : 445110519\n==11== \n==11== I   refs:      445,110,519\n",
+      "returncode": 0,
+      "foreign_work_after": [],
+      "instruction_profile_only": true,
+      "PROGRAM TOTALS": 445110519,
+      "dfindc": 45073416,
+      "f.copy_value": 249130423,
+      "f.checksum": 154003623,
+      "collect": 119645038,
+      "scan": 95380629
+    },
+    {
+      "sample": 1,
+      "label": "main",
+      "command": [
+        "/workspace/scratch/7a97409d2924/valgrind/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--callgrind-out-file=/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/main-1.out",
+        "/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/main/graph",
+        "graph",
+        "4000"
+      ],
+      "exe_sha256": "1b37725f6e0407562e5608849b6feb755de4867f3a34c581c7db6a3b966e95af",
+      "stdout": "670230 188574493 2094767115\n",
+      "stderr": "==14== Callgrind, a call-graph generating cache profiler\n==14== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==14== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==14== Command: /workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/main/graph graph 4000\n==14== \n==14== For interactive control, run 'callgrind_control -h'.\n==14== \n==14== Events    : Ir\n==14== Collected : 443285884\n==14== \n==14== I   refs:      443,285,884\n",
+      "returncode": 0,
+      "foreign_work_after": [],
+      "instruction_profile_only": true,
+      "PROGRAM TOTALS": 443285884,
+      "dfindc": 43248781,
+      "f.copy_value": 248209788,
+      "f.checksum": 153535623,
+      "collect": 119645038,
+      "scan": 95380629
+    },
+    {
+      "sample": 2,
+      "label": "main",
+      "command": [
+        "/workspace/scratch/7a97409d2924/valgrind/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--callgrind-out-file=/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/main-2.out",
+        "/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/main/graph",
+        "graph",
+        "4000"
+      ],
+      "exe_sha256": "1b37725f6e0407562e5608849b6feb755de4867f3a34c581c7db6a3b966e95af",
+      "stdout": "670230 173768498 2004944705\n",
+      "stderr": "==17== Callgrind, a call-graph generating cache profiler\n==17== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==17== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==17== Command: /workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/main/graph graph 4000\n==17== \n==17== For interactive control, run 'callgrind_control -h'.\n==17== \n==17== Events    : Ir\n==17== Collected : 443285884\n==17== \n==17== I   refs:      443,285,884\n",
+      "returncode": 0,
+      "foreign_work_after": [],
+      "instruction_profile_only": true,
+      "PROGRAM TOTALS": 443285884,
+      "dfindc": 43248781,
+      "f.copy_value": 248209788,
+      "f.checksum": 153535623,
+      "collect": 119645038,
+      "scan": 95380629
+    },
+    {
+      "sample": 2,
+      "label": "cand",
+      "command": [
+        "/workspace/scratch/7a97409d2924/valgrind/usr/bin/valgrind",
+        "--tool=callgrind",
+        "--callgrind-out-file=/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/cand-2.out",
+        "/workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/cand/graph",
+        "graph",
+        "4000"
+      ],
+      "exe_sha256": "8b7ad188b135360d8cee95f74dad45837253cde84abe26509765eb14fbf8a9bc",
+      "stdout": "670230 179899125 2165718917\n",
+      "stderr": "==20== Callgrind, a call-graph generating cache profiler\n==20== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.\n==20== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info\n==20== Command: /workspace/scratch/c42abc2bbcbe/memo-audit/callgrind/confirm/cand/graph graph 4000\n==20== \n==20== For interactive control, run 'callgrind_control -h'.\n==20== \n==20== Events    : Ir\n==20== Collected : 445110519\n==20== \n==20== I   refs:      445,110,519\n",
+      "returncode": 0,
+      "foreign_work_after": [],
+      "instruction_profile_only": true,
+      "PROGRAM TOTALS": 445110519,
+      "dfindc": 45073416,
+      "f.copy_value": 249130423,
+      "f.checksum": 154003623,
+      "collect": 119645038,
+      "scan": 95380629
+    }
+  ],
+  "confirmation_medians": {
+    "main": {
+      "PROGRAM TOTALS": 443285884,
+      "dfindc": 43248781,
+      "collect": 119645038,
+      "f.copy_value": 248209788,
+      "f.checksum": 153535623
+    },
+    "cand": {
+      "PROGRAM TOTALS": 445110519,
+      "dfindc": 45073416,
+      "collect": 119645038,
+      "f.copy_value": 249130423,
+      "f.checksum": 154003623
+    }
+  },
+  "dfindc_machine_code_bytes": {
+    "baseline": 1044,
+    "v1": 2135,
+    "v2": 1301
+  },
+  "decision": "Reject V2 as an optimization: no instruction reduction, and paired CI processing CPU medians do not improve. No statistically confirmed CPU regression claim.",
+  "candidate_published_commit": "a03095f4826a1559ae4d3c55596eb920cc9f1cce",
+  "candidate_ci": {
+    "run": 39884117003,
+    "job": 120188170447,
+    "artifact": 12471717919,
+    "zip_sha256": "f4c0fa40c1250ee120aff0b594ecdadc59ea3c274270064f2ee6ec4c1a8cf801",
+    "base": "f38555e0fd850f0ef77de0fe6ba9c853b3f7110e",
+    "synthetic_merge": "a8882876ab091cff9052c31b2e5da482e38aef8d",
+    "raw_file": "candidate-ci-perf-smoke.json",
+    "raw_sha256": "d87e5c6d0f1a8e4fe703422a3916c08e01559e432a219a320b76fa3159cae9f3"
+  },
+  "candidate_status": "PR #872 closed without merge after negative instruction evidence and no paired CI CPU benefit.",
+  "future_constraint": "Allocation avoidance must preserve observable integer identity and callback ordering, retention, exceptions and mutation/restart semantics; no safe allocation reduction is already implemented."
+}
