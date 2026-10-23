@@ -9,7 +9,11 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-import pyperf
+# Pystachy port: keep upstream timers, collecting seconds for the deterministic runner.
+import time
+import sys
+
+TIMED: list[float] = []
 
 
 class Tree:
@@ -33,17 +37,25 @@ def tree(input: range) -> Tree | None:
     i = n // 2
     return Tree(tree(input[:i]), input[i], tree(input[i + 1:]))
 
-def bench_generators(loops: int) -> float:
+# Pystachy port: a size argument bounds smoke/GC runs; normal size stays 100000.
+def bench_generators(loops: int, size: int = 100000) -> int:
     assert list(tree(range(10))) == list(range(10))
     range_it = range(loops)
-    iterable = tree(range(100000))
-    t0 = pyperf.perf_counter()
+    iterable = tree(range(size))  # Pystachy port: configurable smoke size
+    t0 = time.perf_counter()
     for _ in range_it:
         for _ in iterable:
             pass
-    return pyperf.perf_counter() - t0
+    # Pystachy port: check every yielded value outside the upstream timed region.
+    TIMED.append(time.perf_counter() - t0)
+    values = list(iterable) if iterable is not None else []
+    assert values == list(range(size))
+    return sum(values)
 
+# Pystachy port: a deterministic main replaces pyperf.Runner.
 if __name__ == "__main__":
-    runner = pyperf.Runner()
-    runner.metadata['description'] = "Benchmark generators"
-    runner.bench_time_func('generators', bench_generators)
+    loops = int(sys.argv[1]) if len(sys.argv) > 1 else 10
+    size = int(sys.argv[2]) if len(sys.argv) > 2 else 100000
+    result = bench_generators(loops, size)
+    print("seconds", sum(TIMED), file=sys.stderr)
+    print("generators", loops, size, result)

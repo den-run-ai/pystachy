@@ -1,10 +1,26 @@
 # pyperformance results
 
-Pystachy includes 18 of the 52 benchmarks tried from pyperformance 1.14.0, after the localized
+Pystachy includes 22 of the 52 benchmarks tried from pyperformance 1.14.0, after the localized
 adaptations listed in the [port notes](../bench/pyperformance/README.md). CPython runs the same
 adapted files, and every JIT and AOT run must print exactly what CPython printed. These are
 comparisons on that source, not pyperformance scores: some inputs, random number generators and data
 types differ from upstream.
+
+## Coverage expansion (2026-10-22)
+
+The current suite adds recursive generators, nested comprehensions, JSON encoding and
+JSON decoding. The JSON cases explicitly enable experimental dynamic `Any`, retain the
+upstream heterogeneous inputs and exercise the shipped native JSON implementation.
+The comprehensions case replaces enum tags with integers; its complete sorted output,
+the generator's complete yielded sequence and JSON results are checked outside the timers.
+See the [adaptations and refreshed 52-source census](../bench/pyperformance/README.md#runner-only-census-2026-10-22)
+for exact scope, blocked candidates and exclusions. Seven runner-only sources produce IR;
+that count is distinct from the 22 adapted benchmarks with differential execution coverage.
+
+Run `make bench-pyperformance-check` for all delivered cases, or use
+`--benchmarks comprehensions generators json_dumps json_loads --smoke` with the controller
+for the additions. These are correctness additions, with no new performance claim. The
+historical timings below cover their original revisions and benchmark sets only.
 
 ## Snapshot
 

@@ -1,3 +1,8 @@
+# pystachy: dynamic-any
+# Pystachy port: boxed heterogeneous JSON values use the opt-in runtime.
+from typing import Any
+import time
+
 
 """Script for testing the performance of json parsing and serialization.
 
@@ -12,7 +17,7 @@ import random
 import sys
 
 # Local imports
-import pyperf
+# Pystachy port: pyperf is not imported; the deterministic main below times its function.
 
 
 DICT = {
@@ -49,7 +54,8 @@ DICT = {
     'view_count': 7,
     'zip': ''}
 
-TUPLE = (
+# Pystachy port: a fresh tuple and its nested list share dynamic JSON storage.
+TUPLE: Any = (
     [265867233, 265868503, 265252341, 265243910, 265879514,
      266219766, 266021701, 265843726, 265592821, 265246784,
      265853180, 45526486, 265463699, 265848143, 265863062,
@@ -60,8 +66,8 @@ def mutate_dict(orig_dict, random_source):
     new_dict = dict(orig_dict)
     for key, value in new_dict.items():
         rand_val = random_source.random() * sys.maxsize
-        if isinstance(key, (int, bytes, str)):
-            new_dict[key] = type(key)(rand_val)
+        # Pystachy port: all keys in the upstream DICT are str; avoid runtime class calls.
+        new_dict[key] = str(rand_val)
     return new_dict
 
 
@@ -94,13 +100,16 @@ def bench_json_loads(objs):
         json.loads(obj)
 
 
+# Pystachy port: a deterministic main replaces pyperf.Runner.
+# Preserve all three payloads, seeded input generation and the 20 unrolled loads.
 if __name__ == "__main__":
-    runner = pyperf.Runner()
-    runner.metadata['description'] = "Benchmark json.loads()"
-
-    json_dict = json.dumps(DICT)
-    json_tuple = json.dumps(TUPLE)
-    json_dict_group = json.dumps(DICT_GROUP)
-    objs = (json_dict, json_tuple, json_dict_group)
-
-    runner.bench_func('json_loads', bench_json_loads, objs, inner_loops=20)
+    loops = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
+    objs = (json.dumps(DICT), json.dumps(TUPLE), json.dumps(DICT_GROUP))
+    t0 = time.perf_counter()
+    for _ in range(loops):
+        bench_json_loads(objs)
+    print("seconds", time.perf_counter() - t0, file=sys.stderr)
+    print("json_loads", loops)
+    for text in objs:
+        value: Any = json.loads(text)
+        print(value)

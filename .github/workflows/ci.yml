@@ -118,6 +118,12 @@ jobs:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-extended-check BENCH_COMPILER=build/verify/pystachy2
 
+      - name: Adapted pyperformance benchmark correctness
+        if: matrix.group == 'benchmarks'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make bench-pyperformance-check BENCH_COMPILER=build/verify/pystachy2
+
       # tools/setup.sh installs both of Ubuntu's LP64 libblas.so.3 providers: OpenBLAS
       # (libopenblas0-pthread), checked on one thread, and the reference BLAS (libblas3).
       # LD_LIBRARY_PATH selects each in turn; NumPy is check_blas.py's reference
@@ -137,6 +143,7 @@ jobs:
         with:
           name: verification-${{ matrix.group }}
           path: |
+            build/pyperformance-smoke.json
             build/verification.json
             build/extended-smoke.json
             build/verify/*.log

@@ -1,0 +1,17 @@
+Extra data 1 1 2
+Extra data 1 1 2
+Extra data 1 1 2
+Expecting value 0 1 1
+Expecting value 0 1 1
+Expecting value 0 1 1
+Expecting value 0 1 1
+Expecting value 0 1 1
+Expecting value 0 1 1
+empty objects
+whitespace
+keys shared True True
+Extra data 9 1 10
+Invalid \escape 5 1 6
+Unexpected UTF-8 BOM (decode using utf-8-sig) 0 1 1
+BOM inside string
+[exit 0]

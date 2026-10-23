@@ -45,6 +45,12 @@ observable contract.
 | `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
 
 `heapq` adapts its top-k routines while retaining the other upstream code.
+`difflib.context_diff()` replaces its fixed prefix table's `dict()` keyword construction
+with an equivalent literal, preserving insertion order and the upstream generator.
+Its selected compiled output-format tests derive from `Lib/test/test_difflib.py` at
+CPython commit `cbc944f4bc59639a444dd971c737788ba2283a91`, SHA-256
+`dc6b140c8dd31e6971888070ea5175a0ab72ecadbdc96956071ceb062f34e636`;
+the test header identifies selections and exclusions.
 `tomllib`'s package file, `Lib/tomllib/__init__.py`, is unchanged (lib/README.md); its other
 modules opt in to dynamic `Any` and carry the edits lib/compatibility.md lists. The files and the
 test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from the

@@ -1,6 +1,6 @@
 # pyperformance benchmarks
 
-These are 18 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
+These are 22 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
 1.14.0, adapted so that Pystachy compiles them. CPython runs the same adapted files, so each
 comparison runs identical source in CPython, the JIT and AOT. The adaptations and smaller
 inputs change the work, so these results are not comparable with published pyperformance numbers.
@@ -58,7 +58,7 @@ reporting the first compiler error.
 | `base64` | `e2f1e7d4dbfbb2c722833081496497344550e4367f85f67f373fb8aa22cd35ed` | blocked |
 | `bpe_tokeniser` | `c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df` | blocked |
 | `chaos` | `5d20fd29c8ea89e0ebe4040ae4c05f26f1a620cd2a7fc654d9d7f8cb205651ac` | ported |
-| `comprehensions` | `6047efc06287a24a646f00fc8a8d47429f7cdeab3e942230e13cf6d7cefa6343` | blocked |
+| `comprehensions` | `6047efc06287a24a646f00fc8a8d47429f7cdeab3e942230e13cf6d7cefa6343` | ported |
 | `concurrent_imap` | `d5bfb854e7a1d754f3033132dca397704ea7ed2aabfd6d625396b61b82a9e316` | blocked |
 | `coroutines` | `9358a7d967ed16859b5a163a4e416d897d6f104b3603c56ad77903791211fc7f` | blocked |
 | `crypto_pyaes` | `236222412fd81b5e13d9c818574b575809eccff17419d667f34cf0e9148aa724` | blocked |
@@ -70,11 +70,11 @@ reporting the first compiler error.
 | `float` | `b4f61a0978f5b0af2c0d07544ae26422868992e62b8f40e2967e3c694fc1b9a9` | ported |
 | `gc_collect` | `7886042f07e517abb79c58643a4b488710f3079936c6990522624bfb9c2acb9b` | blocked |
 | `gc_traversal` | `0798ab87ca12687c68e101d14ae9ac0c50eaa9b4f14ecee3882f7e499191828f` | blocked |
-| `generators` | `46c59dc44cb63b2c0fed75e6d82875daa237a92d03c87861078513c7b10d4621` | runner-only compiles; not ported |
+| `generators` | `46c59dc44cb63b2c0fed75e6d82875daa237a92d03c87861078513c7b10d4621` | ported |
 | `go` | `ea4c0ebaf32515f8549c64c9291ab13d47bb802e01a82203c37b5066d1bfb463` | ported |
 | `hexiom` | `d7518220380d27449b8951bc9ca2e19593569d9bd9f5cb6d86867f354f22e115` | ported |
-| `json_dumps` | `023c991ff827fdcbfcfb2b7e3cadf023352a61d1903643d8af0ef302a0db1bf7` | blocked |
-| `json_loads` | `16c41ff06bf3173d30158c767340d389c459a656e997e306719891d50f09646f` | blocked |
+| `json_dumps` | `023c991ff827fdcbfcfb2b7e3cadf023352a61d1903643d8af0ef302a0db1bf7` | ported |
+| `json_loads` | `16c41ff06bf3173d30158c767340d389c459a656e997e306719891d50f09646f` | ported |
 | `logging` | `6ff62fdc4c6b520b01475407b526ed609299402ed8ad8d344038b559a120159a` | blocked |
 | `mdp` | `3db5bfb8c9e2602f181cee809c24b2bd61e7c088e89e8e22867b8d46c4d0fcf1` | blocked |
 | `meteor_contest` | `b616f5f87e129a6b35650452951f40a7812cf22efff5a0777e51287da13c2f48` | ported |
@@ -108,7 +108,7 @@ pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and [AUTH
 are its `COPYING` and `AUTHORS` files. Each port keeps its upstream header. `regex_v8.py`'s
 header carries the V8 project's BSD license, and `raytrace.py`'s states the MIT License.
 `deltablue` is excluded pending a separate provenance decision: its upstream docstring
-says the JavaScript original was GPL-licensed. The other 18 benchmarks remain included.
+says the JavaScript original was GPL-licensed. The other 22 benchmarks remain included.
 `fannkuch.py`, `meteor_contest.py`, `nbody.py`, `regex_dna.py` and `spectral_norm.py` say they
 come from The Computer Language Benchmarks Game, whose programs are published under the
 3-clause BSD License. `richards.py` and `richards_super.py` credit a Java version
@@ -122,7 +122,7 @@ origins are listed so that a license review can confirm that this suffices. See
 Each edit is marked `# Pystachy port:` in the source. These describe the delivered files,
 including historical workarounds; newer compiler features make some unnecessary. In particular,
 generators, range values and slice assignment now work for the runner-only sources listed below.
-Every port has these changes:
+The runner adaptations follow these rules:
 
 - `import pyperf` is removed. A main that reads the loop count and sizes from `sys.argv`
   replaces `pyperf.Runner` and prints the results, or a checksum.
@@ -134,12 +134,17 @@ Every port has these changes:
   or a checksum when it discards its result. `TIMED_PART` in `tools/bench_pyperformance.py`
   records which function each port times; the unit tests check the ports against it, and
   `--census` checks it against the upstream files.
-- `range_it = range(loops)` becomes a list: a `range` object is not a value.
+- In older ports, `range_it = range(loops)` became a list because range values were not yet supported.
+  The newly added ports retain range values.
 
 | Benchmark | Other adaptations |
 |---|---|
 | `barnes_hut` | Integer zeros that become floats are float literals. Constructors, the particle list and the child nodes are annotated. |
 | `chaos` | A Park–Miller generator replaces `random.seed()` and `randrange()`, so the points differ from upstream. `GVector` has float parameters and defaults; `__rmul__ = __mul__` becomes a method; fields are annotated; loops replace two-clause comprehensions; `length` starts as `0.0`; `x` and `y` are converted to int in one assignment each; an impossible `type()` message is a literal. `main()` returns the game, whose `create_image_chaos()` the main times with the default arguments. |
+| `comprehensions` | Integer kind tags and an explicit two-kind list replace `Enum` and enum iteration; the widget list is annotated. Dataclasses, nested comprehensions, optional widget lookups and tuple sorting remain. The complete sorted widget order is checked. |
+| `generators` | The recursive `Tree`, `yield from`, range slicing and iteration are unchanged. A size argument limits smoke/GC runs to 100 nodes; the normal run keeps 100,000. The complete yielded sequence is checked outside the timer. |
+| `json_dumps` | Opt into dynamic `Any`; annotate the empty dict and the list of `(Any, range)` workload tuples. Preserve all four upstream payloads and counts by default; smoke uses one encode per case and a three-element HUGE list. Complete small encodings and the repeated huge encoding are checked outside the timer. |
+| `json_loads` | Opt into dynamic `Any` and annotate the fresh heterogeneous tuple. All keys in upstream `DICT` are strings, so `str(rand_val)` replaces the generic `type(key)(rand_val)` branch. Preserve `Random(5)`, all three payloads and the 20 unrolled loads per payload; decoded values are printed after timing. |
 | `fannkuch` | The reversing slice assignment uses a slice, `reverse()` and concatenation. |
 | `float` | `self.x = x = sin(i)` is split so that fields can be annotated, and so are `__init__` and `points`. |
 | `go` | The same generator replaces `random`, so the games differ from upstream. Fields set outside `__init__` are declared in the class body. `useful()` returns `bool(...)`, and `score()` counts in a float. `maxscore` starts as `-1.0`. The never-called `Board.check()`, whose sets hold `Square` objects, is commented out. |
@@ -163,29 +168,55 @@ Results within a benchmark are checked against CPython, not against upstream pyp
 
 <a id="current-runner-only-census"></a>
 
-## Runner-only census (2026-10-17)
+## Runner-only census (2026-10-22)
 
-Refreshed on 2026-10-17 against compiler source `d3fbfc6f`, using the CPython-hosted
-compiler, CPython 3.13.16 and the pinned 1.14.0 sdist. Source hashes, port annotations
-and timed-region checks passed. Each upstream file has only pyperf's import and runner
-replaced with a direct benchmark call; no algorithm/type adaptations are made here.
+Refreshed against compiler sources on main `5f7ec761`, with CPython 3.13.16 and the
+pinned pyperformance 1.14.0 sdist. The census checks all 52 source hashes and replaces
+only pyperf's runner/import before asking for IR. No installed-stdlib or ports overlay
+is supplied: missing modules describe the shipped surface, not whether an explicitly
+supplied upstream module could compile.
 
-**Six of 52 sources compile with that runner replacement:** `fannkuch`, `generators`,
-`nbody`, `nqueens`, `regex_v8` and `unpack_sequence`. The other 46 fail compilation,
-including the licence-deferred `deltablue`. Compilation alone does not verify runtime
-results or make a benchmark part of the 18 delivered ports. `generators` is now a
-candidate for adding to that suite; its former missing-generator/range blockers are gone.
+**Seven of 52 sources compile with runner replacement alone:** `fannkuch`, `generators`,
+`nbody`, `nqueens`, `regex_v8`, `spectral_norm` and `unpack_sequence`. This is one more
+than the 2026-10-17 census (`spectral_norm`). The other 45 have a compile error. An IR
+success is not an execution result. The delivered suite now has **22 adapted benchmarks**,
+including four additions: `comprehensions`, `generators`, `json_dumps` and `json_loads`.
+Their CPython, native JIT and AOT outputs are compared by the existing smoke runner;
+this does not execute the upstream pyperf harness or establish a speedup.
 
-The table reports only the first observed error, not every blocker and not a promise
-that one fix is sufficient. The compiler does not search CPython's installed stdlib
-by default, so a missing-module error means no shipped implementation was found with
-this census's `PYSTACHY_PATH=ports`; it does not establish that the upstream Python
-module cannot be compiled when explicitly supplied. See the
-[compatibility audit](../../docs/reports/compatibility-2026-10-17-benchmarks.md) for
-harness tests, runtime checks and performance caveats. The full census has not been rerun
-since; a [2026-10-19 rerun of five sources](../../docs/reports/compatibility-updates.md#useful-json-support-but-not-general-dynamic-python)
-found `json_dumps` and `json_loads` past their missing-`json` errors (now at lines 7 and 50),
-with the three regex results unchanged.
+The two JSON benchmarks now exercise boxed heterogeneous documents using the explicit
+experimental dynamic-`Any` opt-in; this does not change the feature's stability status.
+The JSON timings preserve upstream's timed operations and default data shapes; setup
+and new correctness checks remain outside those regions. `comprehensions` retains its
+nested comprehensions and tuple sorting with small enum/annotation adaptations, while
+`generators` needs no algorithm/type changes.
+
+### Scope and remaining candidates
+
+- Defer async/event-loop, process/thread-pool, CPython GC/startup and external-database
+  workloads: `async_generators`, `async_tree`, `asyncio_tcp`, `coroutines`,
+  `concurrent_imap`, `gc_collect`, `gc_traversal`, `python_startup`, `2to3` and
+  `sqlite_synth`. Their dependencies are outside this expansion, not silently passed.
+- Keep arbitrary-precision/decimal workloads blocked: `decimal_factorial`, `decimal_pi`,
+  `telco`, `pidigits` and the fractions-based `mdp`. Replacing their arithmetic with
+  fixed-width floats/ints would change what they test.
+- Remaining core candidates need missing APIs or additional adapters: `argparse`,
+  `base64`, `bpe_tokeniser`, `deepcopy`, `logging`, `pathlib`, `pickle`, `pprint`,
+  `pyflate`, `regex_compile`, `tomli_loads`, `typing_runtime_protocols` and `xml_etree`.
+  JSON's progress does not imply general copy/pickle dispatch or runtime reflection.
+  `regex_compile` also captures and patches another module's regex calls; a list
+  annotation alone does not deliver its dependency fixtures and behavior. `tomli_loads`
+  still requires file/path setup, the pinned large TOML fixture and parser parity.
+- `crypto_pyaes` requires its separate package adaptation. The existing 21
+  third-party-package exclusions listed above are unchanged; `deltablue` remains
+  excluded for its license provenance. No new module-support claim follows from this census.
+
+The table records the first error, not all blockers. Related trackers:
+[#361](https://github.com/den-run-ai/pystachy/issues/361) (benchmark coverage),
+[#257](https://github.com/den-run-ai/pystachy/issues/257) (stdlib),
+[#783](https://github.com/den-run-ai/pystachy/issues/783) (TOML),
+[#805](https://github.com/den-run-ai/pystachy/issues/805) (copy/pickle dispatch),
+[#775](https://github.com/den-run-ai/pystachy/issues/775) (dynamic builtin values).
 
 ### Sources without a delivered port
 
@@ -198,23 +229,20 @@ with the three regex results unchanged.
 | `asyncio_tcp` | `bm_asyncio_tcp.py:9: error: module 'asyncio' is not supported` |
 | `base64` | `bm_base64.py:10: error: module 'base64' is not supported` |
 | `bpe_tokeniser` | `bm_bpe_tokeniser.py:16: error: module 'pathlib' is not supported` |
-| `comprehensions` | `bm_comprehensions.py:8: error: module 'enum' is not supported` |
 | `concurrent_imap` | `bm_concurrent_imap.py:6: error: module 'multiprocessing' is not supported` |
 | `coroutines` | `bm_coroutines.py:10: error: async functions are not supported` |
-| `crypto_pyaes` | `bm_crypto_pyaes.py:24: error: class pyaes.aes.AESModeOfOperationCTR is not supported: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class` |
+| `crypto_pyaes` | `bm_crypto_pyaes.py:10: error: module 'pyaes' is not supported` |
 | `decimal_factorial` | `bm_decimal_factorial.py:17: error: module 'decimal' is not supported` |
 | `decimal_pi` | `bm_decimal_pi.py:19: error: module 'decimal' is not supported` |
 | `deepcopy` | `bm_deepcopy.py:9: error: module 'copy' is not supported` |
+| `deltablue` | `bm_deltablue.py:26: error: unsupported base class` |
 | `gc_collect` | `bm_gc_collect.py:2: error: module 'gc' is not supported` |
 | `gc_traversal` | `bm_gc_traversal.py:2: error: module 'gc' is not supported` |
-| `generators` | Compiles after runner replacement |
-| `json_dumps` | `bm_json_dumps.py:1: error: module 'json' is not supported` |
-| `json_loads` | `bm_json_loads.py:10: error: module 'json' is not supported` |
 | `logging` | `bm_logging.py:18: error: module 'logging' is not supported` |
 | `mdp` | `bm_mdp.py:3: error: module 'fractions' is not supported` |
 | `pathlib` | `bm_pathlib.py:10: error: module 'pathlib' is not supported` |
 | `pickle` | `bm_pickle.py:253: error: module 'pickle' is not supported` |
-| `pidigits` | `bm_pidigits.py:22: error: map() is supported as the argument of list(), tuple() (with scalar or optional scalar items), bytes(), sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod(), str.join() and list.extend(), and as the value assigned to a list slice, which take its items at once; elsewhere use a list comprehension` |
+| `pidigits` | `bm_pidigits.py:22: error: map() is unsupported in this value position` |
 | `pprint` | `bm_pprint.py:9: error: module 'pprint' is not supported` |
 | `pyflate` | `bm_pyflate.py:19: error: module 'hashlib' is not supported` |
 | `python_startup` | `bm_python_startup.py:19: error: module 'subprocess' is not supported` |
@@ -222,23 +250,27 @@ with the three regex results unchanged.
 | `sqlite_synth` | `bm_sqlite_synth.py:9: error: module 'sqlite3' is not supported` |
 | `telco` | `bm_telco.py:18: error: module 'decimal' is not supported` |
 | `tomli_loads` | `bm_tomli_loads.py:12: error: module 'pathlib' is not supported` |
-| `typing_runtime_protocols` | `bm_typing_runtime_protocols.py:38: error: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class` |
+| `typing_runtime_protocols` | `bm_typing_runtime_protocols.py:38: error: unsupported base class` |
 | `xml_etree` | `bm_xml_etree.py:220: error: module 'xml' is not supported` |
 
 ### Sources with delivered ports, before their adaptations
 
-The existing adaptations remain tested even where runner replacement is now sufficient.
-Removing them or restoring upstream inputs should be a separate change with refreshed
+Existing adaptations remain covered even where runner replacement now suffices.
+Removing historical workarounds or restoring different inputs needs separately refreshed
 checksums and timing records.
 
 | Benchmark | First compiler result |
 |---|---|
-| `barnes_hut` | `bm_barnes_hut.py:281: error: expected int, got float` |
+| `barnes_hut` | `bm_barnes_hut.py:78: error: cannot infer the type of field 'particles'; annotate it (self.particles: T = ...) (QuadTree(Rectangle[float, float, float, float], int) for the call at bm_barnes_hut.py:318; compiling advance_system(list[Particle-1], float, float, int, int) for the call at bm_barnes_hut.py:350; compiling bench_quadtree_nbody(int, int, int, float) for the call at bm_barnes_hut.py:366)` |
 | `chaos` | `bm_chaos.py:46: error: cannot infer the type of class attribute '__rmul__'; annotate it (__rmul__: T = ...)` |
+| `comprehensions` | `bm_comprehensions.py:8: error: module 'enum' is not supported` |
 | `fannkuch` | Compiles after runner replacement |
-| `float` | `bm_float.py:47: error: cannot infer the type of a list of None; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)` |
-| `go` | `bm_go.py:322: error: cannot infer the type of field 'bestchild'; annotate it (self.bestchild: T = ...)` |
+| `float` | `bm_float.py:16: error: cannot infer the type of field 'x'; annotate it (self.x: T = ...) (Point(int) for the call at bm_float.py:49; compiling benchmark(int) for the call at bm_float.py:58)` |
+| `generators` | Compiles after runner replacement |
+| `go` | `bm_go.py:326: error: cannot infer the type of field 'pos_child'; annotate it (self.pos_child: T = ...)` |
 | `hexiom` | `bm_hexiom.py:151: error: class attribute 'HIGHEST_VALUE_STRATEGY' of 'Done' used in a class-body default is not supported` |
+| `json_dumps` | `bm_json_dumps.py:7: error: cannot infer the type of an empty dict; add a type annotation (d: dict[K, V] = {}, or -> dict[K, V] on a function returning the dict)` |
+| `json_loads` | `bm_json_loads.py:50: error: expected int, got str` |
 | `meteor_contest` | `bm_meteor_contest.py:88: error: expected int, got float` |
 | `nbody` | Compiles after runner replacement |
 | `nqueens` | Compiles after runner replacement |
@@ -246,11 +278,8 @@ checksums and timing records.
 | `regex_dna` | `bm_regex_dna.py:135: error: unsupported call bytearray()` |
 | `regex_effbot` | `bm_regex_effbot.py:156: error: type <function bench_regex_effbot> has no attribute 'data'` |
 | `regex_v8` | Compiles after runner replacement |
-| `richards` | `bm_richards.py:176: error: inheritance with generic class templates is not supported: annotate __init__ parameters` |
-| `richards_super` | `bm_richards_super.py:177: error: inheritance with generic class templates is not supported: annotate __init__ parameters` |
+| `richards` | `bm_richards.py:176: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)` |
+| `richards_super` | `bm_richards_super.py:177: error: inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)` |
 | `scimark` | `bm_scimark.py:1: error: module 'array' is not supported` |
-| `spectral_norm` | `bm_spectral_norm.py:37: error: expected int, got float` |
+| `spectral_norm` | Compiles after runner replacement |
 | `unpack_sequence` | Compiles after runner replacement |
-
-`deltablue` remains excluded pending licence provenance; its runner-only source also
-fails with `unsupported base class`.

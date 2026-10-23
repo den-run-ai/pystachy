@@ -1246,7 +1246,8 @@ def context_diff(a, b, fromfile='', tofile='',
     """
 
     _check_types(a, b, fromfile, tofile, fromfiledate, tofiledate, lineterm)
-    prefix = dict(insert='+ ', delete='- ', replace='! ', equal='  ')
+    # Pystachy port: a literal preserves order without unsupported dict keyword arguments.
+    prefix = {'insert': '+ ', 'delete': '- ', 'replace': '! ', 'equal': '  '}
     started = False
     for group in SequenceMatcher(None,a,b).get_grouped_opcodes(n):
         if not started:

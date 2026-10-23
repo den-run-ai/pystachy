@@ -5,13 +5,18 @@ Author: Carl Meyer
 """
 
 from dataclasses import dataclass
-from enum import Enum
+# Pystachy port: use integer kind tags in place of the unavailable Enum module.
 from typing import Iterable, List, Optional
 
-import pyperf
+# Pystachy port: keep upstream timers, collecting seconds for the deterministic runner.
+import time
+import sys
+
+TIMED: list[float] = []
 
 
-class WidgetKind(Enum):
+# Pystachy port: the benchmark only compares these two kind tags.
+class WidgetKind:
     BIG = 1
     SMALL = 2
 
@@ -21,7 +26,7 @@ class Widget:
     widget_id: int
     creator_id: int
     derived_widget_ids: List[int]
-    kind: WidgetKind
+    kind: int  # Pystachy port: integer kind tags replace Enum values.
     has_knob: bool
     has_spinner: bool
 
@@ -63,9 +68,9 @@ class WidgetTray:
 
 def make_some_widgets() -> List[Widget]:
     widget_id = 0
-    widgets = []
+    widgets: List[Widget] = []  # Pystachy port: type storage before the first append.
     for creator_id in range(3):
-        for kind in WidgetKind:
+        for kind in [WidgetKind.BIG, WidgetKind.SMALL]:  # Pystachy port: the two enum members.
             for has_knob in [True, False]:
                 for has_spinner in [True, False]:
                     derived = [w.widget_id for w in widgets[::creator_id + 1]]
@@ -79,17 +84,22 @@ def make_some_widgets() -> List[Widget]:
     return widgets
 
 
-def bench_comprehensions(loops: int) -> float:
+# Pystachy port: expose the resulting widget order for differential validation.
+def bench_comprehensions(loops: int) -> list[int]:
     range_it = range(loops)
     widgets = make_some_widgets()
-    t0 = pyperf.perf_counter()
+    t0 = time.perf_counter()
     for _ in range_it:
         tray = WidgetTray(1, widgets)
         assert len(tray.sorted_widgets) == 18
-    return pyperf.perf_counter() - t0
+    # Pystachy port: record time first; check and report the full order outside the timer.
+    TIMED.append(time.perf_counter() - t0)
+    return [w.widget_id for w in tray.sorted_widgets]
 
 
+# Pystachy port: a deterministic main replaces pyperf.Runner.
 if __name__ == "__main__":
-    runner = pyperf.Runner()
-    runner.metadata["description"] = "Benchmark comprehensions"
-    runner.bench_time_func("comprehensions", bench_comprehensions)
+    loops = int(sys.argv[1]) if len(sys.argv) > 1 else 10000
+    result = bench_comprehensions(loops)
+    print("seconds", sum(TIMED), file=sys.stderr)
+    print("comprehensions", loops, result)

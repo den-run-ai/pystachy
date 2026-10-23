@@ -18,6 +18,11 @@ below records four clean-directory controls for this correction.
 
 ## Checkpoints
 
+The [2026-10-22 core expansion](stdlib-expansion-2026-10-22.md) is a separate scoped
+sweep on main `5f7ec761`: selected core imports/APIs, newly adapted pyperformance
+workloads and CPython-derived regression cases. It does not replace the broad audit's
+denominator or advance its latest-evaluated-main checkpoint above.
+
 | Check | Main / changes since baseline | Findings |
 |---|---|---|
 | 2026-10-17 initial audit | `d3fbfc6f`; includes #598, #599 and #603 | 141/476 import programs compile; 46 upstream files excluded by overlay. 501 selected stdlib checks and 62 port checks pass; all 18 adapted benchmark programs match. Detailed evidence is linked from the baseline. |
