@@ -266,7 +266,7 @@ def gen_dyn_xbody(self, c: str) -> None:
                     # A typed field (notably a list's storage) cannot become Any. Retry
                     # the original body against the guarded concrete class instead of
                     # losing its effects. Establish the canonical field-typed body once;
-                    # incompatible classes never trigger whole-program retries.
+                    # unsupported field types never trigger whole-program retries.
                     self.xtry = shape
                     self.instance(method, [c, canonical], [])
                     self.xtry = ""
@@ -1456,12 +1456,18 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         fields: list[str] = []
         if not comparison_fields(method.node.kids[2], method.params[1], fields):
             return False
-        if all(a in ci.ftypes and a not in ci.methods and ci.ftypes[a] == self.classes[canonical].ftypes[a] for a in fields):
+        # Retry builtin value fields with their actual storage types: paired
+        # equality descriptors can compare different closed builtin trees.
+        # Keep user-class/container callbacks outside the added allowance.
+        compatible = [a for a in fields if a in ci.ftypes and a not in ci.methods and
+                      (ci.ftypes[a] == self.classes[canonical].ftypes[a] or
+                       (self.ueq_type(ci.ftypes[a]) and self.ueq_type(self.classes[canonical].ftypes[a])))]
+        if len(compatible) == len(fields):
             return True
         # Only truly absent fields get runtime AttributeError. Properties,
-        # custom lookup hooks and incompatible storage keep their prior path.
+        # custom lookup hooks and other incompatible storage keep their path.
         missing = [a for a in fields if a not in ci.ftypes and a not in ci.methods]
-        return len(missing) > 0 and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or (a not in ci.methods and ci.ftypes.get(a, "") == self.classes[canonical].ftypes[a]) for a in fields) and comparison_reads(method.node.kids[2], method.params[1], missing)
+        return len(missing) > 0 and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or a in compatible for a in fields) and comparison_reads(method.node.kids[2], method.params[1], missing)
     if key.startswith("get."):
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and (ci.methods[a].prop or (ci.methods[a].deco == "" and ci.methods[a].bad == "")))  # (a method's: the bound method)
