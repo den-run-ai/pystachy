@@ -7,7 +7,8 @@ contains unchanged CPython modules, adapted modules with localized
 `# Pystachy port:` comments, and subset implementations of APIs backed by C in
 CPython. The sources remain valid Python; successful execution under CPython does
 not by itself establish that every API compiles with Pystachy.
-Ports using dynamic `Any` also inherit its [comparison boundaries](../docs/dynamic-any.md#operations).
+Ports using dynamic `Any` also inherit its [comparison boundaries](../docs/dynamic-any.md#operations),
+including finite literal missing-field writes and the explicit late-field reflection limit.
 
 Imports search builtin modules first, then the program's directory,
 `PYSTACHY_PATH`, and `lib/`. See [module rules](../docs/language/modules.md).

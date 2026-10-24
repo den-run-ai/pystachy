@@ -1867,6 +1867,13 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.err(t.s)
     if k in UNSUPPORTED:
         self.err(UNSUPPORTED[k])
+    if k == "cmpmissing":
+        # A fixed-slot comparison operand cannot acquire this field. The RHS
+        # has already run; evaluate the target and raise at the actual store.
+        o = self.expr(t.kids[0], "")
+        if not self.frozen_store(o, t.kids[1].s):
+            self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{t.kids[1].s}'"))
+        return
     if starred_target(t):
         self.star_assign(t, v)
     elif k == "name":

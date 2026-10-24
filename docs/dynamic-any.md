@@ -409,6 +409,7 @@ The maintained acceptance matrix is deliberately narrower than arbitrary Python 
 | Nested object fields | List/dict/tuple indexing and nested field/property reads lead to supported scalar or builtin-container comparisons without changing object layouts (`dynany_cmp_nested_fields.py`). |
 | Properties | Annotated getters, plus opt-in getters whose every return reads the same known field type and whose final statement returns it; calls retain effects, exceptions and aliases (`dynany_cmp_inferred_properties.py`). |
 | Missing reads | Raise `AttributeError` at the executed read, including stable aliases and captured operands; earlier effects, first exceptions, cleanup and untaken branches are preserved (`dynany_cmp_missing_captures.py`). |
+| Missing writes | Literal fields used by proven comparisons reserve native storage only on boxed candidate classes; assignment flags preserve absence until the first store. Aliases, inheritance and compatible closed-union storage retain original object identity; slots/frozen objects raise at the store after the RHS runs (`dynany_cmp_missing_write*.py`). |
 | Operand rebinding | A straight-line overwrite that provably discards the incoming operand and all observed aliases runs the original body with a supported replacement; captures and introspection are excluded (`dynany_cmp_rebound_operand.py`). |
 | Control flow and mutation | Existing loops, assertions, context managers and cleanup remain supported; differing list/dict/set fields may call `clear()` before a supported comparison. |
 
@@ -420,10 +421,20 @@ cannot use the existing native concatenation path and every item can be boxed sa
 Numeric item identity and mutable item aliases survive; typed nested containers and typed
 variable-length tuples are not copied into boxes.
 
-Still outside this proof: creating missing instance fields, arbitrary escaping operands,
+Still outside this proof: arbitrary runtime-name field creation, arbitrary escaping operands,
 observed/rebound operands that need general flow analysis, unsupported property bodies,
-and mixed nested object-container trees beyond the direct-list path. The retained
-`tests/deviations/dynany_cmp_uncompiled_body.py` exercises a missing-field write.
+and mixed nested object-container trees beyond the direct-list path. Reserved fields use
+one compilation restart shared across discovered candidates; they do not change an
+existing field's type or reinterpret source containers. Multiple compatible stored layouts
+use a closed union, not a widened container. Immutable objects retain assignment-time
+errors. Unknown field types and incompatible class-hierarchy layouts remain outside this proof.
+
+`vars()` and `__dict__` keep their original order and value types while all reserved
+fields are unassigned. After one of these fields is created, these dictionary consumers
+raise an explicit `TypeError` until runtime insertion order is supported (#486), including
+deferred text conversion; `hasattr` and `dir` use the normal assignment flags. Iteration
+already in progress retains its dictionary-size mutation check. This boundary is recorded
+in `tests/deviations/dynany_cmp_field_reflection.py`.
 Custom `__getattr__`/`__getattribute__` methods remain explicit compile-time rejections,
 not new supported lookup paths. This matrix does not establish a complete comparison
 contract or implement the broader operation-table design in #803.
@@ -487,10 +498,10 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   outside the supported guarded concrete adapter still does
   not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`, which writes a missing instance
-  field). The acceptance matrix above covers repaired arithmetic, nested fields,
+  (the comparison acceptance matrix above defines the proven cases). That matrix covers
+  repaired arithmetic, nested fields,
   mixed-list equality, property getters, missing reads through aliases/closures and
-  discarded-operand rebinding. Missing-field creation, arbitrary operand escape,
+  discarded-operand rebinding and finite literal missing-field writes. Arbitrary operand escape,
   more general rebinding, unsupported getter bodies and nested mixed object-container
   layouts still need further work.
   Concrete operand annotations alone no
@@ -559,8 +570,11 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - A static or class method read through an `Any` value without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a
   property's value (`x.p(...)`). A field's value is called as a function value is.
-- Assigning an attribute that the object's class does not have raises `AttributeError` (a
-  class's fields are fixed), as for typed objects.
+- Outside the proven literal comparison writes, assigning an attribute that the object's
+  class does not have raises `AttributeError` (the native layout remains fixed).
+  `vars()` and `__dict__` after a comparison-created field raise explicit `TypeError`
+  (`tests/deviations/dynany_cmp_field_reflection.py`); general late-field insertion order
+  remains unsupported (#486).
 - `set`, `bytes` and exception objects, and typed containers other than tuples, cannot become
   `Any` values yet.
 - Rejected at compile time where an argument is an `Any` value: `divmod()`, `round()`,

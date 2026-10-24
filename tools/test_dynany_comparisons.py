@@ -37,6 +37,21 @@ class ConcreteComparisonTests(unittest.TestCase):
             ir = driver.compile_program("concrete_comparison_probe.py", source, [str(ROOT / "lib")], "")
         return ir, len(generators), generators[-1]
 
+    def test_missing_write_storage_has_bounded_restarts_and_assignment_flags(self):
+        counts = []
+        for count in [1, 20, 40]:
+            result = self.compile(count, body="other.items = self.items\nreturn other.items is self.items", fields="self.tag = 1")
+            counts.append(result[1])
+            self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+            for name in ["Peer"] + [f"Irrelevant{i}" for i in range(count)]:
+                ci = result[2].classes[name]
+                self.assertEqual(ci.ftypes["items"], "list[int]")
+                self.assertIn("items", ci.fextra)
+                self.assertIn("items", ci.fflag)
+                self.assertNotIn("items", ci.fsure)
+        self.assertEqual(len(set(counts)), 1)
+        self.assertLessEqual(max(counts), 3)
+
     def test_irrelevant_classes_do_not_add_restarts(self):
         small = self.compile(0)
         large = self.compile(40)

@@ -464,6 +464,7 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
         b = self.classes[ci.base]
         self.fl_fields(b)
         own = [f for f in ci.fields if f not in b.ftypes]
+        extra = [f for f in b.fextra if f not in ci.ftypes or f in ci.fextra]
         ci.fields = [f for f in b.fields]
         for f in b.fields:
             ci.ftypes[f] = b.ftypes[f]  # (the places of its base's base's flags too)
@@ -478,6 +479,8 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
             ci.fpos[ci.fields[i]] = i
         for f in b.fflag:
             ci.fflag[f] = b.fflag[f]
+        for f in extra:
+            ci.fextra[f] = True
         for f in b.fbox:
             ci.fbox[f] = b.fbox[f]
         for f in b.fields:
@@ -519,7 +522,7 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
         # A derived constructor can omit the base constructor, or call an override before
         # assigning its own fields. Keep assignment bits in the root layout so base-typed
         # reads remain safe for every ordinary subclass, including future call paths.
-        checked = ci.tag > 0 and not f.startswith(" ")
+        checked = (ci.tag > 0 and not f.startswith(" ")) or f in ci.fextra
         if (checked or f in fl.unsafe or f in fl.probed or ci.name + "." + f in self.cvars) and f not in ci.fflag:
             if ci.fpos[f] < nb and f in fl.unsafe:
                 # (the base's code, which reads it with no flag to test)

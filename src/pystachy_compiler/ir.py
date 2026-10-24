@@ -498,6 +498,7 @@ class ClassInfo:
         self.slots: list[str] = []  # literal __slots__, including inherited slots
         self.slotlimit = False  # every ordinary base and this class omit an instance dict
         self.fglob: dict[str, str] = {}
+        self.fextra: dict[str, bool] = {}  # statically reserved comparison writes, absent until assigned
         self.fflag: dict[str, int] = {}  # field -> index of its "is assigned" flag in the struct
         self.fbox: dict[str, int] = {}  # numeric field -> its companion identity-box index
         self.nbox = 0  # own companion boxes after the assignment flags
