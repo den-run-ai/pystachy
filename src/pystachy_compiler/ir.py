@@ -17,6 +17,17 @@ class Val:
         self.idversion = ""  # that slot's generation at the read
         self.idfrom = ""  # the box of the Any value that an int or float was read from (dyn_box)
 
+    def identity(self, source: Val) -> Val:
+        # A representation-only extraction keeps the binding that owns its number.
+        # Arithmetic and conversions that change the Python value must not use this.
+        self.idslot = source.idslot
+        self.idheld = source.idheld
+        self.idgen = source.idgen
+        self.idcounter = source.idcounter
+        self.idversion = source.idversion
+        self.idfrom = source.idfrom
+        return self
+
 
 class Data:
     # Immutable module data: string bytes, callable/exception references, or constant tuple slots.

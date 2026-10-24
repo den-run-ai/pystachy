@@ -250,5 +250,40 @@ class CellIdentityAllocationTests(unittest.TestCase):
             self.assertEqual(re.findall(r"@pys_alloc\(i64 (\d+)\)", body[1]), ["15", "8"])
 
 
+class JoinedIdentityCostTests(unittest.TestCase):
+    def test_unobserved_union_arithmetic_and_typed_stars_do_not_box(self):
+        source = '''# pystachy: dynamic-any
+def arithmetic(n: int) -> int | float:
+    value: int | float = 0
+    for i in range(n):
+        value = value + i
+    return value
+
+def typed_star() -> list[int]:
+    value = int("1000")
+    return [value, *[2], value]
+
+print(arithmetic(2), typed_star())
+'''
+        ir = driver.compile_program("joined_identity_cost.py", source, [str(ROOT / "lib")], "")
+        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+
+    def test_non_boxable_union_cells_remain_accepted(self):
+        # Reading a numeric member must not box a different, typed-container member
+        # merely because the same cell can hold either representation.
+        source = '''# pystachy: dynamic-any
+def outer() -> int:
+    value: int | list[int] = [7]
+    def read() -> int:
+        if isinstance(value, int):
+            return value
+        return value[0]
+    return read()
+print(outer())
+'''
+        ir = driver.compile_program("joined_identity_boundary.py", source, [str(ROOT / "lib")], "")
+        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+
+
 if __name__ == "__main__":
     unittest.main()

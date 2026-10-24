@@ -10,6 +10,7 @@ from src.pystachy_compiler.utils import (
     is_opt,
     is_sopt,
     is_tuple,
+    numeric_identity,
     optnames,
     runtime_decl,
     targs,
@@ -465,8 +466,8 @@ def gen_deref(self, v: Val) -> Val:
     # an optional value known not to be None, as the value it holds: the same pointer, or an
     # int's, float's or bool's box read
     if not is_sopt(v.t):
-        return Val(v.v, unopt(v.t))
-    return self.from_slot(self.mload('int', v.v), unopt(v.t))
+        return Val(v.v, unopt(v.t)).identity(v)
+    return self.from_slot(self.mload('int', v.v), unopt(v.t)).identity(v)
 
 def gen_reboxes(self, a: str, b: str) -> bool:
     # is tuple type a tuple type b, but for items that are ints, floats or bools where b's may
@@ -586,7 +587,7 @@ def gen_alloca(self, t: str, name: str) -> str:
             self.fn.slots.append(i)
             self.owned[name] = f"%{name}.own.{self.n}"
         self.idbox.pop(name, "")
-        if (t == "int" or t == "float") and self.dyn_policy(self.line) and not self.fn.numeric_only:
+        if numeric_identity(t) and self.dyn_policy(self.line) and not self.fn.numeric_only:
             # the box of its binding as an Any value (idbox): null, as each slot is where the
             # function begins, until a store or its first crossing gives it one (dyn_box)
             i = Ins("slot", "dyn", name + ".box")

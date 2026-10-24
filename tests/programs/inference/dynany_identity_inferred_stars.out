@@ -1,0 +1,16 @@
+star list True False True
+star ids True False
+star tuple True False True
+empty star True False [-0.0, -0.0, 0.0]
+late star True False True
+nested star True False
+first binding True False True
+typed first binding [1000, 2, 1000]
+iterator first binding True False
+retyped expansion ['hello world', 'hello', 'world']
+empty tuple first binding True False
+expand
+star callback True False True
+first
+stop
+[exit 0]

@@ -1,0 +1,27 @@
+joined dict True True
+joined ids True True
+joined nan keys 2 ['b', 'c']
+joined nan set 2 True
+copy before boxing True True
+narrow and replace True False True
+joined list True False True
+loop binding True True
+loop binding True True
+loop binding True True
+copy before boxing True True
+narrow and replace True False True
+joined list True False True
+loop binding True True
+loop binding True True
+loop binding True True
+optional copy True True
+optional narrow True True
+optional none True
+optional copy True True
+optional none True
+joined integer constant True
+joined float constant True
+joined zeros True False [-0.0, -0.0, 0.0]
+scalar union True
+scalar union text word
+[exit 0]

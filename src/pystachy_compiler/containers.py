@@ -1,11 +1,11 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import none_display
+from src.pystachy_compiler.analysis import none_display, walrus_names
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
-from src.pystachy_compiler.syntax import Node, made_var, mk
+from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
     atomic_list,
     bool_for_int,
@@ -188,11 +188,31 @@ def gen_star_display(self, n: Node, want: str) -> Val:
     # with. A tuple display of items alone is a tuple of them; with a list's, a runtime-length one
     w = unopt(want)
     ew = elem(w) if n.kind == "list" and is_list(w) and "?" not in w else targs(w)[0] if n.kind == "tuple" and is_vtuple(w) else ""
+    capture = ew == "dyn"
+    if want == "" and self.drying == 0 and self.dyn_policy(n.line):
+        # Discover the resulting storage before later items can retire a binding.
+        # Reuse the statement's dry-type cache; do not change contextual typing.
+        # A walrus may first bind or retype a name here. Dry typing does not make
+        # those stores, so only inspect expansions independent of every such name.
+        rebound: dict[str, bool] = {}
+        walrus_names(n, rebound)
+        if len(rebound) == 0 and self.typed_now(n):
+            capture = self.dyn_dry(n) in ["list[dyn]", "vtuple[dyn]"]
+        else:
+            for x in n.kids:
+                if x.kind == "starred":
+                    e = x.kids[0]
+                    # Only a standalone, already typed expansion is evidence here;
+                    # iterator calls and generators need their consuming context.
+                    if self.iterator_call(e) or self.is_mapcall(e) or (e.kind == "listcomp" and e.s == "gen"):
+                        continue
+                    if not mentions(e, list(rebound)) and self.typed_now(e) and self.dyn_dry(e) in ["list[dyn]", "vtuple[dyn]"]:
+                        capture = True
     parts: list[Val] = []
     lists: list[bool] = []
     for x in n.kids:
         v = self.star_items(x.kids[0]) if x.kind == "starred" else self.expr(x, ew)
-        if x.kind != "starred" and ew == "dyn" and v.idslot != "":
+        if x.kind != "starred" and capture and v.idslot != "":
             v.idfrom = self.dyn_box(v).v
         if x.kind == "starred" and is_tuple(v.t):
             for i in range(len(targs(v.t))):

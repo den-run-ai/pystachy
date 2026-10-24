@@ -1,0 +1,7 @@
+escaped cell True True
+changed cell True False True
+cell snapshot True False True
+cell snapshot ids True False
+narrowed cell 1000 True
+narrowed cell return 1000
+[exit 0]
