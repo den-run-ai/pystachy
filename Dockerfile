@@ -23,6 +23,7 @@ COPY Makefile pystachy.py runtime.c runtime.py pyext.c pyembed.c LICENSE THIRD_P
 COPY src/ ./src/
 COPY lib/ ./lib/
 COPY ryu/ ./ryu/
+COPY mpz/ ./mpz/
 COPY tools/install.py ./tools/install.py
 RUN make PY=python3 \
     && python3 tools/install.py --prefix /usr/local --destdir /out --version "$VERSION" --revision "$REVISION"

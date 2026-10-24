@@ -4,7 +4,7 @@ PY ?= $(shell command -v python3.13 || command -v python3)
 export PYSTACHY_LLVM ?= $(shell $(PY) -c 'import pystachy; print(pystachy.llvm_dir())')
 COMPILER_SOURCES := pystachy.py $(wildcard src/*.py src/pystachy_compiler/*.py)
 
-pystachy: $(COMPILER_SOURCES) runtime.c runtime.py
+pystachy: $(COMPILER_SOURCES) runtime.c runtime.py $(wildcard ryu/*.c ryu/*.h mpz/*.c)
 	mkdir -p build
 	$(PY) pystachy.py build pystachy.py -o build/pystachy1
 	build/pystachy1 build pystachy.py -o build/pystachy2
@@ -209,7 +209,7 @@ verify:
 
 # IR oracle for refactors (tools/irsame.sh): ./pystachy must emit what the compiler of commit REF (default
 # HEAD) emits -- IR, messages, exit status -- for every corpus program, or for FILES; irsame-py compares the
-# CPython-hosted compilers. build/ref holds REF's pystachy.py, src/, runtime.c (with ryu/, which it includes),
+# CPython-hosted compilers. build/ref holds REF's pystachy.py, src/, runtime.c (with ryu/ and mpz/, which it includes),
 # lib/ and stage-2 compiler, built as above and rebuilt only for another commit; each compiler uses the
 # runtime.c and lib/ beside it.
 REF ?= HEAD
@@ -231,6 +231,7 @@ ref:
 	  { ! git cat-file -e $$c:runtime.py 2> /dev/null || git show $$c:runtime.py > build/ref/runtime.py; } && \
 	  { ! git cat-file -e $$c:lib 2> /dev/null || git archive $$c lib | tar -xf - -C build/ref; } && \
 	  { ! git cat-file -e $$c:ryu 2> /dev/null || git archive $$c ryu | tar -xf - -C build/ref; } && \
+	  { ! git cat-file -e $$c:mpz 2> /dev/null || git archive $$c mpz | tar -xf - -C build/ref; } && \
 	  PYSTACHY_HOME= $(PY) build/ref/pystachy.py build build/ref/pystachy.py -o build/ref/pystachy1 && \
 	  PYSTACHY_HOME= build/ref/pystachy1 build build/ref/pystachy.py -o build/ref/pystachy && \
 	  echo $$c > build/ref/commit; \

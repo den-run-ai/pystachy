@@ -20,7 +20,6 @@ from src.pystachy_compiler.specs import (
     METHODS,
     MODFUNCS,
     NONEVAR,
-    OPAQUE,
     OPTTYPES,
     PATHLIKE,
     PYBUILTINS,
@@ -42,6 +41,8 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk, other_return
 from src.pystachy_compiler.utils import (
+    opaque_class,
+    lib_source,
     clone,
     elem,
     empty_display,
@@ -2262,6 +2263,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         return "str"  # (a str path is its own file system path, and its own posixpath normcase())
     if k == "call" and e.kids[0].kind == "name":
         c = e.kids[0].s
+        if c in ["__pys_mpz_from_int", "__pys_mpz_from_str", "__pys_mpz_binop", "__pys_mpz_unary", "__pys_mpz_shift", "__pys_mpz_pow"] and f.mod == "mpz" and lib_source(f.node.line, self.libdir, "mpz.py"):
+            return "mpzhandle"
         if c == "__pys_weakref_new" and f.mod == "_weakref" and (len(e.kids) == 2 or len(e.kids) == 3):
             t = self.guess(e.kids[1], f)
             return "weakhandle[" + t + "]" if t != "" and not t.startswith("!") else t
@@ -2697,7 +2700,7 @@ def gen_glue_field(self, o: Val, name: str) -> None:
     ci = self.classes.get(unopt(o.t), None)
     if ci is not None and ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"'{short(ci.name)}' object has no attribute '{name}' that a program may use: the fields of Pystachy's {ci.mod}.{short(ci.name)} are its own (its methods are not)")
-    if ci is not None and ci.mod in OPAQUE and self.curfn.mod != ci.mod:
+    if ci is not None and opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod:
         tshown = TYPEMODS[ci.mod] + "." + short(ci.name) if TYPEMODS.get(ci.mod, "builtins") != "builtins" else short(ci.name)
         self.err(f"'{tshown}' object has no attribute '{name}'")
 

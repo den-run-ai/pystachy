@@ -11,7 +11,7 @@
 #                  off (PYSTACHY_OPT=-all), each on one of two disjoint halves of the corpus
 #                  (shard_cases): the passes change no output
 #   runtime-cache  tests/cache.sh with both compilers: the cached runtime is used while nothing it is
-#                  built from changes, built again when runtime.c, a file it includes from ryu/,
+#                  built from changes, built again when runtime.c, a file it includes from ryu/ or mpz/,
 #                  runtime.py, the compiler or a tool changes (also by a same-size edit whose mtime is
 #                  set back, or one made while it is built), keyed by the flags too, never left by a
 #                  failed build; ext's glue cached beside it; a run's own runtime while a tool is not
@@ -166,8 +166,8 @@ rm -rf "$V" "$OUT"
 mkdir -p "$V/home" "$V/ubsan-home"
 cp runtime.c runtime.py "$V/home/"
 cp runtime.c runtime.py "$V/ubsan-home/"
-cp -R lib ryu "$V/home/"
-cp -R lib ryu "$V/ubsan-home/"
+cp -R lib ryu mpz "$V/home/"
+cp -R lib ryu mpz "$V/ubsan-home/"
 export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
@@ -367,14 +367,14 @@ for shard in 0 1; do
 done
 
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
-# whose checks are 65 with the native compiler and 67 with CPython's, including component edits and,
+# whose checks are 66 with the native compiler and 68 with CPython's, including mpz/component edits and,
 # on Linux, which verification runs on, the JIT tier's shared library)
 if want runtime-cache; then
 L=$V/runtime-cache.log; s=$(now)
 PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1
 tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
 for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
-x=$(tests $((65 + 67)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
+x=$(tests $((66 + 68)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
 step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
 fi
 

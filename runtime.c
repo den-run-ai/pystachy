@@ -1114,6 +1114,9 @@ I pys_int_str(Str *s, I base) {               /* CPython's PyLong_FromString on 
   if (ovf) pys_fail("OverflowError: int() result does not fit in 64 bits");
   return neg ? (I)(0 - u) : (I)u;
 }
+/* Explicit arbitrary-precision integers; ordinary int keeps its checked i64 ABI. */
+#include "mpz/mpz.c"
+
 double pys_float_str(Str *s) {
   Str *t = asciinum(s);
   const char *p = t->s, *e = t->s + t->len;

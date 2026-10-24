@@ -3,6 +3,16 @@ Third-party notices
 
 Pystachy is distributed under the MIT License (LICENSE), except for the parts below.
 
+MicroPython arbitrary-precision integer core (mpz/mpz.c)
+------------------------------------------------------
+
+The packed-limb multiplication, multiply-add and normalized long division adapt
+MicroPython v1.26.1 py/mpz.c, Copyright (c) 2013, 2014 Damien P. George,
+under the MIT license reproduced in mpz/mpz.c. Pystachy supplies immutable
+single-allocation values, collector integration, parsing, Python sign/bitwise
+semantics, hashing and conversion adapters. mpz/README.md records upstream
+source identity and changes.
+
 Karpathy microGPT benchmark (bench/microgpt/, bench/smoke/ml.py)
 --------------------------------------------
 
@@ -17,6 +27,21 @@ The benchmark README documents the source hash and adaptations. The names datase
 is supplied separately by the benchmark user and is not included here.
 The smoke kernel retains only scalar add/multiply and reverse-mode traversal;
 its deterministic DAG and dense/softmax drivers are original project code.
+
+CPython's arbitrary-precision integer regression cases
+------------------------------------------------------
+
+tests/programs/numbers/mpz_cpython_long.py and mpz_cpython_int.py adapt selected
+methods of Lib/test/test_long.py and Lib/test/test_int.py from CPython 3.13.16,
+commit cbc944f4bc59639a444dd971c737788ba2283a91. They use the Python Software
+Foundation License Version 2; the complete license and copyright notices are
+retained in tests/upstream/CPYTHON-LICENSE.txt. tests/upstream/mpz.md records the
+original source hashes, preserved cases, adaptations and exclusions.
+
+The adaptations replace unittest scaffolding with standalone assertions, use
+explicit mpz values and decimal strings for oversized literals, replace divmod,
+abs and pow with supported operations, and bound deterministic loops. These
+selected cases do not claim unchanged execution of CPython's complete int tests.
 
 CPython's port acceptance fixtures (tests/upstream/ports/)
 ---------------------------------------------------------
