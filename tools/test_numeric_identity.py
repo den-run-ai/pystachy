@@ -247,6 +247,50 @@ class NumericCallIdentityTests(unittest.TestCase):
         self.assertIn("@pys_dyn_int", body)
         self.assertRegex(body, r"load [^\n]*%x\.box\.")
 
+    def test_call_snapshots_leave_shared_vnodes_unchanged(self):
+        positions = {"call_callable": 1, "virtual_call": 2, "refl_getattr": 0}
+        seen = dict.fromkeys(positions, 0)
+
+        def checked(method, original):
+            def invoke(generator, *args, **kwargs):
+                shared = []
+                for node in args[positions[method]]:
+                    node = node.kids[0] if node.kind == "kw" else node
+                    if node.kind == "val":
+                        value = generator.vnodes[int(node.s)]
+                        if value.t in ("int", "float"):
+                            shared.append((value, vars(value).copy()))
+                result = original(generator, *args, **kwargs)
+                seen[method] += len(shared)
+                for value, before in shared:
+                    self.assertEqual(vars(value), before, method)
+                return result
+            return invoke
+
+        with patch.object(Gen, "call_callable", checked("call_callable", Gen.call_callable)), \
+                patch.object(Gen, "virtual_call", checked("virtual_call", Gen.virtual_call)), \
+                patch.object(Gen, "refl_getattr", checked("refl_getattr", Gen.refl_getattr)):
+            source = (ROOT / "tests/programs/inference/dynany_identity_call_branch_snapshots.py").read_text()
+            self.compile(source)
+        self.assertTrue(all(seen.values()), seen)
+
+    def test_mutating_shared_call_arguments_is_detected(self):
+        positions = {"call_callable": 1, "virtual_call": 2, "refl_getattr": 0}
+        for method in positions:
+            original = getattr(Gen, method)
+
+            def mutate(generator, *args, original=original, method=method, **kwargs):
+                result = original(generator, *args, **kwargs)
+                for node in args[positions[method]]:
+                    node = node.kids[0] if node.kind == "kw" else node
+                    if node.kind == "val" and generator.vnodes[int(node.s)].t in ("int", "float"):
+                        generator.vnodes[int(node.s)].idfrom = "%branch.only"
+                return result
+
+            with self.subTest(method=method), patch.object(Gen, method, mutate):
+                with self.assertRaises(AssertionError):
+                    NumericCallIdentityTests().test_call_snapshots_leave_shared_vnodes_unchanged()
+
     def test_scalar_local_operands_do_not_load_identity_slots(self):
         ir = self.compile("from typing import Any\ndef target(x: int) -> Any:\n"
                           "    return x + 1\nprint(target(1000))\n")

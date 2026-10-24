@@ -591,7 +591,11 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
     for j in range(len(args)):
         value = self.coerce(self.expr(args[j], ts[j + 1]), ts[j + 1], f"argument {j + 1} of a {typestr(ct)}")
         if dynamic_program() and numeric_identity(value.t):
-            value.idfrom = self.dyn_box(value).v
+            # A pre-evaluated vnode can also feed a sibling branch. Keep this call's
+            # snapshot on its own Val, rather than publishing branch-local SSA there.
+            captured = Val(value.v, value.t).identity(value)
+            captured.idfrom = self.dyn_box(value).v
+            value = captured
         vals.append(value)
     o = self.unwrap(o, "TypeError: 'NoneType' object is not callable")
     code = self.mload('%ptr', o.v)
@@ -1163,7 +1167,9 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         t = f.ptypes[j] if j < len(f.ptypes) and j != f.vararg and j != f.kwarg else ""
         value = self.expr(a.kids[0] if a.kind == "kw" else a, t)
         if dynamic_program() and numeric_identity(value.t):
-            value.idfrom = self.dyn_box(value).v
+            captured = Val(value.v, value.t).identity(value)
+            captured.idfrom = self.dyn_box(value).v
+            value = captured
         argnode = self.vnode(value)
         bound.append(mk("kw", a.s, a.line, [argnode]) if a.kind == "kw" else argnode)
         if a.kind != "kw":

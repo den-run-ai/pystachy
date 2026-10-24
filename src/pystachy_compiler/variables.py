@@ -409,7 +409,9 @@ def gen_closure(self, n: Node) -> Val:
             f.dtypes[j] = v.t
         value = self.coerce(v, f.dtypes[j])
         if dynamic_program() and numeric_identity(value.t):
-            value.idfrom = self.dyn_box(value).v
+            captured = Val(value.v, value.t).identity(value)
+            captured.idfrom = self.dyn_box(value).v
+            value = captured
         dvals.append(value)
     env = self.rt("pys_alloc", "ptr", [f"i64 {8 * max(len(c.caps) + len(c.defs) + len(c.iflags) + (len(c.defs) if dynamic_program() else 0), 1)}"])
     for i in range(len(c.caps)):

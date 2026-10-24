@@ -514,7 +514,9 @@ def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
     if numeric_identity(d.t) and dynamic_program():
         # The default is evaluated before attribute lookup or a property's code.
         # Keep its object now; refl_phi cannot recover a retired lazy binding.
-        d.idfrom = self.dyn_box(d).v
+        captured = Val(d.v, d.t).identity(d)
+        captured.idfrom = self.dyn_box(d).v
+        d = captured
     if o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != ""):
         self.err("getattr() of an exception object is not supported (its fields are read as e.name, after except C as e)")
     vals: list[Val] = []
