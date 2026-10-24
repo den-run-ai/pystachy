@@ -597,6 +597,12 @@ def optnames(t: str) -> str:
     return t
 
 
+def numeric_identity(t: str) -> bool:
+    # Storage which may hold an int/float object's identity, including joined locals.
+    u = unopt(t)
+    return u in ["int", "float"] or (is_union(u) and all(m in ["int", "float", "bool", "str"] for m in umembers(u)) and any(m in ["int", "float"] for m in umembers(u)))
+
+
 def literal(e: Node) -> bool:
     # is e a constant that CPython's compiler always makes one of: a literal, a sign on a number, or
     # a tuple of those (an operator's result may exceed its limits, "a" * 4097, and is left to run)

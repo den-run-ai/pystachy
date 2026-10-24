@@ -162,7 +162,7 @@ def gen_uget(self, u: Val, m: str) -> Val:
     i = Ins("union.payload", "%slot", m)
     i.a = [u]
     self.put(i, 2)
-    return self.from_slot(f"%t{i.r[1]}", m)
+    return self.from_slot(f"%t{i.r[1]}", m).identity(u)
 
 def gen_utest(self, u: Val, ms: list[str], may_none: bool) -> str:
     # i1: does the union's box u (null where it is None, if may_none) hold a value of one of types ms
@@ -240,10 +240,10 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
     if nt == "None":
         return Val("null", "None")
     if is_union(unopt(nt)):
-        return Val(v.v, nt)  # (the same box)
+        return Val(v.v, nt).identity(v)  # (the same box)
     m = unopt(nt)
     if m not in self.classes and not is_opt(nt):
-        return self.uget(Val(v.v, unopt(v.t)), m)
+        return self.uget(Val(v.v, unopt(v.t)).identity(v), m)
     # a class's object, or a value that may be None: null stays None
     l0 = self.cur
     lget = self.label()
@@ -257,7 +257,7 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
     ph = Ins("phi", nt, "")
     self.incoming(ph, "null", l0)
     self.incoming(ph, x.v, l1)
-    return Val(self.phi(ph), nt)
+    return Val(self.phi(ph), nt).identity(v)
 
 def gen_unarrowed(self, v: Val) -> str:
     # the hint for an error about value v that only some of its types support, where it is a

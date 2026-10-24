@@ -21,7 +21,7 @@ from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import JSONANY, METHODS, NONEVAR, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
-from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -417,7 +417,7 @@ def gen_dyn_box(self, v: Val) -> Val:
         return Val(self.rtdata("pys_dyn_none_box"), DYN)
     if t == "bool":
         return Val(self.select(v.v, Val(self.rtdata("pys_dyn_true_box"), DYN), Val(self.rtdata("pys_dyn_false_box"), DYN)), DYN)
-    if (t == "int" or t == "float") and v.idfrom != "":
+    if numeric_identity(t) and v.idfrom != "":
         return Val(v.idfrom, DYN)  # (the Any value's object it was read from: dyn_unbox, dyn_narrowed)
     if (t == "int" or t == "float") and v.idslot != "":
         # a variable's value: the box of its object (dyn_id_held), where that holds this value of
@@ -502,7 +502,7 @@ def gen_dyn_box(self, v: Val) -> Val:
     if why != "":
         self.err(why)
     if is_union(unopt(t)):
-        return self.dyn_union_box(Val(v.v, t))
+        return self.dyn_union_box(Val(v.v, t).identity(v))
     if is_opt(t):
         # None or the value's box
         end = self.label()
@@ -548,7 +548,7 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         b = v.idfrom
     elif v.idslot != "":
         b = self.dyn_box(v).v
-    elif v.lit and v.t == t and (t == "float" or (t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
+    elif v.lit and (v.t == unopt(t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))) and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         # store_name can retain t until a pending type join restarts compilation to widen
         # it. A provisional int slot may receive a float literal: its LLVM hex bits
         # must not be parsed as an int or given the provisional destination's identity.
@@ -612,7 +612,9 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         end = self.label()
         self.cbr(self.ptr_cmp("==", Val(v.idheld, DYN), Val("null", DYN)).v, make, end)
         self.place(make)
-        b = self.rt("pys_dyn_int", "ptr", [f"i64 {v.v}"]) if v.t == "int" else self.rt("pys_dyn_float", "ptr", [f"double {v.v}"])
+        # A cell may hold a joined/optional number too. Box its current member,
+        # without consulting the slot again, while the snapshot is still live.
+        b = self.dyn_box(Val(v.v, v.t)).v
         self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
         made = self.cur
         self.br(end)
@@ -644,7 +646,7 @@ def gen_dyn_id_held(self, v: Val) -> Val:
 def gen_dyn_union_box(self, v: Val) -> Val:
     # union value v (a union's box, null where it is None: to_union) as a dyn value: the box of
     # the member's value its tag selects, as usplit selects a member's operation
-    u = Val(v.v, unopt(v.t))
+    u = Val(v.v, unopt(v.t)).identity(v)
     ms = umembers(u.t)
     end = self.label()
     ph = Ins("phi", DYN, "")

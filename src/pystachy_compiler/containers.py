@@ -188,11 +188,23 @@ def gen_star_display(self, n: Node, want: str) -> Val:
     # with. A tuple display of items alone is a tuple of them; with a list's, a runtime-length one
     w = unopt(want)
     ew = elem(w) if n.kind == "list" and is_list(w) and "?" not in w else targs(w)[0] if n.kind == "tuple" and is_vtuple(w) else ""
+    capture = ew == "dyn"
+    if want == "" and self.drying == 0 and self.dyn_policy(n.line):
+        # Discover the resulting storage before later items can retire a binding.
+        # Reuse the statement's dry-type cache; do not change contextual typing.
+        # A walrus may first bind a name here: speculative typing must not read it
+        # before that store. An already typed dynamic expansion is sufficient too.
+        if self.typed_now(n):
+            capture = self.dyn_dry(n) in ["list[dyn]", "vtuple[dyn]"]
+        else:
+            for x in n.kids:
+                if x.kind == "starred" and self.typed_now(x.kids[0]) and self.dyn_dry(x.kids[0]) in ["list[dyn]", "vtuple[dyn]"]:
+                    capture = True
     parts: list[Val] = []
     lists: list[bool] = []
     for x in n.kids:
         v = self.star_items(x.kids[0]) if x.kind == "starred" else self.expr(x, ew)
-        if x.kind != "starred" and ew == "dyn" and v.idslot != "":
+        if x.kind != "starred" and capture and v.idslot != "":
             v.idfrom = self.dyn_box(v).v
         if x.kind == "starred" and is_tuple(v.t):
             for i in range(len(targs(v.t))):

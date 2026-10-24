@@ -5,7 +5,4 @@ a typed field False False
 a class variable False False
 a parameter's default value False False
 a folded constant False False
-inferred starred reads before a taken store False
-retyped dict values False False
-retyped NaN keys 3
 [exit 0]

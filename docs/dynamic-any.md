@@ -206,6 +206,16 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   object together, and a repeated NaN key or set item stays one entry even when a
   later item rebinds its name. Later items and hashing retain their evaluation order
   (`tests/programs/inference/dynany_identity_display_reads.py`).
+  Inferred starred list and runtime-length tuple displays also capture their numeric
+  items when their resulting dynamic storage can be determined before evaluation
+  (`tests/programs/inference/dynany_identity_inferred_stars.py`). This lookahead keeps
+  first-binding assignment expressions valid and does not change the display's inferred type.
+  Optional numeric locals and scalar-union locals containing ints or floats keep the
+  same lazy identity slots across assignments, narrowing and copies. Shared closure
+  cells retain and snapshot these identities too, including after the outer function
+  returns (`dynany_identity_joined_locals.py`, `dynany_identity_joined_cells.py`).
+  The union/optional payload layout and typed calling conventions are unchanged;
+  copies can materialize a box as they already do for concrete numeric locals.
   Comprehension targets have their own box slots, renewed for each iteration and
   restored to the enclosing scope after shadowing, including empty comprehensions
   and short-circuit reductions (`tests/programs/inference/dynany_identity_comprehensions.py`).
@@ -440,14 +450,13 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   value, an item of a typed container, a typed field or class variable, and the name
   that `from m import x` binds. So is an expression
   of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
-  literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`). Displays
-  whose dynamic item storage is known before evaluating their items preserve the
-  int- or float-typed binding objects; this does not change typed container storage
-  or calling conventions. Numeric locals whose inferred storage joins different
-  types can still lose identity in displays. An inferred starred display that discovers dynamic storage only
-  after evaluating its items can still split repeated reads before rebinding:
-  `[x, *dynamic_items, x, (x := value)]`. An explicit `list[Any]` destination avoids
-  this remaining display case.
+  literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`). Numeric
+  optional/scalar-union local bindings, including closure cells, now retain their
+  identity. This does not extend to union globals, typed container items or typed
+  call boundaries. Starred displays capture numeric objects when their dynamic
+  result can be inferred before evaluation, or an already typed expansion supplies
+  dynamic items. Displays whose element types depend on earlier first bindings
+  within that same expression can still need an explicit `list[Any]` destination.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional and keyword arguments, and what a

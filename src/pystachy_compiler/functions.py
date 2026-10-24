@@ -12,6 +12,7 @@ from src.pystachy_compiler.utils import (
     is_list,
     is_opt,
     lt,
+    numeric_identity,
     rename,
     rt_subset,
     takes_self,
@@ -210,7 +211,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             a = self.maddr('%ptr', env, f'{i}', True)
             self.lreg[c.caps[i]] = self.mload('%ptr', a)
             self.ltype[c.caps[i]] = c.ctypes[i]
-            if c.ctypes[i] in ["int", "float"] and self.dyn_policy(f.node.line):
+            if numeric_identity(c.ctypes[i]) and self.dyn_policy(f.node.line):
                 self.idbox[c.caps[i]] = self.maddr('%ptr', self.lreg[c.caps[i]], '1', True)
         for j in range(len(c.iflags)):
             a = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + j}', True)
