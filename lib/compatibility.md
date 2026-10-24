@@ -229,11 +229,15 @@ See [the probe record](../docs/html-parser-probe.md) for provenance and commands
 queries, opcodes, and the three ratio methods. `get_close_matches`, `Match`,
 `IS_CHARACTER_JUNK` and `IS_LINE_JUNK` also work.
 
-Items of other types are rejected. The generators `get_grouped_opcodes()`, `unified_diff()`
-(with file names, dates, `n` and `lineterm`) and `restore()` work. `context_diff()` does not
-compile, as it calls `dict()` with keyword arguments; neither do `ndiff()` and
-`Differ.compare()`, whose recursive `_fancy_helper()` generator yields a type the compiler
-cannot infer, nor `HtmlDiff`, whose class attributes' types it cannot infer.
+Items of other types are rejected. The generators `get_grouped_opcodes()`, `unified_diff()`,
+`context_diff()` (with file names, dates, `n` and `lineterm`) and `restore()` work.
+`context_diff()` uses a dictionary literal for its fixed prefix table instead of `dict()`
+keyword arguments; the upstream generator and grouping algorithm are unchanged.
+`tests/programs/upstream/upstream_difflib_context.py` checks selected CPython output-format
+assertions and empty, insertion, deletion, replacement, grouping and Unicode cases.
+`ndiff()` and `Differ.compare()` still fail because their recursive `_fancy_helper()`
+generator yields a type the compiler cannot infer; `HtmlDiff`'s class attribute types
+also remain unsupported.
 
 ## Getopt
 

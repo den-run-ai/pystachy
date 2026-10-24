@@ -24,8 +24,14 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 
 The library reference is the authority for each module's limits. For example, `difflib`
 supports matching strings and lists of strings, including `get_grouped_opcodes()`,
-`unified_diff()` and `restore()`; `context_diff()`, `ndiff()` and `HtmlDiff` still have
+`unified_diff()`, `context_diff()` and `restore()`; `ndiff()` and `HtmlDiff` still have
 blockers. `textwrap` supports its public operations with code-point widths and tab expansion.
+
+The [October 22 core sweep](reports/stdlib-expansion-2026-10-22.md) separates selected
+import results from executed APIs and lists the remaining blockers and exclusions.
+Its [CPython-derived regression guide](../tests/upstream/core-sweep.md) records the
+new heterogeneous JSON, dictionary, deque and context-diff cases; these are selected
+adapted tests, not execution of CPython's complete test suite.
 
 Selected APIs from `sys`, `os`, `math`, `time`, `errno`, `tempfile` and `select` are compiler builtins.
 `typing`, `collections.abc` (also imported as `_collections_abc`) and `dataclasses` also have

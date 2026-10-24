@@ -187,6 +187,55 @@ class OutputTests(unittest.TestCase):
                 with mock.patch.dict(globals_, re=broken):
                     self.assertNotEqual(run(0), expected)
 
+    def test_generators_check_every_value_even_when_the_sum_matches(self):
+        namespace = runpy.run_path(str(bench.BENCH / "generators.py"))
+        run = namespace["bench_generators"]
+        original = run.__globals__["tree"]
+
+        def reordered(values):
+            if len(values) == 100:
+                return iter([1, 0] + list(range(2, 100)))
+            return original(values)
+
+        self.assertEqual(run(1, 100), 4950)
+        with mock.patch.dict(run.__globals__, tree=reordered), self.assertRaises(AssertionError):
+            run(1, 100)
+
+    def test_comprehensions_exposes_the_complete_sorted_order(self):
+        namespace = runpy.run_path(str(bench.BENCH / "comprehensions.py"))
+        self.assertEqual(namespace["bench_comprehensions"](1),
+                         [1, 3, 4, 5, 6, 17, 7, 19, 20, 21, 22, 23, 9, 11, 12, 13, 14, 15])
+
+    def test_json_loads_preserves_twenty_loads_per_payload_and_checks_results(self):
+        output = io.StringIO()
+        with mock.patch.object(sys, "argv", ["json_loads.py", "2"]), \
+                mock.patch.object(json, "loads", wraps=json.loads) as loads, \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+            runpy.run_path(str(bench.BENCH / "json_loads.py"), run_name="__main__")
+        self.assertEqual(loads.call_count, 2 * 3 * 20 + 3)
+        self.assertIn("'username': 'collinwinter'", output.getvalue())
+        self.assertIn("265867233", output.getvalue())
+        broken = io.StringIO()
+        with mock.patch.object(sys, "argv", ["json_loads.py", "1"]), \
+                mock.patch.object(json, "loads", return_value=None), \
+                contextlib.redirect_stdout(broken), contextlib.redirect_stderr(io.StringIO()):
+            runpy.run_path(str(bench.BENCH / "json_loads.py"), run_name="__main__")
+        self.assertEqual(broken.getvalue(), "json_loads 1\nNone\nNone\nNone\n")
+
+    def test_json_dumps_checks_the_whole_repeated_document(self):
+        output = io.StringIO()
+        with mock.patch.object(sys, "argv", ["json_dumps.py", "1", "smoke"]), \
+                mock.patch.object(json, "dumps", wraps=json.dumps) as dumps, \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+            runpy.run_path(str(bench.BENCH / "json_dumps.py"), run_name="__main__")
+        self.assertEqual(dumps.call_count, 9)
+        self.assertIn('"key2": true', output.getvalue())
+        with mock.patch.object(sys, "argv", ["json_dumps.py", "1", "smoke"]), \
+                mock.patch.object(json, "dumps", return_value="{}"), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()), \
+                self.assertRaises(AssertionError):
+            runpy.run_path(str(bench.BENCH / "json_dumps.py"), run_name="__main__")
+
     def test_one_nonnegative_seconds_line_is_required(self):
         self.assertEqual(bench.seconds("warning\nseconds 0.25\n"), 0.25)
         for stderr in ("", "seconds 1\nseconds 2\n", "seconds -1\n", "seconds nan\n", "seconds x\n"):

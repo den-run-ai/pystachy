@@ -323,6 +323,12 @@ A pull request that changes only Markdown files or `docs/` skips the CI, Install
 Packages workflows; Lint and the DCO check still run, and pushes to `main` run the full matrix.
 The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
 
+The `benchmarks` group also runs `make bench-pyperformance-check` with that run's verified
+native compiler. Every delivered adaptation must match CPython stdout in JIT and AOT on
+bounded smoke inputs; a mismatch or failed build fails the group and aggregate gate.
+The group's artifact includes `pyperformance-smoke.json`. This is correctness coverage,
+with no timing thresholds or claim to run the upstream pyperf harness.
+
 The independent [Performance smoke workflow](../.github/workflows/performance.yml) runs on
 the same events (excluding documentation-only PRs). One job measures eleven small workloads:
 scalar autograd, dense projection/softmax, fnmatch, mixed JSON parsing, repair-style scanning,

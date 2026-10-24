@@ -1,0 +1,6 @@
+count visits all items
+count reflected comparison
+count mutation deque mutated during iteration
+full insert deque already at its maximum size
+shallow copy [[11]]
+[exit 0]

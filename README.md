@@ -33,7 +33,7 @@ produce byte-identical LLVM IR.
   CPython + NumPy and PyTorch** (0.5–0.7× and 0.8–0.9× their latency) and about 200× faster than
   the same model in pure Python on CPython; results match PyTorch within 1.4e-14
   ([example](examples/nanogpt/README.md#paired-measurement-after-the-array-and-blas-work)).
-- **1,400+ differential programs** checked against CPython, plus **1,700+ rejection tests**,
+- **1,600+ differential programs** checked against CPython, plus **1,700+ rejection tests**,
   with JIT/AOT, self-hosting, sanitizer and garbage-collection stress coverage
   ([verification](docs/testing.md)).
 - **Python and C interoperability:** call C libraries, build CPython extensions, or explicitly
@@ -65,8 +65,10 @@ typed control loop, native tool calls and file edits in a standalone executable.
 
 ## Quick start
 
-Use a [native release package or Docker image](docs/install.md) to skip bootstrapping
-(releases lag behind `main`). Release packages require LLVM; the image includes it.
+Use a [native release package or Docker image](docs/install.md) to skip bootstrapping.
+The current prerelease is [v0.1.0-alpha.3](https://github.com/den-run-ai/pystachy/releases/tag/v0.1.0-alpha.3);
+see its [release notes](docs/releases/v0.1.0-alpha.3.md) for changes and known issues.
+Release packages require LLVM; the image includes it. Source `main` can contain newer changes.
 For a source build:
 
 Install LLVM, **Python 3.11+** and `make` with your package manager.
@@ -122,7 +124,7 @@ The microGPT timings measure training and inference, excluding startup and compi
 Parameters, losses and generated names are checked against the original CPython program;
 the adapted source also runs under CPython.
 
-Performance depends on your workload. See the [18 adapted pyperformance benchmarks](docs/pyperformance.md)
+Performance depends on your workload. See the [22 adapted pyperformance benchmarks](docs/pyperformance.md)
 for more comparisons and the [performance guide](docs/performance.md) for startup, memory use
 and reproduction instructions. JIT compiles each run; AOT builds once.
 The [caching guide](docs/caching.md) covers regex and text processing.
@@ -164,6 +166,9 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
 - Ordinary single inheritance is supported; multiple inheritance, `async`, `match`,
   native `bytearray` and binary filesystem I/O remain unsupported. `io.BytesIO` is supported.
   See the [class rules](docs/language/typing.md#single-inheritance).
+- Dynamic `Any` remains experimental and opt-in. Unsupported cross-type comparison bodies
+  can skip user code, and numeric identity can change at remaining typed boundaries. Read the
+  [dynamic contract and deviations](docs/dynamic-any.md#deviations) before enabling it.
 - Integers are checked 64-bit values; overflow raises `OverflowError`.
 - Strings store UTF-8 with code-point lengths, indexing, slicing and search offsets; Unicode case mapping remains incomplete.
   Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)

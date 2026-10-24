@@ -23,7 +23,7 @@ only build inputs and excludes environment files, keys and caches.
 ## Publish a version
 
 1. Set [VERSION](../VERSION) to the intended semantic version and add its curated notes
-   as `docs/releases/VERSION.md`, such as [v0.1.0-alpha.2](releases/v0.1.0-alpha.2.md).
+   as `docs/releases/VERSION.md`, such as [v0.1.0-alpha.3](releases/v0.1.0-alpha.3.md).
    Then merge the version bump, intended fixes and packaging changes into `main`.
 2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
    `main` commit.
@@ -93,8 +93,8 @@ jobs finish, so manual promotion does not race an active release.
 ```sh
 make
 python3 -m unittest discover -s tools -p 'test_release*.py'
-python3 tools/release.py --version v0.1.0-alpha.1 --output-dir dist
-python3 tools/release_smoke.py dist/pystachy-v0.1.0-alpha.1-linux-x86_64.tar.gz
+python3 tools/release.py --version v0.1.0-alpha.3 --output-dir dist
+python3 tools/release_smoke.py dist/pystachy-v0.1.0-alpha.3-linux-x86_64.tar.gz
 docker build -t pystachy:test .
 docker run --rm --user 10001:10001 --entrypoint pystachy-smoke pystachy:test
 ```
