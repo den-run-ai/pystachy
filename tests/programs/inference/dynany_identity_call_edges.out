@@ -12,6 +12,8 @@ finally return True True
 conditional call True True
 base method True True
 derived method True True
+optional virtual True True
+None virtual True True
 exception argument True
 trouble
 [exit 0]

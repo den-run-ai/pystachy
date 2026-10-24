@@ -2,4 +2,7 @@ imported int True True
 imported float True True True
 imported default True True
 imported nan keys 1
+imported constructor aliases True True
+imported closure True True
+imported closure None True
 [exit 0]

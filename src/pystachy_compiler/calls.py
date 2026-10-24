@@ -1207,8 +1207,15 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     if dynamic_program() and numeric_identity(t):
         identity = Ins("phi", "dyn", "")
         for i in range(len(vals)):
-            self.incoming(identity, vals[i].idfrom, edges[i])
-        result.idfrom = self.phi(identity)
+            # A None/string/bool arm needs no numeric provenance. Its raw payload
+            # remains sufficient; the optional/union boxing path handles its tag.
+            self.incoming(identity, vals[i].idfrom if vals[i].idfrom != "" else "null", edges[i])
+        held = self.phi(identity)
+        result.idslot = self.alloca("dyn", "")
+        self.mem_store(Val(result.idslot, "*dyn"), Val(held, "dyn"))
+        result.idheld = held
+        result.idcounter = self.alloca("int", "")
+        result.idversion = "0"
     return result
 
 def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "") -> Val:

@@ -20,3 +20,13 @@ second: Any = typed.default()
 print("imported default", first is second, first is typed.VALUE)
 items: set[Any] = {value, direct, qualified, indirect}
 print("imported nan keys", len(items))
+
+pair = typed.Pair()
+a: Any = pair.a
+b: Any = pair.b
+print("imported constructor aliases", a is b, id(a) == id(b))
+read = typed.capture(value)
+held: Any = read()
+print("imported closure", held is value, read() is held)
+empty = typed.capture(None)
+print("imported closure None", empty() is None)

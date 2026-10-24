@@ -56,6 +56,20 @@ def virtual(obj: Base, value: float) -> float:
     return obj.keep(value)
 
 
+class Maybe:
+    def value(self, number: int) -> int | None:
+        return number
+
+
+class Empty(Maybe):
+    def value(self, number: int) -> None:
+        return None
+
+
+def optional_virtual(obj: Maybe, number: int) -> Any:
+    return obj.value(number)
+
+
 class Trouble(Exception):
     def __init__(self, value: float) -> None:
         boxed: Any = value
@@ -84,5 +98,7 @@ same("finally return", value, cleanup(value))
 same("conditional call", value, chosen(value, float("nan"), True))
 same("base method", value, virtual(Base(), value))
 same("derived method", value, virtual(Derived(), value))
+same("optional virtual", number, optional_virtual(Maybe(), number))
+same("None virtual", None, optional_virtual(Empty(), number))
 kind = Trouble
 print(str(kind(value)))
