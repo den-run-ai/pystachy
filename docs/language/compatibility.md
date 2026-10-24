@@ -343,13 +343,15 @@ above apply to well-formed text (with the surrogate exception described above).
   body cannot compile for an `Any` operand and falls outside the supported guarded concrete
   adapter still falls back to identity (or `TypeError` for
   an ordering) where CPython runs the method
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`, which writes a missing instance
-  field). Guarded adapters now cover closed builtin field equality, numeric/indexed
+  outside the proven operation surface. Guarded adapters now cover closed builtin field equality, numeric/indexed
   expressions and mixed-list concatenation, direct mixed-list element equality,
   nested object field reads, supported property getters, cleanup/loops, missing reads
   through stable aliases/closures, and operand rebinding that provably discards the
-  incoming reference. See the [acceptance matrix](../dynamic-any.md#operations).
-  Missing-field creation, arbitrary operand escape, general rebinding and unsupported
+  incoming reference, plus literal missing-field writes with native alias-preserving storage.
+  `vars()`/`__dict__` still explicitly reject reflection after one of those fields is created
+  (`tests/deviations/dynany_cmp_field_reflection.py`, #486). See the
+  [acceptance matrix](../dynamic-any.md#operations).
+  Arbitrary runtime-name field creation, operand escape, general rebinding and unsupported
   property/nested-container shapes remain outside the proof. Custom lookup methods
   remain explicit compile-time rejections. Concrete operand annotations alone no
   longer suppress normal instance comparison methods. The prototype's other differences, such as

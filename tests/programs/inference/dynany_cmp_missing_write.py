@@ -1,5 +1,5 @@
 # pystachy: dynamic-any
-# Remaining #803 gap: a comparison cannot add missing instance storage to a peer.
+# Comparison writes reserve unassigned native storage without losing effects.
 from typing import Any
 
 

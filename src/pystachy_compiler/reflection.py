@@ -1086,7 +1086,7 @@ def gen_refl_dict_order(self, c: str) -> list[str]:
     if len(late) > 1 or (len(late) == 1 and late[0] != out[-1]):
         self.err(f"vars() of {short(c)} is not supported: its attribute {late[0]}, which its __init__ may leave unassigned, may be assigned later, which inserts it last in the __dict__ (#486)")
     for fl in ci.ftypes:
-        if fl.startswith(" ") or fl in out:
+        if fl.startswith(" ") or fl in out or fl in ci.fextra:
             continue
         if fl in ci.fdefault and (fl not in ci.fopts or c in self.nts):
             if self.refl_stored(fl):
@@ -1237,8 +1237,28 @@ def gen_refl_dict_of(self, n: Node) -> Node | None:
     return None
 
 
+def comparison_dict_guard(self, o: Val, known: bool) -> None:
+    # Reserved comparison fields must not change the static dictionary value
+    # type or order of a previously supported vars() consumer while absent.
+    # Once assigned, reject this unsupported late-field reflection explicitly.
+    leaves = self.refl_type_of(o, "__name__", known)
+    if not any(lf.c in self.classes and len(self.classes[lf.c].fextra) > 0 for lf in leaves):
+        return
+    end = self.label()
+    for lf in self.refl_split(o, known):
+        self.place(lf.label)
+        if lf.c in self.classes:
+            ci = self.classes[lf.c]
+            for field in ci.fextra:
+                flag = self.mem_load(Val(self.fgep(lf.v, ci.fflag[field]), "*bool"))
+                self.guard(flag.v, "TypeError: vars() and __dict__ after comparison-created attributes are not supported (#486)")
+        self.br(end)
+    self.place(end)
+
+
 def gen_refl_vars_text(self, o: Val, known: bool) -> Val:
     # repr(vars(o)): the runtime's walk of the field table of o's exact class
+    comparison_dict_guard(self, o, known)  # another print argument may have mutated its live view
     leaves = self.refl_type_of(o, "__name__", known)
     for lf in leaves:
         if lf.c == "None" or lf.c not in self.classes:
@@ -1332,6 +1352,7 @@ def gen_refl_dict_operand(self, n: Node, x: Node) -> Val:
             self.err(f"vars() argument must have __dict__ attribute: of a {typestr(lf.c)}, it is not supported (#486)" if n.kind == "call" else f"type {typestr(lf.c)} has no attribute '__dict__'")
         else:
             self.refl_dict_order(lf.c)
+    comparison_dict_guard(self, o, True)
     return o
 
 
@@ -1390,6 +1411,7 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
         # (the fields __init__ may leave unassigned, as the loop starts: where its body assigns
         # one, CPython's next step raises, see refl_size_check)
         flagged = [fl for fl in orders[li] if fl in ci.fflag and lf.c + "." + fl not in self.cvars]
+        flagged.extend([fl for fl in ci.fextra if fl not in flagged])
         snap = [self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v for fl in flagged]
         for j in range(len(orders[li])):
             fl = orders[li][j]

@@ -463,10 +463,17 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
     if ci.base in self.classes:
         b = self.classes[ci.base]
         self.fl_fields(b)
-        own = [f for f in ci.fields if f not in b.ftypes]
-        ci.fields = [f for f in b.fields]
+        shadow = [f for f in b.fextra if (f in ci.ftypes and f not in ci.fextra) or f in ci.methods]
+        own = [f for f in ci.fields if f not in b.ftypes or f in shadow]
+        extra = [f for f in b.fextra if f not in shadow]
+        ci.fields = []
         for f in b.fields:
-            ci.ftypes[f] = b.ftypes[f]  # (the places of its base's base's flags too)
+            # A comparison-created base field cannot replace a descendant's
+            # existing native attribute. Retain the prefix as hidden storage;
+            # the descendant's logical field keeps its own type and offset.
+            physical = " " + b.name + ".comparison." + f if f in shadow else f
+            ci.fields.append(physical)
+            ci.ftypes[physical] = b.ftypes[f]
         for k in range(b.nflag):
             ci.fields.append(f" {b.name}.{k}")  # (the place of one of the base's flags)
             ci.ftypes[ci.fields[-1]] = "bool"
@@ -477,9 +484,13 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
         for i in range(len(ci.fields)):
             ci.fpos[ci.fields[i]] = i
         for f in b.fflag:
-            ci.fflag[f] = b.fflag[f]
+            if f not in shadow:
+                ci.fflag[f] = b.fflag[f]
+        for f in extra:
+            ci.fextra[f] = True
         for f in b.fbox:
-            ci.fbox[f] = b.fbox[f]
+            if f not in shadow:
+                ci.fbox[f] = b.fbox[f]
         for f in b.fields:
             if f not in b.fflag:
                 fl.sup.append(f)
@@ -519,7 +530,7 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
         # A derived constructor can omit the base constructor, or call an override before
         # assigning its own fields. Keep assignment bits in the root layout so base-typed
         # reads remain safe for every ordinary subclass, including future call paths.
-        checked = ci.tag > 0 and not f.startswith(" ")
+        checked = (ci.tag > 0 and not f.startswith(" ")) or f in ci.fextra
         if (checked or f in fl.unsafe or f in fl.probed or ci.name + "." + f in self.cvars) and f not in ci.fflag:
             if ci.fpos[f] < nb and f in fl.unsafe:
                 # (the base's code, which reads it with no flag to test)
