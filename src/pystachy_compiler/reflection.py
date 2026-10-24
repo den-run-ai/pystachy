@@ -464,6 +464,10 @@ def gen_refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) 
         for j in range(len(vals)):
             self.incoming(identity, vals[j].idfrom if vals[j].idfrom != "" else self.rtdata("pys_dyn_none_box"), blocks[j])
         r.idfrom = self.phi(identity)
+    else:
+        # A property's typed return keeps a lazy companion. Select it alongside
+        # the captured default, including when AttributeError takes the default.
+        r = self.numeric_phi(r, vals, blocks)
     return r
 
 

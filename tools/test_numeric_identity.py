@@ -207,6 +207,16 @@ class NumericCallIdentityTests(unittest.TestCase):
                     self.assertIn("ptr %aid0", ir)
                     self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
 
+    def test_getattr_property_keeps_return_box_lazy(self):
+        ir = self.compile("class C:\n    @property\n    def item(self) -> float:\n"
+                          "        return 1.5 + 0.25\n"
+                          "def target(obj: C) -> float:\n    return getattr(obj, 'item', 2.5)\n"
+                          "print(target(C()))\n")
+        body = self.function_ir(ir, "f.target")
+        self.assertIn("phi ptr", body)
+        self.assertIn("ptr %idret", body)
+        self.assertNotRegex(body, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+
     def test_numeric_annotation_argument_proof_is_separate(self):
         fn, ir = self.signature("value: int | float = 0\nfor i in range(x):\n    value += i\nreturn value", "int | float")
         self.assertFalse(fn.numeric_only)
