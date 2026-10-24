@@ -354,9 +354,27 @@ def selem(t: str) -> str:
     return t[t.find("[") + 1 : -1]
 
 
-def is_scalar_set(t: str) -> bool:
-    # Nonoptional sets whose distinct element types have disjoint equality domains.
-    return is_set(t) and selem(t) in ["int", "str", "bytes"]
+def builtin_key(t: str) -> bool:
+    # Immutable keys with no user equality/hash callbacks.
+    return t in ["int", "float", "bool", "str", "bytes"] or (is_tuple(t) and all(builtin_key(x) for x in targs(t)))
+
+
+def disjoint_keys(a: str, b: str) -> bool:
+    # Prove that no key of these types can equal the other. Numeric types overlap;
+    # tuple length or one disjoint component suffices only without user callbacks.
+    if not builtin_key(a) or not builtin_key(b):
+        return False
+    if is_tuple(a) and is_tuple(b):
+        xs = targs(a)
+        ys = targs(b)
+        return len(xs) != len(ys) or any(disjoint_keys(xs[i], ys[i]) for i in range(len(xs)))
+    if is_tuple(a) or is_tuple(b):
+        return True
+    return a != b and not (a in ["int", "float", "bool"] and b in ["int", "float", "bool"])
+
+
+def disjoint_sets(a: str, b: str) -> bool:
+    return is_set(a) and is_set(b) and disjoint_keys(selem(a), selem(b))
 
 
 def is_tuple(t: str) -> bool:

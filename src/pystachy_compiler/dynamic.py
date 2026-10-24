@@ -15,12 +15,13 @@ the program's classes, functions the compiler writes once every class that is bo
 (dyn_dispatchers): each tests the box's DynType for those classes and calls the class's own code.
 """
 from __future__ import annotations
+from src.pystachy_compiler.analysis import bind_count
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import JSONANY, METHODS, NONEVAR, RTDATA
-from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_scalar_set, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.syntax import Node, has_kind, mk
+from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -171,23 +172,44 @@ def gen_dyn_xhelper(self, c: str) -> None:
     self.lenient = False
 
 
+def comparison_aliases(n: Node, parameter: str) -> list[str]:
+    # Only unconditional, singly assigned local aliases. The field walker also
+    # checks all nested scopes for shadowing/rebinding or escape of these names.
+    aliases = [parameter]
+    for st in n.kids if n.kind == "block" else []:
+        if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "name" and st.kids[1].s in aliases:
+            name = st.kids[0].s
+            if name not in aliases and bind_count(n.kids, name) == 1:
+                aliases.append(name)
+    return aliases
+
+
 def comparison_fields(n: Node, parameter: str, out: list[str]) -> bool:
-    # A bounded structural adapter: the operand is used only through direct
-    # fields. Reject rebinding, escaping the object, and nested scopes, whose
-    # meaning could depend on the concrete class beyond those field types.
+    return comparison_field_walk(n, comparison_aliases(n, parameter), out)
+
+
+def comparison_field_walk(n: Node, aliases: list[str], out: list[str]) -> bool:
+    # The operand stays an object of its own concrete class. Its direct fields
+    # may be read in cleanup/loops or captured by a nested function, but neither
+    # rebinding nor passing the whole operand to unknown code is proven here.
+    if n.kind == "assign" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[1].kind == "name" and n.kids[0].s in aliases[1:] and n.kids[1].s in aliases:
+        return True
     if n.kind not in ["block", "return", "raise", "if", "pass", "expr", "assign", "annassign", "augassign",
                       "name", "attr", "call", "kw", "int", "float", "str", "bytes", "True", "False", "None",
                       "binop", "unary", "boolop", "cmp", "ifexp", "index", "slice", "sliceitem", "omit",
-                      "list", "tuple", "dict", "set", "noann"]:
+                      "list", "tuple", "dict", "set", "noann", "try", "except", "while", "for", "break", "continue",
+                      "with", "withitem", "assert", "def", "params", "param", "starparam", "dstarparam"]:
         return False
-    if n.kind == "name" and n.s in [parameter, "locals", "vars", "eval", "exec"]:
+    if n.kind in ["except", "def", "param", "starparam", "dstarparam"] and n.s in aliases:
         return False
-    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == parameter:
+    if n.kind == "name" and (n.s in aliases or n.s in ["locals", "vars", "eval", "exec"]):
+        return False
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s in aliases:
         if n.s not in out:
             out.append(n.s)
         return True
     for kid in n.kids:
-        if not comparison_fields(kid, parameter, out):
+        if not comparison_field_walk(kid, aliases, out):
             return False
     return True
 
@@ -195,31 +217,93 @@ def comparison_fields(n: Node, parameter: str, out: list[str]) -> bool:
 def comparison_reads(n: Node, parameter: str, missing: list[str]) -> bool:
     # A missing field can be read (and raise), but never invent storage for an
     # assignment. Keep writes to other fields and through existing containers.
-    if n.kind in ["assign", "annassign", "augassign"]:
-        for target in n.kids[:-1] if n.kind == "assign" else n.kids[:1]:
+    if n.kind in ["assign", "annassign", "augassign", "for", "withitem"]:
+        targets = n.kids[:-1] if n.kind == "assign" else n.kids[1:] if n.kind == "withitem" else n.kids[:1]
+        for target in targets:
             fields: list[str] = []
             if not comparison_fields(target, parameter, fields) or any(a in missing for a in fields):
                 return False
     return all(comparison_reads(kid, parameter, missing) for kid in n.kids)
 
 
+def comparison_value(n: Node, receiver: str, aliases: list[str], own: dict[str, str], peer: dict[str, str]) -> str:
+    # A closed expression proof, not speculative compilation. Indexing retains
+    # the source container's item layout; arithmetic is restricted to numbers.
+    if n.kind == "attr" and n.kids[0].kind == "name":
+        obj = n.kids[0].s
+        return own.get(n.s, "") if obj == receiver else peer.get(n.s, "") if obj in aliases else ""
+    if n.kind in ["int", "float", "str", "None"]:
+        return n.kind
+    if n.kind in ["True", "False"]:
+        return "bool"
+    if n.kind == "index" and len(n.kids) == 2:
+        t = comparison_value(n.kids[0], receiver, aliases, own, peer)
+        index = comparison_value(n.kids[1], receiver, aliases, own, peer)
+        if index in ["int", "bool"]:
+            if is_list(t):
+                return elem(t)
+            if is_vtuple(t):
+                return targs(t)[0]
+            if t in ["str", "bytes"]:
+                return "str" if t == "str" else "int"
+            if is_tuple(t) and n.kids[1].kind == "int":
+                i = int(n.kids[1].s)
+                ts = targs(t)
+                if 0 <= i < len(ts):
+                    return ts[i]
+        if is_dict(t) and index == targs(t)[0]:
+            return targs(t)[1]
+    if n.kind == "unary" and n.s in ["+", "-"]:
+        t = comparison_value(n.kids[0], receiver, aliases, own, peer)
+        return "int" if t == "bool" else t if t in ["int", "float"] else ""
+    if n.kind == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]:
+        ts = [comparison_value(kid, receiver, aliases, own, peer) for kid in n.kids]
+        if all(t in ["int", "float", "bool"] for t in ts) and (n.s not in ["<<", ">>", "&", "|", "^"] or "float" not in ts):
+            return "float" if n.s == "/" or "float" in ts else "int"
+    return ""
+
+
 def comparison_equalities(n: Node, receiver: str, parameter: str, different: list[str], own: dict[str, str], peer: dict[str, str]) -> bool:
-    # A newly different field layout is safe only as a direct equality operand
-    # with another closed builtin field. Other uses could fail once per boxed
-    # class and restart the entire program, even when the canonical body works.
-    if n.kind == "cmp" and all(op in ["==", "!="] for op in n.s.split(",")):
-        if all(kid.kind == "attr" and kid.kids[0].kind == "name" and
-               ((kid.kids[0].s == receiver and kid.s in own) or
-                (kid.kids[0].s == parameter and kid.s in peer)) for kid in n.kids):
-            types = [own[kid.s] if kid.kids[0].s == receiver else peer[kid.s] for kid in n.kids]
-            # Set equality has its own layout rule, not the builtin-tree helper.
-            # Check adjacent operands, including each link of an equality chain.
-            if all((not is_set(types[i]) and not is_set(types[i + 1])) or
-                   (is_scalar_set(types[i]) and is_scalar_set(types[i + 1])) for i in range(len(types) - 1)):
-                return True
-    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == parameter and n.s in different:
+    return comparison_operations(n, receiver, comparison_aliases(n, parameter), different, own, peer)
+
+
+def comparison_sets(a: str, b: str) -> bool:
+    return is_set(a) and is_set(b) and (selem(a) == selem(b) or disjoint_sets(a, b))
+
+
+def comparison_pair(a: str, b: str, op: str) -> bool:
+    if a == "" or b == "":
         return False
-    return all(comparison_equalities(kid, receiver, parameter, different, own, peer) for kid in n.kids)
+    if op in ["==", "!="]:
+        return (not is_set(a) and not is_set(b)) or comparison_sets(a, b)
+    return op in ["<", "<=", ">", ">="] and a in ["int", "float", "bool"] and b in ["int", "float", "bool"]
+
+
+def comparison_operations(n: Node, receiver: str, aliases: list[str], different: list[str], own: dict[str, str], peer: dict[str, str]) -> bool:
+    # Prove every actual operand pair, including chained comparisons. Unsupported
+    # operations must not add a failed whole-program restart per boxed class.
+    if receiver in aliases:
+        return False  # an operand alias must not replace the receiver's layout
+    if n.kind == "def" and (n.s == receiver or any(p.s == receiver for p in n.kids[0].kids) or bind_count(n.kids[2].kids, receiver) > 0):
+        return False  # a nested receiver binding has no proven field layout
+    if n.kind == "cmp":
+        ts = [comparison_value(kid, receiver, aliases, own, peer) for kid in n.kids]
+        ops = n.s.split(",")
+        if all(comparison_pair(ts[i], ts[i + 1], ops[i]) for i in range(len(ops))):
+            return True
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s in aliases and n.s in different:
+        return False
+    return all(comparison_operations(kid, receiver, aliases, different, own, peer) for kid in n.kids)
+
+
+def comparison_layout(ci: ClassInfo) -> dict[str, str]:
+    # An annotated property uses normal accessor lowering, never a field load.
+    fields = {a: ci.ftypes[a] for a in ci.ftypes if a not in ci.methods}
+    for a in ci.methods:
+        f = ci.methods[a]
+        if f.prop and f.ret != "" and f.bad == "" and len(f.params) == 1:
+            fields[a] = f.ret
+    return fields
 
 
 def gen_dyn_xbody(self, c: str) -> None:
@@ -280,7 +364,8 @@ def gen_dyn_xbody(self, c: str) -> None:
                 if supported:
                     supported = comparison_fields(method.node.kids[2], method.params[1], fields) and len(fields) > 0
                 if supported:
-                    supported = all(a in self.classes[canonical].ftypes and a not in self.classes[canonical].methods for a in fields)
+                    layout = comparison_layout(self.classes[canonical])
+                    supported = all(a in layout for a in fields)
                 if supported:
                     # A typed field (notably a list's storage) cannot become Any. Retry
                     # the original body against the guarded concrete class instead of
@@ -1472,36 +1557,32 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
             return False
         method = self.classes[own].methods[dunder]
         canonical = method.ptypes[1] if method.ptypes[1] in self.classes else own
+        expected = comparison_layout(self.classes[canonical])
+        actual = comparison_layout(ci)
         fields: list[str] = []
         if not comparison_fields(method.node.kids[2], method.params[1], fields):
             return False
-        # Retry direct equality of builtin fields with their actual layouts.
+        # Retry proven builtin field operations with their actual layouts.
         # Filter other differing-field uses before attempting a specialization,
         # so incompatible operations do not add a failed restart per class.
-        compatible = [a for a in fields if a in ci.ftypes and a not in ci.methods and
-                      (ci.ftypes[a] == self.classes[canonical].ftypes[a] or
-                       (self.ueq_type(ci.ftypes[a]) and self.ueq_type(self.classes[canonical].ftypes[a])) or
-                       (is_scalar_set(ci.ftypes[a]) and is_scalar_set(self.classes[canonical].ftypes[a])))]
-        different = [a for a in compatible if ci.ftypes[a] != self.classes[canonical].ftypes[a]]
+        compatible = [a for a in fields if a in actual and a in expected and
+                      (actual[a] == expected[a] or
+                       (self.ueq_type(actual[a]) and self.ueq_type(expected[a])) or
+                       comparison_sets(actual[a], expected[a]))]
+        different = [a for a in compatible if actual[a] != expected[a]]
         if len(different) > 0:
-            receiver = self.classes[own]
-            # Top-level unions and variadic tuples take coercion paths before
-            # paired equality; they can still reject a different builtin type.
-            # Nested occurrences stay safe under a container's own descriptor.
-            own_fields = {a: receiver.ftypes[a] for a in receiver.ftypes if a not in receiver.methods and
-                          (self.ueq_type(receiver.ftypes[a]) or is_scalar_set(receiver.ftypes[a])) and
-                          not is_union(unopt(receiver.ftypes[a])) and not is_vtuple(unopt(receiver.ftypes[a]))}
-            peer_fields = {a: ci.ftypes[a] for a in ci.ftypes if a not in ci.methods and
-                           (self.ueq_type(ci.ftypes[a]) or is_scalar_set(ci.ftypes[a])) and
-                           not is_union(unopt(ci.ftypes[a])) and not is_vtuple(unopt(ci.ftypes[a]))}
+            receiver = comparison_layout(self.classes[own])
+            own_fields = {a: receiver[a] for a in receiver if self.ueq_type(receiver[a]) or (is_set(receiver[a]) and builtin_key(selem(receiver[a])))}
+            peer_fields = {a: actual[a] for a in actual if self.ueq_type(actual[a]) or (is_set(actual[a]) and builtin_key(selem(actual[a])))}
             if not comparison_equalities(method.node.kids[2], method.params[0], method.params[1], different, own_fields, peer_fields):
                 return False
         if len(compatible) == len(fields):
             return True
-        # Only truly absent fields get runtime AttributeError. Properties,
-        # custom lookup hooks and other incompatible storage keep their path.
+        # Missing-read metadata belongs to this function's parameter, not an
+        # alias or closure. Keep those cases excluded until they have provenance.
         missing = [a for a in fields if a not in ci.ftypes and a not in ci.methods]
-        return len(missing) > 0 and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or a in compatible for a in fields) and comparison_reads(method.node.kids[2], method.params[1], missing)
+        body = method.node.kids[2]
+        return len(missing) > 0 and all(a in self.classes[canonical].ftypes for a in missing) and len(comparison_aliases(body, method.params[1])) == 1 and not has_kind(body, "def") and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or a in compatible for a in fields) and comparison_reads(body, method.params[1], missing)
     if key.startswith("get."):
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and (ci.methods[a].prop or (ci.methods[a].deco == "" and ci.methods[a].bad == "")))  # (a method's: the bound method)
@@ -1607,7 +1688,7 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         canonical = original.ptypes[1] if original.ptypes[1] in self.classes else receiver.t
         fields: list[str] = []
         comparison_fields(original.node.kids[2], original.params[1], fields)
-        missing = any(a not in self.classes[x.t].ftypes for a in fields)
+        missing = any(a not in comparison_layout(self.classes[x.t]) for a in fields)
         method = self.instance(original, [receiver.t, x.t], [], cmpfields=canonical if missing else "")
         condition = self.truth(self.call_fn(method, [receiver, x], [], direct=True))
         self.xtry = ""
@@ -1894,6 +1975,16 @@ def gen_dyn_builtin(self, name: str, v: Val) -> Val:
 
 def gen_dyn_getattr(self, o: Val, a: str) -> Val:
     # o.a for a dyn o: its class's attribute, boxed
+    if self.xtry != "":
+        # Dispatcher bodies are emitted after the comparison's retry scope has
+        # ended. Detect a known unboxable field here, so an indexed/len read can
+        # retry with concrete storage instead of leaking a late compilation error.
+        for c in self.dynclasses:
+            fields = comparison_layout(self.classes[c])
+            if a in fields:
+                problem = self.dyn_boxable(self.rec_type(fields[a]))
+                if problem != "":
+                    self.err(problem)
     return self.dyn_call(self.dyn_dispatcher("get." + a, [DYN], DYN, a), [o])
 
 

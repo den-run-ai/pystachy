@@ -40,6 +40,7 @@ from src.pystachy_compiler.utils import (
     atomic_list,
     bool_for_int,
     clone,
+    disjoint_sets,
     elem,
     fbits,
     fmt_index,
@@ -53,7 +54,6 @@ from src.pystachy_compiler.utils import (
     is_kw,
     is_list,
     is_opt,
-    is_scalar_set,
     is_set,
     is_sopt,
     is_super,
@@ -3853,6 +3853,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             hit = self.select(nn, Val(hit, "int"), Val("0", "int"))
         return self.num_cmp('!=' if op == 'in' else '==', Val(hit, "int"), Val('0', "int"))
     if op in ["==", "!=", "<", "<=", ">", ">="]:
+        if op in ["==", "!="] and ((is_vtuple(unopt(a.t)) and is_tuple(b.t)) or (is_tuple(a.t) and is_vtuple(unopt(b.t)))) and self.wider(a.t, b.t) == "" and self.ueq_type(a.t) and self.ueq_type(b.t):
+            # Equality need not coerce differently laid out tuple elements.
+            r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
+            return self.num_cmp("!=" if op == "==" else "==", Val(r, "int"), Val("0", "int"))
         if is_vtuple(unopt(a.t)) and is_tuple(b.t):
             b = self.coerce(b, unopt(a.t))
         elif is_tuple(a.t) and is_vtuple(unopt(b.t)):
@@ -4098,8 +4102,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if is_set(a.t) and is_set(b.t) and op in ICMP:
         # subsets and equality (a set equals a frozenset of its elements)
         if self.wider(selem(a.t), selem(b.t)) == "":
-            if op in ["==", "!="] and is_scalar_set(a.t) and is_scalar_set(b.t):
-                # Distinct int/str/bytes domains can only share the empty set.
+            if op in ["==", "!="] and disjoint_sets(a.t, b.t):
+                # Disjoint builtin key domains can only share the empty set.
                 # Read lengths after both operands ran; never probe one layout
                 # with another layout's keys, even when their hashes collide.
                 sets_empty = [self.num_cmp("==", Val(self.mload("int", v.v), "int"), Val("0", "int")) for v in [a, b]]

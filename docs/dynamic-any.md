@@ -416,10 +416,16 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   outside the supported guarded concrete adapter still does
   not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand has an incompatible typed
-  tuple-element set field). Closed builtin container-field comparisons, scalar-set equality
-  and missing-field reads now execute
-  through guarded concrete adapters. Concrete operand annotations alone no
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`, which concatenates differently typed
+  lists). Guarded concrete adapters execute closed builtin field equality, including
+  unions, fixed/variadic tuples and sets with provably disjoint builtin tuple keys.
+  They also support indexed numeric expressions in comparisons, annotated property
+  accessors, cleanup/loops and direct field reads through singly assigned local aliases
+  or captured operands. Missing-field reads preserve effects and first exceptions,
+  including inside `try`; missing reads through aliases/closures remain excluded.
+  Differently typed container arithmetic, user-class leaves, custom lookup, missing-field
+  writes, escaping/rebinding operands and unsupported syntax still need further work.
+  Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
   is a correctness gap tracked by #803, not a stable comparison contract.
 - An object is not iterable through an `Any` value yet (iteration of objects is under

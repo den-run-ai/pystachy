@@ -1,0 +1,28 @@
+indexed eq
+indexed eq
+indexed ne
+indexed ne
+True True False False
+indexed lt
+indexed lt
+indexed le
+indexed le
+True True True True
+indexed gt
+indexed gt
+indexed ge
+indexed ge
+True True True True
+indexed eq
+indexed eq
+indexed eq
+True 1 0
+indexed eq
+True
+indexed eq
+[4.0] [4] False
+indexed eq
+list index out of range
+indexed eq
+first error
+[exit 0]

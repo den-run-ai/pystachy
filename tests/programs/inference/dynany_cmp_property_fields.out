@@ -1,0 +1,25 @@
+property comparison
+getter 1
+property comparison
+getter 2
+property comparison
+getter 3
+property comparison
+getter 4
+True True False True
+property comparison
+getter 5
+False [3, 4] [3]
+property comparison
+words getter
+property comparison
+words getter
+property comparison
+words getter
+False False True
+property comparison
+getter 1
+getter error
+property comparison
+first error
+[exit 0]
