@@ -5,7 +5,7 @@
 @f.escape: pys_dyn_int
 @f.copy: pys_dyn_int pys_raise
 @f.walrus: pys_dyn_int pys_raise
-@f.callback:
+@f.callback: pys_dyn_int
 @f.open_operand: pys_dyn_int pys_raise
 @f.dynamic_operand: pys_dyn_int
 @dyn.op0: pys_dyn_binop

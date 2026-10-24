@@ -6,6 +6,12 @@ def same(a: Any, b: Any) -> bool:
     return a is b and id(a) == id(b)
 
 
+def parameter_shadow(i: int) -> None:
+    original: Any = i
+    items: list[Any] = [i for i in [int("4000"), int("5000")]]
+    print("parameter shadow", items, same(original, i), same(original, items[0]))
+
+
 def run() -> None:
     xs = [int("1000"), int("1000"), int("2000")]
     print("binding", [same(i, i) for i in xs])
@@ -29,3 +35,4 @@ def run() -> None:
 
 
 run()
+parameter_shadow(int("3000"))

@@ -319,6 +319,7 @@ from src.pystachy_compiler.calls import (
     gen_open_call as calls_open_call,
     gen_pat_arg as calls_pat_arg,
     gen_pcoerce as calls_pcoerce,
+    gen_scalar_call_types as calls_scalar_call_types,
     gen_print_star as calls_print_star,
     gen_replace as calls_replace,
     gen_nt_make as calls_nt_make,
@@ -659,6 +660,7 @@ from src.pystachy_compiler.expressions import (
     gen_format_ as expressions_format_,
     gen_has as expressions_has,
     gen_ifexp as expressions_ifexp,
+    gen_numeric_phi as expressions_numeric_phi,
     gen_index as expressions_index,
     gen_isinst as expressions_isinst,
     gen_class_matches as expressions_class_matches,
@@ -3714,6 +3716,9 @@ class Gen:
     def ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
         return expressions_ifexp(self, n, want, resultsoft)
 
+    def numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> Val:
+        return expressions_numeric_phi(self, result, values, edges)
+
     def boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
         return expressions_boolop(self, n, ascond, want, resultsoft)
 
@@ -3935,6 +3940,9 @@ class Gen:
 
     def pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return calls_pcoerce(self, v, t, f, j)
+
+    def scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
+        return calls_scalar_call_types(self, f, args)
 
     def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "") -> Val:
         return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs)

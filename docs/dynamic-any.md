@@ -481,13 +481,15 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
 - An int or float of typed code that no variable's box slot holds is a new object where it
-  becomes an `Any` value, where CPython's names, containers and classes hold one object: an
-  numeric item of a typed container, including typed variadic argument tuples
-  (`tests/deviations/dynany_identity_boundary.py`).
+  becomes an `Any` value, where CPython's names, containers and classes hold one object: a
+  numeric item of a typed container, including typed variadic argument tuples,
+  or a typed numeric generator's yielded item (`Iterator[float]`, for example).
+  Yielding into dynamic item storage (`Iterator[Any]`) retains the source box.
+  The typed-list case remains in `tests/deviations/dynany_identity_boundary.py`.
   Numeric optional/scalar-union locals, closure cells, globals, instance fields and class
-  attributes retain their identity. Module-level from-import copies
-  retain the source global's object; a local import in a non-opt-in function still
-  uses that function's ordinary typed storage. Constant-folding forms beyond the
+  attributes retain their identity. Module-level and function-local from-import copies
+  retain the source global's object, including imports in non-opt-in functions.
+  Constant-folding forms beyond the
   bounded integer arithmetic above also remain gaps. Starred displays capture numeric objects when their dynamic
   result can be inferred before evaluation, or an already typed expansion supplies
   dynamic items. Displays whose element types depend on earlier first bindings

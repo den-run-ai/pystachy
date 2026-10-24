@@ -1,6 +1,6 @@
 """Calls component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import local_names
+from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
@@ -1218,6 +1218,37 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         result.idversion = "0"
     return result
 
+def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
+    # A complete, inert numeric call can specialize before evaluating its arguments.
+    # That lets the scalar None-body proof discard their boxes before pcoerce snapshots
+    # them. Unknown types or effectful arguments must keep those early snapshots.
+    if not identity_abi(f) or not f.generic or f.cls != "" or f.clo >= 0 or f.gen or f.vararg >= 0 or f.kwarg >= 0 or f.ret not in ["", "None"] or len(args) != len(f.params) or len(f.node.kids) != 3:
+        return []
+    ts = ["" for p in f.params]
+    pos = 0
+    for a in args:
+        j = f.params.index(a.s) if a.kind == "kw" else pos
+        e = a.kids[0] if a.kind == "kw" else a
+        if a.kind != "kw":
+            pos += 1
+        t = e.kind if e.kind in ["int", "float"] else "bool" if e.kind in ["True", "False"] else self.static_type(e) if e.kind == "name" else self.vnodes[int(e.s)].t if e.kind == "val" else ""
+        if t not in ["int", "float", "bool"] or (f.ptypes[j] != "" and f.ptypes[j] != t):
+            return []
+        ts[j] = t
+    if any(t == "" for t in ts):
+        return []
+    names: dict[str, bool] = {}
+    body = f.node.kids[2].kids
+    local_names(body, names)
+    for p in f.params:
+        names[p] = True
+    blocked: dict[str, bool] = {}
+    for nm in ["int", "float", "bool", "range", "print"]:
+        if nm in self.mvars or nm in self.gtypes or nm in self.funcs or nm in self.classes or nm in self.aliases or nm in self.fglobals:
+            blocked[nm] = True
+    return ts if all(numeric_statement(n, names, blocked, True, True) for n in body) else []
+
+
 def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "") -> Val:
     # f(pre + args); none: the error where pre[0], an object called (o(args)), is None
     if f.pyexport:
@@ -1235,6 +1266,10 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         hpush(self.wake, self.lazyat[f.ll])
     self.called[f.ll] = True
     self.arity(f, len(pre), args)
+    if len(pre) == 0 and cache is None:
+        scalar_types = self.scalar_call_types(f, args)
+        if len(scalar_types) > 0:
+            f = self.instance(f, scalar_types, [])
     line = self.line
     np = len(f.params)
     vals: list[Val] = []

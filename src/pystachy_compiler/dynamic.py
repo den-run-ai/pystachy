@@ -413,12 +413,37 @@ def gen_dyn_box(self, v: Val) -> Val:
     t = self.rec_type(v.t)
     if t == DYN:
         return v
-    if t == "None" or t == NONEVAR:
+    if t == "None" or t == NONEVAR or (is_opt(t) and v.v == "null"):
+        # A known None can have its parameter's optional type after coercion. Do not
+        # emit a union tag or payload read of literal null, even in a dead branch.
         return Val(self.rtdata("pys_dyn_none_box"), DYN)
     if t == "bool":
         return Val(self.select(v.v, Val(self.rtdata("pys_dyn_true_box"), DYN), Val(self.rtdata("pys_dyn_false_box"), DYN)), DYN)
     if numeric_identity(t) and v.idfrom != "":
         return Val(v.idfrom, DYN)  # (the Any value's object it was read from: dyn_unbox, dyn_narrowed)
+    if (t == "int" or t == "float") and v.idslot.startswith("%") and ".box." in v.idslot:
+        name = v.idslot[1:v.idslot.rfind(".box.")]
+        if self.idbox.get(name, "") == v.idslot and self.ltype.get(name, "") == t and self.idstores.get(v.idslot, 0) == v.idgen:
+            # This private local still holds the exact scalar read into v. Its companion
+            # is null or this object's box: stores update both, and a captured cell has
+            # another address form. Reload in case another alias has filled the lazy box.
+            # Joined/narrowed storage, selected slots and reads across rebinding retain
+            # the general checks below.
+            b = self.mem_load(Val(v.idslot, "*" + DYN))
+            start = self.cur
+            make = self.label()
+            end = self.label()
+            self.cbr(self.ptr_cmp("==", b, Val("null", DYN)).v, make, end)
+            self.place(make)
+            made = self.dyn_box(Val(v.v, t))
+            self.mem_store(Val(v.idslot, "*" + DYN), made)
+            edge = self.cur
+            self.br(end)
+            self.place(end)
+            ph = Ins("phi", DYN, "")
+            self.incoming(ph, b.v, start)
+            self.incoming(ph, made.v, edge)
+            return Val(self.phi(ph), DYN)
     if (t == "int" or t == "float") and v.idslot != "":
         # a variable's value: the box of its object (dyn_id_held), where that holds this value of
         # this type, else a new box, which the binding keeps (idbox) where it has none and has not
@@ -547,7 +572,10 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     elif v.idfrom != "":
         b = v.idfrom
     elif v.idslot != "":
-        b = self.dyn_box(v).v
+        # A closed numeric body cannot observe an internal alias and returns at most
+        # one object. Its copies may carry nullable provenance until that return;
+        # ordinary bodies must materialize the shared object before copying it.
+        b = self.dyn_id_held(v).v if self.fn.numeric_only else self.dyn_box(v).v
     elif v.lit and (v.t == unopt(t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))) and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         # store_name can retain t until a pending type join restarts compilation to widen
         # it. A provisional int slot may receive a float literal: its LLVM hex bits
@@ -581,10 +609,10 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
     # box the slot holds now, which is v's object as an Any value, and the stores into the slot so
     # far (dyn_id_held)
     local = slot.startswith("%") and ".box." in slot
-    if not local and self.fn.scalar_reads:
+    if self.fn.scalar_reads:
         # A proven scalar arithmetic consumer uses only the payload. Its subtree has
         # no stores or user calls, so it cannot publish an alias or observe this object.
-        # Ordinary reads still snapshot, and every global store still updates its box.
+        # Ordinary reads still snapshot, and every store still updates its box.
         return
     v.idslot = slot
     v.idheld = self.mem_load(Val(slot, "*" + DYN)).v

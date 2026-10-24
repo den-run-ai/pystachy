@@ -138,6 +138,12 @@ def gen_numeric_proof(self, f: FnInfo, body: list[Node]) -> None:
     if not self.rtmode and identity_abi(f) and (scalar_none or scalar_return or (not f.infer and numeric_identity(f.ret))) and f.node.kind == "def" and len(f.node.kids) == 3 and f.clo < 0 and not f.gen and f.vararg < 0 and f.kwarg < 0 and all(t in ["int", "float", "bool"] for t in f.ptypes):
         names: dict[str, bool] = {}
         local_names(body, names)
+        # Reading a concrete numeric global cannot expose an argument's identity.
+        # Global writes and callbacks remain outside numeric_statement's proof, and
+        # a returned global still snapshots its own box through the normal read path.
+        for global_name in self.gtypes:
+            if self.gtypes[global_name] in ["int", "float", "bool"]:
+                names[global_name] = True
         for p in f.params:
             names[p] = True
         blocked: dict[str, bool] = {}
