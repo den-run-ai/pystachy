@@ -2290,8 +2290,7 @@ List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], 
    Copies must materialize before sharing, so separate reads
    of copied items cannot create unrelated boxes. */
 static I list_box(I value, I kind) { return (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value))); }
-void pys_list_identity(List *l, I kind) {
-  if (l->ids && !(l->ids[0] & 4)) return;   /* clean companions make repeated reads/stores O(1) */
+static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
   if (!l->ids) {
     /* Companion allocation limits use the allocator's fatal MemoryError convention. */
     if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
@@ -2301,6 +2300,11 @@ void pys_list_identity(List *l, I kind) {
   for (I i = 0; i < l->len; i++)
     if (!l->ids[i + 1]) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
   l->ids[0] &= 3;
+}
+void pys_list_identity(List *l, I kind) {
+  /* Keep the clean check small enough to inline into getters/stores in the
+     precompiled JIT runtime as well as AOT. Only missing/dirty storage calls out. */
+  if (!l->ids || (l->ids[0] & 4)) list_identity_slow(l, kind);
 }
 static void identity_pair(List *a, List *b) {
   if (a->ids || b->ids) {
