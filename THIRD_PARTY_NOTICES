@@ -757,6 +757,16 @@ arrays, are built from strides and an offset; the random inputs are written out 
 NumPy 2.5.3 draws for them. examples/ndarray/check_upstream.py runs the adapted file against
 NumPy itself. Differential output is recorded with CPython 3.13.16.
 
+Dynamic Any research records (research/dynamic-any/)
+-----------------------------------------------------
+
+research/dynamic-any/patches/tomllib-3.13.16.diff quotes, as the context of its edits, CPython
+3.13.16's Lib/tomllib, and research/dynamic-any/patches/tomli_w-1.2.0.diff quotes tomli-w 1.2.0's
+modules. Both are Taneli Hukkinen's code, used under the MIT License, whose text and copyright
+notice ("Copyright (c) 2021 Taneli Hukkinen") are in ports/tomli_w/LICENSE; tomllib's files
+were licensed to the PSF under a Contributor Agreement and are distributed with Python. The
+edits are marked "EDIT n".
+
 APACHE LICENSE VERSION 2.0
 --------------------------
 
