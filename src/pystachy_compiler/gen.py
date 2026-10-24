@@ -731,6 +731,7 @@ from src.pystachy_compiler.expressions import (
     gen_pick as expressions_pick,
     gen_iter_static as expressions_iter_static,
     gen_tuple_order as expressions_tuple_order,
+    gen_list_pair_eq as expressions_list_pair_eq,
     gen_unary as expressions_unary,
 )
 from src.pystachy_compiler.flow import (
@@ -3836,6 +3837,9 @@ class Gen:
 
     def titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
         return expressions_titem_eq(self, item, a, hit, ph, value)
+
+    def list_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_list_pair_eq(self, op, a, b)
 
     def tuple_order(self, op: str, a: Val, b: Val) -> Val:
         return expressions_tuple_order(self, op, a, b)

@@ -1,0 +1,14 @@
+[1000, 'word'] ['word', 1000]
+False False
+True
+[1000] ['changed', 'word']
+[1000, 7] ['changed', 'word']
+['word', 1.25] True
+['word'] [1000, 7] []
+8 True
+['before', 'after'] True
+left
+right
+[1000, 7, 9, 'word']
+[1000, 7, 9, 'word', 1000, 7, 9, 'word']
+[exit 0]

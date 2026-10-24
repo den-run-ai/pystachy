@@ -110,6 +110,8 @@ already supported; their remaining restrictions depend on the operation and the 
 involved. CPython extensions and import graphs through unavailable modules can block otherwise
 suitable pure-Python functions. The [compatibility reference](language/compatibility.md) lists
 the detailed restrictions.
+For opt-in code, the [comparison acceptance matrix](dynamic-any.md#operations) distinguishes
+supported mixed-container and object operations from the remaining skipped-body cases.
 
 Prioritize a small port when it offers a useful application without requiring a broad dynamic
 feature. Broader inference, generic typing, library coverage and optimizations remain areas of

@@ -8,7 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.pystachy_compiler import driver  # noqa: E402
-from src.pystachy_compiler.dynamic import comparison_equalities, comparison_fields, comparison_reads  # noqa: E402
+from src.pystachy_compiler.dynamic import comparison_discards_operand, comparison_equalities, comparison_fields, comparison_layout, comparison_properties, comparison_reads  # noqa: E402
+from src.pystachy_compiler.ir import ClassInfo, FnInfo  # noqa: E402
 from src.pystachy_compiler.lexer import Lexer  # noqa: E402
 from src.pystachy_compiler.parser import Parser  # noqa: E402
 from src.pystachy_compiler.syntax import mk  # noqa: E402
@@ -43,6 +44,41 @@ class ConcreteComparisonTests(unittest.TestCase):
         self.assertEqual(small[1], large[1])
         self.assertLessEqual(large[1], 3)
         self.assertFalse(any(":concrete:" in key for key in large[2].xnot))
+
+    def test_namedtuple_list_adapters_keep_restarts_bounded(self):
+        for expression in ["self.items == other.items", "other.items == self.items"]:
+            counts = []
+            for count in [1, 20]:
+                source = ("# pystachy: dynamic-any\nfrom typing import Any, NamedTuple\n"
+                          "class Left(NamedTuple):\n    value: int\n"
+                          "class Strict:\n    def __init__(self):\n        self.items = [Left(1)]\n"
+                          f"    def __eq__(self, other):\n        return {expression}\n"
+                          "class Matching:\n    def __init__(self):\n        self.items = [Left(1)]\n"
+                          "strict: Any = Strict()\nmatching: Any = Matching()\n"
+                          "print(strict == matching)\n")
+                for index in range(count):
+                    source += (f"class Right{index}(NamedTuple):\n    value: int\n"
+                               f"class Peer{index}:\n    def __init__(self):\n"
+                               f"        self.items = [Right{index}(1)]\n"
+                               f"peer{index}: Any = Peer{index}()\n")
+                generators = []
+                original = driver.Gen
+
+                def generator(original=original, generators=generators):
+                    value = original()
+                    generators.append(value)
+                    return value
+
+                with patch.object(driver, "Gen", generator):
+                    driver.compile_program("namedtuple_comparison_probe.py", source, [str(ROOT / "lib")], "")
+                counts.append(len(generators))
+                final = generators[-1]
+                self.assertFalse(any(":concrete:" in key for key in final.xnot))
+                self.assertTrue(final.dyn_supports("Matching", "cmp.Strict.__eq__", "__eq__", 1))
+                for index in range(count):
+                    self.assertFalse(final.dyn_supports(f"Peer{index}", "cmp.Strict.__eq__", "__eq__", 1))
+            self.assertEqual(counts[0], counts[1])
+            self.assertLessEqual(counts[1], 3)
 
     def test_missing_and_builtin_equality_fields_do_not_add_failed_restarts(self):
         for fields in ["self.missing = [3]", "self.items = 'different type'", "self.items = ['x']",
@@ -109,7 +145,7 @@ class ConcreteComparisonTests(unittest.TestCase):
                 extra += (f"class Incompatible{index}:\n    def __init__(self):\n"
                           "        self.items = ['x']\n"
                           f"incompatible{index}: Any = Incompatible{index}()\n")
-            result = self.compile(0, body="return self.items + other.items == self.items", extra=extra)
+            result = self.compile(0, body="return self.items[0] + other.items[0] > 0", extra=extra)
             results.append(result[1])
             self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
             # The preexisting adapter still accepts the matching list[int].
@@ -168,6 +204,18 @@ class ConcreteComparisonTests(unittest.TestCase):
                 result = self.compile(0, body=body)
                 self.assertFalse("@dyn.cmp.Strict.__eq__" in result[0])
 
+    def test_discarded_operands_execute_without_per_class_retries(self):
+        for body in ["print('entered')\nother = self\nreturn self.items == other.items",
+                     "alias = other\nprint('entered')\nalias = self\nreturn self.items == alias.items"]:
+            with self.subTest(body=body):
+                small = self.compile(1, body=body, fields="self.items = ['x']")
+                large = self.compile(20, body=body, fields="self.items = ['x']")
+                self.assertEqual(small[1], large[1])
+                self.assertLessEqual(large[1], 3)
+                self.assertFalse(any(":concrete:" in key for key in large[2].xnot))
+                self.assertFalse(any(":discarded-operand" in key for key in large[2].xnot))
+                self.assertNotIn("@dyn.cmp.Strict.__eq__", large[0])
+
     def test_property_uses_its_accessor(self):
         extra = ("class PropertyPeer:\n"
                  "    @property\n    def items(self) -> list[int]:\n"
@@ -206,14 +254,65 @@ class ConcreteComparisonTests(unittest.TestCase):
                 self.assertEqual(results[0], results[1])
                 self.assertLessEqual(results[1], 3)
 
-    def test_missing_reads_do_not_leak_into_aliases_or_closures(self):
+    def test_nested_object_fields_preserve_bounded_restarts(self):
+        source = (ROOT / "tests/programs/inference/dynany_cmp_nested_fields.py").read_text()
+        counts = []
+        for count in [1, 20]:
+            extra = ""
+            for index in range(count):
+                extra += (f"class NestedPeer{index}:\n"
+                          "    def __init__(self):\n"
+                          "        self.force = [1]\n"
+                          "        self.node = FloatLeaf()\n"
+                          "        self.nodes = [self.node]\n"
+                          "        self.lookup = {'node': self.node}\n"
+                          "        self.pair = (self.node,)\n"
+                          f"nested_peer{index}: Any = NestedPeer{index}()\n")
+            generators = []
+            original = driver.Gen
+
+            def generator(original=original, generators=generators):
+                value = original()
+                generators.append(value)
+                return value
+
+            with patch.object(driver, "Gen", generator):
+                driver.compile_program("nested_comparison_probe.py", source + extra, [str(ROOT / "lib")], "")
+            counts.append(len(generators))
+            self.assertFalse(any(":concrete:" in key for key in generators[-1].xnot))
+            for index in range(count):
+                self.assertTrue(generators[-1].dyn_supports(f"NestedPeer{index}", "cmp.Nested.__eq__", "__eq__", 1))
+        self.assertEqual(counts[0], counts[1])
+        self.assertLessEqual(counts[1], 5)  # one generic decline per rich method
+
+    def test_missing_reads_follow_proven_aliases_and_closures(self):
         bodies = ["alias = other\nreturn self.items == alias.items",
                   "def nested():\n    return self.items == other.items\nreturn nested()"]
         for body in bodies:
             with self.subTest(body=body):
                 result = self.compile(20, body=body, fields="self.missing = [3]")
-                self.assertFalse(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
+                self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
                 self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+
+    def test_fresh_mixed_arithmetic_and_mutation_keep_restarts_bounded(self):
+        bodies = ["return len(self.items + other.items) > 0",
+                  "return self.items + other.items == self.items",
+                  "return len(other.items * 2) > 0",
+                  "other.items.clear()\nreturn self.items == other.items"]
+        for body in bodies:
+            with self.subTest(body=body):
+                results = []
+                for count in [1, 20]:
+                    extra = ""
+                    for index in range(count):
+                        extra += (f"class Compatible{index}:\n    def __init__(self):\n        self.items = ['x']\n"
+                                  f"compatible{index}: Any = Compatible{index}()\n")
+                    result = self.compile(0, body=body, fields="self.items = ['x']", extra=extra)
+                    results.append(result[1])
+                    self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
+                    self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+                self.assertEqual(results[0], results[1])
+                self.assertLessEqual(results[1], 3)
 
     def test_nested_receiver_shadow_does_not_add_restarts_per_class(self):
         results = []
@@ -233,6 +332,30 @@ class ConcreteComparisonTests(unittest.TestCase):
         self.assertEqual(results[0], results[1])
         self.assertLessEqual(results[1], 3)
 
+    def test_shadowed_len_and_unproven_consumers_keep_restarts_bounded(self):
+        bodies = [
+            "def len(xs: list[int]) -> int:\n    return xs[0]\nreturn len(other.items) > 0",
+            "def helper(x: int) -> bool:\n    return x > 0\nreturn helper(other.items[0])",
+            "def helper(x: list[int]) -> bool:\n    return len(x) > 0\nreturn helper(other.items * 2)",
+            "def helper(x: list[int]) -> bool:\n    return len(x) > 0\nreturn helper(self.items + other.items)",
+            "values: list[int] = other.items * 2\nreturn len(values) > 0",
+        ]
+        for body in bodies:
+            with self.subTest(body=body):
+                results = []
+                for count in [1, 20]:
+                    extra = ""
+                    for index in range(count):
+                        extra += (f"class Incompatible{index}:\n    def __init__(self):\n        self.items = ['x']\n"
+                                  f"incompatible{index}: Any = Incompatible{index}()\n")
+                    result = self.compile(0, body=body, extra=extra)
+                    results.append(result[1])
+                    self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+                    for index in range(count):
+                        self.assertFalse(result[2].dyn_supports(f"Incompatible{index}", "cmp.Strict.__eq__", "__eq__", 1))
+                self.assertEqual(results[0], results[1])
+                self.assertLessEqual(results[1], 3)
+
     def test_shadowed_capture_and_unknown_nodes_fail_closed(self):
         for source in ["def nested(other):\n    return other.items",
                        "alias = other\ndef nested(alias):\n    return alias.items",
@@ -250,6 +373,41 @@ class ConcreteComparisonTests(unittest.TestCase):
                 # These binders can carry the name in .s, not a name child.
                 node = mk(kind, "other", 1, [field])
                 self.assertFalse(comparison_fields(node, "other", []))
+
+
+class DiscardedOperandTests(unittest.TestCase):
+    def discarded(self, source):
+        module = Parser(Lexer("def compare(self, other):\n    " + source.replace("\n", "\n    ") + "\n", 1).file()).module()
+        return comparison_discards_operand(module.kids[0].kids[2], "self", "other")
+
+    def test_unobserved_incoming_reference_is_discarded(self):
+        for source in ["print('prefix')\nother = self\nreturn self.items == other.items",
+                       "alias = other\nalias = self\nreturn self.items == alias.items",
+                       "alias = other\nother = self\nalias = self\nreturn alias.items == other.items"]:
+            with self.subTest(source=source):
+                self.assertTrue(self.discarded(source))
+
+    def test_observation_and_capture_prevent_substitution(self):
+        for source in ["print(other)\nother = self\nreturn True",
+                       "alias = other\nother = self\nreturn self.items == alias.items",
+                       "other = self if other.items else self\nreturn True",
+                       "if flag:\n    other = self\nreturn True",
+                       "alias = other\ndef read():\n    return alias\nalias = self\nreturn read()",
+                       "self = replacement\nother = self\nreturn True",
+                       "snapshot = locals()\nother = self\nreturn snapshot",
+                       "remember(other)\nother = self\nreturn True",
+                       "self.saved = other\nother = self\nreturn True",
+                       "alias = other\nread = lambda: alias\nalias = self\nreturn read()",
+                       "global saved\nsaved = other\nother = self\nreturn True"]:
+            with self.subTest(source=source):
+                self.assertFalse(self.discarded(source))
+
+    def test_nonlocal_and_hidden_scope_nodes_fail_closed(self):
+        overwrite = mk("assign", "", 1, [mk("name", "other", 1, []), mk("name", "self", 1, [])])
+        for kind in ["def", "lambda", "class", "subclass", "global", "nonlocal", "yield", "await", "walrus"]:
+            with self.subTest(kind=kind):
+                body = mk("block", "", 1, [mk(kind, "saved", 1, []), overwrite])
+                self.assertFalse(comparison_discards_operand(body, "self", "other"))
 
 
 class ComparisonReadsTests(unittest.TestCase):
@@ -281,6 +439,13 @@ class ComparisonReadsTests(unittest.TestCase):
             with self.subTest(source=source):
                 self.assertTrue(self.read_only_missing(source))
 
+    def test_alias_writes_do_not_gain_missing_storage(self):
+        for source in ("alias = other\nalias.missing = [3]",
+                       "alias = other\nalias.missing[0] = 3",
+                       "alias = other\ndef nested():\n    alias.missing += [3]"):
+            with self.subTest(source=source):
+                self.assertFalse(self.read_only_missing(source))
+
 
 class ComparisonEqualitiesTests(unittest.TestCase):
     def supported(self, source):
@@ -297,7 +462,7 @@ class ComparisonEqualitiesTests(unittest.TestCase):
                 self.assertTrue(self.supported(source))
 
     def test_other_uses_of_differing_field_are_rejected(self):
-        for source in ("return self.items + other.items == self.items", "return self.items[0] + other.items[0] > 0",
+        for source in ("return self.items[0] + other.items[0] > 0",
                        "return self.items < other.items", "return self.callback == other.items",
                        "return callback() == other.items",
                        "other.items = self.items", "return other.items", "print(other.items)"):
@@ -321,6 +486,47 @@ class DisjointKeyTests(unittest.TestCase):
             with self.subTest(a=a, b=b):
                 self.assertTrue(disjoint_keys(a, b))
                 self.assertTrue(disjoint_keys(b, a))
+
+
+class ComparisonPropertyLayoutTests(unittest.TestCase):
+    def layout(self, body, bad="property items needs a return annotation", generator=False, owner="Peer"):
+        source = "def items(self):\n    " + body.replace("\n", "\n    ") + "\n"
+        node = Parser(Lexer(source, 1).file()).module().kids[0]
+        info = ClassInfo("Peer", mk("class", "Peer", 1, []))
+        info.ftypes = {"saved": "list[str]", "other": "list[int]", "flag": "bool"}
+        getter = FnInfo("items", "@m.Peer.items", node, owner)
+        getter.params = ["self"]
+        getter.prop = True
+        getter.ret = ""
+        getter.bad = bad
+        getter.gen = generator
+        info.methods["items"] = getter
+        comparison_properties(info)
+        return comparison_layout(info)
+
+    def test_direct_field_returns_prove_the_getter_type(self):
+        for body in ["return self.saved", "print('effect')\nreturn self.saved",
+                     "if self.flag:\n    return self.saved\nreturn self.saved",
+                     "def nested():\n    return 1\nprint(nested())\nreturn self.saved"]:
+            with self.subTest(body=body):
+                self.assertEqual(self.layout(body)["items"], "list[str]")
+
+    def test_fallthrough_rebinding_and_unproven_returns_are_excluded(self):
+        for body in ["if self.flag:\n    return self.saved", "self = other\nreturn self.saved",
+                     "if self.flag:\n    return self.other\nreturn self.saved",
+                     "if self.flag:\n    return\nreturn self.saved",
+                     "result = self.saved\nreturn result", "yield 1\nreturn self.saved",
+                     "yield from self.saved\nreturn self.saved",
+                     "try:\n    return self.saved\nfinally:\n    return self.other\nreturn self.saved",
+                     "for self in values:\n    pass\nreturn self.saved",
+                     "try:\n    f()\nexcept ValueError as self:\n    pass\nreturn self.saved"]:
+            with self.subTest(body=body):
+                self.assertNotIn("items", self.layout(body))
+
+    def test_other_property_errors_and_generator_contract_are_preserved(self):
+        self.assertNotIn("items", self.layout("return self.saved", bad="other unsupported property behavior"))
+        self.assertNotIn("items", self.layout("return self.saved", generator=True))
+        self.assertNotIn("items", self.layout("return self.saved", owner="Base"))
 
 
 if __name__ == "__main__":
