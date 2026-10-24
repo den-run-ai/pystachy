@@ -81,6 +81,11 @@ def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     # Both operands are already evaluated. Boxes of a narrower union keep their
     # pointers and tags; a concrete scalar is boxed only at this dynamic boundary.
     t = self.union_type([a.t, b.t])
+    if t.startswith("!") and self.ueq_type(a.t) and self.ueq_type(b.t):
+        # A tuple need not become a union member just to compare with a union.
+        # Each descriptor keeps its own layout, including optional/union boxes.
+        r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
+        return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
     if t.startswith("!") or not self.ueq_type(t):
         self.err("closed union equality requires builtin scalar, list, dict or tuple values")
     a = self.coerce(a, t)
