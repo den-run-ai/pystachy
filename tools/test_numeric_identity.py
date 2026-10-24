@@ -419,7 +419,7 @@ class CellIdentityAllocationTests(unittest.TestCase):
 
 
 class JoinedIdentityCostTests(unittest.TestCase):
-    def test_unobserved_union_arithmetic_and_typed_stars_do_not_box(self):
+    def test_union_arithmetic_stays_raw_and_dynamic_typed_stars_keep_objects(self):
         source = '''# pystachy: dynamic-any
 def arithmetic(n: int) -> int | float:
     value: int | float = 0
@@ -434,7 +434,17 @@ def typed_star() -> list[int]:
 print(arithmetic(2), typed_star())
 '''
         ir = driver.compile_program("joined_identity_cost.py", source, [str(ROOT / "lib")], "")
-        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        arithmetic = re.search(r"define[^\n]*@f\.arithmetic\([^\n]*\n(.*?)\n}", ir, re.S)
+        starred = re.search(r"define[^\n]*@f\.typed_star\([^\n]*\n(.*?)\n}", ir, re.S)
+        self.assertIsNotNone(arithmetic)
+        self.assertIsNotNone(starred)
+        self.assertNotRegex(arithmetic[1], r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        self.assertEqual(starred[1].count("@pys_list_append_identity("), 3)
+        self.assertNotIn("@pys_list_append(", starred[1])
+        # Numeric list identity is opt-in at graph level; ordinary typed stars still box nothing.
+        ordinary = driver.compile_program("ordinary_joined_cost.py", source.replace("# pystachy: dynamic-any\n", ""), [str(ROOT / "lib")], "")
+        self.assertNotRegex(ordinary, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        self.assertNotIn("@pys_list_append_identity", ordinary)
 
     def test_non_boxable_union_cells_remain_accepted(self):
         # Reading a numeric member must not box a different, typed-container member
@@ -450,7 +460,11 @@ def outer() -> int:
 print(outer())
 '''
         ir = driver.compile_program("joined_identity_boundary.py", source, [str(ROOT / "lib")], "")
-        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        read = re.search(r"define[^\n]*@c\.0\.1\([^\n]*\n(.*?)\n}", ir, re.S)
+        self.assertIsNotNone(read)
+        self.assertNotRegex(read[1], r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        # The list member's items have boxes from construction; reading one returns that object.
+        self.assertIn("@pys_list_get_identity", read[1])
 
 
 class FoldedIntegerIdentityTests(unittest.TestCase):

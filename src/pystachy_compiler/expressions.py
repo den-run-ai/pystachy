@@ -910,7 +910,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         jt = ""
         for e in n.kids:
             v = self.expr(e, et, returnctx, resultsoft)
-            if et == "dyn" and v.idslot != "":
+            if (et == "dyn" or self.list_id_kind(self.ctype("list", [et if et != "" else v.t])) != 0) and v.idslot != "":
                 # A later item may rebind this local before the display stores its
                 # items. Capture its object now, while repeated reads share its slot.
                 v.idfrom = self.dyn_box(v).v
@@ -959,7 +959,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         items = [self.coerce(v, et) for v in items]
         r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
-            self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(v)])
+            self.list_store(Val(r, lty), v, "append")
         return Val(r, lty)
     if k == "dict":
         kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
@@ -2536,6 +2536,8 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     # Both operands have run, and o is not None. Check the current length: unsigned
     # comparison also sends every negative index to the runtime's normalization and errors.
     # No call or allocation separates this check from the existing inline list.load.
+    if self.list_id_kind(o.t) != 0:
+        return self.list_item(o, i)
     if o.t != "list[int]" or "listfast" not in self.opts:
         return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(o.t))
     fast = self.label()
@@ -4103,6 +4105,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         elif b.t == "bytes":
             self.err(f"a bytes-like object is required, not '{tname(a.t)}'")
         elif is_list(b.t):
+            if self.list_id_kind(b.t) != 0 and a.t in ["int", "float", "bool", "dyn"]:
+                if a.t == "dyn":
+                    a = self.coerce(a, elem(b.t))
+                found = self.list_find(b, a, "find")
+                return self.num_cmp(">=" if op == "in" else "<", found, Val("0", "int"))
             if a.t != elem(b.t) and (is_list(a.t) or is_dict(a.t) or is_tuple(a.t)) and self.numeric_comparable(a.t, elem(b.t)):
                 # A read-only search can compare the two item layouts directly;
                 # coercing the needle would wrongly widen mutable containers.

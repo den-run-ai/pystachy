@@ -60,6 +60,7 @@ class Reduce:
         self.stt = stt  # sum's start: its type, or "" where none is given
         self.t = ""  # the items' type
         self.acc = ""  # the sum so far, or the item kept (or the list of the items, collect)
+        self.identity = ""  # min/max numeric selected item's box in a dynamic program graph
         self.comp = ""  # a float sum's compensation, as runtime.c's fsum keeps it (Neumaier's)
         self.first = ""  # no item yet: min and max, and a float sum from an int start
         self.collect = False  # min() or max() of items runtime.c compares (pys_list_minmax)

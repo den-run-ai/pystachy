@@ -2326,7 +2326,7 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     i = self.mload("int", ctr)
     self.cbr(self.num_cmp("<", Val(i, "int"), Val(self.mload("int", xs.v), "int")).v, body, end)
     self.place(body)
-    item = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {xs.v}", f"i64 {i}"]), elem(xs.t))
+    item = self.list_item(xs, Val(i, "int"))
     total = self.dyn_arith("+", self.mem_load(Val(acc, "*dyn")), item)
     self.mem_store(Val(acc, "*dyn"), total)
     self.mstore("int", self.scalar("add", [Val(i, "int"), Val("1", "int")]), ctr)

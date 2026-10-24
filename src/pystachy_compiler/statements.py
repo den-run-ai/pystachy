@@ -1036,7 +1036,7 @@ def gen_stmt(self, n: Node) -> None:
         elif n.s == "discard":
             self.sdiscard(f"ptr {self.lcs[-1]}", v, et)
         else:
-            self.rt("pys_list_append", "void", [f"ptr {self.lcs[-1]}", "i64 " + self.to_slot(self.coerce(v, et))])
+            self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.coerce(v, et), "append")
     elif k == "defaults" or k == "cdefaults":
         if k == "defaults":
             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != "" else [], {})
@@ -1228,9 +1228,9 @@ def gen_augassign(self, n: Node) -> None:
             et = elem(unopt(o.t))
             i = self.ival(t.kids[1])
             o = self.unwrap(o, sub)
-            cur = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), et)
+            cur = self.list_item(o, i)
             r = self.coerce(self.inplace(op, cur, n.kids[1]), et)
-            self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {i.v}", "i64 " + self.to_slot(r)])
+            self.list_store(o, r, "set", i.v)
         elif is_dict(unopt(o.t)):
             # d[k] op= v stores k where d[k] has found it: k is looked up as d[k] does (dkey),
             # so a key that may be None raises KeyError: None, past which it is a key of d's
@@ -1871,7 +1871,7 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     # the item of sequence s at index (or slot, entry) j, which a for loop (for_seq) takes; a
     # dict's items() give its key and value
     if is_list(s.t):
-        return [self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), elem(s.t))]
+        return [self.list_item(s, Val(j, "int"))]
     if is_vtuple(s.t):
         off = self.scalar('add', [Val(j, 'int'), Val('1', 'int')])
         return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{off}')), targs(s.t)[0])]
@@ -2013,7 +2013,7 @@ def gen_drain(self, it: Val) -> Val:
     lt = self.ctype("list", [v.t])
     if lt == "list[dyn]":
         v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-    self.rt("pys_list_append", "void", [f"ptr {res}", "i64 " + self.to_slot(v)])
+    self.list_store(Val(res, lt), v, "append")
     self.br(lc)
     self.stop_landing(c, le)
     self.place(le)

@@ -242,6 +242,21 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   `dynany_identity_call_indirect.py`, `dynany_identity_call_imports.py`,
   `dynany_identity_call_edges.py`). Foreign C and CPython extension entry points retain
   their native ABI; graphs without dynamic `Any` retain all ordinary calling conventions.
+  Typed `list[int]` and `list[float]` items retain their original objects through stores,
+  reads, iteration, copies, slices, repetition and reordering. Their raw numeric array keeps
+  its existing layout; a separately scanned companion array holds the item boxes in a program
+  graph using dynamic `Any`. Copies share those boxes, and rebinding an item replaces only
+  its own box. Searching, equality and ordering use Python's identical-item shortcut before
+  numeric comparison, including NaNs (`dynany_identity_list_items.py`,
+  `dynany_identity_list_mutations.py`, `dynany_identity_list_transfers.py`,
+  `dynany_identity_list_queries.py`). Unpacking and min/max selection retain the selected
+  object; sorting carries the companions through key callbacks and exception restoration
+  (`dynany_identity_list_selectors.py`, `dynany_identity_list_callbacks.py`). Native numeric
+  list producers establish one object per item before any sharing. This allocates a companion
+  pointer per capacity slot and materializes numeric boxes; graphs without dynamic `Any`
+  allocate no companion arrays. Foreign C list calls follow the CPython FFI twin's copy-back
+  contract: the list remains the same object, while all its numeric items are replaced after
+  C returns, including read-only calls and calls using `ffi.at()` (`tests/ffi/c_list_identity.py`).
   Integer-literal arithmetic whose operands and result fit int64 shares the module's
   constant box: `999 + 1` is the same object as its `1000` literal. This covers `+`, `-`,
   `*`, `//`, `%`, bit operations and bounded shifts/powers (counts from 0 through 63),
@@ -482,10 +497,13 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
 - An int or float of typed code that no variable's box slot holds is a new object where it
   becomes an `Any` value, where CPython's names, containers and classes hold one object: a
-  numeric item of a typed container, including typed variadic argument tuples,
+  numeric item of a typed tuple, dict or set, including typed variadic argument tuples,
+  or of a typed list whose item type is optional or a union (`list[float | None]`,
+  `list[int | float]`),
   or a typed numeric generator's yielded item (`Iterator[float]`, for example).
   Yielding into dynamic item storage (`Iterator[Any]`) retains the source box.
-  The typed-list case remains in `tests/deviations/dynany_identity_boundary.py`.
+  The typed-tuple case remains in `tests/deviations/dynany_identity_boundary.py`;
+  typed numeric lists now retain their item objects as described above.
   Numeric optional/scalar-union locals, closure cells, globals, instance fields and class
   attributes retain their identity. Module-level and function-local from-import copies
   retain the source global's object, including imports in non-opt-in functions.

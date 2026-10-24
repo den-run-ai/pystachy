@@ -1,0 +1,21 @@
+inserted source True True
+repeated item True True
+two slots True True
+nan keys 1
+append True True
+insert True True
+replacement True True
+distinct nan False False
+item copy True True
+retired item True True
+fresh replacement False False
+slice first True True
+slice second True True
+pop True True
+after deletion True True
+clear refill True True
+self extend True True
+inplace repeat True True
+inplace concat True True
+list root True
+[exit 0]
