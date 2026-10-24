@@ -368,7 +368,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     effects = self.opfx(i, fn.fa)
                     writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
                     raises[key] = effects & FXBIT["R"] != 0
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
