@@ -354,6 +354,11 @@ def selem(t: str) -> str:
     return t[t.find("[") + 1 : -1]
 
 
+def is_scalar_set(t: str) -> bool:
+    # Nonoptional sets whose distinct element types have disjoint equality domains.
+    return is_set(t) and selem(t) in ["int", "str", "bytes"]
+
+
 def is_tuple(t: str) -> bool:
     return t.startswith("tuple[")
 

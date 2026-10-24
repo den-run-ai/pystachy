@@ -20,7 +20,7 @@ from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import JSONANY, METHODS, NONEVAR, RTDATA
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_scalar_set, is_set, is_tuple, is_union, is_vtuple, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -203,7 +203,7 @@ def comparison_reads(n: Node, parameter: str, missing: list[str]) -> bool:
     return all(comparison_reads(kid, parameter, missing) for kid in n.kids)
 
 
-def comparison_equalities(n: Node, receiver: str, parameter: str, different: list[str], own: list[str], peer: list[str]) -> bool:
+def comparison_equalities(n: Node, receiver: str, parameter: str, different: list[str], own: dict[str, str], peer: dict[str, str]) -> bool:
     # A newly different field layout is safe only as a direct equality operand
     # with another closed builtin field. Other uses could fail once per boxed
     # class and restart the entire program, even when the canonical body works.
@@ -211,7 +211,12 @@ def comparison_equalities(n: Node, receiver: str, parameter: str, different: lis
         if all(kid.kind == "attr" and kid.kids[0].kind == "name" and
                ((kid.kids[0].s == receiver and kid.s in own) or
                 (kid.kids[0].s == parameter and kid.s in peer)) for kid in n.kids):
-            return True
+            types = [own[kid.s] if kid.kids[0].s == receiver else peer[kid.s] for kid in n.kids]
+            # Set equality has its own layout rule, not the builtin-tree helper.
+            # Check adjacent operands, including each link of an equality chain.
+            if all((not is_set(types[i]) and not is_set(types[i + 1])) or
+                   (is_scalar_set(types[i]) and is_scalar_set(types[i + 1])) for i in range(len(types) - 1)):
+                return True
     if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == parameter and n.s in different:
         return False
     return all(comparison_equalities(kid, receiver, parameter, different, own, peer) for kid in n.kids)
@@ -1475,17 +1480,20 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         # so incompatible operations do not add a failed restart per class.
         compatible = [a for a in fields if a in ci.ftypes and a not in ci.methods and
                       (ci.ftypes[a] == self.classes[canonical].ftypes[a] or
-                       (self.ueq_type(ci.ftypes[a]) and self.ueq_type(self.classes[canonical].ftypes[a])))]
+                       (self.ueq_type(ci.ftypes[a]) and self.ueq_type(self.classes[canonical].ftypes[a])) or
+                       (is_scalar_set(ci.ftypes[a]) and is_scalar_set(self.classes[canonical].ftypes[a])))]
         different = [a for a in compatible if ci.ftypes[a] != self.classes[canonical].ftypes[a]]
         if len(different) > 0:
             receiver = self.classes[own]
             # Top-level unions and variadic tuples take coercion paths before
             # paired equality; they can still reject a different builtin type.
             # Nested occurrences stay safe under a container's own descriptor.
-            own_fields = [a for a in receiver.ftypes if a not in receiver.methods and self.ueq_type(receiver.ftypes[a]) and
-                          not is_union(unopt(receiver.ftypes[a])) and not is_vtuple(unopt(receiver.ftypes[a]))]
-            peer_fields = [a for a in ci.ftypes if a not in ci.methods and self.ueq_type(ci.ftypes[a]) and
-                           not is_union(unopt(ci.ftypes[a])) and not is_vtuple(unopt(ci.ftypes[a]))]
+            own_fields = {a: receiver.ftypes[a] for a in receiver.ftypes if a not in receiver.methods and
+                          (self.ueq_type(receiver.ftypes[a]) or is_scalar_set(receiver.ftypes[a])) and
+                          not is_union(unopt(receiver.ftypes[a])) and not is_vtuple(unopt(receiver.ftypes[a]))}
+            peer_fields = {a: ci.ftypes[a] for a in ci.ftypes if a not in ci.methods and
+                           (self.ueq_type(ci.ftypes[a]) or is_scalar_set(ci.ftypes[a])) and
+                           not is_union(unopt(ci.ftypes[a])) and not is_vtuple(unopt(ci.ftypes[a]))}
             if not comparison_equalities(method.node.kids[2], method.params[0], method.params[1], different, own_fields, peer_fields):
                 return False
         if len(compatible) == len(fields):

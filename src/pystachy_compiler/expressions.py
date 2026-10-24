@@ -53,6 +53,7 @@ from src.pystachy_compiler.utils import (
     is_kw,
     is_list,
     is_opt,
+    is_scalar_set,
     is_set,
     is_sopt,
     is_super,
@@ -4097,6 +4098,13 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if is_set(a.t) and is_set(b.t) and op in ICMP:
         # subsets and equality (a set equals a frozenset of its elements)
         if self.wider(selem(a.t), selem(b.t)) == "":
+            if op in ["==", "!="] and is_scalar_set(a.t) and is_scalar_set(b.t):
+                # Distinct int/str/bytes domains can only share the empty set.
+                # Read lengths after both operands ran; never probe one layout
+                # with another layout's keys, even when their hashes collide.
+                sets_empty = [self.num_cmp("==", Val(self.mload("int", v.v), "int"), Val("0", "int")) for v in [a, b]]
+                sets_equal = Val(self.scalar("and", sets_empty), "bool")
+                return sets_equal if op == "==" else Val(self.scalar("xor", [sets_equal, Val("true", "bool")]), "bool")
             self.err(f"cannot compare {typestr(a.t)} {op} {typestr(b.t)}")
         r = self.rt("pys_set_cmp", "i64", [f"ptr {a.v}", f"ptr {b.v}", f"i64 {ORDOP[op] if op in ORDOP else 4 if op == '==' else 5}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t)))
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))

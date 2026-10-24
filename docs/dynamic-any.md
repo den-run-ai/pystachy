@@ -337,6 +337,11 @@ field. Arithmetic, indexing, calls and other uses of that field retain the fallb
 The new allowance also excludes top-level union and variable-length tuple operands,
 whose existing comparison coercions can reject a different field type; these types
 may still occur inside a supported container field.
+Direct equality also supports nonoptional `set` and `frozenset` fields with
+`int`, `str` or `bytes` elements. Different element types in this group can only
+compare equal when both sets are empty; their lengths are read without probing
+one set with the other set's key layout. Set ordering and other element types
+do not gain this allowance (`tests/programs/inference/dynany_cmp_scalar_sets.py`).
 Equality reads each tree with
 its own descriptor, so differently typed empty containers can be equal and numeric leaves
 retain exact comparison. It neither converts nor copies their storage. Existing tuple-shape
@@ -412,7 +417,8 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
   (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand has an incompatible typed
-  set field). Closed builtin container-field comparisons and missing-field reads now execute
+  tuple-element set field). Closed builtin container-field comparisons, scalar-set equality
+  and missing-field reads now execute
   through guarded concrete adapters. Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
   is a correctness gap tracked by #803, not a stable comparison contract.

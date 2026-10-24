@@ -1,0 +1,51 @@
+numbers comparison ran
+words comparison ran
+numbers comparison ran
+words comparison ran
+int/str False True True False False
+numbers comparison ran
+numbers comparison ran
+numbers comparison ran
+numbers comparison ran
+int/bytes False True True False False
+words comparison ran
+words comparison ran
+words comparison ran
+words comparison ran
+str/bytes False True True False False
+numbers comparison ran
+numbers comparison ran
+numbers comparison ran
+numbers comparison ran
+frozen False True True False False
+numbers comparison ran
+numbers comparison ran
+same layout True True
+numbers comparison ran
+words comparison ran
+numbers comparison ran
+words comparison ran
+int/str True False False True True
+numbers comparison ran
+numbers comparison ran
+numbers comparison ran
+numbers comparison ran
+int/bytes True False False True True
+words comparison ran
+words comparison ran
+words comparison ran
+words comparison ran
+str/bytes True False False True True
+numbers comparison ran
+numbers comparison ran
+numbers comparison ran
+numbers comparison ran
+frozen True False False True True
+numbers comparison ran
+numbers comparison ran
+same layout True True
+numbers comparison ran
+'MissingMarker' object has no attribute 'marker'
+numbers comparison ran
+missing marker True False
+[exit 0]
