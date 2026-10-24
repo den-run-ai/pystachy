@@ -28,6 +28,16 @@ def snapshots() -> None:
     print("cell snapshot ids", id(items[0]) == id(items[1]), id(items[0]) == id(items[2]))
 
 
+def narrowed_cell() -> int:
+    value = "1000"
+    read = lambda: value
+    value = int(value)
+    a: Any = value
+    b: Any = value
+    print("narrowed cell", repr(read()), a is b)
+    return value
+
+
 read, change = factory()
 a = read()
 b = read()
@@ -37,3 +47,4 @@ c = read()
 d = read()
 print("changed cell", c is d, a is c, id(c) == id(d))
 snapshots()
+print("narrowed cell return", narrowed_cell())

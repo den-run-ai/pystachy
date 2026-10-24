@@ -27,6 +27,13 @@ def local_reads() -> None:
     print("first binding", first[0] is first[1], first[0] is first[2], first[2] is new)
     typed = [(number := int("1000")), *[2], number]
     print("typed first binding", typed)
+    ranges = [(start := int("1000")), *range(2), start, (start := int("2000")), *marker]
+    print("iterator first binding", ranges[0] is ranges[3], ranges[0] is ranges[4])
+    words = 1
+    retyped = [(words := "hello world"), *words.split()]
+    print("retyped expansion", retyped)
+    empty_tuple = [(last := int("1000")), *(), last, (last := int("2000")), *marker]
+    print("empty tuple first binding", empty_tuple[0] is empty_tuple[1], empty_tuple[0] is empty_tuple[2])
 
 
 def callbacks() -> None:

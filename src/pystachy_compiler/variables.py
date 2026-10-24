@@ -123,6 +123,11 @@ def gen_load_name(self, name: str) -> Val:
         if name in self.idbox and numeric_identity(t):
             self.dyn_id_read(val, self.idbox[name])  # (its binding's object, as an Any value: dyn_box)
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
+            if val.idfrom != "" and (is_opt(t) or is_union(t)):
+                # A shared cell's snapshot may fill its adjacent identity cache.
+                # Read the checked member from that snapshot: storage proofs need
+                # not survive the cache write or another closure reading the cell.
+                return self.dyn_unbox(Val(val.idfrom, "dyn"), self.narrowed[name]).identity(val)
             return self.narrow_val(val, self.narrowed[name])  # known not to be None here, or a member
         return val
     self.read_ahead(name)
