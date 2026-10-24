@@ -161,6 +161,21 @@ class NumericCallIdentityTests(unittest.TestCase):
         return re.search(r"^define [^\n]*@" + re.escape(name) + r"\([^\n]*\n.*?^}", ir,
                          re.MULTILINE | re.DOTALL).group(0)
 
+    def test_shared_finally_constant_returns_reload_their_identity(self):
+        source = (ROOT / "tests/programs/inference/dynany_identity_finally_constants.py").read_text()
+        ir = driver.compile_program("finally_identity.py", source, [str(ROOT / "lib")], "")
+        body = self.function_ir(ir, "f.literals")
+        returns = 0
+        for block in re.split(r"(?m)^\w[\w.]*:\n", body):
+            returned = re.search(r"store ptr (%[\w.]+), ptr %idret\n", block)
+            if returned:
+                returns += 1
+                # Every continuation has multiple incoming control paths from the
+                # shared finally. Its returned box must be reloaded locally, not
+                # use an SSA box defined only on one incoming return branch.
+                self.assertIn(returned[1] + " = load ptr, ptr %", block)
+        self.assertEqual(returns, 2)
+
     def signature(self, body, annotation="int"):
         generators = []
         original = driver.Gen

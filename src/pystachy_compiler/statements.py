@@ -473,9 +473,12 @@ def gen_leave(self, depth: int) -> bool:
             if cv.v.startswith("%"):
                 sl = self.alloca(cv.t, "")
                 self.mstore(cv.t, cv.v, sl)
-                if cv.idfrom != "":
-                    identity = self.alloca("dyn", "")
-                    self.mstore("dyn", cv.idfrom, identity)
+            # A constant payload can still have an SSA box (for example a cached
+            # small integer). The shared finally join must preserve that identity
+            # independently of whether the payload itself needs a spill.
+            if cv.idfrom != "":
+                identity = self.alloca("dyn", "")
+                self.mstore("dyn", cv.idfrom, identity)
             self.mstore('int', f'{len(x.conts)}', x.sel)
             x.conts.append(self.label())
             self.br(x.entry)
@@ -483,8 +486,8 @@ def gen_leave(self, depth: int) -> bool:
             self.narrowed = self.unnarrowed([x.body])  # (what the block may bind on the way)
             if sl != "":
                 cv = Val(self.mload(cv.t, sl), cv.t)
-                if identity != "":
-                    cv.idfrom = self.mload("dyn", identity)
+            if identity != "":
+                cv.idfrom = self.mload("dyn", identity)
         else:
             exits = self.exits
             loops = self.loops
