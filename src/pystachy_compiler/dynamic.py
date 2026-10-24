@@ -345,9 +345,9 @@ def comparison_boxable(t: str, classes: dict[str, ClassInfo]) -> bool:
     return False
 
 
-def comparison_equalities(n: Node, receiver: str, parameter: str, different: list[str], own: dict[str, str], peer: dict[str, str], classes: dict[str, ClassInfo] | None = None, length: bool = True) -> bool:
+def comparison_equalities(n: Node, receiver: str, parameter: str, different: list[str], own: dict[str, str], peer: dict[str, str], classes: dict[str, ClassInfo] | None = None, length: bool = True, named: dict[str, bool] | None = None) -> bool:
     length = length and bind_count(n.kids, "len") == 0
-    return comparison_operations(n, receiver, comparison_aliases(n, parameter), different, own, peer, {} if classes is None else classes, length)
+    return comparison_operations(n, receiver, comparison_aliases(n, parameter), different, own, peer, {} if classes is None else classes, length, {} if named is None else named)
 
 
 def comparison_walkable(t: str, classes: dict[str, ClassInfo]) -> bool:
@@ -381,8 +381,8 @@ def comparison_sets(a: str, b: str) -> bool:
     return is_set(a) and is_set(b) and (selem(a) == selem(b) or disjoint_sets(a, b))
 
 
-def comparison_pair(a: str, b: str, op: str, classes: dict[str, ClassInfo]) -> bool:
-    if op in ["==", "!="] and is_list(a) and is_list(b) and comparison_list_pair(elem(a), elem(b), classes):
+def comparison_pair(a: str, b: str, op: str, classes: dict[str, ClassInfo], named: dict[str, bool]) -> bool:
+    if op in ["==", "!="] and is_list(a) and is_list(b) and comparison_list_pair(elem(a), elem(b), classes, named):
         return True
     if a == "" or b == "" or comparison_has_object(a, classes) or comparison_has_object(b, classes):
         return False
@@ -395,11 +395,13 @@ def comparison_pair(a: str, b: str, op: str, classes: dict[str, ClassInfo]) -> b
     return op in ["<", "<=", ">", ">="] and a in ["int", "float", "bool"] and b in ["int", "float", "bool"]
 
 
-def comparison_list_pair(a: str, b: str, classes: dict[str, ClassInfo]) -> bool:
+def comparison_list_pair(a: str, b: str, classes: dict[str, ClassInfo], named: dict[str, bool]) -> bool:
     # Match the direct-item loop's domain. Declared Any/exact-class methods
     # have one checked body; generic methods could fail separately per peer.
     if any(t not in classes and t not in [DYN, "int", "float", "bool", "str", "bytes", "None"] for t in [a, b]):
         return False
+    if a in named or b in named:
+        return False  # NamedTuple equality is tuple value equality, not object identity
     if DYN in [a, b] and "bytes" in [a, b]:
         return False  # bytes cannot be boxed for a dynamic element's callback
     if any(t in classes and (classes[t].exc != "" or classes[t].tag != 0) for t in [a, b]):
@@ -411,7 +413,7 @@ def comparison_list_pair(a: str, b: str, classes: dict[str, ClassInfo]) -> bool:
     return True
 
 
-def comparison_operations(n: Node, receiver: str, aliases: list[str], different: list[str], own: dict[str, str], peer: dict[str, str], classes: dict[str, ClassInfo], length: bool) -> bool:
+def comparison_operations(n: Node, receiver: str, aliases: list[str], different: list[str], own: dict[str, str], peer: dict[str, str], classes: dict[str, ClassInfo], length: bool, named: dict[str, bool]) -> bool:
     # Prove every actual operand pair, including chained comparisons. Unsupported
     # operations must not add a failed whole-program restart per boxed class.
     if receiver in aliases:
@@ -423,7 +425,7 @@ def comparison_operations(n: Node, receiver: str, aliases: list[str], different:
     if n.kind == "cmp":
         ts = [comparison_value(kid, receiver, aliases, own, peer, classes, length) for kid in n.kids]
         ops = n.s.split(",")
-        if all(comparison_pair(ts[i], ts[i + 1], ops[i], classes) for i in range(len(ops))):
+        if all(comparison_pair(ts[i], ts[i + 1], ops[i], classes, named) for i in range(len(ops))):
             return True
         if comparison_touches(n, aliases, different):
             return False  # a supported subexpression does not prove its consumer
@@ -433,7 +435,7 @@ def comparison_operations(n: Node, receiver: str, aliases: list[str], different:
             return True
     if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s in aliases and n.s in different:
         return False
-    return all(comparison_operations(kid, receiver, aliases, different, own, peer, classes, length) for kid in n.kids)
+    return all(comparison_operations(kid, receiver, aliases, different, own, peer, classes, length, named) for kid in n.kids)
 
 
 def comparison_touches(n: Node, aliases: list[str], fields: list[str]) -> bool:
@@ -1793,7 +1795,7 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
             receiver = comparison_layout(self.classes[own])
             own_fields = {a: receiver[a] for a in receiver if self.ueq_type(receiver[a]) or comparison_walkable(receiver[a], self.classes) or (is_set(receiver[a]) and builtin_key(selem(receiver[a])))}
             peer_fields = {a: actual[a] for a in actual if self.ueq_type(actual[a]) or comparison_walkable(actual[a], self.classes) or (is_set(actual[a]) and builtin_key(selem(actual[a])))}
-            if not comparison_equalities(method.node.kids[2], method.params[0], method.params[1], different, own_fields, peer_fields, self.classes, "len" not in method.params and not self.bound("len")):
+            if not comparison_equalities(method.node.kids[2], method.params[0], method.params[1], different, own_fields, peer_fields, self.classes, "len" not in method.params and not self.bound("len"), self.nts):
                 return False
         if len(compatible) == len(fields):
             return True

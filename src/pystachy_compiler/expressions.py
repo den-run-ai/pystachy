@@ -4249,7 +4249,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         # numeric leaves compare exactly without changing either stored layout.
         r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
         return self.num_cmp("!=" if op == "==" else "==", Val(r, "int"), Val("0", "int"))
-    if eq and ct == "" and is_list(a.t) and is_list(b.t) and self.dyn_policy(self.line) and all(elem(v.t) in self.classes or elem(v.t) in ["dyn", "int", "float", "bool", "str", "bytes", "None"] for v in [a, b]) and not ("dyn" in [elem(a.t), elem(b.t)] and "bytes" in [elem(a.t), elem(b.t)]):
+    # NamedTuple items use tuple-value semantics, not ordinary object dispatch.
+    # Keep their existing common-layout path until a paired tuple adapter exists.
+    if eq and ct == "" and is_list(a.t) and is_list(b.t) and self.dyn_policy(self.line) and all(elem(v.t) not in self.nts and (elem(v.t) in self.classes or elem(v.t) in ["dyn", "int", "float", "bool", "str", "bytes", "None"]) for v in [a, b]) and not ("dyn" in [elem(a.t), elem(b.t)] and "bytes" in [elem(a.t), elem(b.t)]):
         return self.list_pair_eq(op, a, b)
     if ct == "" and self.boxwider(a.t, b.t) != "":
         # a tuple with an int where the other's item may be None: compared as a new tuple of boxes

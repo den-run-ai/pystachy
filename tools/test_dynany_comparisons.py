@@ -45,6 +45,41 @@ class ConcreteComparisonTests(unittest.TestCase):
         self.assertLessEqual(large[1], 3)
         self.assertFalse(any(":concrete:" in key for key in large[2].xnot))
 
+    def test_namedtuple_list_adapters_keep_restarts_bounded(self):
+        for expression in ["self.items == other.items", "other.items == self.items"]:
+            counts = []
+            for count in [1, 20]:
+                source = ("# pystachy: dynamic-any\nfrom typing import Any, NamedTuple\n"
+                          "class Left(NamedTuple):\n    value: int\n"
+                          "class Strict:\n    def __init__(self):\n        self.items = [Left(1)]\n"
+                          f"    def __eq__(self, other):\n        return {expression}\n"
+                          "class Matching:\n    def __init__(self):\n        self.items = [Left(1)]\n"
+                          "strict: Any = Strict()\nmatching: Any = Matching()\n"
+                          "print(strict == matching)\n")
+                for index in range(count):
+                    source += (f"class Right{index}(NamedTuple):\n    value: int\n"
+                               f"class Peer{index}:\n    def __init__(self):\n"
+                               f"        self.items = [Right{index}(1)]\n"
+                               f"peer{index}: Any = Peer{index}()\n")
+                generators = []
+                original = driver.Gen
+
+                def generator(original=original, generators=generators):
+                    value = original()
+                    generators.append(value)
+                    return value
+
+                with patch.object(driver, "Gen", generator):
+                    driver.compile_program("namedtuple_comparison_probe.py", source, [str(ROOT / "lib")], "")
+                counts.append(len(generators))
+                final = generators[-1]
+                self.assertFalse(any(":concrete:" in key for key in final.xnot))
+                self.assertTrue(final.dyn_supports("Matching", "cmp.Strict.__eq__", "__eq__", 1))
+                for index in range(count):
+                    self.assertFalse(final.dyn_supports(f"Peer{index}", "cmp.Strict.__eq__", "__eq__", 1))
+            self.assertEqual(counts[0], counts[1])
+            self.assertLessEqual(counts[1], 3)
+
     def test_missing_and_builtin_equality_fields_do_not_add_failed_restarts(self):
         for fields in ["self.missing = [3]", "self.items = 'different type'", "self.items = ['x']",
                        "self.items = {1: 'x'}", "self.items = (1, 'x')"]:
