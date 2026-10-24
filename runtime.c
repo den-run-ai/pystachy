@@ -60,7 +60,9 @@ typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* UTF-8 
 _Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
                offsetof(Str, chars1) == 16 && offsetof(Str, s) == 24 && sizeof(Str) == 24,
                "Str ABI: len, dict_hash, chars1, bytes");
-typedef struct { I len, cap; I *a; } List;
+typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
+_Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
+               offsetof(List, ids) == 24 && sizeof(List) == 32, "List ABI: raw prefix and identity companion");
 typedef struct { I len; I a[]; } VTuple;                /* immutable homogeneous tuple, counted inline slots */
 typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; I cut, vatomic; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple or object keys; vatomic: the values are ints, floats or bools, whose arrays are atomic; see dicts */
 typedef struct { I len, kind, fill, mask, finger; I *keys, *hs; } Set; /* a set or frozenset, kind as Dict's; see sets */
@@ -1735,6 +1737,8 @@ typedef struct DynIter DynIter;
 I pys_dyn_eq(Dyn *a, Dyn *b);
 I pys_dyn_cmp(Dyn *a, Dyn *b, I op);
 I pys_dyn_hash(Dyn *x);
+Dyn *pys_dyn_int(I v);
+Dyn *pys_dyn_float(double x);
 static int dyn_eqitem(Dyn *a, Dyn *b);
 static int dyn_keyeq(Dyn *a, Dyn *b);
 static uint64_t hdyn(Dyn *x);
@@ -1971,6 +1975,10 @@ Str *pys_refl_vars(ReflRec *r, char *o) {   /* repr(vars(o)): o's assigned field
 static I entry(Dict *d, I k);
 static I dfind(Dict *d, I k, uint64_t h, I *free);
 I pys_set_cmp(Set *a, Set *b, I op);
+static int list_same_item(List *a, I i, List *b, I j) {
+  return a->ids && b->ids && ((a == b && i == j) ||
+         (a->ids[i + 1] && a->ids[i + 1] == b->ids[j + 1]));
+}
 static int eqv(I a, I b, const char *d);
 static int eqpair(I a, I b, const char *x, const char *y);
 /* Container items use identity before equality (PyObject_RichCompareBool). Keep this
@@ -1998,7 +2006,7 @@ static int eqv(I a, I b, const char *d) {
                    lengths at every step, and once a list has no item left, compare them */
     List *x = (List *)a, *y = (List *)b; I i = 0;
     if (x->len != y->len) return 0;
-    while (i < x->len && i < y->len && eqitem(x->a[i], y->a[i], d + 1)) i++;
+    while (i < x->len && i < y->len && (list_same_item(x, i, y, i) || eqitem(x->a[i], y->a[i], d + 1))) i++;
     return (i >= x->len || i >= y->len) && x->len == y->len;
   }
   case 'D': {   /* (as CPython's dict_equal, with the hashes x keeps, where y's are of the same kind) */
@@ -2084,7 +2092,7 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   if (*x == 'L') {
     List *p = (List *)a, *q = (List *)b;
     if (p->len != q->len) return 0;
-    for (I i = 0; i < p->len; i++) if (!eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
+    for (I i = 0; i < p->len; i++) if (!list_same_item(p, i, q, i) && !eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
     return 1;
   }
   if (*x == 'D') {
@@ -2131,7 +2139,7 @@ static int opv(I a, I b, const char *d, I op) {
   case 's': return cmpop(pys_str_cmp((Str *)a, (Str *)b), op);
   case 'L': {
     List *x = (List *)a, *y = (List *)b; I i = 0;
-    while (i < x->len && i < y->len && eqitem(x->a[i], y->a[i], d + 1)) i++;
+    while (i < x->len && i < y->len && (list_same_item(x, i, y, i) || eqitem(x->a[i], y->a[i], d + 1))) i++;
     if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
     return cmpop((x->len > y->len) - (x->len < y->len), op);
   }
@@ -2254,6 +2262,8 @@ I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len; 
    the kind of the arrays they copy (atomic_items), so a list keeps its kind for its lifetime,
    and an emptied list keeps it in the sentinel it is left with. */
 static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */
+static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2};
+static I *empty_identity(I kind) { return (kind & 3) == 1 ? empty_identity_int : empty_identity_float; }
 static I empty_atomic[1];              /* the same, for a list whose array was atomic */
 static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, from the page map */
   uintptr_t w = (uintptr_t)a; Seg **m, *s;
@@ -2261,16 +2271,52 @@ static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, 
   return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
 }
 static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
-  if (l->cap) { l->cap = 0; l->a = atomic_items(l->a) ? empty_atomic : empty_list; }   /* cap 0 during sort: preserve its mutation marker */
+  if (l->cap) { l->cap = 0; l->a = atomic_items(l->a) ? empty_atomic : empty_list; if (l->ids) l->ids = empty_identity(l->ids[0]); }   /* cap 0 during sort: preserve its mutation marker */
 }
 static I *item_array(I n, int atomic) { return atomic ? pys_alloc_atomic(n * 8) : pys_alloc(n * 8); }
 static List *list_new(I cap, int atomic) {
-  List *l = pys_alloc(sizeof(List));
+  /* The allocator adds one slack byte. Request the full 32-byte header without
+     promoting it to the next size class; the former 24-byte header used 32 too. */
+  List *l = pys_alloc(sizeof(List) - 1);
   l->cap = cap > 4 ? cap : 4;
   l->a = item_array(l->cap, atomic); return l;
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
 List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+/* Only dynamic program graphs request this companion. The numeric array remains raw and
+   atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;
+   a later observation or sharing operation materializes that new object. Pure moves carry
+   the null marker with the value. Bit 2 of the companion header marks pending entries.
+   Copies must materialize before sharing, so separate reads
+   of copied items cannot create unrelated boxes. */
+static I list_box(I value, I kind) { return (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value))); }
+void pys_list_identity(List *l, I kind) {
+  if (l->ids && !(l->ids[0] & 4)) return;   /* clean companions make repeated reads/stores O(1) */
+  if (!l->ids) {
+    /* Companion allocation limits use the allocator's fatal MemoryError convention. */
+    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((l->cap + 1) * sizeof(I));
+    ids[0] = kind & 3; l->ids = ids;
+  }
+  for (I i = 0; i < l->len; i++)
+    if (!l->ids[i + 1]) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
+  l->ids[0] &= 3;
+}
+static void identity_pair(List *a, List *b) {
+  if (a->ids || b->ids) {
+    I kind = a->ids ? a->ids[0] : b->ids[0];
+    pys_list_identity(a, kind); pys_list_identity(b, kind);
+  }
+}
+void pys_list_forget_identity(List *l) {
+  /* The CPython FFI twin copies every native array element back after a call. Even an
+     unchanged numeric payload becomes a fresh Python value there. */
+  if (l->ids) {
+    for (I i = 0; i < l->len; i++) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
+    l->ids[0] &= 3;
+  }
+}
+
 List *pys_m_ufloats(List *l, Str *d) {   /* math.fsum()'s floats of a list of a union's numbers (d the union's) */
   List *r = pys_list_new_atomic(l->len);
   for (I i = 0; i < l->len; i++) {
@@ -2293,41 +2339,102 @@ static void reserve(List *l, I n) {
   I c = l->cap * 2 > n ? l->cap * 2 : n;
   if (c < 4) c = 4;
   I *a = item_array(c, atomic_items(l->a));
-  memcpy(a, l->a, l->len * 8); l->a = a; l->cap = c;
+  memcpy(a, l->a, l->len * 8); l->a = a;
+  if (l->ids) {
+    if (c > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((c + 1) * sizeof(I));
+    memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;
+  }
+  l->cap = c;
 }
 /* element access through a distinct struct type: TBAA then knows a store to an element
    never changes l->len or l->a, so LLVM hoists those loads out of loops */
 typedef struct { I v; } Slot;
 #define AT(l, i) (((Slot *)(l)->a)[i].v)
-void pys_list_append(List *l, I v) { if (l->len == l->cap) reserve(l, l->len + 1); AT(l, l->len++) = v; }
+void pys_list_append(List *l, I v) {
+  I id = l->ids ? list_box(v, l->ids[0]) : 0;
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  if (l->ids) l->ids[l->len + 1] = id;
+  AT(l, l->len++) = v;
+}
+void pys_list_append_identity(List *l, I v, Dyn *id, I kind) {
+  pys_list_identity(l, kind);
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  l->ids[l->len + 1] = (I)id; AT(l, l->len++) = v;
+}
+Dyn *pys_list_get_identity(List *l, I i, I kind) {
+  i = idx(i, l->len, "IndexError: list index out of range");
+  pys_list_identity(l, kind); return (Dyn *)l->ids[i + 1];
+}
 I pys_list_get(List *l, I i) { return AT(l, idx(i, l->len, "IndexError: list index out of range")); }
-void pys_list_set(List *l, I i, I v) { AT(l, idx(i, l->len, "IndexError: list assignment index out of range")) = v; }
+void pys_list_set(List *l, I i, I v) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  if (l->ids) { l->ids[i + 1] = 0; l->ids[0] |= 4; }   /* pending fresh identity; no allocation */
+  AT(l, i) = v;
+}
+void pys_list_set_identity(List *l, I i, I v, Dyn *id, I kind) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  pys_list_identity(l, kind); l->ids[i + 1] = (I)id; AT(l, i) = v;
+}
 /* a slot a list no longer uses is zeroed: the collector scans the whole array, so a stale
    pointer there would keep the removed item alive (and a removed file open) */
 I pys_list_pop(List *l, I i) {
   if (!l->len) pys_fail("IndexError: pop from empty list");
   i = idx(i, l->len, "IndexError: pop index out of range");
-  I v = l->a[i]; memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0;
+  I v = l->a[i];
+  if (l->ids) { memmove(l->ids + i + 1, l->ids + i + 2, (l->len - i - 1) * 8); l->ids[l->len] = 0; }
+  memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0;
   if (!l->len) empty(l);
   return v;
 }
-void pys_list_del(List *l, I i) { i = idx(i, l->len, "IndexError: list assignment index out of range"); memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0; if (!l->len) empty(l); }
+Dyn *pys_list_pop_identity(List *l, I i, I kind) {
+  if (!l->len) pys_fail("IndexError: pop from empty list");
+  i = idx(i, l->len, "IndexError: pop index out of range");
+  pys_list_identity(l, kind); Dyn *id = (Dyn *)l->ids[i + 1];
+  pys_list_pop(l, i); return id;
+}
+void pys_list_del(List *l, I i) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  pys_list_pop(l, i);
+}
 void pys_list_insert(List *l, I i, I v) {
   if (i < 0 && (i += l->len) < 0) i = 0;
   if (i > l->len) i = l->len;
-  reserve(l, l->len + 1); memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
+  I id = l->ids ? list_box(v, l->ids[0]) : 0;
+  reserve(l, l->len + 1);
+  if (l->ids) { memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = id; }
+  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
 }
-void pys_list_extend(List *l, List *m) { I n = m->len; reserve(l, l->len + n); memcpy(l->a + l->len, m->a, n * 8); l->len += n; }
+void pys_list_insert_identity(List *l, I i, I v, Dyn *id, I kind) {
+  if (i < 0 && (i += l->len) < 0) i = 0;
+  if (i > l->len) i = l->len;
+  pys_list_identity(l, kind); reserve(l, l->len + 1);
+  memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = (I)id;
+  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
+}
+void pys_list_extend(List *l, List *m) {
+  identity_pair(l, m); I n = m->len; reserve(l, l->len + n);
+  if (l->ids) memcpy(l->ids + l->len + 1, m->ids + 1, n * 8);
+  memcpy(l->a + l->len, m->a, n * 8); l->len += n;
+}
 List *pys_list_slice(List *l, I lo, I hi) {
   span(&lo, &hi, l->len);
-  List *r = list_new(hi - lo, atomic_items(l->a)); memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
+  if (l->ids) pys_list_identity(l, l->ids[0]);
+  List *r = list_new(hi - lo, atomic_items(l->a));
+  if (l->ids) { pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8); }
+  memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
 }
 List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
-void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); l->len = 0; empty(l); }
+void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); if (l->ids) memset(l->ids + 1, 0, l->len * 8); l->len = 0; empty(l); }
 List *pys_list_slice_step(List *l, I lo, I hi, I st) {
   I n = sspan(&lo, hi, &st, l->len);
+  if (l->ids) pys_list_identity(l, l->ids[0]);
   List *r = list_new(n, atomic_items(l->a));
-  for (I i = 0; i < n; i++) r->a[i] = l->a[lo + i * st];
+  if (l->ids) pys_list_identity(r, l->ids[0]);
+  for (I i = 0; i < n; i++) {
+    r->a[i] = l->a[lo + i * st];
+    if (l->ids) r->ids[i + 1] = l->ids[lo + i * st + 1];
+  }
   r->len = n; return r;
 }
 /* l[lo:hi:st] = v and del l[lo:hi:st], as CPython's list_ass_subscript: with a step of 1, any
@@ -2337,13 +2444,22 @@ List *pys_list_slice_step(List *l, I lo, I hi, I st) {
 void pys_list_set_slice(List *l, I lo, I hi, I st, List *v) {
   I n = l->len, k = sspan(&lo, hi, &st, n), m = v->len;
   if (v == l) v = pys_list_copy(l);
+  identity_pair(l, v);
   if (st != 1) {
     if (m != k) failf("ValueError: attempt to assign sequence of size %lld to extended slice of size %lld", (long long)m, (long long)k);
-    for (I i = 0; i < k; i++) l->a[lo + i * st] = v->a[i];
+    for (I i = 0; i < k; i++) {
+      l->a[lo + i * st] = v->a[i];
+      if (l->ids) l->ids[lo + i * st + 1] = v->ids[i + 1];
+    }
     return;
   }
   if (n + m - k == 0) { pys_list_clear(l); return; }
   if (m > k) reserve(l, n + m - k);
+  if (l->ids) {
+    memmove(l->ids + lo + m + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
+    if (m < k) memset(l->ids + n + m - k + 1, 0, (k - m) * 8);
+    memcpy(l->ids + lo + 1, v->ids + 1, m * 8);
+  }
   memmove(l->a + lo + m, l->a + lo + k, (n - lo - k) * 8);
   if (m < k) memset(l->a + n + m - k, 0, (k - m) * 8);
   memcpy(l->a + lo, v->a, m * 8);
@@ -2351,18 +2467,23 @@ void pys_list_set_slice(List *l, I lo, I hi, I st, List *v) {
 }
 void pys_list_del_slice(List *l, I lo, I hi, I st) {
   I n = l->len, k = sspan(&lo, hi, &st, n), w = n - k;
-  if (st == 1) memmove(l->a + lo, l->a + lo + k, (n - lo - k) * 8);
+  if (st == 1) {
+    memmove(l->a + lo, l->a + lo + k, (n - lo - k) * 8);
+    if (l->ids) memmove(l->ids + lo + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
+  }
   else if (k) {
     if (st < 0) { lo += st * (k - 1); st = -st; }   /* the same items, first to last */
     w = lo;
     for (I i = lo, j = 0; i < n; i++)
       if (j < k && i == lo + j * st) j++;
-      else l->a[w++] = l->a[i];
+      else { l->a[w] = l->a[i]; if (l->ids) l->ids[w + 1] = l->ids[i + 1]; w++; }
   }
   memset(l->a + w, 0, k * 8);
+  if (l->ids) memset(l->ids + w + 1, 0, k * 8);
   if (!(l->len = w)) empty(l);
 }
 List *pys_list_add(List *a, List *b) {
+  identity_pair(a, b);
   List *r = list_new(a->len + b->len, atomic_items(a->a) && atomic_items(b->a));
   pys_list_extend(r, a); pys_list_extend(r, b); return r;
 }
@@ -2375,8 +2496,10 @@ void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
   I m = l->len;
   if (n <= 0 || !m) { pys_list_clear(l); return; }
   if (m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
+  if (l->ids) pys_list_identity(l, l->ids[0]);
   reserve(l, m * n);
   repeat_items(l->a, m, m * n);
+  if (l->ids) repeat_items(l->ids + 1, m, m * n);
   l->len = m * n;
 }
 List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items are zero, so one item of
@@ -2384,8 +2507,13 @@ List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items a
   I m = a->len;
   if (!m) n = 0;
   if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
+  if (a->ids) pys_list_identity(a, a->ids[0]);
   List *r = list_new(n > 0 ? m * n : 0, atomic_items(a->a));
   if (n > 0 && (m > 1 || a->a[0])) { memcpy(r->a, a->a, m * 8); repeat_items(r->a, m, m * n); }
+  if (a->ids) {
+    pys_list_identity(r, a->ids[0]);
+    if (n > 0) { memcpy(r->ids + 1, a->ids + 1, m * 8); repeat_items(r->ids + 1, m, m * n); }
+  }
   r->len = n > 0 ? m * n : 0; return r;
 }
 I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqitem(l->a[i], v, d->s)) return i; return -1; }
@@ -2419,8 +2547,34 @@ void pys_list_remove(List *l, I v, Str *d) {
   if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
   if (i < l->len) pys_list_del(l, i);              /* an __eq__ that shrank the list past i: CPython deletes nothing */
 }
+/* Numeric queries retain the query's identity as well as its raw value. This is
+   observable for NaNs in membership, count/index/remove and sequence comparison. */
+I pys_list_find_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
+  pys_list_identity(l, kind);
+  for (I i = 0; i < l->len; i++)
+    if (l->ids[i + 1] == (I)id || eqpair(l->a[i], v, d->s, vd->s)) return i;
+  return -1;
+}
+I pys_list_index_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind, I st, I en) {
+  pys_list_identity(l, kind);
+  if (st < 0 && (st += l->len) < 0) st = 0;
+  if (en < 0 && (en += l->len) < 0) en = 0;
+  for (I i = st; i < en && i < l->len; i++)
+    if (l->ids[i + 1] == (I)id || eqpair(l->a[i], v, d->s, vd->s)) return i;
+  not_in_list(v, vd->s);
+}
+I pys_list_count_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
+  pys_list_identity(l, kind); I n = 0;
+  for (I i = 0; i < l->len; i++) n += l->ids[i + 1] == (I)id || eqpair(l->a[i], v, d->s, vd->s);
+  return n;
+}
+void pys_list_remove_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
+  I i = pys_list_find_identity(l, v, id, d, vd, kind);
+  if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
+  if (i < l->len) pys_list_del(l, i);
+}
 static void rev(I *a, I n) { for (I i = 0, j = n - 1; i < j; i++, j--) { I t = a[i]; a[i] = a[j]; a[j] = t; } }
-void pys_list_reverse(List *l) { rev(l->a, l->len); }
+void pys_list_reverse(List *l) { rev(l->a, l->len); if (l->ids) rev(l->ids + 1, l->len); }
 /* Portions derived from CPython's Objects/listobject.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
 /* list.sort is CPython 3.13's timsort (Objects/listobject.c, designed in listsort.txt), ported
@@ -2639,7 +2793,16 @@ static void sort_undo(void *p) {
   u->l->len = u->n; u->l->cap = u->cap; u->l->a = u->a;
   keep_u = u->outer;
 }
+List *pys_list_keyed(List *l, List *keys, I taken);
+void pys_list_unkey(List *l, List *p);
 void pys_list_sort_r(List *l, Str *d, I reverse) {
+  if (l->ids) {
+    /* Numeric comparisons cannot call user code. Move a record containing the number
+       and its box through the same stable timsort, preserving NaN comparison order. */
+    List *p = pys_list_keyed(l, l, 0);
+    struct { I len; uint64_t hash; I chars1; char text[3]; } kd = {2, 0, 3, {'K', *d->s, 0}};
+    pys_list_sort_r(p, (Str *)&kd, reverse); pys_list_unkey(l, p); return;
+  }
   I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
   MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
            .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};
@@ -2687,26 +2850,37 @@ void pys_list_sort(List *l, Str *d) { pys_list_sort_r(l, d, 0); }
 typedef struct { List t; List *l, *p; } Taken;     /* the items l gave up, and the records sorting them */
 static void untake(void *p) {
   Taken *k = p;
-  if (k->p) for (I i = 0; i < k->p->len; i++) k->t.a[i] = ((I *)k->p->a[i])[1];
-  k->l->len = k->t.len; k->l->cap = k->t.cap; k->l->a = k->t.a;
+  if (k->p) pys_list_unkey(&k->t, k->p);
+  k->l->len = k->t.len; k->l->cap = k->t.cap; k->l->a = k->t.a; k->l->ids = k->t.ids;
 }
 List *pys_list_take(List *l) {
-  Taken *k = pys_alloc(sizeof(Taken));
+  Taken *k = pys_alloc(sizeof(Taken) - 1);   /* the allocator adds its slack byte */
   k->t = *l; k->l = l; k->p = 0;
+  if (l->ids) l->ids = empty_identity(l->ids[0]);
   l->len = l->cap = 0; l->a = sorting;
   if (eh) unwind_push(untake, k);
   return &k->t;
 }
 List *pys_list_keyed(List *l, List *keys, I taken) {   /* the records of l's items and their keys */
-  I n = l->len, *r = pys_alloc(n * 16 + 8);
+  if (l->ids) pys_list_identity(l, l->ids[0]);
+  I n = l->len, width = l->ids ? 3 : 2;
+  if (l->ids && n > (INT64_MAX - 8) / (width * 8)) oom();
+  I *r = pys_alloc(n * width * 8 + 8);
   List *p = pys_list_new(n);
-  for (I i = 0; i < n; i++) { r[2 * i] = keys->a[i]; r[2 * i + 1] = l->a[i]; p->a[i] = (I)(r + 2 * i); }
+  for (I i = 0; i < n; i++) {
+    r[width * i] = keys->a[i]; r[width * i + 1] = l->a[i];
+    if (l->ids) r[width * i + 2] = l->ids[i + 1];
+    p->a[i] = (I)(r + width * i);
+  }
   p->len = n;
   if (taken) ((Taken *)l)->p = p;                    /* (l is what pys_list_take returned) */
   return p;
 }
 void pys_list_unkey(List *l, List *p) {
-  for (I i = 0; i < p->len; i++) l->a[i] = ((I *)p->a[i])[1];
+  for (I i = 0; i < p->len; i++) {
+    l->a[i] = ((I *)p->a[i])[1];
+    if (l->ids) l->ids[i + 1] = ((I *)p->a[i])[2];
+  }
 }
 void pys_list_give(List *t) {
   Taken *k = (Taken *)t;
@@ -2720,6 +2894,12 @@ I pys_list_minmax(List *l, Str *d, I max) {   /* keeps the item it compared, wha
   I m = l->a[0];
   for (I i = 1; i < l->len; i++) { I v = l->a[i]; if (opv(v, m, d->s, max ? 2 : 0)) m = v; }   /* item > max / item < min */
   return m;
+}
+Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
+  if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
+  pys_list_identity(l, kind); I at = 0;
+  for (I i = 1; i < l->len; i++) if (opv(l->a[i], l->a[at], d->s, max ? 2 : 0)) at = i;
+  return (Dyn *)l->ids[at + 1];
 }
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
 I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
@@ -3684,8 +3864,9 @@ static Dyn *dyn_of(I v, const char *d) {
   failf("TypeError: a value of descriptor %s cannot become an Any value", d);
 }
 List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, of descriptor d */
+  if (src->ids) pys_list_identity(src, src->ids[0]);
   List *l = pys_list_new(src->len);
-  for (I i = 0; i < src->len; i++) pys_list_append(l, (I)dyn_of(src->a[i], d->s));
+  for (I i = 0; i < src->len; i++) pys_list_append(l, src->ids ? src->ids[i + 1] : (I)dyn_of(src->a[i], d->s));
   return l;
 }
 /* a slice's bound (or, not bound, its step) that is an Any value: None is an omitted one (NONE, a
@@ -5330,8 +5511,12 @@ void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
   for (int k = 0; k < 3; k++) {
     List *src = inputs[k], *dst = pys_list_new_atomic(src->len);
     out[k] = dst;
+    if (src->ids) pys_list_identity(src, src->ids[0]);
     for (I i = 0; i < src->len; i++)
-      if (FD_ISSET((int)src->a[i], &ready[k])) pys_list_append(dst, src->a[i]);
+      if (FD_ISSET((int)src->a[i], &ready[k])) {
+        if (src->ids) pys_list_append_identity(dst, src->a[i], (Dyn *)src->ids[i + 1], src->ids[0]);
+        else pys_list_append(dst, src->a[i]);
+      }
   }
   return out;
 }

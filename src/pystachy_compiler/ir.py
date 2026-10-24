@@ -62,6 +62,7 @@ class Reduce:
         self.stt = stt  # sum's start: its type, or "" where none is given
         self.t = ""  # the items' type
         self.acc = ""  # the sum so far, or the item kept (or the list of the items, collect)
+        self.identity = ""  # min/max numeric selected item's box in a dynamic program graph
         self.comp = ""  # a float sum's compensation, as runtime.c's fsum keeps it (Neumaier's)
         self.first = ""  # no item yet: min and max, and a float sum from an int start
         self.collect = False  # min() or max() of items runtime.c compares (pys_list_minmax)
@@ -322,7 +323,7 @@ class IFn:
     def __init__(self, f: FnInfo):
         self.f = f  # f.ret is final once the IFn is complete
         self.numeric_only = False  # function_body proved local numeric identity unobservable
-        self.scalar_reads = False  # scoped arithmetic consumer; no identity escapes its operands
+        self.scalar_reads = False  # scoped numeric arithmetic/comparison; no operand identity escapes
         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]

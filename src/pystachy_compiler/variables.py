@@ -1575,9 +1575,9 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
         elif m != "extend" and self.qtype(name) == "list[dyn]":
             v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
         if m == "append":
-            self.rt("pys_list_append", "void", [f"ptr {o.v}", "i64 " + self.to_slot(v)])
+            self.list_store(Val(o.v, self.qtype(name)), v, "append")
         elif m == "insert":
-            self.rt("pys_list_insert", "void", [f"ptr {o.v}", f"i64 {i.v}", "i64 " + self.to_slot(v)])
+            self.list_store(Val(o.v, self.qtype(name)), v, "insert", i.v)
         else:
             self.rt("pys_list_extend", "void", [f"ptr {o.v}", f"ptr {v.v}"])
         return Val("null", "None")
@@ -1860,6 +1860,9 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
 
 def gen_assign(self, t: Node, v: Val) -> None:
     k = t.kind
+    if k == "index" and self.list_id_kind(self.ctype("list", [v.t])) != 0 and v.idslot != "":
+        # The target and index can run callbacks after the RHS was read.
+        v.idfrom = self.dyn_box(v).v
     if k == "badattr":
         self.err(t.s)
     if k in UNSUPPORTED:
@@ -1909,7 +1912,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
                 v = self.coerce(v, elem(self.qtype(t.kids[0].s)))  # (into a list of None: T | None)
             elif self.qtype(t.kids[0].s) == "list[dyn]":
                 v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-            self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {ix.v}", "i64 " + self.to_slot(v)])
+            self.list_store(Val(o.v, self.qtype(t.kids[0].s)), v, "set", ix.v)
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
         nosub = "TypeError: 'NoneType' object does not support item assignment"
@@ -1919,8 +1922,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1])
             o = self.unwrap(o, nosub)
-            s = self.to_slot(self.coerce(v, elem(o.t)))
-            self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {ix.v}", f"i64 {s}"])
+            self.list_store(o, self.coerce(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
             kv = targs(unopt(o.t))
             key = self.to_slot(self.store_key(self.expr(t.kids[1], kv[0]), kv[0]))
@@ -1953,7 +1955,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
     elif k == "tuple" and is_opt(v.t):
         self.assign(t, self.unwrap(v, "TypeError: cannot unpack non-iterable NoneType object"))
     elif k == "tuple" and is_vtuple(v.t):
-        self.assign(t, Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]])))  # (its items, as a list's)
+        self.assign(t, self.list_identity(Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))))  # (its items, as a list's)
     elif k == "tuple" and (is_list(v.t) or v.t == "str"):
         # a, b = xs: the length is checked when it runs, as CPython does. CPython takes every
         # item before it stores the first, so where a store may change the list (xs[1], xs[0] =
@@ -1968,9 +1970,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
             if v.t == "str":
                 self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
             elif first:
-                items.append(self.from_slot(self.list_slot(v, str(i)), elem(v.t)))
+                items.append(self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.from_slot(self.list_slot(v, str(i)), elem(v.t)))
             else:
-                self.assign(t.kids[i], self.from_slot(self.list_slot(v, str(i)), elem(v.t)))
+                self.assign(t.kids[i], self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.from_slot(self.list_slot(v, str(i)), elem(v.t)))
         for i in range(len(items)):
             self.assign(t.kids[i], items[i])
     elif k == "tuple" and is_gen(v.t):
@@ -2150,12 +2152,12 @@ def gen_star_assign(self, t: Node, v: Val) -> None:
         size = self.mload('int', xs.v)
         self.rt("pys_unpack_ex_check", "void", [f"i64 {size}", f"i64 {s + after}"])
         for i in range(s):
-            items.append(self.from_slot(self.list_slot(xs, str(i)), elem(xs.t)))
+            items.append(self.list_item(xs, Val(str(i), "int")) if self.list_id_kind(xs.t) != 0 else self.from_slot(self.list_slot(xs, str(i)), elem(xs.t)))
         end = self.scalar('sub', [Val(size, 'int'), Val(str(after), 'int')])
         items.append(Val(self.rt("pys_list_slice", "ptr", [f"ptr {xs.v}", f"i64 {s}", f"i64 {end}"]), xs.t))
         for i in range(after):
             at = self.scalar('add', [Val(end, 'int'), Val(str(i), 'int')])
-            items.append(self.from_slot(self.list_slot(xs, at), elem(xs.t)))
+            items.append(self.list_item(xs, Val(at, "int")) if self.list_id_kind(xs.t) != 0 else self.from_slot(self.list_slot(xs, at), elem(xs.t)))
     for i in range(len(t.kids)):
         self.assign(star if i == s else t.kids[i], items[i])
 def gen_list_slot(self, o: Val, i: str) -> str:

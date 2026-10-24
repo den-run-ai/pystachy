@@ -502,6 +502,77 @@ class ScalarGlobalIdentityTests(unittest.TestCase):
                 ScalarGlobalIdentityTests().test_open_or_publishing_consumers_keep_snapshots()
 
 
+class ScalarListIdentityTests(unittest.TestCase):
+    def target_ir(self, body, item="int", extra=""):
+        source = ("# pystachy: dynamic-any\nfrom typing import Any\n" + extra +
+                  "def callback() -> int:\n    return 0\n" +
+                  "def target(xs: list[" + item + "], i: int, other: Any) -> Any:\n" +
+                  "\n".join("    " + line for line in body.splitlines()) + "\n")
+        ir = driver.compile_program("scalar_list_identity.py", source, [str(ROOT / "lib")], "")
+        target = re.search(r"define[^\n]*@f\.target\([^\n]*\n(.*?)\n}", ir, re.S)
+        self.assertIsNotNone(target)
+        return target[1]
+
+    def test_closed_arithmetic_and_comparisons_use_payloads(self):
+        for item in ["int", "float"]:
+            for body in ["return xs[i] + 1", "return xs[i] < 2", "return 0 < xs[i] <= 2",
+                         "return xs[int(i / 2)] * 3", "total = " + ("0.0" if item == "float" else "0") + "\ntotal += xs[i]\nreturn total"]:
+                with self.subTest(item=item, body=body):
+                    ir = self.target_ir(body, item)
+                    self.assertNotIn("@pys_list_get_identity", ir)
+                    self.assertNotIn("@pys_dyn_unbox", ir)
+                    self.assertIn("@pys_list_get", ir)  # its slow path keeps Python bounds checks
+
+    def test_escaping_values_and_open_operands_keep_objects(self):
+        bodies = ["return xs[i]", "value: Any = xs[i]\nreturn value + 1",
+                  "return (saved := xs[i]) + 1", "return xs[i] + other",
+                  "return xs[i] + callback()", "return xs[callback()] + 1",
+                  "return xs[i] == other", "return xs[i] == callback()",
+                  "return xs[i] is other", "return 0 < xs[i] is other",
+                  "return 0 < xs[i] < callback()", "return xs[i] in [other]",
+                  "return xs[other] + 1"]
+        for body in bodies:
+            with self.subTest(body=body):
+                self.assertIn("@pys_list_get_identity", self.target_ir(body))
+        cast = "def cast(value: Any) -> int:\n    return 0\n"
+        self.assertIn("@pys_list_get_identity", self.target_ir("int = cast\nreturn int(xs[i]) + 1", extra=cast))
+
+    def test_receiver_and_index_proof_rejects_protocols_and_unknown_types(self):
+        generator = Gen()
+        generator.ltype.update({"xs": "list[int]", "fs": "list[float]", "i": "int", "b": "bool",
+                               "f": "float", "any": "dyn", "optional": "opt[list[int]]", "obj": "Box"})
+        def name(text):
+            return mk("name", text, 0, [])
+        for receiver in [name("optional"), name("obj"), mk("attr", "items", 0, [name("obj")])]:
+            self.assertFalse(generator.scalar_read_value(mk("index", "", 0, [receiver, name("i")])))
+        for index in [name("f"), name("any"), mk("binop", "/", 0, [name("i"), mk("int", "2", 0, [])]),
+                      mk("index", "", 0, [name("fs"), name("i")]), mk("call", "", 0, [name("callback")])]:
+            self.assertFalse(generator.scalar_read_value(mk("index", "", 0, [name("xs"), index])))
+        for index in [name("i"), name("b"), mk("index", "", 0, [name("xs"), name("i")])]:
+            self.assertTrue(generator.scalar_read_value(mk("index", "", 0, [name("xs"), index])))
+
+    def test_unchecked_operand_proof_is_detected(self):
+        with patch.object(Gen, "scalar_read_value", return_value=True):
+            with self.assertRaises(AssertionError):
+                ScalarListIdentityTests().test_escaping_values_and_open_operands_keep_objects()
+
+    def test_exceptions_restore_the_scalar_scope(self):
+        original = Gen.list_read
+        for expression in ["xs[i] + 1", "xs[i] < 2"]:
+            held = []
+            def fail(generator, *args, held=held):
+                if generator.curfn.node.s == "target" and generator.fn.scalar_reads:
+                    held.append(generator.fn)
+                    raise RuntimeError("probe")
+                return original(generator, *args)
+            with self.subTest(expression=expression), patch.object(Gen, "list_read", fail):
+                with self.assertRaises(RuntimeError):
+                    self.target_ir("return " + expression)
+            self.assertEqual(len(held), 1)
+            self.assertFalse(held[0].scalar_reads)
+            self.assertIn("@pys_list_get_identity", self.target_ir("return xs[i]"))
+
+
 class CellIdentityAllocationTests(unittest.TestCase):
     def test_cells_keep_the_existing_allocation_class(self):
         path = ROOT / "tests/ir/dynany_identity_cells.py"
@@ -516,7 +587,7 @@ class CellIdentityAllocationTests(unittest.TestCase):
 
 
 class JoinedIdentityCostTests(unittest.TestCase):
-    def test_unobserved_union_arithmetic_and_typed_stars_do_not_box(self):
+    def test_union_arithmetic_stays_raw_and_dynamic_typed_stars_keep_objects(self):
         source = '''# pystachy: dynamic-any
 def arithmetic(n: int) -> int | float:
     value: int | float = 0
@@ -531,7 +602,17 @@ def typed_star() -> list[int]:
 print(arithmetic(2), typed_star())
 '''
         ir = driver.compile_program("joined_identity_cost.py", source, [str(ROOT / "lib")], "")
-        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+        arithmetic = re.search(r"define[^\n]*@f\.arithmetic\([^\n]*\n(.*?)\n}", ir, re.S)
+        starred = re.search(r"define[^\n]*@f\.typed_star\([^\n]*\n(.*?)\n}", ir, re.S)
+        self.assertIsNotNone(arithmetic)
+        self.assertIsNotNone(starred)
+        self.assertNotRegex(arithmetic[1], r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+        self.assertEqual(starred[1].count("@pys_list_append_identity("), 3)
+        self.assertNotIn("@pys_list_append(", starred[1])
+        # Numeric list identity is opt-in at graph level; ordinary typed stars still box nothing.
+        ordinary = driver.compile_program("ordinary_joined_cost.py", source.replace("# pystachy: dynamic-any\n", ""), [str(ROOT / "lib")], "")
+        self.assertNotRegex(ordinary, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+        self.assertNotIn("@pys_list_append_identity", ordinary)
 
     def test_non_boxable_union_cells_remain_accepted(self):
         # Reading a numeric member must not box a different, typed-container member
@@ -547,7 +628,11 @@ def outer() -> int:
 print(outer())
 '''
         ir = driver.compile_program("joined_identity_boundary.py", source, [str(ROOT / "lib")], "")
-        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+        read = re.search(r"define[^\n]*@c\.0\.1\([^\n]*\n(.*?)\n}", ir, re.S)
+        self.assertIsNotNone(read)
+        self.assertNotRegex(read[1], r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+        # The list member's items have boxes from construction; reading one returns that object.
+        self.assertIn("@pys_list_get_identity", read[1])
 
 
 class FoldedIntegerIdentityTests(unittest.TestCase):

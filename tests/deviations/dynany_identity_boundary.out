@@ -1,2 +1,4 @@
-a typed list's item False False
+a typed tuple's item False False
+an optional list's item False False
+a union list's item False False
 [exit 0]

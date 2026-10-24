@@ -304,7 +304,12 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
         self.add(i)
         return ""
     self.put(i, 1)
-    return f"%t{i.r[0]}"
+    result = f"%t{i.r[0]}"
+    # Native producers of fresh numeric lists have no source boxes to preserve.
+    # Establish their item objects before a later copy can alias those objects.
+    if self.list_id_kind(ts[0]) != 0:
+        self.list_identity(Val(result, ts[0]))
+    return result
 
 def gen_alloc_fixed(self, t: str) -> Val:
     # A zeroed, GC-scanned class or fixed tuple: only lowering chooses its byte size.

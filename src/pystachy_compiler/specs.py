@@ -733,10 +733,10 @@ RUNTIME: dict[str, str] = {
     # lists
     "list.new": "list[T]:int|A|", "list.new_atomic": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
     "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
-    "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL|",
-    "list.slice_step": "S:S,int,int,int|R A rL|", "list.set_slice": "None:S,int,int,int,S|R A rL wL|",
+    "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL wL|",
+    "list.slice_step": "S:S,int,int,int|R A rL wL|", "list.set_slice": "None:S,int,int,int,S|R A rL wL|",
     "list.del_slice": "None:S,int,int,int|R rL wL|",
-    "list.copy": "S:S|A rL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
+    "list.copy": "S:S|A rL wL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL wL|", "list.mul": "S:S,int|R A rL wL|",
     "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|R? rL rD U?|",
     "list.find_pair": "int:S,*T,%ptr,%ptr|rL rD U|",
     "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|R? rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
@@ -746,6 +746,15 @@ RUNTIME: dict[str, str] = {
     "any": "bool:list[T]|rL|", "all": "bool:list[T]|rL|", "sum.int": "int:list[T],int|R rL|",
     "sum.float": "float:list[float],float|rL|", "sum.float_int": "float:list[float],int|rL|", "sum.int_float": "float:list[T],float|rL|",
     "range.len": "int:int,int,int|R|", "range.has": "bool:int,int,int,int|R|", "range.list": "list[int]:int,int,int|R A|",
+    "list.identity": "None:S,int|R A rL wL|", "list.get_identity": "dyn:S,int,int|R A rL wL|",
+    "list.append_identity": "None:S,*T,dyn,int|R A rL wL|", "list.set_identity": "None:S,int,*T,dyn,int|R A rL wL|",
+    "list.insert_identity": "None:S,int,*T,dyn,int|R A rL wL|", "list.pop_identity": "dyn:S,int,int|R A rL wL|",
+    "list.minmax_identity": "dyn:S,#,bool,int|R A rL wL rD U?|",
+    "list.find_identity": "int:S,*T,dyn,%ptr,%ptr,int|R A rL wL rD U|",
+    "list.index_identity": "int:S,*T,dyn,%ptr,%ptr,int,int,int|R A I rL wL rD U|",
+    "list.count_identity": "int:S,*T,dyn,%ptr,%ptr,int|R A rL wL rD U|",
+    "list.remove_identity": "None:S,*T,dyn,%ptr,%ptr,int|R A rL wL rD U|",
+    "list.forget_identity": "None:S|A rL wL|",
     # dicts: keys are ints, strs, objects, or tuples of int, bool, str, None, objects and such tuples
     # (Dict.kind 0, 1, or the key's descriptor, passed as an int), which hash, compare and print (a
     # KeyError's message) without user code but an object's: U? holds where the op's Ins.x, the key
@@ -868,7 +877,7 @@ RUNTIME: dict[str, str] = {
     "getsize": "int:str|R A I|", "getmtime": "float:str|R A I|", "getctime": "float:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
-    "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL|",
+    "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL wL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
     # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it
     # closes with-files (which may raise) and gives a list being sorted its items back. str() and

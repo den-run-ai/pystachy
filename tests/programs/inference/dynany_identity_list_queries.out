@@ -1,0 +1,16 @@
+contains True False
+count 2 1
+index 0 1
+different nan False 0
+missing index
+missing remove
+min True True
+max True True
+equal lists True False
+different lists False True
+lexicographic True True True True
+remove first True True
+remove rest True True
+remaining count 1
+iteration keys 2
+[exit 0]

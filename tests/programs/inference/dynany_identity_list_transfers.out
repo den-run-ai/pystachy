@@ -1,0 +1,22 @@
+copy True True
+constructor True True
+slice True True
+concat True True
+repeat True True
+starred True True
+comprehension True True
+equal distinct False False
+stable first True True
+stable second True True
+reverse True True
+sorted first True True
+sorted second True True
+key sort True True
+key stable True True
+reversed True True
+iteration True True
+iteration True True
+iteration True True
+next first True True
+next second True True
+[exit 0]

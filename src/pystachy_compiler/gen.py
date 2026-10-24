@@ -333,6 +333,12 @@ from src.pystachy_compiler.calls import (
     gen_virtual_call as calls_virtual_call,
 )
 from src.pystachy_compiler.containers import (
+    gen_list_id_kind as containers_list_id_kind,
+    gen_list_find as containers_list_find,
+    gen_list_identity as containers_list_identity,
+    gen_list_item as containers_list_item,
+    gen_list_store as containers_list_store,
+    gen_list_minmax as containers_list_minmax,
     gen_none_container as containers_none_container,
     gen_affix_any as containers_affix_any,
     gen_bool_find as containers_bool_find,
@@ -645,6 +651,7 @@ from src.pystachy_compiler.expressions import (
     gen_exc_id as expressions_exc_id,
     gen_expr as expressions_expr,
     gen_scalar_read_value as expressions_scalar_read_value,
+    gen_scalar_read_index as expressions_scalar_read_index,
     gen_fmt_error as expressions_fmt_error,
     gen_fmt_raise as expressions_fmt_raise,
     gen_format_arg as expressions_format_arg,
@@ -3518,6 +3525,9 @@ class Gen:
     def expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
         return expressions_expr(self, n, want, returnctx, resultsoft)
 
+    def scalar_read_index(self, n: Node) -> bool:
+        return expressions_scalar_read_index(self, n)
+
     def scalar_read_value(self, n: Node) -> bool:
         return expressions_scalar_read_value(self, n)
 
@@ -3682,6 +3692,24 @@ class Gen:
 
     def subscript(self, n: Node, o: Val, want: str = "") -> Val:
         return expressions_subscript(self, n, o, want)
+
+    def list_find(self, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
+        return containers_list_find(self, o, v, method, start, stop)
+
+    def list_id_kind(self, t: str) -> int:
+        return containers_list_id_kind(self, t)
+
+    def list_identity(self, v: Val) -> Val:
+        return containers_list_identity(self, v)
+
+    def list_item(self, o: Val, i: Val) -> Val:
+        return containers_list_item(self, o, i)
+
+    def list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
+        containers_list_store(self, o, v, method, index)
+
+    def list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
+        return containers_list_minmax(self, o, desc, maximum)
 
     def list_read(self, o: Val, i: Val) -> Val:
         return expressions_list_read(self, o, i)
@@ -4116,10 +4144,10 @@ class Gen:
         return builtins_consume(self, n, want, arg, resultsoft)
 
     def as_list(self, v: Val, name: str) -> Val:
-        return builtins_as_list(self, v, name)
+        return self.list_identity(builtins_as_list(self, v, name))
 
     def typed_list(self, v: Val, want: str) -> Val:
-        return builtins_typed_list(self, v, want)
+        return self.list_identity(builtins_typed_list(self, v, want))
 
     def reverse_arg(self, n: Node, name: str) -> str:
         return builtins_reverse_arg(self, n, name)

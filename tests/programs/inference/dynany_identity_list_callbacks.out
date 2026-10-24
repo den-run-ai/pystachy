@@ -1,0 +1,16 @@
+key sees length 0
+key sees length 1
+key sees length 1
+sort mutation
+first key True True
+distinct key True True
+last key True True
+restored larger True True
+restored first True True
+restored equal True True
+sort exception
+exception first True True
+exception second True True
+exception restored True True
+exception last True True
+[exit 0]
