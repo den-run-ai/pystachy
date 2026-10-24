@@ -36,7 +36,7 @@ def local_versions(f: FnInfo, body: list[Node]) -> list[Node]:
         return []
     blocked: dict[str, bool] = dict(f.uflags)
     for p in f.node.kids[0].kids:
-        if p.kids[0].kind != "noann":
+        if p.kids[0].kind != "noann" and not (f.cmpfields != "" and f.cmprebind == "" and len(f.params) == 2 and p.s == f.params[1]):
             blocked[p.s] = True  # an explicit annotation remains a contract
     for n in body:
         if not versionable(n, blocked):

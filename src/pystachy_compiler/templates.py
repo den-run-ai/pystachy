@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
 from src.pystachy_compiler.diagnostics import shown, where
-from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_reserve_fields
+from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_rebinds, comparison_reserve_fields
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import (
@@ -610,7 +610,17 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     context = context or (f.ret == "" and f.node.s == "<lambda>" and unopt(want) in self.classes and self.classes[unopt(want)].origin in self.tparams)
     locals = local_result(body.kids, f.params) if context and not resultsoft else []
     want = want if context and (contextual_result(body) or len(locals) > 0) else ""
-    key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "")
+    cmpops = cmpfields != "" or self.curfn.cmpops
+    cmptypes = dict(self.curfn.cmptypes)
+    if cmpfields != "":
+        actual = self.classes[ts[1]]
+        canonical = self.classes[cmpfields]
+        readable = list(canonical.ftypes) + [a for a in canonical.methods if canonical.methods[a].prop]
+        if any(a not in actual.ftypes and a not in actual.methods for a in readable):
+            cmptypes[ts[1]] = cmpfields
+    readkey = "".join(" missing " + a + "=" + cmptypes[a] for a in sorted(cmptypes))
+    readkey += " runtime-errors" if cmpops else ""
+    key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "") + readkey
     if cmpfields != "":
         key += " fields " + cmpfields  # never reuse the ordinary typed call's specialization
     if key in f.insts and f.insts[key].ll in self.building:
@@ -618,7 +628,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
         # inference cycle, including the diagnostic for an open empty result.
         want = ""
     mode = " ~ " if resultsoft else " -> "
-    size = len(ts) + len(nnp) + len(want) + (len(mode) if want != "" else 0) + (len(cmpfields) + 8 if cmpfields != "" else 0)
+    size = len(ts) + len(nnp) + len(want) + len(readkey) + (len(mode) if want != "" else 0) + (len(cmpfields) + 8 if cmpfields != "" else 0)
     for t in ts:
         size += len(t)
     for p in nnp:
@@ -689,11 +699,16 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.rlocals = locals if want != "" else []
     g.inst = True
     g.cmpfields = cmpfields
+    if cmpfields != "" and ts[0] != ts[1] and comparison_rebinds(f.node.kids[2], f.params[0], f.params[1]):
+        g.cmprebind = self.union_type([ts[0], ts[1]])
+    g.cmptypes = cmptypes
+    g.cmpops = cmpops
     if cmpfields != "":
         g.node = clone(f.node)
         actual = self.classes[ts[1]]
         missing = {a: self.classes[cmpfields].ftypes[a] for a in self.classes[cmpfields].ftypes if a not in actual.ftypes and a not in actual.methods}
-        comparison_missing(g.node.kids[2], comparison_aliases(g.node.kids[2], f.params[1]), missing)
+        if g.cmprebind == "":
+            comparison_missing(g.node.kids[2], comparison_aliases(g.node.kids[2], f.params[1]), missing)
     g.ikey = key
     g.npos = f.npos
     g.posonly = f.posonly

@@ -1,0 +1,57 @@
+hash left
+hash right
+peer hash 0
+comparison ran
+key right
+leaf
+comparison ran
+key right
+leaf
+comparison ran
+key right
+leaf
+boxed True True False
+comparison ran
+key left
+leaf
+comparison ran
+key left
+leaf
+comparison ran
+key left
+leaf
+boxed True True False
+comparison ran
+key left
+leaf
+comparison ran
+key left
+leaf
+comparison ran
+key left
+leaf
+boxed True True False
+hash shared
+hash shared
+leaf
+leaf
+same key True True
+hash tuple
+key tuple
+leaf
+key tuple
+leaf
+tuple keys True True
+hash string
+key string
+leaf
+key string
+leaf
+string keys True True
+peer hash 2
+hash mismatch False
+empty False
+shared hash 0
+shared hash 8
+shared boxed key True True
+[exit 0]

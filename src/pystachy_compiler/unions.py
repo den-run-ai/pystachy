@@ -52,10 +52,12 @@ def gen_uop(self, v: Val, op: str) -> Val:
         return self.refl_union_str(v, "__str__")  # (each class's: reflection.py)
     if not self.value_union(v.t):
         self.err("closed reference union operations require narrowing with isinstance() first")
-    t = "bool" if op == "truth" else "str"
+    t = "bool" if op == "truth" else "int" if op == "len" else "str"
+    if op == "len":
+        self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
     end = self.label()
     ph = Ins("phi", t, "")
-    if is_opt(v.t):
+    if is_opt(v.t) and op != "len":
         arm = self.label()
         self.incoming(ph, "false" if op == "truth" else self.sconst("None"), self.cur)
         self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, arm)
@@ -69,7 +71,7 @@ def gen_uop(self, v: Val, op: str) -> Val:
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(members[i])), "int")).v, arm, nxt)
             self.place(arm)
         item = self.uget(Val(v.v, unopt(v.t)), members[i])
-        result = Val(self.truth(item), "bool") if op == "truth" else self.to_str(item)
+        result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.to_str(item)
         self.incoming(ph, result.v, self.cur)
         self.br(end)
         if nxt != "":

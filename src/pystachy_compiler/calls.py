@@ -1080,7 +1080,7 @@ def gen_asdict(self, o: Val, args: list[Node]) -> Val:
             self.err(f"_asdict() of a NamedTuple whose fields have different types is not supported (a dict's values have one type): {short(o.t)}")
     dt = self.ctype("dict", ["str", vt])
     kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers, which a dict of them holds as boxes, keys too: ctype)
-    r = self.rt("pys_dict_new_atomic" if atomic_dict(dt) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", f"i64 {len(ci.fields)}"])
+    r = self.rt("pys_dict_new_atomic" if atomic_dict(dt) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ci.fields)}"])
     for fl in ci.fields:
         v = self.coerce(self.getfield(o, self.field(o, fl), fl), kv[1])
         self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
@@ -1321,6 +1321,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             vals[j] = self.at_arg(e, f, j, offs)
             continue
         vals[j] = self.pcoerce(self.expr(e, f.ptypes[j] if f.ptypes[j] != "" or j >= len(hint) else self.generic_hint(e, hint[j])), f.ptypes[j], f, j)
+        if self.curfn.cmpops and self.term and vals[j].v == "undef":
+            return Val("undef", want if want not in ["", "?"] else f.ret if f.ret != "" else "int")
         if j in f.pats:
             vals[j] = self.pat_arg(vals[j], f.pats[j])
     if f.vararg >= 0:

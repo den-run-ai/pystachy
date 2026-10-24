@@ -329,6 +329,21 @@ static void storage(void) {
     set_kinds(s, ints, "a set that grew");
     set_kinds(pys_set_copy(s), ints, "set.copy()");
   }
+  /* Dynamic programs mark native builtin dict kinds for Python hash/probes.
+     The marker must not turn integer payloads into conservative GC roots. */
+  for (I kind = 0; kind < 2; kind++) {
+    Dict *d = pys_dict_new((I)cstr(kind ? "!s" : "!i"), 10);
+    dict_kinds(d, !kind, "a marked presized dict");
+    for (I i = 0; i < 100; i++) pys_dict_set(d, skey(kind, i), i);
+    dict_kinds(d, !kind, "a marked dict that grew");
+    for (I i = 1; i < 100; i += 2) pys_dict_pop(d, skey(kind, i));
+    Dict *c = pys_dict_copy(d), *f = pys_dict_from(d);
+    dict_kinds(c, !kind, "a marked copy with holes");
+    dict_kinds(f, !kind, "a marked constructor with holes");
+    if (!(d->kind & KTAG) || c->len != 50 || f->len != 50 || pys_dict_getitem(c, skey(kind, 0)) != 0) storage_bad("marked live zero/copy");
+    pys_dict_clear(d); pys_dict_set(d, skey(kind, 0), 0);
+    dict_kinds(d, !kind, "a marked dict filled after clear");
+  }
   addresses(); scrub_collect(); scrub_collect();
   if (gc_live >= 4 * MIB) storage_bad("ints that are the addresses of strs kept them alive");
   Dict *d = (Dict *)keys->a[0]; Set *s = (Set *)keys->a[1];

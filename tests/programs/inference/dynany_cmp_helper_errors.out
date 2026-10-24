@@ -1,0 +1,11 @@
+comparison
+helper
+1
+cleanup
+ValueError first
+comparison
+helper
+1
+cleanup
+IndexError
+[exit 0]

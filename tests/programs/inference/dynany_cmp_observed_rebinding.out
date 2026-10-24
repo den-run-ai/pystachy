@@ -1,0 +1,12 @@
+comparison 2
+rebound 1 2
+True
+True
+comparison 2
+rebound 1 2
+True
+True
+comparison 2
+rebound 1 2
+False
+[exit 0]

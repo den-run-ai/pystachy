@@ -393,8 +393,10 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
 list compared with an `Any` value's field), the compiler also tries the body against the
 concrete classes of boxed operands, behind exact `DynType` guards. The adapter proves
-field uses before specializing: the receiver and operand retain their actual layouts,
-including stable local aliases and captures. A canonical body is checked once; unsupported
+field uses and known helper/alias flows before specializing: the receiver and operand retain
+their actual layouts, including captured references and supported rebinding. The proof does
+not replace the emitted helper calls or getter bodies, so their effects and exceptions keep
+their execution order. A canonical body is checked once; unsupported
 shapes are filtered before trying each boxed class. Failed concrete attempts have separate
 retry keys and cannot remove a working typed call.
 
@@ -405,25 +407,37 @@ The maintained acceptance matrix is deliberately narrower than arbitrary Python 
 | Closed builtin field equality | Numbers, strings, `None`, lists/dicts, unions and fixed/variadic tuples use separate descriptors; no source storage conversion (`dynany_cmp_builtin_fields.py`, `dynany_cmp_union_fields.py`). |
 | Set equality | Matching element layouts or provably disjoint builtin key trees, including tuple keys; set/frozenset pairs (`dynany_cmp_scalar_sets.py`, `dynany_cmp_tuple_sets.py`). |
 | Arithmetic and indexed comparisons | Numeric expressions, list repetition, fixed-tuple concatenation and fresh mixed-list concatenation, including `len` and indexing of the result (`dynany_cmp_mixed_list_arithmetic.py`). |
-| Mixed-list element equality | Direct scalar, boxed or native class elements retain identity-first comparison and reload lengths after callbacks; nullable class elements and reflected methods are respected (`dynany_cmp_mixed_list_items.py`). Guarded field adapters require compatible declared methods, not arbitrary generic leaf bodies. Differing-list `NamedTuple` elements retain their existing rejection until tuple-value pairing is supported. |
+| Definitely invalid builtin operations | Exact builtin operand pairs evaluate normally, then raise CPython's `TypeError` at the invalid arithmetic, unary, ordering or indexing operation; catches, cleanup and earlier errors retain their order (`dynany_cmp_invalid_operations.py`, `dynany_cmp_invalid_cleanup.py`). User protocols and unsupported valid operations are not reclassified. |
+| Mixed-list element equality | Scalar, boxed or native class elements retain identity-first comparison and reload lengths after callbacks; nullable class elements and reflected methods are respected (`dynany_cmp_mixed_list_items.py`). Guarded adapters require compatible declared leaf methods, not arbitrary generic leaf bodies or unsupported subclass layouts. |
+| Nested container equality | List, tuple and dict trees recursively compare their existing native values, including class callbacks and mixed native/boxed leaves (`dynany_cmp_nested_lists.py`, `dynany_cmp_nested_tuples.py`, `dynany_cmp_nested_dicts.py`, `dynany_cmp_nested_dispatch.py`). Dict key lookup retains stored hashes, identity-first matching and callback order, and checks mutations before reusing entries (`dynany_cmp_nested_object_keys.py`, `dynany_cmp_nested_key_mutation.py`). |
 | Nested object fields | List/dict/tuple indexing and nested field/property reads lead to supported scalar or builtin-container comparisons without changing object layouts (`dynany_cmp_nested_fields.py`). |
-| Properties | Annotated getters, plus opt-in getters whose every return reads the same known field type and whose final statement returns it; calls retain effects, exceptions and aliases (`dynany_cmp_inferred_properties.py`). |
+| Properties | Annotated getters and opt-in getters using ordinary native return inference, including local aliases, helper calls, branches, arithmetic and `try`/`finally`; actual calls retain effects, exceptions and aliases (`dynany_cmp_getter_bodies.py`, `dynany_cmp_getter_arithmetic.py`). The getter body must compile for its concrete receiver. |
+| Helpers and escapes | Known module/local helpers and captured operands retain their concrete origins; recursive and mutually recursive calls are supported when their finite origin mapping can be proved. Saving the object to an `Any` global or appending to a global `list[Any]` retains identity (`dynany_cmp_local_helpers.py`, `dynany_cmp_recursive_helpers.py`, `dynany_cmp_global_escape.py`, `dynany_cmp_helper_escapes.py`). |
+| Helper results | A proven helper's unique final return can supply an operand or its field/container/property value for a later comparison or mutation. Local aliases and supported `try`/`finally` regions retain the original calls, first exceptions and cleanup (`dynany_cmp_helper_results.py`, `dynany_cmp_helper_result_cleanup.py`). |
 | Missing reads | Raise `AttributeError` at the executed read, including stable aliases and captured operands; earlier effects, first exceptions, cleanup and untaken branches are preserved (`dynany_cmp_missing_captures.py`). |
 | Missing writes | Literal fields used by proven comparisons reserve native storage only on boxed candidate classes; assignment flags preserve absence until the first store. Aliases, inheritance and compatible closed-union storage retain original object identity; slots/frozen objects raise at the store after the RHS runs (`dynany_cmp_missing_write*.py`). |
-| Operand rebinding | A straight-line overwrite that provably discards the incoming operand and all observed aliases runs the original body with a supported replacement; captures and introspection are excluded (`dynany_cmp_rebound_operand.py`). |
+| Operand rebinding | Sequential rebinding can preserve observed aliases and escapes. Supported branches and loops select native reference-union members without changing either object's layout; field/property reads, assignments and augmented setters run on the selected object (`dynany_cmp_observed_rebinding.py`, `dynany_cmp_control_rebinding.py`, `dynany_cmp_rebinding_getters.py`, `dynany_cmp_rebinding_stores.py`). Existing native fields retain their store contract. |
 | Control flow and mutation | Existing loops, assertions, context managers and cleanup remain supported; differing list/dict/set fields may call `clear()` before a supported comparison. |
 
-Fixture names in the table are under `tests/programs/inference/`. Arithmetic eligibility
-proves its comparison consumer as well as each input; it does not infer arbitrary helper
-calls or stores into annotated locals. Source containers retain storage and aliases.
+Fixture names in the table are under `tests/programs/inference/`. Eligibility proves the
+comparison consumer as well as each input, following known helper results and native getter
+return inference. Unknown call targets and arbitrary stores into annotated locals are not
+inferred by this proof. New helper-result aliases within a protected `try` body are supported
+when handlers, cleanup and following statements do not read those aliases, and the protected
+body does not rebind an existing alias, receiver or operand. More general branch/exception
+alias merges remain outside this proof. Source containers retain storage and aliases.
 Mixed-list `+` in an opt-in module allocates a fresh `list[Any]` only when the two layouts
 cannot use the existing native concatenation path and every item can be boxed safely.
 Numeric item identity and mutable item aliases survive; typed nested containers and typed
 variable-length tuples are not copied into boxes.
 
-Still outside this proof: arbitrary runtime-name field creation, arbitrary escaping operands,
-observed/rebound operands that need general flow analysis, unsupported property bodies,
-and mixed nested object-container trees beyond the direct-list path. Reserved fields use
+Still outside this proof: arbitrary runtime-name field creation, helper or alias flows whose
+operand origins cannot be resolved, and native bodies or layout pairs without a supported
+operation. Differing unsupported `NamedTuple` element layouts and equality between
+`list[bytes]` and `list[Any]` retain their explicit rejections
+(`tests/errors/inference/dynany_cmp_mixed_namedtuple_lists*.py`,
+`tests/errors/inference/dynany_list_bytes_boxed_eq.py`,
+`tests/errors/inference/dynany_list_boxed_bytes_eq.py`). Reserved fields use
 shared compilation retries across discovered candidates; they do not change an
 existing field's type or reinterpret source containers. Multiple compatible stored layouts
 use a closed union, not a widened container. Immutable objects retain assignment-time
@@ -508,16 +522,21 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
   [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
+- A comparison operand rebound across control flow keeps either object's native field
+  storage. An executed store of `list[int]` into the original operand's `list[str]`
+  field raises the typed-boundary `TypeError` after evaluating its value and target;
+  the same check applies to a selected property's typed setter parameter before its
+  body runs. CPython instead accepts these values. An untaken incompatible store does not block
+  a valid store into the rebound receiver. Existing containers and aliases retain
+  their layouts (`tests/deviations/dynany_cmp_rebinding_native_store.py`).
 - A cross-type comparison method whose body cannot compile for an `Any` operand and falls
   outside the supported guarded concrete adapter still does
   not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
-  (the comparison acceptance matrix above defines the proven cases). That matrix covers
-  repaired arithmetic, nested fields,
-  mixed-list equality, property getters, missing reads through aliases/closures and
-  discarded-operand rebinding and finite literal missing-field writes. Arbitrary operand escape,
-  more general rebinding, unsupported getter bodies and nested mixed object-container
-  layouts still need further work.
+  (the comparison acceptance matrix above defines the proven cases). Supported helper calls,
+  escapes and returned aliases, native operand rebinding, inferred getters, nested container
+  callbacks and finite literal missing-field writes are covered by that matrix. Unknown
+  helper/alias origins and unsupported native body or layout pairs still need further work.
   Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
   is a correctness gap tracked by #803, not a stable comparison contract.

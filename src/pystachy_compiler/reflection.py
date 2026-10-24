@@ -90,7 +90,7 @@ def gen_refl_may_none(self, v: Val) -> bool:
     return is_opt(v.t) or v.t in self.classes or (is_union(v.t) and self.optional(v.t) == v.t)
 
 
-def gen_refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
+def gen_refl_split(self, v: Val, nonnull: bool = False, guarded: bool = False) -> list[RLeaf]:
     # dispatch on the exact type of v: None (where it may be, unless nonnull), then the union's
     # member tag and an object's class tag. Each leaf's block is left open for the caller to
     # place and fill; the blocks that test end here
@@ -115,7 +115,7 @@ def gen_refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
         ms = umembers(t)
         for i in range(len(ms)):
             hit = self.label()
-            miss = self.label() if i + 1 < len(ms) else ""
+            miss = self.label() if guarded or i + 1 < len(ms) else ""
             if miss != "":
                 self.cbr(self.num_cmp('==', Val(f"%t{tag.r[0]}", "int"), Val(str(self.utag(ms[i])), "int")).v, hit, miss)
             else:
@@ -125,6 +125,8 @@ def gen_refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
             leaves.extend(self.refl_split_class(x))
             if miss != "":
                 self.place(miss)
+                if guarded and i + 1 == len(ms):
+                    self.unreachable()
         return leaves
     leaves.extend(self.refl_split_class(v))
     return leaves
@@ -502,7 +504,7 @@ def gen_refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: l
     self.br(end)
 
 
-def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
+def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> Val:
     # getattr(o, name, default) with a name the compiler knows: per exact class of o, the
     # attribute where it has it, else the default (a property's getter that raises
     # AttributeError: the default too, as CPython catches it). o and default are evaluated first
@@ -510,7 +512,7 @@ def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
     a = self.refl_name(args[1])
     if a == "":
         self.err("getattr() of a name only the run time knows is supported where its text is used (print(), str(), repr(), an f-string field without a format spec): elsewhere its value would need a type of its own (#487, #489); use a str literal or a constant set of names (#486)")
-    if len(args) == 2 and not self.refl_derived_only(args[0], a):
+    if len(args) == 2 and not split and not self.refl_derived_only(args[0], a):
         return self.expr(mk("attr", a, args[0].line, [args[0]]), want)
     o = self.expr(args[0], "")
     known = self.knownobj(args[0])  # (a template's parameter whose argument is no None)
@@ -527,7 +529,7 @@ def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
     blocks: list[str] = []
     end = self.label()
     narrow = dict(self.narrowed)
-    for lf in self.refl_split(o, known):
+    for lf in self.refl_split(o, known, split):
         self.place(lf.label)
         self.narrowed = dict(narrow)
         h = self.refl_has(lf.c, a)

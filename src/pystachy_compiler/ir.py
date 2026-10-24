@@ -140,6 +140,9 @@ class FnInfo:
         self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
+        self.cmprebind = ""  # native reference union for a comparison operand rebound across control flow
+        self.cmpops = False  # isolated comparison helpers raise guaranteed builtin TypeErrors at runtime
+        self.cmptypes: dict[str, str] = {}  # guarded comparison missing-read layouts, inherited by isolated helper specializations
         self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
         self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
         self.lastikey = ""  # (a template: the key of the instance its last call compiled to)

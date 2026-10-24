@@ -1,0 +1,9 @@
+comparison ran
+descend 2
+descend 1
+descend 0
+first 2
+second 1
+first 0
+False
+[exit 0]

@@ -732,6 +732,11 @@ from src.pystachy_compiler.expressions import (
     gen_iter_static as expressions_iter_static,
     gen_tuple_order as expressions_tuple_order,
     gen_list_pair_eq as expressions_list_pair_eq,
+    gen_container_pair_type as expressions_container_pair_type,
+    gen_pair_item_eq as expressions_pair_item_eq,
+    gen_container_pair_eq as expressions_container_pair_eq,
+    gen_tuple_pair_eq as expressions_tuple_pair_eq,
+    gen_dict_pair_eq as expressions_dict_pair_eq,
     gen_unary as expressions_unary,
 )
 from src.pystachy_compiler.flow import (
@@ -1733,8 +1738,8 @@ class Gen:
     def refl_may_none(self, v: Val) -> bool:
         return reflection_refl_may_none(self, v)
 
-    def refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
-        return reflection_refl_split(self, v, nonnull)
+    def refl_split(self, v: Val, nonnull: bool = False, guarded: bool = False) -> list[RLeaf]:
+        return reflection_refl_split(self, v, nonnull, guarded)
 
     def refl_split_class(self, v: Val) -> list[RLeaf]:
         return reflection_refl_split_class(self, v)
@@ -1781,8 +1786,8 @@ class Gen:
     def refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False) -> None:
         return reflection_refl_catch_attr(self, x, a, d, vals, blocks, end, truth)
 
-    def refl_getattr(self, args: list[Node], want: str) -> Val:
-        return reflection_refl_getattr(self, args, want)
+    def refl_getattr(self, args: list[Node], want: str, split: bool = False) -> Val:
+        return reflection_refl_getattr(self, args, want, split)
 
     def refl_setattr(self, args: list[Node]) -> Val:
         return reflection_refl_setattr(self, args)
@@ -3841,6 +3846,21 @@ class Gen:
     def list_pair_eq(self, op: str, a: Val, b: Val) -> Val:
         return expressions_list_pair_eq(self, op, a, b)
 
+    def container_pair_type(self, a: str, b: str) -> bool:
+        return expressions_container_pair_type(self, a, b)
+
+    def pair_item_eq(self, a: Val, b: Val, hit: str) -> None:
+        return expressions_pair_item_eq(self, a, b, hit)
+
+    def container_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_container_pair_eq(self, op, a, b)
+
+    def tuple_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_tuple_pair_eq(self, op, a, b)
+
+    def dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_dict_pair_eq(self, op, a, b)
+
     def tuple_order(self, op: str, a: Val, b: Val) -> Val:
         return expressions_tuple_order(self, op, a, b)
 
@@ -4282,8 +4302,8 @@ class Gen:
     def optdefault(self, d: Val, t: str) -> str:
         return containers_optdefault(self, d, t)
 
-    def key_kind(self, kt: str) -> str:
-        return containers_key_kind(self, kt)
+    def key_kind(self, kt: str, dictionary: bool = False) -> str:
+        return containers_key_kind(self, kt, dictionary)
 
     def key_class(self, t: str) -> bool:
         return containers_key_class(self, t)
