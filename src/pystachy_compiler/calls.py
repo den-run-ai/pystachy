@@ -615,6 +615,7 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
     self.put(c, 1)
     result = Val(f"%t{c.r[0]}", ts[0])
     if idresult != "" and numeric_identity(ts[0]):
+        result.idexact = result.t == "int" or result.t == "float"
         result.idslot = idresult
         result.idheld = self.mem_load(Val(idresult, "*dyn")).v
         result.idcounter = self.alloca("int", "")
@@ -1485,6 +1486,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         return v
     result = Val(f"%t{c.r[0]}", f.ret)
     if idresult != "" and numeric_identity(f.ret):
+        result.idexact = result.t == "int" or result.t == "float"
         result.idslot = idresult
         result.idheld = self.mem_load(Val(idresult, "*dyn")).v
         result.idcounter = self.alloca("int", "")

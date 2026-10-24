@@ -421,29 +421,19 @@ def gen_dyn_box(self, v: Val) -> Val:
         return Val(self.select(v.v, Val(self.rtdata("pys_dyn_true_box"), DYN), Val(self.rtdata("pys_dyn_false_box"), DYN)), DYN)
     if numeric_identity(t) and v.idfrom != "":
         return Val(v.idfrom, DYN)  # (the Any value's object it was read from: dyn_unbox, dyn_narrowed)
+    exact = v.idexact and v.idslot != ""
     if (t == "int" or t == "float") and v.idslot.startswith("%") and ".box." in v.idslot:
         name = v.idslot[1:v.idslot.rfind(".box.")]
-        if self.idbox.get(name, "") == v.idslot and self.ltype.get(name, "") == t and self.idstores.get(v.idslot, 0) == v.idgen:
-            # This private local still holds the exact scalar read into v. Its companion
-            # is null or this object's box: stores update both, and a captured cell has
-            # another address form. Reload in case another alias has filled the lazy box.
-            # Joined/narrowed storage, selected slots and reads across rebinding retain
-            # the general checks below.
-            b = self.mem_load(Val(v.idslot, "*" + DYN))
-            start = self.cur
-            make = self.label()
-            end = self.label()
-            self.cbr(self.ptr_cmp("==", b, Val("null", DYN)).v, make, end)
-            self.place(make)
-            made = self.dyn_box(Val(v.v, t))
-            self.mem_store(Val(v.idslot, "*" + DYN), made)
-            edge = self.cur
-            self.br(end)
-            self.place(end)
-            ph = Ins("phi", DYN, "")
-            self.incoming(ph, b.v, start)
-            self.incoming(ph, made.v, edge)
-            return Val(self.phi(ph), DYN)
+        exact = exact or (self.idbox.get(name, "") == v.idslot and self.ltype.get(name, "") == t and self.idstores.get(v.idslot, 0) == v.idgen)
+    if (t == "int" or t == "float") and exact:
+        # A current private local or a caller-owned result slot contains null or
+        # exactly this object's box. The result slot is reset before each call;
+        # after the call only lazy boxing writes it. Reload for earlier aliases.
+        # Selected/narrowed storage and reads across rebinding keep the checks below.
+        b = self.mem_load(Val(v.idslot, "*" + DYN))
+        box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {b.v}"]) if t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {b.v}"])
+        self.mem_store(Val(v.idslot, "*" + DYN), Val(box, DYN))
+        return Val(box, DYN)
     if (t == "int" or t == "float") and v.idslot != "":
         # a variable's value: the box of its object (dyn_id_held), where that holds this value of
         # this type, else a new box, which the binding keeps (idbox) where it has none and has not
@@ -635,6 +625,12 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         # store_name pairs every numeric global store with dyn_id_store: its box is
         # either null or exactly this binding's type and payload. Unlike a delayed
         # local read, it needs neither dyn_box's stale-value checks nor a slot reload.
+        if v.t == "int" or v.t == "float":
+            box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {v.idheld}"]) if v.t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {v.idheld}"])
+            self.mem_store(Val(slot, "*" + DYN), Val(box, DYN))
+            v.idfrom = box
+            v.idslot = ""
+            return
         start = self.cur
         make = self.label()
         end = self.label()

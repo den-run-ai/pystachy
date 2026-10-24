@@ -2,12 +2,12 @@
 @f.integer: pys_mod pys_raise
 @f.floating: pys_fmod pys_f2i pys_raise
 @f.update: pys_raise
-@f.escape: pys_dyn_int
-@f.copy: pys_dyn_int pys_raise
-@f.walrus: pys_dyn_int pys_raise
+@f.escape: pys_dyn_int_box
+@f.copy: pys_dyn_int_box pys_raise
+@f.walrus: pys_dyn_int_box pys_raise
 @f.callback: pys_dyn_int
-@f.open_operand: pys_dyn_int pys_raise
-@f.dynamic_operand: pys_dyn_int
+@f.open_operand: pys_dyn_int_box pys_raise
+@f.dynamic_operand: pys_dyn_int_box
 @dyn.op0: pys_dyn_binop
 @pys_obj_eq:
 @pys_obj_cmp:
