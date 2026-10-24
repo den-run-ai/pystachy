@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 dynamic Any differential fuzzer (partial)",
+  "event": {
+    "pull_request": 808,
+    "merge_sha": "4ef45ca0b3bb8b1cb99e3dcb55c15eda6030950c",
+    "source_sha": "4ef45ca0b3bb8b1cb99e3dcb55c15eda6030950c",
+    "source_tree": "6d69e103f2f4adde7aebfeec991c8734719a0df1",
+    "implementation_head_sha": "a7ad61e1d422d528192f1ca5738bb6aeb14c0d1e",
+    "previous_source_sha": "838aff6d161c48450da46beaa1a772fd7de90bd8",
+    "merged_at_utc": "2026-10-21T08:06:20Z",
+    "first_parent_merges_since_previous": [808]
+  },
+  "changed_files": {
+    ".github/workflows/lint.yml": {"bytes": 3727, "sha256": "2c4841c158584dea7d8998c3d10f9e9854a8a9d004ce9bbdcd07f4569e5eaac1"},
+    "Makefile": {"bytes": 17749, "sha256": "46fc21f8bc4a0ce4cfebad3041653dbf234cd0c671cb124b99475dbcefaa4150"},
+    "docs/testing.md": {"bytes": 28444, "sha256": "4fbfbe79bc06e2c7bafd4fbc623c46bcd68419651cef57027963914f360d6cce"},
+    "tools/dynany_fuzz.py": {"bytes": 16866, "sha256": "998d1cdead61f9b81b989835593e5b42714c7f7195416af112266be1ca3f9f14"},
+    "tools/test_dynany_fuzz.py": {"bytes": 8437, "sha256": "bb7f9d3bf62264f55c99209d59118aa7fe7bacbd996e1f994e6296a1cefcd096"}
+  },
+  "landed_file_identity": "all five #808 paths are byte-identical between implementation head a7ad61e1 and merged main 4ef45ca0",
+  "environment": {
+    "hosted_python": "Python 3.12.14",
+    "hosted_python_path": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "pinned_cpython_3_13_16_available": false,
+    "llvm_18_available": false,
+    "native_compiler_available": false
+  },
+  "hosted_results": {
+    "unit_tests": {"passed": 17, "failed": 0, "status": 0},
+    "py_compile_status": 0,
+    "stock_cli_version_guard": {
+      "status": 2,
+      "stderr": "tools/dynany_fuzz.py: CPython 3.12.14 runs it; the expected outputs are 3.13's (.python-version)"
+    },
+    "cpython_generator_contract": {
+      "default": {
+        "programs": 3,
+        "cases_per_program": 150,
+        "total_cases": 450,
+        "all_deterministic_complete_one_line_per_case": true,
+        "combined_source_sha256": "b1e77c3cfb25416c20e9ca7793bc43d29d0bd2fa0ae616a7c104bac9f5107f47",
+        "combined_stdout_sha256": "3f552741f05e8926c1491071ef9a66d0e78745dfca4ce949aeda7550cef2c9b9"
+      },
+      "wider": {
+        "programs": 10,
+        "cases_per_program": 300,
+        "total_cases": 3000,
+        "all_deterministic_complete_one_line_per_case": true,
+        "combined_source_sha256": "1606fde24da4501232e9b1505878190c8280e13fd2b07d3c2ba932c59a6fb489",
+        "combined_stdout_sha256": "6e0ec4bede6ece5fcb8110ed0dd5fb441b2244cc147153c8e005b03cd1dd5480"
+      }
+    },
+    "negative_controls": {
+      "wrong_value_mismatches": 1,
+      "reordered_output_mismatches": 1,
+      "orphan_line_mismatches": 1
+    },
+    "source_snapshot_clean_before_and_after": true
+  },
+  "implementation_workflows": [
+    {"name": "CI", "run_id": 39562476810, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39562476810", "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+    {"name": "Installation", "run_id": 39562476842, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39562476842", "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39562476799, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39562476799", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Packages", "run_id": 39562476818, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39562476818", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+  ],
+  "commands": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -m unittest discover -s tools -p test_dynany_fuzz.py",
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -m py_compile tools/dynany_fuzz.py tools/test_dynany_fuzz.py",
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 tools/dynany_fuzz.py --compiler '/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 pystachy.py' 1 20",
+    "hosted contract driver: dynany_fuzz.program(seed, cases), CPython execution through dynany_fuzz.CPYTHON, dynany_fuzz.by_case and dynany_fuzz.compare negative controls"
+  ],
+  "issue_state": {
+    "797": "open; expected identity/id disagreement makes the current default end-to-end fuzz target fail",
+    "802": "open; #808 is step 1 only, not yet a make-verify gate; typed-versus-Any oracle and opt-in sweep remain",
+    "810": "open; wider fuzz budgets retain the known dynamic-Any dict union mismatch"
+  },
+  "limitations": [
+    "The local interpreter is CPython 3.12.14, not the required pinned 3.13.16; the stock CLI correctly refuses the end-to-end comparison.",
+    "LLVM 18 and a native compiler were unavailable; no local Pystachy JIT/AOT fuzzer execution or GC-stress run completed.",
+    "The CPython-only generator checks validate determinism, output framing and fail-closed comparison contracts, not Pystachy semantic parity.",
+    "The default fuzz target is intentionally not a verification gate while open #797 makes it fail; wider known findings remain tracked by #810.",
+    "No compiler, runtime, library, port or retained compatibility corpus source changed, so no import or package-support delta is claimed."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

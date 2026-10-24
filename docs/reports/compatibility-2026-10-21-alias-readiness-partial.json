@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 function and class alias readiness (partial)",
+  "event": {
+    "source_sha": "11722f0c0590441487fa4c9a2ead1c9fbcf618b4",
+    "source_tree": "a9430983ce2a3ffac69d99468a2d43b90dbe6869",
+    "previous_source_sha": "90156da26d83121f7584373cd15496e346e69361",
+    "previous_source_tree": "acb6abf538952bd4763acb9fb05de614310aca5d",
+    "first_parent_merges_since_previous": [832],
+    "pull_request": {
+      "number": 832,
+      "merged_at_utc": "2026-10-21T21:57:32Z",
+      "merge_sha": "11722f0c0590441487fa4c9a2ead1c9fbcf618b4",
+      "implementation_head_sha": "8c569575659de80b20bc8610f810f71c94e18a8e",
+      "implementation_head_tree": "a9430983ce2a3ffac69d99468a2d43b90dbe6869",
+      "merge_tree_equals_implementation_head": true
+    }
+  },
+  "changed_scope": {
+    "files": 44,
+    "insertions": 516,
+    "deletions": 19,
+    "compiler_files": [
+      "src/pystachy_compiler/calls.py",
+      "src/pystachy_compiler/loader.py",
+      "src/pystachy_compiler/statements.py"
+    ],
+    "new_differential_programs": 11,
+    "runtime_library_ports_changed": false
+  },
+  "selected_changed_sha256": {
+    "docs/language/compatibility.md": "1fa8731a46fcb5da2544a5a42abe526390c2129355374307f4a9c63457c285da",
+    "docs/language/modules.md": "22634ec3df4f58bb10ab9a1b2ce148d2ca152fd3a9c80e4f5abff72ff74a66cd",
+    "src/pystachy_compiler/calls.py": "14610975018e4f0931fe1b3a97febc06965206b302a395bf9d5c4dbda83e8291",
+    "src/pystachy_compiler/loader.py": "277abd993aff0115293e8b51556cfe1c80e3acfdb38bc564653653099c18b6c1",
+    "src/pystachy_compiler/statements.py": "2222ed5fb05f4c41a7ae8cfa7b1643356a14c50d7c4a8e3825f19b523ad3b581",
+    "tests/programs/imports/import_alias_ready_function.py": "f0b970ffd60f0f649fe73617bda91dda0028604f8d9e46bb38ed38e5db4e9dba",
+    "tests/programs/imports/import_alias_ready_cycle.py": "9092dba70e7ff08f50fba3c66eb78b7030ab5dcaa3aa34bc7cbcbcc5f24dc666",
+    "tests/programs/imports/import_alias_ready_local_order.py": "ece7ab7dc9c3ae0300cd4374e6a86778944b3602d9c3f087aa9ff4c142048e90"
+  },
+  "environment": {
+    "recording_python": "CPython 3.13.16",
+    "pinned_cpython_inventory_revision": "cbc944f4bc59639a444dd971c737788ba2283a91",
+    "pinned_cpython_inventory_tag": "v3.13.16",
+    "ruff": "0.17.0",
+    "mypy": "2.4.0",
+    "actionlint": "1.7.12",
+    "llvm_18": "unavailable locally"
+  },
+  "fresh_local_results": {
+    "recordings": {
+      "command": "uv run --python /root/.local/bin/python3.13 --with-requirements tools/requirements-dev.txt tests/record.sh --check",
+      "recordings": 1550,
+      "deviations": 95,
+      "pinned_library_files": 12,
+      "failed": 0,
+      "new_alias_recordings": 11,
+      "new_alias_recordings_matched": 11
+    },
+    "new_alias_hosted_comparison": {
+      "command": "honor each adjacent .path and emit hosted IR with the 90156da2 and 11722f0c compilers on the 11 import_alias_ready programs",
+      "programs": 11,
+      "previous_success_on_current_sources": 11,
+      "current_success": 11,
+      "byte_identical_ir": 0,
+      "previous_ir_bytes": 170927,
+      "current_ir_bytes": 192803,
+      "boundary": "hosted compiler emission; generated IR was not executed locally"
+    },
+    "retained_alias_hosted_controls": {
+      "selection": "tests/programs/imports/*alias*.py plus tests/errors/imports/*alias*.py",
+      "cases": 33,
+      "previous_accepted": 16,
+      "current_accepted": 16,
+      "previous_rejected": 17,
+      "current_rejected": 17,
+      "status_changes": 0,
+      "identical_outcomes": 18,
+      "changed_outcomes": 15,
+      "changed_scope": "all 11 new alias-readiness programs plus import_alias_reexport, import_attr_class_alias, import_attr_class_alias_base and import_builtin_exc_alias_attr; all remain accepted"
+    },
+    "pinned_import_sweep": {
+      "command": "PYSTACHY_HOME=<checkout> /root/.local/bin/python3.13 tools/import_sweep.py -j 4 --metadata <meta.json> <hosted-wrapper> <cpython-v3.13.16-source>/Lib <result.json>",
+      "inventory_total": 522,
+      "overlay_exclusions": 62,
+      "included": 460,
+      "successful": 148,
+      "errors": 312,
+      "timeouts": 0,
+      "new_successes_vs_90156da": [],
+      "lost_successes_vs_90156da": [],
+      "normalized_result_changes_vs_90156da": 0,
+      "current_result_sha256": "5fca5524c2b39b5f0e5865bc92e6385c08aef5e7ea9c40da616c1c3008a2c111",
+      "current_metadata_sha256": "15dc4330a6f17c361ff5f2e07e940a4cb30a2ca42b8e1c80023ab9d15cd3d57d",
+      "previous_result_sha256": "da1af87ed51c42eaa60910366c6a4406a05b15e451babfde44d2dfbe4351d4ad",
+      "duration_seconds": 100.612,
+      "scope": "isolated imports to hosted IR; not runtime or full module compatibility"
+    },
+    "fast_checks": {
+      "command": "uv run --python /root/.local/bin/python3.13 --with-requirements tools/requirements-dev.txt make check-fast",
+      "ruff": "pass",
+      "mypy_files": 45,
+      "mypy_errors": 0,
+      "effect_summary_tests": 7,
+      "typed_ir_tests": 88
+    },
+    "verifier_tools": {"passed": 53, "failed": 0},
+    "workflow_limits": {"passed": 4, "failed": 0},
+    "workflow_lint": {"tool": "actionlint 1.7.12", "result": "pass"},
+    "diff_check": {"result": "pass"}
+  },
+  "discarded_setup_attempts": [
+    {
+      "attempt": "bare /root/.local/bin/python3.13 tests/record.sh --check",
+      "result": "10 recording failures because env -i could not import typing_extensions",
+      "resolution": "reran in the pinned uv dependency environment; all 1550 recordings passed"
+    },
+    {
+      "attempt": "import sweep through a wrapper without PYSTACHY_HOME",
+      "result": "invalid 138/522 result because the wrapper directory was treated as the compiler home and the 62-file overlay was not selected",
+      "resolution": "set PYSTACHY_HOME separately for current and previous checkouts; both corrected sweeps produced 148/460 with zero normalized differences"
+    }
+  ],
+  "implementation_head_workflows": [
+    {"name": "CI", "run_id": 39677487817, "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+    {"name": "Installation", "run_id": 39677487733, "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39677487740, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Packages", "run_id": 39677487805, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"}
+  ],
+  "prior_audit_head": {
+    "sha": "0b426c20fa7c85bccef5f369d8827d7b9bb23c80",
+    "lint_run_id": 39674183777,
+    "conclusion": "success"
+  },
+  "review": {
+    "reviewed_head_sha": "8c569575659de80b20bc8610f810f71c94e18a8e",
+    "automated_codex_findings": 0,
+    "review_threads": 0
+  },
+  "issues": {"resolved_tracker": 814, "new_issue": null},
+  "compatibility_assessment": {
+    "gain": "supported function and class aliases now preserve CPython binding readiness through early calls, module-attribute reads, import cycles, failed imports, retries, alias chains, specialized and starred calls",
+    "call_order": "the alias binding is resolved before specialized or starred arguments and retained across argument side effects",
+    "preserved_boundaries": "all 33 selected alias cases keep their acceptance or rejection status; no new importable stdlib module is measured",
+    "imports": "unchanged 148/460 on the pinned CPython 3.13.16 source inventory and overlay",
+    "generalization_limit": "bounded correctness for statically supported aliases, not general class-as-value, dynamic Any, package or NumPy compatibility"
+  },
+  "limitations": [
+    "LLVM 18 was unavailable locally, so the exact merged tree did not receive a fresh local native build, JIT/AOT execution or GC-stress run.",
+    "The implementation head and merge have the same tree, and its 32/32 external workflow jobs supply the native matrix separately.",
+    "Hosted IR emission does not execute generated code and cannot substitute for native validation.",
+    "No fresh local full make verify, broad port/package/upstream-suite run, CPython regrtest, performance or memory comparison completed."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

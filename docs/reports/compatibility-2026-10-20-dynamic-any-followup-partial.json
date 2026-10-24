@@ -1,0 +1,175 @@
+{
+  "status": "partial-hosted-plus-identical-tree-ci",
+  "date": "2026-10-20",
+  "source_revision": "3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15",
+  "previous_audit_source": "100979652775ab55ff2ecfd83750270395ece789",
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9",
+  "merged_prs": [
+    {
+      "number": 793,
+      "url": "https://github.com/den-run-ai/pystachy/pull/793",
+      "merge_commit": "a79e6bbc367f922452e9531aa3e996e1e5451eaf",
+      "head": "72d6941e7dbb18a41bb4510b4d0a2ade84d477c3",
+      "tree": "a8e2778acbea55891361eab03bb39ef9993edcad",
+      "head_tree_equals_merge_tree": true,
+      "merged_at_utc": "2026-10-20T23:21:06Z",
+      "scope": "JIT driver flag and one regression program"
+    },
+    {
+      "number": 790,
+      "url": "https://github.com/den-run-ai/pystachy/pull/790",
+      "merge_commit": "3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15",
+      "head": "8706e3f956e7fee1e233c15cbd07cdfaec8972ec",
+      "tree": "3a5a386c475c3ae657bf951a4c3f874f75d0892c",
+      "head_tree_equals_merge_tree": true,
+      "merged_at_utc": "2026-10-20T23:23:47Z",
+      "scope": "opt-in dynamic Any compiler/runtime fixes, tests and documentation; incorporates PR 793"
+    }
+  ],
+  "environment": {
+    "hosted_python": "CPython 3.12.14",
+    "hosted_python_executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "platform": "Linux 6.18.55 x86_64",
+    "pinned_python_3_13_16_available": false,
+    "llvm_18_toolchain_available": false,
+    "local_native_jit_aot_available": false
+  },
+  "source_scope": {
+    "pr_793_diff": "3 files changed, 30 insertions(+), 1 deletion(-)",
+    "pr_790_net_diff_after_793": "83 files changed, 2130 insertions(+), 92 deletions(-)",
+    "key_sha256": {
+      "src/pystachy_compiler/driver.py": "c455ddcfcad9bf138e453fad4c098d090cef8c9d59af19cde25e9e1f363a0aa4",
+      "src/pystachy_compiler/dynamic.py": "47d62d67739a54fb17fbccb1b291741c22e03399dfae458c2663bdb4c0af8899",
+      "src/pystachy_compiler/gen.py": "8b700857223650448e3d96ec932acdc41b19e2775eb61b93d10b6a28779e683b",
+      "src/pystachy_compiler/reflection.py": "f82ca66b43f8ef3fb2cae239f8a3968684477dd4d4a1b96d0411227db7792baf",
+      "runtime.c": "5ebf043dcbca3979ff583308555c339b6edafa13474c4797fdd45c8036acac27",
+      "tests/programs/inference/dynany_jit_try.py": "d8f7f7fd9ecf2ad64bae553d04fe62c70088212e31f776b51a1c5014a23b8e91",
+      "tests/programs/inference/dynany_deep_displays.py": "a3e4746a53ff58d083807f356e2ab6e29bed956be56eade717caa84ac3f57051",
+      "tests/deviations/dynany_eq_annotated_body.py": "eacd72863aadd7031e12074fdb1e6176639bae7cddd0c985414b77e58fa0f35f",
+      "tests/deviations/dynany_iter_object.py": "6e391837ba46d5fb91d41833a13f0346e96659e922069c80565d60c7ba964f21",
+      "tests/errors/inference/dynany_type_is_template.py": "bd186d71b697de130b41dd24004a1925d8b6bb05cb35169a61f23dc66e5dd89c"
+    }
+  },
+  "commands": [
+    "PYSTACHY_IRCHECK=1 PYSTACHY_HOME= python3 -B pystachy.py ir FILE.py >/dev/null",
+    "python3 -B -m unittest tools.test_typed_comparisons tools.test_typed_nullcheck tools.test_concurrency_contract -v",
+    "timeout 20s env PYSTACHY_IRCHECK=1 PYSTACHY_HOME= python3 -B OLD/pystachy.py ir tests/programs/inference/dynany_deep_displays.py -o /dev/null",
+    "env PYSTACHY_IRCHECK=1 PYSTACHY_HOME= python3 -B pystachy.py ir tests/programs/inference/dynany_deep_displays.py -o OUTPUT.ll",
+    "PYSTACHY_JOBS=4 PYSTACHY_HOME= tools/irsame.sh 'python3 NORMALIZE_OLD.py' 'python3 pystachy.py' SELECTED_1467_POSITIVE_PROGRAMS",
+    "PYSTACHY_JOBS=2 sh tests/run.sh 'python3 -B -m pystachy' 'jit aot' SELECTED_6_RETAINED_CONSUMERS"
+  ],
+  "measurements": {
+    "pr_793_hosted_ir_oracle": {
+      "selection": "138 dynamic-Any and exception programs",
+      "result": "138 programs identical",
+      "meaning": "The driver-only fix does not change emitted hosted IR."
+    },
+    "pr_793_hosted_verification": {
+      "command": "python3 -B -m unittest discover -s tools -p 'test_*verif*.py' -v",
+      "result": "53/53 passed"
+    },
+    "pr_793_reference": {
+      "program": "tests/programs/inference/dynany_jit_try.py",
+      "result": "CPython 3.12.14 stdout/exit matched the checked-in recording",
+      "boundary": "Not a local LLVM JIT reproduction."
+    },
+    "pr_790_new_positive_references": {
+      "selection": "29 newly added positive programs",
+      "result": "29/29 CPython 3.12.14 stdout/exit recordings matched"
+    },
+    "pr_790_new_hosted_ir": {
+      "selection": "29 new positive programs plus two new deviation programs",
+      "result": "31/31 emitted hosted IR with PYSTACHY_IRCHECK=1",
+      "raw_ir_lines": 35570
+    },
+    "pr_790_new_rejection": {
+      "program": "tests/errors/inference/dynany_type_is_template.py",
+      "result": "exit 1 with the exact expected diagnostic"
+    },
+    "pr_790_targeted_unit_tests": {
+      "commands": [
+        "python3 -B -m unittest tools.test_typed_comparisons -v",
+        "python3 -B -m unittest tools.test_typed_nullcheck -v",
+        "python3 -B -m unittest tools.test_concurrency_contract -v"
+      ],
+      "result": "19/19 passed (12 + 2 + 5)"
+    },
+    "pr_790_deep_display_control": {
+      "program": "tests/programs/inference/dynany_deep_displays.py",
+      "current_source": "3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15",
+      "current_result": "completed in 7.96 seconds and emitted 3343 raw IR lines",
+      "previous_source": "100979652775ab55ff2ecfd83750270395ece789",
+      "previous_result": "timed out after 20 seconds",
+      "boundary": "One run on a shared host; deterministic progress/completion evidence, not a stable speed ratio or a universal linear-scaling claim."
+    },
+    "retained_adapted_consumers": {
+      "programs": [
+        "tests/programs/apps/port_iniconfig_parse.py",
+        "tests/programs/apps/port_tomli_w_tables.py",
+        "tests/programs/apps/port_roman_convert.py",
+        "tests/programs/apps/port_pylev_imports.py",
+        "tests/programs/upstream/upstream_textwrap_wrap.py",
+        "tests/programs/library/lib_re_ignorecase_repeat.py"
+      ],
+      "hosted_result": "6/6 emitted IR with PYSTACHY_IRCHECK=1",
+      "native_attempt": "0/12 local JIT/AOT checks ran because clang/LLVM 18 was unavailable; tests/run.sh reported the missing toolchain for every selected mode",
+      "boundary": "Hosted compilation is not native execution and is not counted as a port pass."
+    },
+    "non_opt_in_hosted_oracle": {
+      "completed_selection": "1467 pre-existing positive programs present at both 10097965 and 3d48ce8c, excluding files with a '# pystachy: dynamic-any' header",
+      "normalization": "The previous compiler was copied to an equal-length checkout root; only that root was replaced with the current checkout root before byte comparison, preserving LLVM string-length constants.",
+      "normalized_result": "1467 programs identical",
+      "broader_attempt": "A 3336-source selection added deviations, IR-only probes and expected rejections. It was not completed as a valid equality result: the first run exposed absolute-root artifacts, and the first normalizer pre-created an old output file even when the old compiler rejected a source, producing false one-sided-IR reports. The valid positive-program rerun above excludes that harness artifact."
+    }
+  },
+  "historical_identical_tree_ci": {
+    "pr_793": {
+      "head": "72d6941e7dbb18a41bb4510b4d0a2ade84d477c3",
+      "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39509843577",
+      "ci_jobs": "27/27 successful",
+      "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39509843546",
+      "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39509843563",
+      "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39509843575",
+      "all_workflows_success": true
+    },
+    "pr_790": {
+      "head": "8706e3f956e7fee1e233c15cbd07cdfaec8972ec",
+      "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39509136079",
+      "ci_jobs": "27/27 successful",
+      "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39509136067",
+      "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39509136053",
+      "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39509136062",
+      "all_workflows_success": true
+    }
+  },
+  "review": {
+    "pr_793": "Codex review completed without findings at 528bbcb; no inline review threads.",
+    "pr_790": "Seven earlier inline findings were resolved: six with fixes/tests and one as a documented deviation. Final Codex review completed without findings at 341348b7; 8706e3f9 only merges main."
+  },
+  "observed_compatibility_changes": [
+    "Opt-in dynamic Any comparison methods now cover Any operands and CPython rich-comparison order across direct comparisons, container search and dictionary lookup.",
+    "NamedTuple values compare and hash structurally through Any; Any items participate in typed tuple/iterator equality.",
+    "format() on Any, slices, type identity/module/qualname, sum(generator) and dict.update gain the selected behavior covered by the new programs.",
+    "Nested display dry-run memoization prevents the retained 199-depth program from exceeding the 20-second hosted bound.",
+    "The JIT driver keeps cold functions in .text so LLVM 18 ORC retains the moved landing pads exercised by dynany_jit_try."
+  ],
+  "documented_deviations": [
+    "A comparison method with a concrete or unsupported annotation, or a body that cannot compile for Any, may not run in cases where CPython runs it; identity or generic ordering behavior can remain.",
+    "Custom objects are not iterable through Any, so a custom pair object supplied to dict.update raises TypeError rather than being iterated as in CPython."
+  ],
+  "source_snapshots": {
+    "pre_run_tracked_and_untracked": "empty",
+    "post_run_tracked_and_untracked": "empty",
+    "post_run_ignored": "build/runtime-py.hashes and CPython 3.12 bytecode caches under src/; generated during hosted compiler work and not treated as source inputs"
+  },
+  "incomplete_attempts": [
+    "The six retained consumers were selected for local JIT/AOT execution, but all 12 modes stopped before native execution because clang/LLVM 18 was unavailable.",
+    "The first 3336-source all-corpus IR comparison contained absolute-checkout-path artifacts. A first normalization attempt also pre-created the old output path for rejected programs, creating false one-sided-IR reports. The valid 1467-positive-program rerun uses equal-length roots and does not infer an all-rejection oracle result."
+  ],
+  "limits": [
+    "Pinned CPython 3.13.16 and LLVM 18 were unavailable locally.",
+    "No local native JIT/AOT, GC-stress, metadata import sweep, native adapted-port benchmark, full upstream suite or CPython regrtest completed.",
+    "Identical-tree historical CI includes native/JIT/AOT/GC and final make verify coverage but is kept distinct from local execution.",
+    "The latest fully evaluated main marker remains 3c63613b9ad4748dfc030fc923f7704e26b21ba9."
+  ]
+}

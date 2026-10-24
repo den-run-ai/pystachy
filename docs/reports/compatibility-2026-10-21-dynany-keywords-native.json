@@ -1,0 +1,212 @@
+{
+  "schema": 1,
+  "checkpoint": "dynamic Any dictionary unions, keyword calls, CI fuzzing and JSON callback deviation",
+  "evaluated_main": {
+    "sha": "3cbb7e874e29bab109376096b83a6303c5993df6",
+    "tree": "3c0f523447411c01712dc648eba80b75477834df",
+    "implementation_sha": "511f6e4adce0cff5d7efd3fe651508695873d580",
+    "implementation_tree": "39ec7d7c09a3b25a299d0c0971ba92db6bf7148d"
+  },
+  "previous_audited_main": "c39f2ad35b565801a60e9c0267b582c4c135cd66",
+  "merges": [
+    {
+      "pr": 838,
+      "merge_sha": "7cfd1eb4",
+      "classification": "documentation only; no separate compatibility probe"
+    },
+    {
+      "pr": 836,
+      "merge_sha": "94282586be3b5a068526aafae05b5102408e413a",
+      "title": "Remove research artifacts from main and add repository hygiene gate",
+      "classification": "repository/tooling hygiene; no compiler/runtime/library behavior change"
+    },
+    {
+      "pr": 833,
+      "merge_sha": "abcbfe22e64e57f039f84cbf19b4794f8985191e",
+      "merge_tree": "29bc4cfd757460a5bd6a2678086c52e786ec21e8",
+      "head_sha": "0f69ca477347515b7eef5bc02d3751e381181b76",
+      "title": "Dynamic Any: dict | and |= as CPython's dict.__or__ and __ior__ (#810)"
+    },
+    {
+      "pr": 826,
+      "merge_sha": "511f6e4adce0cff5d7efd3fe651508695873d580",
+      "merge_tree": "39ec7d7c09a3b25a299d0c0971ba92db6bf7148d",
+      "head_sha": "c439070efc422401b2607bcc2c105df34f44095b",
+      "title": "Dynamic Any: keyword arguments in calls of Any values and their methods (#774)"
+    },
+    {
+      "pr": 834,
+      "merge_sha": "bc35596ec32c1e17fc6d0de0cee3d3e82bb90ce0",
+      "merge_tree": "d978216b94aebd81f4aa0f65d3654530f2e2a5d3",
+      "head_sha": "583ea6536211b295290e9e18f9d3890ef42f4c94",
+      "title": "Run bounded dynamic Any fuzzing in CI verification",
+      "classification": "verification tooling and documentation"
+    },
+    {
+      "pr": 839,
+      "merge_sha": "3cbb7e874e29bab109376096b83a6303c5993df6",
+      "merge_tree": "3c0f523447411c01712dc648eba80b75477834df",
+      "head_sha": "ea47ea44b5b97b4f86819a9636522cd6c596d36e",
+      "title": "Document JSON callback clear/repopulate deviations",
+      "classification": "documentation, comments and an expanded existing deviation fixture; helper AST unchanged"
+    }
+  ],
+  "environment": {
+    "python": "CPython 3.13.16 (Clang 22.1.3)",
+    "python_executable": "/root/.local/bin/python3.13",
+    "cpython_source_revision": "cbc944f4bc59639a444dd971c737788ba2283a91",
+    "llvm": "Ubuntu LLVM/Clang 18.1.3",
+    "llvm_root": "/workspace/scratch/85a28988e070/llvm18/usr/lib/llvm-18",
+    "platform": "Linux x86-64",
+    "import_scope": "isolated CPython-source imports compiled to hosted IR with --metadata; not runtime/API compatibility"
+  },
+  "compiler_build": {
+    "source_sha": "511f6e4adce0cff5d7efd3fe651508695873d580",
+    "source_tree": "39ec7d7c09a3b25a299d0c0971ba92db6bf7148d",
+    "compiler_fixed_point_ir_lines": 647549,
+    "runtime_fixed_point_ir_lines": 18709,
+    "compiler_binary_sha256": "7e58328a0c3af7448ad4ccf68bc84be5785ac13d56260cb961ed7aab6bad7229",
+    "note": "#834 and #839 do not change compiler/runtime/library executable bytes; #839 changes helper comments only and preserves its Python AST."
+  },
+  "fresh_results": {
+    "recordings": {
+      "recordings": 1586,
+      "deviations": 98,
+      "library_files": 12,
+      "failures": 0,
+      "delta_from_previous_checkpoint": {
+        "recordings": 16,
+        "deviations": 1
+      }
+    },
+    "focused_native": {
+      "dict_union_and_keyword_cases": 18,
+      "normal_jit_aot": "36/36 pass",
+      "gc_stress_jit_aot": "36/36 pass",
+      "json_callback_deviation_normal": "2/2 pass",
+      "json_callback_deviation_gc_stress": "2/2 pass",
+      "scope": "ordinary/deviation regression programs only; not a full corpus or upstream suite"
+    },
+    "dynamic_any_fuzzer": {
+      "programs": 3,
+      "cases": 450,
+      "modes": [
+        "jit"
+      ],
+      "mismatches": 0,
+      "compiler": "locally rebuilt source 511f6e4a; final current-main source differs only in verification/docs/comment-only paths"
+    },
+    "runtime_contract": {
+      "runtime_entries": 494,
+      "exception_classes": 70,
+      "runtime_functions": 171,
+      "result": "signatures, coverage and effects agree with runtime.c and runtime.py"
+    },
+    "fast_and_tooling_checks": {
+      "ruff": "pass",
+      "mypy_files": 45,
+      "repository_hygiene": "pass; 9/9 unit tests",
+      "function_summary_tests": "7/7 pass",
+      "typed_ir_tests": "88/88 pass",
+      "json_any_loader_tests": "4/4 pass",
+      "verification_report_tests": "18/18 pass",
+      "dynamic_fuzz_stage_tests": "2/2 pass"
+    },
+    "pinned_import_sweep": {
+      "inventory_total": 522,
+      "overlay_exclusions": 62,
+      "included": 460,
+      "previous_successes": 148,
+      "current_successes": 148,
+      "errors": 312,
+      "timeouts": 0,
+      "new_successes": [],
+      "lost_successes": [],
+      "normalized_result_changes": 0,
+      "normalized_result_sha256": "f6d7716119aca6e627f0c5f922a30fddcb96066c269b5a6cb963ad1d13e2d34f",
+      "normalization": "replace each checkout root with <checkout>, then JSON encode with sorted keys",
+      "raw_result_sha256": "07a9619820aff65477c6af7f22de1a4d7a3cf75e974e34f0967605ba5d542ed2",
+      "metadata_sha256": "7dd1fd479dded64988c6091b9be6b3724d75304de4ed12820ff34791558e2560",
+      "duration_seconds": 181.511,
+      "comparison_status": "identical to the previous retained 148/460 result after checkout paths are normalized"
+    }
+  },
+  "findings": {
+    "dict_union": "Dynamic Any dictionaries now implement | and |= with CPython-like new-dict versus in-place alias behavior, reflected dispatch order and source-size mutation detection.",
+    "keyword_calls": "Dynamic Any functions, closures, bound methods, callable objects and supported builtins accept keyword arguments with CPython-compatible binding/evaluation order across the measured cases.",
+    "keyword_limits": "Issue #774 remains open because this is partial: runtime-sized Any unpacking, boxed builtin functions, properties/static/class methods as values and some callable signatures remain outside the supported surface.",
+    "typed_sort_limit": "dynany_key_none_objects remains a documented deviation: sorting typed object items with a dynamic key that can return None raises TypeError instead of reproducing CPython's ordering behavior.",
+    "json_callback_limit": "Without sort_keys, a default() callback that clears and repopulates its dictionary observes queued-key traversal rather than CPython's live table cursor. The one-replacement case emits {\"a\": 1, \"z\": 9} instead of {\"a\": 1}; the two-replacement case additionally retains z. PR #839 documents this existing deviation.",
+    "imports": "No isolated stdlib import gain or regression: 148/460 remains unchanged."
+  },
+  "implementation_workflows": {
+    "pr_833": {
+      "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39701151411",
+      "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39701151388",
+      "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39701151368",
+      "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39701151393",
+      "result": "success"
+    },
+    "pr_826": {
+      "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39701474257",
+      "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39701474397",
+      "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39701474301",
+      "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39701474250",
+      "result": "success"
+    },
+    "pr_834": {
+      "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39701500128",
+      "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39701500160",
+      "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39701500129",
+      "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39701500249",
+      "result": "success"
+    },
+    "pr_839": {
+      "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39701529709",
+      "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39701529695",
+      "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39701529704",
+      "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39701529700",
+      "result": "success"
+    }
+  },
+  "attributed_final_tree_results": {
+    "pr_833": [
+      "14/14 focused normal JIT/AOT and 14/14 GC-stress checks pass",
+      "3,000 JIT fuzzer cases report zero mismatches",
+      "full IR contract passes 1,741 programs plus llvm-as"
+    ],
+    "pr_826": [
+      "51/51 focused normal JIT/AOT and 51/51 GC-stress checks pass",
+      "12 of 3,520 IR results change from rejection to acceptance; previous acceptances remain identical"
+    ],
+    "pr_834": [
+      "contracts records exactly 3 programs, 450 JIT cases and zero mismatches",
+      "all 32 applicable workflow jobs pass"
+    ],
+    "pr_839": [
+      "expanded deviation passes native JIT/AOT normally and under GC stress (4/4)",
+      "all 32 applicable workflow jobs pass"
+    ]
+  },
+  "commands": [
+    "make (CPython 3.13.16, LLVM 18.1.3)",
+    "make check-fast",
+    "make check-recordings PY=<CPython-3.13.16-wrapper>",
+    "make check-runtime",
+    "make test FILES='<18 selected dict-union/keyword/deviation programs>'",
+    "PYSTACHY_GC_STRESS_PROGRAM=1 make test FILES='<same 18 programs>'",
+    "tests/run.sh <rebuilt-compiler> 'jit aot' tests/deviations/dynany_json_reinsert.py",
+    "PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh <rebuilt-compiler> 'jit aot' tests/deviations/dynany_json_reinsert.py",
+    "python tools/dynany_fuzz.py --compiler <rebuilt-compiler> --keep <output-dir> 3 150",
+    "python -m unittest discover -s tools -p test_merge_verification.py",
+    "python -m unittest discover -s tools -p test_verify_dynany_fuzz.py",
+    "PYSTACHY_HOME=<checkout> python3.13 tools/import_sweep.py -j 2 --metadata <meta.json> <hosted-wrapper> <cpython-v3.13.16-source>/Lib <result.json>"
+  ],
+  "limitations": [
+    "The local native selection is affected regression coverage, not full make verify or the complete JIT/AOT corpus.",
+    "No broad port/package/upstream suite, unmodified CPython regrtest, performance or memory comparison completed.",
+    "Import compilation, native execution, CPython recordings and attributed CI measurements remain separate evidence categories.",
+    "General NumPy or PyPI compatibility is not inferred from dynamic Any or JSON helper behavior."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

@@ -1,0 +1,182 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 dynamic Any container layouts (partial with blocker)",
+  "event": {
+    "pull_request": 821,
+    "merge_sha": "185849790523815d0f63ab1a8b33c17549bf31b4",
+    "source_sha": "185849790523815d0f63ab1a8b33c17549bf31b4",
+    "source_tree": "fccdde295970fa62c1095d2a7201585b32c43701",
+    "implementation_head_sha": "2e9b3a1bcd8a5d3b1ed766e38ebdcbbac90c87a0",
+    "implementation_head_tree": "ed6071c1cd8321295b087a0d3331d17a0e64fe0f",
+    "previous_source_sha": "f4b9396167e41616707938ca34d99f359a706622",
+    "previous_source_tree": "5f9968b68acb75deea657f047f10571e05703d54",
+    "merged_at_utc": "2026-10-21T17:17:28Z",
+    "first_parent_merges_since_previous": [821]
+  },
+  "changed_scope": {
+    "files": 27,
+    "compiler_files": 12,
+    "differential_programs": 7,
+    "differential_recordings": 7,
+    "runtime_library_ports_changed": false,
+    "summary": "give containers with Any elements, keys or values Any's identity-preserving layout and box builder inputs"
+  },
+  "selected_sha256": {
+    "docs/dynamic-any.md": "dbb6edc5a2dba76ea267ba3c91cf721a5df7c9e7d8c7a9d8b1fc38fe823f87c5",
+    "src/pystachy_compiler/builtins.py": "87a8685b2f27ed6cfd52cd0746e47c246bf685fbb8c7faa490040f0acf7e5ba5",
+    "src/pystachy_compiler/calls.py": "681b1d5d270f397b7b14e2cd53f98c98faf0f21d638399504c6b708ba08a0c81",
+    "src/pystachy_compiler/containers.py": "ccb8beada2188277c10f0f6644d1673032b905e7824cf835e9533e1ca8646b38",
+    "src/pystachy_compiler/dynamic.py": "a5a615dd3edd5f3434173cdf4bc5b2ed594ac27d7b0e1ff03d86f7c8da7d1b31",
+    "src/pystachy_compiler/expressions.py": "0a61c2fb83ee7e5c79b65664622a26d06314baab2b91674243ced7f36b96af61",
+    "src/pystachy_compiler/gen.py": "edd80a2df9d1ca9208de1bca9c8b0d7fd01d841b16715a0b30271af13a1f8955",
+    "src/pystachy_compiler/variables.py": "68726786e6e84d6e6b0a5971ae3428174ecf8ee110b8d557c24271d3e304d5b5"
+  },
+  "environment": {
+    "pinned_python": "CPython 3.13.16",
+    "pinned_python_path": "/root/.local/bin/python3.13",
+    "stdlib_inventory": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+    "ruff": "0.17.0",
+    "mypy": "2.4.0 (compiled: yes)",
+    "llvm_18": "unavailable locally",
+    "clang": "unavailable locally",
+    "source_snapshot_clean_before_and_after": true
+  },
+  "fresh_local_results": {
+    "cpython_recordings": {
+      "command": "/root/.local/bin/python3.13 tests/programs/inference/dynany_layout*.py; compare stdout plus [exit N] with adjacent .out and require empty stderr",
+      "matched": 7,
+      "total": 7,
+      "failed": 0
+    },
+    "hosted_affected_corpus": {
+      "command": "python3 /workspace/scratch/3ba735e28fa7/run_821_hosted.py",
+      "evidence_sha256": "40c81dd3d483150423e91e51dccc78c5bbc8a9f6cfe82cfbce89cd70f6aa67ff",
+      "inputs": 140,
+      "positive_or_deviation": 129,
+      "current_success": 129,
+      "expected_rejections": 11,
+      "unexpected_rejections": 0,
+      "unexpected_acceptances": 0,
+      "newly_compiled_vs_668": [
+        "tests/programs/inference/dynany_layout.py",
+        "tests/programs/inference/dynany_layout_drain.py",
+        "tests/programs/inference/dynany_layout_forms.py",
+        "tests/programs/inference/dynany_layout_kw.py"
+      ],
+      "lost_successes_vs_668": [],
+      "common_success": 125,
+      "common_byte_identical_ir": 68,
+      "common_changed_ir": 57,
+      "changed_ir_scope": "dynamic Any and tomllib inputs selected for the affected surface",
+      "rejection_diagnostic_changes": 0,
+      "boundary": "hosted compiler emission; emitted IR was not executed locally"
+    },
+    "pinned_import_sweep": {
+      "commands": [
+        "PYSTACHY_HOME=<#668> python3 tools/import_sweep.py -j 8 --metadata <base-meta.json> <#668-wrapper> <cpython-3.13.16-stdlib> <base.json>",
+        "PYSTACHY_HOME=<main> python3 tools/import_sweep.py -j 8 --metadata <current-meta.json> <main-wrapper> <cpython-3.13.16-stdlib> <current.json>"
+      ],
+      "inventory_total": 522,
+      "overlay_exclusions": 62,
+      "included": 460,
+      "successful": 148,
+      "errors": 312,
+      "timeouts": 0,
+      "base_result_sha256": "17ba244567987d2f9a019915a8812fd121a96584bcf953e6aab4a5bcbcdf3f78",
+      "current_result_sha256": "17ba244567987d2f9a019915a8812fd121a96584bcf953e6aab4a5bcbcdf3f78",
+      "base_metadata_sha256": "8a2a5720a918d7da1c9969d1a57780c5000c3eb55d9668bdaa1e5a0254908878",
+      "current_metadata_sha256": "e6fe6cb7de8d39b07ff47465a62784a34e8ef5163a1a283a58c8d56c44451ac7",
+      "metadata_source_identity_caveat": "both wrapper metadata documents identify the current checkout because the wrapper does not expose its embedded compiler source; event.previous_source_sha and event.source_sha are the independently verified compiler revisions",
+      "new_successes": [],
+      "lost_successes": [],
+      "first_error_changes": 0,
+      "wall_seconds_concurrent_shared_host": {"base": 102.599, "current": 100.230},
+      "performance_claim": "none; sweeps ran concurrently on a shared host",
+      "inventory_caveat": "this 522-entry pinned inventory differs from earlier audit inventories; headline counts are not compared across denominators"
+    },
+    "fast_checks": {
+      "command": "PATH=<pinned-tool-venv>/bin:$PATH PY=/root/.local/bin/python3.13 make check-fast",
+      "ruff": "all checks passed",
+      "mypy_files": 45,
+      "mypy_errors": 0,
+      "effect_summary_tests": {"passed": 7, "failed": 0},
+      "typed_ir_tests": {"passed": 84, "failed": 0}
+    },
+    "verifier_tools": {
+      "command": "/root/.local/bin/python3.13 -m unittest discover -s tools -p 'test_*verif*.py'",
+      "passed": 53,
+      "failed": 0
+    },
+    "native_attempt": {
+      "command": "PYTHON=/root/.local/bin/python3.13 make test-py FILES='tests/programs/inference/dynany_layout*.py'",
+      "selected_programs": 7,
+      "planned_jit_aot_checks": 14,
+      "completed_native_checks": 0,
+      "setup_failures": 14,
+      "failure": "clang/LLVM 18 is not installed, so runtime build setup failed before program compilation",
+      "classification": "toolchain failure, not implementation failure"
+    }
+  },
+  "confirmed_blocker": {
+    "title": "boxed dict views are not converted for typed consumers",
+    "reproductions": [
+      {
+        "expression": "d: dict[str, Any]; xs: list[str] = d.keys()",
+        "cpython_3_13_16": "executes",
+        "previous_compiler": "accepts",
+        "current_compiler": "rejects: expected list[str], got list[Any]"
+      },
+      {
+        "expression": "d: dict[str, Any]; xs: list[tuple[str, Any]] = d.items()",
+        "cpython_3_13_16": "executes",
+        "previous_compiler": "accepts",
+        "current_compiler": "rejects: expected list[tuple[str,Any]], got list[tuple[Any,Any]]"
+      }
+    ],
+    "review_url": "https://github.com/den-run-ai/pystachy/pull/821#pullrequestreview-5603548430",
+    "reused_issue": 777,
+    "evidence_comment": "https://github.com/den-run-ai/pystachy/issues/777#issuecomment-6322166347",
+    "new_issue": null
+  },
+  "implementation_head_workflows": [
+    {"name": "CI", "run_id": 39633068623, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39633068623", "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39633068492, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39633068492", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Packages", "run_id": 39633069112, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39633069112", "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Installation", "run_id": 39633068542, "url": "https://github.com/den-run-ai/pystachy/actions/runs/39633068542", "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"}
+  ],
+  "workflow_summary": {
+    "tree": "ed6071c1cd8321295b087a0d3331d17a0e64fe0f",
+    "successful_jobs": 32,
+    "total_jobs": 32,
+    "failed_or_cancelled_jobs": 0,
+    "merged_tree_caveat": "workflows apply to the implementation-head tree; fresh local hosted checks apply to merged tree fccdde295970fa62c1095d2a7201585b32c43701"
+  },
+  "attributed_native_results": {
+    "selected_programs": 140,
+    "jit_aot_passes": 269,
+    "dynamic_programs_under_per_allocation_gc": 77,
+    "gc_jit_aot_passes": 154,
+    "new_layout_programs": 7,
+    "new_layout_jit_aot_passes": 14,
+    "scope": "implementation-head report and CI, not fresh local merged-tree execution"
+  },
+  "attributed_performance": {
+    "tomllib_three_parses_42kb_instructions": {"pr_head_millions": 148.6, "main_millions": 149.6, "checksums_match": true},
+    "tomllib_twenty_parses_heap_mib": {"pr_head": 36.4, "main": 35.4},
+    "typed_list_of_dict_any_microbenchmark_instructions_millions": {"pr_head": 8.2, "main": 4.4, "ratio": 1.9},
+    "caveat": "bounded PR-attributed workloads; no general compiler/runtime performance or memory conclusion"
+  },
+  "compatibility_assessment": {
+    "measured_gain": "four retained dynamic-container programs newly emit hosted IR; all seven new CPython recordings match",
+    "regression": "fresh keys() and items() views from dict[str, Any] no longer convert to declared typed list consumers",
+    "imports": "byte-identical 148/460 normalized results on the same pinned inventory and overlay",
+    "generalization_limit": "dynamic Any container layout support does not establish general NumPy or PyPI compatibility"
+  },
+  "limitations": [
+    "LLVM 18 and clang are unavailable locally; all 14 selected native setup attempts failed before program compilation.",
+    "The 32 external workflow jobs and attributed native/performance results apply to the implementation-head tree, not the post-#668 merged tree.",
+    "Hosted IR emission does not execute JIT/AOT code and cannot replace native or GC-stress validation.",
+    "No fresh local fixed-point build, full make verify, port, package, upstream-suite, CPython regrtest or general performance/memory run completed."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

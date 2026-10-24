@@ -1,0 +1,159 @@
+{
+  "status": "partial-hosted-plus-identical-tree-ci",
+  "date": "2026-10-20",
+  "source_revision": "387059bac6f2eec2940d66cdaa435e3132e92890",
+  "previous_audit_source": "3d48ce8c8f24fe15f42ba3fa0491fabdd6e7fa15",
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9",
+  "merged_prs": [
+    {
+      "number": 794,
+      "url": "https://github.com/den-run-ai/pystachy/pull/794",
+      "merge_commit": "387059bac6f2eec2940d66cdaa435e3132e92890",
+      "head": "afcaca9059a5ad453465c89191d26a929164f1c1",
+      "tree": "97c5f199045a949d02737d5bbfa549ffbd443eea",
+      "head_is_ancestor_of_merge": true,
+      "head_tree_equals_merge_tree": true,
+      "merged_at_utc": "2026-10-21T00:32:50Z",
+      "scope": "MappingProxyType plus tuple, dynamic-Any tuple, GenericAlias annotation, class-union and exception __module__ compiler/runtime/library changes"
+    }
+  ],
+  "environment": {
+    "hosted_python": "CPython 3.12.14",
+    "hosted_python_executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "platform": "Linux 6.18.55 x86_64",
+    "pinned_python_3_13_16_available": false,
+    "llvm_18_toolchain_available": false,
+    "local_native_jit_aot_available": false
+  },
+  "source_scope": {
+    "first_parent_merges_since_previous_audit_source": [794],
+    "diff": "71 files changed, 1218 insertions(+), 77 deletions(-)",
+    "key_sha256": {
+      "runtime.c": "2f52ad2bac7a48700de14a2fa61a1a2c3718215d2578ac697052e5661faff964",
+      "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+      "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+      "lib/re/__init__.py": "301df0312610d7ce92f7898db27b5e67e0ddf1cae07a2ed41773638919093e66",
+      "src/pystachy_compiler/declarations.py": "cdc53366c5c6e27064cc73054ca86d78c285fd9a416e4676f97cc99a705d2271",
+      "src/pystachy_compiler/expressions.py": "5b7c52c27f20c347f91706c72866f5a7eae40dc6c72d1807102464660651b6a3",
+      "src/pystachy_compiler/exceptions.py": "236f12919960ffa2ad7e83ff6d98314087b36248d8c1e33dcfb980fac6265eb3",
+      "src/pystachy_compiler/gen.py": "19285b710b950257c3518655c7b7afd315d7d2991538896e45064da5ebc8f961",
+      "src/pystachy_compiler/reflection.py": "58cee509c4a28b848686de1b57d8bcfea94dfd466c27d7b80f1fffbaac37860d",
+      "src/pystachy_compiler/specs.py": "8597cc7fb284e71926c53a3221a2221190505b1bd41431fac629b4da43348c86",
+      "tests/programs/library/lib_types_mappingproxy.py": "6ffd6f6cbd24e7fc3ebff4159d7cec9a40972b08e8a8105df51dd12293631af1",
+      "tests/programs/containers/tuple_runtime_concat.py": "2bbc360126658bcdec6a1034caab0bb8767a4144fbd4906f4f18288296fa8ad5",
+      "tests/programs/inference/dynany_tuple_items.py": "69b23d2fcd6c0cfee62d9b0db3240e5fe83ca6abdba9390832da6edff0c75bef",
+      "tests/programs/classes/inheritance_union_nested.py": "a34c528c090428d49a3cfe7a832489440cc753b66ceee544d476d77ff72889e1",
+      "tests/programs/exceptions/exc_class_module_assign.py": "a06ed984fe5509220cb0a78b299685a03a4d4f9a12b45f2063a279191c82d4af",
+      "tests/deviations/lib_types_mappingproxy_eq_other.py": "73a89f8d53c62a16ae0b361ca3ced90ea357f3fcfd24e2a7b2e0b1bfee4dfb01"
+    }
+  },
+  "commands": [
+    "git merge-base --is-ancestor afcaca9059a5ad453465c89191d26a929164f1c1 387059bac6f2eec2940d66cdaa435e3132e92890",
+    "env -i PATH=$PATH [PYTHONPATH=PATH_SIDECAR] python3 PROGRAM.py a1 a2; compare stdout, final stderr line and exit marker with sidecars",
+    "PYSTACHY_IRCHECK=1 PYSTACHY_HOME= PYSTACHY_PATH=PATH_SIDECAR python3 -B -m pystachy ir FILE.py -o /dev/null",
+    "PYSTACHY_JOBS=1 tests/run.sh 'python3 -B -m pystachy' 'jit aot' SELECTED_6_REJECTIONS",
+    "python3 -B -m unittest -v tools.test_typed_comparisons tools.test_typed_module_lowering tools.test_typed_fields tools.test_typed_complete",
+    "PYSTACHY_IRCHECK=1 PYSTACHY_HOME= python3 -B -m pystachy ir RETAINED_CONSUMER.py -o /dev/null"
+  ],
+  "measurements": {
+    "new_positive_references": {
+      "selection": "14 new or moved positive programs for MappingProxyType, runtime tuples, dynamic-Any tuple items, GenericAlias annotations, class-family unions and exception __module__",
+      "result": "14/14 CPython 3.12.14 stdout, final stderr line and exit recordings matched",
+      "boundary": "This is not a pinned CPython 3.13.16 recording regeneration."
+    },
+    "new_hosted_ir": {
+      "selection": "14 positive programs plus three documented-deviation programs",
+      "result": "17/17 emitted hosted IR with PYSTACHY_IRCHECK=1"
+    },
+    "changed_rejections": {
+      "selection": [
+        "tests/errors/containers/tuple_runtime_concat_types.py",
+        "tests/errors/exceptions/exc_class_module_assign_int.py",
+        "tests/errors/library/lib_types_mappingproxy_field.py",
+        "tests/errors/library/lib_types_mappingproxy_setitem.py",
+        "tests/errors/reflection/types_generic_alias_subscript.py",
+        "tests/errors/reflection/types_unsupported_name.py"
+      ],
+      "result": "6/6 exact expected diagnostics passed through tests/run.sh",
+      "boundary": "Expected compile-time rejections do not execute native JIT/AOT despite the runner mode label."
+    },
+    "targeted_unit_tests": {
+      "selection": "typed comparisons, module lowering, fields and typed-completeness tests",
+      "result": "25/25 passed"
+    },
+    "retained_adapted_consumers": {
+      "programs": [
+        "tests/programs/apps/port_iniconfig_parse.py",
+        "tests/programs/apps/port_tomli_w_tables.py",
+        "tests/programs/apps/port_roman_convert.py",
+        "tests/programs/apps/port_pylev_imports.py",
+        "tests/programs/upstream/upstream_textwrap_wrap.py",
+        "tests/programs/library/lib_re_ignorecase_repeat.py"
+      ],
+      "hosted_result": "6/6 emitted checked hosted IR; 6/6 CPython 3.12.14 recordings matched",
+      "boundary": "These are adapted consumer programs, not upstream suites or native port passes."
+    },
+    "library_initialization_controls": {
+      "re_program": "tests/programs/library/lib_re_ignorecase_repeat.py: 55138 to 55346 raw hosted IR lines (+208)",
+      "types_program": "tests/programs/reflection/types_generic_alias.py: 658 to 694 raw hosted IR lines (+36)",
+      "tomli_w_control": "tests/programs/apps/port_tomli_w_tables.py: byte-identical hosted IR, 10653 lines in both trees",
+      "boundary": "Raw hosted LLVM-text lines are not runtime, compile-time, binary-size or memory measurements."
+    }
+  },
+  "historical_identical_tree_ci": {
+    "head": "afcaca9059a5ad453465c89191d26a929164f1c1",
+    "ci": "https://github.com/den-run-ai/pystachy/actions/runs/39520378605",
+    "ci_jobs": "27/27 successful",
+    "installation": "https://github.com/den-run-ai/pystachy/actions/runs/39520379785",
+    "installation_jobs": "3/3 successful",
+    "lint": "https://github.com/den-run-ai/pystachy/actions/runs/39520378614",
+    "packages": "https://github.com/den-run-ai/pystachy/actions/runs/39520378556",
+    "all_workflows_success": true,
+    "boundary": "These workflows ran on the exact implementation tree but are not fresh local native execution."
+  },
+  "review": {
+    "threads": "8/8 resolved",
+    "final_reviewed_commit": "bdad1b1657",
+    "final_head_reviewed": false,
+    "final_head_note": "afcaca90 fixes the final nested-union finding and has exact-tree CI, but no sixth Codex review was requested.",
+    "accepted_residuals": [
+      "Replacing an exception class's __module__ with a distinct string retains the old native name buffer; assigning the same name reuses it.",
+      "MappingProxyType equality with a custom reflected object does not delegate as CPython does and remains a documented deviation."
+    ]
+  },
+  "observed_compatibility_changes": [
+    "types.MappingProxyType now supplies a live read-only mapping view with opaque backing storage for the tested surface.",
+    "Runtime-length tuple concatenation and += compile for compatible item types, including fixed tuples and optional-None widening.",
+    "Opt-in dynamic Any tuples convert item by item while preserving tuple identity and aliases in the retained cases.",
+    "GenericAlias class subscripts work in annotations, including re.Pattern[str] and re.Match[str].",
+    "Class/subclass unions, including nested union aliases, prune to the base class.",
+    "Exception classes accept string __module__ assignment while explicitly declared non-string fields retain ordinary class-variable behavior."
+  ],
+  "remaining_tracker_783_boundaries": [
+    "sets of tuples containing a runtime-length tuple",
+    "Match.group() of the whole match remains typed str | None",
+    "function-level imports in imported modules",
+    "tuples of classes held in variables",
+    "binary files for tomllib.load(fp) (#493)",
+    "list.extend(runtime-length tuple)",
+    "MappingProxyType reflected custom equality deviation",
+    "general class-attribute assignment remains #244"
+  ],
+  "source_snapshots": {
+    "pre_run_tracked_and_untracked": "empty",
+    "pre_run_ignored": "empty",
+    "post_run_tracked_and_untracked": "empty",
+    "post_run_ignored": "build/, port CPython bytecode caches and tests/excmod/__pycache__; generated after the clean pre-run snapshot"
+  },
+  "incomplete_attempts": [
+    "Pinned CPython 3.13.16 and LLVM 18 were not present, so no local native JIT/AOT, AOT build, GC-stress or native adapted-port check ran.",
+    "The metadata-enabled isolated import sweep was not rerun because the retained CPython 3.13.16 interpreter/inventory and LLVM 18 native compiler were unavailable; historical totals are not presented as fresh.",
+    "PR 795 is stacked on this work but was not merged at this checkpoint, so tomllib.loads() is not counted as shipped here."
+  ],
+  "limits": [
+    "No fresh local native JIT/AOT, GC-stress, metadata import sweep, native adapted-port benchmark, full upstream suite or CPython regrtest completed.",
+    "The exact-tree CI matrix includes native, hosted, GC, UBSan, Python-free, optimization-off, contracts, runtime-cache, benchmark and final make verify gates, but remains historical external evidence.",
+    "General NumPy, PyPI and tomllib compatibility does not follow from these focused compiler/library probes.",
+    "The latest fully evaluated main marker remains 3c63613b9ad4748dfc030fc923f7704e26b21ba9."
+  ]
+}

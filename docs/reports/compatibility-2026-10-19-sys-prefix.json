@@ -1,0 +1,1007 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-19",
+  "status": "completed",
+  "source_revision": "633cdf1aeceae65cb9fa94d420ae50562e6c1b7a",
+  "previous_evaluated_main": "837843bcc82ae088ad92b61c8fdb0e6eeb37c2ed",
+  "compiler_build_source": "633cdf1aeceae65cb9fa94d420ae50562e6c1b7a",
+  "compiler_sha256": "18382171c96a1ce0ee6048d868439b4a823b9abfa36138d941c1e890d07e2154",
+  "history": [
+    "633cdf1aeceae65cb9fa94d420ae50562e6c1b7a Merge pull request #719 from den-run-ai/claude/sys-prefix"
+  ],
+  "changed_files": [
+    "docs/language/compatibility.md",
+    "src/pystachy_compiler/builtins.py",
+    "src/pystachy_compiler/driver.py",
+    "src/pystachy_compiler/gen.py",
+    "src/pystachy_compiler/specs.py",
+    "tests/sys_prefix.out",
+    "tests/sys_prefix.py"
+  ],
+  "merged_prs": [
+    719
+  ],
+  "implementation_ci": {
+    "head": "3bd4fd4db85e9df28333f30a9b3e2eb860e13a83",
+    "equals_evaluated_main": false,
+    "workflow_runs": [
+      {
+        "id": 39338141951,
+        "name": "Lint",
+        "status": "completed",
+        "conclusion": "success",
+        "run_number": 1275,
+        "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39338141951/jobs",
+        "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39338141951/logs",
+        "workflow_id": 380178546
+      },
+      {
+        "id": 39338142061,
+        "name": "Packages",
+        "status": "completed",
+        "conclusion": "success",
+        "run_number": 712,
+        "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39338142061/jobs",
+        "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39338142061/logs",
+        "workflow_id": 384924720
+      },
+      {
+        "id": 39338142078,
+        "name": "Installation",
+        "status": "completed",
+        "conclusion": "success",
+        "run_number": 781,
+        "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39338142078/jobs",
+        "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39338142078/logs",
+        "workflow_id": 383819777
+      },
+      {
+        "id": 39338142015,
+        "name": "CI",
+        "status": "completed",
+        "conclusion": "success",
+        "run_number": 1421,
+        "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39338142015/jobs",
+        "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39338142015/logs",
+        "workflow_id": 377796772
+      }
+    ]
+  },
+  "incomplete_attempts": [
+    {
+      "result": {
+        "command": [
+          "/root/.local/bin/python3.13",
+          "tools/import_sweep.py",
+          "./pystachy",
+          "-j",
+          "2",
+          "--metadata",
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/imports-metadata.json",
+          "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+          "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/imports.json"
+        ],
+        "environment": {},
+        "returncode": 2,
+        "stdout": "",
+        "stderr": "usage: import_sweep.py [--stubs [--only NAME,...]] [-j N] [--metadata META.json] [COMPILER] [LIBDIR] [OUT.json]\nimport_sweep.py: error: unrecognized arguments: /root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13 /workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/imports.json\n",
+        "wall_seconds": 0.043464193997351686,
+        "expected_exit": 0
+      },
+      "outcome": "Argument parsing rejected intermixed positional/options before any module was tested. Corrected to place options before positional compiler/stdlib/output arguments; full sweeps repeated."
+    }
+  ],
+  "old_compiler": {
+    "source_revision": "b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1",
+    "sha256": "12288231f46f77db1034d1afd59647fabe13e61452fd230577bbc6223897ff84",
+    "relation": "Implementation identical at preceding evaluated main 837843bc; #747 was tests only."
+  },
+  "environment": {
+    "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+    "python_executable": "/root/.local/bin/python3.13",
+    "llvm": "18.1.3",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "workers_per_group": 2,
+    "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719",
+    "inherited_options": "Remove PYSTACHY_/COVERAGE_ options; explicit overrides recorded. Concurrent shared-host checks; no performance inference."
+  },
+  "bootstrap": {
+    "compiler_ir_lines": 645062,
+    "runtime_ir_lines": 18851,
+    "ir_sha256": {
+      "stage1.ll": "e86015b82b8eaa33e403c21ad2d8a80dd6e3d33be508609aa60901f49ae47240",
+      "stage2.ll": "e86015b82b8eaa33e403c21ad2d8a80dd6e3d33be508609aa60901f49ae47240",
+      "stage3.ll": "e86015b82b8eaa33e403c21ad2d8a80dd6e3d33be508609aa60901f49ae47240",
+      "rt1.ll": "a5c6c22ac843e25b17d5e0f85f0f89263cd626c16ffc5755dd78393f011c870d",
+      "rt2.ll": "a5c6c22ac843e25b17d5e0f85f0f89263cd626c16ffc5755dd78393f011c870d",
+      "rt3.ll": "a5c6c22ac843e25b17d5e0f85f0f89263cd626c16ffc5755dd78393f011c870d"
+    }
+  },
+  "selection": [
+    "tests/sys_float_info.py",
+    "tests/sys_prefix.py",
+    "tests/sys_version_info.py",
+    "tests/sys_version_info_identity.py",
+    "tests/sys_warnoptions.py",
+    "tests/lib_opcode.py",
+    "tests/upstream_opcode.py",
+    "tests/deviations/lib_opcode_specialization.py",
+    "tests/errors/lib_opcode_float.py",
+    "tests/errors/lib_opcode_jump.py",
+    "tests/errors/lib_opcode_oparg.py"
+  ],
+  "fixture_sha256": {
+    "tests/sys_float_info.py": "4becdbb8a3f6ea661e086f80cb9a22750b312f21f36d36b9e20bb8cf978ff61d",
+    "tests/sys_float_info.out": "b652f8b2020966410030701df7e1ddf1b29d77c1043fe527925cde4fe910bf2f",
+    "tests/sys_float_info.err": "c83eb9ab89b05112a0a4bb7352de72c52cd66d3ae462ec227212387e2b260fcb",
+    "tests/sys_prefix.py": "73b0651d8d3b29d96a0b3bd2f499ebcd8bae710680fe7d4f0a138777c38f49a8",
+    "tests/sys_prefix.out": "26642bc363e318cdbe991a4d5839471b8ac38ed644e406be27594d6443901ff8",
+    "tests/sys_version_info.py": "66eeada96b57929dcc18bf8cac625a318efe13f24d3287cae4658e9490348ca9",
+    "tests/sys_version_info.out": "1abbb34db85a73e90eee9b99b4a71b72929a7984c94f1bd2e2f6ae62e86d5fea",
+    "tests/sys_version_info_identity.py": "ea933b71ad6dec687bfe59ee557826270725354a9d3824f0190dc153e32a4572",
+    "tests/sys_version_info_identity.out": "1fd43b0f1f659175bfdc6ecadd4e188517087c113d21cf6a342d8e4dd3c1a0b3",
+    "tests/sys_warnoptions.py": "dca767efc5da1973fb74550cf7e60d271e396e577c6e8e1e638485d61333f931",
+    "tests/sys_warnoptions.out": "ec36bc729d6bffe5c529daaddde5d8e711e6723750557a8f6204ee75b00ec64c",
+    "tests/lib_opcode.py": "5f6a43d802d882f2ff05fa89804092834771ef174e636152720d9914cd054d40",
+    "tests/lib_opcode.out": "4a00c5b9d4a2ebaa437c4116ffbfdac3cb8d1ceab9cf638f803e63fc40de3281",
+    "tests/upstream_opcode.py": "7e07cf61f673f6b3e35d1327ece1cf90eceac648a6f61883561bc262cc17da06",
+    "tests/upstream_opcode.out": "35f31794b0ae351f38cb9ac62fefa06cf9c7e8c2f57c9c0f1399205ea82f7d0d",
+    "tests/deviations/lib_opcode_specialization.py": "b8951cbcd24f4eb8c903ac170e3d0ccbd01d59bd30471d1319368f18dbb81828",
+    "tests/deviations/lib_opcode_specialization.out": "a6a0883009c0809ba736b116bba5072c44eb52b93890b3d4a7ba703a9b95a6cb",
+    "tests/errors/lib_opcode_float.py": "a0dec0e1bb8645ea3d71d18345236f346cbef7cf88c45f6826a00335f25a602c",
+    "tests/errors/lib_opcode_jump.py": "b837a11633f7be5e91f331b69ea3e28985bb38df2d0aebdb4a9e7dce58ff36cd",
+    "tests/errors/lib_opcode_oparg.py": "3c8767ba0a59fcae801d79fe8d1bd249e360c1acc3d5dbe2578ee30294930b28"
+  },
+  "tools_sha256": {
+    "tests/run.sh": "f808375aac9ca707ca794cd398bf939163728366ef6c380f6568cb0e531fef8e",
+    "tools/check_ir.sh": "7f339c6cb018031e0d88097180cd7074d48ce04c92c439f05e804c745b49f2f0",
+    "tools/import_sweep.py": "c610fa1ecc9effc949939810131b268000131a8da499efebddf10fcc80a1a370"
+  },
+  "commands": {
+    "build": {
+      "command": [
+        "make",
+        "PY=/root/.local/bin/python3.13"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "mkdir -p build\n/root/.local/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1\nbuild/pystachy1 build pystachy.py -o build/pystachy2\n/root/.local/bin/python3.13 pystachy.py ir pystachy.py -o build/stage1.ll\nbuild/pystachy1 ir pystachy.py -o build/stage2.ll\nbuild/pystachy2 ir pystachy.py -o build/stage3.ll\ncmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll\nfixed point: stage1 == stage2 == stage3 (645062 lines of IR)\n/root/.local/bin/python3.13 pystachy.py rt runtime.py -o build/rt1.ll\nbuild/pystachy1 rt runtime.py -o build/rt2.ll\nbuild/pystachy2 rt runtime.py -o build/rt3.ll\ncmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll\nfixed point: runtime.py's IR, rt1 == rt2 == rt3 (18851 lines)\ncp build/pystachy2 pystachy\n",
+      "stderr": "",
+      "wall_seconds": 138.4341460459982,
+      "expected_exit": 0
+    },
+    "gc": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/sys_float_info.py",
+        "tests/sys_prefix.py",
+        "tests/sys_version_info.py",
+        "tests/sys_version_info_identity.py",
+        "tests/sys_warnoptions.py",
+        "tests/lib_opcode.py",
+        "tests/upstream_opcode.py",
+        "tests/deviations/lib_opcode_specialization.py",
+        "tests/errors/lib_opcode_float.py",
+        "tests/errors/lib_opcode_jump.py",
+        "tests/errors/lib_opcode_oparg.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "selected 11 cases\n19 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 15.436924695000926,
+      "expected_exit": 0
+    },
+    "hosted": {
+      "command": [
+        "tests/run.sh",
+        "/root/.local/bin/python3.13 -m pystachy",
+        "jit aot",
+        "tests/sys_float_info.py",
+        "tests/sys_prefix.py",
+        "tests/sys_version_info.py",
+        "tests/sys_version_info_identity.py",
+        "tests/sys_warnoptions.py",
+        "tests/lib_opcode.py",
+        "tests/upstream_opcode.py",
+        "tests/deviations/lib_opcode_specialization.py",
+        "tests/errors/lib_opcode_float.py",
+        "tests/errors/lib_opcode_jump.py",
+        "tests/errors/lib_opcode_oparg.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 11 cases\n19 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 14.398785684999893,
+      "expected_exit": 0
+    },
+    "imports-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/imports-metadata.json",
+        "./pystachy",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/imports.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "143 of 468 modules import: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins _weakrefset abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri stringprep tempfile typing wave wsgiref wsgiref.headers xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n54 left out, as lib/ has _markupbase, _opcode_metadata, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib: _markupbase _opcode_metadata bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser\n\n   56  imports the missing module _io\n   54  cannot import name 'getweakrefcount' from '_weakref'\n   26  imports the missing module _signal\n   16  cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dic\n   13  'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(st\n   11  imports the missing module _ctypes\n    9  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n    9  imports the missing module pyexpat\n    8  imports the missing module _socket\n    7  imports the missing module _contextvars\n    7  imports the missing module _bz2\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    5  imports the missing module termios\n    5  imports the missing module _dbm\n    4  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    4  unsupported module attribute os.O_RDONLY\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str]\n    3  imports the missing module _tokenize\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    2  imports the missing module msvcrt\n    2  imports the missing module _operator\n    2  unsupported type annotation\n",
+      "stderr": "",
+      "wall_seconds": 28.60939717000292,
+      "expected_exit": 0
+    },
+    "ir": {
+      "command": [
+        "tools/check_ir.sh",
+        "./pystachy",
+        "pystachy.py",
+        "runtime.py",
+        "tests/sys_float_info.py",
+        "tests/sys_prefix.py",
+        "tests/sys_version_info.py",
+        "tests/sys_version_info_identity.py",
+        "tests/sys_warnoptions.py",
+        "tests/lib_opcode.py",
+        "tests/upstream_opcode.py",
+        "tests/deviations/lib_opcode_specialization.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "the IR check and llvm-as accept the IR of 10 programs\n",
+      "stderr": "",
+      "wall_seconds": 8.775396215998626,
+      "expected_exit": 0
+    },
+    "native": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/sys_float_info.py",
+        "tests/sys_prefix.py",
+        "tests/sys_version_info.py",
+        "tests/sys_version_info_identity.py",
+        "tests/sys_warnoptions.py",
+        "tests/lib_opcode.py",
+        "tests/upstream_opcode.py",
+        "tests/deviations/lib_opcode_specialization.py",
+        "tests/errors/lib_opcode_float.py",
+        "tests/errors/lib_opcode_jump.py",
+        "tests/errors/lib_opcode_oparg.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "selected 11 cases\n19 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 14.574400567998964,
+      "expected_exit": 0
+    },
+    "noopt": {
+      "command": [
+        "tests/run.sh",
+        "./pystachy",
+        "jit aot",
+        "tests/sys_float_info.py",
+        "tests/sys_prefix.py",
+        "tests/sys_version_info.py",
+        "tests/sys_version_info_identity.py",
+        "tests/sys_warnoptions.py",
+        "tests/lib_opcode.py",
+        "tests/upstream_opcode.py",
+        "tests/deviations/lib_opcode_specialization.py",
+        "tests/errors/lib_opcode_float.py",
+        "tests/errors/lib_opcode_jump.py",
+        "tests/errors/lib_opcode_oparg.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "selected 11 cases\n19 passed, 0 failed\n",
+      "stderr": "",
+      "wall_seconds": 16.020664293002483,
+      "expected_exit": 0
+    },
+    "probe-cpython": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu\n/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu\n/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu\n/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu\nTrue True True True\n/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/share/locale\n",
+      "stderr": "",
+      "wall_seconds": 0.009808056998735992,
+      "expected_exit": 0
+    },
+    "probe-gc-aot": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe-gc"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-686",
+        "PYSTACHY_GC_STRESS": "1"
+      },
+      "returncode": 0,
+      "stdout": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\nTrue True True True\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719/share/locale\n",
+      "stderr": "",
+      "wall_seconds": 0.0016053899998951238,
+      "expected_exit": 0
+    },
+    "probe-gc-build": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe-gc"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.46884074400077225,
+      "expected_exit": 0
+    },
+    "probe-gc-jit": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py"
+      ],
+      "environment": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "returncode": 0,
+      "stdout": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\nTrue True True True\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719/share/locale\n",
+      "stderr": "",
+      "wall_seconds": 0.04969955100023071,
+      "expected_exit": 0
+    },
+    "probe-noopt-aot": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe-noopt"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-686"
+      },
+      "returncode": 0,
+      "stdout": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\nTrue True True True\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719/share/locale\n",
+      "stderr": "",
+      "wall_seconds": 0.0021941980012343265,
+      "expected_exit": 0
+    },
+    "probe-noopt-build": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe-noopt"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.45373709100022097,
+      "expected_exit": 0
+    },
+    "probe-noopt-jit": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py"
+      ],
+      "environment": {
+        "PYSTACHY_OPT": "-all"
+      },
+      "returncode": 0,
+      "stdout": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\nTrue True True True\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719/share/locale\n",
+      "stderr": "",
+      "wall_seconds": 7.46806671900049,
+      "expected_exit": 0
+    },
+    "probe-normal-aot": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe-normal"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-686"
+      },
+      "returncode": 0,
+      "stdout": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\nTrue True True True\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719/share/locale\n",
+      "stderr": "",
+      "wall_seconds": 0.001356695000140462,
+      "expected_exit": 0
+    },
+    "probe-normal-build": {
+      "command": [
+        "./pystachy",
+        "build",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py",
+        "-o",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe-normal"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "wall_seconds": 0.41520149300049525,
+      "expected_exit": 0
+    },
+    "probe-normal-jit": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\nTrue True True True\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719/share/locale\n",
+      "stderr": "",
+      "wall_seconds": 7.322971403998963,
+      "expected_exit": 0
+    },
+    "probe-old": {
+      "command": [
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-686/pystachy",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py",
+        "-o",
+        "/dev/null"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/3ba735e28fa7/pystachy-audit-686"
+      },
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py:3: error: cannot import name 'prefix' from 'sys': Pystachy's sys module has no 'prefix'\n",
+      "wall_seconds": 0.0019784329997492023,
+      "expected_exit": 1
+    },
+    "probe-symlink": {
+      "command": [
+        "./pystachy",
+        "run",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/probe.py"
+      ],
+      "environment": {
+        "PYSTACHY_HOME": "/tmp/prefix-home-ndad4er5/home",
+        "PYSTACHY_PATH": "/workspace/scratch/3ba735e28fa7/pystachy-audit-686/lib"
+      },
+      "returncode": 0,
+      "stdout": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\nTrue True True True\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719/share/locale\n",
+      "stderr": "",
+      "wall_seconds": 0.057299423999211285,
+      "expected_exit": 0
+    },
+    "reference": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tests/sys_prefix.py",
+        "a1",
+        "a2"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "True\nTrue True str\nTrue True True\n",
+      "stderr": "",
+      "wall_seconds": 0.010119751997990534,
+      "expected_exit": 0
+    },
+    "runtime": {
+      "command": [
+        "make",
+        "check-runtime",
+        "PY=/root/.local/bin/python3.13"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "/root/.local/bin/python3.13 tools/check_runtime.py\n457 RUNTIME entries, 70 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (171 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python\n",
+      "stderr": "",
+      "wall_seconds": 10.330293825001718,
+      "expected_exit": 0
+    },
+    "stubs-command": {
+      "command": [
+        "/root/.local/bin/python3.13",
+        "tools/import_sweep.py",
+        "-j",
+        "2",
+        "--metadata",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/stubs-metadata.json",
+        "--stubs",
+        "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/stubs.json"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "stubs for 21 modules built into CPython: _io _operator _posixsubprocess _signal _socket _symtable _sysconfig _tokenize _tracemalloc _typing _warnings array fcntl gc grp marshal posix pwd pyexpat select zlib\n\n145 of 468 modules import with the stubs: _collections_abc _colorize _compat_pickle _osx_support _py_abc _pyrepl _pyrepl.commands _pyrepl.input _pyrepl.keymap _pyrepl.pager _pyrepl.types _sitebuiltins _weakrefset abc base64 concurrent dataclasses email email._parseaddr email.base64mime email.encoders email.errors email.iterators email.mime email.quoprimime email.utils encodings encodings.aliases encodings.ascii encodings.base64_codec encodings.charmap encodings.cp037 encodings.cp1006 encodings.cp1026 encodings.cp1125 encodings.cp1140 encodings.cp1250 encodings.cp1251 encodings.cp1252 encodings.cp1253 encodings.cp1254 encodings.cp1255 encodings.cp1256 encodings.cp1257 encodings.cp1258 encodings.cp273 encodings.cp424 encodings.cp437 encodings.cp500 encodings.cp720 encodings.cp737 encodings.cp775 encodings.cp850 encodings.cp852 encodings.cp855 encodings.cp856 encodings.cp858 encodings.cp860 encodings.cp861 encodings.cp862 encodings.cp863 encodings.cp865 encodings.cp866 encodings.cp874 encodings.cp875 encodings.hex_codec encodings.hp_roman8 encodings.idna encodings.iso8859_1 encodings.iso8859_10 encodings.iso8859_11 encodings.iso8859_13 encodings.iso8859_14 encodings.iso8859_15 encodings.iso8859_16 encodings.iso8859_2 encodings.iso8859_3 encodings.iso8859_4 encodings.iso8859_5 encodings.iso8859_6 encodings.iso8859_7 encodings.iso8859_8 encodings.iso8859_9 encodings.koi8_r encodings.koi8_t encodings.koi8_u encodings.kz1048 encodings.latin_1 encodings.mac_arabic encodings.mac_croatian encodings.mac_cyrillic encodings.mac_farsi encodings.mac_greek encodings.mac_iceland encodings.mac_latin2 encodings.mac_roman encodings.mac_romanian encodings.mac_turkish encodings.palmos encodings.ptcp154 encodings.punycode encodings.quopri_codec encodings.raw_unicode_escape encodings.rot_13 encodings.tis_620 encodings.undefined encodings.unicode_escape encodings.utf_16 encodings.utf_16_be encodings.utf_16_le encodings.utf_32 encodings.utf_32_be encodings.utf_32_le encodings.utf_7 encodings.utf_8 encodings.utf_8_sig encodings.uu_codec encodings.zlib_codec fileinput graphlib linecache mimetypes netrc ntpath nturl2path os pydoc_data pydoc_data.module_docs pydoc_data.topics quopri stringprep tempfile timeit typing wave wsgiref wsgiref.headers xml xml.dom xml.dom.NodeFilter xml.dom.domreg xml.dom.minicompat xml.etree xml.parsers xmlrpc\n\n54 left out, as lib/ has _markupbase, _opcode_metadata, bisect, codecs, collections, colorsys, contextlib, csv, curses, datetime, difflib, fnmatch, functools, genericpath, getopt, heapq, html, io, json, keyword, opcode, operator, posixpath, random, re, shlex, stat, statistics, string, struct, textwrap, this, token, types, urllib: _markupbase _opcode_metadata bisect codecs collections colorsys contextlib csv curses curses.ascii curses.has_key curses.panel curses.textpad datetime difflib fnmatch functools genericpath getopt heapq html html.entities html.parser io json json.decoder json.encoder json.scanner json.tool keyword opcode operator posixpath random re re._casefix re._compiler re._constants re._parser shlex stat statistics string struct textwrap this token types urllib urllib.error urllib.parse urllib.request urllib.response urllib.robotparser\n\n143 of them need no stub. The stubs the others need (modules needing it; needing only it):\n    1     1  gc\n    1     1  zlib\n\n   99  cannot import name 'getweakrefcount' from '_weakref'\n   31  'socketpair' is bound both as a variable and by an import (not supported)\n   16  cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dic\n   13  'm' is bound both as a variable and by an import (not supported) (compiling warnings._getcategory(st\n   13  class enum.FlagBoundary is not supported: unsupported base class: single inheritance requires a prev\n   11  imports the missing module _ctypes\n   10  imports the missing module _bz2\n    9  cannot infer the type of 'importlib._bootstrap._bootstrap_external' from None; annotate it (importli\n    7  imports the missing module _contextvars\n    7  imports the missing module _codecs_jp\n    7  imports the missing module _codecs_iso2022\n    7  imports the missing module urllib.request\n    6  imports the missing module termios\n    5  imports the missing module _dbm\n    4  dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not <bui\n    4  unsupported module attribute os.O_RDONLY\n    4  imports the missing module _codecs_cn\n    4  types.MappingProxyType is not supported: of the types module, Pystachy has only GenericAlias, for a \n    4  imports the missing module _zoneinfo\n    3  redefinition of 'locale.localeconv' is not supported\n    3  cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str]\n    3  class email._encoded_words._QByteMap is not supported: unsupported base class: single inheritance re\n    3  expected int, got None\n    3  imports the missing module _codecs_kr\n    3  imports the missing module _sqlite3\n    2  imports the missing module msvcrt\n    2  types.MethodType is not supported: of the types module, Pystachy has only GenericAlias, for a class \n    2  only 'del list[i]' and 'del dict[key]' are supported\n    2  unsupported type annotation\n    2  imports the missing module _codecs_tw\n",
+      "stderr": "",
+      "wall_seconds": 174.72990460300207,
+      "expected_exit": 0
+    },
+    "venv-reference": {
+      "command": [
+        "/workspace/scratch/cca24c0adfdd/devtools/bin/python",
+        "tests/sys_prefix.py",
+        "a1",
+        "a2"
+      ],
+      "environment": {},
+      "returncode": 0,
+      "stdout": "False\nTrue True str\nTrue True True\n",
+      "stderr": "",
+      "wall_seconds": 0.009854290998191573,
+      "expected_exit": 0
+    }
+  },
+  "probes": {
+    "source": "import sys\nimport os\nfrom sys import prefix, base_prefix, exec_prefix, base_exec_prefix\nprint(sys.prefix)\nprint(sys.base_prefix)\nprint(sys.exec_prefix)\nprint(sys.base_exec_prefix)\nprint(prefix == sys.prefix, base_prefix == sys.base_prefix, exec_prefix == sys.exec_prefix, base_exec_prefix == sys.base_exec_prefix)\nprint(os.path.join(sys.base_prefix, \"share\", \"locale\"))\n",
+    "expected_native": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719\nTrue True True True\n/workspace/scratch/3ba735e28fa7/pystachy-audit-719/share/locale\n",
+    "aot_runtime_home_ignored": true,
+    "symlink_resolved": true
+  },
+  "oracle": {
+    "programs": 3157,
+    "identical": 3156,
+    "changed": [
+      {
+        "source": "tests/sys_prefix.py",
+        "old": {
+          "exit": 1,
+          "message": "tests/sys_prefix.py:5: error: cannot import name 'base_prefix' from 'sys': Pystachy's sys module has no 'base_prefix'\n",
+          "ir_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "new": {
+          "exit": 0,
+          "message": "",
+          "ir_sha256": "7c2700dab37c00c4ab70ff6759152da410422d63f2fdaeeacac396c80dece6d6"
+        }
+      }
+    ],
+    "input_inventory_sha256": "e762038c268f86fe0f50c39233eab9fbfb34d36d5a25136ab8461d160269222c"
+  },
+  "stdlib": {
+    "path": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+    "inventory_sha256": "a0d5b7bc965af0a8cc1e27ff71911aa8bbdb03ca472c1cc11c24009b9e07d0c5",
+    "modules": 522,
+    "inventory_source": "compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256"
+  },
+  "imports": {
+    "imports": {
+      "metadata": {
+        "compiler": {
+          "kind": "executable",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/pystachy",
+          "sha256": "18382171c96a1ce0ee6048d868439b4a823b9abfa36138d941c1e890d07e2154"
+        },
+        "counts": {
+          "error": 325,
+          "excluded": 54,
+          "included": 468,
+          "ok": 143,
+          "ok_without_stubs": 143,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 28.545936377002363,
+        "mode": "import",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/imports.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "633cdf1aeceae65cb9fa94d420ae50562e6c1b7a",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [],
+        "timeout_s": 120,
+        "workers": 2
+      },
+      "result_sha256": "9fd2e4331e23a4f5413b3cb2812b392d1b383094edd639536a982d1d2794b442",
+      "previous_result_sha256": "6e8aadf35c2a4deac420680afd5e636fe61e8be1e760e3161a1a732b05aaab6c",
+      "previous_map_source": "Reconstruct through compatibility-2026-10-19-opcode.json; #747 changed tests only.",
+      "deltas": {
+        "argparse": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:62: error: unsupported module attribute sys.base_prefix",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:114: error: cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str],tuple[str,str,str]]: its items have different types"
+        },
+        "gettext": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:62: error: unsupported module attribute sys.base_prefix",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:114: error: cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str],tuple[str,str,str]]: its items have different types"
+        },
+        "optparse": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:62: error: unsupported module attribute sys.base_prefix",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:114: error: cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str],tuple[str,str,str]]: its items have different types"
+        },
+        "site": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/site.py:81: error: unsupported module attribute sys.prefix",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/site.py:715: error: unsupported module attribute sys.flags.no_site"
+        }
+      }
+    },
+    "stubs": {
+      "metadata": {
+        "compiler": {
+          "kind": "hosted_entrypoint",
+          "path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/pystachy.py",
+          "sha256": "542e1f9656f5cec853f9baf303d8eaa91a31f414c8e704a712f5d6078a82b917"
+        },
+        "counts": {
+          "error": 323,
+          "excluded": 54,
+          "included": 468,
+          "ok": 145,
+          "ok_without_stubs": 143,
+          "timeout": 0,
+          "total": 522
+        },
+        "duration_s": 174.6742604869978,
+        "mode": "stubs",
+        "overlay": {
+          "compiler_home": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719",
+          "excluded_modules": [
+            "_markupbase",
+            "_opcode_metadata",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "curses.ascii",
+            "curses.has_key",
+            "curses.panel",
+            "curses.textpad",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "html.entities",
+            "html.parser",
+            "io",
+            "json",
+            "json.decoder",
+            "json.encoder",
+            "json.scanner",
+            "json.tool",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "random",
+            "re",
+            "re._casefix",
+            "re._compiler",
+            "re._constants",
+            "re._parser",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib",
+            "urllib.error",
+            "urllib.parse",
+            "urllib.request",
+            "urllib.response",
+            "urllib.robotparser"
+          ],
+          "module_filter": "Python .py files except __main__, top-level __* names and names containing '-'.",
+          "policy": "Exclude top-level names supplied by the compiler home lib/; prefer those ports.",
+          "ported_names": [
+            "_markupbase",
+            "_opcode_metadata",
+            "_pyrandom",
+            "_pystachy_abc",
+            "_pystachy_ast",
+            "_pystachy_atexit",
+            "_pystachy_binascii",
+            "_pystachy_codecs",
+            "_pystachy_imp",
+            "_pystachy_iterators",
+            "_pystachy_itertools",
+            "_pystachy_opcode",
+            "_pystachy_opcode_db",
+            "_pystachy_range",
+            "_pystachy_string",
+            "_pystachy_struct",
+            "_pystachy_thread",
+            "_pystachy_types",
+            "_pystachy_unicodedata",
+            "_pystachy_unicodedata_db",
+            "_pystachy_unicodedata_names",
+            "_pystachy_weakref",
+            "bisect",
+            "codecs",
+            "collections",
+            "colorsys",
+            "contextlib",
+            "csv",
+            "curses",
+            "datetime",
+            "difflib",
+            "fnmatch",
+            "functools",
+            "genericpath",
+            "getopt",
+            "heapq",
+            "html",
+            "io",
+            "json",
+            "keyword",
+            "opcode",
+            "operator",
+            "posixpath",
+            "pyobj",
+            "random",
+            "re",
+            "shlex",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "textwrap",
+            "this",
+            "token",
+            "types",
+            "urllib"
+          ],
+          "skipped_directories": [
+            "test",
+            "tests",
+            "idlelib",
+            "tkinter",
+            "turtledemo",
+            "site-packages",
+            "dist-packages",
+            "lib2to3",
+            "ensurepip",
+            "venv",
+            "__pycache__"
+          ]
+        },
+        "python": {
+          "executable": "/root/.local/bin/python3.13",
+          "implementation": "cpython",
+          "version": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]"
+        },
+        "result_path": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719/build/audit-719/stubs.json",
+        "schema_version": 1,
+        "scope": "Compilation of isolated imports to IR; no runtime or full module compatibility check.",
+        "source_git": {
+          "dirty": false,
+          "revision": "633cdf1aeceae65cb9fa94d420ae50562e6c1b7a",
+          "root": "/workspace/scratch/3ba735e28fa7/pystachy-audit-719"
+        },
+        "source_git_caveat": "The selected source tree is not proof of which source built the compiler file.",
+        "stdlib": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13",
+        "stubs": [
+          "_io",
+          "_operator",
+          "_posixsubprocess",
+          "_signal",
+          "_socket",
+          "_symtable",
+          "_sysconfig",
+          "_tokenize",
+          "_tracemalloc",
+          "_typing",
+          "_warnings",
+          "array",
+          "fcntl",
+          "gc",
+          "grp",
+          "marshal",
+          "posix",
+          "pwd",
+          "pyexpat",
+          "select",
+          "zlib"
+        ],
+        "timeout_s": 600,
+        "workers": 2
+      },
+      "result_sha256": "aa6a2fea1447b776cff8a132cbefab8a702b7db6f032d4cd92be4e55710e5743",
+      "previous_result_sha256": "99d37a1c8fb2f03a8b2bd8931a24cbf4c5ff3d3f26c3416e510472bef2f8aeaa",
+      "previous_map_source": "Reconstruct through compatibility-2026-10-19-opcode.json; #747 changed tests only.",
+      "deltas": {
+        "argparse": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:62: error: unsupported module attribute sys.base_prefix",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:114: error: cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str],tuple[str,str,str]]: its items have different types"
+        },
+        "gettext": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:62: error: unsupported module attribute sys.base_prefix",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:114: error: cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str],tuple[str,str,str]]: its items have different types"
+        },
+        "optparse": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:62: error: unsupported module attribute sys.base_prefix",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/gettext.py:114: error: cannot iterate over tuple[tuple[str],tuple[str],tuple[str,str],tuple[str,str,str,str],tuple[str,str],tuple[str,str,str]]: its items have different types"
+        },
+        "site": {
+          "before": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/site.py:81: error: unsupported module attribute sys.prefix",
+          "after": "/root/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/site.py:715: error: unsupported module attribute sys.flags.no_site"
+        }
+      }
+    }
+  },
+  "known_recording_limitation": {
+    "reference": "https://github.com/den-run-ai/pystachy/pull/719#issuecomment-6278932791",
+    "freshly_reproduced": true,
+    "base_cpython_first_line": "True",
+    "venv_cpython_first_line": "False",
+    "cause": "The fixture assumes prefix==base_prefix; false inside a CPython venv. No native failure and not an uncovered bug. No fixture edited and no duplicate issue filed."
+  },
+  "limits": [
+    "Four prefix strings denote the compile-time Pystachy home, not a CPython installation or a venv; no CPython catalogs/files are supplied there.",
+    "Independent raw-path outputs are checked against the documented native home, not falsely compared byte-for-byte with CPython installation paths. Alias/predicate fixture agrees with base CPython.",
+    "No whole-library gettext/argparse/optparse/site success inferred from removal of one first blocker. No broad PyPI/NumPy or unmodified CPython regrtest claim.",
+    "No full local make verify, full recording rerun, benchmark execution or performance/memory experiment. Unchanged port/benchmark IR informed bounded test selection."
+  ],
+  "reproduction_scripts": {
+    "audit-719.py": "import concurrent.futures\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport subprocess\nimport sys\nimport sysconfig\nimport tempfile\nimport time\n\nBASE=Path('/workspace/scratch/3ba735e28fa7')\nROOT=BASE/'pystachy-audit-719'\nOLD=BASE/'pystachy-audit-686'\nOUT=ROOT/'build/audit-719'\nOUT.mkdir(parents=True,exist_ok=True)\nPY='/root/.local/bin/python3.13'\nLLVM=str(BASE/'llvm18-recovered/usr/lib/llvm-18/bin')\nENV={k:v for k,v in os.environ.items() if not k.startswith(('PYSTACHY_','COVERAGE_'))}\nENV.update(PYSTACHY_HOME=str(ROOT),PYSTACHY_LLVM=LLVM,PYSTACHY_JOBS='2',PY=PY,PATH=LLVM+':'+ENV['PATH'])\ndef save(n,v):(OUT/(n+'.json')).write_text(json.dumps(v,indent=2)+'\\n')\ndef run(n,args,extra=None,expected=0):\n    start=time.monotonic();p=subprocess.run(args,cwd=ROOT,env=ENV|(extra or {}),text=True,capture_output=True,timeout=1800)\n    r=dict(command=args,environment=extra or {},returncode=p.returncode,stdout=p.stdout,stderr=p.stderr,wall_seconds=time.monotonic()-start,expected_exit=expected)\n    save(n,r);print(n,p.returncode,p.stdout[-400:],p.stderr[-200:],flush=True)\n    assert p.returncode==expected\n    return r\nfiles=sorted(str(p.relative_to(ROOT)) for p in (ROOT/'tests').glob('sys_*.py'))+['tests/lib_opcode.py','tests/upstream_opcode.py','tests/deviations/lib_opcode_specialization.py']+sorted(str(p.relative_to(ROOT)) for p in (ROOT/'tests/errors').glob('lib_opcode_*.py'))\nsave('selection',files)\nmode=sys.argv[1]\nif mode=='build':run('build',['make','PY='+PY])\nelif mode=='checks':\n    configs=[('native','./pystachy',{}),('gc','./pystachy',{'PYSTACHY_GC_STRESS_PROGRAM':'1'}),('noopt','./pystachy',{'PYSTACHY_OPT':'-all'}),('hosted',PY+' -m pystachy',{})]\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:\n        list(pool.map(lambda c:run(c[0],['tests/run.sh',c[1],'jit aot',*files],c[2]),configs))\nelif mode=='sweeps':\n    for n,opts in [('imports',['./pystachy']),('stubs',['--stubs'])]:\n        run(n+'-command',[PY,'tools/import_sweep.py','-j','2','--metadata',str(OUT/(n+'-metadata.json')),*opts,sysconfig.get_path('stdlib'),str(OUT/(n+'.json'))])\nelif mode=='references':\n    r=run('reference',[PY,'tests/sys_prefix.py','a1','a2']);assert r['stdout']+'[exit 0]\\n'==(ROOT/'tests/sys_prefix.out').read_text()\n    v=run('venv-reference',[str(BASE.parent/'cca24c0adfdd/devtools/bin/python'),'tests/sys_prefix.py','a1','a2']);assert v['stdout'].startswith('False\\n')\nelif mode=='verify':\n    run('runtime',['make','check-runtime','PY='+PY])\n    run('ir',['tools/check_ir.sh','./pystachy','pystachy.py','runtime.py',*[f for f in files if '/errors/' not in f]])\nelif mode=='probes':\n    source='''import sys\nimport os\nfrom sys import prefix, base_prefix, exec_prefix, base_exec_prefix\nprint(sys.prefix)\nprint(sys.base_prefix)\nprint(sys.exec_prefix)\nprint(sys.base_exec_prefix)\nprint(prefix == sys.prefix, base_prefix == sys.base_prefix, exec_prefix == sys.exec_prefix, base_exec_prefix == sys.base_exec_prefix)\nprint(os.path.join(sys.base_prefix, \"share\", \"locale\"))\n'''\n    p=OUT/'probe.py';p.write_text(source)\n    run('probe-cpython',[PY,str(p)])\n    run('probe-old',[str(OLD/'pystachy'),'ir',str(p),'-o',os.devnull],{'PYSTACHY_HOME':str(OLD)},expected=1)\n    expected=(str(ROOT)+'\\n')*4+'True True True True\\n'+str(ROOT/'share/locale')+'\\n'\n    for label,extra in [('normal',{}),('gc',{'PYSTACHY_GC_STRESS_PROGRAM':'1'}),('noopt',{'PYSTACHY_OPT':'-all'})]:\n        r=run('probe-'+label+'-jit',['./pystachy','run',str(p)],extra);assert r['stdout']==expected\n        exe=OUT/('probe-'+label);run('probe-'+label+'-build',['./pystachy','build',str(p),'-o',str(exe)],extra)\n        r=run('probe-'+label+'-aot',[str(exe)],{'PYSTACHY_HOME':str(OLD),'PYSTACHY_GC_STRESS':'1'} if label=='gc' else {'PYSTACHY_HOME':str(OLD)});assert r['stdout']==expected\n    with tempfile.TemporaryDirectory(prefix='prefix-home-') as tmp:\n        alias=Path(tmp)/'home';alias.symlink_to(ROOT,target_is_directory=True)\n        r=run('probe-symlink',['./pystachy','run',str(p)],{'PYSTACHY_HOME':str(alias),'PYSTACHY_PATH':str(OLD/'lib')});assert r['stdout']==expected\n    save('probe-summary',dict(source=source,expected_native=expected,aot_runtime_home_ignored=True,symlink_resolved=True))\nelif mode=='oracle':\n    sources=['pystachy.py','runtime.py']+sorted({str(p.relative_to(ROOT)) for base in ['tests','tests/errors','tests/deviations','tests/ir','bench','bench/pyperformance'] for p in (ROOT/base).glob('*.py')})\n    def compare(f):\n        rs=[]\n        with tempfile.TemporaryDirectory(prefix='prefix-oracle-') as tmp:\n            for label,home in [('old',OLD),('new',ROOT)]:\n                target=Path(tmp)/(label+'.ll');extra={'PYSTACHY_HOME':str(home)}\n                path=(ROOT/f).with_suffix('.path')\n                if path.exists():extra['PYSTACHY_PATH']=path.read_text().strip()\n                how='rt' if f=='runtime.py' or Path(f).name.startswith('rtmode_') else 'ir'\n                p=subprocess.run([str(home/'pystachy'),how,f,'-o',str(target)],cwd=ROOT,env=ENV|extra,text=True,capture_output=True,timeout=180)\n                ir=target.read_text() if target.exists() else '';msg=p.stdout+p.stderr\n                for root in [ROOT,OLD]:ir=ir.replace(str(root),'CHECKOUT');msg=msg.replace(str(root),'CHECKOUT')\n                rs.append(dict(exit=p.returncode,message=msg,ir_sha256=hashlib.sha256(ir.encode()).hexdigest()))\n        return dict(source=f,old=rs[0],new=rs[1])\n    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:rs=list(pool.map(compare,sources))\n    changed=[r for r in rs if r['old']!=r['new']]\n    save('oracle',dict(programs=len(rs),identical=len(rs)-len(changed),changed=changed,input_inventory_sha256=hashlib.sha256(json.dumps({f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in sources},sort_keys=True).encode()).hexdigest()))\n    assert not any(r['old']['exit']==0 and r['new']['exit']!=0 for r in rs)\n    print('oracle',len(rs),len(changed),flush=True)\n",
+    "audit-719-assemble.py": "import hashlib\nimport json\nimport platform\nfrom pathlib import Path\nimport subprocess\nimport sys\n\nBASE=Path('/workspace/scratch/3ba735e28fa7')\nROOT=BASE/'pystachy-audit-719'\nOUT=ROOT/'build/audit-719'\nDEST=BASE/'pystachy-audit-followup-729/docs/reports'\ndef read(n):return json.loads((OUT/(n+'.json')).read_text())\ndef sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()\ndef git(*args):return subprocess.check_output(['git','-C',str(ROOT),*args],text=True).strip()\nbaseline=json.loads((DEST/'compatibility-2026-10-19-exception-diagnostics.json').read_text())\nstdlib=Path(baseline['stdlib']['path']);inventory={}\nfor m in baseline['stdlib']['module_sha256']:\n    p=stdlib/Path(*m.split('.'));p=p/'__init__.py' if p.is_dir() else p.with_suffix('.py');inventory[m]=sha(p)\nassert inventory==baseline['stdlib']['module_sha256']\nimports={}\nfor n in ['imports','stubs']:\n    prior=BASE/'pystachy-audit-686/build/audit-686'/(n+'.json')\n    before=json.loads(prior.read_text());after=read(n)\n    deltas={k:dict(before=before.get(k),after=after.get(k)) for k in sorted(set(before)|set(after)) if before.get(k)!=after.get(k)}\n    assert not any(v['before']=='OK' and v['after']!='OK' for v in deltas.values())\n    imports[n]=dict(metadata=read(n+'-metadata'),result_sha256=sha(OUT/(n+'.json')),previous_result_sha256=sha(prior),previous_map_source='Reconstruct through compatibility-2026-10-19-opcode.json; #747 changed tests only.',deltas=deltas)\ncommands={p.stem:json.loads(p.read_text()) for p in sorted(OUT.glob('*.json')) if p.stem not in ['selection','oracle','probe-summary','imports','stubs','imports-metadata','stubs-metadata','implementation-ci','imports-invocation-attempt']}\nassert all(c['returncode']==c['expected_exit'] for c in commands.values())\nassert not git('status','--porcelain','--untracked-files=no')\noracle=read('oracle');assert not any(r['source'].startswith(('bench/','tests/port_')) for r in oracle['changed'])\nfixtures={}\nfor f in read('selection'):\n    for ext in ['.py','.out','.err']:\n        p=Path(f).with_suffix(ext)\n        if (ROOT/p).exists():fixtures[str(p)]=sha(ROOT/p)\ndata=dict(schema_version=1,date='2026-10-19',status='completed',source_revision=git('rev-parse','HEAD'),previous_evaluated_main='837843bcc82ae088ad92b61c8fdb0e6eeb37c2ed',compiler_build_source=git('rev-parse','HEAD'),compiler_sha256=sha(ROOT/'pystachy'),\n    history=git('log','--first-parent','--format=%H %s','837843bc..HEAD').splitlines(),changed_files=git('diff','--name-only','837843bc','HEAD').splitlines(),merged_prs=[719],implementation_ci=read('implementation-ci'),incomplete_attempts=[dict(result=read('imports-invocation-attempt'),outcome='Argument parsing rejected intermixed positional/options before any module was tested. Corrected to place options before positional compiler/stdlib/output arguments; full sweeps repeated.')],\n    old_compiler=dict(source_revision='b7e869f8e324a30c59cbe36720a0f4d2e9f4f9c1',sha256=sha(BASE/'pystachy-audit-686/pystachy'),relation='Implementation identical at preceding evaluated main 837843bc; #747 was tests only.'),\n    environment=dict(python=sys.version,python_executable=sys.executable,llvm=subprocess.check_output([str(BASE/'llvm18-recovered/usr/lib/llvm-18/bin/llvm-config'),'--version'],text=True).strip(),platform=platform.platform(),workers_per_group=2,PYSTACHY_HOME=str(ROOT),inherited_options='Remove PYSTACHY_/COVERAGE_ options; explicit overrides recorded. Concurrent shared-host checks; no performance inference.'),\n    bootstrap=dict(compiler_ir_lines=sum(1 for _ in (ROOT/'build/stage1.ll').open()),runtime_ir_lines=sum(1 for _ in (ROOT/'build/rt1.ll').open()),ir_sha256={n:sha(ROOT/'build'/n) for n in ['stage1.ll','stage2.ll','stage3.ll','rt1.ll','rt2.ll','rt3.ll']}),\n    selection=read('selection'),fixture_sha256=fixtures,tools_sha256={f:sha(ROOT/f) for f in ['tests/run.sh','tools/check_ir.sh','tools/import_sweep.py']},commands=commands,probes=read('probe-summary'),oracle=oracle,\n    stdlib=dict(path=str(stdlib),inventory_sha256=hashlib.sha256(json.dumps(inventory,sort_keys=True).encode()).hexdigest(),modules=len(inventory),inventory_source='compatibility-2026-10-19-exception-diagnostics.json:stdlib.module_sha256'),imports=imports,\n    known_recording_limitation=dict(reference='https://github.com/den-run-ai/pystachy/pull/719#issuecomment-6278932791',freshly_reproduced=True,base_cpython_first_line='True',venv_cpython_first_line='False',cause='The fixture assumes prefix==base_prefix; false inside a CPython venv. No native failure and not an uncovered bug. No fixture edited and no duplicate issue filed.'),\n    limits=['Four prefix strings denote the compile-time Pystachy home, not a CPython installation or a venv; no CPython catalogs/files are supplied there.', 'Independent raw-path outputs are checked against the documented native home, not falsely compared byte-for-byte with CPython installation paths. Alias/predicate fixture agrees with base CPython.', 'No whole-library gettext/argparse/optparse/site success inferred from removal of one first blocker. No broad PyPI/NumPy or unmodified CPython regrtest claim.', 'No full local make verify, full recording rerun, benchmark execution or performance/memory experiment. Unchanged port/benchmark IR informed bounded test selection.'],\n    reproduction_scripts={n:(BASE/n).read_text() for n in ['audit-719.py','audit-719-assemble.py']})\n(DEST/'compatibility-2026-10-19-sys-prefix.json').write_text(json.dumps(data,indent=2)+'\\n')\nprint(json.dumps(dict(compiler=data['compiler_sha256'],bootstrap=data['bootstrap'],oracle=oracle,imports={k:dict(counts=v['metadata']['counts'],deltas=v['deltas']) for k,v in imports.items()})))\n"
+  }
+}

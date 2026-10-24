@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 fast hosted tooling gate (partial)",
+  "event": {
+    "pull_request": 825,
+    "merge_sha": "10aa41753ee6d984f0f51ac8289b806ef526391b",
+    "source_sha": "10aa41753ee6d984f0f51ac8289b806ef526391b",
+    "source_tree": "f9f44d9ba814a62e0b367005e143bb3cc1933aba",
+    "implementation_head_sha": "1c72b44857efc5e678be5cd065f3ea0b9be940b4",
+    "implementation_head_tree": "f9f44d9ba814a62e0b367005e143bb3cc1933aba",
+    "previous_source_sha": "0536d1a8e009ed59fb6485dd09f2fdd4661bd68a",
+    "previous_source_tree": "2b788c79848a41cdeab6d081ae674762a6a0d9b1",
+    "merged_at_utc": "2026-10-21T16:51:51Z",
+    "first_parent_merges_since_previous": [825]
+  },
+  "changed_scope": {
+    "files": 8,
+    "workflow": [
+      ".github/workflows/lint.yml",
+      ".github/workflows/release.yml"
+    ],
+    "build_and_lint": [
+      "Makefile",
+      "ruff.toml"
+    ],
+    "documentation": ["docs/testing.md"],
+    "tool_tests": [
+      "tools/test_coverage_report.py",
+      "tools/test_dynany_fuzz.py",
+      "tools/test_re_specialize.py"
+    ],
+    "compiler_runtime_library_ports_or_corpus_changed": false,
+    "summary": "add checksummed actionlint 1.7.12 workflow validation, enable Ruff RUF100, remove three stale E402 suppressions and add make check-fast"
+  },
+  "selected_sha256": {
+    ".github/workflows/lint.yml": "1891ab2be0baf8f469ba9749b9edb600c2f94ddc6b03ceed4f2faa0d059fe166",
+    ".github/workflows/release.yml": "84b1fdd0bbc0c734b966349b7fcec56a369c3ee7308c026d943a66562ac87fa4",
+    "Makefile": "3cb57d373f93943fddffbcd6dece3b1ac17b680cd798358e780727fa1e460c21",
+    "docs/testing.md": "a11848498fc213297de8a12e80819fc120c59dac14e26a87e01b118ceba578b9",
+    "ruff.toml": "db9961e340238c75478f424f0129508ef882137c156398c72afc18881ebecc90",
+    "tools/test_coverage_report.py": "f79935e459c1314b6d026b03ddf7be4e69e79a61d9ba1ddfc017a8194aa0be72",
+    "tools/test_dynany_fuzz.py": "9bb592cfb4612b978a525a4c60c94f22121e95b64001241ccc02b5abb77cba85",
+    "tools/test_re_specialize.py": "732d36b350d9186a627473eb44d7162c30decb5f4c68a966a86411035173128e"
+  },
+  "environment": {
+    "python": "CPython 3.13.16 (main, Oct 3 2026, 01:06:22) [Clang 22.1.3]",
+    "python_path": "/root/.local/bin/python3.13",
+    "ruff": "0.17.0",
+    "mypy": "2.4.0 (compiled: yes)",
+    "actionlint": "1.7.12, linux/amd64, built with Go 1.26.1",
+    "local_actionlint_binary_sha256": "c872d6db8c6bf83a8eaa704fc93999f027d55dffbc63b8a6abdccb47df5f4cd4",
+    "workflow_actionlint_archive_sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+    "source_snapshot_clean_before_and_after": true
+  },
+  "fresh_local_results": {
+    "check_fast": {
+      "command": "PATH=<pinned-tool-venv>/bin:$PATH PY=/root/.local/bin/python3.13 make check-fast",
+      "ruff": "all checks passed",
+      "mypy_files": 45,
+      "mypy_errors": 0,
+      "effect_summary_tests": {"passed": 7, "failed": 0},
+      "typed_ir_tests": {"passed": 84, "failed": 0},
+      "first_elapsed_seconds": 8.642,
+      "warm_elapsed_seconds": 4.354,
+      "timing_caveat": "two sequential runs on a shared host; the second benefits from caches and these are local feedback latencies, not compiler/runtime benchmarks"
+    },
+    "actionlint": {
+      "command": "PATH=<pinned-tool-venv>/bin:$PATH <actionlint-1.7.12> -pyflakes=",
+      "workflow_files": 8,
+      "errors": 0,
+      "embedded_shellcheck_enabled": true,
+      "pyflakes_disabled": true
+    },
+    "workflow_limits": {
+      "command": "PY=/root/.local/bin/python3.13 python3.13 -m unittest discover -s tools -p test_workflow_limits.py",
+      "passed": 4,
+      "failed": 0
+    }
+  },
+  "implementation_workflows": [
+    {
+      "name": "CI",
+      "run_id": 39635819474,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39635819474",
+      "successful_jobs": 27,
+      "total_jobs": 27,
+      "conclusion": "success"
+    },
+    {
+      "name": "Lint",
+      "run_id": 39635819533,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39635819533",
+      "successful_jobs": 1,
+      "total_jobs": 1,
+      "conclusion": "success"
+    },
+    {
+      "name": "Packages",
+      "run_id": 39635819537,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39635819537",
+      "successful_jobs": 1,
+      "total_jobs": 1,
+      "conclusion": "success"
+    },
+    {
+      "name": "Installation",
+      "run_id": 39635819469,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39635819469",
+      "successful_jobs": 3,
+      "total_jobs": 3,
+      "conclusion": "success"
+    },
+    {
+      "name": "Release",
+      "run_id": 39635819699,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39635819699",
+      "successful_jobs": 5,
+      "skipped_jobs": 1,
+      "total_jobs": 6,
+      "conclusion": "success",
+      "expected_skip": "publish"
+    }
+  ],
+  "workflow_summary": {
+    "fetched_jobs": 38,
+    "successful_jobs": 37,
+    "expected_skipped_jobs": 1,
+    "failed_or_cancelled_jobs": 0,
+    "note": "the PR body separately names an expected DCO certification skip among commit checks; the workflow-runs endpoint exposes the 38 jobs above"
+  },
+  "review": {
+    "review_threads": 0,
+    "merge_time_comment_state": "Codex review summary was still marked running immediately before merge; the PR body records an independent complete-diff review with no blocking findings",
+    "new_issue": null
+  },
+  "compatibility_assessment": {
+    "measured_gain": "none; feedback and workflow validation improve developer quality",
+    "behavioral_inputs": "pystachy.py, runtime.py, src, lib, ports and the differential/rejection/deviation corpus are byte-identical to #820",
+    "import_sweep": "not rerun; #817's hosted 141/441 result remains the latest local count",
+    "api_ports_packages_performance_memory": "not rerun; no relevant implementation input changed",
+    "release_note_generation": "the implementation PR attributes byte-identical 367-byte generated release-note prefixes before and after redirection cleanup; not rerun locally"
+  },
+  "limitations": [
+    "make check-fast is a selected hosted subset. It does not build the native compiler or cover bootstrap, JIT/AOT, GC, runtime, FFI, ports or recordings.",
+    "No import sweep, API execution, adapted-port, package, compiler/runtime performance, memory, upstream-suite or CPython regrtest claim follows from this tooling checkpoint.",
+    "The two local timing samples are feedback-loop observations on a shared host, not comparative product performance measurements.",
+    "Exact-final-tree CI supplies the unchanged native verification matrix externally; it is not relabeled as a fresh local native run."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "checkpoint": "string ABI fields and runtime GC-root coverage",
+  "event": {
+    "pull_request": 842,
+    "url": "https://github.com/den-run-ai/pystachy/pull/842",
+    "merge_sha": "117185e11db60581a88deaded9238614140d8db1",
+    "merge_tree": "72dd7f53c4c7b705453f8de7c03692e7123f6968",
+    "head_sha": "d7b8f8189743aa514b0efd3f0fd584d44b967b46",
+    "head_tree": "72dd7f53c4c7b705453f8de7c03692e7123f6968",
+    "previous_source_sha": "42fabd724e63bf7d4ef8c72335688894a8a90d54",
+    "previous_source_tree": "c16aa73c901a67aec52735423173b6f8cbfe2ed1",
+    "first_parent_merges_since_previous": [842],
+    "merged_at_utc": "2026-10-22T03:57:06Z"
+  },
+  "changed_scope": {
+    "files": 18,
+    "compiler_runtime_library_ports_changed": true,
+    "summary": "assert named Str offsets and size across runtime/adapters, centralize the compiler header size, validate literal fields, and inventory annotated static pointer storage against actual mark_roots scans",
+    "paths": [
+      ".github/workflows/lint.yml",
+      "Makefile",
+      "docs/internals.md",
+      "pyembed.c",
+      "pyext.c",
+      "runtime.c",
+      "src/pystachy_compiler/emission.py",
+      "src/pystachy_compiler/expressions.py",
+      "src/pystachy_compiler/lower_module.py",
+      "src/pystachy_compiler/specs.py",
+      "src/pystachy_compiler/statements.py",
+      "tools/check_runtime.py",
+      "tools/rtabi.py",
+      "tools/runtime_roots.py",
+      "tools/strabi.py",
+      "tools/test_runtime_abi.py",
+      "tools/test_runtime_roots.py",
+      "tools/test_verify_layout.py"
+    ]
+  },
+  "selected_sha256": {
+    "runtime.c": "9f5d1aa764950dc00a9e22fc6ea968bbd55a90617000609c64193fcd6732dd4a",
+    "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+    "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+    "src/pystachy_compiler/emission.py": "3cd6a1e0870a6eef545e9dbe2bb0f1d370bad056821909ebd76802d44a887b54",
+    "src/pystachy_compiler/lower_module.py": "23fe106c32c8b5741322404e5180993370852ffa6fbfb349ea49e6725b53636f",
+    "src/pystachy_compiler/specs.py": "0a09c51bf2857562afc3cc93c928773541d646dcb235a92c13b317aab570cb60",
+    "tools/rtabi.py": "ad708c1050974aa3f7f9c72d6d8f12fb9b35adbbfecd4fbe70b46a940485aa97",
+    "tools/runtime_roots.py": "9ec0550001e140820faa0bd1b9abcee51e14d6176c1ad9a05f01a64a714e7449",
+    "tools/strabi.py": "140280d6afe1c0a0b32105f6b8a82bfe4afa3e1ac77987c2f88cbe9c94a8167c",
+    "tools/test_runtime_abi.py": "967ad7cd0dd2381e90927c22cc8e551857ded0c8e6bf8982f463afafc75f8f13",
+    "tools/test_runtime_roots.py": "27b994d3b08b537fdc4f4ee44b84a41728c72f4e2bdb0b12d3f1d1e4510118a0"
+  },
+  "environment": {
+    "platform": "Linux 6.18.55 x86_64, glibc 2.39",
+    "python": "CPython 3.13.16 (Clang 22.1.3)",
+    "python_executable": "/root/.local/bin/python3.13",
+    "recording_wrapper": "/workspace/scratch/3ba735e28fa7/python313-typing-wrapper",
+    "llvm": "Ubuntu LLVM/Clang 18.1.3",
+    "llvm_root": "/workspace/scratch/85a28988e070/llvm18/usr/lib/llvm-18",
+    "prebuild_source_snapshot": "fresh detached worktree with no tracked or untracked entries"
+  },
+  "compiler_build": {
+    "source_sha": "117185e11db60581a88deaded9238614140d8db1",
+    "source_tree": "72dd7f53c4c7b705453f8de7c03692e7123f6968",
+    "compiler_fixed_point_ir_lines": 647631,
+    "runtime_fixed_point_ir_lines": 18709,
+    "compiler_binary_sha256": "304778fd7e967b3ca1ea45b67e9ca082e8cd395e71ed48252fca7c68049e2a7f"
+  },
+  "fresh_local_results": {
+    "abi_root_units": {
+      "command": "/root/.local/bin/python3.13 -m unittest discover -s tools -p 'test_runtime_*.py'",
+      "passed": 32,
+      "failed": 0
+    },
+    "root_inventory": {
+      "command": "/root/.local/bin/python3.13 tools/runtime_roots.py",
+      "static_pointer_stores": 54,
+      "recognized_roots": 7,
+      "reported_problems": 0
+    },
+    "runtime_abi": {
+      "command": "/root/.local/bin/python3.13 tools/rtabi.py ./pystachy",
+      "ffi_c_glue_calls_checked": 33,
+      "runtime_python_functions": 135,
+      "runtime_c_uses": 13608,
+      "programs": 1751,
+      "mismatches": 0
+    },
+    "runtime_contract": {
+      "command": "make PY=/root/.local/bin/python3.13 check-runtime",
+      "runtime_entries": 494,
+      "exception_classes": 70,
+      "runtime_functions": 171,
+      "result": "signatures, coverage and effects agree"
+    },
+    "ir_validation": {
+      "command": "make PY=/root/.local/bin/python3.13 PYSTACHY_JOBS=2 check-ir",
+      "programs_accepted_by_ircheck_and_llvm_as": 1752,
+      "failures": 0
+    },
+    "ffi": {
+      "command": "make PY=/root/.local/bin/python3.13 PYSTACHY_JOBS=2 test-ffi",
+      "passed": 141,
+      "failed": 0
+    },
+    "selected_string_execution": {
+      "programs": [
+        "tests/programs/strings/str_append.py",
+        "tests/programs/strings/str_dict_hash.py",
+        "tests/programs/strings/str_len_runs.py",
+        "tests/programs/strings/str_methods_more.py",
+        "tests/programs/strings/str_repeat.py",
+        "tests/programs/strings/str_slice_short.py",
+        "tests/programs/strings/str_whole_slice.py"
+      ],
+      "normal_jit_aot": "14/14 pass",
+      "gc_stress_jit_aot": "14/14 pass",
+      "failed": 0
+    },
+    "recordings": {
+      "command": "PYTHON=<CPython-3.13.16-dependency-wrapper> tests/record.sh --check",
+      "recordings": 1586,
+      "deviations": 98,
+      "library_files": 12,
+      "failures": 0
+    },
+    "pinned_import_sweep": {
+      "command": "PYSTACHY_HOME=<checkout> /root/.local/bin/python3.13 tools/import_sweep.py -j 2 --metadata <meta.json> ./pystachy <CPython-3.13.16-stdlib> <result.json>",
+      "inventory_total": 522,
+      "overlay_exclusions": 62,
+      "included": 460,
+      "successes": 148,
+      "errors": 312,
+      "timeouts": 0,
+      "new_successes": [],
+      "lost_successes": [],
+      "normalized_result_changes": 0,
+      "normalized_result_sha256": "f6d7716119aca6e627f0c5f922a30fddcb96066c269b5a6cb963ad1d13e2d34f",
+      "raw_result_sha256": "88bc68359e7e8efe122e1286db9d4e5930b984e8cebe70ac1b7ee183c5705c15",
+      "metadata_sha256": "8e1e23cacc26110070e51234a71dd35cae007edc92b387e85fdbd8d052199dc1",
+      "duration_seconds": 29.673,
+      "comparison": "identical to the retained 148/460 result after normalizing checkout and equivalent CPython 3.13.16 stdlib roots"
+    },
+    "native_ir_oracle": {
+      "command": "tools/irsame.sh <pre-842-native-compiler> <current-native-compiler>",
+      "programs": 3520,
+      "raw_differences": 232,
+      "raw_difference_class": "embedded compiler-home paths in library ImportError literals and diagnostics",
+      "path_normalized_identical": 3520,
+      "semantic_or_status_differences": 0,
+      "normalization": "copy compiler homes to equal-length paths and replace each home with <compiler-home> in emitted IR and diagnostics before comparison"
+    }
+  },
+  "confirmed_gap": {
+    "issue": 769,
+    "issue_url": "https://github.com/den-run-ai/pystachy/issues/769#issuecomment-6332413017",
+    "status": "reopened",
+    "source": "post-merge automated review finding independently reproduced on merged main",
+    "minimal_reproduction": "a GC_ROOT static is scanned only inside if (enabled), where enabled is an unwritten zero-initialized file-static; check_roots returns []",
+    "interpretation": "the O0 structural checker counts a syntactically present scan without proving its block reachable; this is a checker false negative, not evidence that any of the current seven runtime root scans is dead or that a measured program miscollects"
+  },
+  "implementation_workflows": [
+    {"name": "CI", "run_id": 39718404900, "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39718404940, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Packages", "run_id": 39718404924, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Installation", "run_id": 39718404896, "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"}
+  ],
+  "workflow_summary": {
+    "successful_jobs": 32,
+    "failed_or_cancelled_jobs": 0
+  },
+  "review": {
+    "addressed_findings": 5,
+    "final_premerge_review": "no major issue on d7b8f818",
+    "postmerge_finding": "root scans on statically dead control-flow paths can satisfy the checker",
+    "postmerge_reproduction": "confirmed and recorded in reopened issue #769"
+  },
+  "compatibility_assessment": {
+    "measured_gain": "stronger ABI and root-inventory verification; no library import or executed-API gain",
+    "measured_regression": null,
+    "imports": "148/460 unchanged across all 522 normalized outcomes",
+    "recording_delta": "none: 1,586 recordings, 98 deviations and 12 library files",
+    "new_actionable_blocker": "the root checker accepts a scan guarded by an unwritten zero-initialized static; issue #769 reopened",
+    "api_ports_packages_performance_memory": "no broader compatibility or performance/memory inference"
+  },
+  "limitations": [
+    "The selected seven string programs and 141-check FFI suite are affected retained probes, not the full local verification matrix.",
+    "Exact implementation-head CI supplies the full 27-job native verification matrix; it is not relabeled as fresh local make verify.",
+    "The structural root checker does not prove dynamic counter values, relative active-range ordering, backing allocation sizes, non-root lifetime rationales, integer-encoded pointers, or live control-flow reachability.",
+    "No broad port/package/upstream suite, unmodified CPython regrtest, performance or memory comparison completed.",
+    "No current runtime miscollection was observed; the confirmed blocker is a fail-open verification gap."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

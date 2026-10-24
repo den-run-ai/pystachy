@@ -1,0 +1,4037 @@
+{
+  "status": "partial-hosted-only",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+  "environment_overrides": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "LC_ALL": "C",
+    "PYSTACHY_JOBS": "2",
+    "PYSTACHY_IRCHECK": "1"
+  },
+  "before": {
+    "/workspace/scratch/3ba735e28fa7/pystachy-audit-785": {
+      "sha": "554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab",
+      "tree": "0edfdeca7819e8e401bdd5d9ec1c4c7481adba99",
+      "tracked_and_untracked": "",
+      "ignored": ""
+    },
+    "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before": {
+      "sha": "161418792189ccaaf01ccd554c5e2263a50a92f7",
+      "tree": "a53e6ff593f9a583d0dedf40d5adc845b8f25147",
+      "tracked_and_untracked": "",
+      "ignored": ""
+    }
+  },
+  "records": [
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_typed*.py",
+        "-v"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 4.06419690400071,
+      "stderr": "test_canonical_comparisons_retain_signedness_and_predicate (test_typed_comparisons.TypedComparisonTests.test_canonical_comparisons_retain_signedness_and_predicate) ... ok\ntest_reference_comparisons_reject_nonreferences_ordering_and_metadata (test_typed_comparisons.TypedComparisonTests.test_reference_comparisons_reject_nonreferences_ordering_and_metadata) ... ok\ntest_reference_identity_and_null_comparisons_are_typed_and_pure (test_typed_comparisons.TypedComparisonTests.test_reference_identity_and_null_comparisons_are_typed_and_pure) ... ok\ntest_repeated_reference_comparisons_keep_operand_and_predicate_identity (test_typed_comparisons.TypedComparisonTests.test_repeated_reference_comparisons_keep_operand_and_predicate_identity) ... ok\ntest_source_class_tag_dispatch_switches_on_the_tag (test_typed_comparisons.TypedComparisonTests.test_source_class_tag_dispatch_switches_on_the_tag) ... ok\ntest_source_loops_tag_checks_and_mixed_nan_comparisons_are_typed (test_typed_comparisons.TypedComparisonTests.test_source_loops_tag_checks_and_mixed_nan_comparisons_are_typed) ... ok\ntest_switch_is_a_pure_terminator_and_lowers_to_one_llvm_switch (test_typed_comparisons.TypedComparisonTests.test_switch_is_a_pure_terminator_and_lowers_to_one_llvm_switch) ... ok\ntest_switch_reaches_a_phi_by_one_edge_at_most (test_typed_comparisons.TypedComparisonTests.test_switch_reaches_a_phi_by_one_edge_at_most) ... ok\ntest_switch_verifier_rejects_other_operands_cases_and_labels (test_typed_comparisons.TypedComparisonTests.test_switch_verifier_rejects_other_operands_cases_and_labels) ... ok\ntest_typed_membership_conditions_preserve_dictfuse_and_mutation_barriers (test_typed_comparisons.TypedComparisonTests.test_typed_membership_conditions_preserve_dictfuse_and_mutation_barriers) ... ok\ntest_unsigned_predicates_are_pure_and_lower_without_changing_bits (test_typed_comparisons.TypedComparisonTests.test_unsigned_predicates_are_pure_and_lower_without_changing_bits) ... ok\ntest_unsigned_verifier_rejects_other_types_shapes_and_predicates (test_typed_comparisons.TypedComparisonTests.test_unsigned_verifier_rejects_other_types_shapes_and_predicates) ... ok\ntest_frontend_has_no_instruction_text_api (test_typed_complete.NoRawIRTests.test_frontend_has_no_instruction_text_api) ... ok\ntest_lowering_receives_only_registered_typed_operations (test_typed_complete.NoRawIRTests.test_lowering_receives_only_registered_typed_operations) ... ok\ntest_raw_operation_is_rejected (test_typed_complete.NoRawIRTests.test_raw_operation_is_rejected) ... ok\ntest_field_addresses_keep_memory_effects (test_typed_fields.TypedFieldTests.test_field_addresses_keep_memory_effects) ... ok\ntest_fields_flags_and_exact_lowering (test_typed_fields.TypedFieldTests.test_fields_flags_and_exact_lowering) ... ok\ntest_invalid_layout_index_type_shape_and_metadata (test_typed_fields.TypedFieldTests.test_invalid_layout_index_type_shape_and_metadata) ... ok\ntest_native_and_machine_accesses_share_field_alias_barriers (test_typed_fields.TypedFieldTests.test_native_and_machine_accesses_share_field_alias_barriers) ... ok\ntest_repeated_field_addresses_are_canonical (test_typed_fields.TypedFieldTests.test_repeated_field_addresses_are_canonical) ... ok\ntest_semantic_field_keys_retain_inheritance_aliases (test_typed_fields.TypedFieldTests.test_semantic_field_keys_retain_inheritance_aliases) ... ok\ntest_source_uses_typed_declared_layouts (test_typed_fields.TypedFieldTests.test_source_uses_typed_declared_layouts) ... ok\ntest_imported_closure_diagnostic_resolves_original_path (test_typed_ir.ClosurePathTests.test_imported_closure_diagnostic_resolves_original_path) ... ok\ntest_paths_do_not_change_tuple_layouts_or_closure_types (test_typed_ir.ClosurePathTests.test_paths_do_not_change_tuple_layouts_or_closure_types) ... ok\ntest_tuple_round_trip_check_is_always_on (test_typed_ir.ClosurePathTests.test_tuple_round_trip_check_is_always_on) ... ok\ntest_empty_result_layout_keeps_heap_write_effect (test_typed_ir.TypedIRTests.test_empty_result_layout_keeps_heap_write_effect) ... ok\ntest_empty_result_layout_rejects_bad_operands_and_holes (test_typed_ir.TypedIRTests.test_empty_result_layout_rejects_bad_operands_and_holes) ... ok\ntest_empty_result_layout_rejects_invalid_resolved_holes (test_typed_ir.TypedIRTests.test_empty_result_layout_rejects_invalid_resolved_holes) ... ok\ntest_fixed_allocation_rejects_non_layout_types_and_extra_metadata (test_typed_ir.TypedIRTests.test_fixed_allocation_rejects_non_layout_types_and_extra_metadata) ... ok\ntest_fixed_allocation_retains_runtime_self_recursion_guard (test_typed_ir.TypedIRTests.test_fixed_allocation_retains_runtime_self_recursion_guard) ... ok\ntest_fixed_allocations_retain_layout_type_and_allocation_effect (test_typed_ir.TypedIRTests.test_fixed_allocations_retain_layout_type_and_allocation_effect) ... ok\ntest_fixed_tuple_slots_lower_to_existing_llvm (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_lower_to_existing_llvm) ... ok\ntest_fixed_tuple_slots_preserve_reaching_values_and_alias_barriers (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_preserve_reaching_values_and_alias_barriers) ... ok\ntest_fixed_tuple_slots_reject_invalid_layout_index_and_member (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_reject_invalid_layout_index_and_member) ... ok\ntest_fixed_tuple_slots_reject_wrong_operands_results_and_metadata (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_reject_wrong_operands_results_and_metadata) ... ok\ntest_fixed_tuple_slots_retain_native_members_and_memory_effects (test_typed_ir.TypedIRTests.test_fixed_tuple_slots_retain_native_members_and_memory_effects) ... ok\ntest_integer_slot_conversions_keep_the_same_value (test_typed_ir.TypedIRTests.test_integer_slot_conversions_keep_the_same_value) ... ok\ntest_merged_union_operations_keep_typed_payload_operands (test_typed_ir.TypedIRTests.test_merged_union_operations_keep_typed_payload_operands) ... ok\ntest_numeric_casts_reject_other_type_pairs (test_typed_ir.TypedIRTests.test_numeric_casts_reject_other_type_pairs) ... ok\ntest_numeric_comparisons_reject_wrong_types_and_predicates (test_typed_ir.TypedIRTests.test_numeric_comparisons_reject_wrong_types_and_predicates) ... ok\ntest_numeric_operation_shapes_and_metadata (test_typed_ir.TypedIRTests.test_numeric_operation_shapes_and_metadata) ... ok\ntest_numeric_operations_are_typed_and_pure (test_typed_ir.TypedIRTests.test_numeric_operations_are_typed_and_pure) ... ok\ntest_optional_union_tag_stays_after_its_null_guard (test_typed_ir.TypedIRTests.test_optional_union_tag_stays_after_its_null_guard) ... ok\ntest_pack_result_and_unpack_operand_must_be_slots (test_typed_ir.TypedIRTests.test_pack_result_and_unpack_operand_must_be_slots) ... ok\ntest_rejects_empty_and_runtime_pseudo_types (test_typed_ir.TypedIRTests.test_rejects_empty_and_runtime_pseudo_types) ... ok\ntest_rejects_unused_metadata (test_typed_ir.TypedIRTests.test_rejects_unused_metadata) ... ok\ntest_requires_one_operand_and_one_result (test_typed_ir.TypedIRTests.test_requires_one_operand_and_one_result) ... ok\ntest_source_builds_declared_union_reads (test_typed_ir.TypedIRTests.test_source_builds_declared_union_reads) ... ok\ntest_source_builds_numeric_ops_and_retains_exact_mixed_comparison (test_typed_ir.TypedIRTests.test_source_builds_numeric_ops_and_retains_exact_mixed_comparison) ... ok\ntest_source_builds_typed_conversions_before_lowering (test_typed_ir.TypedIRTests.test_source_builds_typed_conversions_before_lowering) ... ok\ntest_sources_build_typed_class_exception_and_tuple_allocations (test_typed_ir.TypedIRTests.test_sources_build_typed_class_exception_and_tuple_allocations) ... ok\ntest_sources_build_typed_tuple_reads_and_heap_and_stack_stores (test_typed_ir.TypedIRTests.test_sources_build_typed_tuple_reads_and_heap_and_stack_stores) ... ok\ntest_union_read_shapes_and_metadata (test_typed_ir.TypedIRTests.test_union_read_shapes_and_metadata) ... ok\ntest_union_reads_keep_conservative_load_effects (test_typed_ir.TypedIRTests.test_union_reads_keep_conservative_load_effects) ... ok\ntest_union_reads_require_closed_nonoptional_operands (test_typed_ir.TypedIRTests.test_union_reads_require_closed_nonoptional_operands) ... ok\ntest_valid_native_types_and_pure_effects (test_typed_ir.TypedIRTests.test_valid_native_types_and_pure_effects) ... ok\ntest_weak_reference_reads_are_distinct_across_allocations (test_typed_ir.TypedIRTests.test_weak_reference_reads_are_distinct_across_allocations) ... ok\ntest_finite_metadata_preserves_tbaa_and_range (test_typed_machine_memory.TypedMachineMemoryTests.test_finite_metadata_preserves_tbaa_and_range) ... ok\ntest_indexed_address_has_explicit_element_index_and_inbounds (test_typed_machine_memory.TypedMachineMemoryTests.test_indexed_address_has_explicit_element_index_and_inbounds) ... ok\ntest_indexed_addresses_interoperate_with_tuple_slots (test_typed_machine_memory.TypedMachineMemoryTests.test_indexed_addresses_interoperate_with_tuple_slots) ... ok\ntest_source_memory_producers_are_structured (test_typed_machine_memory.TypedMachineMemoryTests.test_source_memory_producers_are_structured) ... ok\ntest_storage_rejects_malformed_operands_types_results_and_metadata (test_typed_machine_memory.TypedMachineMemoryTests.test_storage_rejects_malformed_operands_types_results_and_metadata) ... ok\ntest_storage_types_numbers_effects_and_exact_lowering (test_typed_machine_memory.TypedMachineMemoryTests.test_storage_types_numbers_effects_and_exact_lowering) ... ok\ntest_frontend_has_no_module_or_abi_llvm_templates (test_typed_module_lowering.ModuleLoweringTests.test_frontend_has_no_module_or_abi_llvm_templates) ... ok\ntest_frontend_records_native_globals_and_structured_constants (test_typed_module_lowering.ModuleLoweringTests.test_frontend_records_native_globals_and_structured_constants) ... ok\ntest_string_literal_header_matches_runtime_caches (test_typed_module_lowering.ModuleLoweringTests.test_string_literal_header_matches_runtime_caches) ... ok\ntest_arithmetic_bitwise_and_overflow_flags_lower_exactly (test_typed_scalars.TypedScalarTests.test_arithmetic_bitwise_and_overflow_flags_lower_exactly) ... ok\ntest_canonical_values_keep_types_flags_predicates_and_operand_order (test_typed_scalars.TypedScalarTests.test_canonical_values_keep_types_flags_predicates_and_operand_order) ... ok\ntest_cast_and_comparison_lowering_is_finite_and_typed (test_typed_scalars.TypedScalarTests.test_cast_and_comparison_lowering_is_finite_and_typed) ... ok\ntest_producers_do_not_encode_scalar_llvm_in_raw_instructions (test_typed_scalars.TypedScalarTests.test_producers_do_not_encode_scalar_llvm_in_raw_instructions) ... ok\ntest_select_verifier_checks_condition_values_and_metadata (test_typed_scalars.TypedScalarTests.test_select_verifier_checks_condition_values_and_metadata) ... ok\ntest_verifier_rejects_mismatches_unknown_operators_and_extra_metadata (test_typed_scalars.TypedScalarTests.test_verifier_rejects_mismatches_unknown_operators_and_extra_metadata) ... ok\ntest_calls_invalidate_global_and_heap_reads_but_preserve_local_values (test_typed_storage.TypedStorageTests.test_calls_invalidate_global_and_heap_reads_but_preserve_local_values) ... ok\ntest_effects_distinguish_local_global_field_and_unknown_memory (test_typed_storage.TypedStorageTests.test_effects_distinguish_local_global_field_and_unknown_memory) ... ok\ntest_frontend_keeps_variable_and_parameter_storage_typed (test_typed_storage.TypedStorageTests.test_frontend_keeps_variable_and_parameter_storage_typed) ... ok\ntest_heap_store_aliases_barrier_but_other_locals_and_globals_do_not (test_typed_storage.TypedStorageTests.test_heap_store_aliases_barrier_but_other_locals_and_globals_do_not) ... ok\ntest_lowering_retains_native_layouts_and_numbers (test_typed_storage.TypedStorageTests.test_lowering_retains_native_layouts_and_numbers) ... ok\ntest_native_address_and_value_contracts (test_typed_storage.TypedStorageTests.test_native_address_and_value_contracts) ... ok\ntest_reaching_preserves_native_and_machine_load_store_combinations (test_typed_storage.TypedStorageTests.test_reaching_preserves_native_and_machine_load_store_combinations) ... ok\ntest_rejects_mismatched_native_types (test_typed_storage.TypedStorageTests.test_rejects_mismatched_native_types) ... ok\ntest_rejects_operand_result_and_metadata_mutations (test_typed_storage.TypedStorageTests.test_rejects_operand_result_and_metadata_mutations) ... ok\ntest_rejects_untyped_addresses_and_runtime_pseudo_types (test_typed_storage.TypedStorageTests.test_rejects_untyped_addresses_and_runtime_pseudo_types) ... ok\n\n----------------------------------------------------------------------\nRan 82 tests in 3.427s\n\nOK\n",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools",
+        "-p",
+        "test_*verif*.py",
+        "-v"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 42.53319472699877,
+      "stderr": "test_gc_reports_require_original_stress_mode_ir_and_complete_counts (test_merge_verification.ContractTests.test_gc_reports_require_original_stress_mode_ir_and_complete_counts) ... ok\ntest_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate (test_merge_verification.ContractTests.test_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate) ... ok\ntest_real_plan_requires_native_suites_and_every_gc_job (test_merge_verification.ContractTests.test_real_plan_requires_native_suites_and_every_gc_job) ... ok\ntest_reports_require_the_corpus_check_counts (test_merge_verification.ContractTests.test_reports_require_the_corpus_check_counts) ... ok\ntest_all_reports_from_a_previous_commit_are_rejected (test_merge_verification.ReportTests.test_all_reports_from_a_previous_commit_are_rejected) ... ok\ntest_commit_source_toolchain_and_bootstrap_drift_are_rejected (test_merge_verification.ReportTests.test_commit_source_toolchain_and_bootstrap_drift_are_rejected) ... ok\ntest_failed_cli_overwrites_a_stale_success_report_and_exits_nonzero (test_merge_verification.ReportTests.test_failed_cli_overwrites_a_stale_success_report_and_exits_nonzero) ... ok\ntest_failed_skipped_missing_reordered_and_unexpected_steps_are_rejected (test_merge_verification.ReportTests.test_failed_skipped_missing_reordered_and_unexpected_steps_are_rejected) ... ok\ntest_missing_group_cannot_report_success (test_merge_verification.ReportTests.test_missing_group_cannot_report_success) ... ok\ntest_unexpected_and_duplicate_groups_are_rejected (test_merge_verification.ReportTests.test_unexpected_and_duplicate_groups_are_rejected) ... ok\ntest_valid_reports_preserve_checks_and_distinguish_parallel_from_runner_time (test_merge_verification.ReportTests.test_valid_reports_preserve_checks_and_distinguish_parallel_from_runner_time) ... ok\ntest_missing_changed_or_malformed_bundle_identity_is_rejected (test_merge_verification.SharedBootstrapTests.test_missing_changed_or_malformed_bundle_identity_is_rejected) ... ok\ntest_missing_producer_is_rejected (test_merge_verification.SharedBootstrapTests.test_missing_producer_is_rejected) ... ok\ntest_producer_cannot_claim_other_stages (test_merge_verification.SharedBootstrapTests.test_producer_cannot_claim_other_stages) ... ok\ntest_producer_cannot_reuse_and_consumers_must_reuse (test_merge_verification.SharedBootstrapTests.test_producer_cannot_reuse_and_consumers_must_reuse) ... ok\ntest_producer_commit_and_failed_fixed_point_are_rejected (test_merge_verification.SharedBootstrapTests.test_producer_commit_and_failed_fixed_point_are_rejected) ... ok\ntest_shared_bootstrap_preserves_producer_and_counts_serial_work_once (test_merge_verification.SharedBootstrapTests.test_shared_bootstrap_preserves_producer_and_counts_serial_work_once) ... ok\ntest_both_actual_fixed_points_are_required_at_export (test_verification_bootstrap.BootstrapBundleTests.test_both_actual_fixed_points_are_required_at_export) ... ok\ntest_commit_change_is_rejected_even_when_sources_match (test_verification_bootstrap.BootstrapBundleTests.test_commit_change_is_rejected_even_when_sources_match) ... ok\ntest_destination_symlink_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_destination_symlink_is_rejected) ... ok\ntest_duplicate_json_keys_are_rejected (test_verification_bootstrap.BootstrapBundleTests.test_duplicate_json_keys_are_rejected) ... ok\ntest_existing_destination_executable_unchanged_on_rejection (test_verification_bootstrap.BootstrapBundleTests.test_existing_destination_executable_unchanged_on_rejection) ... ok\ntest_failed_incomplete_or_reused_producer_cannot_be_exported (test_verification_bootstrap.BootstrapBundleTests.test_failed_incomplete_or_reused_producer_cannot_be_exported) ... ok\ntest_failed_report_rejected_even_if_manifest_hash_matches (test_verification_bootstrap.BootstrapBundleTests.test_failed_report_rejected_even_if_manifest_hash_matches) ... ok\ntest_missing_or_corrupt_payload_never_restores_compiler (test_verification_bootstrap.BootstrapBundleTests.test_missing_or_corrupt_payload_never_restores_compiler) ... ok\ntest_other_workflow_run_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_other_workflow_run_is_rejected) ... ok\ntest_payload_symlink_and_traversal_name_are_rejected (test_verification_bootstrap.BootstrapBundleTests.test_payload_symlink_and_traversal_name_are_rejected) ... ok\ntest_platform_and_python_identity_changes_are_rejected (test_verification_bootstrap.BootstrapBundleTests.test_platform_and_python_identity_changes_are_rejected) ... ok\ntest_relocated_checkout_and_failed_job_rerun_are_allowed (test_verification_bootstrap.BootstrapBundleTests.test_relocated_checkout_and_failed_job_rerun_are_allowed) ... ok\ntest_report_cannot_claim_different_payload_evidence (test_verification_bootstrap.BootstrapBundleTests.test_report_cannot_claim_different_payload_evidence) ... ok\ntest_round_trip_has_proof_timings_and_no_runtime_cache (test_verification_bootstrap.BootstrapBundleTests.test_round_trip_has_proof_timings_and_no_runtime_cache) ... ok\ntest_same_size_same_timestamp_source_change_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_same_size_same_timestamp_source_change_is_rejected) ... ok\ntest_toolchain_change_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_toolchain_change_is_rejected) ... ok\ntest_tracked_executable_bit_changes_identity (test_verification_bootstrap.BootstrapBundleTests.test_tracked_executable_bit_changes_identity) ... ok\ntest_tracked_noncompiler_source_change_is_rejected (test_verification_bootstrap.BootstrapBundleTests.test_tracked_noncompiler_source_change_is_rejected) ... ok\ntest_tracked_symlinks_dangling_links_and_loops_are_bound_without_following (test_verification_bootstrap.BootstrapBundleTests.test_tracked_symlinks_dangling_links_and_loops_are_bound_without_following) ... ok\ntest_cancellation_terminates_the_background_compiler (test_verify_gc.GCVerificationTests.test_cancellation_terminates_the_background_compiler) ... ok\ntest_each_suite_runs_its_complete_selection_at_original_stress (test_verify_gc.GCVerificationTests.test_each_suite_runs_its_complete_selection_at_original_stress) ... ok\ntest_failed_and_incomplete_suites_cannot_pass (test_verify_gc.GCVerificationTests.test_failed_and_incomplete_suites_cannot_pass) ... ok\ntest_failure_timeout_and_mismatched_ir_cannot_pass (test_verify_gc.GCVerificationTests.test_failure_timeout_and_mismatched_ir_cannot_pass) ... ok\ntest_local_alias_reports_failure_and_still_runs_remaining_modes (test_verify_gc.GCVerificationTests.test_local_alias_reports_failure_and_still_runs_remaining_modes) ... ok\ntest_local_aliases_run_all_selected_gc_checks (test_verify_gc.GCVerificationTests.test_local_aliases_run_all_selected_gc_checks) ... ok\ntest_self_compile_preserves_ir_stress_and_gc_diagnostics (test_verify_gc.GCVerificationTests.test_self_compile_preserves_ir_stress_and_gc_diagnostics) ... ok\ntest_a_test_outside_the_areas_is_a_stray (test_verify_layout.LayoutTests.test_a_test_outside_the_areas_is_a_stray) ... ok\ntest_cases_are_the_areas_programs_the_deviations_and_the_areas_rejections (test_verify_layout.LayoutTests.test_cases_are_the_areas_programs_the_deviations_and_the_areas_rejections) ... ok\ntest_check_recordings_fails_on_a_stray_and_on_two_cases_of_one_name (test_verify_layout.LayoutTests.test_check_recordings_fails_on_a_stray_and_on_two_cases_of_one_name) ... ok\ntest_record_finds_a_program_by_its_name_or_its_path (test_verify_layout.LayoutTests.test_record_finds_a_program_by_its_name_or_its_path) ... ok\ntest_run_refuses_a_stray_and_a_test_named_in_the_old_layout (test_verify_layout.LayoutTests.test_run_refuses_a_stray_and_a_test_named_in_the_old_layout) ... ok\ntest_verify_refuses_a_stray (test_verify_layout.LayoutTests.test_verify_refuses_a_stray) ... ok\ntest_each_shard_runs_its_share_of_the_corpus (test_verify_shards.ShardVerificationTests.test_each_shard_runs_its_share_of_the_corpus) ... ok\ntest_failed_and_incomplete_shards_cannot_pass (test_verify_shards.ShardVerificationTests.test_failed_and_incomplete_shards_cannot_pass) ... ok\ntest_local_aliases_run_all_their_shards (test_verify_shards.ShardVerificationTests.test_local_aliases_run_all_their_shards) ... ok\ntest_ubsan_shards_need_an_instrumented_runtime (test_verify_shards.ShardVerificationTests.test_ubsan_shards_need_an_instrumented_runtime) ... ok\n\n----------------------------------------------------------------------\nRan 53 tests in 42.437s\n\nOK\n",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/dataclass_inheritance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5212896119992365,
+      "stderr": "",
+      "stdout_sha256": "9e151687d5ef6182e345da9d6bdd9b5b2613c8299d5ea79078af90306f79fbdd",
+      "ir_lines": 6165,
+      "switches": 59
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/dataclass_inheritance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.47989807600060885,
+      "stderr": "",
+      "stdout_sha256": "6c4a4f699655107f89ba1fb5114b0374e89f36b9268387bfc14363a7e571dbf9",
+      "ir_lines": 6792,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/dataclass_inheritance_compare.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4605084880004142,
+      "stderr": "",
+      "stdout_sha256": "a773affbb20401cdb8e4b08e508923947da9dc585d7dd5c0abfca136a6d4622a",
+      "ir_lines": 1632,
+      "switches": 35
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/dataclass_inheritance_compare.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.45378015899950697,
+      "stderr": "",
+      "stdout_sha256": "e9eadeb232ee2cb669ad250157b3c44d7401eda649062db98d2e0e908fd98a89",
+      "ir_lines": 1865,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/classes/dataclass_inheritance_compare.py",
+        "a1",
+        "a2"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.03042826300043089,
+      "stderr": "",
+      "stdout": "AttributeError 'Derived' object has no attribute 'cache'\n{'x': 1} Derived(x=1, y=2)\nBase.__eq__\nBase.__eq__\nBase.__eq__\nTrue True True True\nFalse False True\nTypeError '<' not supported between instances of 'Derived' and 'NoneType'\nTypeError '<' not supported between instances of 'Base' and 'Derived'\nTrue True\nBase(x=1)\n",
+      "matches_recording": true,
+      "matches_error": true,
+      "reference_version_caveat": "CPython 3.12.14, not pinned 3.13.16; checked-in recordings not modified"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/dataclass_inheritance_import.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4133518950002326,
+      "stderr": "",
+      "stdout_sha256": "8abfdbdb4856b1a334eba4308d419685c17118cd20c1bc7e106ad45bfe599155",
+      "ir_lines": 2343,
+      "switches": 13
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/dataclass_inheritance_import.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.41099992799900065,
+      "stderr": "",
+      "stdout_sha256": "2d55fa32d663a0b4d2912989912762f50a030f8934ba8996dcbfb654b227d383",
+      "ir_lines": 2563,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/dataclass_inheritance_mod.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4171446600012132,
+      "stderr": "",
+      "stdout_sha256": "52229b1409ca7bd953f5b5fbebe4328e805fbdad964e6e1f199de97b6a9065da",
+      "ir_lines": 69,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/dataclass_inheritance_mod.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.42779442200117046,
+      "stderr": "",
+      "stdout_sha256": "52229b1409ca7bd953f5b5fbebe4328e805fbdad964e6e1f199de97b6a9065da",
+      "ir_lines": 69,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/dataclass_inheritance_property.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.40884000200094306,
+      "stderr": "",
+      "stdout_sha256": "0bf1c50ea19af2cbeb53fd53655c7ee01f28e1e4ed661f19ce2f6f7d7542fd08",
+      "ir_lines": 1037,
+      "switches": 7
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/dataclass_inheritance_property.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5793255609987682,
+      "stderr": "",
+      "stdout_sha256": "65e28d60673677eaea9be5dc79e39b23fac843c64fedb9c934b30c71cbf12ad1",
+      "ir_lines": 1066,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_bound_identity.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.42345315300008224,
+      "stderr": "",
+      "stdout_sha256": "45c977b2d6e0aed6460d7402bacb859e8b5c026c739e5c63c255ddd53106aaaf",
+      "ir_lines": 421,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_bound_identity.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4250926439999603,
+      "stderr": "",
+      "stdout_sha256": "45c977b2d6e0aed6460d7402bacb859e8b5c026c739e5c63c255ddd53106aaaf",
+      "ir_lines": 421,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_call_order.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.48969103600029484,
+      "stderr": "",
+      "stdout_sha256": "113b4a247425738241c850a3d746b1d8fdda3c045ce97119aa6d09225bd59c2c",
+      "ir_lines": 408,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_call_order.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.43857417999970494,
+      "stderr": "",
+      "stdout_sha256": "113b4a247425738241c850a3d746b1d8fdda3c045ce97119aa6d09225bd59c2c",
+      "ir_lines": 408,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_classattrs.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4173990920007782,
+      "stderr": "",
+      "stdout_sha256": "0c23df6841b424d5d251a4aee8e59cea256bd458677162a7c4fe26b5b41c059d",
+      "ir_lines": 803,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_classattrs.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.43786448699938774,
+      "stderr": "",
+      "stdout_sha256": "0c23df6841b424d5d251a4aee8e59cea256bd458677162a7c4fe26b5b41c059d",
+      "ir_lines": 803,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_classmethod_override.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.396287322999342,
+      "stderr": "",
+      "stdout_sha256": "1bb1b03bc201eb7189831f3e594c396977fa939a1b76ba8f1fb59ff7f15d4b1b",
+      "ir_lines": 755,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_classmethod_override.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4639330330010125,
+      "stderr": "",
+      "stdout_sha256": "1bb1b03bc201eb7189831f3e594c396977fa939a1b76ba8f1fb59ff7f15d4b1b",
+      "ir_lines": 755,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_compare_pairs.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5000455690005765,
+      "stderr": "",
+      "stdout_sha256": "7343648a534d2eaab74bafae667ccb81d0db8e8cb4a009fb9acbedf4bb769c11",
+      "ir_lines": 2698,
+      "switches": 19
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_compare_pairs.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.49850967899874377,
+      "stderr": "",
+      "stdout_sha256": "b64317f332f343e49f2a1277020aa43571fa31ecb397f2db46f42dda0721fc57",
+      "ir_lines": 3516,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/classes/inheritance_compare_pairs.py",
+        "a1",
+        "a2"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.011867008000990609,
+      "stderr": "",
+      "stdout": "None None\n == True\n != False\n < TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'\n > TypeError: '>' not supported between instances of 'NoneType' and 'NoneType'\nNone b\n  Base.__eq__ b None\n == False\n  Base.__eq__ b None\n != True\n < TypeError: '<' not supported between instances of 'NoneType' and 'Base'\n  Base.__lt__ b None\n > False\nNone l\n  Base.__eq__ l None\n == False\n  Base.__eq__ l None\n != True\n < TypeError: '<' not supported between instances of 'NoneType' and 'Left'\n  Base.__lt__ l None\n > False\nNone r\n  Right.__eq__ r None\n == False\n  Right.__eq__ r None\n != True\n  Right.__gt__ r None\n < False\n  Base.__lt__ r None\n > False\nNone d\n  Base.__eq__ d None\n == False\n  Base.__eq__ d None\n != True\n < TypeError: '<' not supported between instances of 'NoneType' and 'Deep'\n  Base.__lt__ d None\n > False\nb None\n  Base.__eq__ b None\n == False\n  Base.__eq__ b None\n != True\n  Base.__lt__ b None\n < False\n > TypeError: '>' not supported between instances of 'Base' and 'NoneType'\nb b\n  Base.__eq__ b b\n == True\n  Base.__eq__ b b\n != False\n  Base.__lt__ b b\n < False\n  Base.__lt__ b b\n > False\nb l\n  Base.__eq__ l b\n == False\n  Base.__eq__ l b\n != True\n  Base.__lt__ b l\n < True\n  Base.__lt__ l b\n > False\nb r\n  Right.__eq__ r b\n == True\n  Right.__eq__ r b\n != False\n  Right.__gt__ r b\n < True\n  Base.__lt__ r b\n > False\nb d\n  Base.__eq__ d b\n == True\n  Base.__eq__ d b\n != False\n  Base.__lt__ b d\n < False\n  Base.__lt__ d b\n > False\nl None\n  Base.__eq__ l None\n == False\n  Base.__eq__ l None\n != True\n  Base.__lt__ l None\n < False\n > TypeError: '>' not supported between instances of 'Left' and 'NoneType'\nl b\n  Base.__eq__ l b\n == False\n  Base.__eq__ l b\n != True\n  Base.__lt__ l b\n < False\n  Base.__lt__ b l\n > True\nl l\n  Base.__eq__ l l\n == True\n  Base.__eq__ l l\n != False\n  Base.__lt__ l l\n < False\n  Base.__lt__ l l\n > False\nl r\n  Base.__eq__ l r\n == False\n  Base.__eq__ l r\n != True\n  Base.__lt__ l r\n < True\n  Base.__lt__ r l\n > False\nl d\n  Base.__eq__ d l\n == False\n  Base.__eq__ d l\n != True\n  Base.__lt__ l d\n < False\n  Base.__lt__ d l\n > True\nr None\n  Right.__eq__ r None\n == False\n  Right.__eq__ r None\n != True\n  Base.__lt__ r None\n < False\n  Right.__gt__ r None\n > False\nr b\n  Right.__eq__ r b\n == True\n  Right.__eq__ r b\n != False\n  Base.__lt__ r b\n < False\n  Right.__gt__ r b\n > True\nr l\n  Right.__eq__ r l\n == True\n  Right.__eq__ r l\n != False\n  Base.__lt__ r l\n < False\n  Right.__gt__ r l\n > True\nr r\n  Right.__eq__ r r\n == True\n  Right.__eq__ r r\n != False\n  Base.__lt__ r r\n < False\n  Right.__gt__ r r\n > False\nr d\n  Right.__eq__ r d\n == True\n  Right.__eq__ r d\n != False\n  Base.__lt__ r d\n < False\n  Right.__gt__ r d\n > True\nd None\n  Base.__eq__ d None\n == False\n  Base.__eq__ d None\n != True\n  Base.__lt__ d None\n < False\n > TypeError: '>' not supported between instances of 'Deep' and 'NoneType'\nd b\n  Base.__eq__ d b\n == True\n  Base.__eq__ d b\n != False\n  Base.__lt__ d b\n < False\n  Base.__lt__ b d\n > False\nd l\n  Base.__eq__ d l\n == False\n  Base.__eq__ d l\n != True\n  Base.__lt__ d l\n < True\n  Base.__lt__ l d\n > False\nd r\n  Base.__eq__ d r\n == False\n  Base.__eq__ d r\n != True\n  Base.__lt__ d r\n < True\n  Base.__lt__ r d\n > False\nd d\n  Base.__eq__ d d\n == True\n  Base.__eq__ d d\n != False\n  Base.__lt__ d d\n < False\n  Base.__lt__ d d\n > False\n[True, False, False, False] [False, True, True, True]\n[False, True, False, False] [True, False, True, True]\n[False, False, True, False] [True, True, False, True]\n[False, False, False, True] [True, True, True, False]\nNone None True False\n  Problem.__eq__ p1 None\n  Problem.__eq__ p1 None\nNone p1 False True\n  Problem.__eq__ m1 None\n  Problem.__eq__ m1 None\nNone m1 False True\n  Problem.__eq__ M1 None\n  Problem.__eq__ M1 None\nNone M1 False True\n  Problem.__eq__ f1 None\n  Problem.__eq__ f1 None\nNone f1 False True\n  Problem.__eq__ p2 None\n  Problem.__eq__ p2 None\nNone p2 False True\n  Problem.__eq__ p1 None\n  Problem.__eq__ p1 None\np1 None False True\n  Problem.__eq__ p1 p1\n  Problem.__eq__ p1 p1\np1 p1 True False\n  Problem.__eq__ m1 p1\n  Problem.__eq__ m1 p1\np1 m1 False True\n  Problem.__eq__ M1 p1\n  Problem.__eq__ M1 p1\np1 M1 False True\n  Problem.__eq__ f1 p1\n  Problem.__eq__ f1 p1\np1 f1 False True\n  Problem.__eq__ p2 p1\n  Problem.__eq__ p2 p1\np1 p2 True False\n  Problem.__eq__ m1 None\n  Problem.__eq__ m1 None\nm1 None False True\n  Problem.__eq__ m1 p1\n  Problem.__eq__ m1 p1\nm1 p1 False True\n  Problem.__eq__ m1 m1\n  Problem.__eq__ m1 m1\nm1 m1 True False\n  Problem.__eq__ m1 M1\n  Problem.__eq__ m1 M1\nm1 M1 False True\n  Problem.__eq__ m1 f1\n  Problem.__eq__ m1 f1\nm1 f1 False True\n  Problem.__eq__ m1 p2\n  Problem.__eq__ m1 p2\nm1 p2 False True\n  Problem.__eq__ M1 None\n  Problem.__eq__ M1 None\nM1 None False True\n  Problem.__eq__ M1 p1\n  Problem.__eq__ M1 p1\nM1 p1 False True\n  Problem.__eq__ M1 m1\n  Problem.__eq__ M1 m1\nM1 m1 False True\n  Problem.__eq__ M1 M1\n  Problem.__eq__ M1 M1\nM1 M1 True False\n  Problem.__eq__ f1 M1\n  Problem.__eq__ f1 M1\nM1 f1 False True\n  Problem.__eq__ M1 p2\n  Problem.__eq__ M1 p2\nM1 p2 False True\n  Problem.__eq__ f1 None\n  Problem.__eq__ f1 None\nf1 None False True\n  Problem.__eq__ f1 p1\n  Problem.__eq__ f1 p1\nf1 p1 False True\n  Problem.__eq__ f1 m1\n  Problem.__eq__ f1 m1\nf1 m1 False True\n  Problem.__eq__ f1 M1\n  Problem.__eq__ f1 M1\nf1 M1 False True\n  Problem.__eq__ f1 f1\n  Problem.__eq__ f1 f1\nf1 f1 True False\n  Problem.__eq__ f1 p2\n  Problem.__eq__ f1 p2\nf1 p2 False True\n  Problem.__eq__ p2 None\n  Problem.__eq__ p2 None\np2 None False True\n  Problem.__eq__ p2 p1\n  Problem.__eq__ p2 p1\np2 p1 True False\n  Problem.__eq__ p2 m1\n  Problem.__eq__ p2 m1\np2 m1 False True\n  Problem.__eq__ p2 M1\n  Problem.__eq__ p2 M1\np2 M1 False True\n  Problem.__eq__ p2 f1\n  Problem.__eq__ p2 f1\np2 f1 False True\n  Problem.__eq__ p2 p2\n  Problem.__eq__ p2 p2\np2 p2 True False\n",
+      "matches_recording": true,
+      "matches_error": true,
+      "reference_version_caveat": "CPython 3.12.14, not pinned 3.13.16; checked-in recordings not modified"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_comparisons.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4848078009999881,
+      "stderr": "",
+      "stdout_sha256": "69ded84711c160175f5dc5bb87ade4bf1d18a3e8283feb6ea904576ad5df2d92",
+      "ir_lines": 1979,
+      "switches": 51
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_comparisons.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5220394520001719,
+      "stderr": "",
+      "stdout_sha256": "cf23f762c07837088ca7dea8b3858a674bd422a0dacc7d76c90e611bd945f105",
+      "ir_lines": 2360,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/classes/inheritance_comparisons.py",
+        "a1",
+        "a2"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.017531495999719482,
+      "stderr": "",
+      "stdout": "Child.eq\nChild.ne\nTrue False\nChild.ge\nChild.le\nTrue True\nChild.eq\nChild.ne\nChild.gt\nChild.lt\nChild.ge\nChild.le\nFalse True False True False True\nChild.eq\nChild.ne\nChild.lt\nChild.gt\nChild.le\nChild.ge\nFalse True True False True False\nBase.eq\nBase.ne\nBase.lt\nBase.gt\nBase.le\nBase.ge\nFalse True True False True False\nChild.eq\nChild.ne\nChild.lt\nChild.gt\nChild.le\nChild.ge\nFalse True True False True False\nChild.eq\nChild.eq\n2\nChild.eq\nChild.eq\nChild.ne\nChild.ne\nFalse False True True\nChild.lt\nChild.lt\nChild.gt\nChild.gt\nFalse False False False\nTrue False\nTypeError: '<' not supported between instances of 'Plain' and 'Plain'\n",
+      "matches_recording": true,
+      "matches_error": true,
+      "reference_version_caveat": "CPython 3.12.14, not pinned 3.13.16; checked-in recordings not modified"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_container_compare_base.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.534740959001283,
+      "stderr": "",
+      "stdout_sha256": "8a8aadb818a38fcdbf644c66fcd0718b6aab61dc0ba8878a3d55f90ec6efcb85",
+      "ir_lines": 1222,
+      "switches": 20
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_container_compare_base.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5245931600002223,
+      "stderr": "",
+      "stdout_sha256": "e500db3f1d3b95091f143709158e16d116db3a590f320bfc8e1ba25b289cbe6a",
+      "ir_lines": 1374,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/classes/inheritance_container_compare_base.py",
+        "a1",
+        "a2"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.011976682999375043,
+      "stderr": "",
+      "stdout": "[1.0.9, 1.2.0, 1.2.3] 1.0.9 1.2.3 True 1\nTrue True\nlt 1.9 1.9.9\nlt 2.0 1.9.9\nlt 2.0 1.9\n[1.9, 1.9.9, 2.0] 2.0 True\n",
+      "matches_recording": true,
+      "matches_error": true,
+      "reference_version_caveat": "CPython 3.12.14, not pinned 3.13.16; checked-in recordings not modified"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_dispatch.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5448931279988756,
+      "stderr": "",
+      "stdout_sha256": "e24771039d9bde95be58d204f9395939848930102201d059c9a9b794aafacc5d",
+      "ir_lines": 899,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_dispatch.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5378559540004062,
+      "stderr": "",
+      "stdout_sha256": "e24771039d9bde95be58d204f9395939848930102201d059c9a9b794aafacc5d",
+      "ir_lines": 899,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_fields.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5276994340001693,
+      "stderr": "",
+      "stdout_sha256": "e74a5ef6e97b16cd223226a338dd61f84162525546dcb9e7f9a8533623ae7679",
+      "ir_lines": 934,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_fields.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4428332789993874,
+      "stderr": "",
+      "stdout_sha256": "e74a5ef6e97b16cd223226a338dd61f84162525546dcb9e7f9a8533623ae7679",
+      "ir_lines": 934,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_hasattr.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.45692398000028334,
+      "stderr": "",
+      "stdout_sha256": "4efe5451e095b22397a95d6098d925169a9f25d1497c8724afe5ef6234ca9e4b",
+      "ir_lines": 330,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_hasattr.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.47209146699970006,
+      "stderr": "",
+      "stdout_sha256": "4efe5451e095b22397a95d6098d925169a9f25d1497c8724afe5ef6234ca9e4b",
+      "ir_lines": 330,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_import.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {
+        "PYSTACHY_PATH": "tests"
+      },
+      "exit": 0,
+      "seconds_advisory": 0.5357160410003416,
+      "stderr": "",
+      "stdout_sha256": "bcd4ca0e526b16714bdff7d493c3c22550205275a292bec4adfcff8145d84924",
+      "ir_lines": 670,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_import.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {
+        "PYSTACHY_PATH": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests"
+      },
+      "exit": 0,
+      "seconds_advisory": 0.4737389890015038,
+      "stderr": "",
+      "stdout_sha256": "bcd4ca0e526b16714bdff7d493c3c22550205275a292bec4adfcff8145d84924",
+      "ir_lines": 670,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_isinstance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4820242740006506,
+      "stderr": "",
+      "stdout_sha256": "bf86526174a21a6a5467e2bb79561b2d2a3693c0a7b638f628fecf13159c0fb8",
+      "ir_lines": 293,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_isinstance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4192457659992215,
+      "stderr": "",
+      "stdout_sha256": "bf86526174a21a6a5467e2bb79561b2d2a3693c0a7b638f628fecf13159c0fb8",
+      "ir_lines": 293,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_narrowing.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5360217710003781,
+      "stderr": "",
+      "stdout_sha256": "93f61282e5d4698161fde74acaf9a03673e35a7c277ec0abd7e4a482b08d4d55",
+      "ir_lines": 1102,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_narrowing.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.47986523100007616,
+      "stderr": "",
+      "stdout_sha256": "93f61282e5d4698161fde74acaf9a03673e35a7c277ec0abd7e4a482b08d4d55",
+      "ir_lines": 1102,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_protocols.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.49447968999993464,
+      "stderr": "",
+      "stdout_sha256": "e099ca0833518d712e51c114b02b4cc8e218f5d2313703a348b517847990927f",
+      "ir_lines": 1337,
+      "switches": 31
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_protocols.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5604758920017048,
+      "stderr": "",
+      "stdout_sha256": "97c11dba18d49cf37b913f405400b07e7db756f948a002b8329a0c970c6db67b",
+      "ir_lines": 1476,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_protocols_added.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.48413633900054265,
+      "stderr": "",
+      "stdout_sha256": "ae3874f077cc31ab2dce3f3e64709896d0e2768887917c0ed2a6911db1515986",
+      "ir_lines": 736,
+      "switches": 7
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_protocols_added.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.49333856100020057,
+      "stderr": "",
+      "stdout_sha256": "ac3a3c85c7a752c2e4db1f339f385e3674af5fc914d5f14caa1f88b26e386c17",
+      "ir_lines": 807,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_super.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.44960280200029956,
+      "stderr": "",
+      "stdout_sha256": "478fa70dda8b0c14bec6e430a0f5b3b22da7d58ba4a6007d6dea3a198b90ea2a",
+      "ir_lines": 942,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_super.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.43671684299988556,
+      "stderr": "",
+      "stdout_sha256": "478fa70dda8b0c14bec6e430a0f5b3b22da7d58ba4a6007d6dea3a198b90ea2a",
+      "ir_lines": 942,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/inheritance_unary_fallbacks.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.45270384600007674,
+      "stderr": "",
+      "stdout_sha256": "ff4dfa3b473e414e66e23e7e15cccbb17826ae328ce982b74f53c1bbd2e3493f",
+      "ir_lines": 1599,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/inheritance_unary_fallbacks.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.48213385800045216,
+      "stderr": "",
+      "stdout_sha256": "ff4dfa3b473e414e66e23e7e15cccbb17826ae328ce982b74f53c1bbd2e3493f",
+      "ir_lines": 1599,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/property_inheritance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.47125196200067876,
+      "stderr": "",
+      "stdout_sha256": "a0df835e3e0e79b84c8f6bc0314ba93ec92633a99c060adaf56b2ac6b1829d58",
+      "ir_lines": 489,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/property_inheritance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5534336840009928,
+      "stderr": "",
+      "stdout_sha256": "a0df835e3e0e79b84c8f6bc0314ba93ec92633a99c060adaf56b2ac6b1829d58",
+      "ir_lines": 489,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/classes/property_setter_inheritance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.44127360099992075,
+      "stderr": "",
+      "stdout_sha256": "af239f58c4fbf3d043360b9b5be0ec0ce4b61a8975f3e6b555f47ee8693a9cf2",
+      "ir_lines": 1287,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/classes/property_setter_inheritance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.46936745700077154,
+      "stderr": "",
+      "stdout_sha256": "af239f58c4fbf3d043360b9b5be0ec0ce4b61a8975f3e6b555f47ee8693a9cf2",
+      "ir_lines": 1287,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/exceptions/exc_compare_base.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.5854120439998951,
+      "stderr": "",
+      "stdout_sha256": "b82e6370bcbbe2b87f25857c9bdf36bc6d8e408d7ba361aca50b51c729bbdbca",
+      "ir_lines": 417,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/exceptions/exc_compare_base.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.464945240999441,
+      "stderr": "",
+      "stdout_sha256": "c309364cdd477fd0b8d42215de22eaa126499b2f141319a2b7bb301ae642c578",
+      "ir_lines": 489,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/exceptions/exc_compare_base.py",
+        "a1",
+        "a2"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.01397696599997289,
+      "stderr": "",
+      "stdout": "True False False False True\nFalse True True\n",
+      "matches_recording": true,
+      "matches_error": true,
+      "reference_version_caveat": "CPython 3.12.14, not pinned 3.13.16; checked-in recordings not modified"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/exceptions/exc_eq_subclass.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4899605079990579,
+      "stderr": "",
+      "stdout_sha256": "1aaa7c41e9f699f7b2680b7558a7b4dac5ac4707aa05f9450cfa2c2c29646760",
+      "ir_lines": 7401,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/exceptions/exc_eq_subclass.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.45583082900157024,
+      "stderr": "",
+      "stdout_sha256": "38bea43f0ebe55b7587b092d73a469cb74f528e92f3b7b97f6b6aac1b1959557",
+      "ir_lines": 9293,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/exceptions/exc_eq_subclass.py",
+        "a1",
+        "a2"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.011635704999207519,
+      "stderr": "",
+      "stdout": "F.__eq__ f\nF.__eq__ f\nF.__eq__ g\nF.__eq__ g\nTrue True True False True True\nF.__eq__ f\nF.__eq__ f\nNe.__ne__ n\nNe.__ne__ m\nFalse False True False False\nF.__eq__ f\nF.__eq__ f\nF.__eq__ f\nF.__eq__ f\nTrue True False False True False\nF.__eq__ f\nF.__eq__ f\nTrue True True True True\nF.__eq__ g\nF.__eq__ g\nTrue True\nF.__eq__ f\nF.__eq__ f\nF.__eq__ f\nTrue True False False\nF.__eq__ g\nF.__eq__ g\nF.__eq__ g\nF.__eq__ g\nF.__eq__ g\nF.__eq__ f\nTrue 0 3 True 2\nF.__eq__ f\nF.__eq__ f\nF.__eq__ f\nTrue True False\nTrue\nTypeError: '<' not supported between instances of 'E' and 'Lt'\nF.__eq__ raised\nF.__eq__ raised\nTrue False\nP.__eq__ q p\nP.__eq__ q p\nP.__eq__ q p\nFalse False True\nTrue False {'k': Sub(1)}\n[Narrow('h'), Pr('g')] 2 True\n",
+      "matches_recording": true,
+      "matches_error": true,
+      "reference_version_caveat": "CPython 3.12.14, not pinned 3.13.16; checked-in recordings not modified"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/inference/dynany_subclass_cmp.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.44712231700032135,
+      "stderr": "",
+      "stdout_sha256": "d38100b2249e11ea57fb5269a2e57ad6d2f3ed1e90cc807d37f80566c2542d6b",
+      "ir_lines": 1065,
+      "switches": 17
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/inference/dynany_subclass_cmp.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4171857239998644,
+      "stderr": "",
+      "stdout_sha256": "62fb8c499f57549c403463553e2ce75d825a93c968d05b15bfa7b625ca6d9b98",
+      "ir_lines": 1280,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/inference/dynany_subclass_cmp.py",
+        "a1",
+        "a2"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.019789803000094253,
+      "stderr": "",
+      "stdout": "S.__gt__ 2 1\nTrue\nS.__gt__ 2 1\nTrue\nS.__le__ 2 1\nFalse\nTypeError: '>' not supported between instances of 'B' and 'S'\nTypeError: '<' not supported between instances of 'S' and 'B'\nS.__gt__ 3 2\nTrue\nS.__gt__ 3 2\nTrue\nS.__le__ 2 3\nTrue\nTypeError: '<' not supported between instances of 'B' and 'B'\n2\n",
+      "matches_recording": true,
+      "matches_error": true,
+      "reference_version_caveat": "CPython 3.12.14, not pinned 3.13.16; checked-in recordings not modified"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "tests/programs/inference/dynany_subclass_eq.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.4519338379996043,
+      "stderr": "",
+      "stdout_sha256": "7645e8cb43981853fa25fc9305af396ce35aeb87512e46c05013cc91a55598cd",
+      "ir_lines": 1200,
+      "switches": 23
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/workspace/scratch/3ba735e28fa7/pystachy-audit-785/tests/programs/inference/dynany_subclass_eq.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.37209661500128277,
+      "stderr": "",
+      "stdout_sha256": "a03d49d61546a18e2ac42cc53f19b8f0bfa68ea4e8dbeae107e017b2dbb4a31f",
+      "ir_lines": 1284,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "tests/programs/inference/dynany_subclass_eq.py",
+        "a1",
+        "a2"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.018606747000376345,
+      "stderr": "",
+      "stdout": "S.__eq__\nS.__eq__\nS.__eq__\nTrue True False True\nN.__eq__\nN.__eq__\nFalse True\nTrue 1 0\nfound True\n",
+      "matches_recording": true,
+      "matches_error": true,
+      "reference_version_caveat": "CPython 3.12.14, not pinned 3.13.16; checked-in recordings not modified"
+    },
+    {
+      "command": [
+        "sh",
+        "tests/run.sh",
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3 -B -m pystachy",
+        "jit aot",
+        "tests/errors/classes/dataclass_inheritance_frozen.py",
+        "tests/errors/classes/dataclass_inheritance_order.py",
+        "tests/errors/classes/dataclass_inheritance_plain_base.py",
+        "tests/errors/classes/dataclass_inheritance_redeclared.py",
+        "tests/errors/classes/dataclass_inheritance_repr.py",
+        "tests/errors/classes/dataclass_inheritance_type.py",
+        "tests/errors/classes/dataclass_inheritance_unfrozen.py",
+        "tests/errors/classes/inheritance.py",
+        "tests/errors/classes/inheritance_callable_unannotated.py",
+        "tests/errors/classes/inheritance_classmethod_override_object.py",
+        "tests/errors/classes/inheritance_dataclass.py",
+        "tests/errors/classes/inheritance_generic.py",
+        "tests/errors/classes/inheritance_namedtuple.py",
+        "tests/errors/classes/inheritance_narrow_field.py",
+        "tests/errors/classes/inheritance_narrow_global.py",
+        "tests/errors/classes/inheritance_narrow_join.py",
+        "tests/errors/classes/inheritance_narrow_negative.py",
+        "tests/errors/classes/inheritance_narrow_nonlocal.py",
+        "tests/errors/classes/inheritance_narrow_reassigned.py",
+        "tests/errors/classes/inheritance_override_kind.py",
+        "tests/errors/classes/inheritance_redefined.py",
+        "tests/errors/classes/inheritance_reflected.py",
+        "tests/errors/classes/inheritance_reflected_override.py",
+        "tests/errors/classes/inheritance_shadow.py",
+        "tests/errors/classes/inheritance_shadow_method.py",
+        "tests/errors/exceptions/exc_compare_int.py",
+        "tests/errors/exceptions/exc_eq_dunder.py",
+        "tests/errors/exceptions/exc_eq_subclass_narrow.py",
+        "tests/errors/exceptions/exc_record_eq_narrow.py",
+        "tests/errors/generators/iterator_template_inheritance.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 8.452973574998396,
+      "stderr": "",
+      "stdout": "selected 30 cases\n30 passed, 0 failed\n"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-785-scaling-j1hd64uu/compare_True_40.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 1.2081196090002777,
+      "stderr": "",
+      "stdout_sha256": "34ed591c8a6623192f56e923b4458ab8048e08c655162c95a071a7935e1618da",
+      "ir_lines": 95625,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-785-scaling-j1hd64uu/compare_True_40.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.479253116000109,
+      "stderr": "",
+      "stdout_sha256": "63a547c02422733f706df961f92bc75651f581f7a7a3fce5aaed964657ed798f",
+      "ir_lines": 4957,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-785-scaling-j1hd64uu/compare_True_80.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 3.635013701999924,
+      "stderr": "",
+      "stdout_sha256": "5e232f736a9cccdeb9cf8242ed2d52968d8da6c827c0d91cefcd050768b4d54d",
+      "ir_lines": 357105,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-785-scaling-j1hd64uu/compare_True_80.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.6030642170007923,
+      "stderr": "",
+      "stdout_sha256": "e3d1c1305ec8cdb527362103ae3608dcbfd796e94a53edff7074a5dacd97721f",
+      "ir_lines": 9317,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-785-scaling-j1hd64uu/compare_False_40.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 1.179289911999149,
+      "stderr": "",
+      "stdout_sha256": "ebb5788cb5cf4ecd4ae26e1f5b4dd2d6848b3baf38ffe0f7eab65151c39a061c",
+      "ir_lines": 93851,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-785-scaling-j1hd64uu/compare_False_40.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.6015491430007387,
+      "stderr": "",
+      "stdout_sha256": "c60da21f4543874f765759f257c1e990bdfc9ad4e84e9d9ad006398118f48c6b",
+      "ir_lines": 3263,
+      "switches": 27
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-785-scaling-j1hd64uu/compare_False_80.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 3.7043955059998552,
+      "stderr": "",
+      "stdout_sha256": "435e8afe71c88de2ea66bed9f662b909d1263304e257897492c5cb56e40f57a8",
+      "ir_lines": 353611,
+      "switches": 3
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "-B",
+        "pystachy.py",
+        "ir",
+        "/tmp/audit-785-scaling-j1hd64uu/compare_False_80.py"
+      ],
+      "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+      "extra_environment": {},
+      "exit": 0,
+      "seconds_advisory": 0.6269051609997405,
+      "stderr": "",
+      "stdout_sha256": "8b8ae11b99186af91cda29c9a8222ad49b79a0300dd4be0f2efa11fa070d4881",
+      "ir_lines": 6063,
+      "switches": 27
+    }
+  ],
+  "scaling": [
+    {
+      "exception": true,
+      "subclasses": 40,
+      "sites": 8,
+      "source": "class Base(Exception):\n    def __eq__(self, other: object) -> bool:\n        return isinstance(other, Base) and str(self) == str(other)\nclass C0(Base):\n    pass\nclass C1(Base):\n    pass\nclass C2(Base):\n    pass\nclass C3(Base):\n    pass\nclass C4(Base):\n    pass\nclass C5(Base):\n    pass\nclass C6(Base):\n    pass\nclass C7(Base):\n    pass\nclass C8(Base):\n    pass\nclass C9(Base):\n    pass\nclass C10(Base):\n    pass\nclass C11(Base):\n    pass\nclass C12(Base):\n    pass\nclass C13(Base):\n    pass\nclass C14(Base):\n    pass\nclass C15(Base):\n    pass\nclass C16(Base):\n    pass\nclass C17(Base):\n    pass\nclass C18(Base):\n    pass\nclass C19(Base):\n    pass\nclass C20(Base):\n    pass\nclass C21(Base):\n    pass\nclass C22(Base):\n    pass\nclass C23(Base):\n    pass\nclass C24(Base):\n    pass\nclass C25(Base):\n    pass\nclass C26(Base):\n    pass\nclass C27(Base):\n    pass\nclass C28(Base):\n    pass\nclass C29(Base):\n    pass\nclass C30(Base):\n    pass\nclass C31(Base):\n    pass\nclass C32(Base):\n    pass\nclass C33(Base):\n    pass\nclass C34(Base):\n    pass\nclass C35(Base):\n    pass\nclass C36(Base):\n    pass\nclass C37(Base):\n    pass\nclass C38(Base):\n    pass\nclass C39(Base):\n    pass\ndef same(x: Base, y: Base) -> int:\n    k = 0\n    if x == y:\n        k += 1\n    if x != y:\n        k += 2\n    if x == y:\n        k += 3\n    if x != y:\n        k += 4\n    if x == y:\n        k += 5\n    if x != y:\n        k += 6\n    if x == y:\n        k += 7\n    if x != y:\n        k += 8\n    return k\nprint(same(C0('a'), C39('a')))\n",
+      "source_sha256": "b179ea1e85f36117dfc2b5e99c224f690aebb5167e7c0a9ce2dd1cf2978860f9",
+      "old": {
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "-B",
+          "pystachy.py",
+          "ir",
+          "/tmp/audit-785-scaling-j1hd64uu/compare_True_40.py"
+        ],
+        "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+        "extra_environment": {},
+        "exit": 0,
+        "seconds_advisory": 1.2081196090002777,
+        "stderr": "",
+        "stdout_sha256": "34ed591c8a6623192f56e923b4458ab8048e08c655162c95a071a7935e1618da",
+        "ir_lines": 95625,
+        "switches": 3
+      },
+      "new": {
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "-B",
+          "pystachy.py",
+          "ir",
+          "/tmp/audit-785-scaling-j1hd64uu/compare_True_40.py"
+        ],
+        "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+        "extra_environment": {},
+        "exit": 0,
+        "seconds_advisory": 0.479253116000109,
+        "stderr": "",
+        "stdout_sha256": "63a547c02422733f706df961f92bc75651f581f7a7a3fce5aaed964657ed798f",
+        "ir_lines": 4957,
+        "switches": 3
+      }
+    },
+    {
+      "exception": true,
+      "subclasses": 80,
+      "sites": 8,
+      "source": "class Base(Exception):\n    def __eq__(self, other: object) -> bool:\n        return isinstance(other, Base) and str(self) == str(other)\nclass C0(Base):\n    pass\nclass C1(Base):\n    pass\nclass C2(Base):\n    pass\nclass C3(Base):\n    pass\nclass C4(Base):\n    pass\nclass C5(Base):\n    pass\nclass C6(Base):\n    pass\nclass C7(Base):\n    pass\nclass C8(Base):\n    pass\nclass C9(Base):\n    pass\nclass C10(Base):\n    pass\nclass C11(Base):\n    pass\nclass C12(Base):\n    pass\nclass C13(Base):\n    pass\nclass C14(Base):\n    pass\nclass C15(Base):\n    pass\nclass C16(Base):\n    pass\nclass C17(Base):\n    pass\nclass C18(Base):\n    pass\nclass C19(Base):\n    pass\nclass C20(Base):\n    pass\nclass C21(Base):\n    pass\nclass C22(Base):\n    pass\nclass C23(Base):\n    pass\nclass C24(Base):\n    pass\nclass C25(Base):\n    pass\nclass C26(Base):\n    pass\nclass C27(Base):\n    pass\nclass C28(Base):\n    pass\nclass C29(Base):\n    pass\nclass C30(Base):\n    pass\nclass C31(Base):\n    pass\nclass C32(Base):\n    pass\nclass C33(Base):\n    pass\nclass C34(Base):\n    pass\nclass C35(Base):\n    pass\nclass C36(Base):\n    pass\nclass C37(Base):\n    pass\nclass C38(Base):\n    pass\nclass C39(Base):\n    pass\nclass C40(Base):\n    pass\nclass C41(Base):\n    pass\nclass C42(Base):\n    pass\nclass C43(Base):\n    pass\nclass C44(Base):\n    pass\nclass C45(Base):\n    pass\nclass C46(Base):\n    pass\nclass C47(Base):\n    pass\nclass C48(Base):\n    pass\nclass C49(Base):\n    pass\nclass C50(Base):\n    pass\nclass C51(Base):\n    pass\nclass C52(Base):\n    pass\nclass C53(Base):\n    pass\nclass C54(Base):\n    pass\nclass C55(Base):\n    pass\nclass C56(Base):\n    pass\nclass C57(Base):\n    pass\nclass C58(Base):\n    pass\nclass C59(Base):\n    pass\nclass C60(Base):\n    pass\nclass C61(Base):\n    pass\nclass C62(Base):\n    pass\nclass C63(Base):\n    pass\nclass C64(Base):\n    pass\nclass C65(Base):\n    pass\nclass C66(Base):\n    pass\nclass C67(Base):\n    pass\nclass C68(Base):\n    pass\nclass C69(Base):\n    pass\nclass C70(Base):\n    pass\nclass C71(Base):\n    pass\nclass C72(Base):\n    pass\nclass C73(Base):\n    pass\nclass C74(Base):\n    pass\nclass C75(Base):\n    pass\nclass C76(Base):\n    pass\nclass C77(Base):\n    pass\nclass C78(Base):\n    pass\nclass C79(Base):\n    pass\ndef same(x: Base, y: Base) -> int:\n    k = 0\n    if x == y:\n        k += 1\n    if x != y:\n        k += 2\n    if x == y:\n        k += 3\n    if x != y:\n        k += 4\n    if x == y:\n        k += 5\n    if x != y:\n        k += 6\n    if x == y:\n        k += 7\n    if x != y:\n        k += 8\n    return k\nprint(same(C0('a'), C79('a')))\n",
+      "source_sha256": "cab7b37dadafa89c8c5973e067e132a6f28850b2f1e16996c9c0830217c7a6dc",
+      "old": {
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "-B",
+          "pystachy.py",
+          "ir",
+          "/tmp/audit-785-scaling-j1hd64uu/compare_True_80.py"
+        ],
+        "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+        "extra_environment": {},
+        "exit": 0,
+        "seconds_advisory": 3.635013701999924,
+        "stderr": "",
+        "stdout_sha256": "5e232f736a9cccdeb9cf8242ed2d52968d8da6c827c0d91cefcd050768b4d54d",
+        "ir_lines": 357105,
+        "switches": 3
+      },
+      "new": {
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "-B",
+          "pystachy.py",
+          "ir",
+          "/tmp/audit-785-scaling-j1hd64uu/compare_True_80.py"
+        ],
+        "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+        "extra_environment": {},
+        "exit": 0,
+        "seconds_advisory": 0.6030642170007923,
+        "stderr": "",
+        "stdout_sha256": "e3d1c1305ec8cdb527362103ae3608dcbfd796e94a53edff7074a5dacd97721f",
+        "ir_lines": 9317,
+        "switches": 3
+      }
+    },
+    {
+      "exception": false,
+      "subclasses": 40,
+      "sites": 8,
+      "source": "class Base:\n    def __init__(self, n: str) -> None:\n        pass\n    def __eq__(self, other: 'Base') -> bool:\n        return other is not self\nclass C0(Base):\n    pass\nclass C1(Base):\n    pass\nclass C2(Base):\n    pass\nclass C3(Base):\n    pass\nclass C4(Base):\n    pass\nclass C5(Base):\n    pass\nclass C6(Base):\n    pass\nclass C7(Base):\n    pass\nclass C8(Base):\n    pass\nclass C9(Base):\n    pass\nclass C10(Base):\n    pass\nclass C11(Base):\n    pass\nclass C12(Base):\n    pass\nclass C13(Base):\n    pass\nclass C14(Base):\n    pass\nclass C15(Base):\n    pass\nclass C16(Base):\n    pass\nclass C17(Base):\n    pass\nclass C18(Base):\n    pass\nclass C19(Base):\n    pass\nclass C20(Base):\n    pass\nclass C21(Base):\n    pass\nclass C22(Base):\n    pass\nclass C23(Base):\n    pass\nclass C24(Base):\n    pass\nclass C25(Base):\n    pass\nclass C26(Base):\n    pass\nclass C27(Base):\n    pass\nclass C28(Base):\n    pass\nclass C29(Base):\n    pass\nclass C30(Base):\n    pass\nclass C31(Base):\n    pass\nclass C32(Base):\n    pass\nclass C33(Base):\n    pass\nclass C34(Base):\n    pass\nclass C35(Base):\n    pass\nclass C36(Base):\n    pass\nclass C37(Base):\n    pass\nclass C38(Base):\n    pass\nclass C39(Base):\n    pass\ndef same(x: Base, y: Base) -> int:\n    k = 0\n    if x == y:\n        k += 1\n    if x != y:\n        k += 2\n    if x == y:\n        k += 3\n    if x != y:\n        k += 4\n    if x == y:\n        k += 5\n    if x != y:\n        k += 6\n    if x == y:\n        k += 7\n    if x != y:\n        k += 8\n    return k\nprint(same(C0('a'), C39('a')))\n",
+      "source_sha256": "a8a03d36c98298baf297def500c4d4f7235c5674e37f5de201d46cbb2c972c9f",
+      "old": {
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "-B",
+          "pystachy.py",
+          "ir",
+          "/tmp/audit-785-scaling-j1hd64uu/compare_False_40.py"
+        ],
+        "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+        "extra_environment": {},
+        "exit": 0,
+        "seconds_advisory": 1.179289911999149,
+        "stderr": "",
+        "stdout_sha256": "ebb5788cb5cf4ecd4ae26e1f5b4dd2d6848b3baf38ffe0f7eab65151c39a061c",
+        "ir_lines": 93851,
+        "switches": 3
+      },
+      "new": {
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "-B",
+          "pystachy.py",
+          "ir",
+          "/tmp/audit-785-scaling-j1hd64uu/compare_False_40.py"
+        ],
+        "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+        "extra_environment": {},
+        "exit": 0,
+        "seconds_advisory": 0.6015491430007387,
+        "stderr": "",
+        "stdout_sha256": "c60da21f4543874f765759f257c1e990bdfc9ad4e84e9d9ad006398118f48c6b",
+        "ir_lines": 3263,
+        "switches": 27
+      }
+    },
+    {
+      "exception": false,
+      "subclasses": 80,
+      "sites": 8,
+      "source": "class Base:\n    def __init__(self, n: str) -> None:\n        pass\n    def __eq__(self, other: 'Base') -> bool:\n        return other is not self\nclass C0(Base):\n    pass\nclass C1(Base):\n    pass\nclass C2(Base):\n    pass\nclass C3(Base):\n    pass\nclass C4(Base):\n    pass\nclass C5(Base):\n    pass\nclass C6(Base):\n    pass\nclass C7(Base):\n    pass\nclass C8(Base):\n    pass\nclass C9(Base):\n    pass\nclass C10(Base):\n    pass\nclass C11(Base):\n    pass\nclass C12(Base):\n    pass\nclass C13(Base):\n    pass\nclass C14(Base):\n    pass\nclass C15(Base):\n    pass\nclass C16(Base):\n    pass\nclass C17(Base):\n    pass\nclass C18(Base):\n    pass\nclass C19(Base):\n    pass\nclass C20(Base):\n    pass\nclass C21(Base):\n    pass\nclass C22(Base):\n    pass\nclass C23(Base):\n    pass\nclass C24(Base):\n    pass\nclass C25(Base):\n    pass\nclass C26(Base):\n    pass\nclass C27(Base):\n    pass\nclass C28(Base):\n    pass\nclass C29(Base):\n    pass\nclass C30(Base):\n    pass\nclass C31(Base):\n    pass\nclass C32(Base):\n    pass\nclass C33(Base):\n    pass\nclass C34(Base):\n    pass\nclass C35(Base):\n    pass\nclass C36(Base):\n    pass\nclass C37(Base):\n    pass\nclass C38(Base):\n    pass\nclass C39(Base):\n    pass\nclass C40(Base):\n    pass\nclass C41(Base):\n    pass\nclass C42(Base):\n    pass\nclass C43(Base):\n    pass\nclass C44(Base):\n    pass\nclass C45(Base):\n    pass\nclass C46(Base):\n    pass\nclass C47(Base):\n    pass\nclass C48(Base):\n    pass\nclass C49(Base):\n    pass\nclass C50(Base):\n    pass\nclass C51(Base):\n    pass\nclass C52(Base):\n    pass\nclass C53(Base):\n    pass\nclass C54(Base):\n    pass\nclass C55(Base):\n    pass\nclass C56(Base):\n    pass\nclass C57(Base):\n    pass\nclass C58(Base):\n    pass\nclass C59(Base):\n    pass\nclass C60(Base):\n    pass\nclass C61(Base):\n    pass\nclass C62(Base):\n    pass\nclass C63(Base):\n    pass\nclass C64(Base):\n    pass\nclass C65(Base):\n    pass\nclass C66(Base):\n    pass\nclass C67(Base):\n    pass\nclass C68(Base):\n    pass\nclass C69(Base):\n    pass\nclass C70(Base):\n    pass\nclass C71(Base):\n    pass\nclass C72(Base):\n    pass\nclass C73(Base):\n    pass\nclass C74(Base):\n    pass\nclass C75(Base):\n    pass\nclass C76(Base):\n    pass\nclass C77(Base):\n    pass\nclass C78(Base):\n    pass\nclass C79(Base):\n    pass\ndef same(x: Base, y: Base) -> int:\n    k = 0\n    if x == y:\n        k += 1\n    if x != y:\n        k += 2\n    if x == y:\n        k += 3\n    if x != y:\n        k += 4\n    if x == y:\n        k += 5\n    if x != y:\n        k += 6\n    if x == y:\n        k += 7\n    if x != y:\n        k += 8\n    return k\nprint(same(C0('a'), C79('a')))\n",
+      "source_sha256": "6b735f54508958a4346697a1cc9b876dfd37841ca2618b1065dfacde9ae85668",
+      "old": {
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "-B",
+          "pystachy.py",
+          "ir",
+          "/tmp/audit-785-scaling-j1hd64uu/compare_False_80.py"
+        ],
+        "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before",
+        "extra_environment": {},
+        "exit": 0,
+        "seconds_advisory": 3.7043955059998552,
+        "stderr": "",
+        "stdout_sha256": "435e8afe71c88de2ea66bed9f662b909d1263304e257897492c5cb56e40f57a8",
+        "ir_lines": 353611,
+        "switches": 3
+      },
+      "new": {
+        "command": [
+          "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+          "-B",
+          "pystachy.py",
+          "ir",
+          "/tmp/audit-785-scaling-j1hd64uu/compare_False_80.py"
+        ],
+        "cwd": "/workspace/scratch/3ba735e28fa7/pystachy-audit-785",
+        "extra_environment": {},
+        "exit": 0,
+        "seconds_advisory": 0.6269051609997405,
+        "stderr": "",
+        "stdout_sha256": "8b8ae11b99186af91cda29c9a8222ad49b79a0300dd4be0f2efa11fa070d4881",
+        "ir_lines": 6063,
+        "switches": 27
+      }
+    }
+  ],
+  "probes": [
+    {
+      "path": "tests/programs/classes/dataclass_inheritance.py",
+      "source_sha256": "5bbf3bca6e293346ca6da35a8b40412d3e727c7c3073157bc1f85b1ac32af209",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 6165,
+      "previous_lines": 6792
+    },
+    {
+      "path": "tests/programs/classes/dataclass_inheritance_compare.py",
+      "source_sha256": "5940f7391ec6115e7c1817c47692d9905dca2ea1052fbe6fbd147f7452ab8013",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1632,
+      "previous_lines": 1865
+    },
+    {
+      "path": "tests/programs/classes/dataclass_inheritance_import.py",
+      "source_sha256": "356cae22f3dd8e2c34b4ed86ac6d21ed22cf2d2d38a933f24d2b1882c6ea6458",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 2343,
+      "previous_lines": 2563
+    },
+    {
+      "path": "tests/programs/classes/dataclass_inheritance_mod.py",
+      "source_sha256": "008746abef85b1b4e14a55ce53212a11feb610547217a263af2d1aab1209c557",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 69,
+      "previous_lines": 69
+    },
+    {
+      "path": "tests/programs/classes/dataclass_inheritance_property.py",
+      "source_sha256": "1e759e3d72f28d2a656a5a945dc8cc732b357ea44d9399e3d98d81685b932257",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1037,
+      "previous_lines": 1066
+    },
+    {
+      "path": "tests/programs/classes/inheritance_bound_identity.py",
+      "source_sha256": "4719b06cd465a2f7b0ffcc932bd4a149ebc2099a0bc585760403652b18f93252",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 421,
+      "previous_lines": 421
+    },
+    {
+      "path": "tests/programs/classes/inheritance_call_order.py",
+      "source_sha256": "9b9eab3c013f7a123447b2dd18584409ba73fe83e8db8838e4ef53208d420d83",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 408,
+      "previous_lines": 408
+    },
+    {
+      "path": "tests/programs/classes/inheritance_classattrs.py",
+      "source_sha256": "a62874ec91dbaea3b5f91d46800b5b476a7af81caed4a44d5f7921790576b23c",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 803,
+      "previous_lines": 803
+    },
+    {
+      "path": "tests/programs/classes/inheritance_classmethod_override.py",
+      "source_sha256": "d2b00691ee3ffaebd4b5e77f71dd772489f6a5829b6921d0f15fb5013b8809f1",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 755,
+      "previous_lines": 755
+    },
+    {
+      "path": "tests/programs/classes/inheritance_compare_pairs.py",
+      "source_sha256": "00dc54bc4bdc367d77f188e9cd63afd5f94536cb198b22483d5897ccfb574f35",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 2698,
+      "previous_lines": 3516
+    },
+    {
+      "path": "tests/programs/classes/inheritance_comparisons.py",
+      "source_sha256": "54aebba9ad0bcee3409a552418a918b6a7e0e654d198f8709ca27569d320add6",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1979,
+      "previous_lines": 2360
+    },
+    {
+      "path": "tests/programs/classes/inheritance_container_compare_base.py",
+      "source_sha256": "838cdad060f9ce017807254ed6b169927e5ce5916e410f2c32570d12e6414a3b",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1222,
+      "previous_lines": 1374
+    },
+    {
+      "path": "tests/programs/classes/inheritance_dispatch.py",
+      "source_sha256": "01a57db695e51f9bfbe1416f1e00afd828cee6953711389b69aff0af0f53cee6",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 899,
+      "previous_lines": 899
+    },
+    {
+      "path": "tests/programs/classes/inheritance_fields.py",
+      "source_sha256": "958a54b1c4f0a0be955492966d4de26624290b3103d46d5cf7ec68c116b0cc5b",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 934,
+      "previous_lines": 934
+    },
+    {
+      "path": "tests/programs/classes/inheritance_hasattr.py",
+      "source_sha256": "141d76a1821463dd97972f3649fbb42154653f4ce927d9f8564849e8161f87a9",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 330,
+      "previous_lines": 330
+    },
+    {
+      "path": "tests/programs/classes/inheritance_import.py",
+      "source_sha256": "8af78af37e1047116eabafef14a77e93e87f06fb8090c1537a76e96c75f1cb5b",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 670,
+      "previous_lines": 670
+    },
+    {
+      "path": "tests/programs/classes/inheritance_isinstance.py",
+      "source_sha256": "58f95612b88cf42a58ab4824bc23c4ac92f8911e20ea00caf48f517769409331",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 293,
+      "previous_lines": 293
+    },
+    {
+      "path": "tests/programs/classes/inheritance_narrowing.py",
+      "source_sha256": "9679bdd3b84b33ff71d215b53e30ffe695714a698f53d1cbc43611c23555a14c",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1102,
+      "previous_lines": 1102
+    },
+    {
+      "path": "tests/programs/classes/inheritance_protocols.py",
+      "source_sha256": "b5a92852f49a03c0a6b071a8e59a919351da1a4b38337d5fb4c891195f890d79",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1337,
+      "previous_lines": 1476
+    },
+    {
+      "path": "tests/programs/classes/inheritance_protocols_added.py",
+      "source_sha256": "e8be0f95b4b08880be99702f88465925302a64a6a419223b9a0ebd145eb443bc",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 736,
+      "previous_lines": 807
+    },
+    {
+      "path": "tests/programs/classes/inheritance_super.py",
+      "source_sha256": "181969de1aa18eca7291a94c1d0048a5aee03bc052482ab0f81249168a7db2c8",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 942,
+      "previous_lines": 942
+    },
+    {
+      "path": "tests/programs/classes/inheritance_unary_fallbacks.py",
+      "source_sha256": "1d607481aa084f29235eb50947c6ebbb27c4c64314672b8b96d8bf6c1ed9c980",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1599,
+      "previous_lines": 1599
+    },
+    {
+      "path": "tests/programs/classes/property_inheritance.py",
+      "source_sha256": "fdcef426ee6bf2e196d6e9e7aec0c3706e2c9e8ea49dacc101171359605fc2fc",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 489,
+      "previous_lines": 489
+    },
+    {
+      "path": "tests/programs/classes/property_setter_inheritance.py",
+      "source_sha256": "471d16c3dff992854ac163d73dd7084ce43e3ecc66c45b7fd21f545e35dc7f60",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1287,
+      "previous_lines": 1287
+    },
+    {
+      "path": "tests/programs/exceptions/exc_compare_base.py",
+      "source_sha256": "4b505565712179ef1205639cf6221d7501eafffdba15726a407b9ff61befeb60",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 417,
+      "previous_lines": 489
+    },
+    {
+      "path": "tests/programs/exceptions/exc_eq_subclass.py",
+      "source_sha256": "4467c7a38baf686bf235f0d2ab3e68affd01d4a331d21131d17de5b133a98a53",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 7401,
+      "previous_lines": 9293
+    },
+    {
+      "path": "tests/programs/inference/dynany_subclass_cmp.py",
+      "source_sha256": "b8a7c96ff8f707e06f6dc6fe81a37a145ce73ab5652a9971811a2dc0fc2910c8",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1065,
+      "previous_lines": 1280
+    },
+    {
+      "path": "tests/programs/inference/dynany_subclass_eq.py",
+      "source_sha256": "d63244e3bbc83d25fce802df8f8eac39499f818b3f9309288750b2a14de86535",
+      "current_exit": 0,
+      "previous_exit": 0,
+      "current_lines": 1200,
+      "previous_lines": 1284
+    }
+  ],
+  "replay_source": "\"\"\"Hosted-only #785 audit. Usage: python -B audit-785.py NEW OLD OUTPUT.json.\"\"\"\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport runpy\nimport subprocess\nimport sys\nimport tempfile\nimport time\n\nnew, old, output = map(lambda x: Path(x).resolve(), sys.argv[1:])\nenv = {k: v for k, v in os.environ.items() if not k.startswith('PYSTACHY_') and k not in ('PYTHONPATH', 'PYTHONHOME')}\nenv.update(PYTHONDONTWRITEBYTECODE='1', LC_ALL='C', PYSTACHY_JOBS='2', PYSTACHY_IRCHECK='1')\n\ndef snapshot(root):\n    def git(*args):\n        return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()\n    return dict(sha=git('rev-parse', 'HEAD'), tree=git('rev-parse', 'HEAD^{tree}'),\n                tracked_and_untracked=git('status', '--porcelain=v1', '--untracked-files=all'),\n                ignored=git('ls-files', '--others', '--ignored', '--exclude-standard'))\n\ndata = dict(status='partial-hosted-only', python=sys.version, executable=sys.executable,\n            environment_overrides={k: env[k] for k in ('PYTHONDONTWRITEBYTECODE', 'LC_ALL', 'PYSTACHY_JOBS', 'PYSTACHY_IRCHECK')},\n            before={str(r): snapshot(r) for r in (new, old)}, records=[], scaling=[], probes=[])\nassert all(not s['tracked_and_untracked'] and not s['ignored'] for s in data['before'].values())\n\ndef save():\n    data['replay_source'] = Path(__file__).read_text()\n    output.write_text(json.dumps(data, indent=2) + '\\n')\n\ndef run(cmd, root=new, extra=None, ir=False):\n    start = time.monotonic()\n    try:\n        p = subprocess.run(cmd, cwd=root, env=env | (extra or {}), capture_output=True, timeout=240)\n        row = dict(command=cmd, cwd=str(root), extra_environment=extra or {}, exit=p.returncode,\n                   seconds_advisory=time.monotonic()-start, stderr=p.stderr.decode(errors='replace'))\n        if ir:\n            row.update(stdout_sha256=hashlib.sha256(p.stdout).hexdigest(), ir_lines=len(p.stdout.splitlines()),\n                       switches=p.stdout.count(b'  switch i64 '))\n        else:\n            row['stdout'] = p.stdout.decode(errors='replace')\n    except subprocess.TimeoutExpired:\n        row = dict(command=cmd, cwd=str(root), timeout=240)\n        p = None\n    data['records'].append(row)\n    save()\n    return p, row\n\nfor pattern in ('test_typed*.py', 'test_*verif*.py'):\n    p, row = run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tools', '-p', pattern, '-v'])\n    print(pattern, row.get('exit'), flush=True)\n\nselected = sorted(p for p in (new/'tests/programs/classes').glob('*inheritance*.py'))\nselected += sorted(p for p in (new/'tests/programs/exceptions').glob('exc_*.py') if any(x in p.stem for x in ('compare', 'eq_')))\nselected += sorted(p for p in (new/'tests/programs/inference').glob('dynany_subclass_*.py'))\nfor path in selected:\n    rel = str(path.relative_to(new))\n    sidecar = path.with_suffix('.path')\n    extra = {'PYSTACHY_PATH': sidecar.read_text().strip()} if sidecar.exists() else {}\n    current, cr = run([sys.executable, '-B', 'pystachy.py', 'ir', rel], extra=extra, ir=True)\n    previous, pr = run([sys.executable, '-B', 'pystachy.py', 'ir', str(path)], root=old,\n                       extra={'PYSTACHY_PATH': str(new/'tests')} if sidecar.exists() else {}, ir=True)\n    data['probes'].append(dict(path=rel, source_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),\n                               current_exit=cr.get('exit'), previous_exit=pr.get('exit'),\n                               current_lines=cr.get('ir_lines'), previous_lines=pr.get('ir_lines')))\n    if path.stem in ('inheritance_compare_pairs', 'inheritance_comparisons', 'inheritance_container_compare_base',\n                      'dataclass_inheritance_compare', 'exc_compare_base', 'exc_eq_subclass',\n                      'dynany_subclass_cmp', 'dynany_subclass_eq'):\n        p, row = run([sys.executable, '-B', rel, 'a1', 'a2'], extra={'PYTHONPATH': sidecar.read_text().strip()} if sidecar.exists() else {})\n        if p is not None:\n            expected = path.with_suffix('.out').read_bytes()\n            err = path.with_suffix('.err')\n            row['matches_recording'] = p.stdout + f'[exit {p.returncode}]\\n'.encode() == expected\n            row['matches_error'] = (p.stderr.decode().splitlines()[-1:] == err.read_text().splitlines()) if err.exists() else not p.stderr\n            row['reference_version_caveat'] = 'CPython 3.12.14, not pinned 3.13.16; checked-in recordings not modified'\n    save()\nprint('positive hosted probes', len(selected), flush=True)\n\nerrors = sorted(str(p.relative_to(new)) for p in (new/'tests/errors').glob('*/*.py')\n                if any(x in p.stem for x in ('inheritance', 'exc_compare', 'exc_eq_', 'exc_record_eq')))\np, row = run(['sh', 'tests/run.sh', f'{sys.executable} -B -m pystachy', 'jit aot', *errors])\ndata['rejection_paths'] = errors\nprint('rejections', len(errors), row.get('exit'), flush=True)\n\nsys.path.insert(0, str(new))\ngenerate = runpy.run_path(str(new/'tools/inheritprobe.py'))['compare_source']\nwith tempfile.TemporaryDirectory(prefix='audit-785-scaling-') as temp:\n    for exc in (True, False):\n        for n in (40, 80):\n            source = generate(n, exc)\n            path = Path(temp)/f'compare_{exc}_{n}.py'\n            path.write_text(source)\n            item = dict(exception=exc, subclasses=n, sites=8, source=source,\n                        source_sha256=hashlib.sha256(source.encode()).hexdigest())\n            for label, root in (('old', old), ('new', new)):\n                p, row = run([sys.executable, '-B', 'pystachy.py', 'ir', str(path)], root=root, ir=True)\n                item[label] = row\n            data['scaling'].append(item)\n            save()\n            print('scaling', exc, n, item['old'].get('ir_lines'), item['new'].get('ir_lines'), flush=True)\ndata['after'] = {str(r): snapshot(r) for r in (new, old)}\nsave()\n",
+  "rejection_paths": [
+    "tests/errors/classes/dataclass_inheritance_frozen.py",
+    "tests/errors/classes/dataclass_inheritance_order.py",
+    "tests/errors/classes/dataclass_inheritance_plain_base.py",
+    "tests/errors/classes/dataclass_inheritance_redeclared.py",
+    "tests/errors/classes/dataclass_inheritance_repr.py",
+    "tests/errors/classes/dataclass_inheritance_type.py",
+    "tests/errors/classes/dataclass_inheritance_unfrozen.py",
+    "tests/errors/classes/inheritance.py",
+    "tests/errors/classes/inheritance_callable_unannotated.py",
+    "tests/errors/classes/inheritance_classmethod_override_object.py",
+    "tests/errors/classes/inheritance_dataclass.py",
+    "tests/errors/classes/inheritance_generic.py",
+    "tests/errors/classes/inheritance_namedtuple.py",
+    "tests/errors/classes/inheritance_narrow_field.py",
+    "tests/errors/classes/inheritance_narrow_global.py",
+    "tests/errors/classes/inheritance_narrow_join.py",
+    "tests/errors/classes/inheritance_narrow_negative.py",
+    "tests/errors/classes/inheritance_narrow_nonlocal.py",
+    "tests/errors/classes/inheritance_narrow_reassigned.py",
+    "tests/errors/classes/inheritance_override_kind.py",
+    "tests/errors/classes/inheritance_redefined.py",
+    "tests/errors/classes/inheritance_reflected.py",
+    "tests/errors/classes/inheritance_reflected_override.py",
+    "tests/errors/classes/inheritance_shadow.py",
+    "tests/errors/classes/inheritance_shadow_method.py",
+    "tests/errors/exceptions/exc_compare_int.py",
+    "tests/errors/exceptions/exc_eq_dunder.py",
+    "tests/errors/exceptions/exc_eq_subclass_narrow.py",
+    "tests/errors/exceptions/exc_record_eq_narrow.py",
+    "tests/errors/generators/iterator_template_inheritance.py"
+  ],
+  "after": {
+    "/workspace/scratch/3ba735e28fa7/pystachy-audit-785": {
+      "sha": "554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab",
+      "tree": "0edfdeca7819e8e401bdd5d9ec1c4c7481adba99",
+      "tracked_and_untracked": "",
+      "ignored": "build/runtime-py.hashes"
+    },
+    "/workspace/scratch/3ba735e28fa7/pystachy-audit-785-before": {
+      "sha": "161418792189ccaaf01ccd554c5e2263a50a92f7",
+      "tree": "a53e6ff593f9a583d0dedf40d5adc845b8f25147",
+      "tracked_and_untracked": "",
+      "ignored": ""
+    }
+  },
+  "audit_context": {
+    "date": "2026-10-20",
+    "merge_sha": "554f3d1344720dc307b99a6ffa6f8f5a76a2a3ab",
+    "merge_time": "2026-10-20T18:17:50Z",
+    "implementation_head": "e647b02447df971cf1696119715f7b28f6d3fc3b",
+    "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9",
+    "merges_since_last_full": [
+      762,
+      771,
+      776,
+      788,
+      785
+    ],
+    "newly_measured": [
+      785
+    ],
+    "documentation_only": [
+      776,
+      788
+    ],
+    "native_compiler_build_sha": null,
+    "native_compiler_sha256": null,
+    "limitations": [
+      "CPython 3.13.16 and LLVM18 no longer available at known or discovered locations; available host is CPython3.12.14.",
+      "No native rebuild, LLVM assembly, JIT/AOT, GC stress, release smoke, retained 3.13 inventory import sweep, native ports/benchmarks, full upstream suite or regrtest.",
+      "IR counts are raw emitted LLVM line counts, not optimized size or runtime speed.",
+      "#762 native/release evaluation and #785 native evaluation remain incomplete; full checkpoint not advanced.",
+      "Old compiler uses its own checkout runtime/lib; selected test source comes from new tree to include new regression; old .path tests use identical helpers from new/tests.",
+      "All preflight source inputs pristine; new hosted generation creates ignored build/runtime-py.hashes, post-run not pristine."
+    ],
+    "summary": {
+      "typed_ir_tests": 82,
+      "harness_tests": 53,
+      "selected_positive_programs": 28,
+      "compilations": 56,
+      "smaller_ir": 13,
+      "equal_line_count": 15,
+      "larger_ir": 0,
+      "rejection_cases": 30,
+      "cpython_3_12_recording_matches": 8
+    },
+    "historical_ci": {
+      "head": "e647b02447df971cf1696119715f7b28f6d3fc3b",
+      "tree": "0edfdeca7819e8e401bdd5d9ec1c4c7481adba99",
+      "runs": [
+        {
+          "id": 39471120269,
+          "name": "Lint",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 1400,
+          "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39471120269/jobs",
+          "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39471120269/logs",
+          "workflow_id": 380178546
+        },
+        {
+          "id": 39471120155,
+          "name": "Packages",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 813,
+          "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39471120155/jobs",
+          "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39471120155/logs",
+          "workflow_id": 384924720
+        },
+        {
+          "id": 39471120168,
+          "name": "Installation",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 882,
+          "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39471120168/jobs",
+          "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39471120168/logs",
+          "workflow_id": 383819777
+        },
+        {
+          "id": 39471120331,
+          "name": "CI",
+          "status": "completed",
+          "conclusion": "success",
+          "run_number": 1523,
+          "jobs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39471120331/jobs",
+          "logs_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/39471120331/logs",
+          "workflow_id": 377796772
+        }
+      ],
+      "jobs": [
+        {
+          "id": 118795120731,
+          "name": "upstream large regex (JIT and AOT, normal GC)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Run tools/setup.sh --minimal",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Run make port-check-large",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11
+            }
+          ]
+        },
+        {
+          "id": 118795121435,
+          "name": "verify (bootstrap)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Run tools/setup.sh --minimal",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Verify compiler and runtime fixed points",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Package verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            },
+            {
+              "name": "Upload bootstrap report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            }
+          ]
+        },
+        {
+          "id": 118795121485,
+          "name": "upstream port preservation (CPython)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Run make port-check",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Upload port report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11
+            }
+          ]
+        },
+        {
+          "id": 118796639398,
+          "name": "verify (hosted-2)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639408,
+          "name": "verify (ubsan-0)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639437,
+          "name": "verify (contracts)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639445,
+          "name": "verify (opt-off-0)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639452,
+          "name": "verify (opt-off-1)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639455,
+          "name": "verify (python-free-0)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639460,
+          "name": "verify (hosted-0)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639461,
+          "name": "verify (gc-aot-0)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639481,
+          "name": "verify (benchmarks)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639489,
+          "name": "verify (gc-jit-1)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639493,
+          "name": "verify (gc-aot-2)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639500,
+          "name": "verify (gc-aot-1)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639503,
+          "name": "verify (python-free-2)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639507,
+          "name": "verify (ubsan-1)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639512,
+          "name": "verify (ubsan-2)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639516,
+          "name": "verify (gc-jit-0)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639533,
+          "name": "verify (native-0)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639560,
+          "name": "verify (hosted-1)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639594,
+          "name": "verify (python-free-1)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639639,
+          "name": "verify (gc-self)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639662,
+          "name": "verify (native-1)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796639768,
+          "name": "verify (scaling-1)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118796640529,
+          "name": "verify (runtime-cache)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Download verified bootstrap",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Verify group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Extended subset benchmark correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7
+            },
+            {
+              "name": "Optional BLAS adapter and nanoGPT fused-linear correctness",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8
+            },
+            {
+              "name": "Upload group report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            }
+          ]
+        },
+        {
+          "id": 118801071907,
+          "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 39471120331,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Require complete verification reports",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Require every verification group",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Upload combined verification report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15
+            }
+          ]
+        }
+      ]
+    },
+    "author_reported_not_reproduced": {
+      "source": "https://github.com/den-run-ai/pystachy/pull/785",
+      "exception_string_comparison_aot_wall_regression_percent": [
+        8.7,
+        18.3
+      ],
+      "notes": "Shared indirect str() targets can run slower despite fewer instructions. Accepted in implementation PR; not independently timed here."
+    },
+    "residual_trackers": [
+      625,
+      786,
+      787
+    ]
+  }
+}

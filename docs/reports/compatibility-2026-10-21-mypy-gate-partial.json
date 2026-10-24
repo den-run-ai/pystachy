@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "checkpoint": "2026-10-21 mypy compiler gate (partial)",
+  "event": {
+    "pull_request": 820,
+    "merge_sha": "0536d1a8e009ed59fb6485dd09f2fdd4661bd68a",
+    "source_sha": "0536d1a8e009ed59fb6485dd09f2fdd4661bd68a",
+    "source_tree": "2b788c79848a41cdeab6d081ae674762a6a0d9b1",
+    "implementation_head_sha": "5566cc31f56fe6c970fe778923219417485666a7",
+    "implementation_head_tree": "2b788c79848a41cdeab6d081ae674762a6a0d9b1",
+    "previous_source_sha": "c5d7f9e8ee334efedd4ff069cd052b4ba582ac85",
+    "previous_source_tree": "297d42d8ad52f30547a1ed273e463fff4f1f1a13",
+    "merged_at_utc": "2026-10-21T16:19:14Z",
+    "first_parent_merges_since_previous": [820]
+  },
+  "changed_scope": {
+    "files": 12,
+    "compiler_annotations": [
+      "src/pystachy_compiler/declarations.py",
+      "src/pystachy_compiler/expressions.py",
+      "src/pystachy_compiler/flow.py",
+      "src/pystachy_compiler/gen.py",
+      "src/pystachy_compiler/lower_module.py",
+      "src/pystachy_compiler/variables.py"
+    ],
+    "tooling_and_workflow": [
+      ".github/workflows/lint.yml",
+      "Makefile",
+      "mypy.ini",
+      "tools/requirements-dev.txt"
+    ],
+    "documentation": ["docs/install.md", "docs/testing.md"],
+    "runtime_library_ports_or_test_corpus_changed": false,
+    "summary": "add pinned mypy 2.4.0 checking for pystachy.py and all src files; consolidate repeated local declarations and make the iterator-item optional return explicit"
+  },
+  "selected_sha256": {
+    ".github/workflows/lint.yml": "4f73d43b086ac6079b4ddd5b54c274a6011956d984d531e8f7a8a9217dd24d46",
+    "Makefile": "e16d22c2d53f8e94a1948c81441a1e2306e5bb3b470c5c3c68fa34058acb4fe3",
+    "mypy.ini": "edafed4504309e42a017d584b327acc25f9795dc6121fd400a5b63989812f982",
+    "src/pystachy_compiler/declarations.py": "f7c9657ebc21c802eb5723bc3e1b5370bb8da666afd83b2447adbd01e5c34092",
+    "src/pystachy_compiler/expressions.py": "5de4959001d9d9845b63f901499017140bf97944ccca983e8d1e9109141af487",
+    "src/pystachy_compiler/flow.py": "ec4a3017feed742df868076e874973fe3389291f39a8980c8d747f0692d68387",
+    "src/pystachy_compiler/gen.py": "32af8807cd15b24f504e6ea36085e8f7c8c531f2c87b13d0286dc3f2011671b1",
+    "src/pystachy_compiler/lower_module.py": "ffd42458778c6c9561578c186ba7e272525a51580f400f313df5ddc868c05c61",
+    "src/pystachy_compiler/variables.py": "9b99e918c7a6f3ceb1a958603ddbb9b23e60bb9400eb6f9ff05521ee8ad05d77",
+    "tools/requirements-dev.txt": "af3f18e64366d8f1d11b2669343bd931e29f3c547ff01488059e6337250c46e7"
+  },
+  "environment": {
+    "hosted_python": "CPython 3.13.16 (main, Oct 3 2026, 01:06:22) [Clang 22.1.3]",
+    "hosted_python_path": "/root/.local/bin/python3.13",
+    "mypy": "2.4.0 (compiled: yes)",
+    "mypy_path": "/workspace/scratch/42d127b6df61/checker-fit-venv/bin/mypy",
+    "llvm_18_available": false,
+    "native_compiler_rebuilt_locally": false,
+    "source_snapshot_clean_before_and_after": true
+  },
+  "fresh_local_results": {
+    "typecheck": {
+      "command": "PATH=/workspace/scratch/42d127b6df61/checker-fit-venv/bin:$PATH make typecheck",
+      "configured_files": 45,
+      "errors": 0,
+      "result": "Success: no issues found in 45 source files"
+    },
+    "focused_unit_tests": [
+      {
+        "command": "python3 -m unittest discover -s tools -p 'test_typed*.py'",
+        "passed": 84,
+        "failed": 0
+      },
+      {
+        "command": "python3 -m unittest discover -s tools -p 'test_function_summaries.py'",
+        "passed": 7,
+        "failed": 0
+      },
+      {
+        "command": "python3 -m unittest discover -s tools -p 'test_workflow_limits.py'",
+        "passed": 4,
+        "failed": 0
+      }
+    ],
+    "hosted_ir_oracle": {
+      "command": "PYSTACHY_HOME=<current> PYSTACHY_JOBS=8 tools/irsame.sh '<python3.13> <previous>/pystachy.py' '<python3.13> <current>/pystachy.py' pystachy.py runtime.py tests/programs/reflection/reflect_unroll*.py tests/programs/strings/*format*.py tests/programs/containers/*unpack*.py tests/ir/unpack_reads.py",
+      "programs": 22,
+      "identical_ir_diagnostics_and_exit": 22,
+      "different": 0,
+      "common_home": "current source tree"
+    },
+    "self_ir": {
+      "command": "/root/.local/bin/python3.13 pystachy.py ir pystachy.py -o <temporary>/self.ll",
+      "lines": 637923,
+      "sha256": "3d1bb28940588ab07a378616222e285365cc77995dd39fba057a0c52ef0a2a79",
+      "previous_and_current_byte_identical": true
+    }
+  },
+  "implementation_workflows": [
+    {
+      "name": "CI",
+      "run_id": 39619157317,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39619157317",
+      "successful_jobs": 27,
+      "total_jobs": 27,
+      "conclusion": "success"
+    },
+    {
+      "name": "Lint",
+      "run_id": 39619157366,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39619157366",
+      "successful_jobs": 1,
+      "total_jobs": 1,
+      "conclusion": "success",
+      "notable": "Type-check the compiler (mypy) and make lint both succeeded"
+    },
+    {
+      "name": "Coverage",
+      "run_id": 39619157406,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39619157406",
+      "successful_jobs": 19,
+      "skipped_jobs": 1,
+      "total_jobs": 20,
+      "conclusion": "success",
+      "expected_skip": "publish main's coverage to the badges branch on a pull request"
+    },
+    {
+      "name": "Installation",
+      "run_id": 39619157501,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39619157501",
+      "successful_jobs": 3,
+      "total_jobs": 3,
+      "conclusion": "success"
+    },
+    {
+      "name": "Packages",
+      "run_id": 39619157315,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/39619157315",
+      "successful_jobs": 1,
+      "total_jobs": 1,
+      "conclusion": "success"
+    }
+  ],
+  "compatibility_assessment": {
+    "measured_gain": "none; the new gate detects Python type inconsistencies in compiler development",
+    "compiler_output": "the selected hosted oracle and self IR are byte-identical to #817",
+    "import_sweep": "not rerun; the #817 hosted 141/441 result is carried forward because the self-hosted compiler IR is byte-identical and no library, inventory or overlay changed",
+    "api_ports_packages_performance_memory": "not rerun; no relevant source changed",
+    "new_issue": null
+  },
+  "review": {
+    "review_threads": 0,
+    "scope_note": "annotations influence self-hosting, so the hosted self-IR and selected IR oracle were retained despite no intended executable-source change"
+  },
+  "limitations": [
+    "LLVM 18 executables were unavailable locally, so no fresh local native rebuild, JIT/AOT run, GC-stress run or full make verify completed. Exact-final-tree CI supplies the native verification matrix externally.",
+    "Mypy checks the configured compiler surface but is intentionally not strict: generic gen_* self receivers remain unannotated and development tools, tests, vendored/ported modules and runtime.py are outside its scope.",
+    "The 22-program oracle is a targeted retained selection, not a full-corpus local irsame replay. Exact-tree CI and the implementation PR's separately attributed full oracle are not relabeled as local results.",
+    "No native import sweep, API execution, adapted-port, package, performance, memory, upstream-suite or CPython regrtest claim follows from this tooling checkpoint."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}

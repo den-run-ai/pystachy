@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "checkpoint": "temporary special-character fixture paths and repository hygiene",
+  "event": {
+    "pull_request": 841,
+    "merge_sha": "42fabd724e63bf7d4ef8c72335688894a8a90d54",
+    "merge_tree": "c16aa73c901a67aec52735423173b6f8cbfe2ed1",
+    "head_sha": "72c8968b840a0dc9cdc692d282062526e5f8629c",
+    "head_tree": "51afac41e0474082e482225e228774bb1f3670d1",
+    "previous_source_sha": "3cbb7e874e29bab109376096b83a6303c5993df6",
+    "previous_source_tree": "3c0f523447411c01712dc648eba80b75477834df",
+    "first_parent_merges_since_previous": [841],
+    "merged_at_utc": "2026-10-22T01:35:44Z"
+  },
+  "changed_scope": {
+    "files": 14,
+    "paths": [
+      "CONTRIBUTING.md",
+      "tests/closure_path_modules/closure_path_fixture.py",
+      "tests/prepare_path.sh",
+      "tests/programs/language/closure_paths.path",
+      "tests/programs/language/closure_paths.py",
+      "tests/record.sh",
+      "tests/run.sh",
+      "tools/check_ir.sh",
+      "tools/check_repository_hygiene.py",
+      "tools/irsame.sh",
+      "tools/rtabi.py",
+      "tools/test_repository_hygiene.py",
+      "tools/test_typed_ir.py",
+      "tools/test_verify_layout.py"
+    ],
+    "compiler_runtime_library_ports_changed": false,
+    "corpus_behavior_changed": false,
+    "summary": "move the tracked bracket-named fixture to an ordinary path, generate its hostile path in per-consumer temporary directories, and reject unusual tracked filenames"
+  },
+  "selected_sha256": {
+    "CONTRIBUTING.md": "474629a157a8572f215de3d06f2cb8ef16120b4f20a9464fe729b0d6e7ca0a4a",
+    "tests/closure_path_modules/closure_path_fixture.py": "de867c2a24d5178666bde9b847c55df70916e9b8eb3cc8ca04fbdd7023655a40",
+    "tests/prepare_path.sh": "45a8149a17b0d59b1a85d610959fb8def788c44ae5a3d30ee93d214d5bdf9b50",
+    "tests/programs/language/closure_paths.path": "bc2bd6876aa810e50a99c4f6f16644cc237404b3518bfb3900faeda386b5e125",
+    "tests/programs/language/closure_paths.py": "b4b4b3cca063117005614e9f309b60f1e2b4d0fb4a7861d6366873bb6a52161f",
+    "tests/record.sh": "9a6cf4193fd4f285a0670a03542f8cd2711388ce36c06abedfbba9aa1b193f5a",
+    "tests/run.sh": "e20f12f8b14148041e7cb61830a26c6929daf2763caa2a9122cf3ffb4501ef83",
+    "tools/check_ir.sh": "3e45df9bb7ba0c3ba29e3cb7b73f1587cf71dd0cf984b59ea7a3edd0985f4e80",
+    "tools/check_repository_hygiene.py": "5f7772ff1b8600d6eba3b138300900372e6c9f748bd54bfd0abce749f358ea42",
+    "tools/irsame.sh": "ad1a5d6fd2531ff97d938dbf1763ac214968b437e97fff520bd261fdcd89a162",
+    "tools/rtabi.py": "2ccdb7b5376419ff913a96048e876adaa9768b2e034b291a5e172aca30f00f5c",
+    "tools/test_repository_hygiene.py": "847678632ca961247e895c75f18b564d6d372681243ed6abeab3b7e0e9bef70f",
+    "tools/test_typed_ir.py": "9e06f8f604f9185a2707dcd2360d48880c7a290d6543017beedb2f4c079178b0",
+    "tools/test_verify_layout.py": "82c1d85158023f8a7d5161cfb8b8032d886ad134dfbc859336672adb3acbe2e6"
+  },
+  "environment": {
+    "platform": "Linux 6.18.55 x86_64, glibc 2.39",
+    "python": "CPython 3.13.16 (Clang 22.1.3)",
+    "python_executable": "/root/.local/bin/python3.13",
+    "recording_wrapper": "/workspace/scratch/3ba735e28fa7/python313-typing-wrapper",
+    "llvm": "Ubuntu LLVM/Clang 18.1.3",
+    "llvm_root": "/workspace/scratch/85a28988e070/llvm18/usr/lib/llvm-18",
+    "source_snapshot_clean_before_and_after": true
+  },
+  "compiler_reuse": {
+    "source_sha": "511f6e4adce0cff5d7efd3fe651508695873d580",
+    "source_tree": "39ec7d7c09a3b25a299d0c0971ba92db6bf7148d",
+    "binary_sha256": "7e58328a0c3af7448ad4ccf68bc84be5785ac13d56260cb961ed7aab6bad7229",
+    "reason": "PR #841 changes only test harnesses, repository hygiene, tests and documentation; compiler, runtime and library implementation inputs are unchanged from the preceding native checkpoint"
+  },
+  "fresh_local_results": {
+    "path_sidecar_matrix": {
+      "command": "PYSTACHY_LLVM=<LLVM18>/bin PYSTACHY_JOBS=2 tests/run.sh <compiler-511f6e4a> 'jit aot' $(find tests/programs tests/errors -name '*.path' | sort | sed 's/\\.path$/.py/')",
+      "selected_cases": 345,
+      "passed_mode_checks": 525,
+      "failed_mode_checks": 0
+    },
+    "path_sidecar_irsame": {
+      "command": "PYSTACHY_JOBS=2 tools/irsame.sh <compiler-511f6e4a> <compiler-511f6e4a> <345 path-sidecar cases>",
+      "identical_programs": 345,
+      "differences": 0
+    },
+    "path_sidecar_ir_validation": {
+      "command": "PYSTACHY_LLVM=<LLVM18>/bin PYSTACHY_JOBS=2 tools/check_ir.sh <compiler-511f6e4a> <178 positive path-sidecar programs>",
+      "accepted_by_ir_check_and_llvm_as": 178,
+      "failures": 0
+    },
+    "runtime_abi": {
+      "command": "PYSTACHY_LLVM=<LLVM18>/bin /root/.local/bin/python3.13 tools/rtabi.py <compiler-511f6e4a>",
+      "ffi_c_glue_calls_checked": 33,
+      "runtime_python_functions": 135,
+      "runtime_c_uses": 13608,
+      "programs": 1751,
+      "mismatches": 0
+    },
+    "recordings": {
+      "command": "PYTHON=/workspace/scratch/3ba735e28fa7/python313-typing-wrapper tests/record.sh --check",
+      "recordings": 1586,
+      "deviations": 98,
+      "library_files": 12,
+      "failures": 0
+    },
+    "tool_units": {
+      "repository_hygiene": "11/11 pass via make check-repository",
+      "verification_layout": "9/9 pass",
+      "closure_path": "3/3 pass",
+      "focused_closure_execution": "2/2 JIT/AOT pass; 1/1 IR validation; 1/1 identical IR comparison"
+    }
+  },
+  "setup_attempts": [
+    {
+      "command": "/root/.local/bin/python3.13 -m unittest -v tools.test_repository_hygiene tools.test_verify_layout",
+      "result": "the 9 verification-layout tests passed, but direct package import of test_repository_hygiene failed because its sibling module is imported as a top-level tools-discovery module",
+      "resolution": "make check-repository used the maintained discovery command and passed the hygiene check plus 11/11 unit tests"
+    },
+    {
+      "command": "PYTHON=/root/.local/bin/python3.13 tests/record.sh --check",
+      "result": "stopped after typing_extensions-dependent recordings reported ModuleNotFoundError",
+      "resolution": "reran with the pinned CPython 3.13.16 dependency wrapper; 1,586 recordings, 98 deviations and 12 library files passed with zero failures"
+    }
+  ],
+  "implementation_workflows": [
+    {"name": "CI", "run_id": 39703505641, "successful_jobs": 27, "total_jobs": 27, "conclusion": "success"},
+    {"name": "Coverage", "run_id": 39703505635, "successful_jobs": 19, "skipped_jobs": 1, "total_jobs": 20, "conclusion": "success", "expected_skip": "publish main coverage from a pull-request run"},
+    {"name": "Variants", "run_id": 39703505725, "successful_jobs": 24, "total_jobs": 24, "conclusion": "success"},
+    {"name": "Lint", "run_id": 39703505665, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Packages", "run_id": 39703505664, "successful_jobs": 1, "total_jobs": 1, "conclusion": "success"},
+    {"name": "Installation", "run_id": 39703505718, "successful_jobs": 3, "total_jobs": 3, "conclusion": "success"}
+  ],
+  "workflow_summary": {
+    "successful_jobs": 75,
+    "expected_skipped_jobs": 1,
+    "failed_or_cancelled_jobs": 0
+  },
+  "review": {
+    "initial_finding": "the first revision stopped exercising the hostile path in irsame",
+    "resolution": "head 72c8968b shares tests/prepare_path.sh across execution, recording, irsame, check-ir and runtime ABI consumers and adds failure controls",
+    "final_review": "completed on 72c8968b with no findings",
+    "new_issue": null
+  },
+  "compatibility_assessment": {
+    "measured_gain": "none; the change preserves a hostile-path regression while enforcing clean tracked filenames",
+    "recording_delta": "none: the complete pinned recording inventory remains 1,586 recordings, 98 deviations and 12 library files",
+    "imports": "not rerun; compiler/runtime/library inputs are unchanged and the preceding pinned result remains 148/460",
+    "api_ports_packages_performance_memory": "not rerun; no relevant implementation input changed",
+    "new_blocker": null
+  },
+  "limitations": [
+    "The 345-case path-sidecar matrix is a retained harness/corpus slice, not the full native verification matrix.",
+    "The local compiler was reused from implementation source 511f6e4a because PR #841 changes no compiler/runtime/library implementation input.",
+    "No new import, API, port, upstream-suite, package, performance, memory or CPython regrtest claim follows from this tooling checkpoint.",
+    "Exact PR-head CI supplies full native and configuration coverage externally; it is not relabeled as a fresh local full make verify run."
+  ],
+  "latest_fully_evaluated_main": "3c63613b9ad4748dfc030fc923f7704e26b21ba9"
+}
