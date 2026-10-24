@@ -1134,7 +1134,9 @@ def gen_program(self, mods: list[Mod]) -> str:
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)
-    if len(self.newhints) > 0 and not self.final:
+    # Finite comparison field discoveries only grow (incompatible joins are
+    # terminal). Finish these even if earlier fields used the ordinary join budget.
+    if len(self.newhints) > 0 and (not self.final or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
         raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
     # the whole program is built: its functions are printed in the order they were completed
     for j in range(len(self.fns)):

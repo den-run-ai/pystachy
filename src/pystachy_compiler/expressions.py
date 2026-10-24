@@ -3987,8 +3987,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (op == "in" or op == "not in") and b.t in self.classes and self.classes[b.t].tag != 0:
         return self.inherit_contains(op, a, b)
     if (is_union(unopt(a.t)) or is_union(unopt(b.t))) and a.t != "None" and b.t != "None":
-        if op in ["is", "is not"] and not is_opt(a.t) and not is_opt(b.t):
-            members = (umembers(a.t) if is_union(a.t) else [a.t]) + (umembers(b.t) if is_union(b.t) else [b.t])
+        if op in ["is", "is not"]:
+            members = (umembers(unopt(a.t)) if is_union(unopt(a.t)) else [unopt(a.t)]) + (umembers(unopt(b.t)) if is_union(unopt(b.t)) else [unopt(b.t)])
             if all(is_list(t) or is_dict(t) or t in self.classes for t in members):
                 return self.ucmp(op, a, b)  # compare original pointers under member-tag guards
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):

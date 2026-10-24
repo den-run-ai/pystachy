@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
-from src.pystachy_compiler.diagnostics import shown, where
+from src.pystachy_compiler.diagnostics import Rejoin, shown, where
+from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
@@ -2682,6 +2683,16 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
         self.err(f"'{shown(o.t)}' object has no attribute '{name}'")
     extra = " and no __dict__ for setting new attributes" if store else ""
     self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
+    if name in ci.fextra and ci.tag != 0:
+        overrides = [sub for sub in self.classes.values() if sub.name != ci.name and self.derives(sub.name, ci.name) and (name in sub.methods or (name in sub.ftypes and name not in sub.fextra))]
+        if len(overrides) > 0:
+            # Exact comparison arms retain the actual operand's layout. A new
+            # base-typed access cannot silently use the hidden prefix when a
+            # descendant already has a different attribute at its own offset.
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int"))
+            for override_ci in overrides:
+                self.guard(self.num_cmp("==", tag, Val(str(override_ci.tag), "int")).v,
+                           f"TypeError: comparison-created attribute '{name}' of {short(ci.name)} is shadowed by {short(override_ci.name)}; narrow to the concrete class")
     if name == "__slots__" and name not in ci.fpos:
         if store:
             self.err("rebinding __slots__ through an instance is not supported")
@@ -2833,6 +2844,20 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
 
 def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
     ci = self.classes[o.t]
+    if name in ci.fextra and self.drying == 0 and v.t != "dyn":
+        # Only newly reserved storage may widen here. Keep each concrete value
+        # whole in a closed union; widening a list's item type would lose aliases.
+        # A generated setter's Any input is coerced to this field, not evidence
+        # that its storage should change to Any (numeric identity boxes depend on it).
+        storage = self.field_root(ci, name)
+        key = "cmpfield:" + comparison_storage_key(self, storage) + "." + name
+        inferred = self.hints.get(key, p.t)
+        combined = self.union_type([inferred, v.t])
+        if not combined.startswith("!") and combined != inferred and not (combined == "dyn" and self.dyn_boxable(p.t) != ""):
+            if self.hints.get(key, "") != combined:
+                self.newhints[key] = combined
+                comparison_record_write(self, name, combined)
+                raise Rejoin()  # layout discovery is not a failed comparison body
     what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
     # (a value of another type than an inferred field's may widen it: join_hint)
     was = self.join_at("field" if name in self.field_root(ci, name).fguess else "", self.field_key(ci, name), p.t)

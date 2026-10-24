@@ -424,13 +424,27 @@ variable-length tuples are not copied into boxes.
 Still outside this proof: arbitrary runtime-name field creation, arbitrary escaping operands,
 observed/rebound operands that need general flow analysis, unsupported property bodies,
 and mixed nested object-container trees beyond the direct-list path. Reserved fields use
-one compilation restart shared across discovered candidates; they do not change an
+shared compilation retries across discovered candidates; they do not change an
 existing field's type or reinterpret source containers. Multiple compatible stored layouts
 use a closed union, not a widened container. Immutable objects retain assignment-time
-errors. Unknown field types and incompatible class-hierarchy layouts remain outside this proof.
+errors. Descendants that already declare a same-named field/property retain their native
+layout; hidden base storage preserves the inherited physical prefix. Direct base-typed access
+to a newly created field raises explicit `TypeError` when the concrete subclass shadows it;
+narrow to that concrete class before the access
+(`tests/deviations/dynany_cmp_field_shadow.py`). Unknown field types remain outside this proof.
+Statically named writes can introduce fields absent even from the comparison's own class;
+the compiler records the actual RHS type, including computed results and successive values
+of different native layouts (`dynany_cmp_missing_write_computed.py`). Specialized generic
+peer classes reserve the same fields before their layouts are fixed, and constructor calls
+sharing one original layout share their reservation hints (`dynany_cmp_missing_write_template.py`).
+An outside typed read of a wholly undeclared computed field can still be rejected before
+the comparison body discovers it; declare the field for typed consumers, or read a boxable
+value through `Any`. This is an explicit rejection, not a comparison fallback.
 
 `vars()` and `__dict__` keep their original order and value types while all reserved
-fields are unassigned. After one of these fields is created, these dictionary consumers
+fields are unassigned. Peer classes imported from ordinary typed modules are eligible
+when a dynamic caller boxes them; their existing fields and methods keep their types
+(`dynany_cmp_missing_write_import.py`). After one of these fields is created, these dictionary consumers
 raise an explicit `TypeError` until runtime insertion order is supported (#486), including
 deferred text conversion; `hasattr` and `dir` use the normal assignment flags. Iteration
 already in progress retains its dictionary-size mutation check. This boundary is recorded

@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.pystachy_compiler import driver  # noqa: E402
-from src.pystachy_compiler.dynamic import comparison_discards_operand, comparison_equalities, comparison_fields, comparison_layout, comparison_properties, comparison_reads  # noqa: E402
+from src.pystachy_compiler.dynamic import comparison_discards_operand, comparison_equalities, comparison_fields, comparison_layout, comparison_properties, comparison_reads, comparison_record_write, comparison_storage  # noqa: E402
 from src.pystachy_compiler.ir import ClassInfo, FnInfo  # noqa: E402
 from src.pystachy_compiler.lexer import Lexer  # noqa: E402
 from src.pystachy_compiler.parser import Parser  # noqa: E402
@@ -51,6 +51,67 @@ class ConcreteComparisonTests(unittest.TestCase):
                 self.assertNotIn("items", ci.fsure)
         self.assertEqual(len(set(counts)), 1)
         self.assertLessEqual(max(counts), 3)
+
+    def test_reserved_base_fields_do_not_replace_descendant_storage(self):
+        source = ROOT / "tests/programs/inference/dynany_cmp_missing_write_hierarchy.py"
+        generators = []
+        original = driver.Gen
+
+        def generator():
+            value = original()
+            generators.append(value)
+            return value
+
+        with patch.object(driver, "Gen", generator):
+            driver.compile_program(str(source), source.read_text(), [str(ROOT / "lib")], "")
+        final = generators[-1]
+        base = final.classes["Root"]
+        child = final.classes["Child"]
+        self.assertEqual(base.ftypes["items"], "list[int]")
+        self.assertEqual(child.ftypes["items"], "list[str]")
+        self.assertIn("items", base.fextra)
+        self.assertNotIn("items", child.fextra)
+        self.assertNotEqual(base.fpos["items"], child.fpos["items"])
+        self.assertNotEqual(base.fbox["number"], child.fbox["number"])
+        self.assertIn(" Root.comparison.items", child.fields)
+
+    def test_template_missing_writes_share_original_layout_hints(self):
+        counts = []
+        for count in [1, 20, 40]:
+            extra = "class GenericPeer:\n    def __init__(self, value):\n        self.tag = str(value)\n"
+            for index in range(count):
+                # Calls of different types deduplicate their identical native
+                # layouts; field discovery must not add one retry per call.
+                argument = repr(str(index)) if index % 2 else str(index)
+                extra += f"peer{index}: Any = GenericPeer({argument})\n"
+            result = self.compile(0, body="other.items = self.items\nreturn other.items is self.items", extra=extra)
+            counts.append(result[1])
+            peers = [ci for ci in result[2].classes.values() if ci.origin == "GenericPeer"]
+            self.assertEqual(len(peers), 1)
+            self.assertEqual(peers[0].ftypes["items"], "list[int]")
+            self.assertIn("items", peers[0].fflag)
+        self.assertEqual(len(set(counts)), 1)
+        self.assertLessEqual(max(counts), 3)
+
+    def test_new_comparison_fields_finish_after_ordinary_join_budget(self):
+        body = "\n".join(f"other.field{i} = {i}" for i in range(12)) + "\nreturn True"
+        result = self.compile(0, body=body, fields="self.tag = 1", own_fields="self.tag = 1")
+        for i in range(12):
+            name = f"field{i}"
+            self.assertEqual(result[2].classes["Peer"].ftypes[name], "int")
+            self.assertIn(name, result[2].classes["Peer"].fflag)
+        self.assertLessEqual(result[1], 16)
+
+    def test_incompatible_comparison_storage_hints_are_terminal(self):
+        result = self.compile(0, body="other.items = self.items\nreturn True", fields="self.tag = 1")
+        compiler = result[2]
+        compiler.hints["cmpfield:Peer.items"] = "!incompatible storage"
+        compiler.newhints.clear()
+        comparison_storage(compiler, "Peer")
+        self.assertNotIn("cmpfield:Peer.items", compiler.newhints)
+        compiler.hints["cmpwrite:items"] = "!incompatible storage"
+        comparison_record_write(compiler, "items", "list[int]")
+        self.assertNotIn("cmpwrite:items", compiler.newhints)
 
     def test_irrelevant_classes_do_not_add_restarts(self):
         small = self.compile(0)
