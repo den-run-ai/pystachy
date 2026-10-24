@@ -194,7 +194,7 @@ class NumericCallIdentityTests(unittest.TestCase):
             fn, ir = self.signature(body)
             self.assertTrue(fn.f.scalar_args)
             self.assertFalse(fn.f.idnames)
-            self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+            self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
 
     def test_selected_numeric_returns_keep_boxes_lazy(self):
         for typ, value in [("int", "1000"), ("float", "1.5")]:
@@ -205,7 +205,7 @@ class NumericCallIdentityTests(unittest.TestCase):
                 with self.subTest(typ=typ, expression=expression):
                     ir = driver.compile_program("selected_identity.py", source, [str(ROOT / "lib")], "")
                     self.assertIn("ptr %aid0", ir)
-                    self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+                    self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
 
     def test_getattr_property_keeps_return_box_lazy(self):
         ir = self.compile("class C:\n    @property\n    def item(self) -> float:\n"
@@ -215,14 +215,14 @@ class NumericCallIdentityTests(unittest.TestCase):
         body = self.function_ir(ir, "f.target")
         self.assertIn("phi ptr", body)
         self.assertIn("ptr %idret", body)
-        self.assertNotRegex(body, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        self.assertNotRegex(body, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
 
     def test_numeric_annotation_argument_proof_is_separate(self):
         fn, ir = self.signature("value: int | float = 0\nfor i in range(x):\n    value += i\nreturn value", "int | float")
         self.assertFalse(fn.numeric_only)
         self.assertTrue(fn.f.scalar_args)
         self.assertNotIn("x", fn.f.idnames)
-        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
 
     def test_foreign_code_has_no_companion_signature(self):
         source = "def target(x: int) -> int:\n    return x\nprint(target(1000))\n"
@@ -230,16 +230,44 @@ class NumericCallIdentityTests(unittest.TestCase):
         self.assertNotIn("%aid", ir)
         self.assertNotIn("%idret", ir)
 
-    def test_exact_current_local_boxing_has_only_a_null_guard(self):
+    def test_exact_current_local_boxing_uses_outlined_helper(self):
         for scalar, value in [("int", "1000"), ("float", "1.5")]:
             ir = self.compile("from typing import Any\ndef target(seed: str) -> Any:\n"
                               "    x = " + scalar + "(seed)\n    return x\nprint(target('" + value + "'))\n")
             body = self.function_ir(ir, "f.target")
             # The unchanged, exact local cannot contain another type or payload.
             # Keep allocation lazy without emitting the general stale-read CFG.
-            self.assertEqual(body.count("br i1"), 1)
+            self.assertNotIn("br i1", body)
             self.assertNotIn("@pys_dyntype_" + scalar, body)
-            self.assertEqual(body.count("call ptr @pys_dyn_" + scalar + "("), 1)
+            self.assertEqual(body.count("call ptr @pys_dyn_" + scalar + "_box("), 1)
+
+    def test_numeric_call_result_boxing_uses_outlined_helper(self):
+        for scalar, value in [("int", "1000"), ("float", "nan")]:
+            prefix = ("from typing import Any, Callable\n"
+                      "def make(seed: str) -> " + scalar + ":\n    return " + scalar + "(seed)\n")
+            bodies = [
+                ("def target(seed: str) -> Any:\n    return make(seed)\n",
+                 "target('" + value + "')"),
+                ("def target(fn: Callable[[str], " + scalar + "], seed: str) -> Any:\n"
+                 "    return fn(seed)\n", "target(make, '" + value + "')"),
+            ]
+            for target, call in bodies:
+                with self.subTest(scalar=scalar, target=target):
+                    ir = self.compile(prefix + target + "print(" + call + ")\n")
+                    body = self.function_ir(ir, "f.target")
+                    self.assertNotIn("br i1", body)
+                    self.assertNotIn("@pys_dyntype_" + scalar, body)
+                    self.assertEqual(body.count("call ptr @pys_dyn_" + scalar + "_box("), 1)
+
+    def test_numeric_call_result_conversion_does_not_reuse_original_box(self):
+        ir = self.compile("from typing import Any\n"
+                          "def make(seed: str) -> int:\n    return int(seed)\n"
+                          "def target(seed: str) -> Any:\n    return float(make(seed))\n"
+                          "print(target('1000'))\n")
+        body = self.function_ir(ir, "f.target")
+        self.assertIn("sitofp", body)
+        self.assertEqual(body.count("call ptr @pys_dyn_float("), 1)
+        self.assertNotIn("br i1", body)
 
     def test_immutable_numeric_parameter_keeps_incoming_box_directly(self):
         for scalar, value in [("int", "1000"), ("float", "1.5")]:
@@ -324,7 +352,7 @@ class NumericCallIdentityTests(unittest.TestCase):
         source = ("def target(x, flag):\n    value = x if flag else x + 1\n    print(value)\n"
                   "target(0, True)\ntarget(flag=False, x=0.0)\n")
         ir = self.compile(source)
-        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
         # The existing whole-fixture guard must retain its empty @main.init call list.
         source = (ROOT / "tests/ir/dynany_identity_scalar_expressions.py").read_text()
         ir = self.compile(source)
@@ -488,7 +516,7 @@ def typed_star() -> list[int]:
 print(arithmetic(2), typed_star())
 '''
         ir = driver.compile_program("joined_identity_cost.py", source, [str(ROOT / "lib")], "")
-        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
 
     def test_non_boxable_union_cells_remain_accepted(self):
         # Reading a numeric member must not box a different, typed-container member
@@ -504,7 +532,7 @@ def outer() -> int:
 print(outer())
 '''
         ir = driver.compile_program("joined_identity_boundary.py", source, [str(ROOT / "lib")], "")
-        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
 
 
 class FoldedIntegerIdentityTests(unittest.TestCase):

@@ -15,6 +15,7 @@ class Val:
         self.idgen = 0  # the stores into that slot that the compiler had emitted then (idstores)
         self.idcounter = ""  # local binding generation slot (possibly selected by a phi)
         self.idversion = ""  # that slot's generation at the read
+        self.idexact = False  # private call-result slot is null or this exact numeric object
         self.idfrom = ""  # the box of the Any value that an int or float was read from (dyn_box)
 
     def identity(self, source: Val) -> Val:
@@ -26,6 +27,7 @@ class Val:
         self.idcounter = source.idcounter
         self.idversion = source.idversion
         self.idfrom = source.idfrom
+        self.idexact = source.idexact
         return self
 
 
