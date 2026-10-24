@@ -1,7 +1,7 @@
 """Utils component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.diagnostics import fail, where
+from src.pystachy_compiler.diagnostics import dynamic_program, fail, where
 from src.pystachy_compiler.ir import FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
@@ -319,6 +319,11 @@ def is_super(e: Node) -> bool:
     return e.kind == "call" and e.kids[0].kind == "name" and e.kids[0].s == "super"
 
 
+def identity_default(e: Node) -> bool:
+    # Numeric constants belong to the defining module, not whichever module calls it.
+    return dynamic_program() and (e.kind in ["int", "float"] or (e.kind == "unary" and e.s == "-" and e.kids[0].kind in ["int", "float"]))
+
+
 def is_const(e: Node) -> bool:
     # literals: re-evaluating them on every call is indistinguishable from evaluating once
     k = e.kind
@@ -595,6 +600,12 @@ def optnames(t: str) -> str:
         x = t[a + 4 : b - 1]
         t = t[:a] + (x if x == "None" else x + " | None") + t[b:]
     return t
+
+
+def identity_abi(f: FnInfo) -> bool:
+    # Internal Python calls in a graph with dynamic values carry numeric provenance.
+    # Foreign/runtime entry points and compiler-written dispatcher signatures keep their ABI.
+    return dynamic_program() and not f.extern and not f.export and not f.pyexport and f.node.kind == "def"
 
 
 def numeric_identity(t: str) -> bool:

@@ -205,7 +205,7 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
             if self.join_hint(t, v.t):
                 return Val("undef", t)  # (see join_hint)
             self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
-        return Val(v.v, t)
+        return Val(v.v, t).identity(v)
     if src not in ms:
         bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
         if len(bases) != 1:
@@ -216,14 +216,14 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
         src = bases[0]
         v = self.coerce(v, src)
     if not is_opt(v.t):
-        return Val(self.ubox(v, src), t)
+        return Val(self.ubox(v, src), t).identity(v)
     if not none_ok:
         if self.join_hint(t, v.t):
             return Val("undef", t)  # (see join_hint)
         self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
     # an optional value: None stays null, any other value is boxed (with no branch, so that
     # convert_in can make it at the end of a block); an int | None's value is in its box
-    return Val(self.rt("pys_ubox_opt", "ptr", [f"i64 {self.utag(src)}", f"ptr {v.v}", f"i64 {1 if is_sopt(v.t) else 0}"]), t)
+    return Val(self.rt("pys_ubox_opt", "ptr", [f"i64 {self.utag(src)}", f"ptr {v.v}", f"i64 {1 if is_sopt(v.t) else 0}"]), t).identity(v)
 
 def gen_narrow_val(self, v: Val, nt: str) -> Val:
     # v, a local's value of its own type, as of the type nt a test or an assignment narrowed it

@@ -229,8 +229,19 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   `dynany_identity_field_kinds.py`). The raw numeric payload remains unboxed. A program that
   uses dynamic `Any` adds one pointer slot per numeric field (including one reserved for an
   unresolved `None` field), plus layout alignment, and reads/copies may materialize boxes.
-  Programs without dynamic `Any` retain their original class layouts. Typed constructor
-  parameters still cross the argument boundary described below.
+  Programs without dynamic `Any` retain their original class layouts.
+  Typed numeric parameters, definition-time defaults and numeric returns preserve the
+  originating object, including calls into non-opt-in modules, closures, `Callable` values,
+  virtual methods and dynamic calls. Internal calls in a graph using dynamic `Any` carry a
+  companion box for numeric arguments and an output slot for a numeric result; arithmetic
+  still uses raw numbers. Defaults keep rooted global or closure-environment companions.
+  Numeric return values retain existing boxes and constants, while fresh computed results
+  defer boxing until observed. Argument snapshots precede later argument side effects, and
+  returns keep their object across `finally` cleanup (`dynany_identity_call_args.py`,
+  `dynany_identity_call_defaults.py`, `dynany_identity_call_returns.py`,
+  `dynany_identity_call_indirect.py`, `dynany_identity_call_imports.py`,
+  `dynany_identity_call_edges.py`). Foreign C and CPython extension entry points retain
+  their native ABI; graphs without dynamic `Any` retain all ordinary calling conventions.
   Integer-literal arithmetic whose operands and result fit int64 shares the module's
   constant box: `999 + 1` is the same object as its `1000` literal. This covers `+`, `-`,
   `*`, `//`, `%`, bit operations and bounded shifts/powers (counts from 0 through 63),
@@ -238,20 +249,21 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   invalid or overflowing operations retain runtime evaluation and errors
   (`dynany_identity_folded_ints.py`). Other constant-folding forms remain outside this
   identity guarantee, including float arithmetic and larger shift/power counts.
-  The union/optional payload layout and typed calling conventions are unchanged;
-  copies can materialize a box as they already do for concrete numeric locals.
+  Union/optional numeric payload layouts remain unchanged; their companion boxes follow
+  representation-only conversions. Copies can materialize a box as they do for concrete locals.
   Comprehension targets have their own box slots, renewed for each iteration and
   restored to the enclosing scope after shadowing, including empty comprehensions
   and short-circuit reductions (`tests/programs/inference/dynany_identity_comprehensions.py`).
   Closed functions with explicit numeric parameters and numeric return types omit local box
-  slots when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
-  and numeric conversions. Functions proven to return only `None`, including inferred numeric
+  slots unrelated to a returned object's identity when their entire body only uses scalar
+  arithmetic, comparisons, control flow, `range`, and numeric conversions. A backward alias
+  proof retains slots and argument boxes for names that can reach a return unchanged;
+  arithmetic breaks that dependency. A separate numeric-body proof can omit unreturned
+  argument boxes through explicitly annotated numeric/union local storage. Functions proven to return only `None`, including inferred numeric
   specializations, may also omit them and print numeric
   values and literal strings through the unshadowed builtin, without keyword or expanded
   arguments (`tests/ir/dynany_identity_scalar_expressions.py`). Identity tests, `Any` storage, globals, containers, closures and
-  other calls prevent that proof (`tests/ir/dynany_numeric_locals.py`). This relies on the
-  existing typed numeric return boundary; extending identity preservation across that
-  boundary must revisit this proof. Any
+  other calls prevent that proof (`tests/ir/dynany_numeric_locals.py`). Any
   other value, such as an int computed there, is a new object, which its first crossing, copy
   or global or closure-cell read boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
@@ -469,13 +481,15 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
 - An int or float of typed code that no variable's box slot holds is a new object where it
-  becomes an `Any` value, where CPython's names, containers and classes hold one object: an
-  argument or a parameter's default value (the parameter receives a new object), a return
-  value, or an item of a typed container (`tests/deviations/dynany_identity_boundary.py`).
+  becomes an `Any` value, where CPython's names, containers and classes hold one object: a
+  numeric item of a typed container, including typed variadic argument tuples,
+  or a typed numeric generator's yielded item (`Iterator[float]`, for example).
+  Yielding into dynamic item storage (`Iterator[Any]`) retains the source box.
+  The typed-list case remains in `tests/deviations/dynany_identity_boundary.py`.
   Numeric optional/scalar-union locals, closure cells, globals, instance fields and class
-  attributes retain their identity. Module-level from-import copies
-  retain the source global's object; a local import in a non-opt-in function still
-  uses that function's ordinary typed storage. Constant-folding forms beyond the
+  attributes retain their identity. Module-level and function-local from-import copies
+  retain the source global's object, including imports in non-opt-in functions.
+  Constant-folding forms beyond the
   bounded integer arithmetic above also remain gaps. Starred displays capture numeric objects when their dynamic
   result can be inferred before evaluation, or an already typed expansion supplies
   dynamic items. Displays whose element types depend on earlier first bindings

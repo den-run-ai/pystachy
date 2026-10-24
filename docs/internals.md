@@ -388,7 +388,8 @@ generator expressions emit the same typed IR and LLVM IR as before.
 ## JIT, AOT and runtime caching
 
 `run` favors startup latency. LLVM removes unused internal functions, optionally inlines the
-program's own functions, performs SSA cleanup, then ORC JIT runs with the cached runtime.
+program's own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
+redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
 On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
 from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
 run (`-extra-object`), which cost about 35 ms a run
@@ -401,8 +402,10 @@ system mounted `noexec`, also one mounted so after the library was cached), `lli
 A module that holds generators (coroutines, which `lli` cannot run before they are
 lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each
-function's cleanup), and `coro-cleanup`; other modules keep the same `opt` command. The default inlining threshold is 20,000 lines of generated IR; larger programs skip
-that pass. The precompiled runtime is not inlined into JIT code.
+function's cleanup), and `coro-cleanup`. The final `early-cse`/`adce` cleanup runs after
+those passes as well, so dead identity-generation loops do not reach code generation.
+The default inlining threshold is 20,000 lines of generated IR; larger programs skip that
+pass. The precompiled runtime is not inlined into JIT code.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)

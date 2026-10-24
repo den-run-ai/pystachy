@@ -1,12 +1,13 @@
 """Emission component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
-from src.pystachy_compiler.diagnostics import Rejoin, fail
+from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
 from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
+    identity_abi,
     is_opt,
     is_sopt,
     is_tuple,
@@ -222,6 +223,11 @@ def gen_switch(self, v: Val, cases: list[str], to: list[str], other: str) -> Non
 
 def gen_ret_(self, v: Val) -> None:
     # return v (of type None: return nothing)
+    if identity_abi(self.curfn) and numeric_identity(v.t):
+        # Fresh arithmetic needs no box until its caller observes identity. An existing
+        # binding/constant keeps its box, including the defining module's constant pool.
+        b = Val(v.idfrom, "dyn") if v.idfrom != "" else self.dyn_id_held(v) if v.idslot != "" else self.dyn_box(v) if v.lit or v.t not in ["int", "float"] else Val("null", "dyn")
+        self.mem_store(Val("%idret", "*dyn"), b)
     i = Ins("ret", "", "")
     if v.t != "None":
         i.a = [v]
@@ -587,7 +593,7 @@ def gen_alloca(self, t: str, name: str) -> str:
             self.fn.slots.append(i)
             self.owned[name] = f"%{name}.own.{self.n}"
         self.idbox.pop(name, "")
-        if numeric_identity(t) and self.dyn_policy(self.line) and not self.fn.numeric_only:
+        if numeric_identity(t) and dynamic_program() and (not self.fn.numeric_only or name in self.curfn.idnames):
             # the box of its binding as an Any value (idbox): null, as each slot is where the
             # function begins, until a store or its first crossing gives it one (dyn_box)
             i = Ins("slot", "dyn", name + ".box")

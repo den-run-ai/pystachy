@@ -2778,6 +2778,70 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
             self.key_kind(targs(et)[0] if kind == "dict" else et)  # (a tuple key's descriptor, a string constant, which lowering prints)
     return Val(res, t)
 
+def gen_numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> Val:
+    # Select provenance with the payload. Existing bindings retain their lazy slots;
+    # a fresh arithmetic arm gets an empty slot, so selecting it does not allocate.
+    if not dynamic_program() or not numeric_identity(result.t) or not any(v.idfrom != "" or v.idslot != "" or (v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256)))) for v in values):
+        return result
+    if all(v.idfrom != "" for v in values):
+        identity = Ins("phi", "dyn", "")
+        for j in range(len(values)):
+            self.incoming(identity, values[j].idfrom, edges[j])
+        result.idfrom = self.phi(identity)
+        return result
+    if len(values) == 2 and values[0].idslot != "" and values[0].idslot == values[1].idslot and values[0].idgen == values[1].idgen and self.idstores.get(values[0].idslot, 0) == values[0].idgen:
+        # x = x if flag else x keeps the binding's slot without a selected pointer.
+        result.identity(values[0])
+        result.idheld = self.mem_load(Val(result.idslot, "*dyn")).v
+        result.idversion = self.mem_load(Val(result.idcounter, "*int")).v if result.idcounter != "" else ""
+        return result
+    selected: list[Val] = []
+    here = self.blk
+    cur = self.cur
+    term = self.term
+    for j in range(len(values)):
+        v = Val(values[j].v, values[j].t).identity(values[j])
+        if v.idfrom == "" and v.idslot != "" and v.idcounter != "":
+            selected.append(v)
+            continue
+        # Only scalar loads/stores and constant-box references are inserted before
+        # the existing edge. No user operation or heap allocation is moved there.
+        for block in self.fn.blocks:
+            if block.label == edges[j]:
+                self.blk = block
+                self.cur = block.label
+                self.term = False
+                last = block.code.pop()
+                box = v.idfrom if v.idfrom != "" else self.dyn_id_held(v).v if v.idslot != "" else self.dyn_box(values[j]).v if values[j].lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) else "null"
+                v.idslot = self.alloca("dyn", "")
+                v.idheld = box
+                v.idcounter = self.alloca("int", "")
+                v.idversion = "0"
+                self.mem_store(Val(v.idslot, "*dyn"), Val(box, "dyn"))
+                self.mem_store(Val(v.idcounter, "*int"), Val("0", "int"))
+                block.code.append(last)
+                break
+        selected.append(v)
+    self.blk = here
+    self.cur = cur
+    self.term = term
+    slot = Ins("phi", "*dyn", "")
+    held = Ins("phi", "dyn", "")
+    counter = Ins("phi", "*int", "")
+    version = Ins("phi", "int", "")
+    for j in range(len(selected)):
+        self.incoming(slot, selected[j].idslot, edges[j])
+        self.incoming(held, selected[j].idheld, edges[j])
+        self.incoming(counter, selected[j].idcounter, edges[j])
+        self.incoming(version, selected[j].idversion, edges[j])
+    result.idslot = self.phi(slot)
+    result.idheld = self.phi(held)
+    result.idcounter = self.phi(counter)
+    result.idversion = self.phi(version)
+    result.idgen = -1  # a selected slot requires the runtime generation check
+    return result
+
+
 def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     st = self.static(n.kids[0])
     if st >= 0:
@@ -2820,53 +2884,24 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     ph = Ins("phi", t, "")
     if e1 != "":
-        self.incoming(ph, self.convert_at(a, t, e1).v, e1)  # (an int as an int | None: its box, made there)
+        a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)
+        self.incoming(ph, a.v, e1)
     if e2 != "":
-        self.incoming(ph, self.coerce(b, t).v, e2)
+        b = self.coerce(b, t)
+        self.incoming(ph, b.v, e2)
     self.br(l3)
     self.place(l3)
     if t == "None":
         return Val("null", "None")  # (None either way)
-    r = Val(self.phi(ph), t)
-    if (t == "int" or t == "float") and (e1 == "" or (a.t == t and a.idfrom != "")) and (e2 == "" or (b.t == t and b.idfrom != "")):
-        # Numeric globals snapshot their box at the read, before later effects can rebind
-        # them. Select that same object with the payload, without consulting mutable slots.
-        # A converted numeric payload cannot retain its original type's box.
-        identity = Ins("phi", "dyn", "")
-        if e1 != "":
-            self.incoming(identity, a.idfrom, e1)
-        if e2 != "":
-            self.incoming(identity, b.idfrom, e2)
-        r.idfrom = self.phi(identity)
-    elif (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
-        # Keep the same-binding fast path, including x = x if flag else x.
-        r.idslot = a.idslot
-        r.idheld = self.mem_load(Val(a.idslot, "*dyn")).v
-        r.idgen = a.idgen
-        r.idcounter = a.idcounter
-        r.idversion = self.mem_load(Val(a.idcounter, "*int")).v if a.idcounter != "" else ""
-    elif (t == "int" or t == "float") and e1 != "" and e2 != "" and a.t == t and b.t == t and a.idcounter != "" and b.idcounter != "":
-        # Select the binding as lazily as its payload. Boxing either arm here would
-        # allocate in scalar-only consumers; selecting just its slot and generation
-        # preserves identity when a later consumer actually needs the object.
-        slot = Ins("phi", "*dyn", "")
-        self.incoming(slot, a.idslot, e1)
-        self.incoming(slot, b.idslot, e2)
-        r.idslot = self.phi(slot)
-        held = Ins("phi", "dyn", "")
-        self.incoming(held, a.idheld, e1)
-        self.incoming(held, b.idheld, e2)
-        r.idheld = self.phi(held)
-        counter = Ins("phi", "*int", "")
-        self.incoming(counter, a.idcounter, e1)
-        self.incoming(counter, b.idcounter, e2)
-        r.idcounter = self.phi(counter)
-        version = Ins("phi", "int", "")
-        self.incoming(version, a.idversion, e1)
-        self.incoming(version, b.idversion, e2)
-        r.idversion = self.phi(version)
-        r.idgen = -1  # (a selected slot requires the runtime generation check)
-    return r
+    result = Val(self.phi(ph), t)
+    if not dynamic_program() or not numeric_identity(t):
+        return result
+    values = [a] if e1 != "" else []
+    edges = [e1] if e1 != "" else []
+    if e2 != "":
+        values.append(b)
+        edges.append(e2)
+    return self.numeric_phi(result, values, edges)
 
 def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
     # Python semantics: `a or b` yields a if a is truthy, else b (same static type)
@@ -2924,12 +2959,18 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False)
     if not ascond and not self.term and a.t != b.t and self.join(a.t, b.t) == "dyn":
         rt = "dyn"  # (either operand, the other boxed where it reaches the join: dynamic.py)
     ph = Ins("phi", rt, "")
-    self.incoming(ph, self.convert_at(a, rt, e1).v if not ascond and self.converts(a.t, rt) else a.v, e1)
+    a = self.convert_at(a, rt, e1) if not ascond and self.converts(a.t, rt) else a
+    self.incoming(ph, a.v, e1)
     if not self.term:
-        self.incoming(ph, self.coerce(b, rt).v, self.cur)
+        b = self.coerce(b, rt)
+        self.incoming(ph, b.v, self.cur)
+    e2 = "" if self.term else self.cur
     self.br(l3)
     self.place(l3)
-    return Val(self.phi(ph), rt)
+    result = Val(self.phi(ph), rt)
+    if not dynamic_program() or not numeric_identity(rt):
+        return result
+    return self.numeric_phi(result, [a, b] if e2 != "" else [a], [e1, e2] if e2 != "" else [e1])
 
 def gen_unary(self, n: Node) -> Val:
     op = n.s

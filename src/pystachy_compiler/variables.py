@@ -1,6 +1,6 @@
 """Variables component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.utils import is_union, umembers
+from src.pystachy_compiler.utils import identity_default, is_union, umembers
 import os
 from src.pystachy_compiler.analysis import (
     aliases,
@@ -32,6 +32,7 @@ from src.pystachy_compiler.utils import (
     empty_ann,
     empty_default,
     empty_display,
+    identity_abi,
     is_const,
     is_dict,
     is_fn,
@@ -121,7 +122,15 @@ def gen_load_name(self, name: str) -> Val:
             self.nn[r] = True
         val = Val(r, t)
         if name in self.idbox and numeric_identity(t):
-            self.dyn_id_read(val, self.idbox[name])  # (its binding's object, as an Any value: dyn_box)
+            f = self.curfn
+            if t in ["int", "float"] and identity_abi(f) and not f.scalar_args and not f.gen and name in f.params and name not in self.assigned and name not in self.cells and name not in self.nlw and name not in self.compvars and f.ptypes[f.params.index(name)] == t:
+                # Every caller supplies this exact object's box. An immutable private
+                # parameter cannot have replaced it, so no lazy local snapshot is needed.
+                # Scalar-proof callees may receive null companions; captured, rebound,
+                # narrowed and comprehension-shadowed bindings keep the ordinary path.
+                val.idfrom = "%aid" + str(f.params.index(name))
+            else:
+                self.dyn_id_read(val, self.idbox[name])
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
             if val.idfrom != "" and (is_opt(t) or is_union(t)):
                 # A shared cell's snapshot may fill its adjacent identity cache.
@@ -398,8 +407,13 @@ def gen_closure(self, n: Node) -> Val:
             self.err(f"a default value None of a parameter of {what} is not supported here: annotate the parameter ({f.params[j]}: T | None = None)")
         if f.dtypes[j] == "":
             f.dtypes[j] = v.t
-        dvals.append(self.coerce(v, f.dtypes[j]))
-    env = self.rt("pys_alloc", "ptr", [f"i64 {8 * max(len(c.caps) + len(c.defs) + len(c.iflags), 1)}"])
+        value = self.coerce(v, f.dtypes[j])
+        if dynamic_program() and numeric_identity(value.t):
+            captured = Val(value.v, value.t).identity(value)
+            captured.idfrom = self.dyn_box(value).v
+            value = captured
+        dvals.append(value)
+    env = self.rt("pys_alloc", "ptr", [f"i64 {8 * max(len(c.caps) + len(c.defs) + len(c.iflags) + (len(c.defs) if dynamic_program() else 0), 1)}"])
     for i in range(len(c.caps)):
         if c.ctypes[i] != "None":
             x = c.caps[i]
@@ -408,6 +422,9 @@ def gen_closure(self, n: Node) -> Val:
     for j in range(len(dvals)):
         a = self.maddr('int', env, f'{len(c.caps) + j}', True)
         self.mstore(dvals[j].t, dvals[j].v, a)
+        if dynamic_program() and numeric_identity(dvals[j].t):
+            b = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + len(c.iflags) + j}', True)
+            self.mstore('dyn', dvals[j].idfrom, b)
     for j in range(len(c.iflags)):
         a = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + j}', True)
         self.mstore('%ptr', self.iflag[c.iflags[j]], a)
@@ -487,7 +504,7 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
             c.nlw[x] = True
     # the defaults that are no constants: the env holds their values, after the cells
     for j in range(1, len(f.params)):
-        if not is_const(f.defaults[j]):
+        if not is_const(f.defaults[j]) or identity_default(f.defaults[j]):
             f.dglob[j] = f"&{len(c.caps) + len(c.defs)}"
             c.defs.append(j)
     lf: dict[str, bool] = {}

@@ -3295,6 +3295,10 @@ Dyn *pys_dyn_int(I v) {
   Dyn *d = gc_box(1); d->t = &pys_dyntype_int; d->v = v; return d;
 }
 Dyn *pys_dyn_float(double x) { Dyn *d = gc_box(1); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
+/* The compiler proves that box is null or exactly this numeric object's box.
+   Taking its value (never its slot address) leaves all binding writes in the caller. */
+Dyn *pys_dyn_int_box(I value, Dyn *box) { return box ? box : pys_dyn_int(value); }
+Dyn *pys_dyn_float_box(double value, Dyn *box) { return box ? box : pys_dyn_float(value); }
 static Dyn *dbool(I b) { return (Dyn *)(b ? &pys_dyn_true_box : &pys_dyn_false_box); }
 /* a reference of type t: None where it is null (an object of a class type may be None) */
 Dyn *pys_dyn_ref(const DynType *t, void *p) {
