@@ -137,6 +137,56 @@ class NumericIdentityTests(unittest.TestCase):
                 NumericIdentityTests().test_observable_or_open_bodies_keep_slots()
 
 
+class NumericCallIdentityTests(unittest.TestCase):
+    def signature(self, body, annotation="int"):
+        generators = []
+        original = driver.Gen
+
+        def make_generator():
+            generator = original()
+            generators.append(generator)
+            return generator
+
+        source = ("# pystachy: dynamic-any\ndef target(x: int) -> " + annotation + ":\n" +
+                  "\n".join("    " + line for line in body.splitlines()) + "\nprint(target(1000))\n")
+        with patch.object(driver, "Gen", make_generator):
+            ir = driver.compile_program("numeric_call_identity.py", source, [str(ROOT / "lib")], "")
+        fn = next(fn for fn in generators[-1].fns if fn.f.node.s == "target")
+        return fn, ir
+
+    def test_return_aliases_keep_their_parameter_provenance(self):
+        for body, names in [
+            ("return x", {"x"}),
+            ("alias = x\nreturn alias", {"x", "alias"}),
+            ("alias = x\nwhile alias < 1002:\n    alias += 1\nreturn alias", {"x", "alias"}),
+            ("return int(x)", {"x"}),
+        ]:
+            with self.subTest(body=body):
+                fn, _ = self.signature(body)
+                self.assertTrue(fn.numeric_only)
+                self.assertEqual(set(fn.f.idnames), names)
+
+    def test_fresh_arithmetic_keeps_argument_boxing_elided(self):
+        for body in ["return x + 1", "copy = x\nreturn copy + 1"]:
+            fn, ir = self.signature(body)
+            self.assertTrue(fn.f.scalar_args)
+            self.assertFalse(fn.f.idnames)
+            self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+
+    def test_numeric_annotation_argument_proof_is_separate(self):
+        fn, ir = self.signature("value: int | float = 0\nfor i in range(x):\n    value += i\nreturn value", "int | float")
+        self.assertFalse(fn.numeric_only)
+        self.assertTrue(fn.f.scalar_args)
+        self.assertNotIn("x", fn.f.idnames)
+        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+
+    def test_foreign_code_has_no_companion_signature(self):
+        source = "def target(x: int) -> int:\n    return x\nprint(target(1000))\n"
+        ir = driver.compile_program("ordinary_numeric_call.py", source, [str(ROOT / "lib")], "")
+        self.assertNotIn("%aid", ir)
+        self.assertNotIn("%idret", ir)
+
+
 class ScalarGlobalIdentityTests(unittest.TestCase):
     def reads(self, body, extra="", signature=""):
         generators = []

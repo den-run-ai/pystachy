@@ -1,0 +1,17 @@
+literal return True True
+optional literal True True
+optional value True True
+optional None True True
+union typed True True
+union Any True True
+inferred optional True True
+inferred None True True
+inferred int True True
+inferred float True True
+finally return True True
+conditional call True True
+base method True True
+derived method True True
+exception argument True
+trouble
+[exit 0]

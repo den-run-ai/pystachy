@@ -1,7 +1,7 @@
 """Conversions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import DUNDER, NONEVAR, ORDOP, REFL
@@ -131,6 +131,10 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
+    if dynamic_program() and v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) and ((is_sopt(t) and unopt(t) == v.t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))):
+        captured = Val(v.v, v.t).identity(v)
+        captured.idfrom = self.dyn_box(v).v
+        v = captured
     if t == "dyn":
         return self.dyn_box(v)  # (into dynamic storage: dynamic.py)
     if v.t == "dyn":
@@ -155,13 +159,13 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if v.t == "exc" and t in self.classes and self.classes[t].exc != "":
         self.err(f"expected an object of {short(t)}, got a builtin exception, which is not converted to a class of the program (catch it as one: except {short(t)} as e)")
     if self.widens(v.t, t):
-        return Val(v.v, t)
+        return Val(v.v, t).identity(v)
     if is_union(unopt(t)) and v.t != "None":
         return self.to_union(v, t, what)
     if is_fn(v.t) and is_callable(unopt(t)):
         return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
     if is_sopt(t) and v.t == unopt(t):
-        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t)  # (a new box)
+        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t).identity(v)  # representation-only boxing
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])

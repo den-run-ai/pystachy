@@ -112,6 +112,9 @@ class FnInfo:
         self.ll = ll
         self.node = node
         self.cls = cls
+        self.scalar_args = False  # closed body permits eliding unreturned parameter boxes
+        self.scalar_only = False  # numeric_proof: no identity observations except returned aliases
+        self.idnames: dict[str, bool] = {}  # numeric locals/parameters whose objects can leave
         self.params: list[str] = []
         self.ptypes: list[str] = []
         self.defaults: list[Node] = []

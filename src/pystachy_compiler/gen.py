@@ -793,6 +793,7 @@ from src.pystachy_compiler.functions import (
     gen_externtype as functions_externtype,
     gen_function as functions_function,
     gen_function_body as functions_function_body,
+    gen_numeric_proof as functions_numeric_proof,
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
 )
@@ -2724,6 +2725,9 @@ class Gen:
 
     def function(self, f: FnInfo, body: list[Node]) -> None:
         return functions_function(self, f, body)
+
+    def numeric_proof(self, f: FnInfo, body: list[Node]) -> None:
+        functions_numeric_proof(self, f, body)
 
     def function_body(self, f: FnInfo, body: list[Node]) -> None:
         return functions_function_body(self, f, body)

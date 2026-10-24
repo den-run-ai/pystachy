@@ -778,7 +778,10 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
         ph = Ins("phi", t, "")
         self.incoming(ph, "null", start)
         self.incoming(ph, x.v, got)
-        return Val(self.phi(ph), t)
+        result = Val(self.phi(ph), t)
+        if numeric_identity(t):
+            result.idfrom = v.v
+        return result
     if t in BUILTIN:
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_type(t)}"])
         x = self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
@@ -888,7 +891,10 @@ def gen_dyn_select(self, v: Val, ts: list[str], t: str) -> Val:
         self.place(nxt)
     self.unreachable()
     self.place(end)
-    return Val(self.phi(ph), t)
+    result = Val(self.phi(ph), t)
+    if numeric_identity(t):
+        result.idfrom = v.v
+    return result
 
 
 def gen_dyn_test(self, v: Val, ts: list[str]) -> str:

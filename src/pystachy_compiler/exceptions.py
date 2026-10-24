@@ -9,7 +9,7 @@ from src.pystachy_compiler.analysis import (
     has_finally,
     reads,
 )
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Data, Exit, FnInfo, Ins, Try, Val
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
@@ -1380,6 +1380,8 @@ def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
     self.place(l1)
     i = Ins("icall", "exc", "")
     i.a = [Val(fp, "env")] + [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+    if dynamic_program():
+        i.a.extend([self.dyn_box(v) for v in vals if numeric_identity(v.t)])
     self.put(i, 1)
     e1 = self.cur
     self.br(l3)
