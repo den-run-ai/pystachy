@@ -38,8 +38,8 @@ def address_runtime_ir(ir: str) -> str:
 
 def struct_types(ci: ClassInfo) -> list[str]:
     # the LLVM types of the members of class ci's struct, %C.<name>: its fields', then its "is
-    # assigned" flags
-    return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)]
+    # assigned" flags and numeric identity companions
+    return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)] + ["ptr" for _ in range(ci.nbox)]
 
 
 def gen_tbaa_nodes(self) -> list[str]:

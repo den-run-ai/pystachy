@@ -30,6 +30,7 @@ from src.pystachy_compiler.utils import (
     is_tuple,
     is_union,
     meet,
+    numeric_identity,
     pure_arg,
     targs,
     tname,
@@ -959,9 +960,12 @@ def gen_class_defaults(self, o: Val) -> None:
         if fl in ci.fdefault and o.t + "." + fl not in self.cvars:
             h = self.default_home(ci, fl)
             t = ci.ftypes[fl]
-            if not is_const(ci.fdefault[fl]):
+            identity = fl in ci.fbox and numeric_identity(t)
+            if not is_const(ci.fdefault[fl]) or identity:
                 self.class_default(h, fl)  # (compiled before the class statement runs)
             v = Val(self.mload(t, h.fglob[fl]), t) if fl in h.fglob else self.coerce(self.expr(ci.fdefault[fl], t), t)
+            if identity:
+                self.dyn_id_read(v, h.fglob[fl] + ".box")
             self.setfield(o, self.field(o, fl), fl, v)
 
 def gen_exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:

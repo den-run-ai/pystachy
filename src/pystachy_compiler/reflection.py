@@ -25,6 +25,7 @@ from src.pystachy_compiler.utils import (
     is_tuple,
     is_union,
     is_vtuple,
+    numeric_identity,
     typestr,
     umembers,
     unopt,
@@ -455,7 +456,15 @@ def gen_refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) 
     ph = Ins("phi", t, "")
     for j in range(len(vals)):
         self.incoming(ph, self.convert_at(vals[j], t, blocks[j]).v, blocks[j])
-    return Val(self.phi(ph), t)
+    r = Val(self.phi(ph), t)
+    if numeric_identity(t) and all(v.idfrom != "" or v.t == "None" for v in vals):
+        # Field reads snapshot before later operands can change them. Select that
+        # same object with the payload, including an absent field's None default.
+        identity = Ins("phi", "dyn", "")
+        for j in range(len(vals)):
+            self.incoming(identity, vals[j].idfrom if vals[j].idfrom != "" else self.rtdata("pys_dyn_none_box"), blocks[j])
+        r.idfrom = self.phi(identity)
+    return r
 
 
 def gen_refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False) -> None:
@@ -502,6 +511,10 @@ def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
     o = self.expr(args[0], "")
     known = self.knownobj(args[0])  # (a template's parameter whose argument is no None)
     d = self.expr(args[2], "") if len(args) == 3 else Val("", "")  # (none: CPython's AttributeError)
+    if numeric_identity(d.t) and dynamic_program():
+        # The default is evaluated before attribute lookup or a property's code.
+        # Keep its object now; refl_phi cannot recover a retired lazy binding.
+        d.idfrom = self.dyn_box(d).v
     if o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != ""):
         self.err("getattr() of an exception object is not supported (its fields are read as e.name, after except C as e)")
     vals: list[Val] = []
