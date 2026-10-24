@@ -152,7 +152,7 @@ def gen_field_tag(self, c: str, k: int) -> str:
     # of classes neither of which lays out the other's (Gen.disjoint's rule). The tags have a
     # root of their own: no access of runtime.c's or of runtime.py's is told apart from them
     ci = self.classes[c]
-    while ci.base in self.classes and k < len(self.classes[ci.base].fields) + self.classes[ci.base].nflag:
+    while ci.base in self.classes and k < len(self.classes[ci.base].fields) + self.classes[ci.base].nflag + self.classes[ci.base].nbox:
         ci = self.classes[ci.base]
     key = f"{ci.name} {k}"
     if key not in self.tbaa:

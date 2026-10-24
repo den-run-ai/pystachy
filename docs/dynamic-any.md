@@ -219,8 +219,18 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   box slots are collector roots (`dynany_identity_joined_globals.py`). Numeric class
   attributes read through the class share a rooted box with their defining class,
   including inherited attributes and constants imported from another module
-  (`dynany_identity_class_globals.py`). Reading a default through an instance still
-  crosses the typed instance-field boundary described below.
+  (`dynany_identity_class_globals.py`). Numeric instance fields, including optional/scalar-union
+  fields, have companion box slots in the object's GC-scanned allocation. Stores retain the
+  source's box, and reads snapshot it before another operand can change the field. Defaults
+  read through an instance share the defining class's box until an instance assignment;
+  inherited fields keep the same companion slot through base-typed aliases. This also covers
+  dataclasses, NamedTuples, exception classes and class-template specializations
+  (`dynany_identity_fields.py`, `dynany_identity_field_defaults.py`,
+  `dynany_identity_field_kinds.py`). The raw numeric payload remains unboxed. A program that
+  uses dynamic `Any` adds one pointer slot per numeric field (including one reserved for an
+  unresolved `None` field), plus layout alignment, and reads/copies may materialize boxes.
+  Programs without dynamic `Any` retain their original class layouts. Typed constructor
+  parameters still cross the argument boundary described below.
   Integer-literal arithmetic whose operands and result fit int64 shares the module's
   constant box: `999 + 1` is the same object as its `1000` literal. This covers `+`, `-`,
   `*`, `//`, `%`, bit operations and bounded shifts/powers (counts from 0 through 63),
@@ -461,10 +471,9 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - An int or float of typed code that no variable's box slot holds is a new object where it
   becomes an `Any` value, where CPython's names, containers and classes hold one object: an
   argument or a parameter's default value (the parameter receives a new object), a return
-  value, an item of a typed container, or a typed instance field (including a class
-  default read through an instance) (`tests/deviations/dynany_identity_boundary.py`).
-  Numeric optional/scalar-union locals, closure cells, globals and class attributes
-  read through the class retain their identity. Module-level from-import copies
+  value, or an item of a typed container (`tests/deviations/dynany_identity_boundary.py`).
+  Numeric optional/scalar-union locals, closure cells, globals, instance fields and class
+  attributes retain their identity. Module-level from-import copies
   retain the source global's object; a local import in a non-opt-in function still
   uses that function's ordinary typed storage. Constant-folding forms beyond the
   bounded integer arithmetic above also remain gaps. Starred displays capture numeric objects when their dynamic

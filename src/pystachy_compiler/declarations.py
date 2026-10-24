@@ -62,6 +62,7 @@ from src.pystachy_compiler.utils import (
     kw_names,
     kw_types,
     literal_format,
+    numeric_identity,
     rename,
     selem,
     takes_self,
@@ -2720,7 +2721,7 @@ def gen_fgep(self, o: Val, i: int) -> str:
     # Keep the declared object layout and member type until lowering. The address
     # remains in IFn.fa so native and machine memory operations have identical effects.
     ci = self.classes[o.t]
-    t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "bool"
+    t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "dyn" if i in ci.fbox.values() else "bool"
     op = Ins("field.addr", "*" + t, "")
     op.k = i
     op.a = [o]
@@ -2734,6 +2735,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     ci = self.classes[o.t]
     r = ""
     bad = ""
+    box = self.fgep(o, ci.fbox[name]) if name in ci.fbox and numeric_identity(p.t) else ""
     if name == "__slots__" and name not in ci.fpos:
         if ci.exc != "":
             # Exceptions use their runtime class identity rather than ordinary
@@ -2762,25 +2764,34 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             # fallback globals still belong to the classes that define those defaults.
             tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
             cv = fv
+            cb = box
             assigned = own
             for sub in self.classes.values():
                 if sub.tag != 0 and self.derives(sub.name, ci.name) and name in sub.fdefault:
                     match = self.num_cmp('==', Val(tag, "int"), Val(str(sub.tag), "int")).v
-                    if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]):
+                    if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]) or box != "":
                         self.class_default(sub, name)
                         dv = self.mem_load(Val(sub.fglob[name], "*" + p.t))
                     else:
                         dv = self.coerce(self.expr(sub.fdefault[name], p.t), p.t)
                     cv = Val(self.select(match, dv, cv), p.t)
+                    if box != "":
+                        cb = self.select(match, Val(sub.fglob[name] + ".box", "%ptr"), Val(cb, "%ptr"))
                     assigned = self.scalar('or', [Val(assigned, 'bool'), Val(match, 'bool')])
             bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
             r = self.select(own, fv, cv)
+            if box != "":
+                box = self.select(own, Val(box, "%ptr"), Val(cb, "%ptr"))
         else:
             self.class_default(ci, name)
             r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "*" + p.t)))
             if is_opt(p.t) or is_union(p.t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
-            return Val(r, p.t)
+            v = Val(r, p.t)
+            if box != "":
+                box = self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr"))
+                self.dyn_id_read(v, box)
+            return v
     if name in ci.fflag and name not in ci.fsure:
         f = self.fgep(o, ci.fflag[name])
         if bad == "":
@@ -2815,7 +2826,10 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
         r = self.mem_load(Val(p.v, "*" + p.t)).v
     if is_opt(p.t) or is_union(p.t):
         self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
-    return Val(r, p.t)
+    v = Val(r, p.t)
+    if box != "":
+        self.dyn_id_read(v, box)
+    return v
 
 def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
     ci = self.classes[o.t]
@@ -2825,6 +2839,8 @@ def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
     cv = self.coerce(v, p.t, what)
     self.join_at(was[0], was[1], was[2])
     self.mem_store(Val(p.v, "*" + p.t), cv)
+    if name in ci.fbox and (numeric_identity(p.t) or p.t == NONEVAR):
+        self.dyn_id_store(self.fgep(o, ci.fbox[name]), v, p.t)
     if name in ci.fflag:
         self.mem_store(Val(self.fgep(o, ci.fflag[name]), "*bool"), Val("true", "bool"))
 
