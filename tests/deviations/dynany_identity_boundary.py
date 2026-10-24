@@ -2,18 +2,14 @@
 # values, an int or float variable of typed code holds one object (#797), but these values do not
 # keep their object where they become Any values: an argument or a parameter's default value
 # (the parameter receives a new object), a return value, an item of a typed container, a typed
-# field or class variable.
-# Each is a new object there, where
-# CPython's names, containers and classes hold one (it prints True for each). So is the value of
-# an expression of literals, which CPython's compiler folds into one constant (999 + 1 is 1000
-# there). `is` and id() still agree.
+# instance field. Each is a new object there, where CPython's names, containers and classes
+# hold one (it prints True for each). Class-attribute reads through the class and bounded
+# folded integers now have differential tests. `is` and id() still agree.
 # pystachy: dynamic-any
 from typing import Any
 
 
 class Box:
-    K = int("1000")
-
     def __init__(self, n: int) -> None:
         self.n = n
 
@@ -47,13 +43,7 @@ def run() -> None:
     e: Any = o.n
     f: Any = o.n
     print("a typed field", e is f, id(e) == id(f))
-    g: Any = Box.K
-    h: Any = Box.K
-    print("a class variable", g is h, id(g) == id(h))
     dflt(1000)
 
 
 run()
-k: Any = 1000
-m: Any = 999 + 1
-print("a folded constant", k is m, id(k) == id(m))

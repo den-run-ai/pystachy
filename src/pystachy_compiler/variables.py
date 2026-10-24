@@ -141,7 +141,7 @@ def gen_load_name(self, name: str) -> Val:
         if is_opt(t) or is_union(t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
         val = Val(r, t)
-        if name in self.gidbox and (t == "int" or t == "float"):
+        if name in self.gidbox and numeric_identity(t):
             self.dyn_id_read(val, self.gidbox[name])
         return val
     if name == "__name__":
@@ -1637,7 +1637,7 @@ def gen_new_global(self, name: str, t: str) -> None:
     self.global_var(f"@g.{name}", t)
     if name in self.gflag:
         self.global_var(f"@g.{name}.def", "bool")
-    if (t == "int" or t == "float") and dynamic_program():
+    if numeric_identity(t) and dynamic_program():
         # (the box of its binding as an Any value, as a local's: alloca; a root, as a dyn global is.
         # Every module's, as a module that compiles Any as dyn may read it)
         self.gidbox[name] = f"@g.{name}.box"
@@ -1703,7 +1703,7 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         self.mem_store(Val(f"@g.{name}", "*" + t), cv)
         if name in self.gflag:
             self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))
-        if name in self.gidbox and (t == "int" or t == "float"):
+        if name in self.gidbox and numeric_identity(t):
             self.dyn_id_store(self.gidbox[name], v, t)  # (the object it now holds: dyn_box)
     else:
         if name in self.compshare and name in self.compvars and not self.widens(v.t, self.compshare[name]):

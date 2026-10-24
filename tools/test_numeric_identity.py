@@ -12,6 +12,7 @@ from src.pystachy_compiler import driver, functions  # noqa: E402
 from src.pystachy_compiler.diagnostics import Rejoin  # noqa: E402
 from src.pystachy_compiler.gen import Gen  # noqa: E402
 from src.pystachy_compiler.syntax import mk  # noqa: E402
+from src.pystachy_compiler.utils import folded_int  # noqa: E402
 
 
 class NumericIdentityTests(unittest.TestCase):
@@ -283,6 +284,42 @@ print(outer())
 '''
         ir = driver.compile_program("joined_identity_boundary.py", source, [str(ROOT / "lib")], "")
         self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+
+
+class FoldedIntegerIdentityTests(unittest.TestCase):
+    def test_literal_operations_match_cpython_with_int64_boundaries(self):
+        values = [-2**63, -2**63 + 1, -1000, -1, 0, 1, 3, 1000, 2**63 - 1]
+        for op in ["+", "-", "*", "//", "%", "**", "<<", ">>", "&", "|", "^"]:
+            for a in values:
+                for b in values if op not in ["**", "<<", ">>"] else [-1, 0, 1, 3, 62, 63, 64]:
+                    with self.subTest(op=op, a=a, b=b):
+                        got = folded_int(op, str(a), str(b))
+                        if op in ["**", "<<", ">>"] and not 0 <= b <= 63:
+                            self.assertEqual(got, "")
+                            continue
+                        try:
+                            expected = eval(f"({a}) {op} ({b})")
+                        except (ValueError, ZeroDivisionError):
+                            self.assertEqual(got, "")
+                            continue
+                        self.assertEqual(got, str(expected) if -2**63 <= expected < 2**63 else "")
+
+    def test_large_exponents_and_counts_are_not_evaluated(self):
+        for op in ["**", "<<", ">>"]:
+            self.assertEqual(folded_int(op, "2", str(2**63 - 1)), "")
+        self.assertEqual(folded_int("/", "1000", "2"), "")
+
+    def test_non_boxable_global_unions_remain_accepted(self):
+        source = '''# pystachy: dynamic-any
+value: int | list[int] = [7]
+def read() -> int:
+    local = value
+    if isinstance(local, int):
+        return local
+    return local[0]
+print(read())
+'''
+        driver.compile_program("global_identity_boundary.py", source, [str(ROOT / "lib")], "")
 
 
 if __name__ == "__main__":

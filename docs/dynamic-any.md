@@ -214,6 +214,20 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   same lazy identity slots across assignments, narrowing and copies. Shared closure
   cells retain and snapshot these identities too, including after the outer function
   returns (`dynany_identity_joined_locals.py`, `dynany_identity_joined_cells.py`).
+  Optional and scalar-union globals also retain these objects, including imported typed
+  modules and from-import copies. Reads snapshot before callback rebinding, and their
+  box slots are collector roots (`dynany_identity_joined_globals.py`). Numeric class
+  attributes read through the class share a rooted box with their defining class,
+  including inherited attributes and constants imported from another module
+  (`dynany_identity_class_globals.py`). Reading a default through an instance still
+  crosses the typed instance-field boundary described below.
+  Integer-literal arithmetic whose operands and result fit int64 shares the module's
+  constant box: `999 + 1` is the same object as its `1000` literal. This covers `+`, `-`,
+  `*`, `//`, `%`, bit operations and bounded shifts/powers (counts from 0 through 63),
+  plus unary signs and inversion. Runtime operands and calls remain fresh objects;
+  invalid or overflowing operations retain runtime evaluation and errors
+  (`dynany_identity_folded_ints.py`). Other constant-folding forms remain outside this
+  identity guarantee, including float arithmetic and larger shift/power counts.
   The union/optional payload layout and typed calling conventions are unchanged;
   copies can materialize a box as they already do for concrete numeric locals.
   Comprehension targets have their own box slots, renewed for each iteration and
@@ -447,13 +461,13 @@ document into dicts and lists of `Any` values that programs which do not opt in 
 - An int or float of typed code that no variable's box slot holds is a new object where it
   becomes an `Any` value, where CPython's names, containers and classes hold one object: an
   argument or a parameter's default value (the parameter receives a new object), a return
-  value, an item of a typed container, a typed field or class variable, and the name
-  that `from m import x` binds. So is an expression
-  of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
-  literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`). Numeric
-  optional/scalar-union local bindings, including closure cells, now retain their
-  identity. This does not extend to union globals, typed container items or typed
-  call boundaries. Starred displays capture numeric objects when their dynamic
+  value, an item of a typed container, or a typed instance field (including a class
+  default read through an instance) (`tests/deviations/dynany_identity_boundary.py`).
+  Numeric optional/scalar-union locals, closure cells, globals and class attributes
+  read through the class retain their identity. Module-level from-import copies
+  retain the source global's object; a local import in a non-opt-in function still
+  uses that function's ordinary typed storage. Constant-folding forms beyond the
+  bounded integer arithmetic above also remain gaps. Starred displays capture numeric objects when their dynamic
   result can be inferred before evaluation, or an already typed expansion supplies
   dynamic items. Displays whose element types depend on earlier first bindings
   within that same expression can still need an explicit `list[Any]` destination.
