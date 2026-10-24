@@ -1,0 +1,21 @@
+mods: init mods
+mods.shapes: init mods.shapes
+repeated global True True
+global copy True True
+optional NaN True True
+imported union True True
+import repeated True True
+callback snapshot False False
+old snapshot False False
+after callback True True
+import retains old False False
+import after callback True True
+None True True
+float copy True True
+equal distinct floats False False
+string member True True
+optional None True True
+narrowed global True True
+narrowed integer True True
+global box survives GC True
+[exit 0]

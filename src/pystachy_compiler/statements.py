@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
@@ -47,6 +47,7 @@ from src.pystachy_compiler.utils import (
     is_tuple,
     is_vtuple,
     meet,
+    numeric_identity,
     same_kind,
     selem,
     targs,
@@ -250,6 +251,8 @@ def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
     if fl not in h.fglob:
         h.fglob[fl] = f"@d.c.{h.name}.{fl}"
         self.global_var(h.fglob[fl], h.ftypes[fl])
+        if numeric_identity(h.ftypes[fl]) and dynamic_program():
+            self.global_var(h.fglob[fl] + ".box", "dyn")
         self.pending[h.fglob[fl]] = True
     ci.fglob[fl] = h.fglob[fl]
 
@@ -342,13 +345,12 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
                 if m in self.classes[t].methods and (now or ci.mod == ""):
                     self.err(why)
                 later = later if later != "" or m not in self.classes[t].methods else f"class {shown(ci.name)} is not supported: {why}"
-            cv = fl == "__slots__" or ci.name + "." + fl in self.cvars  # (a class variable's constant default needs its global too)
-            if (cv or not is_const(st.kids[2])) and fl in ci.fglob and ci.fglob[fl] in self.pending:
-                # code compiled before this statement declared its global (class_default)
-                del self.pending[ci.fglob[fl]]
-                self.mstore(t, self.coerce(self.expr(st.kids[2], t), t).v, ci.fglob[fl])
-            elif (cv or not is_const(st.kids[2])) and fl not in ci.fglob:
-                ci.fglob[fl] = self.hidden(f"@d.c.{ci.name}.{fl}", self.coerce(self.expr(st.kids[2], t), t))
+            # Numeric class defaults need their defining module's object too, including
+            # literals read from another module. class_default owns the shared GC root.
+            cv = fl == "__slots__" or ci.name + "." + fl in self.cvars or (numeric_identity(t) and dynamic_program())
+            if (cv or not is_const(st.kids[2])) and (fl not in ci.fglob or ci.fglob[fl] in self.pending):
+                self.class_store(ci, fl, self.expr(st.kids[2], t))
+                self.pending.pop(ci.fglob[fl], False)
         elif st.kind == "def":
             f = ci.methods[st.s]
             for k in [st.s + ".setter", st.s + ".deleter"]:

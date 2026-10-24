@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
@@ -45,6 +45,7 @@ from src.pystachy_compiler.utils import (
     fbits,
     fmt_index,
     folds,
+    folded_int,
     int_fits,
     is_callable,
     is_const,
@@ -64,6 +65,7 @@ from src.pystachy_compiler.utils import (
     lt,
     nones,
     nonetest,
+    numeric_identity,
     plain_args,
     runtime_format,
     same_kind,
@@ -1065,10 +1067,14 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
     if ci.name in self.nts and a == "_field_defaults":
         return self.nt_defaults(ci.name)
     t = ci.ftypes[a]
-    if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars:
+    identity = numeric_identity(t) and dynamic_program()
+    if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars and not identity:
         return self.coerce(self.expr(ci.fdefault[a], t), t)
     self.class_default(ci, a)
-    return Val(self.mload(t, ci.fglob[a]), t)
+    v = Val(self.mload(t, ci.fglob[a]), t)
+    if identity:
+        self.dyn_id_read(v, ci.fglob[a] + ".box")
+    return v
 
 def gen_cvar_stores(self, ns: list[Node]) -> None:
     # the class attributes the program assigns through their class (C.x = v, C.x += v; a class
@@ -1119,6 +1125,8 @@ def gen_class_store(self, ci: ClassInfo, a: str, v: Val) -> None:
     # C.a = v through the class: its class variable's global
     self.class_default(ci, a)
     self.mstore(ci.ftypes[a], self.coerce(v, ci.ftypes[a]).v, ci.fglob[a])
+    if numeric_identity(ci.ftypes[a]) and dynamic_program():
+        self.dyn_id_store(ci.fglob[a] + ".box", v, ci.ftypes[a])
 
 def gen_no_class_attr(self, c: str, a: str) -> None:
     # C.a where class C binds no class attribute a: CPython's AttributeError, or why it is not supported
@@ -2938,6 +2946,10 @@ def gen_unary(self, n: Node) -> Val:
     if is_sopt(v.t):
         v = self.unwrap(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
     v = self.as_int(v)
+    if v.t == "int" and v.lit and dynamic_program() and (op == "-" or op == "~"):
+        folded = folded_int("-" if op == "-" else "^", "0" if op == "-" else "-1", v.v)
+        if folded != "":
+            return self.expr(mk("int", folded, n.line, []), "")
     if v.t == "int" and op == "-":
         return Val(self.iop("-", "0", v.v), "int")
     if v.t == "int" and op == "~":
@@ -3542,6 +3554,12 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
     return Val(self.phi(ph), "bool")
 
 def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
+    if a.t == "int" and b.t == "int" and a.lit and b.lit and dynamic_program():
+        folded = folded_int(op, a.v, b.v)
+        if folded != "":
+            v = Val(folded, "int")
+            v.lit = True
+            return v
     if a.t == "dyn" or b.t == "dyn":
         return self.dyn_arith(op, a, b, shown == op + "=")  # (a dynamic value's, in place where shown is op=: dynamic.py)
     if is_union(unopt(a.t)) or is_union(unopt(b.t)):

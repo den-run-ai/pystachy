@@ -603,6 +603,46 @@ def numeric_identity(t: str) -> bool:
     return u in ["int", "float"] or (is_union(u) and all(m in ["int", "float", "bool", "str"] for m in umembers(u)) and any(m in ["int", "float"] for m in umembers(u)))
 
 
+def folded_int(op: str, a: str, b: str) -> str:
+    # A bounded integer-literal operation that CPython folds into its constant pool.
+    # Never fold names/calls or an intermediate outside this compiler's int64 subset.
+    # Bound shifts/powers before evaluating them in the hosted compiler; the native
+    # compiler raises on overflow instead. Both leave errors for the program to run.
+    x = int(a)
+    y = int(b)
+    if op not in ["+", "-", "*", "//", "%", "**", "<<", ">>", "&", "|", "^"]:
+        return ""
+    if op in ["**", "<<", ">>"] and (y < 0 or y > 63):
+        return ""
+    try:
+        r = 0
+        if op == "+":
+            r = x + y
+        elif op == "-":
+            r = x - y
+        elif op == "*":
+            r = x * y
+        elif op == "//":
+            r = x // y
+        elif op == "%":
+            r = x % y
+        elif op == "**":
+            r = x ** y
+        elif op == "<<":
+            r = x << y
+        elif op == ">>":
+            r = x >> y
+        elif op == "&":
+            r = x & y
+        elif op == "|":
+            r = x | y
+        elif op == "^":
+            r = x ^ y
+        return str(r) if int_fits(str(r)) else ""
+    except (OverflowError, ZeroDivisionError):
+        return ""
+
+
 def literal(e: Node) -> bool:
     # is e a constant that CPython's compiler always makes one of: a literal, a sign on a number, or
     # a tuple of those (an operator's result may exceed its limits, "a" * 4097, and is left to run)
