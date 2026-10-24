@@ -1,0 +1,46 @@
+nested equality
+True
+False
+True
+True
+True
+nested equality
+True
+False
+True
+True
+True
+nested equality
+True
+False
+True
+True
+False
+nested ordering
+True
+int amount
+float amount
+nested ordering
+True
+int amount
+float amount
+True True
+nested equality
+True
+property 1
+False
+True
+True
+True
+nested ordering
+True
+int amount
+property 2
+float amount
+False
+2
+nested equality
+True
+property error
+nested getter
+[exit 0]

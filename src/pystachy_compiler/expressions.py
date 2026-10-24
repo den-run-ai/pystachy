@@ -40,6 +40,7 @@ from src.pystachy_compiler.utils import (
     atomic_list,
     bool_for_int,
     clone,
+    contains_typed_vtuple,
     disjoint_sets,
     elem,
     fbits,
@@ -674,6 +675,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         # Contextual return inference follows fresh literal trees and calls.
         # Other operations keep the hints their operands already needed.
         want = self.generic_hint(n, want)
+    if k == "cmpmissing":
+        # A guarded structural adapter proved that this exact operand lacks the
+        # field. Evaluate the read's operand before raising; earlier exceptions,
+        # untaken branches and cleanup retain their normal control flow.
+        o = self.expr(n.kids[0], "")
+        self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{n.kids[1].s}'"))
+        return Val("undef", n.s)
     if k == "val":
         return self.vnodes[int(n.s)]  # (a value computed already: see vnode)
     if k == "excinfo":
@@ -824,12 +832,6 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
-        if self.curfn.cmpfields != "" and tc.kind == "name" and tc.s == self.curfn.params[1] and n.s in self.classes[self.curfn.cmpfields].ftypes and o.t in self.classes and n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods:
-            # The concrete comparison arm proves this exact class lacks the
-            # field. Raise at the read, after earlier effects and only on paths
-            # that reach it. The unreachable value retains the body's type.
-            self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{n.s}'"))
-            return Val("undef", self.classes[self.curfn.cmpfields].ftypes[n.s])
         if o.t == "dyn":
             return self.dyn_getattr(o, n.s)  # (its box's class's attribute: dynamic.py)
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):
@@ -3706,6 +3708,28 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     if op == "*" and a.t == "int" and (b.t == "str" or b.t == "bytes" or is_list(b.t) or is_tuple(b.t)):
         return self.arith(op, b, a)
     if op == "+" and is_list(a.t) and is_list(b.t):
+        if self.dyn_policy(self.line) and all(self.dyn_boxable(elem(v.t)) == "" and not contains_typed_vtuple(elem(v.t)) for v in [a, b]):
+            # Concatenation owns a fresh result, so its slots may hold boxes even
+            # though either source keeps its typed storage. Read each original
+            # item through the normal identity-aware path; do not convert an
+            # aliased source list or copy a mutable item into a different layout.
+            mixed_result = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[dyn]")
+            for source in [a, b]:
+                ctr = self.alloca("int", "")
+                self.mstore("int", "0", ctr)
+                head = self.label()
+                body = self.label()
+                end = self.label()
+                self.br(head)
+                self.place(head)
+                i = self.mload("int", ctr)
+                self.cbr(self.num_cmp("<", Val(i, "int"), Val(self.mload("int", source.v), "int")).v, body, end)
+                self.place(body)
+                self.list_store(mixed_result, self.dyn_box(self.list_item(source, Val(i, "int"))), "append")
+                self.mstore("int", self.scalar("add", [Val(i, "int"), Val("1", "int")]), ctr)
+                self.br(head)
+                self.place(end)
+            return mixed_result
         self.err(f"unsupported operand types for +: {typestr(a.t)} and {typestr(b.t)} (a list holds items of one type)")
     if op == "|" and is_dict(a.t) and is_dict(b.t):
         # a | b: a copy of a, updated with b (dict_or: PyDict_Copy, then dict_update_arg)
@@ -4225,6 +4249,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         # numeric leaves compare exactly without changing either stored layout.
         r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
         return self.num_cmp("!=" if op == "==" else "==", Val(r, "int"), Val("0", "int"))
+    if eq and ct == "" and is_list(a.t) and is_list(b.t) and self.dyn_policy(self.line) and all(elem(v.t) in self.classes or elem(v.t) in ["dyn", "int", "float", "bool", "str", "bytes", "None"] for v in [a, b]) and not ("dyn" in [elem(a.t), elem(b.t)] and "bytes" in [elem(a.t), elem(b.t)]):
+        return self.list_pair_eq(op, a, b)
     if ct == "" and self.boxwider(a.t, b.t) != "":
         # a tuple with an int where the other's item may be None: compared as a new tuple of boxes
         ct = self.boxwider(a.t, b.t)
@@ -4245,6 +4271,62 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else b.t
     self.err(f"cannot compare {x} {op} {y}")
     return a
+
+def gen_list_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+    # Different list layouts retain their own storage. As list_richcompare,
+    # compare identity before equality and reload both lengths after user code:
+    # an element callback can clear, extend or replace either source list.
+    at = elem(a.t)
+    bt = elem(b.t)
+    pick = self.cmp_pick("==", at, bt)
+    if len(pick) > 0:
+        lt = at if pick[0] == "a" else bt
+        rt = bt if pick[0] == "a" else at
+        if self.cmp_method(lt, pick[1], rt) == "":
+            self.err(f"cannot compare {typestr(a.t)} == {typestr(b.t)}: {typestr(lt)}.{pick[1]} cannot take {typestr(rt)}")
+    index = self.alloca("int", "")
+    self.mstore("int", "0", index)
+    head = self.label()
+    body = self.label()
+    step = self.label()
+    finish = self.label()
+    end = self.label()
+    result = Ins("phi", "bool", "")
+    self.incoming(result, "false", self.cur)
+    self.cbr(self.num_cmp("==", Val(self.mload("int", a.v), "int"), Val(self.mload("int", b.v), "int")).v, head, end)
+    self.place(head)
+    i = Val(self.mload("int", index), "int")
+    ax = self.num_cmp("<", i, Val(self.mload("int", a.v), "int"))
+    bx = self.num_cmp("<", i, Val(self.mload("int", b.v), "int"))
+    self.cbr(self.scalar("and", [ax, bx]), body, finish)
+    self.place(body)
+    x = self.list_item(a, i)
+    y = self.list_item(b, i)
+    if (at in self.classes or bt in self.classes) and at != "dyn" and bt != "dyn":
+        if self.isref(at) and self.isref(bt):
+            compare = self.label()
+            self.cbr(self.ptr_cmp("==", x, y).v, step, compare)
+            self.place(compare)
+        # A native class slot may contain None. Dispatch that actual pair and
+        # subclasses before selecting the reflected method, as typed richcmp.
+        self.cbr(self.inherit_cmp("==", x, y).v, step, finish)
+    else:
+        self.titem_eq(x, y, step, None, "")
+        self.br(finish)
+    self.place(step)
+    self.mstore("int", self.scalar("add", [i, Val("1", "int")]), index)
+    self.br(head)
+    self.place(finish)
+    alen = Val(self.mload("int", a.v), "int")
+    blen = Val(self.mload("int", b.v), "int")
+    exhausted = Val(self.scalar("or", [self.num_cmp(">=", i, alen), self.num_cmp(">=", i, blen)]), "bool")
+    equal = self.scalar("and", [exhausted, self.num_cmp("==", alen, blen)])
+    self.incoming(result, equal, self.cur)
+    self.br(end)
+    self.place(end)
+    value = Val(self.phi(result), "bool")
+    return value if op == "==" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
+
 
 def gen_tuple_order(self, op: str, a: Val, b: Val) -> Val:
     # a < b (or <=, >, >=) of tuples of different lengths, as CPython orders them: by the

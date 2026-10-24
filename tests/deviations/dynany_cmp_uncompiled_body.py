@@ -1,12 +1,10 @@
 # pystachy: dynamic-any
-# Remaining #803 gap: concatenating differently typed lists still falls outside
-# the guarded adapter, so this comparison skips the method side effect.
+# Remaining #803 gap: a comparison cannot add missing instance storage to a peer.
 from typing import Any
 
 
 class Peer:
-    def __init__(self) -> None:
-        self.items = ["different", "storage"]
+    pass
 
 
 class Strict:
@@ -15,12 +13,10 @@ class Strict:
 
     def __eq__(self, other: "Strict") -> bool:
         print("comparison ran")
-        return len(self.items + other.items) > 0
+        other.items = self.items
+        return other.items == self.items
 
 
 x: Any = Strict()
 y: Any = Peer()
-try:
-    print(x == y)
-except AttributeError:
-    print("missing items")
+print(x == y)

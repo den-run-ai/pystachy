@@ -804,6 +804,16 @@ def holds_dyn(t: str) -> bool:
     return t == "dyn" or "[dyn" in t or ",dyn" in t
 
 
+def contains_typed_vtuple(t: str) -> bool:
+    # Boxing converts fixed tuple/union/optional leaves recursively, but a typed
+    # variadic tuple has no box conversion yet (except the canonical Any tuple).
+    if is_vtuple(t):
+        return t != "vtuple[dyn]"
+    if is_opt(t):
+        return contains_typed_vtuple(unopt(t))
+    return (is_tuple(t) or is_union(t)) and any(contains_typed_vtuple(x) for x in targs(t))
+
+
 def any_item(t: str) -> bool:
     # is t an Any value (dyn) or one of Any's containers, which a container holds as a box: then a
     # list or dict of it has Any's container layout too (Gen.ctype)
