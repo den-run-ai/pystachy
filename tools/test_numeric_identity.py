@@ -207,6 +207,16 @@ class NumericCallIdentityTests(unittest.TestCase):
                     self.assertIn("ptr %aid0", ir)
                     self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
 
+    def test_getattr_property_keeps_return_box_lazy(self):
+        ir = self.compile("class C:\n    @property\n    def item(self) -> float:\n"
+                          "        return 1.5 + 0.25\n"
+                          "def target(obj: C) -> float:\n    return getattr(obj, 'item', 2.5)\n"
+                          "print(target(C()))\n")
+        body = self.function_ir(ir, "f.target")
+        self.assertIn("phi ptr", body)
+        self.assertIn("ptr %idret", body)
+        self.assertNotRegex(body, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)\(")
+
     def test_numeric_annotation_argument_proof_is_separate(self):
         fn, ir = self.signature("value: int | float = 0\nfor i in range(x):\n    value += i\nreturn value", "int | float")
         self.assertFalse(fn.numeric_only)
@@ -246,6 +256,50 @@ class NumericCallIdentityTests(unittest.TestCase):
         body = self.function_ir(ir, "f.target")
         self.assertIn("@pys_dyn_int", body)
         self.assertRegex(body, r"load [^\n]*%x\.box\.")
+
+    def test_call_snapshots_leave_shared_vnodes_unchanged(self):
+        positions = {"call_callable": 1, "virtual_call": 2, "refl_getattr": 0}
+        seen = dict.fromkeys(positions, 0)
+
+        def checked(method, original):
+            def invoke(generator, *args, **kwargs):
+                shared = []
+                for node in args[positions[method]]:
+                    node = node.kids[0] if node.kind == "kw" else node
+                    if node.kind == "val":
+                        value = generator.vnodes[int(node.s)]
+                        if value.t in ("int", "float"):
+                            shared.append((value, vars(value).copy()))
+                result = original(generator, *args, **kwargs)
+                seen[method] += len(shared)
+                for value, before in shared:
+                    self.assertEqual(vars(value), before, method)
+                return result
+            return invoke
+
+        with patch.object(Gen, "call_callable", checked("call_callable", Gen.call_callable)), \
+                patch.object(Gen, "virtual_call", checked("virtual_call", Gen.virtual_call)), \
+                patch.object(Gen, "refl_getattr", checked("refl_getattr", Gen.refl_getattr)):
+            source = (ROOT / "tests/programs/inference/dynany_identity_call_branch_snapshots.py").read_text()
+            self.compile(source)
+        self.assertTrue(all(seen.values()), seen)
+
+    def test_mutating_shared_call_arguments_is_detected(self):
+        positions = {"call_callable": 1, "virtual_call": 2, "refl_getattr": 0}
+        for method in positions:
+            original = getattr(Gen, method)
+
+            def mutate(generator, *args, original=original, method=method, **kwargs):
+                result = original(generator, *args, **kwargs)
+                for node in args[positions[method]]:
+                    node = node.kids[0] if node.kind == "kw" else node
+                    if node.kind == "val" and generator.vnodes[int(node.s)].t in ("int", "float"):
+                        generator.vnodes[int(node.s)].idfrom = "%branch.only"
+                return result
+
+            with self.subTest(method=method), patch.object(Gen, method, mutate):
+                with self.assertRaises(AssertionError):
+                    NumericCallIdentityTests().test_call_snapshots_leave_shared_vnodes_unchanged()
 
     def test_scalar_local_operands_do_not_load_identity_slots(self):
         ir = self.compile("from typing import Any\ndef target(x: int) -> Any:\n"
@@ -403,6 +457,77 @@ class ScalarGlobalIdentityTests(unittest.TestCase):
         with patch.object(Gen, "scalar_read_value", return_value=True):
             with self.assertRaises(AssertionError):
                 ScalarGlobalIdentityTests().test_open_or_publishing_consumers_keep_snapshots()
+
+
+class ScalarListIdentityTests(unittest.TestCase):
+    def target_ir(self, body, item="int", extra=""):
+        source = ("# pystachy: dynamic-any\nfrom typing import Any\n" + extra +
+                  "def callback() -> int:\n    return 0\n" +
+                  "def target(xs: list[" + item + "], i: int, other: Any) -> Any:\n" +
+                  "\n".join("    " + line for line in body.splitlines()) + "\n")
+        ir = driver.compile_program("scalar_list_identity.py", source, [str(ROOT / "lib")], "")
+        target = re.search(r"define[^\n]*@f\.target\([^\n]*\n(.*?)\n}", ir, re.S)
+        self.assertIsNotNone(target)
+        return target[1]
+
+    def test_closed_arithmetic_and_comparisons_use_payloads(self):
+        for item in ["int", "float"]:
+            for body in ["return xs[i] + 1", "return xs[i] < 2", "return 0 < xs[i] <= 2",
+                         "return xs[int(i / 2)] * 3", "total = " + ("0.0" if item == "float" else "0") + "\ntotal += xs[i]\nreturn total"]:
+                with self.subTest(item=item, body=body):
+                    ir = self.target_ir(body, item)
+                    self.assertNotIn("@pys_list_get_identity", ir)
+                    self.assertNotIn("@pys_dyn_unbox", ir)
+                    self.assertIn("@pys_list_get", ir)  # its slow path keeps Python bounds checks
+
+    def test_escaping_values_and_open_operands_keep_objects(self):
+        bodies = ["return xs[i]", "value: Any = xs[i]\nreturn value + 1",
+                  "return (saved := xs[i]) + 1", "return xs[i] + other",
+                  "return xs[i] + callback()", "return xs[callback()] + 1",
+                  "return xs[i] == other", "return xs[i] == callback()",
+                  "return xs[i] is other", "return 0 < xs[i] is other",
+                  "return 0 < xs[i] < callback()", "return xs[i] in [other]",
+                  "return xs[other] + 1"]
+        for body in bodies:
+            with self.subTest(body=body):
+                self.assertIn("@pys_list_get_identity", self.target_ir(body))
+        cast = "def cast(value: Any) -> int:\n    return 0\n"
+        self.assertIn("@pys_list_get_identity", self.target_ir("int = cast\nreturn int(xs[i]) + 1", extra=cast))
+
+    def test_receiver_and_index_proof_rejects_protocols_and_unknown_types(self):
+        generator = Gen()
+        generator.ltype.update({"xs": "list[int]", "fs": "list[float]", "i": "int", "b": "bool",
+                               "f": "float", "any": "dyn", "optional": "opt[list[int]]", "obj": "Box"})
+        def name(text):
+            return mk("name", text, 0, [])
+        for receiver in [name("optional"), name("obj"), mk("attr", "items", 0, [name("obj")])]:
+            self.assertFalse(generator.scalar_read_value(mk("index", "", 0, [receiver, name("i")])))
+        for index in [name("f"), name("any"), mk("binop", "/", 0, [name("i"), mk("int", "2", 0, [])]),
+                      mk("index", "", 0, [name("fs"), name("i")]), mk("call", "", 0, [name("callback")])]:
+            self.assertFalse(generator.scalar_read_value(mk("index", "", 0, [name("xs"), index])))
+        for index in [name("i"), name("b"), mk("index", "", 0, [name("xs"), name("i")])]:
+            self.assertTrue(generator.scalar_read_value(mk("index", "", 0, [name("xs"), index])))
+
+    def test_unchecked_operand_proof_is_detected(self):
+        with patch.object(Gen, "scalar_read_value", return_value=True):
+            with self.assertRaises(AssertionError):
+                ScalarListIdentityTests().test_escaping_values_and_open_operands_keep_objects()
+
+    def test_exceptions_restore_the_scalar_scope(self):
+        original = Gen.list_read
+        for expression in ["xs[i] + 1", "xs[i] < 2"]:
+            held = []
+            def fail(generator, *args, held=held):
+                if generator.curfn.node.s == "target" and generator.fn.scalar_reads:
+                    held.append(generator.fn)
+                    raise RuntimeError("probe")
+                return original(generator, *args)
+            with self.subTest(expression=expression), patch.object(Gen, "list_read", fail):
+                with self.assertRaises(RuntimeError):
+                    self.target_ir("return " + expression)
+            self.assertEqual(len(held), 1)
+            self.assertFalse(held[0].scalar_reads)
+            self.assertIn("@pys_list_get_identity", self.target_ir("return xs[i]"))
 
 
 class CellIdentityAllocationTests(unittest.TestCase):

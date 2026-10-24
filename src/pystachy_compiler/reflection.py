@@ -464,6 +464,10 @@ def gen_refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) 
         for j in range(len(vals)):
             self.incoming(identity, vals[j].idfrom if vals[j].idfrom != "" else self.rtdata("pys_dyn_none_box"), blocks[j])
         r.idfrom = self.phi(identity)
+    else:
+        # A property's typed return keeps a lazy companion. Select it alongside
+        # the captured default, including when AttributeError takes the default.
+        r = self.numeric_phi(r, vals, blocks)
     return r
 
 
@@ -514,7 +518,9 @@ def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
     if numeric_identity(d.t) and dynamic_program():
         # The default is evaluated before attribute lookup or a property's code.
         # Keep its object now; refl_phi cannot recover a retired lazy binding.
-        d.idfrom = self.dyn_box(d).v
+        captured = Val(d.v, d.t).identity(d)
+        captured.idfrom = self.dyn_box(d).v
+        d = captured
     if o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != ""):
         self.err("getattr() of an exception object is not supported (its fields are read as e.name, after except C as e)")
     vals: list[Val] = []

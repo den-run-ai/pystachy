@@ -633,6 +633,12 @@ def gen_scalar_read_value(self, n: Node) -> bool:
         return True
     if k == "name":
         return self.qtype(n.s) in ["int", "float", "bool"]
+    if k == "index":
+        # Reading a known numeric list runs no user protocol. Keep the receiver
+        # a plain name: attributes and calls can evaluate user code before indexing.
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and self.qtype(n.kids[0].s) in ["list[int]", "list[float]"] and self.scalar_read_index(n.kids[1])
+    if k == "cmp":
+        return all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(",")) and all(self.scalar_read_value(x) for x in n.kids)
     if k == "call":
         if len(n.kids) != 2 or n.kids[0].kind != "name":
             return False
@@ -640,6 +646,23 @@ def gen_scalar_read_value(self, n: Node) -> bool:
         return callee in ["int", "float", "bool"] and callee not in self.assigned and callee not in self.aliases and callee not in self.fglobals and callee not in self.gtypes and not self.bound(callee) and self.scalar_read_value(n.kids[1])
     allowed = (k == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~", "not"])
     return allowed and all(self.scalar_read_value(x) for x in n.kids)
+
+
+def gen_scalar_read_index(self, n: Node) -> bool:
+    # An inert index known to remain int/bool, without inference or __index__ calls.
+    k = n.kind
+    if k in ["int", "True", "False"]:
+        return True
+    if k == "name":
+        return self.qtype(n.s) in ["int", "bool"]
+    if k == "index":
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and self.qtype(n.kids[0].s) == "list[int]" and self.scalar_read_index(n.kids[1])
+    if k == "cmp" or (k == "unary" and n.s == "not"):
+        return self.scalar_read_value(n)
+    if k == "call":
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s in ["int", "bool"] and self.scalar_read_value(n)
+    allowed = (k == "binop" and n.s in ["+", "-", "*", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~"])
+    return allowed and all(self.scalar_read_index(x) for x in n.kids)
 
 
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
@@ -737,7 +760,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "binop":
         scalar_fn = self.fn
         scalar_held = scalar_fn.scalar_reads
-        if not scalar_held and (len(self.gidbox) > 0 or len(self.idbox) > 0) and self.scalar_read_value(n):
+        if not scalar_held and dynamic_program() and self.scalar_read_value(n):
             scalar_fn.scalar_reads = True
         try:
             a = self.expr(n.kids[0], want, resultsoft=resultsoft)
@@ -749,7 +772,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "boolop":
         return self.boolop(n, False, want, resultsoft)
     if k == "cmp":
-        return self.compare(n)
+        scalar_fn = self.fn
+        scalar_held = scalar_fn.scalar_reads
+        if not scalar_held and dynamic_program() and self.scalar_read_value(n):
+            scalar_fn.scalar_reads = True
+        try:
+            return self.compare(n)
+        finally:
+            scalar_fn.scalar_reads = scalar_held
     if k == "ifexp":
         return self.ifexp(n, want, resultsoft)
     if k == "call":
@@ -2536,7 +2566,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     # Both operands have run, and o is not None. Check the current length: unsigned
     # comparison also sends every negative index to the runtime's normalization and errors.
     # No call or allocation separates this check from the existing inline list.load.
-    if self.list_id_kind(o.t) != 0:
+    if self.list_id_kind(o.t) != 0 and not self.fn.scalar_reads:
         return self.list_item(o, i)
     if o.t != "list[int]" or "listfast" not in self.opts:
         return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(o.t))

@@ -254,7 +254,11 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   (`dynany_identity_list_selectors.py`, `dynany_identity_list_callbacks.py`). Native numeric
   list producers establish one object per item before any sharing. This allocates a companion
   pointer per capacity slot and materializes numeric boxes; graphs without dynamic `Any`
-  allocate no companion arrays. Foreign C list calls follow the CPython FFI twin's copy-back
+  allocate no companion arrays. Proven numeric arithmetic and comparisons can read only the
+  raw payload: their numeric-list receivers must be plain names and their integer indices
+  must be inert expressions. Reads that escape through assignments, returns, identity tests,
+  dynamic operands or callbacks still retain their item objects. Foreign C list calls follow
+  the CPython FFI twin's copy-back
   contract: the list remains the same object, while all its numeric items are replaced after
   C returns, including read-only calls and calls using `ffi.at()` (`tests/ffi/c_list_identity.py`).
   Integer-literal arithmetic whose operands and result fit int64 shares the module's
