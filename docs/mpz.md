@@ -24,8 +24,8 @@ print(counts[mpz(str(x))])          # 2
 
 | Operation | Accepted form |
 |---|---|
-| Construction | `mpz()`, `mpz(int)`, `mpz(str, base=10)`; base 0 or 2–36 for strings |
-| Arithmetic | `+`, `-`, `*`, `//`, `%`, `&`, `\|`, `^` with an `mpz` left operand and `mpz` or native `int` right operand |
+| Construction | `mpz()`, `mpz(int)`, `mpz(bool)`, `mpz(str, base=10)`; base 0 or 2–36 for strings |
+| Arithmetic | `+`, `-`, `*`, `//`, `%`, `&`, `\|`, `^` with an `mpz` left operand and `mpz` or native `int`/`bool` right operand |
 | Unary and shifts | `+x`, `-x`, `~x`, `x << count`, `x >> count`; count is a native `int` |
 | Methods | `x.copy()`, `x.abs()`, `x.pow(nonnegative_int)`, `x.bit_length()`, `x.to_int()` |
 | Comparisons | `==`, `!=`, `<`, `<=`, `>`, `>=` between supported integer operands, with `mpz` on the left |

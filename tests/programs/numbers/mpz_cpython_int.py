@@ -60,3 +60,13 @@ for base in [1, 37, -909]:
         errors += 1
 assert errors == 29
 print("invalid parse cases", errors)
+
+# Original bool-as-int boundary coverage; CPython int(False/True) is 0/1.
+for value in [False, True]:
+    number = mpz(value)
+    expected = int(value)
+    assert str(number) == str(expected) and repr(number) == str(expected)
+    assert number.to_int() == expected and number == expected
+    assert number == value and bool(number) == value
+    assert hash(number) == hash(expected)
+print("boolean construction and conversion passed")

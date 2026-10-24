@@ -327,3 +327,24 @@ assert str(small.abs()) == "7" and str((-small).abs()) == "7"
 assert bool(small) and not bool(mpz())
 assert repr(small) == "7"
 print("mixed right-int and unary operations passed")
+
+assert small + True == 8 and small - False == 7
+assert small * True == 7 and small * False == 0
+assert small // True == 7 and small % True == 0
+assert small & True == 1 and small | False == 7 and small ^ True == 6
+assert mpz(1) == True and mpz(0) == False
+assert mpz(0) < True and mpz(1) >= False
+for value in [False, True]:
+    assert mpz(3) + value == 3 + int(value)
+    assert mpz(3) * value == 3 * int(value)
+zero_divisors = 0
+try:
+    small // False
+except ZeroDivisionError:
+    zero_divisors += 1
+try:
+    small % False
+except ZeroDivisionError:
+    zero_divisors += 1
+assert zero_divisors == 2
+print("mixed right-bool operations passed")

@@ -9,11 +9,13 @@ __all__ = ["mpz"]
 
 
 class mpz:
-    def __init__(self, value: int | str = 0, base: int = 10) -> None:
+    def __init__(self, value: int | str | bool = 0, base: int = 10) -> None:
         if isinstance(value, str):
             self._handle = __pys_mpz_from_str(value, base)
         elif base != 10:
             raise TypeError("mpz() can't convert non-string with explicit base")
+        elif isinstance(value, bool):
+            self._handle = __pys_mpz_from_int(1 if value else 0)
         else:
             self._handle = __pys_mpz_from_int(value)
 

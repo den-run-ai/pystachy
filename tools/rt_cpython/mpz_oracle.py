@@ -33,7 +33,7 @@ class mpz:
         elif base != 10:
             raise TypeError("mpz() can't convert non-string with explicit base")
         elif isinstance(value, int):
-            self._value = value
+            self._value = int(value)
         else:
             raise TypeError("mpz constructor requires int or str")
 
