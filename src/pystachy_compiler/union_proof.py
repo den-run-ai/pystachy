@@ -264,9 +264,9 @@ class UnionProof:
         if declarations is not None:
             # Hidden defaults and class storage have the same declared native types
             # as named globals. A call can change their values, not their layouts.
-            for v in declarations:
-                self.typebase("MU:" + v.v, v.t)
-                self.memtypes[v.v] = v.t
+            for declaration in declarations:
+                self.typebase("MU:" + declaration.v, declaration.t)
+                self.memtypes[declaration.v] = declaration.t
         for n in range(len(fn.f.ptypes)):
             t = fn.f.ptypes[n]
             v = "%a" + str(n)
