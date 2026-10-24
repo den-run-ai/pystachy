@@ -706,6 +706,13 @@ for _j in range(len(FX)):
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
 # result too long in join and replace, where CPython raises OverflowError too
 RUNTIME: dict[str, str] = {
+    # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
+    # the library's scanned wrapper keeps their pointer alive.
+    "mpz.from_int": "%ptr:int|R A|", "mpz.from_str": "%ptr:str,int|R A|",
+    "mpz.binop": "%ptr:%ptr,%ptr,int|R A|", "mpz.unary": "%ptr:%ptr,int|R A|",
+    "mpz.shift": "%ptr:%ptr,int,int|R A|", "mpz.pow": "%ptr:%ptr,int|R A|",
+    "mpz.cmp": "int:%ptr,%ptr||", "mpz.hash": "int:%ptr||",
+    "mpz.to_int": "int:%ptr|R|", "mpz.bit_length": "int:%ptr||", "mpz.str": "str:%ptr|R A|",
     # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of

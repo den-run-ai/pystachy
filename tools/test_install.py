@@ -21,7 +21,7 @@ class InstallTests(unittest.TestCase):
         for name in ("runtime.c", "runtime.py", "pyext.c", "pyembed.c", "LICENSE", "THIRD_PARTY_NOTICES"):
             (self.source / name).write_text(f"fixture: {name}\n")
         (self.source / "VERSION").write_text("v0.1.0-alpha.1\n")
-        for name in ("lib", "ryu"):
+        for name in ("lib", "ryu", "mpz"):
             (self.source / name).mkdir()
             (self.source / name / "fixture.txt").write_text(name)
         self.native = self.source / "pystachy"
@@ -60,7 +60,7 @@ class InstallTests(unittest.TestCase):
         for name in installer.FILES:
             self.assertEqual((data / name).read_bytes(), (self.source / name).read_bytes())
         self.assertEqual((data / "REVISION").read_text(), "unknown\n")
-        for name in ("lib", "ryu"):
+        for name in ("lib", "ryu", "mpz"):
             self.assertEqual((data / name / "fixture.txt").read_text(), name)
         self.assertTrue(os.access(data / "pystachy", os.X_OK))
         self.assertTrue(os.access(self.prefix / "bin/pystachy", os.X_OK))

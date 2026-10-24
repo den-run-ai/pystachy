@@ -1,0 +1,7 @@
+all bases 35
+valid parsing and Unicode passed
+int() base must be >= 2 and <= 36, or 0
+int() base must be >= 2 and <= 36, or 0
+int() base must be >= 2 and <= 36, or 0
+invalid parse cases 29
+[exit 0]

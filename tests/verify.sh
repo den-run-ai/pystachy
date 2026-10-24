@@ -11,7 +11,7 @@
 #                  off (PYSTACHY_OPT=-all), each on one of two disjoint halves of the corpus
 #                  (shard_cases): the passes change no output
 #   runtime-cache  tests/cache.sh with both compilers: the cached runtime is used while nothing it is
-#                  built from changes, built again when runtime.c, a file it includes from ryu/,
+#                  built from changes, built again when runtime.c, a file it includes from ryu/ or mpz/,
 #                  runtime.py, the compiler or a tool changes (also by a same-size edit whose mtime is
 #                  set back, or one made while it is built), keyed by the flags too, never left by a
 #                  failed build; ext's glue cached beside it; a run's own runtime while a tool is not
@@ -166,8 +166,8 @@ rm -rf "$V" "$OUT"
 mkdir -p "$V/home" "$V/ubsan-home"
 cp runtime.c runtime.py "$V/home/"
 cp runtime.c runtime.py "$V/ubsan-home/"
-cp -R lib ryu "$V/home/"
-cp -R lib ryu "$V/ubsan-home/"
+cp -R lib ryu mpz "$V/home/"
+cp -R lib ryu mpz "$V/ubsan-home/"
 export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they

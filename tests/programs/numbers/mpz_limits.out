@@ -1,0 +1,12 @@
+mpz does not fit in signed 64-bit int
+mpz does not fit in signed 64-bit int
+mpz does not fit in signed 64-bit int
+mpz does not fit in signed 64-bit int
+negative shift count
+negative shift count
+negative shift count
+mpz exponent must be nonnegative
+mpz() can't convert non-string with explicit base
+boundary exceptions 18
+decimal conversion limits 3
+[exit 0]

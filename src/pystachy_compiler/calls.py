@@ -5,10 +5,11 @@ from src.pystachy_compiler.diagnostics import shown, where
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import EXCEPTIONS, GLUE, HASATTR, MODATTRS, OPAQUE, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
+    opaque_class,
     atomic_dict,
     clone,
     codec,
@@ -753,7 +754,7 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
             if not pure_arg(x):
                 self.expr(x, "")
         return Val("null", "None")
-    if o.t in self.classes and self.classes[o.t].mod in OPAQUE and m == "__init__":
+    if o.t in self.classes and opaque_class(self.classes[o.t], self.libdir) and m == "__init__":
         # r.__init__(obj) of a weak reference: CPython's __new__ made it, and its __init__ checks
         # the arguments (an object, and a callback) and leaves the reference as it was; a mapping
         # proxy's __init__ is object's, which takes any arguments, as its __new__ made it

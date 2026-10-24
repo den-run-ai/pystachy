@@ -13,9 +13,10 @@ from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, OPAQUE, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    opaque_class,
     targs,
     is_dict,
     is_kw,
@@ -864,7 +865,7 @@ def gen_refl_supported(self, c: str, what: str) -> None:
         why = "a range"
     elif ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
-    elif ci.mod in OPAQUE and self.curfn.mod != ci.mod:
+    elif opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod:
         tshown = TYPEMODS[ci.mod] + "." + short(c) if TYPEMODS.get(ci.mod, "builtins") != "builtins" else short(c)
         self.err(f"{what} of a {tshown} object is not supported: its fields are Pystachy's {ci.mod} module's own, and CPython's object has no attributes of its own")
     elif ci.bad != "":

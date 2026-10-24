@@ -1,6 +1,6 @@
 #!/bin/sh
 # Coverage of the native runtime's C code (make runtime-coverage; docs/testing.md#native-runtime-coverage):
-# runtime.c (with the ryu/ files it includes), pyembed.c and pyext.c, built with clang's source-based
+# runtime.c (with the ryu/ and mpz/ files it includes), pyembed.c and pyext.c, built with clang's source-based
 # coverage (PYSTACHY_CFLAGS="-fprofile-instr-generate -fcoverage-mapping") into a new runtime cache,
 # while these suites run with the native compiler:
 #   corpus  tests/run.sh's differential and deviation programs, JIT and AOT, or the FILEs given

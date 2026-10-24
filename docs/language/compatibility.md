@@ -24,6 +24,9 @@ In these cases a program can compile but behave differently from CPython.
   `0 ** -1` raises CPython's `ZeroDivisionError`), and so is a negative float to a
   fractional power (CPython returns a complex).
 
+  Explicit [`mpz.mpz`](../mpz.md) values provide a separate arbitrary-precision
+  arithmetic path. They do not automatically replace or promote ordinary `int`.
+
 - The native JSON prototype also rejects integer tokens outside signed 64-bit
   range with `OverflowError`. Its decoder and encoder allow at most 256 nested
   containers, then raise `RecursionError`, independently of CPython's recursion
