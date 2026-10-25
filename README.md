@@ -175,6 +175,7 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
   [dynamic contract and deviations](docs/dynamic-any.md#deviations) before enabling it.
 - Ordinary integers are checked 64-bit values; overflow raises `OverflowError`.
   The explicit experimental [`mpz`](docs/mpz.md) type provides arbitrary-precision integer arithmetic.
+  An opt-in [promoting integer prototype](docs/python-int.md) exercises ordinary integer syntax with that backend.
 - Strings store UTF-8 with code-point lengths, indexing, slicing and search offsets; Unicode case mapping remains incomplete.
   Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)
   to flag byte-oriented operations on non-ASCII input.

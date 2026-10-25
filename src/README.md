@@ -9,6 +9,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Area | Modules and responsibility |
 |---|---|
 | Syntax | [lexer](pystachy_compiler/lexer.py), [parser](pystachy_compiler/parser.py), [syntax](pystachy_compiler/syntax.py): tokens, parsing and AST nodes. |
+| Integer prototype | [integer_mode](pystachy_compiler/integer_mode.py): module opt-in lowering to the private small-int/mpz value; [contract](../docs/python-int.md). |
 | Imports | [loader](pystachy_compiler/loader.py), [module](pystachy_compiler/module.py): source discovery, qualification and module records. |
 | Analysis | [analysis](pystachy_compiler/analysis.py), [scope](pystachy_compiler/scope.py), [flow](pystachy_compiler/flow.py): AST queries, lexical checks and definite assignment. |
 | Compilation | [gen](pystachy_compiler/gen.py), [program](pystachy_compiler/program.py), [functions](pystachy_compiler/functions.py): compiler state, program orchestration and function compilation. |

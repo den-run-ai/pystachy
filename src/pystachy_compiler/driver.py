@@ -56,6 +56,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/reflection.py',
     'src/pystachy_compiler/scalar_ir.py',
     'src/pystachy_compiler/scope.py',
+    'src/pystachy_compiler/integer_mode.py',
     'src/pystachy_compiler/specs.py',
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/structs.py',
