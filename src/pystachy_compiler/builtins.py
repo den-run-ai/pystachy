@@ -811,6 +811,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if is_kw(t) and name == "dict" and len(vals) == 1:
         return self.kw_dict(v)  # (a new dict: CPython's dict(kwargs) copies it too)
     if name == "len":
+        if is_union(unopt(t)) and all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))):
+            return self.uop(v, "len")
         if t in self.classes and "__len__" in self.classes[t].methods:
             self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
             return self.objlen(v)
@@ -2576,7 +2578,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         if not is_dict(t) or "?" in t:
             t = self.ctype("dict", ["int", "int"])
             self.guessed[self.curfn.ll] = f"dict() at line {self.line} of tuples of {len(targs(et))} items makes only an empty dict, taken as {typestr(t)}: give it a type first, as in d: dict[K, V] = dict(...)"
-        return Val(self.rt("pys_dict_new_atomic" if atomic_dict(t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(targs(t)[0])}", "i64 0"]), t)
+        return Val(self.rt("pys_dict_new_atomic" if atomic_dict(t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(targs(t)[0], True)}", "i64 0"]), t)
     kv = targs(et)
     if self.key_problem(kv[0]) != "":
         self.err(self.key_problem(kv[0]))
@@ -2585,7 +2587,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         item = made_var("__item", self.line)
         v = self.listcomp(mk("listcomp", "", self.line, [mk("name", "__item", self.line, []), item, self.vnode(v)]), "list[tuple[dyn,dyn]]")
         kv = ["dyn", "dyn"]
-    d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", "i64 0"])
+    d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"])
     self.rt("pys_dict_update_pairs", "void", [f"ptr {d}", f"ptr {v.v}"], self.key_fx(kv[0]))
     return Val(d, self.ctype("dict", kv))
 

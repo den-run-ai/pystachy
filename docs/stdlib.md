@@ -110,8 +110,11 @@ already supported; their remaining restrictions depend on the operation and the 
 involved. CPython extensions and import graphs through unavailable modules can block otherwise
 suitable pure-Python functions. The [compatibility reference](language/compatibility.md) lists
 the detailed restrictions.
-Finite literal comparison writes can now reserve native fields while preserving aliases;
-late-field `vars()`/`__dict__` still raises an explicit unsupported-operation error (#486).
+Opt-in comparisons support known helper/alias flows, native operand rebinding, inferred
+getters and recursive list/tuple/dict equality with user callbacks. Finite literal comparison
+writes can reserve native fields while preserving aliases; late-field `vars()`/`__dict__`
+still raises an explicit unsupported-operation error (#486), and existing native fields
+retain their storage types.
 For opt-in code, the [comparison acceptance matrix](dynamic-any.md#operations) distinguishes
 supported mixed-container and object operations from the remaining skipped-body cases.
 

@@ -1,0 +1,99 @@
+mods: init mods
+mods.shapes: init mods.shapes
+hash
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+key 0
+leaf zero
+key 0
+leaf zero
+compare True True True
+keys [0] [0] [0]
+pop (0, ['zero']) 0
+zero {0: 0} {0: 0} {0: 0} {0: 0}
+set [0] [1]
+pop zero (0, 0) {}
+reinsert zero {0: 0}
+[exit 0]

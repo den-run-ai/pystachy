@@ -1315,7 +1315,13 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         elif d.s.startswith("__") and d.s.endswith("__"):
             bad = f"@property on the special method {d.s} is not supported"
         elif d.kids[1].kind == "noann" and d not in held:
-            bad = f"property {d.s} needs a return annotation"
+            if self.dyn_policy(d.line) and not f.gen:
+                # Opt-in getters infer through the same function instances as
+                # ordinary methods. They had no accepted implicit None ABI to
+                # preserve, so a recursive return must be genuinely inferred.
+                f.void_default = False
+            else:
+                bad = f"property {d.s} needs a return annotation"
     if f.acc != "" and (len(ps) != (2 if f.acc == "setter" else 1) or len([p for p in ps if p.kind != "param"]) > 0 or f.npos < len(ps)):
         bad = f"property {f.acc} {d.s} must take only self" + (" and the value, by position" if f.acc == "setter" else "")
     if not inherited and f.deco == "classmethod" and bad == "" and ps[0].kind == "param":

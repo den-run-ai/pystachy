@@ -15,7 +15,7 @@ the program's classes, functions the compiler writes once every class that is bo
 (dyn_dispatchers): each tests the box's DynType for those classes and calls the class's own code.
 """
 from __future__ import annotations
-from src.pystachy_compiler.analysis import bind_count
+from src.pystachy_compiler.analysis import bind_count, local_names
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import retoken, short
@@ -220,6 +220,268 @@ def comparison_aliases(n: Node, parameter: str) -> list[str]:
     return aliases
 
 
+def comparison_rebind_check(n: Node, receiver: str, parameter: str) -> bool:
+    if n.kind in ["def", "lambda", "class", "subclass", "global", "nonlocal", "walrus", "yield", "await", "del"]:
+        return False
+    if n.kind == "assign" and any(comparison_mentions(k, [receiver, parameter]) and k.kind != "attr" and k.kind != "index" for k in n.kids[:-1]):
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s == parameter and n.kids[1].kind == "name" and n.kids[1].s in [receiver, parameter]
+    if n.kind in ["annassign", "augassign", "for", "withitem"] and len(n.kids) > 0 and n.kids[0].kind == "name" and n.kids[0].s in [receiver, parameter]:
+        return False
+    if n.kind == "except" and n.s in [receiver, parameter]:
+        return False
+    return all(comparison_rebind_check(k, receiver, parameter) for k in n.kids)
+
+
+def comparison_rebinds(n: Node, receiver: str, parameter: str) -> bool:
+    # A closed native reference union holds either the incoming operand or
+    # the receiver through branches/loops. Keep escapes and source effects;
+    # cells, hidden binding and other replacement types need a wider proof.
+    return bind_count(n.kids, parameter) > 0 and any(has_kind(n, kind) for kind in ["if", "while", "for", "try", "with"]) and not comparison_mentions(n, ["locals", "vars", "eval", "exec"]) and comparison_rebind_check(n, receiver, parameter)
+
+
+def comparison_rebind_view(n: Node, receiver: str, parameter: str) -> Node:
+    # Eligibility checks both native layouts (the canonical body and the peer
+    # proof). The store itself cannot fail: both references are union members.
+    if n.kind == "assign" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s == parameter:
+        return mk("pass", "", n.line, [])
+    if n.kind == "assign" and len(n.kids) == 2 and n.kids[0].kind == "attr" and n.kids[0].kids[0].kind == "name" and n.kids[0].kids[0].s == parameter:
+        return mk("cmpstore", "", n.line, n.kids)
+    return mk(n.kind, n.s, n.line, [comparison_rebind_view(k, receiver, parameter) for k in n.kids])
+
+
+# the helper bodies a comparison's proof view may hold, a shared body counted at each call
+PROOF_BODIES = 4096
+
+
+class ComparisonProofs:
+    # One proof view's projected helper bodies, by their whole binding state:
+    # the helper, its bindings, hidden names, local helpers and recursion path.
+    # A helper reached again in that state (from both branches of an if, say)
+    # shares the body projected first, which is all a new projection would
+    # build: the view's checks see the same tree, and a body is projected once.
+    def __init__(self) -> None:
+        self.bodies: dict[str, Node] = {}
+        self.serials: dict[str, str] = {}
+        self.sizes: dict[str, int] = {}  # bodies within, each shared one per call, itself included
+        self.hidden: dict[str, list[str]] = {}  # functions and globals a helper hides, by helper
+        self.calls = 0  # the bodies the view holds so far, as sizes counts them
+
+
+def comparison_key(n: Node) -> str:
+    # An unambiguous spelling of a projected binding. A shared helper body is
+    # spelled by its serial, since its whole binding state is already a key.
+    if n.kind == "cmpresult":
+        return n.s
+    return str(len(n.kind)) + ":" + n.kind + str(len(n.s)) + ":" + n.s + str(len(n.kids)) + "(" + "".join([comparison_key(k) for k in n.kids]) + ")"
+
+
+def comparison_project(n: Node, receiver: str, parameter: str, functions: dict[str, FnInfo], globals: dict[str, str]) -> Node:
+    # A proof-only view of sequential aliases and known helpers. The emitted
+    # source keeps its calls, closures, side effects and ordinary binding rules.
+    # Recursion closes only when all operand/capture origins are unchanged.
+    # Shared helper bodies keep the view's size linear in its distinct helper
+    # states, but its checks still walk a body at every call: a view that would
+    # hold more than PROOF_BODIES bodies is unsupported, as a deeper one is.
+    if comparison_rebinds(n, receiver, parameter):
+        n = comparison_rebind_view(n, receiver, parameter)
+    env: dict[str, Node] = {}
+    blocked = [name for name in list(functions) + list(globals) if bind_count(n.kids, name) > 0]
+    helpers: dict[str, Node] = {}
+    active: dict[str, str] = {}
+    projected = comparison_projection(n, receiver, parameter, functions, globals, env, blocked, helpers, active, ComparisonProofs())
+    return n if has_kind(projected, "cmpunknown") else projected
+
+
+def comparison_moving_alias(n: Node, names: list[str]) -> bool:
+    if n.kind in ["def", "lambda", "class", "subclass"]:
+        return n.s in names
+    if n.kind in ["for", "withitem", "walrus", "nonlocal"]:
+        return True
+    if n.kind == "except" and n.s in names:
+        return True
+    if n.kind in ["assign", "annassign", "augassign"] and len(n.kids) > 0 and n.kids[0].kind == "name":
+        if n.kids[0].s in names or any(comparison_mentions(k, names) for k in n.kids[1:]):
+            return True
+    return any(comparison_moving_alias(k, names) for k in n.kids)
+
+
+def comparison_global_names(n: Node, out: list[str]) -> None:
+    if n.kind in ["def", "lambda", "class", "subclass"]:
+        return
+    if n.kind == "global":
+        for kid in n.kids:
+            if kid.s not in out:
+                out.append(kid.s)
+    for kid in n.kids:
+        comparison_global_names(kid, out)
+
+
+def comparison_returns(n: Node) -> int:
+    if n.kind in ["def", "lambda", "class", "subclass", "cmpresult"]:
+        return 0
+    return 1 if n.kind == "return" else sum(comparison_returns(k) for k in n.kids)
+
+
+def comparison_result(n: Node) -> Node:
+    # Only a unique final return provides an expression origin. Earlier helper
+    # statements stay in the proof, so returning a field cannot hide an error.
+    if n.kind == "cmpresult" and len(n.kids[0].kids) > 0:
+        body = n.kids[0]
+        last = body.kids[-1]
+        if last.kind == "return" and len(last.kids) == 1 and comparison_returns(body) == 1:
+            return comparison_result(last.kids[0])
+    return n
+
+
+def comparison_local_try(n: Node, tail: list[Node], known: list[str]) -> bool:
+    # New aliases entirely inside a protected body do not need a control-flow
+    # merge. Existing bindings and reads from cleanup/handlers/the tail do.
+    if n.kind != "try" or len(n.kids) == 0 or n.kids[0].kind != "block":
+        return False
+    assigned: dict[str, bool] = {}
+    local_names(n.kids[0].kids, assigned)
+    return not any(name in assigned for name in known) and not any(comparison_mentions(k, list(assigned)) for k in n.kids[1:] + tail)
+
+
+def comparison_projection(n: Node, receiver: str, parameter: str, functions: dict[str, FnInfo], globals: dict[str, str], env: dict[str, Node], blocked: list[str], helpers: dict[str, Node], active: dict[str, str], proofs: ComparisonProofs) -> Node:
+    if n.kind == "name":
+        return env.get(n.s, n)
+    if n.kind == "block":
+        result: list[Node] = []
+        declared: list[str] = []
+        comparison_global_names(n, declared)
+        local = helpers.copy()
+        for stepindex in range(len(n.kids)):
+            st = n.kids[stepindex]
+            # Use the current aliases, including ones established by earlier
+            # statements. A branch-created alias must not hide a differing field.
+            if st.kind not in ["assign", "annassign", "expr", "return", "raise", "pass", "assert", "def", "global"] and comparison_moving_alias(st, [receiver, parameter] + list(env)) and not comparison_local_try(st, n.kids[stepindex + 1:], [receiver, parameter] + list(env)):
+                return mk("cmpunknown", "", st.line, []) if len(active) > 0 else n
+            if st.kind == "def" and len(st.kids) == 3 and bind_count(n.kids, st.s) == 2 and st.s not in [receiver, parameter] and st.s not in env:
+                declarations = st.kids[0].kids
+                if all(p.kind == "param" and len(p.kids) == 2 and p.kids[1].kind == "noann" for p in declarations):
+                    local[st.s] = st
+                    # Keep the binder (notably a shadowed len), but its body
+                    # executes only at a proven call, with that call's bindings.
+                    result.append(mk("def", st.s, st.line, [mk("params", "", st.line, []), mk("noann", "", st.line, []), mk("block", "", st.line, [])]))
+                    continue
+            if st.kind == "global" and all(globals.get(k.s, "") == DYN for k in st.kids):
+                result.append(mk("pass", "", st.line, []))
+                continue
+            if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name":
+                name = st.kids[0].s
+                value = comparison_projection(st.kids[1], receiver, parameter, functions, globals, env, blocked, local, active, proofs)
+                origin = comparison_result(value)
+                if name in declared and globals.get(name, "") == DYN and value.kind == "name" and value.s in [receiver, parameter]:
+                    result.append(mk("pass", "", st.line, []))
+                    continue  # publication is not a stable local alias
+                # Following object aliases does not erase a field read or call.
+                if origin.kind == "name" and origin.s in [receiver, parameter] and name != receiver and name not in declared:
+                    env[name] = origin
+                    result.append(value if value.kind == "cmpresult" else mk("pass", "", st.line, []))
+                    continue
+                if name not in [receiver, parameter] and name not in declared and origin.kind in ["attr", "index"] and comparison_mentions(origin, [receiver, parameter]):
+                    env[name] = origin
+                    result.append(mk("cmpvalue", "", st.line, [value]))
+                    continue
+                rebound = name in env or name in local
+                if name in env:
+                    if comparison_mentions(env[name], [receiver, parameter]):
+                        return mk("cmpunknown", "", st.line, []) if len(active) > 0 else n
+                    del env[name]
+                if name in local:
+                    del local[name]
+                if name == parameter or name == receiver:
+                    return mk("cmpunknown", "", st.line, []) if len(active) > 0 else n
+                if not rebound:
+                    result.append(mk(st.kind, st.s, st.line, [st.kids[0], value]))  # the value under unchanged bindings
+                    continue
+            result.append(comparison_projection(st, receiver, parameter, functions, globals, env, blocked, local, active, proofs))
+        return mk(n.kind, n.s, n.line, result)
+    if n.kind in ["def", "lambda", "class", "subclass", "global", "nonlocal"]:
+        return n
+    if n.kind == "call" and len(n.kids) == 2 and n.kids[0].kind == "attr" and n.kids[0].s == "append" and n.kids[0].kids[0].kind == "name":
+        target = n.kids[0].kids[0].s
+        value = comparison_projection(n.kids[1], receiver, parameter, functions, globals, env, blocked, helpers, active, proofs)
+        if target not in blocked and globals.get(target, "") == "list[dyn]" and value.kind == "name" and value.s in [receiver, parameter]:
+            return mk("pass", "", n.line, [])
+        return mk(n.kind, n.s, n.line, [comparison_projection(n.kids[0], receiver, parameter, functions, globals, env.copy(), blocked, helpers.copy(), active, proofs), value])
+    if n.kind == "call" and len(n.kids) > 0 and n.kids[0].kind == "name":
+        name = n.kids[0].s
+        args = [comparison_projection(k, receiver, parameter, functions, globals, env, blocked, helpers, active, proofs) for k in n.kids[1:]]
+        touches = any(comparison_mentions(a, [receiver, parameter]) for a in args)
+        node = n
+        params: list[str] = []
+        types: list[str] = []
+        mapping: dict[str, Node] = {}
+        nested: dict[str, Node] = {}
+        if name in helpers:
+            node = helpers[name]
+            params = [p.s for p in node.kids[0].kids]
+            types = ["" if p.kids[0].kind == "noann" else "annotated" for p in node.kids[0].kids]
+            mapping = env.copy()  # closure cells are observed at the call
+            nested = helpers.copy()
+            touches = touches or comparison_mentions(node.kids[2], [receiver, parameter] + list(env))
+        elif name in functions and name not in blocked:
+            helper = functions[name]
+            if helper.bad == "" and helper.deco == "" and not helper.gen and helper.clo < 0 and helper.vararg < 0 and helper.kwarg < 0:
+                node = helper.node
+                params = helper.params
+                types = helper.ptypes
+        if touches and node is not n and len(args) == len(params) and all(k.kind != "kw" for k in args):
+            # Plain object origins make the recursive signature finite. Passing
+            # an operand-dependent expression could hide an invalid argument
+            # evaluation even when the helper does not read that parameter.
+            safe = all(not comparison_mentions(args[i], [receiver, parameter]) or (args[i].kind == "name" and types[i] == "") for i in range(len(args)))
+            body = node.kids[2]
+            safe = safe and not any(has_kind(body, kind) for kind in ["nonlocal", "lambda", "class", "subclass", "yield"])
+            if safe:
+                for key in list(mapping):
+                    if bind_count(body.kids, key) > 0 or key in params:
+                        del mapping[key]
+                for key in list(nested):
+                    if bind_count(body.kids, key) > 0 or key in params:
+                        del nested[key]
+                for i in range(len(args)):
+                    mapping[params[i]] = args[i]
+                identity = str(node.line) + ":" + name
+                signature = ",".join([key + "=" + mapping[key].s for key in mapping if mapping[key].kind == "name" and mapping[key].s in [receiver, parameter]])
+                ident = identity + "(" + signature + ")"
+                if ident in active:
+                    return mk("pass", "", n.line, [])  # this binding state is already checked
+                elif len(active) < 16:
+                    following = active.copy()
+                    following[ident] = signature
+                    owner = ("local " if name in helpers else "") + identity
+                    if owner not in proofs.hidden:
+                        proofs.hidden[owner] = [x for x in list(functions) + list(globals) if x in params or bind_count(body.kids, x) > 0]
+                    hidden = (blocked if name in helpers else []) + proofs.hidden[owner]
+                    state = owner + "(" + signature + ")|" + "".join([key + "=" + comparison_key(mapping[key]) + ";" for key in mapping]) + "|" + ",".join(hidden) + "|" + ",".join([key + "@" + str(nested[key].line) for key in nested]) + "|" + ";".join(list(following))
+                    if state in proofs.bodies:
+                        if proofs.calls + proofs.sizes[state] > PROOF_BODIES:
+                            return mk("cmpunknown", "", n.line, [])
+                        proofs.calls += proofs.sizes[state]
+                    else:
+                        if proofs.calls >= PROOF_BODIES:
+                            return mk("cmpunknown", "", n.line, [])
+                        start = proofs.calls
+                        proofs.calls += 1
+                        proofs.bodies[state] = comparison_projection(body, receiver, parameter, functions, globals, mapping, hidden, nested, following, proofs)
+                        proofs.sizes[state] = proofs.calls - start
+                        proofs.serials[state] = "#" + str(len(proofs.serials)) + "#"
+                    return mk("cmpresult", proofs.serials[state], n.line, [proofs.bodies[state]])
+            # An argument that necessarily raises makes the helper body
+            # unreachable. Keep the argument evaluation proof even when a
+            # dependent expression cannot be substituted into a recursive body.
+            if any(args[i].kind == "name" and args[i].s in [receiver, parameter] and types[i] != "" for i in range(len(args))):
+                return mk("cmpunknown", "", n.line, [])
+            checked = [mk("None", "", a.line, []) if a.kind == "name" and a.s in [receiver, parameter] else a for a in args]
+            return mk("cmpinvalidargs", ",".join("typed" if t != "" else "" for t in types), n.line, checked)
+        # (the arguments projected above: projecting them again would only repeat it)
+        return mk(n.kind, n.s, n.line, [comparison_projection(n.kids[0], receiver, parameter, functions, globals, env.copy(), blocked, helpers.copy(), active, proofs)] + args)
+    return mk(n.kind, n.s, n.line, [comparison_projection(k, receiver, parameter, functions, globals, env.copy(), blocked, helpers.copy(), active, proofs) for k in n.kids])
+
+
 def comparison_fields(n: Node, parameter: str, out: list[str]) -> bool:
     return comparison_field_walk(n, comparison_aliases(n, parameter), out)
 
@@ -230,20 +492,22 @@ def comparison_field_walk(n: Node, aliases: list[str], out: list[str]) -> bool:
     # rebinding nor passing the whole operand to unknown code is proven here.
     if n.kind == "assign" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[1].kind == "name" and n.kids[0].s in aliases[1:] and n.kids[1].s in aliases:
         return True
-    if n.kind not in ["block", "return", "raise", "if", "pass", "expr", "assign", "annassign", "augassign",
+    if n.kind == "return" and len(n.kids) == 1 and n.kids[0].kind == "name" and n.kids[0].s in aliases:
+        return True  # a proven helper may return the original operand reference
+    if n.kind not in ["block", "cmpresult", "cmpvalue", "return", "raise", "if", "pass", "expr", "assign", "cmpstore", "annassign", "augassign",
                       "name", "attr", "call", "kw", "int", "float", "str", "bytes", "True", "False", "None",
                       "binop", "unary", "boolop", "cmp", "ifexp", "index", "slice", "sliceitem", "omit",
                       "list", "tuple", "dict", "set", "noann", "try", "except", "while", "for", "break", "continue",
-                      "with", "withitem", "assert", "def", "params", "param", "starparam", "dstarparam"]:
+                      "with", "withitem", "assert", "def", "params", "param", "starparam", "dstarparam", "cmpinvalidargs"]:
         return False
     if n.kind in ["except", "def", "param", "starparam", "dstarparam"] and n.s in aliases:
         return False
     if n.kind == "name" and (n.s in aliases or n.s in ["locals", "vars", "eval", "exec"]):
         return False
-    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s in aliases:
+    if n.kind == "attr" and comparison_result(n.kids[0]).kind == "name" and comparison_result(n.kids[0]).s in aliases:
         if n.s not in out:
             out.append(n.s)
-        return True
+        return n.kids[0].kind == "name" or comparison_field_walk(n.kids[0], aliases, out)
     for kid in n.kids:
         if not comparison_field_walk(kid, aliases, out):
             return False
@@ -262,8 +526,8 @@ def comparison_write_targets(n: Node, aliases: list[str], out: list[str]) -> Non
 
 
 def comparison_writes(n: Node, aliases: list[str], out: list[str]) -> None:
-    if n.kind in ["assign", "annassign", "augassign", "for", "withitem"]:
-        targets = n.kids[:-1] if n.kind == "assign" else n.kids[1:] if n.kind == "withitem" else n.kids[:1]
+    if n.kind in ["assign", "cmpstore", "annassign", "augassign", "for", "withitem"]:
+        targets = n.kids[:-1] if n.kind in ["assign", "cmpstore"] else n.kids[1:] if n.kind == "withitem" else n.kids[:1]
         for target in targets:
             comparison_write_targets(target, aliases, out)
     for kid in n.kids:
@@ -327,7 +591,7 @@ def comparison_storage(self, candidate: str = "") -> None:
             canonical = method.ptypes[1] if method.ptypes[1] in self.classes else own.name
             layout = comparison_layout(self.classes[canonical])
             observed: list[str] = []
-            body = method.node.kids[2]
+            body = comparison_project(method.node.kids[2], method.params[0], method.params[1], self.funcs, self.gtypes)
             if not comparison_fields(body, method.params[1], observed) or not all(a in layout for a in observed):
                 continue
             written: list[str] = []
@@ -367,8 +631,8 @@ def comparison_reads(n: Node, parameter: str, missing: list[str]) -> bool:
 def comparison_read_walk(n: Node, aliases: list[str], missing: list[str]) -> bool:
     # A missing field can be read (and raise), but never invent storage for an
     # assignment. Keep writes to other fields and through existing containers.
-    if n.kind in ["assign", "annassign", "augassign", "for", "withitem"]:
-        targets = n.kids[:-1] if n.kind == "assign" else n.kids[1:] if n.kind == "withitem" else n.kids[:1]
+    if n.kind in ["assign", "cmpstore", "annassign", "augassign", "for", "withitem"]:
+        targets = n.kids[:-1] if n.kind in ["assign", "cmpstore"] else n.kids[1:] if n.kind == "withitem" else n.kids[:1]
         for target in targets:
             if target.kind == "name" and target.s in aliases[1:]:
                 continue  # the field walker has proved this alias's single binding
@@ -378,12 +642,84 @@ def comparison_read_walk(n: Node, aliases: list[str], missing: list[str]) -> boo
     return all(comparison_read_walk(kid, aliases, missing) for kid in n.kids)
 
 
+def comparison_builtin(t: str) -> str:
+    # These are exact native builtin layouts, never user-defined subclasses.
+    if t in ["None", "bool", "int", "float", "str", "bytes"] or is_list(t) or is_dict(t) or is_tuple(t) or is_vtuple(t) or is_set(t):
+        return tname(t)
+    return ""
+
+
+def comparison_invalid(op: str, a: str, b: str = "", shown: str = "") -> str:
+    # Only operations that these exact builtin types cannot perform for *any*
+    # values. A compiler limitation on a valid operation is not a Python error.
+    # The same proof drives eligibility and lowering, after operand evaluation.
+    x = comparison_builtin(a)
+    y = comparison_builtin(b)
+    numbers = ["bool", "int", "float"]
+    sequences = ["str", "bytes", "list", "tuple"]
+    sets = ["set", "frozenset"]
+    if op == "[]":
+        if x in ["NoneType", "bool", "int", "float", "set", "frozenset"]:
+            return f"'{x}' object is not subscriptable"
+        if x == "dict" and y in ["list", "dict", "set"]:
+            return f"unhashable type: '{y}'"
+        if x in sequences and y != "" and y not in ["int", "bool"]:
+            return f"string indices must be integers, not '{y}'" if x == "str" else f"{'byte' if x == 'bytes' else x} indices must be integers or slices, not {y}"
+        return ""
+    if op in ["unary+", "unary-", "unary~"]:
+        if x != "" and (x not in numbers or (op == "unary~" and x == "float")):
+            return f"bad operand type for unary {op[5:]}: '{x}'"
+        return ""
+    if x == "" or y == "":
+        return ""
+    if op in ["<", "<=", ">", ">="]:
+        if (x in numbers and y in numbers) or (x == y and x in sequences) or (x in sets and y in sets):
+            return ""
+        return f"'{op}' not supported between instances of '{x}' and '{y}'"
+    if op not in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]:
+        return ""
+    if (shown == "+=" and x == "list") or (shown == "|=" and x == "dict"):
+        return ""  # in-place extension accepts broader iterable protocols
+    if x in numbers and y in numbers and (op not in ["<<", ">>", "&", "|", "^"] or "float" not in [x, y]):
+        return ""
+    if op in ["-", "&", "|", "^"] and x in sets and y in sets:
+        return ""
+    if op == "|" and x == "dict" and y == "dict":
+        return ""
+    if op == "%" and x in ["str", "bytes"]:
+        return ""  # percent formatting depends on the format value
+    if op == "+" and x == y and x in sequences:
+        return ""
+    if op == "*" and ((x in sequences and y in ["int", "bool"]) or (y in sequences and x in ["int", "bool"])):
+        return ""
+    if op == "+" and x in ["str", "list", "tuple"]:
+        return f'can only concatenate {x} (not "{y}") to {x}'
+    if op == "+" and x == "bytes":
+        return f"can't concat {y} to bytes"
+    if op == "*" and (x in sequences or y in sequences) and not (shown == "*=" and x in ["dict", "set", "frozenset"]):
+        return f"can't multiply sequence by non-int of type '{y if x in sequences else x}'"
+    symbol = shown if shown != "" else "** or pow()" if op == "**" else op
+    return f"unsupported operand type(s) for {symbol}: '{x}' and '{y}'"
+
+
 def comparison_value(n: Node, receiver: str, aliases: list[str], own: dict[str, str], peer: dict[str, str], classes: dict[str, ClassInfo], length: bool) -> str:
     # A closed expression proof, not speculative compilation. Indexing retains
     # the source container's item layout. Fresh mixed concatenation may box its
     # items, but never changes either source container's storage.
-    if n.kind == "attr" and n.kids[0].kind == "name":
-        obj = n.kids[0].s
+    if n.kind == "cmpinvalidargs":
+        argument_types = n.s.split(",")
+        for argument_index in range(len(n.kids)):
+            argument_type = comparison_value(n.kids[argument_index], receiver, aliases, own, peer, classes, length)
+            if argument_type == "!raises":
+                return "!raises"
+            if argument_type == "" or argument_types[argument_index] != "":
+                return ""  # an earlier annotated coercion still needs its own proof
+        return ""
+    result = comparison_result(n)
+    if result is not n:
+        return comparison_value(result, receiver, aliases, own, peer, classes, length)
+    if n.kind == "attr" and comparison_result(n.kids[0]).kind == "name":
+        obj = comparison_result(n.kids[0]).s
         return own.get(n.s, "") if obj == receiver else peer.get(n.s, "") if obj in aliases else ""
     if n.kind == "attr":
         t = comparison_value(n.kids[0], receiver, aliases, own, peer, classes, length)
@@ -404,6 +740,8 @@ def comparison_value(n: Node, receiver: str, aliases: list[str], own: dict[str, 
     if n.kind == "index" and len(n.kids) == 2:
         t = comparison_value(n.kids[0], receiver, aliases, own, peer, classes, length)
         index = comparison_value(n.kids[1], receiver, aliases, own, peer, classes, length)
+        if t == "!raises" or (t != "" and index == "!raises") or (t != "" and index != "" and comparison_invalid("[]", t, index) != ""):
+            return "!raises"
         if index in ["int", "bool"]:
             if is_list(t):
                 return elem(t)
@@ -418,11 +756,15 @@ def comparison_value(n: Node, receiver: str, aliases: list[str], own: dict[str, 
                     return ts[i]
         if is_dict(t) and index == targs(t)[0]:
             return targs(t)[1]
-    if n.kind == "unary" and n.s in ["+", "-"]:
+    if n.kind == "unary" and n.s in ["+", "-", "~"]:
         t = comparison_value(n.kids[0], receiver, aliases, own, peer, classes, length)
+        if t == "!raises" or comparison_invalid("unary" + n.s, t) != "":
+            return "!raises"
         return "int" if t == "bool" else t if t in ["int", "float"] else ""
     if n.kind == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]:
         ts = [comparison_value(kid, receiver, aliases, own, peer, classes, length) for kid in n.kids]
+        if ts[0] == "!raises" or (ts[0] != "" and ts[1] == "!raises") or comparison_invalid(n.s, ts[0], ts[1]) != "":
+            return "!raises"
         if all(t in ["int", "float", "bool"] for t in ts) and (n.s not in ["<<", ">>", "&", "|", "^"] or "float" not in ts):
             return "float" if n.s == "/" or "float" in ts else "int"
         if n.s == "+" and all(is_list(t) for t in ts):
@@ -493,6 +835,10 @@ def comparison_sets(a: str, b: str) -> bool:
 
 
 def comparison_pair(a: str, b: str, op: str, classes: dict[str, ClassInfo], named: dict[str, bool]) -> bool:
+    if a == "!raises" or (a != "" and b == "!raises") or comparison_invalid(op, a, b) != "":
+        return True
+    if op in ["==", "!="] and comparison_container_pair(a, b, classes, named):
+        return True
     if op in ["is", "is not"]:
         ts = (umembers(unopt(a)) if is_union(unopt(a)) else [unopt(a)]) + (umembers(unopt(b)) if is_union(unopt(b)) else [unopt(b)])
         return all(is_list(t) or is_dict(t) or t in classes for t in ts)
@@ -507,6 +853,31 @@ def comparison_pair(a: str, b: str, op: str, classes: dict[str, ClassInfo], name
             return a == b  # mixed boxed/typed container equality needs its own path
         return (not is_set(a) and not is_set(b)) or comparison_sets(a, b)
     return op in ["<", "<=", ">", ">="] and a in ["int", "float", "bool"] and b in ["int", "float", "bool"]
+
+
+def comparison_container_pair(a: str, b: str, classes: dict[str, ClassInfo], named: dict[str, bool]) -> bool:
+    # Callback-bearing native trees use compiler-emitted pair comparisons,
+    # never the closed-builtin descriptor walker. Keys use the same pair proof.
+    a = unopt(a)
+    b = unopt(b)
+    if is_list(a) and is_list(b):
+        return comparison_item_pair(elem(a), elem(b), classes, named)
+    if (is_tuple(a) or is_vtuple(a)) and (is_tuple(b) or is_vtuple(b)):
+        ax = targs(a)
+        bx = targs(b)
+        if is_tuple(a) and is_tuple(b):
+            return all(comparison_item_pair(ax[i], bx[i], classes, named) for i in range(min(len(ax), len(bx))))
+        return all(comparison_item_pair(x, y, classes, named) for x in ax for y in bx)
+    if is_dict(a) and is_dict(b):
+        ax = targs(a)
+        bx = targs(b)
+        keys = ax[0] == bx[0] or comparison_item_pair(ax[0], bx[0], classes, named)
+        return keys and comparison_item_pair(ax[1], bx[1], classes, named)
+    return False
+
+
+def comparison_item_pair(a: str, b: str, classes: dict[str, ClassInfo], named: dict[str, bool]) -> bool:
+    return comparison_container_pair(a, b, classes, named) or comparison_list_pair(a, b, classes, named)
 
 
 def comparison_list_pair(a: str, b: str, classes: dict[str, ClassInfo], named: dict[str, bool]) -> bool:
@@ -527,33 +898,56 @@ def comparison_list_pair(a: str, b: str, classes: dict[str, ClassInfo], named: d
     return True
 
 
+def comparison_effects(n: Node, receiver: str, aliases: list[str], different: list[str], own: dict[str, str], peer: dict[str, str], classes: dict[str, ClassInfo], length: bool, named: dict[str, bool]) -> bool:
+    if n.kind == "cmpresult":
+        return comparison_operations(n, receiver, aliases, different, own, peer, classes, length, named)
+    return all(comparison_effects(k, receiver, aliases, different, own, peer, classes, length, named) for k in n.kids)
+
+
 def comparison_operations(n: Node, receiver: str, aliases: list[str], different: list[str], own: dict[str, str], peer: dict[str, str], classes: dict[str, ClassInfo], length: bool, named: dict[str, bool]) -> bool:
     # Prove every actual operand pair, including chained comparisons. Unsupported
     # operations must not add a failed whole-program restart per boxed class.
     if receiver in aliases:
         return False  # an operand alias must not replace the receiver's layout
+    if n.kind == "cmpresult":
+        result = comparison_result(n)
+        body = n.kids[0]
+        if result is not n and (comparison_value(result, receiver, aliases, own, peer, classes, length) != "" or (result.kind == "name" and result.s in [receiver] + aliases)):
+            body = mk("block", "", body.line, body.kids[:-1] + [mk("cmpvalue", "", result.line, [body.kids[-1].kids[0]])])
+        return comparison_operations(body, receiver, aliases, different, own, peer, classes, length, named)
+    if n.kind == "cmpvalue":
+        value_node = comparison_result(n.kids[0])
+        return (comparison_value(value_node, receiver, aliases, own, peer, classes, length) != "" or (value_node.kind == "name" and value_node.s in [receiver] + aliases)) and comparison_effects(n.kids[0], receiver, aliases, different, own, peer, classes, length, named)
     if n.kind == "def" and (n.s == receiver or any(p.s == receiver for p in n.kids[0].kids) or bind_count(n.kids[2].kids, receiver) > 0):
         return False  # a nested receiver binding has no proven field layout
     if n.kind == "def" and (n.s == "len" or any(p.s == "len" for p in n.kids[0].kids) or bind_count(n.kids[2].kids, "len") > 0):
         length = False
-    if n.kind == "assign" and len(n.kids) == 2:
+    if n.kind in ["assign", "cmpstore"] and len(n.kids) == 2:
         target = n.kids[0]
         if target.kind == "attr" and target.kids[0].kind == "name" and target.kids[0].s in aliases and target.s in different:
             actual = peer.get(target.s, "")
             value = comparison_value(n.kids[1], receiver, aliases, own, peer, classes, length)
             if is_union(actual) and value in umembers(actual):
-                return True  # the union keeps the stored value's native layout
+                return comparison_effects(n.kids[1], receiver, aliases, different, own, peer, classes, length, named)
+            if n.kind == "cmpstore" and ((is_list(actual) and is_list(value)) or (is_dict(actual) and is_dict(value)) or (is_set(actual) and is_set(value))):
+                return comparison_effects(n.kids[1], receiver, aliases, different, own, peer, classes, length, named)
+    if n.kind == "cmpinvalidargs":
+        return comparison_value(n, receiver, aliases, own, peer, classes, length) == "!raises" and comparison_effects(n, receiver, aliases, different, own, peer, classes, length, named)
+    if n.kind in ["binop", "unary", "index"] and comparison_value(n, receiver, aliases, own, peer, classes, length) == "!raises":
+        return comparison_effects(n, receiver, aliases, different, own, peer, classes, length, named)
     if n.kind == "cmp":
         ts = [comparison_value(kid, receiver, aliases, own, peer, classes, length) for kid in n.kids]
         ops = n.s.split(",")
         if all(comparison_pair(ts[i], ts[i + 1], ops[i], classes, named) for i in range(len(ops))):
-            return True
+            return all(comparison_effects(k, receiver, aliases, different, own, peer, classes, length, named) for k in n.kids)
         if comparison_touches(n, aliases, different):
             return False  # a supported subexpression does not prove its consumer
+    if length and n.kind == "call" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s == "len" and comparison_value(n, receiver, aliases, own, peer, classes, length) == "int":
+        return comparison_effects(n.kids[1], receiver, aliases, different, own, peer, classes, length, named)
     if n.kind == "call" and len(n.kids) == 1 and n.kids[0].kind == "attr" and n.kids[0].s == "clear":
         t = comparison_value(n.kids[0].kids[0], receiver, aliases, own, peer, classes, length)
         if is_list(t) or is_dict(t) or is_set(t):
-            return True
+            return comparison_effects(n.kids[0].kids[0], receiver, aliases, different, own, peer, classes, length, named)
     if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s in aliases and n.s in different:
         return False
     return all(comparison_operations(kid, receiver, aliases, different, own, peer, classes, length, named) for kid in n.kids)
@@ -585,13 +979,30 @@ def comparison_properties(ci: ClassInfo) -> None:
     # the final return excludes implicit None, and the receiver cannot rebind.
     fields = {a: ci.ftypes[a] for a in ci.ftypes if a not in ci.methods}
     for f in ci.methods.values():
-        if f.prop and f.cls == ci.name and not f.gen and len(f.params) == 1 and f.bad == f"property {f.name} needs a return annotation":
+        if f.prop and f.cls == ci.name and not f.gen and len(f.params) == 1 and (f.bad == f"property {f.name} needs a return annotation" or (f.generic and f.ret == "" and f.bad == "")):
             body = f.node.kids[2]
             if len(body.kids) > 0 and body.kids[-1].kind == "return" and len(body.kids[-1].kids) == 1 and bind_count(body.kids, f.params[0]) == 0:
                 t = comparison_getter_read(body.kids[-1].kids[0], f.params[0], fields)
                 if t != "" and t != NONEVAR and "?" not in t and comparison_getter_returns(body, f.params[0], fields, t):
                     f.ret = t
                     f.bad = ""
+
+
+def comparison_property_type(self, ci: ClassInfo, name: str) -> str:
+    # An opt-in getter uses the ordinary function inference path. Resolve only
+    # a requested property's concrete receiver, without executing its body or
+    # guessing from its syntax. The instance is shared with the eventual call;
+    # its return need not be copied to the declaration (subclasses may differ).
+    if name not in ci.methods:
+        return ""
+    f = ci.methods[name]
+    if not f.prop or f.bad != "" or f.gen or len(f.params) != 1:
+        return ""
+    if f.ret != "":
+        return f.ret
+    if f.generic:
+        return self.instance(f, [ci.name], []).ret
+    return ""
 
 
 def comparison_layout(ci: ClassInfo) -> dict[str, str]:
@@ -671,9 +1082,15 @@ def gen_dyn_xbody(self, c: str) -> None:
                 shape = f"{c}.{m}:concrete-shape"
                 supported = len(ps) == 2 and method.deco == "" and shape not in self.xnot
                 if supported:
-                    supported = comparison_fields(method.node.kids[2], method.params[1], fields) and len(fields) > 0
+                    proof = comparison_project(method.node.kids[2], method.params[0], method.params[1], self.funcs, self.gtypes)
+                    supported = comparison_fields(proof, method.params[1], fields) and len(fields) > 0
                 if supported:
                     layout = comparison_layout(self.classes[canonical])
+                    for field in fields:
+                        if field not in layout:
+                            inferred = comparison_property_type(self, self.classes[canonical], field)
+                            if inferred != "":
+                                layout[field] = inferred
                     supported = all(a in layout for a in fields)
                 if supported:
                     # A typed field (notably a list's storage) cannot become Any. Retry
@@ -1803,6 +2220,27 @@ def gen_dyn_body(self, key: str) -> None:
     ps = [self.read(mk("name", p, line, [])) for p in f.params]
     o = ps[0]
     dunder = self.dynkeys[key]
+    if key.startswith("pairkey."):
+        # Raw-slot ABI for the runtime's cross-layout dictionary lookup. The
+        # callback receives the stored target key first, as dict equality does.
+        ts = dunder.split("|")
+        a = self.from_slot(ps[0].v, ts[0])
+        b = self.from_slot(ps[1].v, ts[1])
+        identity = self.label()
+        compare = self.label()
+        self.cbr(self.num_cmp("==", ps[2], Val("0", "int")).v, identity, compare)
+        self.place(identity)
+        # Dictionary lookups find the identical key before comparing hashes.
+        # A dynamic box and a native slot can name the same Python object.
+        same = self.cmp2("is", a, b) if DYN in [a.t, b.t] else self.ptr_cmp("==", a, b) if self.isref(a.t) and self.isref(b.t) else Val("false", "bool")
+        self.ret_(self.as_int(same))
+        self.place(compare)
+        hit = self.label()
+        self.pair_item_eq(a, b, hit)
+        self.ret_(Val("0", "int"))
+        self.place(hit)
+        self.ret_(Val("1", "int"))
+        return
     t = Val(self.dyn_typeof(o), "dyntype")
     arith = (key.startswith("op") or key.startswith("iop")) and dunder != ""
     r = "__r" + dunder[2:] if arith else ""
@@ -1901,8 +2339,18 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         expected = comparison_layout(self.classes[canonical])
         actual = comparison_layout(ci)
         fields: list[str] = []
-        if not comparison_fields(method.node.kids[2], method.params[1], fields):
+        proof = comparison_project(method.node.kids[2], method.params[0], method.params[1], self.funcs, self.gtypes)
+        if not comparison_fields(proof, method.params[1], fields):
             return False
+        for field in fields:
+            if field not in expected:
+                inferred = comparison_property_type(self, self.classes[canonical], field)
+                if inferred != "":
+                    expected[field] = inferred
+            if field not in actual:
+                inferred = comparison_property_type(self, ci, field)
+                if inferred != "":
+                    actual[field] = inferred
         # Retry proven builtin field operations with their actual layouts.
         # Filter other differing-field uses before attempting a specialization,
         # so incompatible operations do not add a failed restart per class.
@@ -1914,17 +2362,21 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         different = [a for a in compatible if actual[a] != expected[a]]
         if len(different) > 0:
             receiver = comparison_layout(self.classes[own])
+            for field in fields:
+                if field not in receiver:
+                    inferred = comparison_property_type(self, self.classes[own], field)
+                    if inferred != "":
+                        receiver[field] = inferred
             own_fields = {a: receiver[a] for a in receiver if self.ueq_type(receiver[a]) or comparison_walkable(receiver[a], self.classes) or (is_set(receiver[a]) and builtin_key(selem(receiver[a])))}
             peer_fields = {a: actual[a] for a in actual if self.ueq_type(actual[a]) or comparison_walkable(actual[a], self.classes) or (is_set(actual[a]) and builtin_key(selem(actual[a])))}
-            if not comparison_equalities(method.node.kids[2], method.params[0], method.params[1], different, own_fields, peer_fields, self.classes, "len" not in method.params and not self.bound("len"), self.nts):
+            if not comparison_equalities(proof, method.params[0], method.params[1], different, own_fields, peer_fields, self.classes, "len" not in method.params and not self.bound("len"), self.nts):
                 return False
         if len(compatible) == len(fields):
             return True
         # Missing-read provenance is attached to the proven source accesses,
         # including stable aliases and captured operands, before specialization.
         missing = [a for a in fields if a not in ci.ftypes and a not in ci.methods]
-        body = method.node.kids[2]
-        return len(missing) > 0 and all(a in self.classes[canonical].ftypes for a in missing) and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or a in compatible for a in fields) and (ci.slotlimit or "frozen" in ci.dcopts or comparison_reads(body, method.params[1], missing))
+        return len(missing) > 0 and all(a in expected for a in missing) and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or a in compatible for a in fields) and (ci.slotlimit or "frozen" in ci.dcopts or comparison_reads(proof, method.params[1], missing))
     if key.startswith("get."):
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and (ci.methods[a].prop or (ci.methods[a].deco == "" and ci.methods[a].bad == "")))  # (a method's: the bound method)
@@ -2030,8 +2482,7 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         canonical = original.ptypes[1] if original.ptypes[1] in self.classes else receiver.t
         fields: list[str] = []
         comparison_fields(original.node.kids[2], original.params[1], fields)
-        missing = any(a not in comparison_layout(self.classes[x.t]) for a in fields)
-        method = self.instance(original, [receiver.t, x.t], [], cmpfields=canonical if missing else "")
+        method = self.instance(original, [receiver.t, x.t], [], cmpfields=canonical)
         condition = self.truth(self.call_fn(method, [receiver, x], [], direct=True))
         self.xtry = ""
         self.ret_(Val(self.select(condition, Val("1", "int"), Val("0", "int")), "int"))
@@ -2323,6 +2774,10 @@ def gen_dyn_getattr(self, o: Val, a: str) -> Val:
         # retry with concrete storage instead of leaking a late compilation error.
         for c in self.dynclasses:
             fields = comparison_layout(self.classes[c])
+            if a not in fields:
+                inferred = comparison_property_type(self, self.classes[c], a)
+                if inferred != "":
+                    fields[a] = inferred
             if a in fields:
                 problem = self.dyn_boxable(self.rec_type(fields[a]))
                 if problem != "":

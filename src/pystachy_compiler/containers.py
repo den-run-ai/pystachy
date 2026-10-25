@@ -134,7 +134,7 @@ def gen_none_container(self, e: Node) -> Val:
         ks.append(k)
     if self.key_problem(kt) != "":
         self.err(self.key_problem(kt))
-    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt)}", f"i64 {len(ks)}"])
+    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt, True)}", f"i64 {len(ks)}"])
     for k in ks:
         self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(k, kt)), "i64 0"], self.key_fx(kt))
     return Val(r, self.ctype("dict", [kt, NONE_ITEM]))
@@ -653,7 +653,7 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
         v = self.coerce(v, "dyn")
     if is_dict(xs.t):
         return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
-    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
+    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K, True)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
 
 def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> Val:
     # s.startswith((a, b, ...), start, end) (or endswith), as CPython's loop over the tuple: each
@@ -682,12 +682,28 @@ def gen_optdefault(self, d: Val, t: str) -> str:
         return self.optional(t)
     return t
 
-def gen_key_kind(self, kt: str) -> str:
+def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -> str:
     # the key kind of a new dict whose keys have type kt (runtime.c's Dict.kind): 0 int, 1 str,
     # or a tuple or object key's type descriptor (hash_desc)
-    if kt == "int" or kt == "str" or kt == "bytes":
+    # Every module in a Dynamic Any program shares the dictionary hash scheme:
+    # a later comparison may look up a native key in a differently typed dict.
+    # The marker preserves the original slots and records Python's hash/probe
+    # scheme from insertion, including deletions; equality never rehashes keys.
+    if dictionary and dynamic_program() and not self.rtmode:
+        d = self.hash_desc(kt)
+        d = d if "H" in d or "A" in d else "!" + d
+    elif kt == "int" or kt == "str" or kt == "bytes":
         return "0" if kt == "int" else "1"  # (bytes keys are hashed and compared as strs of their bytes)
-    return f"ptrtoint (ptr {self.sconst(self.hash_desc(kt))} to i64)"
+    else:
+        d = self.hash_desc(kt)
+    if built and dictionary and (d.startswith("!") or "H" in d or "A" in d):
+        # built: what empty.kind stores into a dict result that may already hold a table (a
+        # call cycle's forwarded result, filled once the cycle recurses). Keys that CPython's
+        # hash places (runtime.c's khash) gave that table KTAG at its first build: the kind
+        # keeps it, as clear() keeps it on a dict without a table, where build sets it anyway.
+        # The descriptor alone would make its lookups and insertions probe twice its slots.
+        return f"ptrtoint (ptr getelementptr (i8, ptr {self.sconst(d)}, i64 2) to i64)"
+    return f"ptrtoint (ptr {self.sconst(d)} to i64)"
 
 def gen_key_class(self, t: str) -> bool:
     # can objects of class t be dict keys and set elements: those of the program's classes, but

@@ -103,7 +103,13 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         # eligible stores without changing another instance's AST.
         if len(versioned) > 0:
             body = versioned
+            # (a copy of the declaration whose block holds versioned, already copies: not
+            # another copy of the statements it replaces)
+            block = f.node.kids[2]
+            kept = block.kids
+            block.kids = []
             f.node = clone(f.node)
+            block.kids = kept
             f.node.kids[2].kids = body
     if f.cls != "" and self.classes[f.cls].bad != "":
         self.err(self.classes[f.cls].bad)
@@ -211,6 +217,8 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             if identity_abi(f) and numeric_identity(t):
                 incoming.idfrom = f"%aid{i}"
             self.mem_store(Val(self.alloca("dyn", f.params[i]), "*dyn"), self.dyn_box(incoming))
+        elif f.cmprebind != "" and i == 1:
+            self.mem_store(Val(self.alloca(f.cmprebind, f.params[i]), "*" + f.cmprebind), self.coerce(Val(f"%a{i}", t), f.cmprebind))
         elif t == NONEVAR:
             # A provisional argument is null-only until its producer's inference restarts.
             # The parameter's later stores can independently reveal its own payload type.

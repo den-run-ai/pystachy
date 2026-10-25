@@ -1198,7 +1198,7 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
     for h in toks.split():
         self.holes[int(h)] = t
         if is_dict(t) or is_set(t):
-            self.key_kind(targs(t)[0] if is_dict(t) else selem(t))  # (a tuple key's descriptor, a string constant from here on, which lowering prints)
+            self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))  # (a tuple key's descriptor, a string constant from here on, which lowering prints)
 
 def gen_lookahead(self, name: str, ahead: bool = False) -> str:
     # an empty list or dict read before the code that fills it: the first use in this
@@ -1337,7 +1337,7 @@ def gen_adopt(self, t: str) -> None:
     for h in self.qholes.get(self.curfn.ll, []):
         self.holes[h] = t
         if is_dict(t) or is_set(t):
-            self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+            self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
     for k in self.qroot:
         # a function that returns this one's open result unchanged (qchain) stores the key
         # layout of what it returns as the call returns (typed_empty), before its own finally
@@ -1348,7 +1348,7 @@ def gen_adopt(self, t: str) -> None:
                     for h in self.qholes[k]:
                         self.holes[h] = t
                     if is_dict(t) or is_set(t):
-                        self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+                        self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
 
 def gen_qchain(self, f: FnInfo) -> list[FnInfo]:
     # f, and the functions whose open empty result it returns unchanged, through those it
@@ -1398,7 +1398,7 @@ def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
     if t != want:
         self.guessed[self.curfn.ll] = f"{short(f.name)}() at line {self.line} returns an empty {tname(t)} taken as {typestr(t)}: give it a type first, as in v: {'list[T]' if is_list(t) else 'set[T]' if is_set(t) else 'dict[K, V]'} = {short(f.name)}()"
     if is_dict(t) or is_set(t):
-        self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+        self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
         i = Ins("empty.kind", "", "")
         i.a = [Val(v.v, t)]
         self.put(i, 1)
@@ -1887,6 +1887,42 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
     elif k == "attr":
         o = self.expr(t.kids[0], "")
+        if self.reference_union(o.t):
+            end = self.label()
+            narrow = dict(self.narrowed)
+            for lf in self.refl_split(o, False, True):
+                self.place(lf.label)
+                self.narrowed = dict(narrow)
+                if lf.c == "None":
+                    self.raise_("AttributeError", self.sconst(f"'NoneType' object has no attribute '{t.s}' and no __dict__ for setting new attributes"))
+                elif lf.c not in self.classes:
+                    # (CPython's file objects take new attributes, which a native file cannot)
+                    self.err(f"type {typestr(o.t)} has no attribute '{t.s}'")
+                else:
+                    actual = self.classes[lf.c].ftypes.get(t.s, "")
+                    setter = t.s + ".setter"
+                    if self.is_prop(lf.c, t.s) and setter in self.classes[lf.c].methods and len(self.classes[lf.c].methods[setter].ptypes) == 2:
+                        actual = self.classes[lf.c].methods[setter].ptypes[1]
+                    if actual == "" and t.s not in self.classes[lf.c].methods:
+                        # CPython adds the attribute to an object with a __dict__, which a
+                        # native layout cannot: rejected, as for one class (field). A frozen
+                        # dataclass and a class with only __slots__ raise as CPython does
+                        if not self.frozen_store(lf.v, t.s):
+                            if not self.classes[lf.c].slotlimit:
+                                self.err(f"type {typestr(o.t)} has no attribute '{t.s}'")
+                            self.raise_("AttributeError", self.sconst(f"'{short(lf.c)}' object has no attribute '{t.s}' and no __dict__ for setting new attributes"))
+                    elif self.curfn.cmprebind != "" and actual != v.t and ((is_list(actual) and is_list(v.t)) or (is_dict(actual) and is_dict(v.t)) or (is_set(actual) and is_set(v.t))):
+                        # A runtime-selected typed boundary must not suppress
+                        # a valid store through another member of this union.
+                        if not self.frozen_store(lf.v, t.s):
+                            self.raise_("TypeError", self.sconst(f"expected {typestr(actual)}, got {typestr(v.t)}"))
+                    else:
+                        self.assign(mk("attr", t.s, t.line, [self.vnode(lf.v)]), v)
+                if not self.term:
+                    self.br(end)
+            self.narrowed = narrow
+            self.place(end)
+            return
         if o.t == "dyn":
             self.dyn_setattr(o, t.s, v)  # (a field of its box's class: dynamic.py)
             return

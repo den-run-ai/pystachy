@@ -1,0 +1,41 @@
+leaf 0 True
+leaf 0 True
+leaf 0 True
+direct True True False
+leaf 1 False
+mutation 1 False True
+aliases True True 1 1
+leaf 1 True
+mutation 1 True True
+aliases True True 1 1
+leaf 2 False
+mutation 2 False False
+aliases True True 0 1
+leaf 2 True
+mutation 2 True False
+aliases True True 0 1
+leaf 3 False
+mutation 3 False True
+aliases True True 0 0
+leaf 3 True
+mutation 3 True True
+aliases True True 0 0
+leaf 4 False
+mutation 4 False False
+aliases True True 2 2
+leaf 4 True
+leaf 0 True
+mutation 4 True True
+aliases True True 2 2
+leaf 5 True
+nested leaf
+cleanup
+different lengths False
+comparison ran
+leaf 0 True
+comparison ran
+leaf 0 True
+comparison ran
+leaf 0 True
+boxed True True False
+[exit 0]

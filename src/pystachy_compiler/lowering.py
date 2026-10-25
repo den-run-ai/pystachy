@@ -294,7 +294,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             # the key kind of a dict (the element kind of a set) created empty: what its first
             # use showed (0 if nothing did; refine made a tuple key's descriptor a string constant)
             h = self.holes[i.k]
-            vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h)) if h != '' else '0'}"
+            vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h), is_dict(h)) if h != '' else '0'}"
         c = self.invoke(f"call {ll[0]} @{f.sym}({', '.join(vs)})", i)
         o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
     elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} %t{i.r[0]}" in self.vcalls:
@@ -316,7 +316,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # Only fresh empty results may change their dict/set key layout. A later
         # return can resolve the hole; an outer caller types an unresolved result.
         t = self.holes[i.k] if i.k > 0 else i.a[0].t
-        kind = self.key_kind(targs(t)[0] if is_dict(t) else selem(t)) if t != "" else "0"
+        kind = self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t), True) if t != "" else "0"
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 1")
         o.append(f"  store i64 {kind}, ptr %t{i.r[0]}")
     elif op == "list.len":
