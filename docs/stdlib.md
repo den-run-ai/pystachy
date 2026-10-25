@@ -22,6 +22,10 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 | Larger port | `re`: CPython's Python parser/compiler plus a matcher adapted from its C engine |
 | Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper` / `IncrementalNewlineDecoder` (also as `_io`'s), `csv`, `json` (a bounded native prototype for recursive values), `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`, `itertools` (every function, on generators), which CPython builds in, `abc`, and `types` (`MappingProxyType`, a read-only view of a dict, and `GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
 
+The non-stdlib [`mpz` module](mpz.md) offers explicit arbitrary-precision integers
+through a subset class and a packed-limb C backend. It does not change ordinary
+`int`, JSON parsing or native integer interfaces.
+
 The library reference is the authority for each module's limits. For example, `difflib`
 supports matching strings and lists of strings, including `get_grouped_opcodes()`,
 `unified_diff()`, `context_diff()` and `restore()`; `ndiff()` and `HtmlDiff` still have

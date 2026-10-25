@@ -1302,3 +1302,9 @@ compiles native code and does not execute CPython bytecode or expose code object
 `dis` remains unavailable. This is an intentional compatibility reduction, not a
 claim that the former table operations were incorrect. See
 [library scope](../docs/stdlib.md#library-scope).
+
+## mpz
+
+The experimental non-stdlib `mpz.mpz` type is an explicit arbitrary-precision
+integer class. Its [API, representation and compatibility limits](../docs/mpz.md)
+are separate from the checked 64-bit builtin `int` contract.

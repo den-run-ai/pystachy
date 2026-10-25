@@ -17,6 +17,7 @@ explains differential checks and bootstrap validation.
 | `runtime.c` | Allocation and collection, container storage, files, numeric support and exception unwinding |
 | `runtime.py` | Runtime functions written in the subset; see [runtime in the subset](runtime-in-subset.md) |
 | `lib/`, `ports/` | Standard-library modules and adapted third-party packages; see [library support](stdlib.md) |
+| `mpz/` | Compact arbitrary-precision arithmetic, adapted from MicroPython; see [representation and provenance](../mpz/README.md) |
 | `ryu/` | Ryu's float-to-string conversion, with its upstream license; see [Ryu's README](../ryu/README.md) |
 | `tests/`, `tools/` | CPython comparisons, rejection cases, IR probes, fuzzers and validation tools |
 | `bench/`, `examples/` | Performance workloads and complete applications |

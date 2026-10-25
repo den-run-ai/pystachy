@@ -1,8 +1,8 @@
 """Utils component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.diagnostics import dynamic_program, fail, where
-from src.pystachy_compiler.ir import FnInfo
+from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fail, where
+from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
@@ -15,12 +15,24 @@ from src.pystachy_compiler.specs import (
     INERT,
     METHODS,
     OPTS,
+    OPAQUE,
     RUNTIME,
     SETMETHODS,
     SPECIAL,
     SPECSHOW,
 )
 from src.pystachy_compiler.syntax import Node
+
+
+def lib_source(line: int, libdir: str, filename: str) -> bool:
+    # Private library behavior belongs to the shipped file, not a user module
+    # with the same import name. Loader strips a leading ./ from recorded paths.
+    path = libdir + "/" + filename
+    return libdir != "" and FILES[line // LINES] == (path[2:] if path.startswith("./") else path)
+
+
+def opaque_class(ci: ClassInfo, libdir: str) -> bool:
+    return ci.mod in OPAQUE or (ci.mod == "mpz" and lib_source(ci.node.line, libdir, "mpz.py"))
 
 
 def codec(e: str) -> int:

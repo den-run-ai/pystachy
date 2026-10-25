@@ -26,7 +26,7 @@ class GCVerificationTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         for name in ("tests", "tests/programs", "tests/programs/x", "tests/deviations", "tests/errors",
-                     "tests/errors/x", "src", "lib", "ryu", "bin"):
+                     "tests/errors/x", "src", "lib", "ryu", "mpz", "bin"):
             (self.root / name).mkdir()
         for name in ("tests/verify.sh", "tests/corpus.sh"):
             shutil.copy(ROOT / name, self.root / name)

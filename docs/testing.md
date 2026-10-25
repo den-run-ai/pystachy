@@ -224,7 +224,7 @@ parts measured one commit.
 ## Native runtime coverage
 
 `make runtime-coverage` measures which lines and branches of the runtime's C code the programs
-run: `runtime.c` with the `ryu/` files it includes, `pyembed.c` (embedded CPython) and `pyext.c`
+run: `runtime.c` with the `ryu/` and `mpz/` files it includes, `pyembed.c` (embedded CPython) and `pyext.c`
 (the extension-module ABI). It builds a new runtime cache with clang's
 [source-based coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
 (`PYSTACHY_CFLAGS="-fprofile-instr-generate -fcoverage-mapping"`), then runs the corpus's

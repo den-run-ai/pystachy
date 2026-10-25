@@ -161,9 +161,9 @@ def sh(cmd: str) -> int:
 CPUID: list[str] = ["vendor_id", "cpu family", "model", "model name", "stepping", "flags", "CPU implementer", "CPU architecture",
                     "CPU variant", "CPU part", "CPU revision", "Features"]
 # the files that runtime.c includes from beside it, each DIR/NAME (ryu/: Ryu's d2s, a float's shortest
-# digits, ryu/README.md): the runtime is built from their bytes too
+# digits, ryu/README.md; mpz/: packed integer arithmetic): the runtime is built from their bytes too
 RTPARTS: list[str] = ["ryu/d2s.c", "ryu/ryu.h", "ryu/common.h", "ryu/digit_table.h", "ryu/d2s_intrinsics.h",
-                      "ryu/d2s_small_table.h"]
+                      "ryu/d2s_small_table.h", "mpz/mpz.c"]
 # On Linux, pystachy run's lli loads the runtime as a shared library (-dlopen) rather than linking the
 # runtime's machine code into each run (-extra-object), which cost about 35 ms a run (#704). The
 # library is the cached runtime's .o, linked with RTSO: the runtime calls back into the program

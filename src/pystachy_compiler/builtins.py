@@ -60,6 +60,7 @@ from src.pystachy_compiler.utils import (
     kw_names,
     literal_format,
     lt,
+    lib_source,
     nones as only_nones,
     rtt,
     runtime_format,
@@ -186,6 +187,34 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
+    if name.startswith("__pys_mpz_"):
+        # Only the shipped wrapper can create or consume these opaque pointers.
+        # Using int for the handle would hide references from numeric containers.
+        if self.curfn.mod != "mpz" or not lib_source(self.curfn.node.line, self.libdir, "mpz.py"):
+            self.err(f"name '{name}' is not defined")
+        name = name[2:]
+        sigs: dict[str, str] = {
+            "pys_mpz_from_int": "mpzhandle:int", "pys_mpz_from_str": "mpzhandle:str,int",
+            "pys_mpz_binop": "mpzhandle:mpzhandle,mpzhandle,int", "pys_mpz_unary": "mpzhandle:mpzhandle,int",
+            "pys_mpz_shift": "mpzhandle:mpzhandle,int,int", "pys_mpz_pow": "mpzhandle:mpzhandle,int",
+            "pys_mpz_cmp": "int:mpzhandle,mpzhandle", "pys_mpz_hash": "int:mpzhandle",
+            "pys_mpz_to_int": "int:mpzhandle", "pys_mpz_bit_length": "int:mpzhandle", "pys_mpz_str": "str:mpzhandle",
+        }
+        if name not in sigs or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
+            self.err(f"name '{name}' is not defined")
+        sig = sigs[name].split(":")
+        ts = sig[1].split(",")
+        if len(args) != len(ts):
+            self.err(f"invalid arguments to private mpz primitive {name}")
+        vs: list[str] = []
+        for j in range(len(args)):
+            v = self.expr(args[j], "")
+            if ts[j] == "int":
+                v = self.as_int(v)
+            if v.t != ts[j]:
+                self.err(f"invalid argument to private mpz primitive {name}: expected {ts[j]}, got {typestr(v.t)}")
+            vs.append(rtt(v.t) + " " + v.v)
+        return Val(self.rt(name, rtt(sig[0]), vs), sig[0])
     if name == "__pys_weakref_new" or name == "__pys_weakref_get" or name == "__pys_weakref_addr" or name == "__pys_weakref_fired":
         # Private library primitives; a handle's opaque type preserves its referent type
         # without storing a strong reference or permitting ordinary field access to it.

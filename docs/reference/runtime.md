@@ -93,7 +93,7 @@ of int keys are atomic. `tests/programs/runtime/gc_dict_values.py` and `make dic
 
 ## Build and cache
 
-The driver reads and compiles a source snapshot of `runtime.c`, its `ryu/` includes
+The driver reads and compiles a source snapshot of `runtime.c`, its `ryu/` and `mpz/` includes
 and `runtime.py`, links the bitcode with `llvm-link`, then runs `opt -O2`. The C
 part is built with `-fexceptions` so exceptions can unwind through runtime frames.
 When `PYSTACHY_CFLAGS` enables AddressSanitizer, generated subset definitions
