@@ -70,6 +70,62 @@
       "diagnostic": "tests/programs/inference/any_methods.py:41: error: a list[int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it)",
       "reason": "A method combines its typed list[int] field with a dynamically accessed field, requiring unsupported typed-container boxing while preserving aliases.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_arithmetic.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_arithmetic.py:1: error: python-int prototype cannot yet be combined with dynamic-any",
+      "reason": "The python-int prototype deliberately rejects a module that also opts into dynamic Any until Any boxes, dispatch and reflection of its promoting values are integrated.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/12"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_arithmetic.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_arithmetic.py:1: error: python-int prototype cannot yet be combined with dynamic-any",
+      "reason": "The python-int prototype deliberately rejects a module that also opts into dynamic Any until Any boxes, dispatch and reflection of its promoting values are integrated.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/12"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_cpython_int.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_cpython_int.py:1: error: python-int prototype cannot yet be combined with dynamic-any",
+      "reason": "The python-int prototype deliberately rejects a module that also opts into dynamic Any until Any boxes, dispatch and reflection of its promoting values are integrated.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/12"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_cpython_int.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_cpython_int.py:1: error: python-int prototype cannot yet be combined with dynamic-any",
+      "reason": "The python-int prototype deliberately rejects a module that also opts into dynamic Any until Any boxes, dispatch and reflection of its promoting values are integrated.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/12"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_cpython_long.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_cpython_long.py:1: error: python-int prototype cannot yet be combined with dynamic-any",
+      "reason": "The python-int prototype deliberately rejects a module that also opts into dynamic Any until Any boxes, dispatch and reflection of its promoting values are integrated.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/12"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_cpython_long.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_cpython_long.py:1: error: python-int prototype cannot yet be combined with dynamic-any",
+      "reason": "The python-int prototype deliberately rejects a module that also opts into dynamic Any until Any boxes, dispatch and reflection of its promoting values are integrated.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/12"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_storage.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_storage.py:1: error: python-int prototype cannot yet be combined with dynamic-any",
+      "reason": "The python-int prototype deliberately rejects a module that also opts into dynamic Any until Any boxes, dispatch and reflection of its promoting values are integrated.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/12"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_storage.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_storage.py:1: error: python-int prototype cannot yet be combined with dynamic-any",
+      "reason": "The python-int prototype deliberately rejects a module that also opts into dynamic Any until Any boxes, dispatch and reflection of its promoting values are integrated.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/12"
     }
   ]
 }
