@@ -9,7 +9,9 @@ class Key:
 
     def __hash__(self) -> int:
         print('hash', self.name)
-        if self.code < 0:
+        # Only the sentinel below: hash('key') is negative under some
+        # PYTHONHASHSEED values, which the 'string' key must not fail on.
+        if self.code == -99:
             raise RuntimeError('rehash')
         return self.code
 
