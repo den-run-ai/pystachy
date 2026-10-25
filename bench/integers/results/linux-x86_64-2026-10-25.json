@@ -1,0 +1,561 @@
+{
+  "date": "2026-10-25",
+  "compiler_commit": "93bc9209",
+  "host": "Intel Xeon Processor @ 2.10GHz, 4 vCPUs, Linux 6.18.44 x86-64, shared cloud VM",
+  "toolchain": "LLVM 18.1.3; default Pystachy optimization and GC; AOT binaries (pystachy build)",
+  "cpython": "CPython 3.13.16 built from python.org source with --enable-optimizations --with-lto",
+  "pypy": "PyPy 7.3.23 (Python 3.11.15), official linux64 build",
+  "method": "loop time printed by each program; 5 samples per variant, variant order alternating per sample; pinned with taskset -c 3; one untimed checksum run per variant first",
+  "workloads": {
+    "lcg32": {
+      "argument": "3000000",
+      "checksum": "1677318272",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "lcg32.py": "18a4331141c958304385f4d2514777ba9207bb8ac153d5813137f94ea3e669b1",
+        "lcg32_i64.py": "7afdbe846586d225b80f496844f37e61158102c5fde009e00e3f60a895d40706"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.6271,
+          "samples_s": [
+            0.6271,
+            0.6065,
+            0.6564,
+            0.6461,
+            0.6195
+          ],
+          "peak_rss_kib": 12864
+        },
+        "pypy": {
+          "median_s": 0.0079,
+          "samples_s": [
+            0.0075,
+            0.0079,
+            0.0083,
+            0.0076,
+            0.0084
+          ],
+          "peak_rss_kib": 61928
+        },
+        "pys-int": {
+          "median_s": 0.3397,
+          "samples_s": [
+            0.3397,
+            0.3143,
+            0.3721,
+            0.3103,
+            0.354
+          ],
+          "peak_rss_kib": 35988
+        },
+        "pys-i64": {
+          "median_s": 0.0047,
+          "samples_s": [
+            0.0044,
+            0.0046,
+            0.0047,
+            0.0047,
+            0.0051
+          ],
+          "peak_rss_kib": 12864
+        }
+      }
+    },
+    "collatz": {
+      "argument": "100000",
+      "checksum": "350077031",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "collatz.py": "325195516e9b83a8f426aa3ef17a1e6695511a35f801fba9b7fe905a0371f293",
+        "collatz_i64.py": "53a3dd40aab5bbfbea7f5cce250b1eddeabaa3e0156010c5856f6399ec8a1812"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.8012,
+          "samples_s": [
+            0.7311,
+            0.8231,
+            0.8012,
+            1.0304,
+            0.7383
+          ],
+          "peak_rss_kib": 12864
+        },
+        "pypy": {
+          "median_s": 0.0376,
+          "samples_s": [
+            0.0368,
+            0.0358,
+            0.0408,
+            0.0395,
+            0.0376
+          ],
+          "peak_rss_kib": 64544
+        },
+        "pys-int": {
+          "median_s": 0.6551,
+          "samples_s": [
+            0.6549,
+            0.8129,
+            0.7555,
+            0.6551,
+            0.6416
+          ],
+          "peak_rss_kib": 36100
+        },
+        "pys-i64": {
+          "median_s": 0.043,
+          "samples_s": [
+            0.0429,
+            0.043,
+            0.0456,
+            0.044,
+            0.0428
+          ],
+          "peak_rss_kib": 12864
+        }
+      }
+    },
+    "cross64": {
+      "argument": "5000000",
+      "checksum": "2557484192",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "cross64.py": "70e44d39a87bd829c2854c0c1fbb4d1b5c4ace42caf55addd14e2aaff777e486",
+        "cross64_mpz.py": "163227955698d0fb60a953cb39109e1a7732cdaa4463597f5618fc11ee2e3650"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.4428,
+          "samples_s": [
+            0.4428,
+            0.443,
+            0.4352,
+            0.4513,
+            0.4225
+          ],
+          "peak_rss_kib": 12864
+        },
+        "pypy": {
+          "median_s": 0.3298,
+          "samples_s": [
+            0.3902,
+            0.3173,
+            0.3298,
+            0.3595,
+            0.3251
+          ],
+          "peak_rss_kib": 190044
+        },
+        "pys-int": {
+          "median_s": 0.7559,
+          "samples_s": [
+            0.7559,
+            0.7805,
+            0.7396,
+            0.7457,
+            0.9796
+          ],
+          "peak_rss_kib": 36140
+        },
+        "pys-mpz": {
+          "median_s": 0.4067,
+          "samples_s": [
+            0.3868,
+            0.4242,
+            0.4067,
+            0.4127,
+            0.4031
+          ],
+          "peak_rss_kib": 35820
+        }
+      }
+    },
+    "arith128": {
+      "argument": "8000000",
+      "checksum": "184095867365226904030680048461132763137",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "arith128.py": "553c6997e6ea4a20981af19cc86ea64ab390bb699d660673cf54e5a01e51075a",
+        "arith128_mpz.py": "db879ee7198782e5cb380ca4fe4eec4a7a20f8c02f5f53bdb4ccbe1bdf99c9e9"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.6496,
+          "samples_s": [
+            0.7015,
+            0.699,
+            0.6496,
+            0.6164,
+            0.6353
+          ],
+          "peak_rss_kib": 12864
+        },
+        "pypy": {
+          "median_s": 0.5503,
+          "samples_s": [
+            0.5503,
+            0.6155,
+            0.553,
+            0.5235,
+            0.5483
+          ],
+          "peak_rss_kib": 189860
+        },
+        "pys-int": {
+          "median_s": 1.2534,
+          "samples_s": [
+            1.3666,
+            1.2375,
+            1.2689,
+            1.1811,
+            1.2534
+          ],
+          "peak_rss_kib": 35900
+        },
+        "pys-mpz": {
+          "median_s": 0.5861,
+          "samples_s": [
+            0.5861,
+            0.5689,
+            0.6588,
+            0.5745,
+            0.7129
+          ],
+          "peak_rss_kib": 35800
+        }
+      }
+    },
+    "factorial": {
+      "argument": "300",
+      "checksum": "102422063100",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "factorial.py": "e74af7d9a0ce7d906f93d03a81fbb0a48c3468c0e2a8b9aee586f5a6c22724c3",
+        "factorial_mpz.py": "fd432fe07e2701ac59ff3aba473e3ead655b47dc079e26abf98fd962d6da9e2d"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.4725,
+          "samples_s": [
+            0.7301,
+            0.4382,
+            0.4725,
+            0.4612,
+            0.5096
+          ],
+          "peak_rss_kib": 12864
+        },
+        "pypy": {
+          "median_s": 0.5807,
+          "samples_s": [
+            0.5893,
+            0.5866,
+            0.5807,
+            0.5736,
+            0.574
+          ],
+          "peak_rss_kib": 190636
+        },
+        "pys-int": {
+          "median_s": 0.6758,
+          "samples_s": [
+            0.6758,
+            0.5966,
+            0.7198,
+            0.6016,
+            0.7667
+          ],
+          "peak_rss_kib": 38172
+        },
+        "pys-mpz": {
+          "median_s": 0.6035,
+          "samples_s": [
+            0.5791,
+            0.5685,
+            0.6246,
+            0.6035,
+            0.6366
+          ],
+          "peak_rss_kib": 37956
+        }
+      }
+    },
+    "fibadd": {
+      "argument": "150",
+      "checksum": "148214169450",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "fibadd.py": "f1a24ce900f29bd12229a57fc560224c90613f91dfd7e33b09c224a28f4b05af",
+        "fibadd_mpz.py": "633d3994a051ff759f136d6eb3bbdd4df183700cb23d124c04160708d9b53b4b"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.6679,
+          "samples_s": [
+            0.6405,
+            0.6679,
+            0.6709,
+            0.5912,
+            0.7009
+          ],
+          "peak_rss_kib": 12864
+        },
+        "pypy": {
+          "median_s": 0.7146,
+          "samples_s": [
+            0.8223,
+            0.6933,
+            0.6946,
+            0.7146,
+            0.7187
+          ],
+          "peak_rss_kib": 189912
+        },
+        "pys-int": {
+          "median_s": 1.194,
+          "samples_s": [
+            1.7827,
+            1.1445,
+            1.194,
+            1.2083,
+            1.1536
+          ],
+          "peak_rss_kib": 37192
+        },
+        "pys-mpz": {
+          "median_s": 1.0169,
+          "samples_s": [
+            1.2721,
+            1.236,
+            0.9766,
+            1.0169,
+            0.9437
+          ],
+          "peak_rss_kib": 36944
+        }
+      }
+    },
+    "bigmul": {
+      "argument": "600",
+      "checksum": "601157395304",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "bigmul.py": "b51ada2d9771d7d2ebe21af40381c963fa76c0a6240104b202a2f4d2afdb72c6",
+        "bigmul_mpz.py": "ffb6d20222a7661de31fca03cd6ceff6e41f15a6be5b7eccb9f2e895181fe498"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.6278,
+          "samples_s": [
+            0.6006,
+            0.6411,
+            0.6346,
+            0.6193,
+            0.6278
+          ],
+          "peak_rss_kib": 12864
+        },
+        "pypy": {
+          "median_s": 0.3733,
+          "samples_s": [
+            0.3759,
+            0.3563,
+            0.3735,
+            0.3733,
+            0.3446
+          ],
+          "peak_rss_kib": 185664
+        },
+        "pys-int": {
+          "median_s": 1.1735,
+          "samples_s": [
+            1.1667,
+            1.1735,
+            1.2156,
+            1.166,
+            1.2704
+          ],
+          "peak_rss_kib": 26836
+        },
+        "pys-mpz": {
+          "median_s": 1.195,
+          "samples_s": [
+            1.195,
+            1.1788,
+            1.1247,
+            1.2791,
+            1.3797
+          ],
+          "peak_rss_kib": 26404
+        }
+      }
+    },
+    "dectext": {
+      "argument": "400000",
+      "checksum": "71200000",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "dectext.py": "3f6b5ffe3befab37234bc33d777dff94e9d8910e68e47902000d1d4bdcabb916",
+        "dectext_mpz.py": "f4273f4039ce5e353ced427459e3dc1df1ea292cfabe660607c55d2d2cebbb0d"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.7246,
+          "samples_s": [
+            0.6845,
+            0.8029,
+            0.7246,
+            0.7912,
+            0.6798
+          ],
+          "peak_rss_kib": 12864
+        },
+        "pypy": {
+          "median_s": 1.001,
+          "samples_s": [
+            1.0812,
+            0.9968,
+            1.0266,
+            1.001,
+            0.9953
+          ],
+          "peak_rss_kib": 190660
+        },
+        "pys-int": {
+          "median_s": 3.0464,
+          "samples_s": [
+            3.0443,
+            3.1382,
+            3.0612,
+            3.0464,
+            2.7948
+          ],
+          "peak_rss_kib": 36112
+        },
+        "pys-mpz": {
+          "median_s": 2.1633,
+          "samples_s": [
+            2.1098,
+            2.2329,
+            2.2125,
+            2.1119,
+            2.1633
+          ],
+          "peak_rss_kib": 35924
+        }
+      }
+    },
+    "modpow": {
+      "argument": "3000",
+      "checksum": "1815196400",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "modpow.py": "e48876615348541c466a342a7d981a4003ed2f9f63aa2f01bd139dcce0e71674",
+        "modpow_mpz.py": "d5e59e4acb02784545d3c4f45b42734f9fc2bc260685b84884443d7cc8f525d0"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.8169,
+          "samples_s": [
+            0.7722,
+            0.8054,
+            0.8537,
+            0.8669,
+            0.8169
+          ],
+          "peak_rss_kib": 12864
+        },
+        "pypy": {
+          "median_s": 0.5291,
+          "samples_s": [
+            0.5291,
+            0.514,
+            0.5623,
+            0.515,
+            0.5389
+          ],
+          "peak_rss_kib": 190360
+        },
+        "pys-int": {
+          "median_s": 1.3169,
+          "samples_s": [
+            1.2861,
+            1.4352,
+            1.3845,
+            1.2113,
+            1.3169
+          ],
+          "peak_rss_kib": 36800
+        },
+        "pys-mpz": {
+          "median_s": 1.1607,
+          "samples_s": [
+            1.1607,
+            1.2962,
+            1.1387,
+            1.1593,
+            1.191
+          ],
+          "peak_rss_kib": 35972
+        }
+      }
+    },
+    "containers": {
+      "argument": "1000000",
+      "checksum": "475633788",
+      "checksums_agree": true,
+      "sources_sha256": {
+        "containers.py": "e3e42c4a15eadeba050710fa1dd00d76e7e969baadb43fdfefc71a07378f75b8",
+        "containers_mpz.py": "858232dcbad68e90e241a2fcecafb8cd3609d9045e96b5f4b48e17ecaac4071a"
+      },
+      "variants": {
+        "cpython": {
+          "median_s": 0.4722,
+          "samples_s": [
+            0.4308,
+            0.4722,
+            0.5783,
+            0.4582,
+            0.6346
+          ],
+          "peak_rss_kib": 56604
+        },
+        "pypy": {
+          "median_s": 0.7127,
+          "samples_s": [
+            0.7216,
+            0.6951,
+            0.6367,
+            0.7127,
+            0.7949
+          ],
+          "peak_rss_kib": 231632
+        },
+        "pys-int": {
+          "median_s": 1.5557,
+          "samples_s": [
+            1.5169,
+            1.5557,
+            1.5784,
+            1.7339,
+            1.4801
+          ],
+          "peak_rss_kib": 129656
+        },
+        "pys-mpz": {
+          "median_s": 0.6921,
+          "samples_s": [
+            0.71,
+            0.7388,
+            0.6431,
+            0.6914,
+            0.6921
+          ],
+          "peak_rss_kib": 101528
+        }
+      }
+    }
+  }
+}

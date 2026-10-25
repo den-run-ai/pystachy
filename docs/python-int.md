@@ -90,7 +90,7 @@ normal source/package resource discovery.
 | Dynamic Any and reflection | Combined opt-in rejected; the opt-in corpus replay records each fixture's rejection in `tools/dynany_optin_exceptions.json`. Callbacks, type metadata and dynamic dispatch still need integration. |
 | String limits | Inherits the fixed 4,300-digit backend limit; no configurable `sys.set_int_max_str_digits`. |
 | Name resolution | Rebinding rewritten builtins, star imports, builtin import aliases and match patterns are rejected in opted-in modules. |
-| Performance | No speed or memory improvement claim; wrapper costs and decimal conversion need measurement. |
+| Performance | No speed or memory improvement claim. [Measured](../bench/integers/README.md) against CPython and PyPy: int64-only loops run 15–72× slower than default int64 (every value is a wrapper; overflow is detected by a caught `OverflowError`), and promoted values up to 2.3× slower than explicit mpz. |
 
 The [test provenance](../tests/upstream/python-int.md) distinguishes selected
 adapted CPython assertions from a complete upstream test run. Passing this suite
