@@ -2510,8 +2510,8 @@ class Gen:
     def uorders(self, a: str, b: str) -> bool:
         return union_arithmetic_uorders(self, a, b)
 
-    def ucmp(self, op: str, a: Val, b: Val) -> Val:
-        return union_arithmetic_ucmp(self, op, a, b)
+    def ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
+        return union_arithmetic_ucmp(self, op, a, b, nonnull)
 
     def join_hint(self, t: str, vt: str) -> bool:
         return unions_join_hint(self, t, vt)

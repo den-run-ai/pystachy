@@ -167,7 +167,8 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
   native `bytearray` and binary filesystem I/O remain unsupported. `io.BytesIO` is supported.
   See the [class rules](docs/language/typing.md#single-inheritance).
 - Dynamic `Any` remains experimental and opt-in. Unsupported cross-type comparison bodies
-  can still skip user code, including bodies that create missing instance fields;
+  can still skip user code outside the proven operation surface; finite missing-field
+  comparison writes now preserve their effects, storage and aliases. The
   supported paths are listed in the [comparison acceptance matrix](docs/dynamic-any.md#operations).
   Numeric identity still has limitations at some typed storage boundaries. Read the
   [dynamic contract and deviations](docs/dynamic-any.md#deviations) before enabling it.

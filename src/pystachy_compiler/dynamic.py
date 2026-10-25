@@ -18,7 +18,7 @@ from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import JSONANY, METHODS, NONEVAR, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
 from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
@@ -147,6 +147,7 @@ def gen_dyn_class_type(self, c: str) -> str:
     dt.items = [Val(str(DK_OBJ), "int"), Val(str(self.ocls[c]), "int"), Val(str(flags), "int")]
     self.consts.append(dt)
     self.dynclasses.append(c)
+    comparison_storage(self, c)
     return name
 
 
@@ -247,6 +248,116 @@ def comparison_field_walk(n: Node, aliases: list[str], out: list[str]) -> bool:
         if not comparison_field_walk(kid, aliases, out):
             return False
     return True
+
+
+def comparison_write_targets(n: Node, aliases: list[str], out: list[str]) -> None:
+    # Only the attribute itself is stored: writing other.items[i] first reads
+    # items and does not create that missing attribute.
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s in aliases:
+        if n.s not in out:
+            out.append(n.s)
+    elif n.kind in ["tuple", "list"]:
+        for kid in n.kids:
+            comparison_write_targets(kid, aliases, out)
+
+
+def comparison_writes(n: Node, aliases: list[str], out: list[str]) -> None:
+    if n.kind in ["assign", "annassign", "augassign", "for", "withitem"]:
+        targets = n.kids[:-1] if n.kind == "assign" else n.kids[1:] if n.kind == "withitem" else n.kids[:1]
+        for target in targets:
+            comparison_write_targets(target, aliases, out)
+    for kid in n.kids:
+        comparison_writes(kid, aliases, out)
+
+
+def comparison_storage_key(self, ci: ClassInfo) -> str:
+    if ci.origin == "":
+        return self.stable(ci.name)
+    # Constructor signatures that share one original layout must discover its
+    # extra slots together, even when specialization deduplicates those calls.
+    fields = [a + ":" + self.stable(retoken(ci.ftypes[a], ci.name, "@")) for a in ci.fields if a not in ci.fextra]
+    return "layout:" + ci.origin + "[" + ",".join(fields) + "]"
+
+
+def comparison_reserve_fields(self, ci: ClassInfo) -> None:
+    prefix = "cmpfield:" + comparison_storage_key(self, ci) + "."
+    for key in self.hints:
+        if key.startswith(prefix):
+            name = key[len(prefix):]
+            if name not in ci.ftypes and name not in ci.methods and not self.hints[key].startswith("!"):
+                # None alone has no native value slot. Keep its precise hint
+                # for later optional discovery, while an unwidened slot boxes it.
+                self.add_field(ci, name, DYN if self.hints[key] == "None" else self.hints[key])
+                ci.fextra[name] = True
+
+
+def comparison_record_write(self, name: str, t: str) -> None:
+    key = "cmpwrite:" + name
+    old = self.newhints.get(key, self.hints.get(key, ""))
+    joined = t if old == "" else self.union_type([old, t]) if not old.startswith("!") else old
+    if joined != self.hints.get(key, ""):
+        self.newhints[key] = joined
+
+
+def comparison_storage(self, candidate: str = "") -> None:
+    # A finite set of literal comparison writes can reserve ordinary native
+    # fields before flow analysis and object layouts are frozen. No object is
+    # copied and no existing field changes type. Each reserved field starts
+    # unassigned, so reads/reflection before the first store still see absence.
+    # Gather before adding fields: one candidate's additions must not become
+    # another method's evidence. Differing values use a closed union of their
+    # original layouts; never widen/copy an aliased container's item storage.
+    if candidate == "":
+        for ci in self.classes.values():
+            comparison_reserve_fields(self, ci)
+        return
+    fields: dict[str, str] = {}
+    for key in self.hints:
+        if key.startswith("cmpwrite:"):
+            fields[key[len("cmpwrite:"):]] = "" if self.hints[key].startswith("!") else self.hints[key]
+    for own in self.classes.values():
+        if not self.dyn_policy(own.node.line) or own.name in self.tmpl:
+            continue
+        for name in XCMP:
+            if name not in own.methods:
+                continue
+            method = own.methods[name]
+            if len(method.params) != 2 or method.deco != "" or method.bad != "":
+                continue
+            canonical = method.ptypes[1] if method.ptypes[1] in self.classes else own.name
+            layout = comparison_layout(self.classes[canonical])
+            observed: list[str] = []
+            body = method.node.kids[2]
+            if not comparison_fields(body, method.params[1], observed) or not all(a in layout for a in observed):
+                continue
+            written: list[str] = []
+            comparison_writes(body, comparison_aliases(body, method.params[1]), written)
+            for a in written:
+                canon = self.classes[canonical]
+                if a not in canon.ftypes or a in canon.methods or a in canon.fextra:
+                    continue
+                t = layout[a]
+                if a not in fields:
+                    fields[a] = t
+                elif fields[a] != "" and fields[a] != t:
+                    joined = self.union_type([fields[a], t])
+                    fields[a] = "" if joined.startswith("!") else joined
+    for c in [candidate]:
+        ci = self.classes[c]
+        if ci.name in self.tmpl or ci.exc != "" or ci.slotlimit or ci.name in self.nts or "frozen" in ci.dcopts or ci.bad != "":
+            continue
+        for a in fields:
+            t = fields[a]
+            if t == "" or (a in ci.ftypes and a not in ci.fextra) or a in ci.methods:
+                continue
+            key = "cmpfield:" + comparison_storage_key(self, ci) + "." + a
+            previous = self.hints.get(key, "")
+            if previous.startswith("!"):
+                continue  # an incompatible layout is terminal, never narrowed on a retry
+            if previous != "" and previous != t:
+                t = self.union_type([previous, t])  # reserved layouts only grow across retries
+            if self.hints.get(key, "") != t:
+                self.newhints[key] = t
 
 
 def comparison_reads(n: Node, parameter: str, missing: list[str]) -> bool:
@@ -382,6 +493,9 @@ def comparison_sets(a: str, b: str) -> bool:
 
 
 def comparison_pair(a: str, b: str, op: str, classes: dict[str, ClassInfo], named: dict[str, bool]) -> bool:
+    if op in ["is", "is not"]:
+        ts = (umembers(unopt(a)) if is_union(unopt(a)) else [unopt(a)]) + (umembers(unopt(b)) if is_union(unopt(b)) else [unopt(b)])
+        return all(is_list(t) or is_dict(t) or t in classes for t in ts)
     if op in ["==", "!="] and is_list(a) and is_list(b) and comparison_list_pair(elem(a), elem(b), classes, named):
         return True
     if a == "" or b == "" or comparison_has_object(a, classes) or comparison_has_object(b, classes):
@@ -422,6 +536,13 @@ def comparison_operations(n: Node, receiver: str, aliases: list[str], different:
         return False  # a nested receiver binding has no proven field layout
     if n.kind == "def" and (n.s == "len" or any(p.s == "len" for p in n.kids[0].kids) or bind_count(n.kids[2].kids, "len") > 0):
         length = False
+    if n.kind == "assign" and len(n.kids) == 2:
+        target = n.kids[0]
+        if target.kind == "attr" and target.kids[0].kind == "name" and target.kids[0].s in aliases and target.s in different:
+            actual = peer.get(target.s, "")
+            value = comparison_value(n.kids[1], receiver, aliases, own, peer, classes, length)
+            if is_union(actual) and value in umembers(actual):
+                return True  # the union keeps the stored value's native layout
     if n.kind == "cmp":
         ts = [comparison_value(kid, receiver, aliases, own, peer, classes, length) for kid in n.kids]
         ops = n.s.split(",")
@@ -1803,7 +1924,7 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         # including stable aliases and captured operands, before specialization.
         missing = [a for a in fields if a not in ci.ftypes and a not in ci.methods]
         body = method.node.kids[2]
-        return len(missing) > 0 and all(a in self.classes[canonical].ftypes for a in missing) and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or a in compatible for a in fields) and comparison_reads(body, method.params[1], missing)
+        return len(missing) > 0 and all(a in self.classes[canonical].ftypes for a in missing) and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods and all(a in missing or a in compatible for a in fields) and (ci.slotlimit or "frozen" in ci.dcopts or comparison_reads(body, method.params[1], missing))
     if key.startswith("get."):
         a = key[4:]
         return a in ci.ftypes or (a in ci.methods and (ci.methods[a].prop or (ci.methods[a].deco == "" and ci.methods[a].bad == "")))  # (a method's: the bound method)
@@ -2211,6 +2332,12 @@ def gen_dyn_getattr(self, o: Val, a: str) -> Val:
 
 def gen_dyn_setattr(self, o: Val, a: str, v: Val) -> None:
     # o.a = v for a dyn o: a field of its class, which takes v as its type does
+    if self.drying == 0 and (self.xtry != "" or (self.curfn.cls != "" and self.curfn.name in XCMP and self.dyn_policy(self.curfn.node.line))):
+        # The actual RHS has already been typed, including helper/computed
+        # results. Record its layout before an unboxable typed value declines
+        # this generic body; the next pass can reserve a native field even if
+        # the canonical class never declared that literal attribute.
+        comparison_record_write(self, a, v.t)
     self.dyn_call(self.dyn_dispatcher("set." + a, [DYN, DYN], "None", a), [o, self.dyn_box(v)])
 
 

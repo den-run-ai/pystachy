@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
 from src.pystachy_compiler.diagnostics import shown, where
-from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties
+from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_reserve_fields
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import (
@@ -101,6 +101,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     if c in self.cnts:
         self.nts[name] = True  # (namedtuple()'s, whose objects are NamedTuples)
     self.scan_fields(s, fi, init.node.kids[2].kids, {})
+    comparison_reserve_fields(self, s)  # late-created specialization, before layout
     if len(lits) > 0:
         s.lits = lits
         self.const_fields(s, init)
@@ -124,7 +125,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     self.template_instances += 1
     t.specs[key] = name
     self.specdone[doing] = name
-    shown_ts = [typestr(s.ftypes[x]) for x in s.fields if x not in t.ftypes]
+    shown_ts = [typestr(s.ftypes[x]) for x in s.fields if x not in t.ftypes and x not in s.fextra]
     if c in self.tparams:
         shown_ts = []  # (a generic class's: its type variables', C[int, str])
         for x in self.tparams[c]:

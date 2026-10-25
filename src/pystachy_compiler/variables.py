@@ -22,7 +22,8 @@ from src.pystachy_compiler.analysis import (
     typed_default,
     walrus_values,
 )
-from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, dynamic_program, where
+from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, dynamic_program, where
+from src.pystachy_compiler.dynamic import XCMP, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
@@ -1867,6 +1868,13 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.err(t.s)
     if k in UNSUPPORTED:
         self.err(UNSUPPORTED[k])
+    if k == "cmpmissing":
+        # A fixed-slot comparison operand cannot acquire this field. The RHS
+        # has already run; evaluate the target and raise at the actual store.
+        o = self.expr(t.kids[0], "")
+        if not self.frozen_store(o, t.kids[1].s):
+            self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{t.kids[1].s}'"))
+        return
     if starred_target(t):
         self.star_assign(t, v)
     elif k == "name":
@@ -1885,6 +1893,18 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if self.is_prop(o.t, t.s):
             self.prop_store(o, t.s, v)
             return
+        # The native same-class comparison helper may be compiled before its
+        # Any adapter. Discover a wholly new field here from the actual RHS,
+        # without changing any ordinary field or marking the body unsupported.
+        if o.t in self.classes and self.drying == 0 and self.curfn.cls != "" and self.curfn.name in XCMP and self.dyn_policy(self.curfn.node.line):
+            ci = self.classes[o.t]
+            if t.s not in ci.ftypes and t.s not in ci.methods and not ci.slotlimit and o.t not in self.nts and "frozen" not in ci.dcopts and ci.exc == "":
+                key = "cmpfield:" + comparison_storage_key(self, ci) + "." + t.s
+                ty = v.t
+                if not self.hints.get(key, "").startswith("!") and self.hints.get(key, "") != ty:
+                    self.newhints[key] = ty
+                    comparison_record_write(self, t.s, ty)
+                    raise Rejoin()
         self.glue_field(o, t.s)
         self.none_field_store(o, t.s, v)
         p = self.field(o, t.s, True)
