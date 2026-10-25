@@ -30,6 +30,7 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.utils import (
+    promoting_int,
     bool_for_int,
     elem,
     empty_result_type,
@@ -1642,6 +1643,8 @@ def gen_ival(self, n: Node, none: str = "") -> Val:
     # an index, slice bound or range() argument: an int, or a bool used as one (as CPython does);
     # an int | None that is None raises none ("Kind: text")
     v = self.expr(n, "int")
+    if v.t in self.classes and promoting_int(self.classes[v.t], self.libdir):
+        v = self.method(v, "_subscript", [])
     if is_sopt(v.t) and none != "":
         v = self.unwrap(v, none)
     return self.coerce(self.as_int(v), "int")

@@ -20,6 +20,10 @@ counts: dict[mpz, int] = {x: 2}
 print(counts[mpz(str(x))])          # 2
 ```
 
+The separate [`python-int` prototype](python-int.md) experiments with transparent
+promotion in opted-in modules; its scope and remaining boundaries are documented
+there. The explicit API below is unchanged.
+
 ## Initial API
 
 | Operation | Accepted form |

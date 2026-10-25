@@ -51,6 +51,7 @@ from src.pystachy_compiler.analysis import (
 )
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, LINES, MODDUNDERS, RAW, dynamic_pragma, fail
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
+from src.pystachy_compiler.integer_mode import integer_parse, integer_pragma
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.parser import Parser
@@ -289,6 +290,13 @@ class Loader:
         self.docsets: list[Node] = []
         self.docsetm: list[Mod] = []
 
+    def integer_source(self, src: str, line: int) -> Node:
+        if integer_pragma(src):
+            for name in ["_pystachy_int", "mpz"]:
+                if len(self.dirs) == 0 or self.modpath(name) != self.dirs[-1] + "/" + name + ".py":
+                    fail("python-int prototype requires the unshadowed shipped " + name + " module", line)
+        return integer_parse(src, line)
+
     def program(self, path: str, src: str) -> list[Mod]:
         # the main program and the modules it imports, in the order their code may first run.
         # A program owns one file-index space, including its dynamic-Any opt-ins.
@@ -300,7 +308,7 @@ class Loader:
         if dynamic_pragma(src):
             DYNFILES[len(FILES)] = True
         FILES.append(path)
-        m.body = Parser(Lexer(src, 1).file()).module()
+        m.body = self.integer_source(src, 1)
         tb_import(m.body)
         cm_methods(m.body, cm_names(m.body))
         self.prescan(m)
@@ -637,7 +645,7 @@ class Loader:
         FILES.append(path[2:] if path.startswith("./") else path)
         if dynamic_pragma(src):
             DYNFILES[k] = True
-        self.parsed[path] = Parser(Lexer(src, k * LINES + 1).file()).module()
+        self.parsed[path] = self.integer_source(src, k * LINES + 1)
         tb_import(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
         return self.parsed[path]

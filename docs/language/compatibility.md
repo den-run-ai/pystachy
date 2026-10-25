@@ -26,6 +26,9 @@ In these cases a program can compile but behave differently from CPython.
 
   Explicit [`mpz.mpz`](../mpz.md) values provide a separate arbitrary-precision
   arithmetic path. They do not automatically replace or promote ordinary `int`.
+  The separate [`# pystachy: python-int` prototype](../python-int.md) opts one
+  module into promotion with explicit remaining limits; default code and native
+  library/FFI/JSON boundaries retain the checked-int64 contract.
 
 - The native JSON prototype also rejects integer tokens outside signed 64-bit
   range with `OverflowError`. Its decoder and encoder allow at most 256 nested

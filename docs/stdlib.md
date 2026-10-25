@@ -24,7 +24,9 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 
 The non-stdlib [`mpz` module](mpz.md) offers explicit arbitrary-precision integers
 through a subset class and a packed-limb C backend. It does not change ordinary
-`int`, JSON parsing or native integer interfaces.
+`int`, JSON parsing or native integer interfaces. A separate opt-in
+[promoting integer prototype](python-int.md) reuses this backend for selected
+ordinary integer operations; it does not retype existing library/JSON interfaces.
 
 The library reference is the authority for each module's limits. For example, `difflib`
 supports matching strings and lists of strings, including `get_grouped_opcodes()`,

@@ -66,6 +66,7 @@ def int_digits(r: float) -> str:
 
 class Parser:
     def __init__(self, toks: list[Tok]):
+        self.exact_ints = False  # opted-in integer frontend, including nested f-strings
         self.toks = toks
         self.p = 0
         self.early = True  # only a docstring and from __future__ imports so far
@@ -1789,7 +1790,7 @@ class Parser:
         if k == "id":
             return mk("name", t.text, line, [])
         if k == "int" or k == "float" or k == "complex":
-            return mk(k, t.text, line, [])
+            return mk(k, "0" + t.big if self.exact_ints and t.big != "" else t.text, line, [])
         if k == "...":
             return mk("ellipsis", "", line, [])
         if k == "await":
@@ -2070,6 +2071,7 @@ class Parser:
         if cut > 0 and toks[cut - 1].kind == ")":
             toks = toks[: cut - 1] + toks[cut:]
         sub = Parser(toks)
+        sub.exact_ints = self.exact_ints
         sub.nest = self.nest
         sub.extra = self.extra + 32  # (33 levels in CPython's parser, one of them the deeper() of the expression)
         sub.outer = self.outer + [self.toks]

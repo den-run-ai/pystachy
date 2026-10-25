@@ -31,8 +31,12 @@ def lib_source(line: int, libdir: str, filename: str) -> bool:
     return libdir != "" and FILES[line // LINES] == (path[2:] if path.startswith("./") else path)
 
 
+def promoting_int(ci: ClassInfo, libdir: str) -> bool:
+    return (ci.name == "_pystachy_int$integer" or ci.name.startswith("_pystachy_int$integer-")) and lib_source(ci.node.line, libdir, "_pystachy_int.py")
+
+
 def opaque_class(ci: ClassInfo, libdir: str) -> bool:
-    return ci.mod in OPAQUE or (ci.mod == "mpz" and lib_source(ci.node.line, libdir, "mpz.py"))
+    return ci.mod in OPAQUE or (ci.mod == "mpz" and lib_source(ci.node.line, libdir, "mpz.py")) or promoting_int(ci, libdir)
 
 
 def codec(e: str) -> int:

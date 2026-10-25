@@ -7,6 +7,7 @@ from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.utils import (
     elem,
+    promoting_int,
     is_callable,
     is_dict,
     is_fn,
@@ -131,6 +132,10 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
+    if t in self.classes and promoting_int(self.classes[t], self.libdir) and (v.t == "int" or v.t == "bool"):
+        result = self.new_obj(t)
+        self.call_fn(self.classes[t].methods["__init__"], [result, v], [])
+        return result
     if dynamic_program() and v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) and ((is_sopt(t) and unopt(t) == v.t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))):
         captured = Val(v.v, v.t).identity(v)
         captured.idfrom = self.dyn_box(v).v

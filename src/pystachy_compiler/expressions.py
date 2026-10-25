@@ -36,6 +36,7 @@ from src.pystachy_compiler.specs import (
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_in
 from src.pystachy_compiler.utils import (
     opaque_class,
+    promoting_int,
     atomic_dict,
     atomic_list,
     bool_for_int,
@@ -1897,6 +1898,8 @@ def gen_slice_bound(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
     if x.kind == "omit":
         return "-9223372036854775808"
     bv = self.expr(x, "int")
+    if bv.t in self.classes and promoting_int(self.classes[bv.t], self.libdir):
+        bv = self.method(bv, "_bound", [])
     if bv.t == "None":
         return "-9223372036854775808"
     if fold and bv.t == "bool" and (bv.v == "true" or bv.v == "false"):
@@ -1920,6 +1923,8 @@ def gen_slice_step(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
     if x.kind == "omit":
         return "1"
     bv = self.expr(x, "int")
+    if bv.t in self.classes and promoting_int(self.classes[bv.t], self.libdir):
+        bv = self.method(bv, "_bound", [])
     if bv.t == "None":
         return "1"
     if fold and bv.t == "bool" and (bv.v == "true" or bv.v == "false"):
@@ -2495,6 +2500,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
         ts = targs(t) if is_tuple(t) else self.classes[t].fields  # (a NamedTuple's fields)
         c = self.const_of(n.kids[1], {}, True) if self.lit_context() else None
         i = self.expr(c if c is not None and c.kind in ["int", "unary", "True", "False"] else n.kids[1], "int")
+        if i.t in self.classes and promoting_int(self.classes[i.t], self.libdir):
+            i = self.method(i, "_subscript", [])
         if i.t == "bool" and (i.v == "true" or i.v == "false"):
             i = Val("1" if i.v == "true" else "0", "int")
         if is_tuple(t) and (i.t == "int" or i.t == "bool") and i.v.startswith("%"):
@@ -3062,6 +3069,8 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     # (two specializations of one class template are one class to CPython)
     same = a.t == b.t or (self.tmpl_of(a.t) != "" and self.tmpl_of(a.t) == self.tmpl_of(b.t))
     sh = shown if shown != "" else op
+    if op == "**" and a.t in self.classes and promoting_int(self.classes[a.t], self.libdir):
+        return self.method(a, "__pow__", [self.vnode(b)])
     if op == "**":
         # A builtin numeric exponent cannot supply a user reflected method or subclass
         # priority. Keep object/object and reflected power outside this bounded dispatch.
@@ -3629,6 +3638,12 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
     return Val(self.phi(ph), "bool")
 
 def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
+    if op == "*" and (a.t == "str" or a.t == "bytes" or is_list(a.t) or is_tuple(a.t)) and b.t in self.classes and promoting_int(self.classes[b.t], self.libdir):
+        b = self.method(b, "_index", [])
+    elif op == "*" and (b.t == "str" or b.t == "bytes" or is_list(b.t) or is_tuple(b.t)) and a.t in self.classes and promoting_int(self.classes[a.t], self.libdir):
+        a = self.method(a, "_index", [])
+    if b.t in self.classes and promoting_int(self.classes[b.t], self.libdir) and (a.t == "int" or a.t == "bool"):
+        a = self.coerce(a, b.t)
     if a.t == "int" and b.t == "int" and a.lit and b.lit and dynamic_program():
         folded = folded_int(op, a.v, b.v)
         if folded != "":
@@ -3925,6 +3940,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     return True
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
+    if op in ["==", "!=", "<", "<=", ">", ">="] and b.t in self.classes and promoting_int(self.classes[b.t], self.libdir) and (a.t == "int" or a.t == "bool"):
+        a = self.coerce(a, b.t)
     if a.t == "dyn" or b.t == "dyn":
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
