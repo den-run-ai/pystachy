@@ -2,7 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
-from src.pystachy_compiler.diagnostics import shown, where
+from src.pystachy_compiler.diagnostics import Rejoin, shown, where
+from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
@@ -63,6 +64,7 @@ from src.pystachy_compiler.utils import (
     kw_names,
     kw_types,
     literal_format,
+    numeric_identity,
     rename,
     selem,
     takes_self,
@@ -1314,7 +1316,13 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         elif d.s.startswith("__") and d.s.endswith("__"):
             bad = f"@property on the special method {d.s} is not supported"
         elif d.kids[1].kind == "noann" and d not in held:
-            bad = f"property {d.s} needs a return annotation"
+            if self.dyn_policy(d.line) and not f.gen:
+                # Opt-in getters infer through the same function instances as
+                # ordinary methods. They had no accepted implicit None ABI to
+                # preserve, so a recursive return must be genuinely inferred.
+                f.void_default = False
+            else:
+                bad = f"property {d.s} needs a return annotation"
     if f.acc != "" and (len(ps) != (2 if f.acc == "setter" else 1) or len([p for p in ps if p.kind != "param"]) > 0 or f.npos < len(ps)):
         bad = f"property {f.acc} {d.s} must take only self" + (" and the value, by position" if f.acc == "setter" else "")
     if not inherited and f.deco == "classmethod" and bad == "" and ps[0].kind == "param":
@@ -2684,6 +2692,16 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
         self.err(f"'{shown(o.t)}' object has no attribute '{name}'")
     extra = " and no __dict__ for setting new attributes" if store else ""
     self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'{extra}")
+    if name in ci.fextra and ci.tag != 0:
+        overrides = [sub for sub in self.classes.values() if sub.name != ci.name and self.derives(sub.name, ci.name) and (name in sub.methods or (name in sub.ftypes and name not in sub.fextra))]
+        if len(overrides) > 0:
+            # Exact comparison arms retain the actual operand's layout. A new
+            # base-typed access cannot silently use the hidden prefix when a
+            # descendant already has a different attribute at its own offset.
+            tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int"))
+            for override_ci in overrides:
+                self.guard(self.num_cmp("==", tag, Val(str(override_ci.tag), "int")).v,
+                           f"TypeError: comparison-created attribute '{name}' of {short(ci.name)} is shadowed by {short(override_ci.name)}; narrow to the concrete class")
     if name == "__slots__" and name not in ci.fpos:
         if store:
             self.err("rebinding __slots__ through an instance is not supported")
@@ -2723,7 +2741,7 @@ def gen_fgep(self, o: Val, i: int) -> str:
     # Keep the declared object layout and member type until lowering. The address
     # remains in IFn.fa so native and machine memory operations have identical effects.
     ci = self.classes[o.t]
-    t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "bool"
+    t = ci.ftypes[ci.fields[i]] if i < len(ci.fields) else "dyn" if i in ci.fbox.values() else "bool"
     op = Ins("field.addr", "*" + t, "")
     op.k = i
     op.a = [o]
@@ -2737,6 +2755,7 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     ci = self.classes[o.t]
     r = ""
     bad = ""
+    box = self.fgep(o, ci.fbox[name]) if name in ci.fbox and numeric_identity(p.t) else ""
     if name == "__slots__" and name not in ci.fpos:
         if ci.exc != "":
             # Exceptions use their runtime class identity rather than ordinary
@@ -2765,25 +2784,34 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
             # fallback globals still belong to the classes that define those defaults.
             tag = self.mem_load(Val(self.fgep(o, ci.fpos[" class"]), "*int")).v
             cv = fv
+            cb = box
             assigned = own
             for sub in self.classes.values():
                 if sub.tag != 0 and self.derives(sub.name, ci.name) and name in sub.fdefault:
                     match = self.num_cmp('==', Val(tag, "int"), Val(str(sub.tag), "int")).v
-                    if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]):
+                    if sub.name + "." + name in self.cvars or not is_const(sub.fdefault[name]) or box != "":
                         self.class_default(sub, name)
                         dv = self.mem_load(Val(sub.fglob[name], "*" + p.t))
                     else:
                         dv = self.coerce(self.expr(sub.fdefault[name], p.t), p.t)
                     cv = Val(self.select(match, dv, cv), p.t)
+                    if box != "":
+                        cb = self.select(match, Val(sub.fglob[name] + ".box", "%ptr"), Val(cb, "%ptr"))
                     assigned = self.scalar('or', [Val(assigned, 'bool'), Val(match, 'bool')])
             bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
             r = self.select(own, fv, cv)
+            if box != "":
+                box = self.select(own, Val(box, "%ptr"), Val(cb, "%ptr"))
         else:
             self.class_default(ci, name)
             r = self.select(own, fv, self.mem_load(Val(ci.fglob[name], "*" + p.t)))
             if is_opt(p.t) or is_union(p.t):
                 self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
-            return Val(r, p.t)
+            v = Val(r, p.t)
+            if box != "":
+                box = self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr"))
+                self.dyn_id_read(v, box)
+            return v
     if name in ci.fflag and name not in ci.fsure:
         f = self.fgep(o, ci.fflag[name])
         if bad == "":
@@ -2818,16 +2846,35 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
         r = self.mem_load(Val(p.v, "*" + p.t)).v
     if is_opt(p.t) or is_union(p.t):
         self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
-    return Val(r, p.t)
+    v = Val(r, p.t)
+    if box != "":
+        self.dyn_id_read(v, box)
+    return v
 
 def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
     ci = self.classes[o.t]
+    if name in ci.fextra and self.drying == 0 and v.t != "dyn":
+        # Only newly reserved storage may widen here. Keep each concrete value
+        # whole in a closed union; widening a list's item type would lose aliases.
+        # A generated setter's Any input is coerced to this field, not evidence
+        # that its storage should change to Any (numeric identity boxes depend on it).
+        storage = self.field_root(ci, name)
+        key = "cmpfield:" + comparison_storage_key(self, storage) + "." + name
+        inferred = self.hints.get(key, p.t)
+        combined = self.union_type([inferred, v.t])
+        if not combined.startswith("!") and combined != inferred and not (combined == "dyn" and self.dyn_boxable(p.t) != ""):
+            if self.hints.get(key, "") != combined:
+                self.newhints[key] = combined
+                comparison_record_write(self, name, combined)
+                raise Rejoin()  # layout discovery is not a failed comparison body
     what = f"the value assigned to field '{name}' ({typestr(p.t)})" if is_opt(v.t) else ""
     # (a value of another type than an inferred field's may widen it: join_hint)
     was = self.join_at("field" if name in self.field_root(ci, name).fguess else "", self.field_key(ci, name), p.t)
     cv = self.coerce(v, p.t, what)
     self.join_at(was[0], was[1], was[2])
     self.mem_store(Val(p.v, "*" + p.t), cv)
+    if name in ci.fbox and (numeric_identity(p.t) or p.t == NONEVAR):
+        self.dyn_id_store(self.fgep(o, ci.fbox[name]), v, p.t)
     if name in ci.fflag:
         self.mem_store(Val(self.fgep(o, ci.fflag[name]), "*bool"), Val("true", "bool"))
 

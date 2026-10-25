@@ -1,0 +1,25 @@
+comparison
+operand
+contents
+left getter
+contents
+right getter
+True True
+operand
+operand
+False
+contents
+left getter
+contents
+right getter
+cleanup
+False
+comparison
+operand
+contents
+left getter
+contents
+helper first
+cleanup
+True
+[exit 0]

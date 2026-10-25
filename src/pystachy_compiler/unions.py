@@ -52,10 +52,12 @@ def gen_uop(self, v: Val, op: str) -> Val:
         return self.refl_union_str(v, "__str__")  # (each class's: reflection.py)
     if not self.value_union(v.t):
         self.err("closed reference union operations require narrowing with isinstance() first")
-    t = "bool" if op == "truth" else "str"
+    t = "bool" if op == "truth" else "int" if op == "len" else "str"
+    if op == "len":
+        self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
     end = self.label()
     ph = Ins("phi", t, "")
-    if is_opt(v.t):
+    if is_opt(v.t) and op != "len":
         arm = self.label()
         self.incoming(ph, "false" if op == "truth" else self.sconst("None"), self.cur)
         self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, arm)
@@ -69,7 +71,7 @@ def gen_uop(self, v: Val, op: str) -> Val:
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(members[i])), "int")).v, arm, nxt)
             self.place(arm)
         item = self.uget(Val(v.v, unopt(v.t)), members[i])
-        result = Val(self.truth(item), "bool") if op == "truth" else self.to_str(item)
+        result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.to_str(item)
         self.incoming(ph, result.v, self.cur)
         self.br(end)
         if nxt != "":
@@ -205,7 +207,7 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
             if self.join_hint(t, v.t):
                 return Val("undef", t)  # (see join_hint)
             self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
-        return Val(v.v, t)
+        return Val(v.v, t).identity(v)
     if src not in ms:
         bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
         if len(bases) != 1:
@@ -216,14 +218,14 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
         src = bases[0]
         v = self.coerce(v, src)
     if not is_opt(v.t):
-        return Val(self.ubox(v, src), t)
+        return Val(self.ubox(v, src), t).identity(v)
     if not none_ok:
         if self.join_hint(t, v.t):
             return Val("undef", t)  # (see join_hint)
         self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
     # an optional value: None stays null, any other value is boxed (with no branch, so that
     # convert_in can make it at the end of a block); an int | None's value is in its box
-    return Val(self.rt("pys_ubox_opt", "ptr", [f"i64 {self.utag(src)}", f"ptr {v.v}", f"i64 {1 if is_sopt(v.t) else 0}"]), t)
+    return Val(self.rt("pys_ubox_opt", "ptr", [f"i64 {self.utag(src)}", f"ptr {v.v}", f"i64 {1 if is_sopt(v.t) else 0}"]), t).identity(v)
 
 def gen_narrow_val(self, v: Val, nt: str) -> Val:
     # v, a local's value of its own type, as of the type nt a test or an assignment narrowed it

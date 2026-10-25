@@ -1,7 +1,7 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import none_display, walrus_names
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
@@ -32,6 +32,67 @@ from src.pystachy_compiler.utils import (
     typestr,
     unopt,
 )
+
+
+def gen_list_id_kind(self, t: str) -> int:
+    # A program graph opting into dynamic values preserves typed numeric item objects.
+    # The raw payload stays in its existing atomic array; identity lives in scanned storage.
+    if self.rtmode or not dynamic_program():
+        return 0
+    return 1 if t == "list[int]" else 2 if t == "list[float]" else 0
+
+
+def gen_list_identity(self, v: Val) -> Val:
+    k = self.list_id_kind(v.t)
+    if k != 0:
+        self.rt("pys_list_identity", "void", [f"ptr {v.v}", f"i64 {k}"])
+    return v
+
+
+def gen_list_item(self, o: Val, i: Val) -> Val:
+    k = self.list_id_kind(o.t)
+    if k != 0:
+        b = self.rt("pys_list_get_identity", "ptr", [f"ptr {o.v}", f"i64 {i.v}", f"i64 {k}"])
+        return self.dyn_unbox(Val(b, "dyn"), elem(o.t))
+    return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(o.t))
+
+
+def gen_list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
+    # v has already been coerced to the list's item type. Its source box must survive
+    # the store: equal payloads can name different objects, including distinct NaNs.
+    k = self.list_id_kind(o.t)
+    args = [f"ptr {o.v}"]
+    if index != "":
+        args.append(f"i64 {index}")
+    args.append("i64 " + self.to_slot(v))
+    if k != 0:
+        args.extend([f"ptr {self.dyn_box(v).v}", f"i64 {k}"])
+    symbols = {"append": "pys_list_append", "set": "pys_list_set", "insert": "pys_list_insert"}
+    identities = {"append": "pys_list_append_identity", "set": "pys_list_set_identity", "insert": "pys_list_insert_identity"}
+    self.rt(identities[method] if k != 0 else symbols[method], "void", args)
+
+
+def gen_list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
+    args = [f"ptr {o.v}", f"ptr {desc}", f"i64 {1 if maximum else 0}"]
+    k = self.list_id_kind(o.t)
+    if k != 0:
+        args.append(f"i64 {k}")
+        b = self.rt("pys_list_minmax_identity", "ptr", args)
+        return self.dyn_unbox(Val(b, "dyn"), elem(o.t))
+    return self.from_slot(self.rt("pys_list_minmax", "i64", args), elem(o.t))
+
+
+def gen_list_find(self, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
+    # Queries keep their actual numeric type; coercing a float query to an integer
+    # would lose both out-of-range behavior and its object's identity.
+    args = [f"ptr {o.v}", "i64 " + self.to_slot(v), f"ptr {self.dyn_box(v).v}",
+            f"ptr {self.sconst(self.desc(elem(o.t), '=='))}", f"ptr {self.sconst(self.desc(v.t, '=='))}",
+            f"i64 {self.list_id_kind(o.t)}"]
+    if method == "index":
+        args.extend(["i64 " + start, "i64 " + stop])
+    symbols = {"find": "pys_list_find_identity", "index": "pys_list_index_identity", "count": "pys_list_count_identity", "remove": "pys_list_remove_identity"}
+    r = self.rt(symbols[method], "void" if method == "remove" else "i64", args)
+    return Val("null", "None") if method == "remove" else Val(r, "int")
 
 
 def repr_name(c: str) -> str:
@@ -73,7 +134,7 @@ def gen_none_container(self, e: Node) -> Val:
         ks.append(k)
     if self.key_problem(kt) != "":
         self.err(self.key_problem(kt))
-    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt)}", f"i64 {len(ks)}"])
+    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt, True)}", f"i64 {len(ks)}"])
     for k in ks:
         self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(k, kt)), "i64 0"], self.key_fx(kt))
     return Val(r, self.ctype("dict", [kt, NONE_ITEM]))
@@ -212,7 +273,7 @@ def gen_star_display(self, n: Node, want: str) -> Val:
     lists: list[bool] = []
     for x in n.kids:
         v = self.star_items(x.kids[0]) if x.kind == "starred" else self.expr(x, ew)
-        if x.kind != "starred" and capture and v.idslot != "":
+        if x.kind != "starred" and (capture or self.list_id_kind(self.ctype("list", [v.t])) != 0) and v.idslot != "":
             v.idfrom = self.dyn_box(v).v
         if x.kind == "starred" and is_tuple(v.t):
             for i in range(len(targs(v.t))):
@@ -248,7 +309,7 @@ def gen_star_display(self, n: Node, want: str) -> Val:
         if lists[i]:
             self.rt("pys_list_extend", "void", [f"ptr {r}", f"ptr {parts[i].v}"])
         else:
-            self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.coerce(parts[i], et))])
+            self.list_store(Val(r, self.ctype("list", [et])), self.coerce(parts[i], et), "append")
     if n.kind == "list":
         return Val(r, self.ctype("list", [et]))
     if unopt(et) not in ["int", "float", "bool", "str", "dyn"]:
@@ -592,7 +653,7 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
         v = self.coerce(v, "dyn")
     if is_dict(xs.t):
         return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
-    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
+    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K, True)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
 
 def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> Val:
     # s.startswith((a, b, ...), start, end) (or endswith), as CPython's loop over the tuple: each
@@ -621,12 +682,28 @@ def gen_optdefault(self, d: Val, t: str) -> str:
         return self.optional(t)
     return t
 
-def gen_key_kind(self, kt: str) -> str:
+def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -> str:
     # the key kind of a new dict whose keys have type kt (runtime.c's Dict.kind): 0 int, 1 str,
     # or a tuple or object key's type descriptor (hash_desc)
-    if kt == "int" or kt == "str" or kt == "bytes":
+    # Every module in a Dynamic Any program shares the dictionary hash scheme:
+    # a later comparison may look up a native key in a differently typed dict.
+    # The marker preserves the original slots and records Python's hash/probe
+    # scheme from insertion, including deletions; equality never rehashes keys.
+    if dictionary and dynamic_program() and not self.rtmode:
+        d = self.hash_desc(kt)
+        d = d if "H" in d or "A" in d else "!" + d
+    elif kt == "int" or kt == "str" or kt == "bytes":
         return "0" if kt == "int" else "1"  # (bytes keys are hashed and compared as strs of their bytes)
-    return f"ptrtoint (ptr {self.sconst(self.hash_desc(kt))} to i64)"
+    else:
+        d = self.hash_desc(kt)
+    if built and dictionary and (d.startswith("!") or "H" in d or "A" in d):
+        # built: what empty.kind stores into a dict result that may already hold a table (a
+        # call cycle's forwarded result, filled once the cycle recurses). Keys that CPython's
+        # hash places (runtime.c's khash) gave that table KTAG at its first build: the kind
+        # keeps it, as clear() keeps it on a dict without a table, where build sets it anyway.
+        # The descriptor alone would make its lookups and insertions probe twice its slots.
+        return f"ptrtoint (ptr getelementptr (i8, ptr {self.sconst(d)}, i64 2) to i64)"
+    return f"ptrtoint (ptr {self.sconst(d)} to i64)"
 
 def gen_key_class(self, t: str) -> bool:
     # can objects of class t be dict keys and set elements: those of the program's classes, but

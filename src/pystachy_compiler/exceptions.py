@@ -9,7 +9,7 @@ from src.pystachy_compiler.analysis import (
     has_finally,
     reads,
 )
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Data, Exit, FnInfo, Ins, Try, Val
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
@@ -30,6 +30,7 @@ from src.pystachy_compiler.utils import (
     is_tuple,
     is_union,
     meet,
+    numeric_identity,
     pure_arg,
     targs,
     tname,
@@ -959,9 +960,12 @@ def gen_class_defaults(self, o: Val) -> None:
         if fl in ci.fdefault and o.t + "." + fl not in self.cvars:
             h = self.default_home(ci, fl)
             t = ci.ftypes[fl]
-            if not is_const(ci.fdefault[fl]):
+            identity = fl in ci.fbox and numeric_identity(t)
+            if not is_const(ci.fdefault[fl]) or identity:
                 self.class_default(h, fl)  # (compiled before the class statement runs)
             v = Val(self.mload(t, h.fglob[fl]), t) if fl in h.fglob else self.coerce(self.expr(ci.fdefault[fl], t), t)
+            if identity:
+                self.dyn_id_read(v, h.fglob[fl] + ".box")
             self.setfield(o, self.field(o, fl), fl, v)
 
 def gen_exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:
@@ -1376,6 +1380,8 @@ def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
     self.place(l1)
     i = Ins("icall", "exc", "")
     i.a = [Val(fp, "env")] + [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+    if dynamic_program():
+        i.a.extend([self.dyn_box(v) for v in vals if numeric_identity(v.t)])
     self.put(i, 1)
     e1 = self.cur
     self.br(l3)

@@ -1,0 +1,16 @@
+int argument True True
+typed pair True True True
+typed pair True False False
+float argument True True
+nan arguments 1 1 2
+nan arguments 2 2 1
+float argument True True
+changed global
+argument snapshot True False 7
+int argument True True
+typed pair True False False
+typed pair True True True
+int argument True True
+failing argument
+argument failure
+[exit 0]

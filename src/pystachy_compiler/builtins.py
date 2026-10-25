@@ -840,6 +840,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if is_kw(t) and name == "dict" and len(vals) == 1:
         return self.kw_dict(v)  # (a new dict: CPython's dict(kwargs) copies it too)
     if name == "len":
+        if is_union(unopt(t)) and all(m == "str" or is_list(m) or is_dict(m) for m in umembers(unopt(t))):
+            return self.uop(v, "len")
         if t in self.classes and "__len__" in self.classes[t].methods:
             self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
             return self.objlen(v)
@@ -884,8 +886,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.key_minmax2(vals, keyv, name)
     elif (name == "min" or name == "max") and len(vals) == 1 and is_list(t):
         d = self.sconst(self.desc(elem(t), ">" if name == "max" else "<"))
-        r = self.rt("pys_list_minmax", "i64", [f"ptr {v.v}", f"ptr {d}", f"i64 {1 if name == 'max' else 0}"])
-        return self.from_slot(r, elem(t))
+        return self.list_minmax(v, d, name == "max")
     elif (name == "min" or name == "max") and len(vals) == 1:
         self.err(f"'{tname(t)}' object is not iterable")
     elif name == "min" or name == "max":
@@ -895,7 +896,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         for b in vals[1:]:
             b = self.coerce(b, t)
             gt = self.cmp2(">" if name == "max" else "<", b, v)
-            v = Val(self.select(gt.v, Val(b.v, t), Val(v.v, t)), t)
+            old = v
+            v = Val(self.select(gt.v, Val(b.v, t), Val(old.v, t)), t)
+            if self.list_id_kind(self.ctype("list", [t])) != 0:
+                v.idfrom = self.select(gt.v, self.dyn_box(b), self.dyn_box(old))
         return v
     elif (name == "sorted" or name == "list") and is_list(t):
         c = v.v if fresh else self.rt("pys_list_copy", "ptr", [f"ptr {v.v}"])
@@ -1062,13 +1066,13 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
     lp.idx = [i]
     self.cbr(self.num_cmp('<', Val(i, "int"), Val(self.mload('int', xs.v), "int")).v, lb, le)
     self.place(lb)
-    item = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {xs.v}", f"i64 {i}"]), elem(xs.t))
+    item = self.list_item(xs, Val(i, "int"))
     k = self.call_key(key, item)
     if "?" in k.t:
         self.err(f"the key function returns an empty container whose type is not known here ({typestr(k.t)})")
     if self.ctype("list", [k.t]) == "list[dyn]":
         k = self.coerce(k, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-    self.rt("pys_list_append", "void", [f"ptr {ks}", "i64 " + self.to_slot(k)])
+    self.list_store(Val(ks, self.ctype("list", [k.t])), k, "append")
     self.mstore('int', f"{self.scalar('add', [Val(i, 'int'), Val('1', 'int')])}", ctr)
     self.br(lc)
     self.place(le)
@@ -1099,6 +1103,7 @@ def gen_key_minmax(self, xs: Val, key: Val, name: str) -> Val:
     et = elem(xs.t)
     lnone = self.key_none(key, et, ">" if name == "max" else "<", f"{name}()")
     best = self.alloca(et, "")
+    identity = self.alloca("dyn", "") if self.list_id_kind(xs.t) != 0 else ""
     ctr = self.alloca("int", "")
     self.mstore('int', '0', ctr)
     lc = self.label()
@@ -1117,7 +1122,7 @@ def gen_key_minmax(self, xs: Val, key: Val, name: str) -> Val:
     lp.idx = [i]
     self.cbr(self.num_cmp('<', Val(i, "int"), Val(self.mload('int', xs.v), "int")).v, lb, le)
     self.place(lb)
-    item = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {xs.v}", f"i64 {i}"]), et)
+    item = self.list_item(xs, Val(i, "int"))
     self.mstore('int', f"{self.scalar('add', [Val(i, 'int'), Val('1', 'int')])}", ctr)
     k = self.call_key(key, item)
     if "?" in k.t or k.t == "None":
@@ -1132,13 +1137,18 @@ def gen_key_minmax(self, xs: Val, key: Val, name: str) -> Val:
     self.cbr(self.truth(c), ln, lt_)
     self.place(ln)
     self.mstore(et, item.v, best)
+    if identity != "":
+        self.mstore("dyn", self.dyn_box(item).v, identity)
     self.mstore(k.t, k.v, bk)
     self.br(lt_)
     self.place(lt_)
     self.br(lc)
     self.place(le)
     self.guard(self.num_cmp('==', Val(self.mload('int', ctr), "int"), Val('0', "int")).v, f"ValueError: {name}() iterable argument is empty")
-    return self.key_none_join(Val(self.mload(et, best), et), lnone, xs, [], name)
+    result = Val(self.mload(et, best), et)
+    if identity != "":
+        result.idfrom = self.mload("dyn", identity)
+    return self.key_none_join(result, lnone, xs, [], name)
 
 def gen_key_none_join(self, r: Val, lnone: str, xs: Val, vals: list[Val], name: str) -> Val:
     # r, min() or max() by a key of list xs, of arguments vals or of iterator object xs, or where
@@ -1146,6 +1156,8 @@ def gen_key_none_join(self, r: Val, lnone: str, xs: Val, vals: list[Val], name: 
     # of the items themselves, as min() without a key finds it
     if lnone == "":
         return r
+    identity = self.list_id_kind(self.ctype("list", [r.t])) != 0
+    id1 = self.dyn_box(r).v if identity else ""
     l1 = self.cur
     lend = self.label()
     self.br(lend)
@@ -1153,20 +1165,27 @@ def gen_key_none_join(self, r: Val, lnone: str, xs: Val, vals: list[Val], name: 
     if len(vals) > 0:
         xs = Val(self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"]), self.ctype("list", [r.t]))
         for v in vals:
-            self.rt("pys_list_append", "void", [f"ptr {xs.v}", "i64 " + self.to_slot(self.coerce(v, r.t))])
+            self.list_store(xs, self.coerce(v, r.t), "append")
     if is_list(xs.t):
         d = self.sconst(self.desc(r.t, ">" if name == "max" else "<"))
-        r0 = self.from_slot(self.rt("pys_list_minmax", "i64", [f"ptr {xs.v}", f"ptr {d}", f"i64 {1 if name == 'max' else 0}"]), r.t)
+        r0 = self.list_minmax(xs, d, name == "max")
     else:
         item = made_var("__item", self.line)  # (made: it iterates the iterator itself, as min(o) does)
         r0 = self.coerce(self.reduce(name, [mk("listcomp", "gen", self.line, [item, item, self.vnode(xs)])], ""), r.t)
+    id0 = self.dyn_box(r0).v if identity else ""
     l0 = self.cur
     self.br(lend)
     self.place(lend)
     ph = Ins("phi", r.t, "")
     self.incoming(ph, r.v, l1)
     self.incoming(ph, r0.v, l0)
-    return Val(self.phi(ph), r.t)
+    result = Val(self.phi(ph), r.t)
+    if identity:
+        box = Ins("phi", "dyn", "")
+        self.incoming(box, id1, l1)
+        self.incoming(box, id0, l0)
+        result.idfrom = self.phi(box)
+    return result
 
 def gen_key_minmax2(self, vals: list[Val], key: Val, name: str) -> Val:
     # min(a, b, ..., key=f) and max(...): the key of each argument in turn, compared with the
@@ -1183,7 +1202,11 @@ def gen_key_minmax2(self, vals: list[Val], key: Val, name: str) -> Val:
         if kt == "" or "?" in kt or kt == "None":
             self.err(f"comparing the keys of {name}()'s arguments is not supported: they are {typestr(bk.t)} and {typestr(kb.t)}")
         c = self.truth(self.cmp2(">" if name == "max" else "<", kb, bk))
-        best = Val(self.select(c, self.coerce(b, t), best), t)
+        old = best
+        item = self.coerce(b, t)
+        best = Val(self.select(c, item, old), t)
+        if self.list_id_kind(self.ctype("list", [t])) != 0:
+            best.idfrom = self.select(c, self.dyn_box(item), self.dyn_box(old))
         bk = Val(self.select(c, self.coerce(kb, kt), self.coerce(bk, kt)), kt)
     return self.key_none_join(best, lnone, Val("", ""), vals, name)
 
@@ -1205,6 +1228,7 @@ def gen_key_minmax_next(self, o: Val, key: Val, name: str) -> Val:
     if "?" in k.t or k.t == "None":
         self.err(f"comparing the keys of {name}() is not supported: its key function returns {typestr(k.t)}")
     best = self.alloca(item.t, "")
+    identity = self.alloca("dyn", "") if self.list_id_kind(self.ctype("list", [item.t])) != 0 else ""
     bk = self.alloca(k.t, "")
     take = self.label()
     test = self.label()
@@ -1214,13 +1238,18 @@ def gen_key_minmax_next(self, o: Val, key: Val, name: str) -> Val:
     self.cbr(self.truth(c2), take, lc)
     self.place(take)
     self.mstore(item.t, item.v, best)
+    if identity != "":
+        self.mstore("dyn", self.dyn_box(item).v, identity)
     self.mstore(k.t, k.v, bk)
     self.mstore('bool', 'false', first)
     self.br(lc)
     self.stop_landing(c, le)
     self.place(le)
     self.guard(self.mload('bool', first), f"ValueError: {name}() iterable argument is empty")
-    return self.key_none_join(Val(self.mload(item.t, best), item.t), lnone, o, [], name)
+    result = Val(self.mload(item.t, best), item.t)
+    if identity != "":
+        result.idfrom = self.mload("dyn", identity)
+    return self.key_none_join(result, lnone, o, [], name)
 
 def gen_iter_object(self, t: str) -> bool:
     # is t a class whose __iter__ returns an iterator object (obj_iterator), not iter(xs) of a
@@ -1248,7 +1277,7 @@ def gen_anyall(self, v: Val, name: str) -> Val:
     lp.idx = [i]
     self.cbr(self.num_cmp('<', Val(i, "int"), Val(self.mload('int', v.v), "int")).v, lb, le)
     self.place(lb)
-    c = self.truth(self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {v.v}", f"i64 {i}"]), elem(v.t)))
+    c = self.truth(self.list_item(v, Val(i, "int")))
     if name == "any":
         self.cbr(c, hit, ls)
     else:
@@ -1342,7 +1371,10 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
         return self.from_slot(self.rt("pys_list_minmax", "i64", [f"ptr {lv}", f"ptr {d}", f"i64 {1 if name == 'max' else 0}"]), r.t)
     if name != "sum":
         self.guard(self.mload('bool', r.first), f"ValueError: {name}() iterable argument is empty")
-        return Val(self.mload(r.t, r.acc), r.t)
+        result = Val(self.mload(r.t, r.acc), r.t)
+        if r.identity != "":
+            result.idfrom = self.mload("dyn", r.identity)
+        return result
     if r.t == "dyn":
         return self.mem_load(Val(r.acc, "*dyn"))
     if r.isf != "":
@@ -1468,6 +1500,8 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         elif v.t == "int" or v.t == "float" or v.t == "bool" or v.t == "str":
             r.acc = self.alloca(v.t, "")
             r.first = self.alloca("bool", "")
+            if self.list_id_kind(self.ctype("list", [v.t])) != 0:
+                r.identity = self.alloca("dyn", "")
         else:
             r.collect = True
             r.acc = self.alloca(self.ctype("list", [v.t]), "")
@@ -1476,7 +1510,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.mstore(r.stt, self.coerce(result, r.stt, "math.prod() must preserve its start type").v, r.acc)
         return
     if r.collect:
-        self.rt("pys_list_append", "void", [f"ptr {self.mload('%ptr', r.acc)}", "i64 " + self.to_slot(self.coerce(v, r.t))])
+        self.list_store(Val(self.mload("%ptr", r.acc), self.ctype("list", [r.t])), self.coerce(v, r.t), "append")
         return
     if r.name != "sum":
         # the first item is kept; another where it is greater (max) or less (min) than the kept one
@@ -1489,6 +1523,8 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.cbr(self.truth(self.cmp2(">" if r.name == "max" else "<", v, kept)), take, skip)
         self.place(take)
         self.mstore(r.t, v.v, r.acc)
+        if r.identity != "":
+            self.mstore("dyn", self.dyn_box(v).v, r.identity)
         self.mstore('bool', 'false', r.first)
         self.br(skip)
         self.place(skip)
@@ -1672,7 +1708,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
             item = self.tget(v, i)
             if self.ctype("list", [et]) == "list[dyn]":
                 item = self.coerce(item, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-            self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.as_float(item) if et == "float" else item)])
+            self.list_store(Val(r, self.ctype("list", [et])), self.as_float(item) if et == "float" else item, "append")
         return Val(r, self.ctype("list", [et]))
     if v.t == "str" and (name == "sorted" or name == "min" or name == "max" or name == "join"):
         return Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
@@ -2193,6 +2229,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     bk = Val("", "")  # d.pop(k) of a bool where the keys are ints (bool_find)
     numx = Val("", "")  # xs.index(x), count(x) or remove(x) of a number x of another type
     numok = "true"  # (whether an item can equal it, see numkey)
+    idquery = Val("", "")
+    idstore = Val("", "")
     alts = Val("", "")  # s.startswith((a, b)) or endswith: the tuple whose items are tried (affix_any)
     i = 0
     for p in spec[c + 1 :].split(","):
@@ -2248,6 +2286,11 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             else:
                 v = self.consume(g, pt) if join or key == "list.extend" else self.expr(args[i], want_arg, resultsoft=key in ["list.count", "list.index", "list.remove", "vtuple.count", "vtuple.index"] and i == 0)
             self.stkkey = self.nokey
+            if self.list_id_kind(o.t) != 0 and p == "*T" and v.t in ["int", "float", "bool"]:
+                idquery = v
+                # index's later bounds may call back and rebind the query's source.
+                if m == "index" and v.idslot != "":
+                    idquery.idfrom = self.dyn_box(v).v
             if (base == "str" or base == "bytes") and (m == "startswith" or m == "endswith") and i == 0 and (is_tuple(unopt(v.t)) or v.t in self.nts):
                 v = self.ntup(v)  # (a NamedTuple: the tuple of its fields, None if it is None)
                 for x in targs(unopt(v.t)):
@@ -2308,6 +2351,12 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 pt = self.optional(T)  # xs.index(None): found where xs holds None, as == finds it
                 dt = pt
             v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
+            if self.list_id_kind(o.t) != 0 and p == "*T":
+                idstore = v
+                if idquery.t == "" and v.t in ["int", "float", "bool"]:
+                    idquery = v
+                    if m == "index" and v.idslot != "":
+                        idquery.idfrom = self.dyn_box(v).v
             av.append("i64 " + self.to_slot(v) if slot else self.rarg(v))
         elif dflt != "" and slot and pt == "dyn" and dflt == "0":
             av.append(f"i64 ptrtoint (ptr {self.rtdata('pys_dyn_none_box')} to i64)")  # (None, as a dynamic value: dynamic.py)
@@ -2352,6 +2401,15 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         # f.write(s) as a statement: what it returns, the number of s's characters, is not counted
         self.rt("pys_file_put", "void", av)
         return Val("null", "None")
+    if self.list_id_kind(o.t) != 0:
+        if m == "append" or m == "insert":
+            self.list_store(o, idstore, m, av[1][4:] if m == "insert" else "")
+            return Val("null", "None")
+        if m == "pop":
+            box = self.rt("pys_list_pop_identity", "ptr", [av[0], av[1], f"i64 {self.list_id_kind(o.t)}"])
+            return self.dyn_unbox(Val(box, "dyn"), T)
+        if m in ["index", "count", "remove"] and idquery.t != "":
+            return self.list_find(o, idquery, m, av[3][4:] if m == "index" else "", av[4][4:] if m == "index" else "")
     if kx.t != "":
         res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x)
     else:
@@ -2434,7 +2492,6 @@ def gen_prod_seq(self, xs: Val, s: Val) -> Val:
     # s * x, then that * the next x, ... (PyNumber_Multiply), each a new str or list (repeated, or
     # emptied by an x < 1, after which it stays empty). For no item the result is s itself, and a
     # start that the items cannot multiply raises CPython's TypeError at the first
-    et = elem(xs.t)
     acc = self.alloca(s.t, "")
     self.mstore(s.t, s.v, acc)
     ctr = self.alloca("int", "")
@@ -2447,7 +2504,7 @@ def gen_prod_seq(self, xs: Val, s: Val) -> Val:
     i = self.mload('int', ctr)
     self.cbr(self.num_cmp('<', Val(i, "int"), Val(self.mload('int', xs.v), "int")).v, lb, le)
     self.place(lb)
-    item = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {xs.v}", f"i64 {i}"]), et)
+    item = self.list_item(xs, Val(i, "int"))
     self.mstore(s.t, self.coerce(self.prod_item(Val(self.mload(s.t, acc), s.t), item), s.t, "math.prod() must preserve its start type").v, acc)
     self.mstore('int', self.scalar('add', [Val(i, 'int'), Val('1', 'int')]), ctr)
     self.br(lc)
@@ -2550,7 +2607,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         if not is_dict(t) or "?" in t:
             t = self.ctype("dict", ["int", "int"])
             self.guessed[self.curfn.ll] = f"dict() at line {self.line} of tuples of {len(targs(et))} items makes only an empty dict, taken as {typestr(t)}: give it a type first, as in d: dict[K, V] = dict(...)"
-        return Val(self.rt("pys_dict_new_atomic" if atomic_dict(t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(targs(t)[0])}", "i64 0"]), t)
+        return Val(self.rt("pys_dict_new_atomic" if atomic_dict(t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(targs(t)[0], True)}", "i64 0"]), t)
     kv = targs(et)
     if self.key_problem(kv[0]) != "":
         self.err(self.key_problem(kv[0]))
@@ -2559,7 +2616,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         item = made_var("__item", self.line)
         v = self.listcomp(mk("listcomp", "", self.line, [mk("name", "__item", self.line, []), item, self.vnode(v)]), "list[tuple[dyn,dyn]]")
         kv = ["dyn", "dyn"]
-    d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", "i64 0"])
+    d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"])
     self.rt("pys_dict_update_pairs", "void", [f"ptr {d}", f"ptr {v.v}"], self.key_fx(kv[0]))
     return Val(d, self.ctype("dict", kv))
 

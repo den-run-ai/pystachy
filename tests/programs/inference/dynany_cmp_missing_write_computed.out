@@ -1,0 +1,15 @@
+{} {} {}
+False False
+body
+True
+True False
+rhs
+True
+True
+ordered
+True
+True True
+True 1 True
+False {} {}
+[1] ['two', 'three']
+[exit 0]

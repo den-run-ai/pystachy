@@ -1,0 +1,9 @@
+in finally 0 [] 1
+in finally 1 [1] 1
+in finally 2 [1, 2] 2
+in finally 3 [1, 2, 3] 3
+in finally 4 [1, 2, 3, 4] 4
+in finally 5 [1, 2, 3, 4, 5] 5
+in finally 6 [1, 2, 3, 4, 5, 6] 6
+[1, 2, 3, 4, 5, 6, 7] 3 False False
+[exit 0]

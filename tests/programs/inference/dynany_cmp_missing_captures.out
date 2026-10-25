@@ -1,0 +1,34 @@
+comparison
+outer cleanup
+False
+comparison
+outer cleanup
+False
+comparison
+captured read
+inner cleanup
+outer cleanup
+True
+comparison
+captured read
+inner cleanup
+outer cleanup
+'Peer' object has no attribute 'marker'
+comparison
+captured read
+inner cleanup
+outer cleanup
+'Peer' object has no attribute 'marker'
+comparison
+captured read
+inner cleanup
+outer cleanup
+True
+comparison
+first error
+alias comparison
+'Peer' object has no attribute 'marker'
+alias comparison
+'Peer' object has no attribute 'marker'
+True True
+[exit 0]

@@ -1,0 +1,19 @@
+before store
+replacement
+expected list[str], got list[int]
+cleanup
+False
+True
+[1] ['peer'] ['peer']
+property get
+property get
+before store
+replacement
+expected list[str], got list[int]
+cleanup
+False
+property get
+True
+property get
+[1] ['property'] ['property']
+[exit 0]

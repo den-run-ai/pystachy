@@ -1,0 +1,4 @@
+True
+[3]
+comparison-created attribute 'items' of Base is shadowed by Child; narrow to the concrete class
+[exit 0]

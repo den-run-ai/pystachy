@@ -1,0 +1,4 @@
+{}
+True
+vars() and __dict__ after comparison-created attributes are not supported (#486)
+[exit 0]

@@ -1,0 +1,87 @@
+enter 0
+left operand
+right operand
+TypeError unsupported operand type(s) for +: 'int' and 'str'
+inner cleanup 0
+outer cleanup 0
+True
+enter 1
+left operand
+right operand
+TypeError unsupported operand type(s) for -: 'int' and 'str'
+inner cleanup 1
+outer cleanup 1
+True
+enter 2
+left operand
+right operand
+TypeError '<' not supported between instances of 'int' and 'str'
+inner cleanup 2
+outer cleanup 2
+True
+enter 3
+right operand
+TypeError bad operand type for unary ~: 'str'
+inner cleanup 3
+outer cleanup 3
+True
+enter 4
+right operand
+TypeError list indices must be integers or slices, not str
+inner cleanup 4
+outer cleanup 4
+True
+enter 5
+left operand
+right operand
+TypeError unsupported operand type(s) for <<: 'int' and 'str'
+inner cleanup 5
+outer cleanup 5
+True
+enter 0
+left operand
+right operand
+TypeError unsupported operand type(s) for +: 'int' and 'str'
+inner cleanup 0
+outer cleanup 0
+True
+enter 1
+left operand
+right operand
+TypeError unsupported operand type(s) for -: 'int' and 'str'
+inner cleanup 1
+outer cleanup 1
+True
+enter 4
+right operand
+TypeError list indices must be integers or slices, not str
+inner cleanup 4
+outer cleanup 4
+True
+enter 5
+left operand
+right operand
+TypeError unsupported operand type(s) for <<: 'int' and 'str'
+inner cleanup 5
+outer cleanup 5
+True
+enter 2
+left operand
+right operand
+TypeError '<' not supported between instances of 'int' and 'str'
+inner cleanup 2
+outer cleanup 2
+True
+enter 3
+right operand
+TypeError bad operand type for unary ~: 'str'
+inner cleanup 3
+outer cleanup 3
+True
+enter 0
+left operand
+left operand
+inner cleanup 0
+outer cleanup 0
+True
+[exit 0]

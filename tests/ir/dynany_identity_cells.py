@@ -1,6 +1,7 @@
 # pystachy: dynamic-any
 # Closure cells retain their 16-byte scanned allocation class. Pure scalar readers
 # do not box per iteration; observable copies and callback operands still snapshot.
+# Forwarding immutable count to a closure reuses its incoming object without boxing.
 from typing import Any
 
 

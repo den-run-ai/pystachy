@@ -1,0 +1,42 @@
+comparison
+getter
+helper
+getter cleanup
+comparison cleanup
+comparison
+getter
+helper
+getter cleanup
+comparison cleanup
+comparison
+getter
+helper
+getter cleanup
+comparison cleanup
+comparison
+getter
+helper
+getter cleanup
+comparison cleanup
+True True False True
+getter
+helper
+getter cleanup
+comparison
+getter
+helper
+getter cleanup
+comparison cleanup
+True False ['a', 'b', 'c']
+comparison
+comparison cleanup
+True
+comparison
+getter
+getter cleanup
+comparison cleanup
+getter error
+comparison
+comparison cleanup
+first error
+[exit 0]

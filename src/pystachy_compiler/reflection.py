@@ -26,6 +26,7 @@ from src.pystachy_compiler.utils import (
     is_tuple,
     is_union,
     is_vtuple,
+    numeric_identity,
     typestr,
     umembers,
     unopt,
@@ -90,7 +91,7 @@ def gen_refl_may_none(self, v: Val) -> bool:
     return is_opt(v.t) or v.t in self.classes or (is_union(v.t) and self.optional(v.t) == v.t)
 
 
-def gen_refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
+def gen_refl_split(self, v: Val, nonnull: bool = False, guarded: bool = False) -> list[RLeaf]:
     # dispatch on the exact type of v: None (where it may be, unless nonnull), then the union's
     # member tag and an object's class tag. Each leaf's block is left open for the caller to
     # place and fill; the blocks that test end here
@@ -115,7 +116,7 @@ def gen_refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
         ms = umembers(t)
         for i in range(len(ms)):
             hit = self.label()
-            miss = self.label() if i + 1 < len(ms) else ""
+            miss = self.label() if guarded or i + 1 < len(ms) else ""
             if miss != "":
                 self.cbr(self.num_cmp('==', Val(f"%t{tag.r[0]}", "int"), Val(str(self.utag(ms[i])), "int")).v, hit, miss)
             else:
@@ -125,6 +126,8 @@ def gen_refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
             leaves.extend(self.refl_split_class(x))
             if miss != "":
                 self.place(miss)
+                if guarded and i + 1 == len(ms):
+                    self.unreachable()
         return leaves
     leaves.extend(self.refl_split_class(v))
     return leaves
@@ -456,7 +459,19 @@ def gen_refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) 
     ph = Ins("phi", t, "")
     for j in range(len(vals)):
         self.incoming(ph, self.convert_at(vals[j], t, blocks[j]).v, blocks[j])
-    return Val(self.phi(ph), t)
+    r = Val(self.phi(ph), t)
+    if numeric_identity(t) and all(v.idfrom != "" or v.t == "None" for v in vals):
+        # Field reads snapshot before later operands can change them. Select that
+        # same object with the payload, including an absent field's None default.
+        identity = Ins("phi", "dyn", "")
+        for j in range(len(vals)):
+            self.incoming(identity, vals[j].idfrom if vals[j].idfrom != "" else self.rtdata("pys_dyn_none_box"), blocks[j])
+        r.idfrom = self.phi(identity)
+    else:
+        # A property's typed return keeps a lazy companion. Select it alongside
+        # the captured default, including when AttributeError takes the default.
+        r = self.numeric_phi(r, vals, blocks)
+    return r
 
 
 def gen_refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False) -> None:
@@ -490,7 +505,7 @@ def gen_refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: l
     self.br(end)
 
 
-def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
+def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> Val:
     # getattr(o, name, default) with a name the compiler knows: per exact class of o, the
     # attribute where it has it, else the default (a property's getter that raises
     # AttributeError: the default too, as CPython catches it). o and default are evaluated first
@@ -498,18 +513,24 @@ def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
     a = self.refl_name(args[1])
     if a == "":
         self.err("getattr() of a name only the run time knows is supported where its text is used (print(), str(), repr(), an f-string field without a format spec): elsewhere its value would need a type of its own (#487, #489); use a str literal or a constant set of names (#486)")
-    if len(args) == 2 and not self.refl_derived_only(args[0], a):
+    if len(args) == 2 and not split and not self.refl_derived_only(args[0], a):
         return self.expr(mk("attr", a, args[0].line, [args[0]]), want)
     o = self.expr(args[0], "")
     known = self.knownobj(args[0])  # (a template's parameter whose argument is no None)
     d = self.expr(args[2], "") if len(args) == 3 else Val("", "")  # (none: CPython's AttributeError)
+    if numeric_identity(d.t) and dynamic_program():
+        # The default is evaluated before attribute lookup or a property's code.
+        # Keep its object now; refl_phi cannot recover a retired lazy binding.
+        captured = Val(d.v, d.t).identity(d)
+        captured.idfrom = self.dyn_box(d).v
+        d = captured
     if o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != ""):
         self.err("getattr() of an exception object is not supported (its fields are read as e.name, after except C as e)")
     vals: list[Val] = []
     blocks: list[str] = []
     end = self.label()
     narrow = dict(self.narrowed)
-    for lf in self.refl_split(o, known):
+    for lf in self.refl_split(o, known, split):
         self.place(lf.label)
         self.narrowed = dict(narrow)
         h = self.refl_has(lf.c, a)
@@ -1068,7 +1089,7 @@ def gen_refl_dict_order(self, c: str) -> list[str]:
     if len(late) > 1 or (len(late) == 1 and late[0] != out[-1]):
         self.err(f"vars() of {short(c)} is not supported: its attribute {late[0]}, which its __init__ may leave unassigned, may be assigned later, which inserts it last in the __dict__ (#486)")
     for fl in ci.ftypes:
-        if fl.startswith(" ") or fl in out:
+        if fl.startswith(" ") or fl in out or fl in ci.fextra:
             continue
         if fl in ci.fdefault and (fl not in ci.fopts or c in self.nts):
             if self.refl_stored(fl):
@@ -1219,8 +1240,28 @@ def gen_refl_dict_of(self, n: Node) -> Node | None:
     return None
 
 
+def comparison_dict_guard(self, o: Val, known: bool) -> None:
+    # Reserved comparison fields must not change the static dictionary value
+    # type or order of a previously supported vars() consumer while absent.
+    # Once assigned, reject this unsupported late-field reflection explicitly.
+    leaves = self.refl_type_of(o, "__name__", known)
+    if not any(lf.c in self.classes and len(self.classes[lf.c].fextra) > 0 for lf in leaves):
+        return
+    end = self.label()
+    for lf in self.refl_split(o, known):
+        self.place(lf.label)
+        if lf.c in self.classes:
+            ci = self.classes[lf.c]
+            for field in ci.fextra:
+                flag = self.mem_load(Val(self.fgep(lf.v, ci.fflag[field]), "*bool"))
+                self.guard(flag.v, "TypeError: vars() and __dict__ after comparison-created attributes are not supported (#486)")
+        self.br(end)
+    self.place(end)
+
+
 def gen_refl_vars_text(self, o: Val, known: bool) -> Val:
     # repr(vars(o)): the runtime's walk of the field table of o's exact class
+    comparison_dict_guard(self, o, known)  # another print argument may have mutated its live view
     leaves = self.refl_type_of(o, "__name__", known)
     for lf in leaves:
         if lf.c == "None" or lf.c not in self.classes:
@@ -1314,6 +1355,7 @@ def gen_refl_dict_operand(self, n: Node, x: Node) -> Val:
             self.err(f"vars() argument must have __dict__ attribute: of a {typestr(lf.c)}, it is not supported (#486)" if n.kind == "call" else f"type {typestr(lf.c)} has no attribute '__dict__'")
         else:
             self.refl_dict_order(lf.c)
+    comparison_dict_guard(self, o, True)
     return o
 
 
@@ -1372,6 +1414,7 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
         # (the fields __init__ may leave unassigned, as the loop starts: where its body assigns
         # one, CPython's next step raises, see refl_size_check)
         flagged = [fl for fl in orders[li] if fl in ci.fflag and lf.c + "." + fl not in self.cvars]
+        flagged.extend([fl for fl in ci.fextra if fl not in flagged])
         snap = [self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v for fl in flagged]
         for j in range(len(orders[li])):
             fl = orders[li][j]

@@ -1,0 +1,9 @@
+in finally 0 [] 1
+in finally 1 ['k1'] 1
+in finally 2 ['k1', 'k2'] 2
+[('k1', 1), ('k2', 2), ('k3', 3)]
+int keys 0 [] 1
+int keys 1 [9] 1
+int keys 2 [9, 17] 2
+[(9, 1), (17, 2), (25, 3)]
+[exit 0]

@@ -4,7 +4,7 @@ These serializers are the backend boundary for module data, native ABI adapters,
 object dispatch and process/extension entry points. They do not create IR operations.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import fail, dynamic_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
@@ -38,8 +38,8 @@ def address_runtime_ir(ir: str) -> str:
 
 def struct_types(ci: ClassInfo) -> list[str]:
     # the LLVM types of the members of class ci's struct, %C.<name>: its fields', then its "is
-    # assigned" flags
-    return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)]
+    # assigned" flags and numeric identity companions
+    return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)] + ["ptr" for _ in range(ci.nbox)]
 
 
 def gen_tbaa_nodes(self) -> list[str]:
@@ -233,6 +233,14 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
             self.runtime("pys_c_check")
             code.append("  %y = call i64 @pys_c_check(i64 %x, i64 3)")
         code.append(f"  ret i64 {'%y' if k == '2' else '%x'}")
+    if dynamic_program():
+        changed = [j for j in range(len(f.ptypes)) if f.ptypes[j] in ["list[int]", "list[float]"]]
+        if len(changed) > 0:
+            # The CPython ffi twin replaces the numeric list's items after C returns,
+            # including read-only calls. Keep raw aliases during C, then renew objects.
+            self.runtime("pys_list_forget_identity")
+            call_at = code.index(f"  {cl}" if r == "void" else f"  %r = {cl}")
+            code = code[:call_at + 1] + [f"  call void @pys_list_forget_identity(ptr %a{j})" for j in changed] + code[call_at + 1:]
     if at:
         self.externs[f.ll + ".at"] = f"define internal {lt(f.ret)} {f.ll}.at({', '.join(ps + offs)}) {{\n" + "\n".join(code) + "\n}"
         return  # (the C function's declaration and address are the stub's: see below)

@@ -346,14 +346,26 @@ above apply to well-formed text (with the surrogate exception described above).
   body cannot compile for an `Any` operand and falls outside the supported guarded concrete
   adapter still falls back to identity (or `TypeError` for
   an ordering) where CPython runs the method
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`, which concatenates differently typed
-  lists). Guarded concrete adapters execute closed builtin field equality, including
-  unions, fixed/variadic tuples and sets with provably disjoint builtin tuple keys;
-  indexed numeric comparisons; annotated properties; cleanup/loops; and field reads
-  through local aliases or captured operands. Missing-field reads retain effects and
-  first exceptions, including inside `try`, but not yet through aliases/closures.
-  Differently typed container arithmetic, user-class leaves, custom lookup, missing-field
-  writes and escaping/rebinding operands remain outside this proof. Concrete operand annotations alone no
+  outside the proven operation surface (`tests/deviations/dynany_cmp_uncompiled_body.py`, an
+  operand read back out of a container) or past the proof's size bound
+  (`tests/deviations/dynany_cmp_proof_bound.py`). Guarded adapters cover closed builtin field
+  equality, numeric/indexed expressions and mixed-list concatenation, nested list/tuple/dict equality
+  with user callbacks, and property getters using normal native return inference. Known
+  helpers, including local and recursive helpers, can retain or return proven operand/field
+  aliases; escapes to `Any` globals and global `list[Any]` storage preserve the original object. Sequential
+  and supported conditional/loop rebinding retain both the incoming and replacement
+  objects' layouts, including getters and setters. Missing reads preserve effects and cleanup;
+  literal missing-field writes use native storage without copying aliases.
+  `vars()`/`__dict__` still explicitly reject reflection after one of those fields is created
+  (`tests/deviations/dynany_cmp_field_reflection.py`, #486). See the
+  [acceptance matrix](../dynamic-any.md#operations).
+  An executed incompatible write to an existing native field or typed property setter
+  raises `TypeError` after its value and target effects, including after operand rebinding
+  (`tests/deviations/dynany_cmp_rebinding_native_store.py`). Arbitrary runtime-name field
+  creation, unresolved helper/alias flows and unsupported native operation/layout pairs
+  remain outside the proof. Custom lookup methods, differing unsupported `NamedTuple`
+  element layouts and `list[bytes]`/`list[Any]` equality remain explicit compile-time
+  rejections. Concrete operand annotations alone no
   longer suppress normal instance comparison methods. The prototype's other differences, such as
   `in` of an `Any` item in a typed container and function values printing as `<function>`, are
   listed in its

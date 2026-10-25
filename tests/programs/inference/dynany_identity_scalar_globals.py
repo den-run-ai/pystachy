@@ -26,6 +26,12 @@ def scalar_reads(n: int) -> int:
     return total + G * 2
 
 
+def scalar_global_return(value: float, take_global: bool) -> float:
+    if take_global:
+        return F
+    return value
+
+
 def self_store() -> int:
     global G
     local = G
@@ -119,6 +125,19 @@ def run() -> None:
         same("retained int distinct", retained[i], G)
         same("retained float distinct", floats[i], F)
     print("retained values", retained, floats)
+
+    # A scalar function may read a mutable global without making its parameters
+    # observable. Either returned object still keeps its original identity.
+    F = float("nan")
+    original_float: Any = F
+    returned_float: Any = scalar_global_return(float("1.5"), True)
+    same("returned global alias", original_float, returned_float)
+    F = float("nan")
+    same("returned global survives replacement", original_float, returned_float)
+    same("returned global replacement distinct", returned_float, F)
+    same("scalar parameter return alias", F, scalar_global_return(F, False))
+    keys: set[Any] = {original_float, returned_float, F}
+    print("returned global NaN keys", len(keys))
 
 
 run()

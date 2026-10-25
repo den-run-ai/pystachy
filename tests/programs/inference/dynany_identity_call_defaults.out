@@ -1,0 +1,7 @@
+definition int True True False True
+definition float True True False
+literal default True True
+default nan keys 1
+closure default True True True
+separate definitions False
+[exit 0]

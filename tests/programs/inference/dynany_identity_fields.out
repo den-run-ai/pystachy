@@ -1,0 +1,24 @@
+repeated int True True
+repeated nan True True
+nan keys 1
+getattr default True True
+getattr repeat True True
+getattr nan keys 1
+Any store True True
+self store True True
+before callback False False
+after callback False False
+copied field True True
+equal replacement False False
+joined float True True
+joined None True
+joined int True True
+negative zero True True
+zero replacement False False
+field roots True
+missing first
+getattr missing True True
+getattr None True True
+late field True True
+getattr assigned True True
+[exit 0]

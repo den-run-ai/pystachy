@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
+from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
@@ -40,6 +41,7 @@ from src.pystachy_compiler.utils import (
     atomic_list,
     bool_for_int,
     clone,
+    contains_typed_vtuple,
     disjoint_sets,
     elem,
     fbits,
@@ -633,6 +635,12 @@ def gen_scalar_read_value(self, n: Node) -> bool:
         return True
     if k == "name":
         return self.qtype(n.s) in ["int", "float", "bool"]
+    if k == "index":
+        # Reading a known numeric list runs no user protocol. Keep the receiver
+        # a plain name: attributes and calls can evaluate user code before indexing.
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and self.qtype(n.kids[0].s) in ["list[int]", "list[float]"] and self.scalar_read_index(n.kids[1])
+    if k == "cmp":
+        return all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(",")) and all(self.scalar_read_value(x) for x in n.kids)
     if k == "call":
         if len(n.kids) != 2 or n.kids[0].kind != "name":
             return False
@@ -640,6 +648,23 @@ def gen_scalar_read_value(self, n: Node) -> bool:
         return callee in ["int", "float", "bool"] and callee not in self.assigned and callee not in self.aliases and callee not in self.fglobals and callee not in self.gtypes and not self.bound(callee) and self.scalar_read_value(n.kids[1])
     allowed = (k == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~", "not"])
     return allowed and all(self.scalar_read_value(x) for x in n.kids)
+
+
+def gen_scalar_read_index(self, n: Node) -> bool:
+    # An inert index known to remain int/bool, without inference or __index__ calls.
+    k = n.kind
+    if k in ["int", "True", "False"]:
+        return True
+    if k == "name":
+        return self.qtype(n.s) in ["int", "bool"]
+    if k == "index":
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and self.qtype(n.kids[0].s) == "list[int]" and self.scalar_read_index(n.kids[1])
+    if k == "cmp" or (k == "unary" and n.s == "not"):
+        return self.scalar_read_value(n)
+    if k == "call":
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s in ["int", "bool"] and self.scalar_read_value(n)
+    allowed = (k == "binop" and n.s in ["+", "-", "*", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~"])
+    return allowed and all(self.scalar_read_index(x) for x in n.kids)
 
 
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
@@ -651,6 +676,13 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         # Contextual return inference follows fresh literal trees and calls.
         # Other operations keep the hints their operands already needed.
         want = self.generic_hint(n, want)
+    if k == "cmpmissing":
+        # A guarded structural adapter proved that this exact operand lacks the
+        # field. Evaluate the read's operand before raising; earlier exceptions,
+        # untaken branches and cleanup retain their normal control flow.
+        o = self.expr(n.kids[0], "")
+        self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{n.kids[1].s}'"))
+        return Val("undef", n.s)
     if k == "val":
         return self.vnodes[int(n.s)]  # (a value computed already: see vnode)
     if k == "excinfo":
@@ -737,7 +769,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "binop":
         scalar_fn = self.fn
         scalar_held = scalar_fn.scalar_reads
-        if not scalar_held and (len(self.gidbox) > 0 or len(self.idbox) > 0) and self.scalar_read_value(n):
+        if not scalar_held and dynamic_program() and self.scalar_read_value(n):
             scalar_fn.scalar_reads = True
         try:
             a = self.expr(n.kids[0], want, resultsoft=resultsoft)
@@ -749,7 +781,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "boolop":
         return self.boolop(n, False, want, resultsoft)
     if k == "cmp":
-        return self.compare(n)
+        scalar_fn = self.fn
+        scalar_held = scalar_fn.scalar_reads
+        if not scalar_held and dynamic_program() and self.scalar_read_value(n):
+            scalar_fn.scalar_reads = True
+        try:
+            return self.compare(n)
+        finally:
+            scalar_fn.scalar_reads = scalar_held
     if k == "ifexp":
         return self.ifexp(n, want, resultsoft)
     if k == "call":
@@ -794,12 +833,24 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
-        if self.curfn.cmpfields != "" and tc.kind == "name" and tc.s == self.curfn.params[1] and n.s in self.classes[self.curfn.cmpfields].ftypes and o.t in self.classes and n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods:
-            # The concrete comparison arm proves this exact class lacks the
-            # field. Raise at the read, after earlier effects and only on paths
-            # that reach it. The unreachable value retains the body's type.
-            self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{n.s}'"))
-            return Val("undef", self.classes[self.curfn.cmpfields].ftypes[n.s])
+        if self.reference_union(o.t):
+            # Share getattr's exact-class arms, including property calls and
+            # missing-field errors, without boxing any native field storage.
+            return self.refl_getattr([self.vnode(o), mk("str", n.s, n.line, [])], want, True)
+        if o.t in self.curfn.cmptypes and o.t in self.classes:
+            ci = self.classes[o.t]
+            canonical = self.classes[self.curfn.cmptypes[o.t]]
+            if n.s not in ci.ftypes and n.s not in ci.methods and "__getattr__" not in ci.methods and "__getattribute__" not in ci.methods:
+                # A concrete comparison helper keeps the same guarded object.
+                # Carry only its missing-read type through separately keyed
+                # helper instances; no missing storage is fabricated.
+                missingtype = canonical.ftypes.get(n.s, "")
+                if missingtype == "":
+                    missingtype = comparison_property_type(self, canonical, n.s)
+                if missingtype != "":
+                    self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")
+                    self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{n.s}'"))
+                    return Val("undef", missingtype)
         if o.t == "dyn":
             return self.dyn_getattr(o, n.s)  # (its box's class's attribute: dynamic.py)
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):
@@ -910,7 +961,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         jt = ""
         for e in n.kids:
             v = self.expr(e, et, returnctx, resultsoft)
-            if et == "dyn" and v.idslot != "":
+            if (et == "dyn" or self.list_id_kind(self.ctype("list", [et if et != "" else v.t])) != 0) and v.idslot != "":
                 # A later item may rebind this local before the display stores its
                 # items. Capture its object now, while repeated reads share its slot.
                 v.idfrom = self.dyn_box(v).v
@@ -959,7 +1010,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         items = [self.coerce(v, et) for v in items]
         r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
-            self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(v)])
+            self.list_store(Val(r, lty), v, "append")
         return Val(r, lty)
     if k == "dict":
         kv = targs(want) if is_dict(want) and "?" not in want else ["", ""]
@@ -1019,7 +1070,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         vs = [self.coerce(x, kv[1]) for x in vs]
         if self.key_problem(kv[0]) != "":
             self.err(self.key_problem(kv[0]))
-        r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", f"i64 {len(ks)}"])
+        r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"])
         for i in range(len(ks)):
             self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(ks[i]), "i64 " + self.to_slot(vs[i])], self.key_fx(kv[0]))
         return Val(r, self.ctype("dict", kv))
@@ -2125,7 +2176,7 @@ def gen_dict_merge(self, n: Node, want: str) -> Val:
             v = self.unwrap(v, "TypeError: 'NoneType' object is not a mapping")
             if r.t == "":
                 kv = targs(v.t)
-                r = Val(self.rt("pys_dict_new_atomic" if atomic_dict(v.t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0])}", "i64 0"]), v.t)
+                r = Val(self.rt("pys_dict_new_atomic" if atomic_dict(v.t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"]), v.t)
                 for j in range(0, len(pairs), 2):
                     self.rt("pys_dict_set", "void", [f"ptr {r.v}", "i64 " + self.to_slot(self.store_key(pairs[j], kv[0])), "i64 " + self.to_slot(self.coerce(pairs[j + 1], kv[1]))], self.key_fx(kv[0]))
             self.rt("pys_dict_update", "void", [f"ptr {r.v}", f"ptr {v.v}"], self.key_fx(targs(r.t)[0]))
@@ -2406,6 +2457,20 @@ def gen_index(self, n: Node, want: str = "") -> Val:
 
 def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     # o[i], where o is the value of n.kids[0] and n.kids[1] the index
+    if self.curfn.cmpops:
+        if self.term and o.v == "undef":
+            return Val("undef", "int")
+        # Evaluate a key exactly once before a definite builtin indexing error.
+        # Custom objects and optional receivers retain their ordinary dispatch.
+        if n.kids[1].kind != "slice" and (o.t in ["None", "bool", "int", "float", "str", "bytes"] or is_list(o.t) or is_dict(o.t) or is_tuple(o.t) or is_vtuple(o.t) or is_set(o.t)):
+            index = self.expr(n.kids[1], "")
+            if self.term and index.v == "undef":
+                return Val("undef", "int")
+            error = comparison_invalid("[]", o.t, index.t)
+            if error != "" and o.infer_from == "" and index.infer_from == "":
+                self.raise_("TypeError", self.sconst(error))
+                return Val("undef", "int")
+            n = mk("index", "", n.line, [self.vnode(o), self.vnode(index)])
     t = unopt(o.t)
     sub = "TypeError: 'NoneType' object is not subscriptable"  # (once the index is evaluated)
     if t == "dyn":
@@ -2536,6 +2601,8 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     # Both operands have run, and o is not None. Check the current length: unsigned
     # comparison also sends every negative index to the runtime's normalization and errors.
     # No call or allocation separates this check from the existing inline list.load.
+    if self.list_id_kind(o.t) != 0 and not self.fn.scalar_reads:
+        return self.list_item(o, i)
     if o.t != "list[int]" or "listfast" not in self.opts:
         return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(o.t))
     fast = self.label()
@@ -2775,8 +2842,72 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
     if into == "":
         self.holes[h.k] = t
         if kind != "list":
-            self.key_kind(targs(et)[0] if kind == "dict" else et)  # (a tuple key's descriptor, a string constant, which lowering prints)
+            self.key_kind(targs(et)[0] if kind == "dict" else et, kind == "dict")  # (a tuple key's descriptor, a string constant, which lowering prints)
     return Val(res, t)
+
+def gen_numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> Val:
+    # Select provenance with the payload. Existing bindings retain their lazy slots;
+    # a fresh arithmetic arm gets an empty slot, so selecting it does not allocate.
+    if not dynamic_program() or not numeric_identity(result.t) or not any(v.idfrom != "" or v.idslot != "" or (v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256)))) for v in values):
+        return result
+    if all(v.idfrom != "" for v in values):
+        identity = Ins("phi", "dyn", "")
+        for j in range(len(values)):
+            self.incoming(identity, values[j].idfrom, edges[j])
+        result.idfrom = self.phi(identity)
+        return result
+    if len(values) == 2 and values[0].idslot != "" and values[0].idslot == values[1].idslot and values[0].idgen == values[1].idgen and self.idstores.get(values[0].idslot, 0) == values[0].idgen:
+        # x = x if flag else x keeps the binding's slot without a selected pointer.
+        result.identity(values[0])
+        result.idheld = self.mem_load(Val(result.idslot, "*dyn")).v
+        result.idversion = self.mem_load(Val(result.idcounter, "*int")).v if result.idcounter != "" else ""
+        return result
+    selected: list[Val] = []
+    here = self.blk
+    cur = self.cur
+    term = self.term
+    for j in range(len(values)):
+        v = Val(values[j].v, values[j].t).identity(values[j])
+        if v.idfrom == "" and v.idslot != "" and v.idcounter != "":
+            selected.append(v)
+            continue
+        # Only scalar loads/stores and constant-box references are inserted before
+        # the existing edge. No user operation or heap allocation is moved there.
+        for block in self.fn.blocks:
+            if block.label == edges[j]:
+                self.blk = block
+                self.cur = block.label
+                self.term = False
+                last = block.code.pop()
+                box = v.idfrom if v.idfrom != "" else self.dyn_id_held(v).v if v.idslot != "" else self.dyn_box(values[j]).v if values[j].lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) else "null"
+                v.idslot = self.alloca("dyn", "")
+                v.idheld = box
+                v.idcounter = self.alloca("int", "")
+                v.idversion = "0"
+                self.mem_store(Val(v.idslot, "*dyn"), Val(box, "dyn"))
+                self.mem_store(Val(v.idcounter, "*int"), Val("0", "int"))
+                block.code.append(last)
+                break
+        selected.append(v)
+    self.blk = here
+    self.cur = cur
+    self.term = term
+    slot = Ins("phi", "*dyn", "")
+    held = Ins("phi", "dyn", "")
+    counter = Ins("phi", "*int", "")
+    version = Ins("phi", "int", "")
+    for j in range(len(selected)):
+        self.incoming(slot, selected[j].idslot, edges[j])
+        self.incoming(held, selected[j].idheld, edges[j])
+        self.incoming(counter, selected[j].idcounter, edges[j])
+        self.incoming(version, selected[j].idversion, edges[j])
+    result.idslot = self.phi(slot)
+    result.idheld = self.phi(held)
+    result.idcounter = self.phi(counter)
+    result.idversion = self.phi(version)
+    result.idgen = -1  # a selected slot requires the runtime generation check
+    return result
+
 
 def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     st = self.static(n.kids[0])
@@ -2820,53 +2951,24 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     ph = Ins("phi", t, "")
     if e1 != "":
-        self.incoming(ph, self.convert_at(a, t, e1).v, e1)  # (an int as an int | None: its box, made there)
+        a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)
+        self.incoming(ph, a.v, e1)
     if e2 != "":
-        self.incoming(ph, self.coerce(b, t).v, e2)
+        b = self.coerce(b, t)
+        self.incoming(ph, b.v, e2)
     self.br(l3)
     self.place(l3)
     if t == "None":
         return Val("null", "None")  # (None either way)
-    r = Val(self.phi(ph), t)
-    if (t == "int" or t == "float") and (e1 == "" or (a.t == t and a.idfrom != "")) and (e2 == "" or (b.t == t and b.idfrom != "")):
-        # Numeric globals snapshot their box at the read, before later effects can rebind
-        # them. Select that same object with the payload, without consulting mutable slots.
-        # A converted numeric payload cannot retain its original type's box.
-        identity = Ins("phi", "dyn", "")
-        if e1 != "":
-            self.incoming(identity, a.idfrom, e1)
-        if e2 != "":
-            self.incoming(identity, b.idfrom, e2)
-        r.idfrom = self.phi(identity)
-    elif (t == "int" or t == "float") and a.idslot != "" and a.idslot == b.idslot and a.idgen == b.idgen and self.idstores.get(a.idslot, 0) == a.idgen:
-        # Keep the same-binding fast path, including x = x if flag else x.
-        r.idslot = a.idslot
-        r.idheld = self.mem_load(Val(a.idslot, "*dyn")).v
-        r.idgen = a.idgen
-        r.idcounter = a.idcounter
-        r.idversion = self.mem_load(Val(a.idcounter, "*int")).v if a.idcounter != "" else ""
-    elif (t == "int" or t == "float") and e1 != "" and e2 != "" and a.t == t and b.t == t and a.idcounter != "" and b.idcounter != "":
-        # Select the binding as lazily as its payload. Boxing either arm here would
-        # allocate in scalar-only consumers; selecting just its slot and generation
-        # preserves identity when a later consumer actually needs the object.
-        slot = Ins("phi", "*dyn", "")
-        self.incoming(slot, a.idslot, e1)
-        self.incoming(slot, b.idslot, e2)
-        r.idslot = self.phi(slot)
-        held = Ins("phi", "dyn", "")
-        self.incoming(held, a.idheld, e1)
-        self.incoming(held, b.idheld, e2)
-        r.idheld = self.phi(held)
-        counter = Ins("phi", "*int", "")
-        self.incoming(counter, a.idcounter, e1)
-        self.incoming(counter, b.idcounter, e2)
-        r.idcounter = self.phi(counter)
-        version = Ins("phi", "int", "")
-        self.incoming(version, a.idversion, e1)
-        self.incoming(version, b.idversion, e2)
-        r.idversion = self.phi(version)
-        r.idgen = -1  # (a selected slot requires the runtime generation check)
-    return r
+    result = Val(self.phi(ph), t)
+    if not dynamic_program() or not numeric_identity(t):
+        return result
+    values = [a] if e1 != "" else []
+    edges = [e1] if e1 != "" else []
+    if e2 != "":
+        values.append(b)
+        edges.append(e2)
+    return self.numeric_phi(result, values, edges)
 
 def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
     # Python semantics: `a or b` yields a if a is truthy, else b (same static type)
@@ -2924,12 +3026,18 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False)
     if not ascond and not self.term and a.t != b.t and self.join(a.t, b.t) == "dyn":
         rt = "dyn"  # (either operand, the other boxed where it reaches the join: dynamic.py)
     ph = Ins("phi", rt, "")
-    self.incoming(ph, self.convert_at(a, rt, e1).v if not ascond and self.converts(a.t, rt) else a.v, e1)
+    a = self.convert_at(a, rt, e1) if not ascond and self.converts(a.t, rt) else a
+    self.incoming(ph, a.v, e1)
     if not self.term:
-        self.incoming(ph, self.coerce(b, rt).v, self.cur)
+        b = self.coerce(b, rt)
+        self.incoming(ph, b.v, self.cur)
+    e2 = "" if self.term else self.cur
     self.br(l3)
     self.place(l3)
-    return Val(self.phi(ph), rt)
+    result = Val(self.phi(ph), rt)
+    if not dynamic_program() or not numeric_identity(rt):
+        return result
+    return self.numeric_phi(result, [a, b] if e2 != "" else [a], [e1, e2] if e2 != "" else [e1])
 
 def gen_unary(self, n: Node) -> Val:
     op = n.s
@@ -2939,6 +3047,13 @@ def gen_unary(self, n: Node) -> Val:
     if op == "-" and (e.kind == "int" or e.kind == "float"):
         return self.expr(mk(e.kind, "-" + e.s, e.line, []), "")
     v = self.expr(e, "")
+    if self.curfn.cmpops:
+        if self.term and v.v == "undef":
+            return Val("undef", "int")
+        error = comparison_invalid("unary" + op, v.t)
+        if error != "" and v.infer_from == "":
+            self.raise_("TypeError", self.sconst(error))
+            return Val("undef", "int")
     if v.t == "dyn":
         return self.dyn_unary(op, v)  # (dynamic.py)
     if is_union(unopt(v.t)):
@@ -3554,6 +3669,13 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
     return Val(self.phi(ph), "bool")
 
 def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
+    if self.curfn.cmpops:
+        if self.term and (a.v == "undef" or b.v == "undef"):
+            return Val("undef", "int")
+        error = comparison_invalid(op, a.t, b.t, shown)
+        if error != "" and a.infer_from == "" and b.infer_from == "":
+            self.raise_("TypeError", self.sconst(error))
+            return Val("undef", "int")
     if a.t == "int" and b.t == "int" and a.lit and b.lit and dynamic_program():
         folded = folded_int(op, a.v, b.v)
         if folded != "":
@@ -3633,6 +3755,28 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     if op == "*" and a.t == "int" and (b.t == "str" or b.t == "bytes" or is_list(b.t) or is_tuple(b.t)):
         return self.arith(op, b, a)
     if op == "+" and is_list(a.t) and is_list(b.t):
+        if self.dyn_policy(self.line) and all(self.dyn_boxable(elem(v.t)) == "" and not contains_typed_vtuple(elem(v.t)) for v in [a, b]):
+            # Concatenation owns a fresh result, so its slots may hold boxes even
+            # though either source keeps its typed storage. Read each original
+            # item through the normal identity-aware path; do not convert an
+            # aliased source list or copy a mutable item into a different layout.
+            mixed_result = Val(self.rt("pys_list_new", "ptr", ["i64 0"]), "list[dyn]")
+            for source in [a, b]:
+                ctr = self.alloca("int", "")
+                self.mstore("int", "0", ctr)
+                head = self.label()
+                body = self.label()
+                end = self.label()
+                self.br(head)
+                self.place(head)
+                i = self.mload("int", ctr)
+                self.cbr(self.num_cmp("<", Val(i, "int"), Val(self.mload("int", source.v), "int")).v, body, end)
+                self.place(body)
+                self.list_store(mixed_result, self.dyn_box(self.list_item(source, Val(i, "int"))), "append")
+                self.mstore("int", self.scalar("add", [Val(i, "int"), Val("1", "int")]), ctr)
+                self.br(head)
+                self.place(end)
+            return mixed_result
         self.err(f"unsupported operand types for +: {typestr(a.t)} and {typestr(b.t)} (a list holds items of one type)")
     if op == "|" and is_dict(a.t) and is_dict(b.t):
         # a | b: a copy of a, updated with b (dict_or: PyDict_Copy, then dict_update_arg)
@@ -3803,7 +3947,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
         a = self.ntup(a)
     paired = item.t != a.t and self.ueq_type(item.t) and self.ueq_type(a.t) and not (self.isnum(item.t) and self.isnum(a.t))
     setpair = is_set(item.t) and is_set(a.t) and self.wider(selem(item.t), selem(a.t)) != ""
-    if not paired and not setpair and not self.comparable(item.t, a.t) and self.boxwider(item.t, a.t) == "":
+    nested = self.dyn_policy(self.line) and self.container_pair_type(item.t, a.t)
+    if not paired and not nested and not setpair and not self.comparable(item.t, a.t) and self.boxwider(item.t, a.t) == "":
         # item == x of types whose values are never equal: CPython still calls the
         # item's __eq__(x), or where the item's class has none (a builtin type's
         # declines) x's __eq__(item); with neither, they are not equal
@@ -3828,10 +3973,19 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     return True
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
+    if self.curfn.cmpops:
+        if self.term and (a.v == "undef" or b.v == "undef"):
+            return Val("undef", "bool")
+        error = comparison_invalid(op, a.t, b.t)
+        if error != "" and a.infer_from == "" and b.infer_from == "":
+            self.raise_("TypeError", self.sconst(error))
+            return Val("undef", "bool")
     if a.t == "dyn" or b.t == "dyn":
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if op in ["==", "!="] and a.t != b.t and self.dyn_policy(self.line) and self.wider(a.t, b.t) == "" and not (self.ueq_type(a.t) and self.ueq_type(b.t)) and self.container_pair_type(a.t, b.t):
+        return self.container_pair_eq(op, a, b)
     if (op == "==" or op == "!=") and (a.t == RANGEC) != (b.t == RANGEC):
         # a range and a value of a builtin type, which is never equal to a range (CPython compares
         # them by identity); None, or a value that may be None, may be the same as a range that is
@@ -3890,6 +4044,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (op == "in" or op == "not in") and b.t in self.classes and self.classes[b.t].tag != 0:
         return self.inherit_contains(op, a, b)
     if (is_union(unopt(a.t)) or is_union(unopt(b.t))) and a.t != "None" and b.t != "None":
+        if op in ["is", "is not"]:
+            members = (umembers(unopt(a.t)) if is_union(unopt(a.t)) else [unopt(a.t)]) + (umembers(unopt(b.t)) if is_union(unopt(b.t)) else [unopt(b.t)])
+            if all(is_list(t) or is_dict(t) or t in self.classes for t in members):
+                return self.ucmp(op, a, b)  # compare original pointers under member-tag guards
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
@@ -4062,6 +4220,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         elif b.t == "bytes":
             self.err(f"a bytes-like object is required, not '{tname(a.t)}'")
         elif is_list(b.t):
+            if self.list_id_kind(b.t) != 0 and a.t in ["int", "float", "bool", "dyn"]:
+                if a.t == "dyn":
+                    a = self.coerce(a, elem(b.t))
+                found = self.list_find(b, a, "find")
+                return self.num_cmp(">=" if op == "in" else "<", found, Val("0", "int"))
             if a.t != elem(b.t) and (is_list(a.t) or is_dict(a.t) or is_tuple(a.t)) and self.numeric_comparable(a.t, elem(b.t)):
                 # A read-only search can compare the two item layouts directly;
                 # coercing the needle would wrongly widen mutable containers.
@@ -4147,6 +4310,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         # numeric leaves compare exactly without changing either stored layout.
         r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
         return self.num_cmp("!=" if op == "==" else "==", Val(r, "int"), Val("0", "int"))
+    # NamedTuple items use tuple-value semantics, not ordinary object dispatch.
+    # Keep their existing common-layout path until a paired tuple adapter exists.
+    if eq and ct == "" and is_list(a.t) and is_list(b.t) and self.dyn_policy(self.line) and all(elem(v.t) not in self.nts and (elem(v.t) in self.classes or elem(v.t) in ["dyn", "int", "float", "bool", "str", "bytes", "None"]) for v in [a, b]) and not ("dyn" in [elem(a.t), elem(b.t)] and "bytes" in [elem(a.t), elem(b.t)]):
+        return self.list_pair_eq(op, a, b)
     if ct == "" and self.boxwider(a.t, b.t) != "":
         # a tuple with an int where the other's item may be None: compared as a new tuple of boxes
         ct = self.boxwider(a.t, b.t)
@@ -4167,6 +4334,204 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else b.t
     self.err(f"cannot compare {x} {op} {y}")
     return a
+
+def gen_container_pair_type(self, a: str, b: str) -> bool:
+    # Native container trees with callback-bearing leaves. Each node retains
+    # its own item layout; unlike the closed-builtin descriptor walker this
+    # path can execute user code and reload mutable container state afterwards.
+    return comparison_container_pair(a, b, self.classes, self.nts)
+
+
+def gen_pair_item_eq(self, a: Val, b: Val, hit: str) -> None:
+    # A class slot may hold None. Preserve the native comparison's nullable
+    # dispatch, and identity before equality, at every depth in the tree.
+    if (a.t in self.classes or b.t in self.classes) and a.t != "dyn" and b.t != "dyn":
+        if self.isref(a.t) and self.isref(b.t):
+            compare = self.label()
+            self.cbr(self.ptr_cmp("==", a, b).v, hit, compare)
+            self.place(compare)
+        miss = self.label()
+        self.cbr(self.inherit_cmp("==", a, b).v, hit, miss)
+        self.place(miss)
+    else:
+        self.titem_eq(a, b, hit, None, "")
+
+
+def gen_container_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+    if is_opt(a.t) or is_opt(b.t):
+        some = self.label()
+        end = self.label()
+        ph = Ins("phi", "bool", "")
+        na = self.ptr_cmp("==", a, Val("null", "None"))
+        nb = self.ptr_cmp("==", b, Val("null", "None"))
+        self.incoming(ph, self.scalar("and", [na, nb]), self.cur)
+        self.cbr(self.scalar("or", [na, nb]), end, some)
+        self.place(some)
+        r = self.container_pair_eq("==", Val(a.v, unopt(a.t)), Val(b.v, unopt(b.t)))
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+        self.place(end)
+        value = Val(self.phi(ph), "bool")
+        return value if op == "==" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
+    if is_list(a.t):
+        return self.list_pair_eq(op, a, b)
+    if is_dict(a.t):
+        return self.dict_pair_eq(op, a, b)
+    return self.tuple_pair_eq(op, a, b)
+
+
+def gen_list_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+    # Different list layouts retain their own storage. As list_richcompare,
+    # compare identity before equality and reload both lengths after user code:
+    # an element callback can clear, extend or replace either source list.
+    at = elem(a.t)
+    bt = elem(b.t)
+    pick = self.cmp_pick("==", at, bt)
+    if len(pick) > 0:
+        lt = at if pick[0] == "a" else bt
+        rt = bt if pick[0] == "a" else at
+        if self.cmp_method(lt, pick[1], rt) == "":
+            self.err(f"cannot compare {typestr(a.t)} == {typestr(b.t)}: {typestr(lt)}.{pick[1]} cannot take {typestr(rt)}")
+    index = self.alloca("int", "")
+    self.mstore("int", "0", index)
+    head = self.label()
+    body = self.label()
+    step = self.label()
+    finish = self.label()
+    end = self.label()
+    result = Ins("phi", "bool", "")
+    self.incoming(result, "false", self.cur)
+    self.cbr(self.num_cmp("==", Val(self.mload("int", a.v), "int"), Val(self.mload("int", b.v), "int")).v, head, end)
+    self.place(head)
+    i = Val(self.mload("int", index), "int")
+    ax = self.num_cmp("<", i, Val(self.mload("int", a.v), "int"))
+    bx = self.num_cmp("<", i, Val(self.mload("int", b.v), "int"))
+    self.cbr(self.scalar("and", [ax, bx]), body, finish)
+    self.place(body)
+    x = self.list_item(a, i)
+    y = self.list_item(b, i)
+    self.pair_item_eq(x, y, step)
+    self.br(finish)
+    self.place(step)
+    self.mstore("int", self.scalar("add", [i, Val("1", "int")]), index)
+    self.br(head)
+    self.place(finish)
+    alen = Val(self.mload("int", a.v), "int")
+    blen = Val(self.mload("int", b.v), "int")
+    exhausted = Val(self.scalar("or", [self.num_cmp(">=", i, alen), self.num_cmp(">=", i, blen)]), "bool")
+    equal = self.scalar("and", [exhausted, self.num_cmp("==", alen, blen)])
+    self.incoming(result, equal, self.cur)
+    self.br(end)
+    self.place(end)
+    value = Val(self.phi(result), "bool")
+    return value if op == "==" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
+
+
+def gen_tuple_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+    # Tuple equality, unlike list equality, compares the shared prefix even
+    # when lengths differ. Those element callbacks and exceptions still run.
+    ax = targs(a.t)
+    bx = targs(b.t)
+    end = self.label()
+    finish = self.label()
+    result = Ins("phi", "bool", "")
+    alen = Val(str(len(ax)), "int") if is_tuple(a.t) else Val(self.mload("int", a.v), "int")
+    blen = Val(str(len(bx)), "int") if is_tuple(b.t) else Val(self.mload("int", b.v), "int")
+    if is_tuple(a.t) or is_tuple(b.t):
+        count = min(len(ax), len(bx)) if is_tuple(a.t) and is_tuple(b.t) else len(ax) if is_tuple(a.t) else len(bx)
+        for i in range(count):
+            if is_vtuple(a.t) or is_vtuple(b.t):
+                item = self.label()
+                self.cbr(self.num_cmp("<", Val(str(i), "int"), alen if is_vtuple(a.t) else blen).v, item, finish)
+                self.place(item)
+            x = self.tget(a, i) if is_tuple(a.t) else self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {a.v}", f"i64 {i}"]), ax[0])
+            y = self.tget(b, i) if is_tuple(b.t) else self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {b.v}", f"i64 {i}"]), bx[0])
+            step = self.label()
+            self.pair_item_eq(x, y, step)
+            self.incoming(result, "false", self.cur)
+            self.br(end)
+            self.place(step)
+        self.br(finish)
+    else:
+        index = self.alloca("int", "")
+        self.mstore("int", "0", index)
+        head = self.label()
+        item = self.label()
+        step = self.label()
+        self.br(head)
+        self.place(head)
+        position = Val(self.mload("int", index), "int")
+        self.cbr(self.scalar("and", [self.num_cmp("<", position, alen), self.num_cmp("<", position, blen)]), item, finish)
+        self.place(item)
+        x = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {a.v}", f"i64 {position.v}"]), ax[0])
+        y = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {b.v}", f"i64 {position.v}"]), bx[0])
+        self.pair_item_eq(x, y, step)
+        self.incoming(result, "false", self.cur)
+        self.br(end)
+        self.place(step)
+        self.mstore("int", self.scalar("add", [position, Val("1", "int")]), index)
+        self.br(head)
+    self.place(finish)
+    self.incoming(result, self.num_cmp("==", alen, blen).v, self.cur)
+    self.br(end)
+    self.place(end)
+    value = Val(self.phi(result), "bool")
+    return value if op == "==" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
+
+
+def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+    # Keep the source value alive before key lookup: a key callback may clear
+    # its dictionary. Matching layouts use stored hashes and the runtime's
+    # mutation-safe lookup. Values retain their actual, separate layouts.
+    ax = targs(a.t)
+    bx = targs(b.t)
+    index = self.alloca("int", "")
+    self.mstore("int", "0", index)
+    head = self.label()
+    item = self.label()
+    compare = self.label()
+    step = self.label()
+    miss = self.label()
+    finish = self.label()
+    end = self.label()
+    result = Ins("phi", "bool", "")
+    self.incoming(result, "false", self.cur)
+    self.cbr(self.num_cmp("==", Val(self.mload("int", a.v), "int"), Val(self.mload("int", b.v), "int")).v, head, end)
+    self.place(head)
+    e = Val(self.rt("pys_dict_eq_next", "i64", [f"ptr {a.v}", f"i64 {self.mload('int', index)}"]), "int")
+    self.cbr(self.num_cmp(">=", e, Val("0", "int")).v, item, finish)
+    self.place(item)
+    x = self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {a.v}", f"i64 {e.v}"]), ax[1])
+    if ax[0] == bx[0]:
+        match = Val(self.rt("pys_dict_eq_find", "i64", [f"ptr {b.v}", f"ptr {a.v}", f"i64 {e.v}"], self.key_fx(ax[0])), "int")
+    else:
+        pair = bx[0] + "|" + ax[0]
+        key = "pairkey." + str(len(self.dynfns))
+        for old in self.dynkeys:
+            if old.startswith("pairkey.") and self.dynkeys[old] == pair:
+                key = old
+                break
+        f = self.dyn_dispatcher(key, ["int", "int", "int"], "int", pair)
+        self.called[f.ll] = True
+        match = Val(self.rt("pys_dict_eq_pair_find", "i64", [f"ptr {b.v}", f"ptr {a.v}", f"i64 {e.v}", f"ptr {f.ll}"]), "int")
+    self.cbr(self.num_cmp(">=", match, Val("0", "int")).v, compare, miss)
+    self.place(compare)
+    y = self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {b.v}", f"i64 {match.v}"]), bx[1])
+    self.pair_item_eq(x, y, step)
+    self.br(miss)
+    self.place(step)
+    self.mstore("int", self.scalar("add", [e, Val("1", "int")]), index)
+    self.br(head)
+    self.place(miss)
+    self.incoming(result, "false", self.cur)
+    self.br(end)
+    self.place(finish)
+    self.incoming(result, "true", self.cur)
+    self.br(end)
+    self.place(end)
+    value = Val(self.phi(result), "bool")
+    return value if op == "==" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
+
 
 def gen_tuple_order(self, op: str, a: Val, b: Val) -> Val:
     # a < b (or <=, >, >=) of tuples of different lengths, as CPython orders them: by the
