@@ -539,7 +539,8 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   helper/alias origins and unsupported native body or layout pairs still need further work.
   Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
-  is a correctness gap tracked by #803, not a stable comparison contract.
+  is a correctness gap tracked by #803, not a stable comparison contract
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`).
 - An object is not iterable through an `Any` value yet (iteration of objects is under
   [next steps](#next-steps)): a `for` loop over one, and a pair of `dict.update()` that is one,
   raise `TypeError` where CPython calls its `__iter__` (`tests/deviations/dynany_iter_object.py`).

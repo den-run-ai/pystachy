@@ -343,7 +343,8 @@ above apply to well-formed text (with the surrogate exception described above).
   body cannot compile for an `Any` operand and falls outside the supported guarded concrete
   adapter still falls back to identity (or `TypeError` for
   an ordering) where CPython runs the method
-  outside the proven operation surface. Guarded adapters cover closed builtin field equality,
+  outside the proven operation surface (`tests/deviations/dynany_cmp_uncompiled_body.py`, an
+  operand read back out of a container). Guarded adapters cover closed builtin field equality,
   numeric/indexed expressions and mixed-list concatenation, nested list/tuple/dict equality
   with user callbacks, and property getters using normal native return inference. Known
   helpers, including local and recursive helpers, can retain or return proven operand/field
