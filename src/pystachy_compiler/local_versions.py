@@ -41,12 +41,17 @@ def local_versions(f: FnInfo, body: list[Node]) -> list[Node]:
     for n in body:
         if not versionable(n, blocked):
             return []
-    out: list[Node] = []
+    marks: list[bool] = []
     marked = False
     for n in body:
-        c = clone(n)
-        if n.kind == "assign" and n.s == "" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s not in blocked:
+        marks.append(n.kind == "assign" and n.s == "" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s not in blocked)
+        marked = marked or marks[len(marks) - 1]
+    if not marked:
+        return []  # (copied only when a store is marked: it runs for every function)
+    out: list[Node] = []
+    for j in range(len(body)):
+        c = clone(body[j])
+        if marks[j]:
             c.s = "local-retype"
-            marked = True
         out.append(c)
-    return out if marked else []
+    return out

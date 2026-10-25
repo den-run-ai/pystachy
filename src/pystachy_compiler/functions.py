@@ -103,7 +103,13 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         # eligible stores without changing another instance's AST.
         if len(versioned) > 0:
             body = versioned
+            # (a copy of the declaration whose block holds versioned, already copies: not
+            # another copy of the statements it replaces)
+            block = f.node.kids[2]
+            kept = block.kids
+            block.kids = []
             f.node = clone(f.node)
+            block.kids = kept
             f.node.kids[2].kids = body
     if f.cls != "" and self.classes[f.cls].bad != "":
         self.err(self.classes[f.cls].bad)
