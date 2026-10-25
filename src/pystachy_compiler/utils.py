@@ -1,7 +1,7 @@
 """Utils component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.diagnostics import FILES, LINES, fail, where
+from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fail, where
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
@@ -331,6 +331,11 @@ def is_super(e: Node) -> bool:
     return e.kind == "call" and e.kids[0].kind == "name" and e.kids[0].s == "super"
 
 
+def identity_default(e: Node) -> bool:
+    # Numeric constants belong to the defining module, not whichever module calls it.
+    return dynamic_program() and (e.kind in ["int", "float"] or (e.kind == "unary" and e.s == "-" and e.kids[0].kind in ["int", "float"]))
+
+
 def is_const(e: Node) -> bool:
     # literals: re-evaluating them on every call is indistinguishable from evaluating once
     k = e.kind
@@ -609,6 +614,12 @@ def optnames(t: str) -> str:
     return t
 
 
+def identity_abi(f: FnInfo) -> bool:
+    # Internal Python calls in a graph with dynamic values carry numeric provenance.
+    # Foreign/runtime entry points and compiler-written dispatcher signatures keep their ABI.
+    return dynamic_program() and not f.extern and not f.export and not f.pyexport and f.node.kind == "def"
+
+
 def numeric_identity(t: str) -> bool:
     # Storage which may hold an int/float object's identity, including joined locals.
     u = unopt(t)
@@ -803,6 +814,16 @@ def targs(t: str) -> list[str]:
 def holds_dyn(t: str) -> bool:
     # is t an Any value, or a type whose values hold Any values (a container's items, a tuple's)
     return t == "dyn" or "[dyn" in t or ",dyn" in t
+
+
+def contains_typed_vtuple(t: str) -> bool:
+    # Boxing converts fixed tuple/union/optional leaves recursively, but a typed
+    # variadic tuple has no box conversion yet (except the canonical Any tuple).
+    if is_vtuple(t):
+        return t != "vtuple[dyn]"
+    if is_opt(t):
+        return contains_typed_vtuple(unopt(t))
+    return (is_tuple(t) or is_union(t)) and any(contains_typed_vtuple(x) for x in targs(t))
 
 
 def any_item(t: str) -> bool:

@@ -4,7 +4,7 @@ from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
 from src.pystachy_compiler.lower_module import struct_types
 from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENSLOTS, GENSLOTSX, GENSTATE, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
-from src.pystachy_compiler.utils import atomic_dict, atomic_list, is_dict, is_tuple, lt, selem, takes_self, targs
+from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs
 
 
 def gen_lower(self, fn: IFn) -> None:
@@ -12,6 +12,10 @@ def gen_lower(self, fn: IFn) -> None:
     f = fn.f
     # a method's receiver is never None (callers check it)
     ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
+    if identity_abi(f):
+        ps.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
+        if numeric_identity(f.ret):
+            ps.append("ptr %idret")
     # tupleret: a function that returns its tuple's slots by value (Gen.tuple_rets) is lowered as
     # @v.<its symbol>, returning them as an LLVM aggregate, and its own symbol is a wrapper below
     n = self.vrets.get(f.ll, 0)
@@ -63,7 +67,12 @@ def gen_lower(self, fn: IFn) -> None:
         # its symbol, for every other use: the tuple, made from the slots the body returns
         o.append(f"define internal ptr {f.ll}({', '.join(ps)}) {{")
         o.append("entry:")
-        o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join([f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps])})")
+        forwarded = [f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps]
+        if identity_abi(f):
+            forwarded.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
+            if numeric_identity(f.ret):
+                forwarded.append("ptr %idret")
+        o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join(forwarded)})")
         o.append(f"  %p = call ptr @{self.rtfns['alloc'].sym}(i64 {8 * n})")
         for k in range(n):
             o.append(f"  %v{k} = extractvalue {agg} %v, {k}")
@@ -152,7 +161,7 @@ def gen_field_tag(self, c: str, k: int) -> str:
     # of classes neither of which lays out the other's (Gen.disjoint's rule). The tags have a
     # root of their own: no access of runtime.c's or of runtime.py's is told apart from them
     ci = self.classes[c]
-    while ci.base in self.classes and k < len(self.classes[ci.base].fields) + self.classes[ci.base].nflag:
+    while ci.base in self.classes and k < len(self.classes[ci.base].fields) + self.classes[ci.base].nflag + self.classes[ci.base].nbox:
         ci = self.classes[ci.base]
     key = f"{ci.name} {k}"
     if key not in self.tbaa:

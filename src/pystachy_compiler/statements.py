@@ -1,6 +1,6 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.utils import is_union
+from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val
@@ -242,6 +242,8 @@ def gen_early_default(self, f: FnInfo, j: int) -> None:
     f.dtypes[j] = t
     f.dglob[j] = f"@d.{f.ll[1:]}.{f.params[j]}"
     self.global_var(f.dglob[j], t)
+    if dynamic_program() and numeric_identity(t):
+        self.global_var(f.dglob[j] + ".box", "dyn")
 
 def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
     # a class-body default read before the class statement runs (see early_default), or a
@@ -261,7 +263,7 @@ def gen_hoist(self, f: FnInfo) -> None:
     for j in range(len(f.params)):
         d = f.defaults[j]
         early = f"{f.ll}.{j}" in self.pending
-        if (f.dglob[j] == "" or early) and not is_const(d):
+        if (f.dglob[j] == "" or early) and (not is_const(d) or identity_default(d)):
             t = f.ptypes[j] if f.bad == "" else ""  # (an unsupported annotation is no type)
             self.line = d.line
             bad = self.default_problem(d, t) if f.mod != "" else ""
@@ -276,13 +278,19 @@ def gen_hoist(self, f: FnInfo) -> None:
                 # a call compiled before this statement declared its global (early_default)
                 del self.pending[f"{f.ll}.{j}"]
                 if f.dglob[j] != "=None":
-                    self.mstore(f.dtypes[j], self.coerce(v, f.dtypes[j]).v, f.dglob[j])
+                    value = self.coerce(v, f.dtypes[j])
+                    self.mstore(f.dtypes[j], value.v, f.dglob[j])
+                    if dynamic_program() and numeric_identity(f.dtypes[j]):
+                        self.mstore("dyn", self.dyn_box(value).v, f.dglob[j] + ".box")
                 continue
             if v.t == "None" and t == "":
                 f.dglob[j] = "=None"  # a None value is no global: calls pass None
                 continue
             f.dtypes[j] = v.t
-            f.dglob[j] = self.hidden(f"@d.{f.ll[1:]}.{f.params[j]}", self.coerce(v, t) if t != "" else v)
+            value = self.coerce(v, t) if t != "" else v
+            f.dglob[j] = self.hidden(f"@d.{f.ll[1:]}.{f.params[j]}", value)
+            if dynamic_program() and numeric_identity(value.t):
+                self.hidden(f.dglob[j] + ".box", self.dyn_box(value))
 
 def gen_default_problem(self, e: Node, t: str) -> str:
     # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
@@ -438,6 +446,10 @@ def gen_leave(self, depth: int) -> bool:
     # over (its own return, break, continue or raise), so that the caller's is not compiled
     here = self.handler
     cv = self.carried
+    if len(self.exits) > depth and identity_abi(self.curfn) and numeric_identity(cv.t):
+        captured = Val(cv.v, cv.t).identity(cv)
+        captured.idfrom = self.dyn_box(cv).v
+        cv = captured
     ended = False
     for i in range(len(self.exits) - 1, depth - 1, -1):
         if ended:
@@ -457,9 +469,16 @@ def gen_leave(self, depth: int) -> bool:
             # a finally block compiled once (try_): it goes on here, by its index in conts; a
             # return's value is kept in a slot, as other ways out reach the code after it too
             sl = ""
+            identity = ""
             if cv.v.startswith("%"):
                 sl = self.alloca(cv.t, "")
                 self.mstore(cv.t, cv.v, sl)
+            # A constant payload can still have an SSA box (for example a cached
+            # small integer). The shared finally join must preserve that identity
+            # independently of whether the payload itself needs a spill.
+            if cv.idfrom != "":
+                identity = self.alloca("dyn", "")
+                self.mstore("dyn", cv.idfrom, identity)
             self.mstore('int', f'{len(x.conts)}', x.sel)
             x.conts.append(self.label())
             self.br(x.entry)
@@ -467,6 +486,8 @@ def gen_leave(self, depth: int) -> bool:
             self.narrowed = self.unnarrowed([x.body])  # (what the block may bind on the way)
             if sl != "":
                 cv = Val(self.mload(cv.t, sl), cv.t)
+            if identity != "":
+                cv.idfrom = self.mload("dyn", identity)
         else:
             exits = self.exits
             loops = self.loops
@@ -811,7 +832,7 @@ def gen_stmt(self, n: Node) -> None:
             v = self.carried
             self.carried = Val("", "")
             if not ended:
-                self.ret_(Val(v.v, self.ret))
+                self.ret_(v)
         self.term = True
     elif k == "break" or k == "continue":
         if len(self.loops) == 0:
@@ -1018,7 +1039,7 @@ def gen_stmt(self, n: Node) -> None:
         elif n.s == "discard":
             self.sdiscard(f"ptr {self.lcs[-1]}", v, et)
         else:
-            self.rt("pys_list_append", "void", [f"ptr {self.lcs[-1]}", "i64 " + self.to_slot(self.coerce(v, et))])
+            self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.coerce(v, et), "append")
     elif k == "defaults" or k == "cdefaults":
         if k == "defaults":
             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != "" else [], {})
@@ -1210,9 +1231,9 @@ def gen_augassign(self, n: Node) -> None:
             et = elem(unopt(o.t))
             i = self.ival(t.kids[1])
             o = self.unwrap(o, sub)
-            cur = self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), et)
+            cur = self.list_item(o, i)
             r = self.coerce(self.inplace(op, cur, n.kids[1]), et)
-            self.rt("pys_list_set", "void", [f"ptr {o.v}", f"i64 {i.v}", "i64 " + self.to_slot(r)])
+            self.list_store(o, r, "set", i.v)
         elif is_dict(unopt(o.t)):
             # d[k] op= v stores k where d[k] has found it: k is looked up as d[k] does (dkey),
             # so a key that may be None raises KeyError: None, past which it is a key of d's
@@ -1853,7 +1874,7 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     # the item of sequence s at index (or slot, entry) j, which a for loop (for_seq) takes; a
     # dict's items() give its key and value
     if is_list(s.t):
-        return [self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {s.v}", f"i64 {j}"]), elem(s.t))]
+        return [self.list_item(s, Val(j, "int"))]
     if is_vtuple(s.t):
         off = self.scalar('add', [Val(j, 'int'), Val('1', 'int')])
         return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{off}')), targs(s.t)[0])]
@@ -1995,7 +2016,7 @@ def gen_drain(self, it: Val) -> Val:
     lt = self.ctype("list", [v.t])
     if lt == "list[dyn]":
         v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-    self.rt("pys_list_append", "void", [f"ptr {res}", "i64 " + self.to_slot(v)])
+    self.list_store(Val(res, lt), v, "append")
     self.br(lc)
     self.stop_landing(c, le)
     self.place(le)

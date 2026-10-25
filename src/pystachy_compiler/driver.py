@@ -785,15 +785,19 @@ def main() -> None:
         clean = "function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)"
         if ir.count("\n") <= int(lim):
             clean = f"cgscc(inline,{clean})"
-        fast = f"{llvm}opt -passes='globaldce,{clean}'"
+        passes = f"globaldce,{clean}"
         if "@llvm.coro.id(" in ir:
             # generators are LLVM coroutines (docs/internals.md#generators), which lli cannot run
             # before LLVM's coroutine passes lower them: coro-early, then coro-split in the same
             # bottom-up walk as the inliner (so a generator is split before its callers inline its
             # ramp, and coro-elide may put a loop's generator frame in the loop's own frame), then
-            # coro-cleanup. A module without them keeps the pipeline above, byte for byte
+            # coro-cleanup. A module without them keeps the pipeline above
             split = clean.replace("simplifycfg)", "simplifycfg,coro-elide),coro-split") if clean.startswith("cgscc(") else f"cgscc({clean},coro-split)"
-            fast = f"{llvm}opt -passes='coro-early,globaldce,{split},coro-cleanup,globaldce'"
+            passes = f"coro-early,globaldce,{split},coro-cleanup,globaldce"
+        # SSA promotion can leave unused feedback cycles (including numeric identity
+        # generations). Remove those after inlining and coroutine lowering are complete;
+        # instcombine alone does not eliminate cycles with no externally used result.
+        fast = f"{llvm}opt -passes='{passes},function(early-cse,adce)'"
         if code == 0:
             # the cache's library may lie on a file system mounted noexec since it was made (or copied
             # there), from which lli could map nothing: the shell that runs opt first asks whether this

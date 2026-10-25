@@ -144,6 +144,35 @@ static void hash_cache(void) {
 /* dict[Any, ...] (descriptor A): its keys are boxes, each probe here a new box of a new str or of
    an int above the small ints, so none is found as itself */
 static _Noreturn void any_bad(const char *what) { fprintf(stderr, "dictprobe: Any keys: %s\n", what); exit(1); }
+/* Exact lazy boxes share existing objects, including NaNs, without allocation.
+   Missing boxes preserve integer limits and all float payload bits. The existing
+   --hash-cache GC-stress run executes these checks too. */
+static void numeric_boxes(void) {
+  I ints[] = {-5, 0, 256, 257, -1000, INT64_MIN, INT64_MAX};
+  uint64_t bits[] = {0, UINT64_C(0x8000000000000000), UINT64_C(0x7ff8000000000001), UINT64_C(0xfff8000000000002)};
+  keys = pys_list_new(16);
+  for (I i = 0; i < (I)(sizeof ints / sizeof *ints); i++) {
+    Dyn *box = pys_dyn_int_box(ints[i], NULL);
+    pys_list_append(keys, (I)box);
+    if (box->t != &pys_dyntype_int || box->v != ints[i]) any_bad("lazy integer box value");
+    I tick = gc_tick;
+    for (I j = 0; j < 8; j++) if (pys_dyn_int_box(ints[i], box) != box) any_bad("lazy integer box identity");
+    if (gc_tick != tick) any_bad("cached integer box allocates");
+  }
+  for (I i = 0; i < (I)(sizeof bits / sizeof *bits); i++) {
+    double value; memcpy(&value, &bits[i], 8);
+    Dyn *box = pys_dyn_float_box(value, NULL);
+    pys_list_append(keys, (I)box);
+    if (box->t != &pys_dyntype_float || (uint64_t)box->v != bits[i]) any_bad("lazy float box bits");
+    I tick = gc_tick;
+    for (I j = 0; j < 8; j++) if (pys_dyn_float_box(value, box) != box) any_bad("lazy float box identity");
+    if (gc_tick != tick) any_bad("cached float box allocates");
+    Dyn *fresh = pys_dyn_float_box(value, NULL);
+    if (fresh == box || (uint64_t)fresh->v != bits[i]) any_bad("distinct float box or bits");
+  }
+  printf("Any numeric boxes: exact payloads, shared identities, no cached allocations\n");
+}
+
 static Str *any_str(I i) { char s[24]; I n = snprintf(s, sizeof s, "any-%lld", (long long)i); return pys_str(s, n); }
 static void any_keys(void) {
   dict = pys_dict_new((I)cstr("A"), 0);
@@ -426,6 +455,7 @@ int main(int argc, char **argv) {
   gc_init(__builtin_frame_address(0), roots, 2);
   hash_cache();
   any_keys();
+  numeric_boxes();
   int_queries();
   storage();
   values();

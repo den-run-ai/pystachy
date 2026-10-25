@@ -253,9 +253,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if i.a[0].t not in self.classes:
                     self.bad_ir(fn, b, "field.addr needs a declared class layout")
                 ci = self.classes[i.a[0].t]
-                if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values()):
-                    self.bad_ir(fn, b, "field.addr needs a declared field or assignment flag index")
-                t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "bool"
+                if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values() and i.k not in ci.fbox.values()):
+                    self.bad_ir(fn, b, "field.addr needs a declared field, assignment flag or identity box index")
+                t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "dyn" if i.k in ci.fbox.values() else "bool"
                 if i.t != "*" + t and not (i.t == "*" + NONEVAR and lt(t) == "ptr"):
                     # (but a field compiled while only None had been given to it: Gen.none_field)
                     self.bad_ir(fn, b, "field.addr result must address the declared member type")
@@ -368,7 +368,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     effects = self.opfx(i, fn.fa)
                     writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
                     raises[key] = effects & FXBIT["R"] != 0
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])

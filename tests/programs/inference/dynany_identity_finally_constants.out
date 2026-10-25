@@ -1,0 +1,7 @@
+1 2 ['outer', 'inner', 'outer', 'inner']
+True
+True 1.5
+3 1
+cleanup
+['preserved', 'overridden', 'overridden', 'cancelled', 'cancelled', 'failed']
+[exit 0]

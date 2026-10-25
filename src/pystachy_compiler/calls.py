@@ -1,7 +1,7 @@
 """Calls component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import local_names
-from src.pystachy_compiler.diagnostics import shown, where
+from src.pystachy_compiler.analysis import local_names, numeric_statement
+from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
@@ -11,6 +11,9 @@ from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     opaque_class,
     atomic_dict,
+    identity_abi,
+    identity_default,
+    numeric_identity,
     clone,
     codec,
     elem,
@@ -587,17 +590,38 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
         self.err(f"a {typestr(ct)} takes {len(ts) - 1} argument{'s' if len(ts) != 2 else ''}, but {len(args)} {'were' if len(args) != 1 else 'was'} given")
     vals: list[Val] = []
     for j in range(len(args)):
-        vals.append(self.coerce(self.expr(args[j], ts[j + 1]), ts[j + 1], f"argument {j + 1} of a {typestr(ct)}"))
+        value = self.coerce(self.expr(args[j], ts[j + 1]), ts[j + 1], f"argument {j + 1} of a {typestr(ct)}")
+        if dynamic_program() and numeric_identity(value.t):
+            # A pre-evaluated vnode can also feed a sibling branch. Keep this call's
+            # snapshot on its own Val, rather than publishing branch-local SSA there.
+            captured = Val(value.v, value.t).identity(value)
+            captured.idfrom = self.dyn_box(value).v
+            value = captured
+        vals.append(value)
     o = self.unwrap(o, "TypeError: 'NoneType' object is not callable")
     code = self.mload('%ptr', o.v)
     env = self.mload('%ptr', self.maddr('%ptr', f'{o.v}', '1', True))
     c = Ins("icall", ts[0], "")
     c.a = [Val(code, "env"), Val(env, "env")] + vals
+    idresult = ""
+    if dynamic_program():
+        c.a.extend([self.dyn_box(v) for v in vals if numeric_identity(v.t)])
+        if numeric_identity(ts[0]):
+            idresult = self.alloca("dyn", "")
+            self.mem_store(Val(idresult, "*dyn"), Val("null", "dyn"))
+            c.a.append(Val(idresult, "*dyn"))
     if ts[0] == "None":
         self.add(c)
         return Val("null", "None")
     self.put(c, 1)
-    return Val(f"%t{c.r[0]}", ts[0])
+    result = Val(f"%t{c.r[0]}", ts[0])
+    if idresult != "" and numeric_identity(ts[0]):
+        result.idexact = result.t == "int" or result.t == "float"
+        result.idslot = idresult
+        result.idheld = self.mem_load(Val(idresult, "*dyn")).v
+        result.idcounter = self.alloca("int", "")
+        result.idversion = "0"
+    return result
 
 def gen_call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
     # a call through function value v (is_fn): the call of the function it is, as if called by
@@ -989,7 +1013,7 @@ def gen_nt_make(self, c: str, args: list[Node], want: str) -> Val:
     self.place(bad)
     self.raise_("TypeError", self.concat([Val(self.sconst(f"Expected {n} arguments, got "), "str"), self.to_str(Val(ln, "int"))]).v)
     self.place(ok)
-    return self.nt_new(c, [self.from_slot(self.list_slot(v, str(i)), elem(v.t)) for i in range(n)], want)
+    return self.nt_new(c, [self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.from_slot(self.list_slot(v, str(i)), elem(v.t)) for i in range(n)], want)
 
 def gen_dc_replace(self, args: list[Node]) -> Val:
     # dataclasses.replace(obj, **changes): a new object of obj's class, which its __init__ makes
@@ -1113,12 +1137,20 @@ def gen_new_obj(self, c: str) -> Val:
 
 def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
     # argument j of f for a parameter of type t ("": a template's unannotated parameter takes any type)
-    if t == "":
-        return v
     what = ""
     if is_opt(v.t):
         what = f"argument {j if takes_self(f) else j + 1} of {short(f.name)}()" if j < f.npos else f"argument '{f.params[j]}' of {short(f.name)}()"
-    return self.coerce(v, t, what)
+    if identity_abi(f) and numeric_identity(v.t) and numeric_identity(t) and (not f.scalar_args or f.params[j] in f.idnames):
+        captured = Val(v.v, v.t).identity(v)
+        captured.idfrom = self.dyn_box(v).v
+        v = captured
+    value = self.coerce(v, t, what) if t != "" else v
+    if identity_abi(f) and numeric_identity(value.t) and (not f.scalar_args or f.params[j] in f.idnames):
+        # Capture now, before a later argument can rebind the original local or cell.
+        result = Val(value.v, value.t).identity(value)
+        result.idfrom = self.dyn_box(value).v
+        return result
+    return value
 
 def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
     # Closed-world dispatch, before argument binding: an override owns its defaults. Each
@@ -1135,7 +1167,12 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     for a in args:
         j = f.params.index(a.s) if a.kind == "kw" and a.s in f.params else pos
         t = f.ptypes[j] if j < len(f.ptypes) and j != f.vararg and j != f.kwarg else ""
-        argnode = self.vnode(self.expr(a.kids[0] if a.kind == "kw" else a, t))
+        value = self.expr(a.kids[0] if a.kind == "kw" else a, t)
+        if dynamic_program() and numeric_identity(value.t):
+            captured = Val(value.v, value.t).identity(value)
+            captured.idfrom = self.dyn_box(value).v
+            value = captured
+        argnode = self.vnode(value)
         bound.append(mk("kw", a.s, a.line, [argnode]) if a.kind == "kw" else argnode)
         if a.kind != "kw":
             pos += 1
@@ -1155,6 +1192,8 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         self.narrowed = dict(narrow)
         v = self.call_fn(c.methods[f.name], [Val(o.v, c.name)] + pre[1:], bound, want, direct=True, resultsoft=resultsoft)
         if not self.term:
+            if dynamic_program() and numeric_identity(v.t):
+                v.idfrom = self.dyn_box(v).v
             vals.append(v)
             edges.append(self.cur)
             self.br(end)
@@ -1172,7 +1211,51 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     self.place(end)
     if len(vals) == 0:
         self.unreachable()
-    return Val("null", "None") if t == "None" else Val(self.phi(ph), t)
+    result = Val("null", "None") if t == "None" else Val(self.phi(ph), t)
+    if dynamic_program() and numeric_identity(t):
+        identity = Ins("phi", "dyn", "")
+        for i in range(len(vals)):
+            # A None/string/bool arm needs no numeric provenance. Its raw payload
+            # remains sufficient; the optional/union boxing path handles its tag.
+            self.incoming(identity, vals[i].idfrom if vals[i].idfrom != "" else "null", edges[i])
+        held = self.phi(identity)
+        result.idslot = self.alloca("dyn", "")
+        self.mem_store(Val(result.idslot, "*dyn"), Val(held, "dyn"))
+        result.idheld = held
+        result.idcounter = self.alloca("int", "")
+        result.idversion = "0"
+    return result
+
+def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
+    # A complete, inert numeric call can specialize before evaluating its arguments.
+    # That lets the scalar None-body proof discard their boxes before pcoerce snapshots
+    # them. Unknown types or effectful arguments must keep those early snapshots.
+    if not identity_abi(f) or not f.generic or f.cls != "" or f.clo >= 0 or f.gen or f.vararg >= 0 or f.kwarg >= 0 or f.ret not in ["", "None"] or len(args) != len(f.params) or len(f.node.kids) != 3:
+        return []
+    ts = ["" for p in f.params]
+    pos = 0
+    for a in args:
+        j = f.params.index(a.s) if a.kind == "kw" else pos
+        e = a.kids[0] if a.kind == "kw" else a
+        if a.kind != "kw":
+            pos += 1
+        t = e.kind if e.kind in ["int", "float"] else "bool" if e.kind in ["True", "False"] else self.static_type(e) if e.kind == "name" else self.vnodes[int(e.s)].t if e.kind == "val" else ""
+        if t not in ["int", "float", "bool"] or (f.ptypes[j] != "" and f.ptypes[j] != t):
+            return []
+        ts[j] = t
+    if any(t == "" for t in ts):
+        return []
+    names: dict[str, bool] = {}
+    body = f.node.kids[2].kids
+    local_names(body, names)
+    for p in f.params:
+        names[p] = True
+    blocked: dict[str, bool] = {}
+    for nm in ["int", "float", "bool", "range", "print"]:
+        if nm in self.mvars or nm in self.gtypes or nm in self.funcs or nm in self.classes or nm in self.aliases or nm in self.fglobals:
+            blocked[nm] = True
+    return ts if all(numeric_statement(n, names, blocked, True, True) for n in body) else []
+
 
 def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "") -> Val:
     # f(pre + args); none: the error where pre[0], an object called (o(args)), is None
@@ -1180,6 +1263,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         self.err(f"{f.name}() is @export, so Pystachy code may not call it (under CPython each call goes through the export's checks and conversions): call a private function that both use")
     if f.bad != "":
         self.err(f.bad)  # (before its arguments, whose types may be placeholders')
+    if identity_abi(f) and len(f.node.kids) == 3:
+        self.numeric_proof(f, f.node.kids[2].kids)
     if f.cls in self.classes and self.classes[f.cls].tag > 0 and f.deco == "" and len(pre) > 0:
         if pre[0].t not in self.classes or not self.derives(pre[0].t, f.cls):
             self.err(f"{short(f.cls)}.{f.name}() needs an instance of {short(f.cls)}")
@@ -1189,6 +1274,10 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         hpush(self.wake, self.lazyat[f.ll])
     self.called[f.ll] = True
     self.arity(f, len(pre), args)
+    if len(pre) == 0 and cache is None:
+        scalar_types = self.scalar_call_types(f, args)
+        if len(scalar_types) > 0:
+            f = self.instance(f, scalar_types, [])
     line = self.line
     np = len(f.params)
     vals: list[Val] = []
@@ -1251,7 +1340,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
     for j in range(np):
         if vals[j].t == "":
             t = f.ptypes[j]
-            if df.dglob[j] == "" and not is_const(f.defaults[j]):
+            if df.dglob[j] == "" and (not is_const(f.defaults[j]) or identity_default(f.defaults[j])):
                 self.early_default(df, j)
             if df.dglob[j].startswith("!"):
                 self.err(df.dglob[j][1:])
@@ -1264,9 +1353,15 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                 t = t if t != "" else df.dtypes[j]
                 da = self.maddr('int', pre[0].v, f'{df.dglob[j][1:]}', True)
                 vals[j] = Val(self.mload(t, da), t)
+                if dynamic_program() and numeric_identity(t):
+                    closure = self.closures[f.clo]
+                    ba = self.maddr('%ptr', pre[0].v, str(int(df.dglob[j][1:]) + len(closure.defs) + len(closure.iflags)), True)
+                    vals[j].idfrom = self.mload('dyn', ba)
             elif df.dglob[j] != "":
                 t = t if t != "" else df.dtypes[j]
                 vals[j] = Val(self.mload(t, df.dglob[j]), t)
+                if dynamic_program() and numeric_identity(t):
+                    vals[j].idfrom = self.mload('dyn', df.dglob[j] + '.box')
             else:
                 vals[j] = self.pcoerce(self.expr(f.defaults[j], t), t, f, j)
     for fl in self.dc_fields(self.classes[f.cls]) if len(facs) > 0 else []:
@@ -1335,6 +1430,13 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft)
     c = Ins("call", f.ret, f.ll)
     c.a = [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+    idresult = ""
+    if identity_abi(f):
+        c.a.extend([self.dyn_box(vals[j]) if not f.scalar_args or f.params[j] in f.idnames else Val("null", "dyn") for j in range(np) if numeric_identity(f.ptypes[j])])
+        if numeric_identity(f.ret):
+            idresult = self.alloca("dyn", "")
+            self.mem_store(Val(idresult, "*dyn"), Val("null", "dyn"))
+            c.a.append(Val(idresult, "*dyn"))
     if len(offs) > 0:
         # a list as ffi.at(xs, k): the stub that takes an index after the arguments for each list
         # (0 for one passed as it is), which it checks as the call starts (cextern)
@@ -1383,7 +1485,14 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                     old = self.qused.get(g.ll, v.t)
                     self.qused[g.ll] = v.t if old == v.t else "?"
         return v
-    return Val(f"%t{c.r[0]}", f.ret)
+    result = Val(f"%t{c.r[0]}", f.ret)
+    if idresult != "" and numeric_identity(f.ret):
+        result.idexact = result.t == "int" or result.t == "float"
+        result.idslot = idresult
+        result.idheld = self.mem_load(Val(idresult, "*dyn")).v
+        result.idcounter = self.alloca("int", "")
+        result.idversion = "0"
+    return result
 
 def gen_fname(self, f: FnInfo) -> str:
     # f as CPython's errors about a call's arguments name it, by its qualified name: a

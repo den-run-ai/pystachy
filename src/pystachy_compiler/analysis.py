@@ -28,14 +28,14 @@ def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool]) -> 
     return allowed and all(numeric_value(x, names, blocked) for x in n.kids)
 
 
-def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool], noresult: bool = False) -> bool:
+def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool], noresult: bool = False, annotations: bool = False) -> bool:
     # A bounded body whose local numbers only feed scalar operations and the existing
     # typed numeric return ABI. No globals, containers, callbacks, closures or Any storage.
     k = n.kind
     if k in ["pass", "break", "continue"]:
         return True
     if k == "block":
-        return all(numeric_statement(x, names, blocked, noresult) for x in n.kids)
+        return all(numeric_statement(x, names, blocked, noresult, annotations) for x in n.kids)
     if noresult and k == "return":
         return len(n.kids) == 0 or (len(n.kids) == 1 and n.kids[0].kind == "None")
     if noresult and k == "expr" and len(n.kids) == 1:
@@ -46,18 +46,70 @@ def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool],
             return "print" not in names and "print" not in blocked and all(x.kind == "str" or numeric_value(x, names, blocked) for x in value.kids[1:])
     if k in ["return", "expr"]:
         return len(n.kids) == 1 and numeric_value(n.kids[0], names, blocked)
+    if annotations and k == "annassign":
+        ann = n.kids[1]
+        parts = [ann]
+        valid = True
+        while len(parts) > 0:
+            a = parts.pop()
+            if a.kind == "binop" and a.s == "|":
+                parts.extend(a.kids)
+            elif a.kind != "name" or a.s not in ["int", "float", "bool"] or a.s in blocked:
+                valid = False
+        return valid and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s in names and numeric_value(n.kids[2], names, blocked)
     if k in ["assign", "augassign"]:
         if len(n.kids) != 2 or n.kids[0].kind != "name" or n.kids[0].s not in names:
             return False
         return (k == "assign" or n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) and numeric_value(n.kids[1], names, blocked)
     if k in ["if", "while"]:
-        return numeric_value(n.kids[0], names, blocked) and all(numeric_statement(x, names, blocked, noresult) for x in n.kids[1:])
+        return numeric_value(n.kids[0], names, blocked) and all(numeric_statement(x, names, blocked, noresult, annotations) for x in n.kids[1:])
     if k == "for":
         it = n.kids[1]
         if n.kids[0].kind != "name" or n.kids[0].s not in names or it.kind != "call" or it.kids[0].kind != "name" or it.kids[0].s != "range":
             return False
-        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked, noresult) for x in n.kids[2:])
+        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked, noresult, annotations) for x in n.kids[2:])
     return False
+
+
+def numeric_aliases(n: Node, out: dict[str, bool]) -> None:
+    # Names whose object (rather than only numeric payload) can be the expression's value.
+    if n.kind == "name":
+        out[n.s] = True
+    elif n.kind == "walrus" or (n.kind == "unary" and n.s == "+"):
+        numeric_aliases(n.kids[0], out)
+    elif n.kind == "ifexp":
+        for k in n.kids[1:]:
+            numeric_aliases(k, out)
+    elif n.kind == "boolop":
+        for k in n.kids:
+            numeric_aliases(k, out)
+    elif n.kind == "call" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s in ["int", "float"]:
+        numeric_aliases(n.kids[1], out)
+
+
+def numeric_return_names(body: list[Node]) -> dict[str, bool]:
+    # Backward closure of aliases that may leave a closed numeric function. Arithmetic
+    # breaks provenance; assignments/branches and same-type conversions preserve it.
+    pending = list(body)
+    stores: list[Node] = []
+    out: dict[str, bool] = {}
+    while len(pending) > 0:
+        n = pending.pop()
+        if n.kind == "return" and len(n.kids) > 0:
+            numeric_aliases(n.kids[0], out)
+        elif n.kind in ["assign", "annassign", "walrus"]:
+            stores.append(n)
+        if n.kind != "def" and n.kind != "lambda":
+            pending.extend(n.kids)
+    changed = True
+    while changed:
+        before = len(out)
+        for n in stores:
+            name = n.s if n.kind == "walrus" else n.kids[0].s
+            if name in out:
+                numeric_aliases(n.kids[0] if n.kind == "walrus" else n.kids[-1], out)
+        changed = len(out) != before
+    return out
 
 
 def target_names(t: Node, out: dict[str, bool]) -> None:

@@ -5,6 +5,7 @@ import sys
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import Rejoin, fail, shown
+from src.pystachy_compiler.dynamic import comparison_properties
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
@@ -936,6 +937,8 @@ def gen_program(self, mods: list[Mod]) -> str:
         # which specialize declares itself)
         self.selfcls = ci.name
         self.declare_fields(ci)
+        if self.dyn_policy(ci.node.line):
+            comparison_properties(ci)
         self.selfcls = ""
         ci.bad = ci.bad if ci.bad != "" else ci.hook  # (after the problems declare_fields finds, see hoist_class)
         for f in ci.methods.values():

@@ -1,0 +1,21 @@
+unpack first True
+unpack second True
+unpack last True
+star first True
+star rest True
+star last True
+target first True
+target second True
+min key True
+max key True
+generator min True
+generator max True
+arguments min True
+arguments max True
+arguments key True
+optional key True
+none key True
+native copy True
+native repeat True
+native original True
+[exit 0]

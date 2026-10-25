@@ -71,7 +71,7 @@ static void operations(void) {
     else pys_list_del_slice(l, NONE, NONE, how == 1 ? 1 : -1);
     check_empty(l);
   }
-  List l = {0, 0, sorting};
+  List l = {0, 0, sorting, 0};
   pys_list_del_slice(&l, NONE, NONE, 1);
   pys_list_del_slice(&l, NONE, NONE, 2);
   pys_list_set_slice(&l, NONE, NONE, 1, &l);
@@ -261,6 +261,84 @@ static void budgets(void) {
   for (I i = 0; i < 640; i++) pys_list_new(8192);
   if (!gc_stress && gc_n - before != 1) bad("dropped arrays of pointers keep the 32 MiB window");
 }
+/* Dynamic graphs keep scalar identity separately from raw numeric storage. Copies and
+   mutators move that provenance with the values; matching payload bits never merge boxes. */
+static void identity_slots(List *l) {
+  if (!l->ids) bad("numeric identity companion missing");
+  for (I i = 0; i < l->len; i++) {
+    Dyn *d = (Dyn *)l->ids[i + 1];
+    if (!d || d->v != l->a[i]) bad("numeric identity companion differs from payload");
+  }
+}
+static void identities(void) {
+  Dyn *a = pys_dyn_float(NAN), *b = pys_dyn_float(NAN), *z = pys_dyn_float(-0.0);
+  List *l = pys_list_new_atomic(0);
+  buffers = pys_list_new(0); pys_list_append(buffers, (I)l);
+  pys_list_append_identity(l, a->v, a, 2);
+  pys_list_append_identity(l, b->v, b, 2);
+  pys_list_append_identity(l, a->v, a, 2);
+  pys_list_append_identity(l, z->v, z, 2);
+  identity_slots(l); kinds(l, 1);
+  if (atomic(l->ids)) bad("numeric identity companion is not scanned");
+  if (pys_list_get_identity(l, -4, 2) != a) bad("negative identity index");
+  if (pys_list_count_identity(l, a->v, a, cstr("f"), cstr("f"), 2) != 2) bad("NaN identity count");
+  if (pys_list_index_identity(l, b->v, b, cstr("f"), cstr("f"), 2, 0, 100) != 1) bad("distinct NaN identity index");
+  I ticks = gc_tick;
+  pys_list_set(l, 1, a->v);
+  if (gc_tick != ticks || l->ids[2]) bad("raw list store allocates instead of invalidating identity");
+  if (!eqv((I)l, (I)l, "Lf")) bad("pending numeric identity loses list self equality");
+  List *q = pys_list_copy(l);
+  if (!l->ids[2] || l->ids[2] != q->ids[2] || l->ids[2] == (I)a) bad("copy did not materialize a fresh raw-store identity");
+  pys_list_set_identity(l, 1, b->v, b, 2);
+  pys_list_set_identity(q, 1, b->v, b, 2);
+  if (!eqv((I)l, (I)q, "Lf") || !eqpair((I)l, (I)q, "Lf", "Lf") || !opv((I)l, (I)q, "Lf", 1)) bad("NaN identity sequence comparison");
+  pys_list_reverse(q); identity_slots(q);
+  if (q->ids[1] != (I)z || q->ids[4] != (I)a) bad("reverse loses identity");
+  List *r = pys_list_slice_step(l, NONE, NONE, -1);
+  identity_slots(r); if (r->ids[1] != (I)z) bad("stepped slice loses identity");
+  pys_list_extend(l, l); pys_list_imul(l, 3); identity_slots(l);
+  if (l->len != 24 || l->ids[1] != l->ids[5] || l->ids[24] != (I)z) bad("self extend/repeat identity");
+  List *m = pys_list_mul(q, 3); identity_slots(m);
+  if (m->len != 12 || m->ids[12] != (I)a) bad("repetition loses identity");
+  pys_list_set_slice(m, 1, 5, 1, q); identity_slots(m);
+  pys_list_set_slice(m, 0, 4, 1, m); identity_slots(m);
+  if (m->len != 20) bad("identity self slice assignment length");
+  pys_list_del_slice(m, 0, 20, 3); identity_slots(m);
+  pys_list_del_slice(m, NONE, NONE, -2); identity_slots(m);
+  pys_list_insert_identity(m, -100, a->v, a, 2); identity_slots(m);
+  if (pys_list_pop_identity(m, 0, 2) != a) bad("pop loses identity");
+  identity_slots(m);
+  pys_list_remove_identity(l, b->v, b, cstr("f"), cstr("f"), 2); identity_slots(l);
+  if (l->len != 23) bad("remove of aliased NaN");
+  pys_list_clear(l); check_empty(l);
+  if (l->ids != empty_identity_float) bad("clear retains identity backing");
+  pys_list_append_identity(l, z->v, z, 2); identity_slots(l);
+  pys_list_forget_identity(l); identity_slots(l);
+  if (l->ids[1] == (I)z) bad("native writeback retained old float identity");
+  for (I i = 0; i < 100; i++) {
+    Dyn *x = pys_dyn_float((double)((99 - i) % 17));
+    pys_list_append_identity(l, x->v, x, 2);
+  }
+  List *before = pys_list_copy(l);
+  pys_list_sort(l, cstr("f")); identity_slots(l);
+  for (I i = 0; i < l->len; i++) {
+    I found = 0;
+    for (I j = 0; j < before->len; j++) found += l->ids[i + 1] == before->ids[j + 1];
+    if (!found || (i && dbl(l->a[i - 1]) > dbl(l->a[i]))) bad("sort loses value/identity");
+  }
+  if (pys_list_minmax_identity(l, cstr("f"), 0, 2) != (Dyn *)l->ids[1]) bad("min loses identity");
+  List *taken = pys_list_take(l), *keys = pys_list_new_atomic(taken->len);
+  for (I i = 0; i < taken->len; i++) pys_list_append(keys, taken->len - i);
+  List *pairs = pys_list_keyed(taken, keys, 1);
+  pys_list_sort(pairs, cstr("Ki")); pys_list_unkey(taken, pairs); pys_list_give(taken);
+  identity_slots(l);
+  for (I i = 1; i < l->len; i++) if (dbl(l->a[i - 1]) < dbl(l->a[i])) bad("keyed sort loses identity order");
+  List *native = pys_list_new_atomic(0);
+  pys_list_append(native, 1000); pys_list_identity(native, 1);
+  Dyn *old = pys_list_get_identity(native, 0, 1);
+  pys_list_append(native, 1000); identity_slots(native);
+  if (pys_list_get_identity(native, 1, 1) == old) bad("raw numeric write reused an equal object's identity");
+}
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 1);
   budget_candidates();
@@ -272,7 +350,8 @@ int main(void) {
   operations();
   ranges();
   numeric();
+  identities();
   budgets();
-  puts("listprobe: empty-list reuse, range-list storage/mutation, pointer-free list kinds and large-object collections passed");
+  puts("listprobe: empty-list reuse, range-list storage/mutation, pointer-free list kinds, numeric identity and large-object collections passed");
   return 0;
 }

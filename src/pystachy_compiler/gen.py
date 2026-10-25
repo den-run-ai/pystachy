@@ -319,6 +319,7 @@ from src.pystachy_compiler.calls import (
     gen_open_call as calls_open_call,
     gen_pat_arg as calls_pat_arg,
     gen_pcoerce as calls_pcoerce,
+    gen_scalar_call_types as calls_scalar_call_types,
     gen_print_star as calls_print_star,
     gen_replace as calls_replace,
     gen_nt_make as calls_nt_make,
@@ -332,6 +333,12 @@ from src.pystachy_compiler.calls import (
     gen_virtual_call as calls_virtual_call,
 )
 from src.pystachy_compiler.containers import (
+    gen_list_id_kind as containers_list_id_kind,
+    gen_list_find as containers_list_find,
+    gen_list_identity as containers_list_identity,
+    gen_list_item as containers_list_item,
+    gen_list_store as containers_list_store,
+    gen_list_minmax as containers_list_minmax,
     gen_none_container as containers_none_container,
     gen_affix_any as containers_affix_any,
     gen_bool_find as containers_bool_find,
@@ -644,6 +651,7 @@ from src.pystachy_compiler.expressions import (
     gen_exc_id as expressions_exc_id,
     gen_expr as expressions_expr,
     gen_scalar_read_value as expressions_scalar_read_value,
+    gen_scalar_read_index as expressions_scalar_read_index,
     gen_fmt_error as expressions_fmt_error,
     gen_fmt_raise as expressions_fmt_raise,
     gen_format_arg as expressions_format_arg,
@@ -659,6 +667,7 @@ from src.pystachy_compiler.expressions import (
     gen_format_ as expressions_format_,
     gen_has as expressions_has,
     gen_ifexp as expressions_ifexp,
+    gen_numeric_phi as expressions_numeric_phi,
     gen_index as expressions_index,
     gen_isinst as expressions_isinst,
     gen_class_matches as expressions_class_matches,
@@ -722,6 +731,7 @@ from src.pystachy_compiler.expressions import (
     gen_pick as expressions_pick,
     gen_iter_static as expressions_iter_static,
     gen_tuple_order as expressions_tuple_order,
+    gen_list_pair_eq as expressions_list_pair_eq,
     gen_unary as expressions_unary,
 )
 from src.pystachy_compiler.flow import (
@@ -793,6 +803,7 @@ from src.pystachy_compiler.functions import (
     gen_externtype as functions_externtype,
     gen_function as functions_function,
     gen_function_body as functions_function_body,
+    gen_numeric_proof as functions_numeric_proof,
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
 )
@@ -2725,6 +2736,9 @@ class Gen:
     def function(self, f: FnInfo, body: list[Node]) -> None:
         return functions_function(self, f, body)
 
+    def numeric_proof(self, f: FnInfo, body: list[Node]) -> None:
+        functions_numeric_proof(self, f, body)
+
     def function_body(self, f: FnInfo, body: list[Node]) -> None:
         return functions_function_body(self, f, body)
 
@@ -3512,6 +3526,9 @@ class Gen:
     def expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
         return expressions_expr(self, n, want, returnctx, resultsoft)
 
+    def scalar_read_index(self, n: Node) -> bool:
+        return expressions_scalar_read_index(self, n)
+
     def scalar_read_value(self, n: Node) -> bool:
         return expressions_scalar_read_value(self, n)
 
@@ -3677,6 +3694,24 @@ class Gen:
     def subscript(self, n: Node, o: Val, want: str = "") -> Val:
         return expressions_subscript(self, n, o, want)
 
+    def list_find(self, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
+        return containers_list_find(self, o, v, method, start, stop)
+
+    def list_id_kind(self, t: str) -> int:
+        return containers_list_id_kind(self, t)
+
+    def list_identity(self, v: Val) -> Val:
+        return containers_list_identity(self, v)
+
+    def list_item(self, o: Val, i: Val) -> Val:
+        return containers_list_item(self, o, i)
+
+    def list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
+        containers_list_store(self, o, v, method, index)
+
+    def list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
+        return containers_list_minmax(self, o, desc, maximum)
+
     def list_read(self, o: Val, i: Val) -> Val:
         return expressions_list_read(self, o, i)
 
@@ -3709,6 +3744,9 @@ class Gen:
 
     def ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
         return expressions_ifexp(self, n, want, resultsoft)
+
+    def numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> Val:
+        return expressions_numeric_phi(self, result, values, edges)
 
     def boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
         return expressions_boolop(self, n, ascond, want, resultsoft)
@@ -3799,6 +3837,9 @@ class Gen:
 
     def titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
         return expressions_titem_eq(self, item, a, hit, ph, value)
+
+    def list_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_list_pair_eq(self, op, a, b)
 
     def tuple_order(self, op: str, a: Val, b: Val) -> Val:
         return expressions_tuple_order(self, op, a, b)
@@ -3931,6 +3972,9 @@ class Gen:
 
     def pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return calls_pcoerce(self, v, t, f, j)
+
+    def scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
+        return calls_scalar_call_types(self, f, args)
 
     def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "") -> Val:
         return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs)
@@ -4104,10 +4148,10 @@ class Gen:
         return builtins_consume(self, n, want, arg, resultsoft)
 
     def as_list(self, v: Val, name: str) -> Val:
-        return builtins_as_list(self, v, name)
+        return self.list_identity(builtins_as_list(self, v, name))
 
     def typed_list(self, v: Val, want: str) -> Val:
-        return builtins_typed_list(self, v, want)
+        return self.list_identity(builtins_typed_list(self, v, want))
 
     def reverse_arg(self, n: Node, name: str) -> str:
         return builtins_reverse_arg(self, n, name)

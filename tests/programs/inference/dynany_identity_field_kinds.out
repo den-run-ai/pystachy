@@ -1,0 +1,17 @@
+dataclass int True True
+dataclass float True True
+record repr Record(n=1000, f=nan)
+named tuple int True True
+named tuple float True True
+named tuple index True True
+replace repeated True True
+tuple repr Pair(n=2000, f=nan)
+tuple fields ('n', 'f')
+exception int True True
+exception repr Detailed('bad')
+specialized int True True
+specialized float True True
+imported field True True
+imported default True True
+imported replacement False False
+[exit 0]

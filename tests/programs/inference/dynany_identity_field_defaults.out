@@ -1,0 +1,16 @@
+class default True True
+inherited default True True
+two objects True True
+grandchild own True True
+child own True True
+distinct defaults False False
+base view fixed True True
+base view own True True
+base view changed True True
+updated class True True
+instance override False False
+base class update True True
+plain default True True
+plain update True True
+plain override False False
+[exit 0]

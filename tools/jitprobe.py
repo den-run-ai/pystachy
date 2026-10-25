@@ -4,8 +4,9 @@ usage: python3 tools/jitprobe.py [-c LABEL=COMMAND]...
 A transparent lli wrapper inspects the bitcode the driver actually executes: unused functions
 never reach it, and a small live helper reaches it inlined into its caller, unless
 PYSTACHY_JIT_INLINE=0 turns the JIT's inliner off (#211).
-The same boundary checks cover opt-in MCJIT -O0 code generation (#430), including
-argv, exception unwinding through runtime callbacks, GC stress and signal status.
+Unused loop feedback must also disappear after SSA promotion, while live loop results
+and side effects remain. The same boundary checks cover opt-in MCJIT -O0 code generation
+(#430), including argv, exception unwinding, coroutine lowering, GC stress and signal status.
 """
 import argparse
 import os
@@ -41,6 +42,18 @@ def live_leaf(x: int) -> int:
 
 def live_root(x: int) -> int:
     return live_leaf(x) * 2
+
+def loop_feedback(n: int) -> int:
+    dead = 17
+    total = 0
+    for i in range(n):
+        if i & 1:
+            dead = dead ^ i
+        total += i
+    print("feedback", n)
+    return total
+
+print(loop_feedback(7))
 
 class Item:
     def __init__(self, x: int):
@@ -81,6 +94,19 @@ print(padded.a, padded.b, padded.c, padded.d, padded.e, padded.f, padded.tags)
 '''
 
 
+COROUTINE_SOURCE = """from typing import Iterator
+
+def numbers(n: int) -> Iterator[int]:
+    try:
+        for i in range(n):
+            yield i
+    finally:
+        print("closed")
+
+print(list(numbers(4)))
+"""
+
+
 def run(command, env):
     result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, timeout=60, check=False)
     if result.returncode or result.stderr:
@@ -98,6 +124,8 @@ def main():
         temp = Path(tmp)
         source = temp / "probe.py"
         source.write_text(SOURCE + "\n".join(f"def unused_{i}(x: int) -> int:\n    return x + {i}\n" for i in range(32)))
+        coroutine = temp / "coroutine.py"
+        coroutine.write_text(COROUTINE_SOURCE)
         (temp / "jitprobe_module.py").write_text('print("import")\n')
         capture = temp / "executed.ll"
         invocation = temp / "lli-args"
@@ -119,11 +147,15 @@ def main():
         env.pop("PYSTACHY_JIT_CODEGEN", None)
         arguments = ["space here", "'quoted$argument`"]
         expected = run([sys.executable, str(source), *arguments], env)
+        coroutine_expected = run([sys.executable, str(coroutine)], env)
         for spec in commands:
             label, command = spec.split("=", 1)
             cmd = shlex.split(command)
             raw = run(cmd + ["ir", str(source)], env).decode()
             dead = set(re.findall(r"^define internal .*?@([^ (]*unused_[^ (]*)\(", raw, re.MULTILINE))
+            feedback = re.search(r"^define[^\n]*@f\.loop_feedback\([^\n]*\n.*?^}", raw, re.MULTILINE | re.DOTALL)
+            if feedback is None or "xor i64" not in feedback.group():
+                raise RuntimeError(f"{label}: loop-feedback probe did not emit its dead xor")
             if len(dead) != 35:
                 raise RuntimeError(f"{label}: expected 35 emitted unused functions, got {len(dead)}")
             capture.unlink(missing_ok=True)
@@ -149,11 +181,22 @@ def main():
                 raise RuntimeError(f"{label}: JIT output without the inliner differs from CPython")
             if not re.search(r"call .*@f\.live_leaf\(", capture.read_text()):
                 raise RuntimeError(f"{label}: PYSTACHY_JIT_INLINE=0 inlined live_leaf() all the same")
-            print(f"{label}: 35 unused functions removed; live calls, defaults, imports and runtime callbacks preserved; live_leaf() inlined, and not with PYSTACHY_JIT_INLINE=0")
+            feedback = re.search(r"^define[^\n]*@f\.loop_feedback\([^\n]*\n.*?^}", capture.read_text(), re.MULTILINE | re.DOTALL)
+            if feedback is None or "xor i64" in feedback.group() or "%dead." in feedback.group():
+                raise RuntimeError(f"{label}: unused loop feedback reached lli")
+            if run(cmd + ["run", str(coroutine)], env) != coroutine_expected:
+                raise RuntimeError(f"{label}: coroutine output/finally differs from CPython")
+            if re.search(r"\b(?:call|invoke)\b[^\n]*@llvm\.coro\.", capture.read_text()):
+                raise RuntimeError(f"{label}: unlowered coroutine operation reached lli")
+            print(f"{label}: 35 unused functions removed; live calls, defaults, imports and runtime callbacks preserved; live_leaf() inlined, and not with PYSTACHY_JIT_INLINE=0; unused loop feedback removed")
             for mode in ("2", "0"):
                 selected = env | {"PYSTACHY_JIT_CODEGEN": mode, "PYSTACHY_GC_STRESS_PROGRAM": "1"}
                 if run(cmd + ["run", str(source), *arguments], selected) != expected:
                     raise RuntimeError(f"{label}: codegen={mode} output/argv/callback exception differs")
+                if run(cmd + ["run", str(coroutine)], selected) != coroutine_expected:
+                    raise RuntimeError(f"{label}: codegen={mode} coroutine output/finally differs under GC stress")
+                if re.search(r"\b(?:call|invoke)\b[^\n]*@llvm\.coro\.", capture.read_text()):
+                    raise RuntimeError(f"{label}: codegen={mode} unlowered coroutine operation reached lli")
                 flags = invocation.read_text().splitlines()
                 if ("-jit-kind=mcjit" in flags) != (mode == "0") or ("-O0" in flags) != (mode == "0"):
                     raise RuntimeError(f"{label}: codegen={mode} selected unexpected lli flags: {flags}")

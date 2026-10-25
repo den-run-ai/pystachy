@@ -1,6 +1,6 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, str_appends
+from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
@@ -9,6 +9,7 @@ from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     RtFn,
     clone,
+    identity_abi,
     is_list,
     is_opt,
     lt,
@@ -128,16 +129,21 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     self.fn.n = self.n
     self.fns.append(self.fn)
 
-def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
-    # one compilation of f's code into a new IFn (gen_function)
-    self.enter(f, body)
-    if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
-        f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
-        self.ret = f.ret
+def gen_numeric_proof(self, f: FnInfo, body: list[Node]) -> None:
+    f.scalar_only = False
+    f.scalar_args = False
+    f.idnames = {}
     scalar_none = f.ret == "None" or (f.infer and f.ret == "")
     scalar_return = not f.infer and f.ret in ["int", "float", "bool"] and f.node.kind == "def" and len(f.node.kids) == 3 and all(p.kids[0].kind != "noann" for p in f.node.kids[0].kids)
-    if not self.modlevel and not self.rtmode and self.dyn_policy(f.node.line) and (scalar_none or scalar_return) and f.node.kind == "def" and len(f.node.kids) == 3 and f.clo < 0 and not f.gen and f.vararg < 0 and f.kwarg < 0 and all(t in ["int", "float", "bool"] for t in f.ptypes):
-        names = dict(self.assigned)
+    if not self.rtmode and identity_abi(f) and (scalar_none or scalar_return or (not f.infer and numeric_identity(f.ret))) and f.node.kind == "def" and len(f.node.kids) == 3 and f.clo < 0 and not f.gen and f.vararg < 0 and f.kwarg < 0 and all(t in ["int", "float", "bool"] for t in f.ptypes):
+        names: dict[str, bool] = {}
+        local_names(body, names)
+        # Reading a concrete numeric global cannot expose an argument's identity.
+        # Global writes and callbacks remain outside numeric_statement's proof, and
+        # a returned global still snapshots its own box through the normal read path.
+        for global_name in self.gtypes:
+            if self.gtypes[global_name] in ["int", "float", "bool"]:
+                names[global_name] = True
         for p in f.params:
             names[p] = True
         blocked: dict[str, bool] = {}
@@ -146,7 +152,20 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
                 blocked[nm] = True
         # This belongs to the fresh IFn, so dynamic widening/restarts recompute it and
         # nested function compilation saves/restores it with the existing Frame.
-        self.fn.numeric_only = all(numeric_statement(n, names, blocked, scalar_none) for n in body)
+        f.scalar_only = (scalar_none or scalar_return) and all(numeric_statement(n, names, blocked, scalar_none) for n in body)
+        f.scalar_args = f.scalar_only or all(numeric_statement(n, names, blocked, scalar_none, True) for n in body)
+    if f.scalar_args and not scalar_none:
+        f.idnames = numeric_return_names(body)
+
+
+def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
+    # one compilation of f's code into a new IFn (gen_function)
+    self.enter(f, body)
+    if f.infer and f.ret == "" and len(self.hints) > 0 and self.fnkey(f) + "|return" in self.hints:
+        f.ret = self.hints[self.fnkey(f) + "|return"]  # (a join's type: as if annotated, see join_hint)
+        self.ret = f.ret
+    self.numeric_proof(f, body)
+    self.fn.numeric_only = f.scalar_only
     if takes_self(f):
         # callers check the receiver, so self is never None inside a method
         self.nn["%a0"] = True
@@ -159,8 +178,8 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         # Like runtime.c's gc_box, request 15 for the 16-byte scanned slot. Only the
         # base and second-word addresses escape; no one-past-cell pointer is made.
         for cv in self.cellvars(f, body):
-            self.cells[cv] = self.rt("pys_alloc", "ptr", ["i64 15" if self.dyn_policy(f.node.line) else "i64 8"])
-            if self.dyn_policy(f.node.line):
+            self.cells[cv] = self.rt("pys_alloc", "ptr", ["i64 15" if identity_abi(f) else "i64 8"])
+            if identity_abi(f):
                 # Define the address before any branch or loop can first bind the cell.
                 self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '1', True)
         lf: dict[str, bool] = {}
@@ -188,7 +207,10 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.fn.ps.append(i)
         if self.dyn_widened(f.params[i]):
             # (one that an Any value is assigned later: a dynamic slot from the start, dyn_widen)
-            self.mem_store(Val(self.alloca("dyn", f.params[i]), "*dyn"), self.dyn_box(Val(f"%a{i}", t)))
+            incoming = Val(f"%a{i}", t)
+            if identity_abi(f) and numeric_identity(t):
+                incoming.idfrom = f"%aid{i}"
+            self.mem_store(Val(self.alloca("dyn", f.params[i]), "*dyn"), self.dyn_box(incoming))
         elif t == NONEVAR:
             # A provisional argument is null-only until its producer's inference restarts.
             # The parameter's later stores can independently reveal its own payload type.
@@ -196,6 +218,8 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             self.mem_store(Val(self.alloca(pt, f.params[i]), "*" + pt), self.coerce(Val("null", "None"), pt))
         else:
             self.mem_store(Val(self.alloca(t, f.params[i]), "*" + t), Val(f"%a{i}", t))
+        if identity_abi(f) and numeric_identity(t) and f.params[i] in self.idbox:
+            self.mem_store(Val(self.idbox[f.params[i]], "*dyn"), Val(f"%aid{i}", "dyn"))
         if f.params[i] in self.lflag:
             self.mem_store(Val(self.lflag[f.params[i]], "*bool"), Val("true", "bool"))  # (a parameter that del unbinds)
     if f.clo >= 0:
@@ -211,7 +235,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             a = self.maddr('%ptr', env, f'{i}', True)
             self.lreg[c.caps[i]] = self.mload('%ptr', a)
             self.ltype[c.caps[i]] = c.ctypes[i]
-            if numeric_identity(c.ctypes[i]) and self.dyn_policy(f.node.line):
+            if numeric_identity(c.ctypes[i]) and identity_abi(f):
                 self.idbox[c.caps[i]] = self.maddr('%ptr', self.lreg[c.caps[i]], '1', True)
         for j in range(len(c.iflags)):
             a = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + j}', True)
