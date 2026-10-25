@@ -1893,16 +1893,24 @@ def gen_assign(self, t: Node, v: Val) -> None:
             for lf in self.refl_split(o, False, True):
                 self.place(lf.label)
                 self.narrowed = dict(narrow)
-                if lf.c not in self.classes:
-                    self.raise_("AttributeError", self.sconst(f"'{tname(lf.c)}' object has no attribute '{t.s}'"))
+                if lf.c == "None":
+                    self.raise_("AttributeError", self.sconst(f"'NoneType' object has no attribute '{t.s}' and no __dict__ for setting new attributes"))
+                elif lf.c not in self.classes:
+                    # (CPython's file objects take new attributes, which a native file cannot)
+                    self.err(f"type {typestr(o.t)} has no attribute '{t.s}'")
                 else:
                     actual = self.classes[lf.c].ftypes.get(t.s, "")
                     setter = t.s + ".setter"
                     if self.is_prop(lf.c, t.s) and setter in self.classes[lf.c].methods and len(self.classes[lf.c].methods[setter].ptypes) == 2:
                         actual = self.classes[lf.c].methods[setter].ptypes[1]
                     if actual == "" and t.s not in self.classes[lf.c].methods:
+                        # CPython adds the attribute to an object with a __dict__, which a
+                        # native layout cannot: rejected, as for one class (field). A frozen
+                        # dataclass and a class with only __slots__ raise as CPython does
                         if not self.frozen_store(lf.v, t.s):
-                            self.raise_("AttributeError", self.sconst(f"'{short(lf.c)}' object has no attribute '{t.s}'"))
+                            if not self.classes[lf.c].slotlimit:
+                                self.err(f"type {typestr(o.t)} has no attribute '{t.s}'")
+                            self.raise_("AttributeError", self.sconst(f"'{short(lf.c)}' object has no attribute '{t.s}' and no __dict__ for setting new attributes"))
                     elif self.curfn.cmprebind != "" and actual != v.t and ((is_list(actual) and is_list(v.t)) or (is_dict(actual) and is_dict(v.t)) or (is_set(actual) and is_set(v.t))):
                         # A runtime-selected typed boundary must not suppress
                         # a valid store through another member of this union.
