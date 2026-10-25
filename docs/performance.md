@@ -77,6 +77,37 @@ Cross-function exceptions require stack unwinding and can be expensive in hot lo
 Same-function handlers use branches. The [extended benchmark guide](extended-performance.md)
 measures these paths separately, along with object dispatch and allocation.
 
+## Inspecting emitted LLVM calls
+
+`tools/ir_cost_report.py` inventories static call sites by function, records the
+input bytes' SHA-256, and distinguishes runtime declarations from definitions.
+It accepts the canonical text produced by Pystachy and LLVM; it does not compile,
+run, or validate a program. Function headers and call instructions must be on one
+line. Unknown call targets are counted as `<unresolved>` with their line numbers.
+
+```sh
+./pystachy ir bench/sieve.py -o /tmp/sieve.raw.ll
+python3 tools/ir_cost_report.py --ir raw=/tmp/sieve.raw.ll \
+  --function '^(main|f\.|m\.)' -o /tmp/sieve.calls.json
+```
+
+Repeat `--ir LABEL=FILE` to compare raw, JIT, and AOT optimized modules in one
+report. Labels are supplied by the caller; record the source revision, toolchain
+versions, flags, and commands beside the report. Keep the exact module used by
+each compilation stage. `opt` on raw program IR cannot inline C helper bodies
+that are only declarations. AOT's driver links the needed runtime bitcode before
+running Clang's optimizer; a GCC object sidecar is a different experiment. The
+`runtime_symbols` entries expose headers and referenced attribute groups so this
+distinction can be checked for the helpers under investigation.
+
+Counts are **static sites, not dynamic calls, allocations, or timings**. Inlining
+`pys_alloc` can leave free-list updates and `gc_slow` calls, and inlining list access
+can leave bounds checks and pointer reloads. Fewer helper calls do not prove less
+work. The function filter does not establish reachability, and attribute presence
+does not establish that adding those attributes to a collector would be safe.
+Use the existing correctness-gated benchmarks and profilers for execution cost.
+This inventory does not implement source-line annotations or explain missed passes.
+
 <a id="tuples-made-in-the-frame"></a>
 <a id="the-first-part-of-a-split"></a>
 <a id="inlining-under-the-jit"></a>
