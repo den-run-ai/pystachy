@@ -230,11 +230,17 @@ class integer:
         return self._compare(other, ">=") >= 0
 
 
+_SMALL_MIN = mpz(-9223372036854775808)
+
+
 def _from_big(value: mpz) -> integer:
+    # Demote a result that fits int64. A bit-length test, not a raised and caught
+    # OverflowError, keeps every result too large for int64 off the exception path.
     result = integer()
-    try:
+    bits = value.bit_length()
+    if bits < 64 or (bits == 64 and value == _SMALL_MIN):
         result._small = value.to_int()
-    except OverflowError:
+    else:
         result._large = value
     return result
 
