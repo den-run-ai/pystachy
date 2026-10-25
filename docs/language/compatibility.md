@@ -344,8 +344,9 @@ above apply to well-formed text (with the surrogate exception described above).
   adapter still falls back to identity (or `TypeError` for
   an ordering) where CPython runs the method
   outside the proven operation surface (`tests/deviations/dynany_cmp_uncompiled_body.py`, an
-  operand read back out of a container). Guarded adapters cover closed builtin field equality,
-  numeric/indexed expressions and mixed-list concatenation, nested list/tuple/dict equality
+  operand read back out of a container) or past the proof's size bound
+  (`tests/deviations/dynany_cmp_proof_bound.py`). Guarded adapters cover closed builtin field
+  equality, numeric/indexed expressions and mixed-list concatenation, nested list/tuple/dict equality
   with user callbacks, and property getters using normal native return inference. Known
   helpers, including local and recursive helpers, can retain or return proven operand/field
   aliases; escapes to `Any` globals and global `list[Any]` storage preserve the original object. Sequential

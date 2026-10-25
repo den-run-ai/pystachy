@@ -249,17 +249,46 @@ def comparison_rebind_view(n: Node, receiver: str, parameter: str) -> Node:
     return mk(n.kind, n.s, n.line, [comparison_rebind_view(k, receiver, parameter) for k in n.kids])
 
 
+# the helper bodies a comparison's proof view may hold, a shared body counted at each call
+PROOF_BODIES = 4096
+
+
+class ComparisonProofs:
+    # One proof view's projected helper bodies, by their whole binding state:
+    # the helper, its bindings, hidden names, local helpers and recursion path.
+    # A helper reached again in that state (from both branches of an if, say)
+    # shares the body projected first, which is all a new projection would
+    # build: the view's checks see the same tree, and a body is projected once.
+    def __init__(self) -> None:
+        self.bodies: dict[str, Node] = {}
+        self.serials: dict[str, str] = {}
+        self.sizes: dict[str, int] = {}  # bodies within, each shared one per call, itself included
+        self.hidden: dict[str, list[str]] = {}  # functions and globals a helper hides, by helper
+        self.calls = 0  # the bodies the view holds so far, as sizes counts them
+
+
+def comparison_key(n: Node) -> str:
+    # An unambiguous spelling of a projected binding. A shared helper body is
+    # spelled by its serial, since its whole binding state is already a key.
+    if n.kind == "cmpresult":
+        return n.s
+    return str(len(n.kind)) + ":" + n.kind + str(len(n.s)) + ":" + n.s + str(len(n.kids)) + "(" + "".join([comparison_key(k) for k in n.kids]) + ")"
+
+
 def comparison_project(n: Node, receiver: str, parameter: str, functions: dict[str, FnInfo], globals: dict[str, str]) -> Node:
     # A proof-only view of sequential aliases and known helpers. The emitted
     # source keeps its calls, closures, side effects and ordinary binding rules.
     # Recursion closes only when all operand/capture origins are unchanged.
+    # Shared helper bodies keep the view's size linear in its distinct helper
+    # states, but its checks still walk a body at every call: a view that would
+    # hold more than PROOF_BODIES bodies is unsupported, as a deeper one is.
     if comparison_rebinds(n, receiver, parameter):
         n = comparison_rebind_view(n, receiver, parameter)
     env: dict[str, Node] = {}
     blocked = [name for name in list(functions) + list(globals) if bind_count(n.kids, name) > 0]
     helpers: dict[str, Node] = {}
     active: dict[str, str] = {}
-    projected = comparison_projection(n, receiver, parameter, functions, globals, env, blocked, helpers, active)
+    projected = comparison_projection(n, receiver, parameter, functions, globals, env, blocked, helpers, active, ComparisonProofs())
     return n if has_kind(projected, "cmpunknown") else projected
 
 
@@ -314,7 +343,7 @@ def comparison_local_try(n: Node, tail: list[Node], known: list[str]) -> bool:
     return not any(name in assigned for name in known) and not any(comparison_mentions(k, list(assigned)) for k in n.kids[1:] + tail)
 
 
-def comparison_projection(n: Node, receiver: str, parameter: str, functions: dict[str, FnInfo], globals: dict[str, str], env: dict[str, Node], blocked: list[str], helpers: dict[str, Node], active: dict[str, str]) -> Node:
+def comparison_projection(n: Node, receiver: str, parameter: str, functions: dict[str, FnInfo], globals: dict[str, str], env: dict[str, Node], blocked: list[str], helpers: dict[str, Node], active: dict[str, str], proofs: ComparisonProofs) -> Node:
     if n.kind == "name":
         return env.get(n.s, n)
     if n.kind == "block":
@@ -341,7 +370,7 @@ def comparison_projection(n: Node, receiver: str, parameter: str, functions: dic
                 continue
             if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name":
                 name = st.kids[0].s
-                value = comparison_projection(st.kids[1], receiver, parameter, functions, globals, env, blocked, local, active)
+                value = comparison_projection(st.kids[1], receiver, parameter, functions, globals, env, blocked, local, active, proofs)
                 origin = comparison_result(value)
                 if name in declared and globals.get(name, "") == DYN and value.kind == "name" and value.s in [receiver, parameter]:
                     result.append(mk("pass", "", st.line, []))
@@ -355,6 +384,7 @@ def comparison_projection(n: Node, receiver: str, parameter: str, functions: dic
                     env[name] = origin
                     result.append(mk("cmpvalue", "", st.line, [value]))
                     continue
+                rebound = name in env or name in local
                 if name in env:
                     if comparison_mentions(env[name], [receiver, parameter]):
                         return mk("cmpunknown", "", st.line, []) if len(active) > 0 else n
@@ -363,18 +393,22 @@ def comparison_projection(n: Node, receiver: str, parameter: str, functions: dic
                     del local[name]
                 if name == parameter or name == receiver:
                     return mk("cmpunknown", "", st.line, []) if len(active) > 0 else n
-            result.append(comparison_projection(st, receiver, parameter, functions, globals, env, blocked, local, active))
+                if not rebound:
+                    result.append(mk(st.kind, st.s, st.line, [st.kids[0], value]))  # the value under unchanged bindings
+                    continue
+            result.append(comparison_projection(st, receiver, parameter, functions, globals, env, blocked, local, active, proofs))
         return mk(n.kind, n.s, n.line, result)
     if n.kind in ["def", "lambda", "class", "subclass", "global", "nonlocal"]:
         return n
     if n.kind == "call" and len(n.kids) == 2 and n.kids[0].kind == "attr" and n.kids[0].s == "append" and n.kids[0].kids[0].kind == "name":
         target = n.kids[0].kids[0].s
-        value = comparison_projection(n.kids[1], receiver, parameter, functions, globals, env, blocked, helpers, active)
+        value = comparison_projection(n.kids[1], receiver, parameter, functions, globals, env, blocked, helpers, active, proofs)
         if target not in blocked and globals.get(target, "") == "list[dyn]" and value.kind == "name" and value.s in [receiver, parameter]:
             return mk("pass", "", n.line, [])
+        return mk(n.kind, n.s, n.line, [comparison_projection(n.kids[0], receiver, parameter, functions, globals, env.copy(), blocked, helpers.copy(), active, proofs), value])
     if n.kind == "call" and len(n.kids) > 0 and n.kids[0].kind == "name":
         name = n.kids[0].s
-        args = [comparison_projection(k, receiver, parameter, functions, globals, env, blocked, helpers, active) for k in n.kids[1:]]
+        args = [comparison_projection(k, receiver, parameter, functions, globals, env, blocked, helpers, active, proofs) for k in n.kids[1:]]
         touches = any(comparison_mentions(a, [receiver, parameter]) for a in args)
         node = n
         params: list[str] = []
@@ -418,8 +452,24 @@ def comparison_projection(n: Node, receiver: str, parameter: str, functions: dic
                 elif len(active) < 16:
                     following = active.copy()
                     following[ident] = signature
-                    hidden = (blocked if name in helpers else []) + [x for x in list(functions) + list(globals) if x in params or bind_count(body.kids, x) > 0]
-                    return mk("cmpresult", "", n.line, [comparison_projection(body, receiver, parameter, functions, globals, mapping, hidden, nested, following)])
+                    owner = ("local " if name in helpers else "") + identity
+                    if owner not in proofs.hidden:
+                        proofs.hidden[owner] = [x for x in list(functions) + list(globals) if x in params or bind_count(body.kids, x) > 0]
+                    hidden = (blocked if name in helpers else []) + proofs.hidden[owner]
+                    state = owner + "(" + signature + ")|" + "".join([key + "=" + comparison_key(mapping[key]) + ";" for key in mapping]) + "|" + ",".join(hidden) + "|" + ",".join([key + "@" + str(nested[key].line) for key in nested]) + "|" + ";".join(list(following))
+                    if state in proofs.bodies:
+                        if proofs.calls + proofs.sizes[state] > PROOF_BODIES:
+                            return mk("cmpunknown", "", n.line, [])
+                        proofs.calls += proofs.sizes[state]
+                    else:
+                        if proofs.calls >= PROOF_BODIES:
+                            return mk("cmpunknown", "", n.line, [])
+                        start = proofs.calls
+                        proofs.calls += 1
+                        proofs.bodies[state] = comparison_projection(body, receiver, parameter, functions, globals, mapping, hidden, nested, following, proofs)
+                        proofs.sizes[state] = proofs.calls - start
+                        proofs.serials[state] = "#" + str(len(proofs.serials)) + "#"
+                    return mk("cmpresult", proofs.serials[state], n.line, [proofs.bodies[state]])
             # An argument that necessarily raises makes the helper body
             # unreachable. Keep the argument evaluation proof even when a
             # dependent expression cannot be substituted into a recursive body.
@@ -427,7 +477,9 @@ def comparison_projection(n: Node, receiver: str, parameter: str, functions: dic
                 return mk("cmpunknown", "", n.line, [])
             checked = [mk("None", "", a.line, []) if a.kind == "name" and a.s in [receiver, parameter] else a for a in args]
             return mk("cmpinvalidargs", ",".join("typed" if t != "" else "" for t in types), n.line, checked)
-    return mk(n.kind, n.s, n.line, [comparison_projection(k, receiver, parameter, functions, globals, env.copy(), blocked, helpers.copy(), active) for k in n.kids])
+        # (the arguments projected above: projecting them again would only repeat it)
+        return mk(n.kind, n.s, n.line, [comparison_projection(n.kids[0], receiver, parameter, functions, globals, env.copy(), blocked, helpers.copy(), active, proofs)] + args)
+    return mk(n.kind, n.s, n.line, [comparison_projection(k, receiver, parameter, functions, globals, env.copy(), blocked, helpers.copy(), active, proofs) for k in n.kids])
 
 
 def comparison_fields(n: Node, parameter: str, out: list[str]) -> bool:

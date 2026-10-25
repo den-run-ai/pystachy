@@ -8,7 +8,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.pystachy_compiler import driver  # noqa: E402
+from src.pystachy_compiler import driver, dynamic  # noqa: E402
 from src.pystachy_compiler.dynamic import comparison_discards_operand, comparison_equalities, comparison_invalid, comparison_fields, comparison_layout, comparison_properties, comparison_reads, comparison_record_write, comparison_storage  # noqa: E402
 from src.pystachy_compiler.ir import ClassInfo, FnInfo  # noqa: E402
 from src.pystachy_compiler.lexer import Lexer  # noqa: E402
@@ -539,6 +539,44 @@ class ConcreteComparisonTests(unittest.TestCase):
                     self.assertTrue(final.dyn_supports(f"Extra{index}", "cmp.Left.__eq__", "__eq__", 1))
             self.assertEqual(counts[0], counts[1])
             self.assertLessEqual(counts[1], 3)
+
+    def test_repeated_helper_states_share_their_projection(self):
+        # Each helper calls the one before it twice, in a condition and in its return: one
+        # binding state at both calls, whose body the proof view projects once and shares,
+        # so projection work grows linearly with the depth, not exponentially. The view still
+        # holds a body at each call, 2 ** (depth + 1) - 1 of them: past PROOF_BODIES (at
+        # depth 12) the comparison is unsupported.
+        def source(depth):
+            text = "# pystachy: dynamic-any\nfrom typing import Any\ndef h0(o):\n    return o.items\n"
+            for level in range(1, depth + 1):
+                text += f"def h{level}(o):\n    if len(h{level - 1}(o)) > {level}:\n        print({level})\n    return h{level - 1}(o)\n"
+            return text + ("class Left:\n    def __init__(self):\n        self.items = [3]\n"
+                           f"    def __eq__(self, other):\n        return h{depth}(other) == self.items\n"
+                           "class Right:\n    def __init__(self):\n        self.items = ['3']\n"
+                           "x: Any = Left()\ny: Any = Right()\nprint(x == y)\n")
+
+        projections = {}
+        for depth in [4, 8, 12]:
+            calls = [0]
+            generators = []
+            original = driver.Gen
+            projection = dynamic.comparison_projection
+
+            def generator(original=original, generators=generators):
+                value = original()
+                generators.append(value)
+                return value
+
+            def counted(*args, projection=projection, calls=calls):
+                calls[0] += 1
+                return projection(*args)
+
+            with patch.object(driver, "Gen", generator), patch.object(dynamic, "comparison_projection", counted):
+                driver.compile_program("shared_helpers_probe.py", source(depth), [str(ROOT / "lib")], "")
+            projections[depth] = calls[0]
+            final = generators[-1]
+            self.assertEqual("cmp.Left.__eq__" in final.dynfns and final.dyn_supports("Right", "cmp.Left.__eq__", "__eq__", 1), depth < 12)
+            self.assertLess(projections[depth], depth * projections[4])
 
     def test_lexical_helpers_execute_invalid_argument_or_body_types(self):
         bodies = [

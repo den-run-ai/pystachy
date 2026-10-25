@@ -433,7 +433,10 @@ variable-length tuples are not copied into boxes.
 
 Still outside this proof: arbitrary runtime-name field creation, helper or alias flows whose
 operand origins cannot be resolved, and native bodies or layout pairs without a supported
-operation. Differing unsupported `NamedTuple` element layouts and equality between
+operation. The proof also has a size bound. It projects a helper's body once per binding state
+and shares that body between calls in the same state, but still counts it at every call. More
+than 4,096 bodies, or helpers nested more than 16 calls deep, exceed the bound. Differing
+unsupported `NamedTuple` element layouts and equality between
 `list[bytes]` and `list[Any]` retain their explicit rejections
 (`tests/errors/inference/dynany_cmp_mixed_namedtuple_lists*.py`,
 `tests/errors/inference/dynany_list_bytes_boxed_eq.py`,
@@ -536,8 +539,9 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (the comparison acceptance matrix above defines the proven cases). Supported helper calls,
   escapes and returned aliases, native operand rebinding, inferred getters, nested container
   callbacks and finite literal missing-field writes are covered by that matrix. Unknown
-  helper/alias origins and unsupported native body or layout pairs still need further work.
-  Concrete operand annotations alone no
+  helper/alias origins and unsupported native body or layout pairs still need further work,
+  and a proof past its size bound falls back in the same way
+  (`tests/deviations/dynany_cmp_proof_bound.py`). Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
   is a correctness gap tracked by #803, not a stable comparison contract
   (`tests/deviations/dynany_cmp_uncompiled_body.py`).
