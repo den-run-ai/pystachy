@@ -112,12 +112,15 @@ def gen_uorders(self, a: str, b: str) -> bool:
     ms = (umembers(a) if is_union(a) else [a]) + (umembers(b) if is_union(b) else [b])
     return all([m in ["int", "float", "bool"] for m in ms]) or all([m == "str" for m in ms])
 
-def gen_ucmp(self, op: str, a: Val, b: Val) -> Val:
+def gen_ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
     # a op b, an ordering where a or b is of a union (uorders): each member's ordering, chosen by
-    # its tag (union splitting), compiled as the native comparison it is
-    if op in ["is", "is not"] and (is_opt(a.t) or is_opt(b.t)):
-        # Native reference identity may include None. Do not read a union tag
-        # until both pointers are nonnull; the remaining arms use original refs.
+    # its tag (union splitting), compiled as the native comparison it is; nonnull: identity's
+    # operands are known not to be None
+    if op in ["is", "is not"] and not nonnull and (is_opt(a.t) or is_opt(b.t) or self.reference_union(a.t) or self.reference_union(b.t)):
+        # Native reference identity may include None, an optional union's or a class
+        # union's (whose None is a null box pointer, as a class type's None is null).
+        # Do not read a union tag until both pointers are nonnull; the remaining arms
+        # use original refs.
         nula = self.ptr_cmp("==", a, Val("null", "None")).v
         nulb = self.ptr_cmp("==", b, Val("null", "None")).v
         both = self.scalar("and", [Val(nula, "bool"), Val(nulb, "bool")])
@@ -128,7 +131,7 @@ def gen_ucmp(self, op: str, a: Val, b: Val) -> Val:
         self.incoming(result, null_result, self.cur)
         self.cbr(self.scalar("or", [Val(nula, "bool"), Val(nulb, "bool")]), done, some)
         self.place(some)
-        value = self.ucmp(op, Val(a.v, unopt(a.t)), Val(b.v, unopt(b.t)))
+        value = self.ucmp(op, Val(a.v, unopt(a.t)), Val(b.v, unopt(b.t)), True)
         self.incoming(result, value.v, self.cur)
         self.br(done)
         self.place(done)
