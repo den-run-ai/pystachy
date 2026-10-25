@@ -1,0 +1,15 @@
+add TypeError unsupported operand type(s) for +: 'int' and 'str'
+sub TypeError unsupported operand type(s) for -: 'int' and 'list'
+floordiv TypeError unsupported operand type(s) for //: 'int' and 'str'
+mod TypeError unsupported operand type(s) for %: 'int' and 'str'
+and TypeError unsupported operand type(s) for &: 'int' and 'float'
+xor TypeError unsupported operand type(s) for ^: 'int' and 'str'
+lshift TypeError unsupported operand type(s) for <<: 'int' and 'str'
+rshift TypeError unsupported operand type(s) for >>: 'int' and 'float'
+pow TypeError unsupported operand type(s) for ** or pow(): 'int' and 'str'
+lt TypeError '<' not supported between instances of 'int' and 'str'
+ge TypeError '>=' not supported between instances of 'int' and 'list'
+bin TypeError 'str' object cannot be interpreted as an integer
+range TypeError 'float' object cannot be interpreted as an integer
+False True False
+[exit 0]

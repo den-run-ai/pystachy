@@ -27,6 +27,29 @@ def integer_pragma(src: str) -> bool:
     return False
 
 
+def identifier_char(c: str) -> bool:
+    return c == "_" or (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or (c >= "0" and c <= "9") or ord(c) >= 128
+
+
+def integer_annotation_text(s: str) -> str:
+    # A quoted annotation's rewritten builtin names, in its text (also nested quotes, which
+    # Loader.qann parses as annotations too): an attribute's name is not a builtin's
+    out: list[str] = []
+    i = 0
+    while i < len(s):
+        j = i
+        while j < len(s) and identifier_char(s[j]):
+            j += 1
+        if j == i:
+            out.append(s[i])
+            i += 1
+            continue
+        word = s[i:j]
+        out.append(INT_PREFIX + word if word in INT_NAMES and (i == 0 or s[i - 1] != ".") else word)
+        i = j
+    return "".join(out)
+
+
 def integer_walk(n: Node, annotation: bool = False) -> Node:
     if n.s.startswith(INT_PREFIX):
         fail("reserved name in python-int prototype", n.line)
@@ -64,18 +87,23 @@ def integer_walk(n: Node, annotation: bool = False) -> Node:
     if n.kind == "match":
         fail("python-int prototype does not support match patterns", n.line)
     if annotation and n.kind == "str":
-        parsed = Parser(Lexer("_value: " + n.s + "\n", n.line).file()).module()
-        return integer_walk(parsed.kids[0].kids[1], True)
+        n.s = integer_annotation_text(n.s)  # (still a forward reference: Loader.qann parses it)
+        return n
+    if annotation and n.kind == "index" and len(n.kids) == 2 and n.kids[0].s in ["Literal", "Annotated"]:
+        # Literal's values and Annotated's metadata are not types
+        if n.kids[0].s == "Annotated" and n.kids[1].kind == "tuple" and len(n.kids[1].kids) > 0:
+            n.kids[1].kids[0] = integer_walk(n.kids[1].kids[0], True)
+        return n
     if n.kind == "name" and n.s == "int" and not annotation:
         fail("python-int prototype supports int only in annotations, constructors and isinstance(x, int)", n.line)
     if n.kind == "name" and n.s in INT_NAMES:
         return mk("name", INT_PREFIX + n.s, n.line, [])
     if n.kind == "int" and not annotation:
         radix = n.s.startswith("0x") or n.s.startswith("0o") or n.s.startswith("0b")
-        value = mk("int", n.s, n.line, []) if not radix and int_fits(n.s) else mk("str", n.s, n.line, [])
-        args = [mk("name", INT_PREFIX + "int", n.line, []), value]
-        if radix:
-            args.append(mk("int", "0", n.line, []))
+        if not radix and int_fits(n.s):
+            return mk("call", "", n.line, [mk("name", INT_PREFIX + "int", n.line, []), mk("int", n.s, n.line, [])])
+        # An exact literal past int64 (the lexer keeps an oversized radix literal's digits)
+        args = [mk("name", INT_PREFIX + "convert_base", n.line, []), mk("str", n.s, n.line, []), mk("int", "0", n.line, [])]
         return mk("call", "", n.line, args)
     kids: list[Node] = []
     for i in range(len(n.kids)):

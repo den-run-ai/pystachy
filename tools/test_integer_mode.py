@@ -46,6 +46,28 @@ class IntegerModeTests(unittest.TestCase):
         self.assertEqual(call.kids[1].kind, 'str')
         self.assertEqual(call.kids[2].s, '0')
 
+    def test_oversized_decimal_literal_parses_with_base_zero(self):
+        node = integer_parse(PRAGMA + 'x = 18446744073709551616\n', 1)
+        call = node.kids[-1].kids[-1]
+        self.assertEqual(call.kids[0].s, '_pys_promoting_convert_base')
+        self.assertEqual((call.kids[1].kind, call.kids[1].s), ('str', '18446744073709551616'))
+        self.assertEqual((call.kids[2].kind, call.kids[2].s), ('int', '0'))
+
+    def test_quoted_annotations_remain_forward_references(self):
+        node = integer_parse(PRAGMA + 'def f(a: "Node | int") -> "list[\'int\']":\n    return [a]\n', 1)
+        fn = node.kids[-1]
+        self.assertEqual((fn.kids[0].kids[0].kids[0].kind, fn.kids[0].kids[0].kids[0].s), ('str', 'Node | _pys_promoting_int'))
+        self.assertEqual((fn.kids[1].kind, fn.kids[1].s), ('str', "list['_pys_promoting_int']"))
+        node = integer_parse(PRAGMA + 'x: "typing.int | intx | int_" = 1\n', 1)
+        self.assertEqual(node.kids[-1].kids[1].s, 'typing.int | intx | int_')
+
+    def test_literal_values_and_annotated_metadata_are_not_types(self):
+        node = integer_parse(PRAGMA + 'x: Literal["int", 1] = "int"\ny: Annotated[int, "int doc", 2] = 3\n', 1)
+        literal = node.kids[-2].kids[1].kids[1].kids
+        self.assertEqual([(k.kind, k.s) for k in literal], [('str', 'int'), ('int', '1')])
+        annotated = node.kids[-1].kids[1].kids[1].kids
+        self.assertEqual([(k.kind, k.s) for k in annotated], [('name', '_pys_promoting_int'), ('str', 'int doc'), ('int', '2')])
+
     def test_preserves_docstring(self):
         node = integer_parse(PRAGMA + '"doc"\nx = 1\n', 1)
         self.assertEqual(node.kids[0].kids[0].s, 'doc')

@@ -8,31 +8,12 @@ from mpz import mpz
 
 
 class integer:
-    def __init__(self, value=0, base=None) -> None:
-        self._small: int = 0
+    # A concrete class, not a template: an opted-in int annotation names one static
+    # type, so a recursive function's annotated result is known before it returns.
+    # int(x) and int(text, base) construct through convert() and convert_base().
+    def __init__(self, small: int = 0) -> None:
+        self._small: int = small
         self._large: mpz | None = None
-        if base is None:
-            radix = 10
-        elif isinstance(base, int):
-            radix = int(base)
-        else:
-            radix = base._bound()
-        if isinstance(value, integer):
-            if base is not None:
-                raise TypeError("int() can't convert non-string with explicit base")
-            self._small = value._small
-            self._large = value._large
-        elif isinstance(value, str):
-            try:
-                self._small = int(value, radix)
-            except OverflowError:
-                self._large = mpz(value, radix)
-        elif isinstance(value, int):
-            if base is not None:
-                raise TypeError("int() can't convert non-string with explicit base")
-            self._small = int(value)
-        else:
-            raise TypeError("python-int prototype requires an integer or string")
 
     def __init_subclass__(cls) -> None:
         raise TypeError("python-int prototype does not support int subclasses")
@@ -72,8 +53,8 @@ class integer:
         big = self._large
         return hash(self._small) if big is None else hash(big)
 
-    def _binary(self, other, op: int) -> "integer":
-        rhs = operand(other)
+    def _binary(self, other, op: int, symbol: str) -> "integer":
+        rhs = _operand(other, symbol, op < 5)
         if self._large is None and rhs._large is None:
             a = self._small
             b = rhs._small
@@ -114,28 +95,28 @@ class integer:
         return _from_big(x ^ y)
 
     def __add__(self, other) -> "integer":
-        return self._binary(other, 0)
+        return self._binary(other, 0, "+")
 
     def __sub__(self, other) -> "integer":
-        return self._binary(other, 1)
+        return self._binary(other, 1, "-")
 
     def __mul__(self, other) -> "integer":
-        return self._binary(other, 2)
+        return self._binary(other, 2, "*")
 
     def __floordiv__(self, other) -> "integer":
-        return self._binary(other, 3)
+        return self._binary(other, 3, "//")
 
     def __mod__(self, other) -> "integer":
-        return self._binary(other, 4)
+        return self._binary(other, 4, "%")
 
     def __and__(self, other) -> "integer":
-        return self._binary(other, 5)
+        return self._binary(other, 5, "&")
 
     def __or__(self, other) -> "integer":
-        return self._binary(other, 6)
+        return self._binary(other, 6, "|")
 
     def __xor__(self, other) -> "integer":
-        return self._binary(other, 7)
+        return self._binary(other, 7, "^")
 
     def __neg__(self) -> "integer":
         if self._large is None:
@@ -155,7 +136,7 @@ class integer:
         return integer(~self._small) if self._large is None else _from_big(~self._big())
 
     def _shift(self, count, right: bool) -> "integer":
-        rhs = operand(count)
+        rhs = _operand(count, ">>" if right else "<<", False)
         if rhs < 0:
             raise ValueError("negative shift count")
         if not self:
@@ -179,7 +160,7 @@ class integer:
         return self._shift(count, True)
 
     def __pow__(self, exponent) -> "integer":
-        n = operand(exponent)
+        n = _operand(exponent, "** or pow()", True)
         if n < 0:
             raise NotImplementedError("python-int prototype: negative non-modular power needs float integration")
         result = integer(1)
@@ -206,17 +187,27 @@ class integer:
             total = total + 1
         return total
 
-    def _compare(self, other) -> int:
-        rhs = operand(other)
+    def _compare(self, other, symbol: str) -> int:
+        rhs = _ordering_operand(other, symbol)
         if self._large is None and rhs._large is None:
             return -1 if self._small < rhs._small else 1 if self._small > rhs._small else 0
         a = self._big()
         b = rhs._big()
         return -1 if a < b else 1 if a > b else 0
 
+    def _identical(self, other: "integer") -> bool:
+        # self is other for two distinct wrappers: CPython's answer where the values decide it
+        # (unequal values, or equal ones in its small-int cache); else it depends on how CPython
+        # made each object (a shared constant, or a fresh result)
+        if self._compare(other, "is") != 0:
+            return False
+        if self._large is None and self._small >= -5 and self._small <= 256:
+            return True
+        raise NotImplementedError("python-int prototype: identity of equal integers outside CPython's small-int cache")
+
     def __eq__(self, other) -> bool:
         if isinstance(other, integer) or isinstance(other, int):
-            return self._compare(other) == 0
+            return self._compare(other, "==") == 0
         # Never silently return False for a numeric case whose exact comparison
         # this prototype cannot yet implement.
         if isinstance(other, float):
@@ -227,16 +218,16 @@ class integer:
         return not self == other
 
     def __lt__(self, other) -> bool:
-        return self._compare(other) < 0
+        return self._compare(other, "<") < 0
 
     def __le__(self, other) -> bool:
-        return self._compare(other) <= 0
+        return self._compare(other, "<=") <= 0
 
     def __gt__(self, other) -> bool:
-        return self._compare(other) > 0
+        return self._compare(other, ">") > 0
 
     def __ge__(self, other) -> bool:
-        return self._compare(other) >= 0
+        return self._compare(other, ">=") >= 0
 
 
 def _from_big(value: mpz) -> integer:
@@ -282,7 +273,7 @@ def power(base, exponent, modulus=None) -> integer:
 
 
 def radix(value, base: int, prefix: str) -> str:
-    x = operand(value)
+    x = _index_operand(value)
     negative = x < 0
     x = abs(x)
     out: list[str] = []
@@ -309,9 +300,9 @@ def hexadecimal(value) -> str:
 
 class integer_range:
     def __init__(self, start, stop=None, step=1) -> None:
-        self.start = integer(0) if stop is None else operand(start)
-        self.stop = operand(start) if stop is None else operand(stop)
-        self.step = operand(step)
+        self.start = integer(0) if stop is None else _index_operand(start)
+        self.stop = _index_operand(start) if stop is None else _index_operand(stop)
+        self.step = _index_operand(step)
         if not self.step:
             raise ValueError("range() arg 3 must not be zero")
 
@@ -327,10 +318,24 @@ class integer_range:
                 value = value + self.step
 
 
-def convert(value=0, base=None) -> integer:
-    if isinstance(value, integer) and base is None:
+def _parse(text: str, radix: int) -> integer:
+    try:
+        return integer(int(text, radix))
+    except OverflowError:
+        result = integer()
+        result._large = mpz(text, radix)
+        return result
+
+
+def convert(value=0) -> integer:
+    # int(value): an already-promoted value keeps its identity
+    if isinstance(value, integer):
         return value
-    return integer(value, base)
+    if isinstance(value, str):
+        return _parse(value, 10)
+    if isinstance(value, int):
+        return integer(int(value))
+    raise TypeError("python-int prototype requires an integer or string")
 
 
 def is_integer(value) -> bool:
@@ -345,19 +350,52 @@ def integer_sum(values, start=0) -> integer:
 
 
 def convert_base(value, base) -> integer:
+    # int(value, base) and an exact literal past int64; CPython checks the base first
     if base is None:
         raise TypeError("'NoneType' object cannot be interpreted as an integer")
-    return integer(value, base)
+    radix = int(base) if isinstance(base, int) else _index_operand(base)._bound()
+    if radix != 0 and (radix < 2 or radix > 36):
+        raise ValueError("int() base must be >= 2 and <= 36, or 0")
+    if not isinstance(value, str):
+        raise TypeError("int() can't convert non-string with explicit base")
+    return _parse(value, radix)
 
 
 def operand(value) -> integer:
-    # Validate separately: construction parses text; numeric operations must not.
-    # The validator returns None even for an always-raising specialization, so
-    # the compiler still knows the following constructor's result representation.
-    check_operand(value)
-    return value if isinstance(value, integer) else integer(value)
+    # Numeric operations never parse text, unlike construction.
+    if isinstance(value, integer):
+        return value
+    if isinstance(value, int):
+        return integer(int(value))
+    raise TypeError("python-int operation requires an integer")
 
 
-def check_operand(value) -> None:
-    if not isinstance(value, integer) and not isinstance(value, int):
-        raise TypeError("python-int operation requires an integer")
+def _operand(value, symbol: str, arithmetic: bool) -> integer:
+    # CPython's TypeError for a right operand that int has no operation with.
+    # Float arithmetic, which CPython performs, is unimplemented, not an error.
+    if isinstance(value, integer):
+        return value
+    if isinstance(value, int):
+        return integer(int(value))
+    if arithmetic and isinstance(value, float):
+        raise NotImplementedError("python-int prototype: mixed float arithmetic")
+    raise TypeError("unsupported operand type(s) for " + symbol + ": 'int' and '" + type(value).__name__ + "'")
+
+
+def _ordering_operand(value, symbol: str) -> integer:
+    if isinstance(value, integer):
+        return value
+    if isinstance(value, int):
+        return integer(int(value))
+    if isinstance(value, float):
+        raise NotImplementedError("python-int prototype: mixed float comparison")
+    raise TypeError("'" + symbol + "' not supported between instances of 'int' and '" + type(value).__name__ + "'")
+
+
+def _index_operand(value) -> integer:
+    # range() arguments, int() bases and bin/oct/hex values: CPython's __index__ error
+    if isinstance(value, integer):
+        return value
+    if isinstance(value, int):
+        return integer(int(value))
+    raise TypeError("'" + type(value).__name__ + "' object cannot be interpreted as an integer")

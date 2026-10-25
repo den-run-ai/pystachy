@@ -17,6 +17,7 @@ from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, 
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     opaque_class,
+    promoting_int,
     targs,
     is_dict,
     is_kw,
@@ -161,6 +162,8 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
     if c == "None" or c in BUILTIN_TYPES or is_list(c) or is_dict(c) or is_tuple(c) or is_vtuple(c) or is_set(c) or is_kw(c):
         b = "NoneType" if c == "None" else "list" if is_list(c) else "dict" if is_dict(c) or is_kw(c) else "tuple" if is_tuple(c) or is_vtuple(c) else c[: c.find("[")] if is_set(c) else c
         return "builtins" if what == "__module__" else b
+    if c in self.classes and promoting_int(self.classes[c], self.libdir):
+        return "builtins" if what == "__module__" else "int"  # (the python-int prototype's value)
     if c in self.classes and self.classes[c].exc == "":
         ci = self.classes[c]
         q = shown(ci.origin if ci.origin != "" else c)
@@ -183,6 +186,8 @@ def gen_refl_record(self, c: str) -> str:
     # the field table (names in __dict__ order, descriptors, offsets: null until needed)
     if c in self.classes and self.classes[c].origin != "":
         c = self.classes[c].origin
+    if c in self.classes and promoting_int(self.classes[c], self.libdir):
+        c = "int"  # (a python-int prototype value's type is CPython's int, a native int's too)
     key = ("c." + c) if c in self.classes else ("b." + self.refl_type_name(c, "__name__"))
     name = "@pys.refl." + key
     if name in self.reflrecs:
@@ -1217,8 +1222,7 @@ def gen_refl_layout_record(self, c: str) -> str:
     if c in self.classes and self.classes[c].origin != "":
         name = "@pys.refl.c." + c
         if name not in self.reflrecs:
-            self.refl_record(self.classes[c].origin)
-            base = self.reflrecs["@pys.refl.c." + self.classes[c].origin]
+            base = self.reflrecs[self.refl_record(self.classes[c].origin)]
             d = Data("classrec", name)
             d.refs = [base.refs[0], base.refs[1], base.refs[2], "null", "null"]
             d.items = [base.items[0], Val("0", "int"), Val("0", "int")]

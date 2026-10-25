@@ -30,15 +30,28 @@ promote themselves. Combining this pragma with `dynamic-any` is rejected.
   `bit_length` and `bit_count`. Small-result demotion is automatic.
 - Three-argument `pow`, including negative exponents using a modular inverse.
 - Annotated parameters/defaults/returns, quoted `int` annotations, class fields,
-  closures, and homogeneous typed lists/dicts/sets of promoting integers.
+  closures, and homogeneous typed lists/dicts/sets of promoting integers. `int`
+  names one concrete class, so annotated recursive and mutually recursive
+  functions and methods compile. A quoted annotation stays a forward reference;
+  `Literal` values and `Annotated` metadata are not rewritten.
 - List reads/writes and slices: huge scalar indices raise `IndexError`; huge
   slice bounds/steps clamp. Sequence repetition uses a checked native size.
 - Iteration of `range` with arbitrary-precision start/stop/step, including a few
   values around enormous starts. This is an iterator-oriented range stand-in;
   full range indexing, slicing, membership and length APIs are not implemented.
 - Direct `isinstance(value, int)` includes native integers/bools. `int(x)` keeps
-  the identity of an already-promoted value. Other CPython identity and type
-  introspection guarantees are not implemented.
+  the identity of an already-promoted value. `type(x).__name__`, `__qualname__`,
+  `__module__`, `x.__class__.__name__` and `type(a) == type(b)` report CPython's
+  `int`, also against a native int. `is` and `is not` give CPython's answer
+  where it is decided: one value (`int(x) is x`), None, a bool, unequal values, or
+  equal values in CPython's small-int cache (-5 to 256). Equal values outside it
+  raise `NotImplementedError` unless they are one wrapper: CPython's answer then
+  depends on how it made each object
+  ([deviation](../tests/deviations/python_int_identity_ambiguous.py)).
+- A right operand that int has no operation with raises CPython's `TypeError`
+  text; a float arithmetic or comparison operand raises `NotImplementedError`
+  rather than an error CPython does not raise. `int(value, base)` checks the
+  base before the value, as CPython does.
 
 ## Representation and compiler boundary
 
@@ -69,12 +82,12 @@ normal source/package resource discovery.
 |---|---|
 | Float arithmetic/comparison/conversion and true division | Not implemented; unsupported forms reject or raise explicit errors. Negative non-modular powers raise `NotImplementedError`. |
 | Bytes/buffers, `to_bytes` / `from_bytes`, format specs | Not implemented. Radix functions and decimal string conversion are covered. |
-| Identity, `type`, subclasses, builtin aliases | Not CPython-compatible. Runtime use of the `int` type object outside supported direct forms is rejected. |
+| Identity, `type`, subclasses, builtin aliases | `id()` is rejected and undecided identity raises (above); type names and type comparisons report `int`, but `hasattr`, `dir` and other reflection see the private class. Runtime use of the `int` type object outside supported direct forms is rejected. |
 | Constructor/index protocols | Only native integer/bool/string inputs and the private integer value; arbitrary `__int__` / `__index__` objects and every builtin call-binding detail are not supported. |
 | Containers and native libraries | Homogeneous promoting storage is covered. Native `list[int]` aliases, mixed bool/float keys and all builtin method/FFI boundaries are not integrated. |
 | Imported native results | A typed promoting parameter/return or explicit `int(result)` converts scalar values. Two unconverted native results can still take checked int64 arithmetic. |
 | JSON, struct, C extensions and C-API | Keep existing contracts; no transparent bigint JSON path or CPython object ABI. |
-| Dynamic Any and reflection | Combined opt-in rejected; callbacks, type metadata and dynamic dispatch still need integration. |
+| Dynamic Any and reflection | Combined opt-in rejected; the opt-in corpus replay records each fixture's rejection in `tools/dynany_optin_exceptions.json`. Callbacks, type metadata and dynamic dispatch still need integration. |
 | String limits | Inherits the fixed 4,300-digit backend limit; no configurable `sys.set_int_max_str_digits`. |
 | Name resolution | Rebinding rewritten builtins, star imports, builtin import aliases and match patterns are rejected in opted-in modules. |
 | Performance | No speed or memory improvement claim; wrapper costs and decimal conversion need measurement. |

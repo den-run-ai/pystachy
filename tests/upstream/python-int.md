@@ -21,12 +21,19 @@ The [PSF license](CPYTHON-LICENSE.txt) and repository notices apply.
 | [python_int_arithmetic.py](../programs/numbers/python_int_arithmetic.py) | Original 64-bit promotion/demotion boundaries, large decimal/radix/f-string literals, 10×10 signed arithmetic pairs, shifts, power/modular inverses, error classes, radix output and decimal limits. Expected text comes directly from CPython. |
 | [python_int_storage.py](../programs/numbers/python_int_storage.py) | Original typed calls/defaults/returns, quoted annotations, closures, fields, list aliases, dict keys, set membership, allocation pressure, indexing/slicing, large-start ranges, factorial and Fibonacci. |
 | [python_int_import.py](../programs/numbers/python_int_import.py) | A default-mode consumer calls an opted-in module; the promoted return value survives the boundary and both operand orders. The helper lives outside the corpus and uses a `.path` sidecar. |
+| [python_int_recursion.py](../programs/numbers/python_int_recursion.py) | Original recursive, mutually recursive and memoized functions and a recursive method, with direct and quoted annotations. |
+| [python_int_forward_ref.py](../programs/numbers/python_int_forward_ref.py) | Original quoted forward references to a later class and quoted container annotations. |
+| [python_int_reflection.py](../programs/numbers/python_int_reflection.py) | Original `type()` / `__class__` names and type comparisons of promoting, native and other values. |
+| [python_int_identity.py](../programs/numbers/python_int_identity.py) | Original `is` / `is not` cases CPython's values decide: one object, None, bools, unequal values and its small-int cache. The undecided case is [a deviation](../deviations/python_int_identity_ambiguous.py). |
+| [python_int_errors.py](../programs/numbers/python_int_errors.py) | Original operand, `range` and `bin` errors; CPython's exception classes and text. |
+| [python_int_base_errors.py](../programs/numbers/python_int_base_errors.py) | Original `int(value, base)` errors: the base is checked before the value, as in CPython. |
 
 The four `tests/errors/library/python_int_*.py` cases enforce explicit rejection
 of builtin aliases/rebinding, the Dynamic Any combination, and private field
 writes. `tools/test_integer_mode.py` additionally checks pragma placement,
-unchanged default ASTs, exact radix tokens, binding scopes, helper shadowing,
-docstrings and successive hosted-compilation isolation. These guards run in
+unchanged default ASTs, exact radix and decimal tokens, quoted, `Literal` and
+`Annotated` annotations, binding scopes, helper shadowing, docstrings and
+successive hosted-compilation isolation. These guards run in
 `make check-fast` and therefore in Lint CI.
 
 This is **selected adapted coverage**, not unchanged upstream `test_int` /

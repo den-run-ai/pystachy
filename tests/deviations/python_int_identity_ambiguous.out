@@ -1,0 +1,2 @@
+NotImplementedError: python-int prototype: identity of equal integers outside CPython's small-int cache
+[exit 0]

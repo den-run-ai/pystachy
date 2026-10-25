@@ -38,6 +38,7 @@ from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_i
 from src.pystachy_compiler.utils import (
     opaque_class,
     promoting_int,
+    promoting_type,
     atomic_dict,
     atomic_list,
     bool_for_int,
@@ -4153,6 +4154,35 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             self.err(f"comparing an exception class with {typestr(o)} is not supported")
         return Val("false" if op == "==" else "true", "bool")
     if op == "is" or op == "is not":
+        pia = promoting_type(a.t, self.classes, self.libdir)
+        pib = promoting_type(b.t, self.classes, self.libdir)
+        if (pia or pib) and "None" not in [a.t, b.t] and "bool" not in [a.t, b.t]:
+            # python-int prototype values are private wrappers: one wrapper (or None, where one
+            # may be) is itself; distinct wrappers have CPython's answer where their values decide
+            # it (integer._identical), not a wrapper identity CPython's ints do not have
+            pcls = unopt(a.t) if pia else unopt(b.t)
+            a = self.coerce(a, pcls) if a.t == "int" else a
+            b = self.coerce(b, pcls) if b.t == "int" else b
+            if unopt(a.t) != pcls or unopt(b.t) != pcls:
+                self.err("'is' is only supported for objects and None")
+            psame = self.ptr_cmp('==', a, b).v
+            pnull = self.scalar('or', [self.ptr_cmp('==', a, Val('null', 'None')), self.ptr_cmp('==', b, Val('null', 'None'))])
+            ldistinct = self.label()
+            lvalues = self.label()
+            lidentity = self.label()
+            idph = Ins("phi", "bool", "")
+            self.incoming(idph, "true", self.cur)
+            self.cbr(psame, lidentity, ldistinct)
+            self.place(ldistinct)
+            self.incoming(idph, "false", self.cur)
+            self.cbr(pnull, lidentity, lvalues)
+            self.place(lvalues)
+            idv = self.method(Val(a.v, pcls), "_identical", [self.vnode(Val(b.v, pcls))])
+            self.incoming(idph, idv.v, self.cur)
+            self.br(lidentity)
+            self.place(lidentity)
+            ideq = self.phi(idph)
+            return Val(ideq if op == "is" else self.scalar('xor', [Val(ideq, 'bool'), Val('true', 'bool')]), "bool")
         if (a.t == "None") != (b.t == "None") and (not self.isref(a.t) or not self.isref(b.t)):
             # a number or bool is never None
             return Val("false" if op == "is" else "true", "bool")

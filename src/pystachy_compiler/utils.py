@@ -35,6 +35,15 @@ def promoting_int(ci: ClassInfo, libdir: str) -> bool:
     return (ci.name == "_pystachy_int$integer" or ci.name.startswith("_pystachy_int$integer-")) and lib_source(ci.node.line, libdir, "_pystachy_int.py")
 
 
+def promoting_type(t: str, classes: dict[str, ClassInfo], libdir: str) -> bool:
+    # may a value of static type t be the python-int prototype's private integer value
+    u = unopt(t)
+    for m in umembers(u) if is_union(u) else [u]:
+        if m in classes and promoting_int(classes[m], libdir):
+            return True
+    return False
+
+
 def opaque_class(ci: ClassInfo, libdir: str) -> bool:
     return ci.mod in OPAQUE or (ci.mod == "mpz" and lib_source(ci.node.line, libdir, "mpz.py")) or promoting_int(ci, libdir)
 
