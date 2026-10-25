@@ -682,7 +682,7 @@ def gen_optdefault(self, d: Val, t: str) -> str:
         return self.optional(t)
     return t
 
-def gen_key_kind(self, kt: str, dictionary: bool = False) -> str:
+def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -> str:
     # the key kind of a new dict whose keys have type kt (runtime.c's Dict.kind): 0 int, 1 str,
     # or a tuple or object key's type descriptor (hash_desc)
     # Every module in a Dynamic Any program shares the dictionary hash scheme:
@@ -691,10 +691,19 @@ def gen_key_kind(self, kt: str, dictionary: bool = False) -> str:
     # scheme from insertion, including deletions; equality never rehashes keys.
     if dictionary and dynamic_program() and not self.rtmode:
         d = self.hash_desc(kt)
-        return f"ptrtoint (ptr {self.sconst(d if 'H' in d or 'A' in d else '!' + d)} to i64)"
-    if kt == "int" or kt == "str" or kt == "bytes":
+        d = d if "H" in d or "A" in d else "!" + d
+    elif kt == "int" or kt == "str" or kt == "bytes":
         return "0" if kt == "int" else "1"  # (bytes keys are hashed and compared as strs of their bytes)
-    return f"ptrtoint (ptr {self.sconst(self.hash_desc(kt))} to i64)"
+    else:
+        d = self.hash_desc(kt)
+    if built and dictionary and (d.startswith("!") or "H" in d or "A" in d):
+        # built: what empty.kind stores into a dict result that may already hold a table (a
+        # call cycle's forwarded result, filled once the cycle recurses). Keys that CPython's
+        # hash places (runtime.c's khash) gave that table KTAG at its first build: the kind
+        # keeps it, as clear() keeps it on a dict without a table, where build sets it anyway.
+        # The descriptor alone would make its lookups and insertions probe twice its slots.
+        return f"ptrtoint (ptr getelementptr (i8, ptr {self.sconst(d)}, i64 2) to i64)"
+    return f"ptrtoint (ptr {self.sconst(d)} to i64)"
 
 def gen_key_class(self, t: str) -> bool:
     # can objects of class t be dict keys and set elements: those of the program's classes, but

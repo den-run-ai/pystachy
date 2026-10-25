@@ -4302,8 +4302,8 @@ class Gen:
     def optdefault(self, d: Val, t: str) -> str:
         return containers_optdefault(self, d, t)
 
-    def key_kind(self, kt: str, dictionary: bool = False) -> str:
-        return containers_key_kind(self, kt, dictionary)
+    def key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -> str:
+        return containers_key_kind(self, kt, dictionary, built)
 
     def key_class(self, t: str) -> bool:
         return containers_key_class(self, t)
