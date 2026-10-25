@@ -1,0 +1,150 @@
+a01_record_display                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a01_record_display.py:2: error: expected str, got int
+    aot: rc=1 probes/idioms_nopragma/a01_record_display.py:2: error: expected str, got int
+a02_result_record_any              cpy_rc=0 jit=PASS aot=PASS
+a03_result_record_object           cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a03_result_record_object.py:2: error: unsupported type annotation
+    aot: rc=1 probes/idioms_nopragma/a03_result_record_object.py:2: error: unsupported type annotation
+a04_json_dumps_mixed               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a04_json_dumps_mixed.py:5: error: expected int, got str
+    aot: rc=1 probes/idioms_nopragma/a04_json_dumps_mixed.py:5: error: expected int, got str
+a05_json_loads_any                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a05_json_loads_any.py:6: error: 'bool | dict[str,JSONValue] | float | int | list[JSONValue] | str' object is not subscriptable
+    aot: rc=1 probes/idioms_nopragma/a05_json_loads_any.py:6: error: 'bool | dict[str,JSONValue] | float | int | list[JSONValue] | str' object is not subscriptable
+a06_json_loads_plain               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a06_json_loads_plain.py:5: error: 'bool | dict[str,JSONValue] | float | int | list[JSONValue] | str' object is not subscriptable
+    aot: rc=1 probes/idioms_nopragma/a06_json_loads_plain.py:5: error: 'bool | dict[str,JSONValue] | float | int | list[JSONValue] | str' object is not subscriptable
+a07_sort_records                   cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a07_sort_records.py:4: error: expected int | str | None, got float
+    aot: rc=1 probes/idioms_nopragma/a07_sort_records.py:4: error: expected int | str | None, got float
+a08_handler_registry               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a08_handler_registry.py:17: error: expected <function h_int>, got <function h_str> (each function is a type of its own: a variable, a list's items or a dict's values hold one function)
+    aot: rc=1 probes/idioms_nopragma/a08_handler_registry.py:17: error: expected <function h_int>, got <function h_str> (each function is a type of its own: a variable, a list's items or a dict's values hold one function)
+a09_handler_lambdas                cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a09_handler_lambdas.py:2: error: expected <function <lambda> (probes/idioms_nopragma/a09_handler_lambdas.py:2)>, got <function <lambda> (probes/idioms_nopragma/a09_handler_lambdas.py:2)> (each function is a type of its own: a variable, a list's items or a dict's values hold one function)
+    aot: rc=1 probes/idioms_nopragma/a09_handler_lambdas.py:2: error: expected <function <lambda> (probes/idioms_nopragma/a09_handler_lambdas.py:2)>, got <function <lambda> (probes/idioms_nopragma/a09_handler_lambdas.py:2)> (each function is a type of its own: a variable, a list's items or a dict's values hold one function)
+a10_visitor                        cpy_rc=0 jit=PASS aot=PASS
+a11_sentinel                       cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a11_sentinel.py:12: error: get() returns both int | None and object (each function has one return type) (compiling get(dict[str,int | None], str, _pystachy_object.object) for the call at probes/idioms_nopragma/a11_sentinel.py:16)
+    aot: rc=1 probes/idioms_nopragma/a11_sentinel.py:12: error: get() returns both int | None and object (each function has one return type) (compiling get(dict[str,int | None], str, _pystachy_object.object) for the call at probes/idioms_nopragma/a11_sentinel.py:16)
+a12_parse_tokens                   cpy_rc=0 jit=PASS aot=PASS
+a13_tiny_interp                    cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a13_tiny_interp.py:9: error: cannot infer the type of 'stack', an empty list so far: annotate it (stack: list[T] = []) (compiling run(list[int | str]) for the call at probes/idioms_nopragma/a13_tiny_interp.py:21)
+    aot: rc=1 probes/idioms_nopragma/a13_tiny_interp.py:9: error: cannot infer the type of 'stack', an empty list so far: annotate it (stack: list[T] = []) (compiling run(list[int | str]) for the call at probes/idioms_nopragma/a13_tiny_interp.py:21)
+a14_mixed_tuples_repr              cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a14_mixed_tuples_repr.py:2: error: expected tuple[int,str,float], got tuple[str,int,None]
+    aot: rc=1 probes/idioms_nopragma/a14_mixed_tuples_repr.py:2: error: expected tuple[int,str,float], got tuple[str,int,None]
+a15_isinstance_tuple               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a15_isinstance_tuple.py:4: error: expected int, got float
+    aot: rc=1 probes/idioms_nopragma/a15_isinstance_tuple.py:4: error: expected int, got float
+a16_type_is                        cpy_rc=0 jit=PASS aot=PASS
+a17_dict_methods                   cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a17_dict_methods.py:5: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+    aot: rc=1 probes/idioms_nopragma/a17_dict_methods.py:5: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+a18_list_methods                   cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a18_list_methods.py:5: error: expected float | int, got bool
+    aot: rc=1 probes/idioms_nopragma/a18_list_methods.py:5: error: expected float | int, got bool
+a19_counter_defaultdict            cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a19_counter_defaultdict.py:5: error: expected int | str, got float
+    aot: rc=1 probes/idioms_nopragma/a19_counter_defaultdict.py:5: error: expected int | str, got float
+a20_dataclass_any_field            cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a20_dataclass_any_field.py:9: error: typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template, in a class template's __init__ parameters, in iterator protocol returns, and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here
+    aot: rc=1 probes/idioms_nopragma/a20_dataclass_any_field.py:9: error: typing.Any is only supported in the parameter and return annotations of a function, or of a method that may be a template, in a class template's __init__ parameters, in iterator protocol returns, and in initialized module/local variables, which are inferred as if unannotated; annotate a concrete type here
+a21_recursion_tree                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a21_recursion_tree.py:23: error: expected int, got float
+    aot: rc=1 probes/idioms_nopragma/a21_recursion_tree.py:23: error: expected int, got float
+a22_flatten                        cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a22_flatten.py:17: error: cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dict[K, V] on a function returning the dict)
+    aot: rc=1 probes/idioms_nopragma/a22_flatten.py:17: error: cannot infer the type of a dict of None values; add a type annotation (d: dict[K, V] = {}, or -> dict[K, V] on a function returning the dict)
+a23_deep_merge                     cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a23_deep_merge.py:16: error: expected str, got int
+    aot: rc=1 probes/idioms_nopragma/a23_deep_merge.py:16: error: expected str, got int
+a24_get_in_reduce                  cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a24_get_in_reduce.py:14: error: expected int, got str
+    aot: rc=1 probes/idioms_nopragma/a24_get_in_reduce.py:14: error: expected int, got str
+a25_kwargs_any                     cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a25_kwargs_any.py:7: error: using **kwargs(retries=int, name=str, ratio=float) as a dict is not supported: its values have different types (read each by its name, kwargs['name'], or forward it, f(**kwargs)) (compiling make(str, kw[retries:int,name:str,ratio:float]) for the call at probes/idioms_nopragma/a25_kwargs_any.py:19)
+    aot: rc=1 probes/idioms_nopragma/a25_kwargs_any.py:7: error: using **kwargs(retries=int, name=str, ratio=float) as a dict is not supported: its values have different types (read each by its name, kwargs['name'], or forward it, f(**kwargs)) (compiling make(str, kw[retries:int,name:str,ratio:float]) for the call at probes/idioms_nopragma/a25_kwargs_any.py:19)
+a26_exception_payload              cpy_rc=0 jit=PASS aot=PASS
+a27_generator_any                  cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a27_generator_any.py:11: error: expected int, got str
+    aot: rc=1 probes/idioms_nopragma/a27_generator_any.py:11: error: expected int, got str
+a28_str_format_any                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a28_str_format_any.py:4: error: expected int, got float
+    aot: rc=1 probes/idioms_nopragma/a28_str_format_any.py:4: error: expected int, got float
+a29_csv_rows                       cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a29_csv_rows.py:6: error: expected float | int | str, got None
+    aot: rc=1 probes/idioms_nopragma/a29_csv_rows.py:6: error: expected float | int | str, got None
+a30_any_numeric_mix                cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/a30_any_numeric_mix.py:4: error: expected int, got float
+    aot: rc=1 probes/idioms_nopragma/a30_any_numeric_mix.py:4: error: expected int, got float
+b01_json_to_any                    cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b01_json_to_any.py:12: error: cannot infer the type of 'd' from this use; annotate it (compiling to_any(bool | dict[str,JSONValue] | float | int | list[JSONValue] | str | None) for the call at probes/idioms_nopragma/b01_json_to_any.py:54)
+    aot: rc=1 probes/idioms_nopragma/b01_json_to_any.py:12: error: cannot infer the type of 'd' from this use; annotate it (compiling to_any(bool | dict[str,JSONValue] | float | int | list[JSONValue] | str | None) for the call at probes/idioms_nopragma/b01_json_to_any.py:54)
+b02_dumps_any_handwritten          cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b02_dumps_any_handwritten.py:21: error: expected int, got str
+    aot: rc=1 probes/idioms_nopragma/b02_dumps_any_handwritten.py:21: error: expected int, got str
+b03_enc_unannotated                cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b03_enc_unannotated.py:17: error: expected int, got str
+    aot: rc=1 probes/idioms_nopragma/b03_enc_unannotated.py:17: error: expected int, got str
+b04_lib_boundaries                 cpy_rc=0 jit=PASS aot=PASS
+b05_heapq_alone                    cpy_rc=0 jit=PASS aot=PASS
+b06_re_any                         cpy_rc=0 jit=PASS aot=PASS
+b07_template_any                   cpy_rc=0 jit=PASS aot=PASS
+b08_format_map                     cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b08_format_map.py:6: error: % formatting with a mapping (%(name)s) is not supported
+    aot: rc=1 probes/idioms_nopragma/b08_format_map.py:6: error: % formatting with a mapping (%(name)s) is not supported
+b08b_format_kwargs                 cpy_rc=0 jit=PASS aot=PASS
+b09_json_logic                     cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b09_json_logic.py:69: error: expected dict[str,str], got int
+    aot: rc=1 probes/idioms_nopragma/b09_json_logic.py:69: error: expected dict[str,str], got int
+b09b_json_logic_nonempty           cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b09b_json_logic_nonempty.py:69: error: expected dict[str,str], got int
+    aot: rc=1 probes/idioms_nopragma/b09b_json_logic_nonempty.py:69: error: expected dict[str,str], got int
+b10_query_eval                     cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b10_query_eval.py:51: error: expected int | str, got float
+    aot: rc=1 probes/idioms_nopragma/b10_query_eval.py:51: error: expected int | str, got float
+b11_class_registry                 cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b11_class_registry.py:15: error: class 'A' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)
+    aot: rc=1 probes/idioms_nopragma/b11_class_registry.py:15: error: class 'A' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)
+b12_getattr_dispatch               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b12_getattr_dispatch.py:20: error: expected str, got dict[str,int | str]
+    aot: rc=1 probes/idioms_nopragma/b12_getattr_dispatch.py:20: error: expected str, got dict[str,int | str]
+b13_method_keyword                 cpy_rc=0 jit=PASS aot=PASS
+b14_set_any                        cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b14_set_any.py:9: error: set elements must be int or str, not float | int | str | None (an element cannot be None)
+    aot: rc=1 probes/idioms_nopragma/b14_set_any.py:9: error: set elements must be int or str, not float | int | str | None (an element cannot be None)
+b15_lru_cache_any                  cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 ./lib/functools.py:328: error: _lru_cache_wrapper() cannot bind its type variables from the argument for 'user_function', a <function describe (probes/idioms_nopragma/b15_lru_cache_any.py:7)>: describe()'s parameter 'x' is annotated Any, which gives no type to the type variables it matches (specializing functools._lru_cache_wrapper(<function describe (probes/idioms_nopragma/b15_lru_cache_any.py:7)>, int, bool) for the call at ./lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:describe@7], int, bool) for the call at ./lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:describe@7]) for the call at probes/idioms_nopragma/b15_lru_cache_any.py:6)
+    aot: rc=1 ./lib/functools.py:328: error: _lru_cache_wrapper() cannot bind its type variables from the argument for 'user_function', a <function describe (probes/idioms_nopragma/b15_lru_cache_any.py:7)>: describe()'s parameter 'x' is annotated Any, which gives no type to the type variables it matches (specializing functools._lru_cache_wrapper(<function describe (probes/idioms_nopragma/b15_lru_cache_any.py:7)>, int, bool) for the call at ./lib/functools.py:328; compiling functools._make_wrapper(fn[c:1:describe@7], int, bool) for the call at ./lib/functools.py:354; compiling lru_cache.<locals>.unbounded_function(fn[c:1:describe@7]) for the call at probes/idioms_nopragma/b15_lru_cache_any.py:6)
+b16_sorted_mixed_keys              cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b16_sorted_mixed_keys.py:4: error: expected int | str, got float
+    aot: rc=1 probes/idioms_nopragma/b16_sorted_mixed_keys.py:4: error: expected int | str, got float
+b17_zip_enumerate                  cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b17_zip_enumerate.py:5: error: expected float | int | str, got None
+    aot: rc=1 probes/idioms_nopragma/b17_zip_enumerate.py:5: error: expected float | int | str, got None
+b18_any_slicing                    cpy_rc=0 jit=PASS aot=PASS
+b19_sum_generator                  cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b19_sum_generator.py:4: error: expected int, got float
+    aot: rc=1 probes/idioms_nopragma/b19_sum_generator.py:4: error: expected int, got float
+b20_object_annotation              cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b20_object_annotation.py:2: error: unsupported type annotation
+    aot: rc=1 probes/idioms_nopragma/b20_object_annotation.py:2: error: unsupported type annotation
+b21_empty_in_display               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b21_empty_in_display.py:2: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+    aot: rc=1 probes/idioms_nopragma/b21_empty_in_display.py:2: error: cannot infer the type of an empty list; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)
+b22_textwrap_narrowed              cpy_rc=0 jit=PASS aot=PASS
+b23_statistics_any                 cpy_rc=0 jit=PASS aot=PASS
+b24_empty_nested                   cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b24_empty_nested.py:3: error: expected str, got list[str]
+    aot: rc=1 probes/idioms_nopragma/b24_empty_nested.py:3: error: expected str, got list[str]
+b25_empty_nested_top               cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/b25_empty_nested_top.py:2: error: expected int, got list[int]
+    aot: rc=1 probes/idioms_nopragma/b25_empty_nested_top.py:2: error: expected int, got list[int]
+b26_textwrap_local                 cpy_rc=0 jit=PASS aot=PASS
+c01_vartuple_concat                cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/c01_vartuple_concat.py:9: error: unsupported operand type(s) for +: 'tuple' and 'tuple'
+    aot: rc=1 probes/idioms_nopragma/c01_vartuple_concat.py:9: error: unsupported operand type(s) for +: 'tuple' and 'tuple'
+c02_vartuple_concat_dyn            cpy_rc=0 jit=FAIL aot=FAIL
+    jit: rc=1 probes/idioms_nopragma/c02_vartuple_concat_dyn.py:9: error: unsupported operand type(s) for +: 'tuple' and 'tuple'
+    aot: rc=1 probes/idioms_nopragma/c02_vartuple_concat_dyn.py:9: error: unsupported operand type(s) for +: 'tuple' and 'tuple'
