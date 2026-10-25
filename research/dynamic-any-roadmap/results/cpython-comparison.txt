@@ -1,0 +1,76 @@
+Pystachy at main 1cf6a676 (this branch's merge afd0ba79; built with make PY=/usr/bin/python3.13) against
+CPython 3.13.16, LLVM 18.1.3, on a shared 4-vCPU Linux container (Intel Xeon at 2.10 GHz), measured
+2026-10-21. Each process is pinned to CPU 1 (taskset -c 1); modes alternate; medians as printed.
+Every checksum and output equals CPython's. Raw output follows each command.
+
+## Hot paths: probes/hot.py, ns per operation
+python3.13 probes/runhot.py 7 4 "aot=./hot_aot" "jit=./pystachy run hot.py" "cpython=python3.13 -I hot.py"
+attr_any       aot     2.83 jit     2.80 cpython    60.39  cpython/aot  21.34x  cpython/jit  21.57x
+attr_typed     aot     1.14 jit     0.93 cpython    41.12  cpython/aot  36.07x  cpython/jit  44.22x
+call_any       aot    28.26 jit    30.15 cpython   115.43  cpython/aot   4.08x  cpython/jit   3.83x
+call_typed     aot     1.83 jit     1.98 cpython    90.58  cpython/aot  49.50x  cpython/jit  45.75x
+dict_any       aot    60.93 jit    63.39 cpython    87.13  cpython/aot   1.43x  cpython/jit   1.37x
+dict_any_rt    aot    96.80 jit    89.08 cpython    92.18  cpython/aot   0.95x  cpython/jit   1.03x
+dict_typed     aot    11.08 jit    10.55 cpython    69.11  cpython/aot   6.24x  cpython/jit   6.55x
+counter_any    aot    53.13 jit    50.64 cpython    59.68  cpython/aot   1.12x  cpython/jit   1.18x
+counter_typed  aot    14.58 jit    13.73 cpython    59.33  cpython/aot   4.07x  cpython/jit   4.32x
+float_any      aot    24.44 jit    24.76 cpython    21.23  cpython/aot   0.87x  cpython/jit   0.86x
+float_typed    aot     2.53 jit     2.51 cpython    20.76  cpython/aot   8.21x  cpython/jit   8.27x
+int_any        aot     7.59 jit     7.52 cpython    26.19  cpython/aot   3.45x  cpython/jit   3.48x
+int_typed      aot     0.37 jit     0.69 cpython    26.32  cpython/aot  71.14x  cpython/jit  38.14x
+split_any      aot   223.86 jit   237.85 cpython   186.71  cpython/aot   0.83x  cpython/jit   0.78x
+split_typed    aot   163.26 jit   165.47 cpython   172.07  cpython/aot   1.05x  cpython/jit   1.04x
+
+## tools/dynany_bench.py, ms
+python3.13 probes/rundyn.py 7 ./dynb_aot dynany_bench.py
+typed    N= 1000000  build aot    7.1 cpython   33.5 ms ( 4.75x)   process aot    0.5 cpython   25.5 ms (52.32x)  checksums agree
+union    N= 1000000  build aot   28.8 cpython   32.6 ms ( 1.13x)   process aot    2.1 cpython   39.8 ms (19.27x)  checksums agree
+dyn      N= 1000000  build aot   24.7 cpython   33.1 ms ( 1.34x)   process aot    2.2 cpython   40.0 ms (17.91x)  checksums agree
+generic  N= 1000000  build aot   24.5 cpython   33.4 ms ( 1.37x)   process aot   16.7 cpython   25.1 ms ( 1.50x)  checksums agree
+graph    N=    2000  build aot    6.2 cpython   16.2 ms ( 2.63x)   process aot   26.5 cpython  146.6 ms ( 5.54x)  checksums agree
+
+## #780's record pipeline (pipeline.py, gen_events.py and controller2.py from research/dynamic-any/pipeline at 4d61e4ce)
+python3.13 gen_events.py 100000 > big.jsonl     # 15,201,956 bytes, sha256 e3188960..., as in #780
+pipeline.py's JSON summary: byte-identical in AOT and CPython (cmp)
+python3.13 controller2.py 7 "big.jsonl 3" "aot=./pipeline_aot" "cpython=python3.13 -I pipeline.py"
+aot      decode   363.3 ms (min 339.1)   process   160.0 ms (min 136.8, max 168.2)
+cpython  decode   598.9 ms (min 570.4)   process   102.0 ms (min 98.5, max 116.5)
+python3.13 probes/e2e.py 5 "jit=./pystachy run pipeline.py big.jsonl 1" "aot=./pipeline_aot big.jsonl 1" "cpython=python3.13 -I pipeline.py big.jsonl 1"
+jit      wall median     957 ms (min 924, max 998)   peak RSS  329.2 MiB
+aot      wall median     607 ms (min 566, max 663)   peak RSS  269.3 MiB
+cpython  wall median     755 ms (min 742, max 776)   peak RSS  135.5 MiB
+PYSTACHY_GC=stats ./pipeline_aot big.jsonl 1
+gc: 11 collections, 154.0 ms; heap peak 267.0 MiB; live 135.4 MiB at the last
+PYSTACHY_GC=stats ./hot_aot 4     (hot.py without dict_any_rt, for comparison)
+gc: 25 collections, 3.2 ms; heap peak 34.1 MiB; live 0.0 MiB at the last
+callgrind of pipeline_proc.py over the first 10,000 events, 1 and 6 processing rounds:
+per processing round, (6 rounds - 1 round) / 5 / 10,000 events: 7912 instructions per event
+ 12.3%     977/event  dfindc
+  7.1%     559/event  __memset_avx2_unaligned_erms
+  7.0%     554/event  eqv
+  6.7%     531/event  scan
+  6.2%     493/event  dkeyeq
+  5.3%     422/event  hitem
+  4.9%     384/event  pys_dyn_eq
+  4.8%     382/event  pys_dyn_hash
+  4.7%     373/event  dfind
+  4.2%     335/event  hval
+  3.9%     307/event  pys_dict_getitem
+  3.8%     302/event  gc_slow
+  3.8%     301/event  pys_str_split
+  3.0%     239/event  __memcmp_avx2_movbe
+  2.3%     179/event  cv.6
+  1.8%     142/event  pys_str_slice
+  1.6%     126/event  pys_dict_get
+  1.4%     112/event  pys_dyn_getitem
+  1.4%     108/event  pys_dyn_binop
+  1.3%     101/event  dyn_of
+
+## tomllib.loads() (bench_tomllib.py, gen_records.py and controller.py from research/dynamic-any/bench at 4d61e4ce)
+python3.13 gen_records.py      # records.toml: 525,959 bytes, sha256 d9be31c9..., as in #784
+python3.13 controller.py 7 "records.toml 5" "aot=./bench_tomllib_aot" "cpython=python3.13 -I bench_tomllib.py"
+aot        median of 7 process medians:     70.4 ms  (min 67.0, max 88.7)  checksum: 3000 134478253 117338.542 89 4500 606
+cpython    median of 7 process medians:    187.0 ms  (min 180.2, max 202.4)  checksum: 3000 134478253 117338.542 89 4500 606
+python3.13 probes/e2e.py 3 "aot=./bench_tomllib_aot records.toml 1" "cpython=python3.13 -I bench_tomllib.py records.toml 1"
+aot      wall median     104 ms (min 101, max 105)   peak RSS   40.6 MiB
+cpython  wall median     220 ms (min 218, max 222)   peak RSS   15.9 MiB
