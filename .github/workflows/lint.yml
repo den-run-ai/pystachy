@@ -96,6 +96,9 @@ jobs:
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py
 
+      - name: Integer benchmark checksum agreement tests
+        run: python3 -m unittest discover -s tools -p test_bench_integers.py
+
       - name: Compiler function-state lists (Gen, Frame, gen_save, gen_restore, gen_enter)
         run: python3 -m unittest discover -s tools -p test_frame_fields.py
 
