@@ -35,6 +35,8 @@
 #   shifts beyond 64 bits; the small cases return early, skip_small)
 # - the other LongTest methods are in tests/programs/upstream/upstream_int_arith.py and
 #   tests/programs/upstream/upstream_int_construct.py, or listed there
+# tests/programs/numbers/mpz_cpython_text.py runs test_format's operands of 3 to 15 digits and
+# 0xaaaaaaaaaaaaaaaa with explicit mpz values (str and repr only).
 import math
 import random
 import sys

@@ -31,7 +31,8 @@ its deterministic DAG and dense/softmax drivers are original project code.
 CPython's arbitrary-precision integer regression cases
 ------------------------------------------------------
 
-tests/programs/numbers/mpz_cpython_long.py and mpz_cpython_int.py adapt selected
+tests/programs/numbers/mpz_cpython_long.py, mpz_cpython_long_division.py,
+mpz_cpython_long_bitops.py, mpz_cpython_int.py and mpz_cpython_text.py adapt selected
 methods of Lib/test/test_long.py and Lib/test/test_int.py from CPython 3.13.16,
 commit cbc944f4bc59639a444dd971c737788ba2283a91. They use the Python Software
 Foundation License Version 2; the complete license and copyright notices are
@@ -40,8 +41,9 @@ original source hashes, preserved cases, adaptations and exclusions.
 
 The adaptations replace unittest scaffolding with standalone assertions, use
 explicit mpz values and decimal strings for oversized literals, replace divmod,
-abs and pow with supported operations, and bound deterministic loops. These
-selected cases do not claim unchanged execution of CPython's complete int tests.
+abs and pow with supported operations, and bound deterministic or seeded loops.
+These selected cases do not claim unchanged execution of CPython's complete int
+tests.
 
 CPython's port acceptance fixtures (tests/upstream/ports/)
 ---------------------------------------------------------
