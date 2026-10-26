@@ -174,6 +174,9 @@ the first measurements, before the inline paths, in
   `oct()`, format specifications, `%` formatting and `pow(x, y, m)`.
 - `tests/programs/numbers/python_int_sums.py`: `sum()`, `min()` and `max()` of every iterable and
   start.
+- `tests/programs/numbers/python_int_cpython_int.py`: `int()` assertions adapted from CPython's
+  `Lib/test/test_int.py` ([provenance](../tests/upstream/python-int.md)), and
+  `python_int_reflection.py`: `type()` and `__class__` of promoting and 64-bit ints.
 - `tests/programs/numbers/python_int_truediv.py`: true division across the float range, halfway
   cases, subnormals, signed zeros and its errors.
 - `tests/programs/numbers/python_int_storage.py`: values that fit in containers, tuples and unions
