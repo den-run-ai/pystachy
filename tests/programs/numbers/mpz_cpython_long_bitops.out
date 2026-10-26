@@ -1,0 +1,55 @@
+test_bitop_identities: 201 special values, 71190 identities, digest 682409329
+42 << -3 ValueError: negative shift count
+42 << -9223372036854775808 ValueError: negative shift count
+42 >> -3 ValueError: negative shift count
+42 >> -9223372036854775808 ValueError: negative shift count
+0 << 0 0
+0 << 10 0
+0 << -1 ValueError: negative shift count
+0 << (1 << 1000) 0
+0 << -9223372036854775808 ValueError: negative shift count
+0 << sys.maxsize 0
+42 >> huge_shift 0
+(-42) >> huge_shift -1
+1123 >> huge_shift 0
+(-1123) >> huge_shift -1
+2**128 >> huge_shift 0
+-2**128 >> huge_shift -1
+2**128 >> 1 170141183460469231731687303715884105728
+-2**128 >> 1 -170141183460469231731687303715884105728
+(2**128 + 1) >> 1 170141183460469231731687303715884105728
+-(2**128 + 1) >> 1 -170141183460469231731687303715884105729
+2**128 >> 9 664613997892457936451903530140172288
+-2**128 >> 9 -664613997892457936451903530140172288
+(1 - BASE*BASE) >> SHIFT -1073741824
+(BASE - 1 - BASE*BASE) >> SHIFT -1073741824
+2**128 >> 32 79228162514264337593543950336
+-2**128 >> 32 -79228162514264337593543950336
+2**127 << 1 340282366920938463463374607431768211456
+-2**127 << 1 -340282366920938463463374607431768211456
+42 << 32 180388626432
+(-42) << 32 -180388626432
+1122 << 32 4818953306112
+(-1122) << 32 -4818953306112
+2**128 << 32 1461501637330902918203684832716283019655932542976
+-2**128 << 32 -1461501637330902918203684832716283019655932542976
+(a-1).bit_length() for a = 2**63 63
+(1-a).bit_length() 63
+(a).bit_length() 64
+(-a).bit_length() 64
+(a+1).bit_length() 64
+(-a-1).bit_length() 64
+(a-1).bit_length() for a = 2**64 64
+(1-a).bit_length() 64
+(a).bit_length() 65
+(-a).bit_length() 65
+(a+1).bit_length() 65
+(-a-1).bit_length() 65
+(a-1).bit_length() for a = 2**234 234
+(1-a).bit_length() 234
+(a).bit_length() 235
+(-a).bit_length() 235
+(a+1).bit_length() 235
+(-a-1).bit_length() 235
+identities 71190
+[exit 0]

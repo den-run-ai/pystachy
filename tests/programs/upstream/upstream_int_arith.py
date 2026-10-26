@@ -39,6 +39,8 @@
 # - test_to_bytes, test_from_bytes and test_from_bytes_small (bytes)
 # - the other LongTest methods are in tests/programs/upstream/upstream_int_construct.py and
 #   tests/programs/upstream/upstream_int_format.py, or listed there
+# tests/programs/numbers/mpz_cpython_long_division.py and mpz_cpython_long_bitops.py run the excluded
+# cases whose values need more than 64 bits with explicit mpz values.
 import math
 import random
 import sys
