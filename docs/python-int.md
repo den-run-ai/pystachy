@@ -239,8 +239,9 @@ the first measurements, before the inline paths, in
   parameters, returns, defaults, fields, class attributes, globals, closures and joins, in each
   spelling, with comparisons, `min()`, `max()`, membership, formatting, `hash()`, truth and
   narrowing; `python_int_optional_keys.py`: values that fit as a dict's keys, a `pop()` default
-  and a set's elements, membership in ranges, an `OSError`'s errno and a `SystemExit`'s status,
-  and `python_int_exit.py`: that status in a program without `try`.
+  and a set's elements, and in the unions a join makes with a bool or a `str`, membership in
+  ranges, an `OSError`'s errno and a `SystemExit`'s status; `python_int_exit.py` and
+  `python_int_exit_class.py`: that status in a program without `try` and of a subclass.
 - `tests/programs/numbers/python_int_spellings.py`: quoted and `Final` annotations, in modules
   that opt in and into one that does not.
 - `tests/programs/numbers/python_int_roots.py`: values whose digits only a module variable, a

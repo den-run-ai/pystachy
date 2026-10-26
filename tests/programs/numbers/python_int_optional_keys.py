@@ -1,17 +1,13 @@
 # pystachy: python-int
 # An int | None of a module that opts in to promoting ints (docs/python-int.md) where 64-bit storage
 # takes it: a dict's key (subscripts, augmented assignment, del), a default of pop(), a set's
-# element (discard(), remove()) and the errno of an OSError, which names its class (also of a
-# promoting int); one past 64 bits is in no range, and a SystemExit's status is its value, -1 past
-# 64 bits.
+# element (discard(), remove()), a union with a bool or a str that a variable or a result joins it
+# into, and the errno of an OSError, which names its class (also of a promoting int); one past 64
+# bits is in no range, and a SystemExit's status is its value, -1 past 64 bits.
 
 
 def code(v: int) -> int | None:
     return v if v > 0 else None
-
-
-class Quit(SystemExit):
-    pass
 
 
 def keyed(v: int) -> None:
@@ -41,6 +37,22 @@ def ranged(v: int) -> None:
     print(y in range(10), y in range(0, 10, 5), y in r, y not in r)
 
 
+def pick(v: int):
+    if v > 10:
+        return "big"
+    return code(v)
+
+
+def joined(v: int) -> None:
+    z = code(v)
+    if v > 10:
+        z = v > 15
+    w = code(v)
+    if v > 10:
+        w = "big"
+    print(z, type(z).__name__, w, type(w).__name__, pick(v))
+
+
 def errno(v: int) -> None:
     try:
         raise OSError(code(v), "x")
@@ -52,6 +64,8 @@ for v in (5, 7, 6, -1):
     keyed(v)
 for v in (5, 7, 2 ** 70, -1):
     ranged(v)
+for v in (5, -1, 20):
+    joined(v)
 for v in (2, 13, 2 ** 70, -1):
     errno(v)
 for n in (2, 2 ** 70):
@@ -63,8 +77,4 @@ try:
     raise SystemExit(code(5))
 except SystemExit as e:
     print("SystemExit", e, repr(e))
-try:
-    raise Quit(code(-1))
-except SystemExit as e:
-    print("Quit", repr(e))
-raise Quit(code(2 ** 70))
+raise SystemExit(code(2 ** 70))

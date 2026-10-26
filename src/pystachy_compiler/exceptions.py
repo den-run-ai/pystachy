@@ -885,9 +885,9 @@ def gen_exit_value(self, vals: list[Val]) -> Val:
     # is SystemExit(), but SystemExit(None) shows its None: str(e) "None")
     if len(vals) == 0:
         return self.no_code()
-    if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool" or vals[0].t == "None"):
+    if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool" or vals[0].t == "None" or vals[0].t == BIG):
         s = self.to_str(vals[0]).v
-        return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.as_int(vals[0]).v if vals[0].t != 'None' else '0'}", f"ptr {s}", f"ptr {s}"]), "exc")
+        return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.big_status(vals[0]).v if vals[0].t != 'None' else '0'}", f"ptr {s}", f"ptr {s}"]), "exc")
     if len(vals) == 1 and is_opt(vals[0].t):
         # a value that may be None: SystemExit(None), or the exception of the value it holds
         l1 = self.label()

@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import ann_target
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import BIG, NONEVAR, OPTTYPES
+from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
 from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
@@ -527,6 +527,11 @@ def gen_join_type(self, a: str, b: str) -> str:
         return BIG  # (a promoting int holds both: bigints.py)
     if (a == BIG and b == "bool") or (b == BIG and a == "bool"):
         a, b = "int", "bool"  # (with a bool, their union, which holds 64-bit ints, as in other modules)
+    if (a == BIGOPT and unopt(b) not in ["int", BIG, "None"]) or (b == BIGOPT and unopt(a) not in ["int", BIG, "None"]):
+        # (an int | None of a module that opts in and another type: their union, which holds 64-bit
+        # ints, bigints.py)
+        a = "opt[int]" if a == BIGOPT else "int" if a == BIG else a
+        b = "opt[int]" if b == BIGOPT else "int" if b == BIG else b
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 
