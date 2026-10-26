@@ -4046,11 +4046,16 @@ def gen_compare(self, n: Node) -> Val:
         # x in range(...): arithmetic, as CPython's range.__contains__ does for ints; an int |
         # None that is None equals no item
         nn = ""
-        if is_sopt(a.t) and unopt(a.t) != "float":
+        if a.t == BIGOPT:
+            nn = self.ptr_cmp('!=', a, Val('null', 'None')).v
+            a = self.big_opt_or(a, "0")  # (an int | None of a module that opts in: bigints.py)
+        elif is_sopt(a.t) and unopt(a.t) != "float":
             nn = self.ptr_cmp('!=', a, Val('null', 'None')).v
             a = Val(self.optint(a, "0"), "int")
         if a.t == BIG:
-            nn = self.big_fits([a])  # (a promoting int past 64 bits is in no range: its bounds are 64-bit)
+            # (a promoting int past 64 bits is in no range: its bounds are 64-bit)
+            fits = self.big_fits([a])
+            nn = fits if nn == "" else self.scalar('and', [Val(nn, "bool"), Val(fits, "bool")])
             a = self.big_lo(a)
         if a.t != "int" and a.t != "bool":
             self.err(f"'in range(...)' needs an int, not {typestr(a.t)}")
@@ -4225,7 +4230,14 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         # no item)
         self.notnone(b, "TypeError: argument of type 'NoneType' is not iterable")
         nn = ""
-        if is_sopt(a.t) and unopt(a.t) != "float":
+        if a.t == BIGOPT:
+            # (an int | None of a module that opts in, whose promoting int past 64 bits is in no range:
+            # bigints.py)
+            nn = self.ptr_cmp('!=', a, Val('null', 'None')).v
+            a = self.big_opt_or(a, "0")
+            nn = self.scalar('and', [Val(nn, "bool"), Val(self.big_fits([a]), "bool")])
+            a = self.big_lo(a)
+        elif is_sopt(a.t) and unopt(a.t) != "float":
             nn = self.ptr_cmp('!=', a, Val('null', 'None')).v
             a = Val(self.optint(a, "0"), "int")
         if a.t != "int" and a.t != "bool":

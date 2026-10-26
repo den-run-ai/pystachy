@@ -503,7 +503,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         self.rt("pys_set_add", "void", [ov, "i64 " + self.to_slot(v)], kx)
         return none
     if m == "discard" or m == "remove":
-        v = self.expr(args[0], et)
+        v = self.big_opt_narrow(self.expr(args[0], et))  # (an element holds a 64-bit int: bigints.py)
         if (v.t == "None" or (is_opt(v.t) and unopt(v.t) == et)) and et not in self.classes:
             # None is no element (but an object's): discard() does nothing, remove() raises
             # KeyError: None
@@ -796,6 +796,7 @@ def gen_dkey(self, k: Val, kt: str) -> Val:
     # (see nonekey), and a bool or a tuple with what CPython finds as such a key (lookable) is one
     if is_tuple(k.t) and BIG in k.t and BIG not in kt:
         k = self.big_tuple_narrow(k)  # (a key holds 64-bit ints: bigints.py)
+    k = self.big_opt_narrow(k)  # (and an int | None the box of one)
     if is_opt(k.t) and unopt(k.t) == kt:
         return k
     if k.t == "bool" and kt == "int":

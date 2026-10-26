@@ -353,6 +353,36 @@ def gen_big_opt_hash(self, v: Val) -> Val:
     return Val(self.phi(ph), "int")
 
 
+def gen_big_opt_or(self, v: Val, none: str) -> Val:
+    # the promoting int that int | None v of a module that opts in holds, or the int none where v is
+    # None
+    nv = self.to_big(Val(none, "int"))
+    e0 = self.cur
+    some = self.label()
+    end = self.label()
+    self.cbr(self.ptr_cmp("!=", v, Val("null", "None")).v, some, end)
+    self.place(some)
+    b = self.big_unbox(v)
+    e1 = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", BIG, "")
+    self.incoming(ph, nv.v, e0)
+    self.incoming(ph, b.v, e1)
+    return Val(self.phi(ph), BIG)
+
+
+def gen_big_status(self, v: Val) -> Val:
+    # an int, a bool or a promoting int v, or an int | None of a module that opts in (None: 0), as a
+    # 64-bit status, a SystemExit's code or the errno that names an OSError's class: past 64 bits -1,
+    # as CPython's SystemExit takes an int too large for a C long long (which names no errno)
+    if v.t == BIGOPT:
+        v = self.big_opt_or(v, "0")
+    if v.t != BIG:
+        return self.as_int(v)
+    return Val(self.select(self.big_fits([v]), self.big_lo(v), Val("-1", "int")), "int")
+
+
 def gen_big_tuple_narrow(self, v: Val) -> Val:
     # tuple v, whose items (or its tuples' items) may be promoting ints, as the tuple of their 64-bit
     # ints: the same tuple, whose first slots are that tuple's (tslots), where each fits; else

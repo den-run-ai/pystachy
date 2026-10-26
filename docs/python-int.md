@@ -107,7 +107,9 @@ value's pointer, which the collector scans. Every box of a 64-bit int has that n
 so an `int | None` from 64-bit code (a dict's `get()`, a module that does not opt in) is one of a
 promoting int as it is; and one whose value fits is the box that 64-bit code reads, where it
 takes it once a test has found no pointer there. Comparisons, `min()`, `max()`, `str()`, `repr()`,
-formatting, `hash()` and truth of an `int | None` are compiled for its promoting int.
+formatting, `hash()`, truth and membership in a `range` of an `int | None` are compiled for its
+promoting int, and so are the status of a `SystemExit` and the `errno` that names an `OSError`'s
+class, of it or of a promoting int (past 64 bits, -1 and none, as CPython's).
 
 ## 64-bit boundaries
 
@@ -227,7 +229,9 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_optional.py`: `int | None` past 64 bits in variables,
   parameters, returns, defaults, fields, class attributes, globals, closures and joins, in each
   spelling, with comparisons, `min()`, `max()`, membership, formatting, `hash()`, truth and
-  narrowing.
+  narrowing; `python_int_optional_keys.py`: values that fit as a dict's keys, a `pop()` default
+  and a set's elements, membership in ranges, an `OSError`'s errno and a `SystemExit`'s status,
+  and `python_int_exit.py`: that status in a program without `try`.
 - `tests/programs/numbers/python_int_spellings.py`: quoted and `Final` annotations, in modules
   that opt in and into one that does not.
 - `tests/programs/numbers/python_int_roots.py`: values whose digits only a module variable, a

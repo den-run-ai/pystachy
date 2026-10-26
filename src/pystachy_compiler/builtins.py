@@ -729,7 +729,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if bad != "":
             vals[i] = self.unwrap(vals[i], "TypeError: " + bad)
         elif name not in OPTARG:
-            if f"{name}({','.join([unopt(v.t) for v in vals])})" not in CALLS and name not in OPTCALLS:
+            if f"{name}({','.join([unopt(v.t) for v in vals])})".replace(BIG, "int") not in CALLS and name not in OPTCALLS:
                 # (not for the value it holds either)
                 self.err(f"unsupported call {name}({','.join([typestr(v.t) for v in vals])})")
             self.err(f"argument {i + 1} of {name}() may be None ({typestr(vals[i].t)}); test it with 'is not None' first")
@@ -2211,7 +2211,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         kv = targs(o.t)
         kx = self.dkey(self.expr(args[0], kv[0]), kv[0])
         k = self.to_slot(kx)
-        d = self.expr(args[1], kv[1])
+        d = self.big_opt_narrow(self.expr(args[1], kv[1]))  # (a value holds a 64-bit int: bigints.py)
         vt = self.optdefault(d, kv[1])  # (d.pop(k, None): V | None)
         dv = self.to_slot(self.coerce(d, vt))
         fn = "pys_dict_popbox" if is_sopt(vt) and not is_sopt(kv[1]) else "pys_dict_pop_default"  # (an int's box)
