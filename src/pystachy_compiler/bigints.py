@@ -160,9 +160,8 @@ def gen_big_known(self, op: str, x: Val, y: Val) -> str:
 
 
 def gen_big_truediv(self, x: Val, y: Val) -> Val:
-    # x / y: both fit, CPython's correctly rounded int / int; past 64 bits, not yet (#907)
-    self.guard(self.scalar("xor", [Val(self.big_fits([x, y]), "bool"), Val("true", "bool")]), "NotImplementedError: true division of an int past 64 bits is not supported yet in python-int modules")
-    return Val(self.rt("pys_idiv", "double", [f"i64 {self.big_lo(x).v}", f"i64 {self.big_lo(y).v}"]), "float")
+    # x / y, rounded once as CPython rounds int / int (pys_idiv where both fit)
+    return Val(self.rt("pys_big_truediv", "double", [f"i64 {self.big_lo(x).v}", f"ptr {self.big_hi(x).v}", f"i64 {self.big_lo(y).v}", f"ptr {self.big_hi(y).v}"]), "float")
 
 
 def gen_big_unary(self, op: str, v: Val) -> Val:

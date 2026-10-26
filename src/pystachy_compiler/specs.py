@@ -723,7 +723,7 @@ RUNTIME: dict[str, str] = {
     "big.op": "int+:int,%ptr,int,%ptr,int|R A|", "big.cmp": "int:int,%ptr,int,%ptr||",
     "big.cmp_float": "int:int,%ptr,float|R A|", "big.str": "str:int,%ptr|R A|",
     "big.from_str": "int+:str,int|R A|", "big.from_float": "int+:float|R A|", "big.hash": "int:int,%ptr||",
-    "big.float": "float:int,%ptr|R|",
+    "big.float": "float:int,%ptr|R|", "big.truediv": "float:int,%ptr,int,%ptr|R A|",
     # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of

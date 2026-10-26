@@ -1342,6 +1342,42 @@ I pys_big_hash(I lo, void *hi) {               /* CPython's: the magnitude modul
   uint64_t m = (lo < 0 ? 0 - (uint64_t)lo : (uint64_t)lo) % ((UINT64_C(1) << 61) - 1);
   I r = lo < 0 ? -(I)m : (I)m; return r == -1 ? -2 : r;
 }
+enum { TD_MANT = 53, TD_MIN_EXP = -1021, TD_MAX_EXP = 1024 };   /* <float.h>'s DBL_MANT_DIG, DBL_MIN_EXP, DBL_MAX_EXP */
+/* a / b, rounded once: CPython 3.13.16's long_true_divide (Objects/longobject.c), whose steps and
+   rounding of the low digit this follows on the Mpz core, used under the Python Software Foundation
+   License Version 2 (THIRD_PARTY_NOTICES) */
+double pys_big_truediv(I alo, void *ahi, I blo, void *bhi) {
+  if (!ahi && !bhi) return pys_idiv(alo, blo);
+  MpzTmp ta, tb;
+  Mpz *a = big_mpz(alo, ahi, &ta), *b = big_mpz(blo, bhi, &tb);
+  if (!zn(b)) pys_fail("ZeroDivisionError: division by zero");
+  int negate = (a->size < 0) != (b->size < 0);
+  if (!zn(a)) return negate ? -0.0 : 0.0;
+  /* x = |a| * 2**-shift, with shift chosen so that x // |b| has DBL_MANT_DIG + 2 or 3 bits (or
+     fewer, for a subnormal result); the bits shifted or divided away make the sticky bit */
+  I diff = pys_mpz_bit_length(a) - pys_mpz_bit_length(b);
+  if (diff > TD_MAX_EXP) goto overflow;
+  if (diff < TD_MIN_EXP - TD_MANT - 1) return negate ? -0.0 : 0.0;
+  I shift = (diff > TD_MIN_EXP ? diff : TD_MIN_EXP) - TD_MANT - 2;
+  Mpz *m = pys_mpz_unary(a, 1), *x;              /* |a|: fresh */
+  int inexact = 0;
+  if (shift <= 0) x = pys_mpz_shift(m, -shift, 0);
+  else { x = pys_mpz_shift(m, shift, 1); inexact = pys_mpz_cmp(pys_mpz_shift(x, shift, 0), m) != 0; }
+  Mpz *d = pys_mpz_unary(b, 1), *q = pys_mpz_binop(x, d, 3);   /* q: a fresh quotient, never 0 */
+  if (zn(pys_mpz_binop(x, d, 4))) inexact = 1;
+  I qbits = pys_mpz_bit_length(q);
+  I extra = (qbits > TD_MIN_EXP - shift ? qbits : TD_MIN_EXP - shift) - TD_MANT;   /* 2 or 3 */
+  uint32_t mask = (uint32_t)1 << (extra - 1), low = q->d[0] | (uint32_t)inexact;
+  if ((low & mask) && (low & (3U * mask - 1U))) low += mask;   /* round half to even (a carry stays in the digit) */
+  q->d[0] = low & ~(2U * mask - 1U);
+  double dq = 0;                                 /* exact: at most 54 bits */
+  for (I i = zn(q); i; i--) dq = dq * 1073741824.0 + q->d[i - 1];
+  if (shift + qbits >= TD_MAX_EXP && (shift + qbits > TD_MAX_EXP || dq == ldexp(1.0, (int)qbits))) goto overflow;
+  double r = ldexp(dq, (int)shift);
+  return negate ? -r : r;
+overflow:
+  pys_fail("OverflowError: integer division result too large for a float");
+}
 double pys_big_float(I lo, void *hi) {         /* rounded once, to nearest even, as CPython's int.__float__ */
   if (!hi) return (double)lo;
   Mpz *a = hi; I n = zn(a), k = n < 3 ? n : 3, bits = pys_mpz_bit_length(a);
