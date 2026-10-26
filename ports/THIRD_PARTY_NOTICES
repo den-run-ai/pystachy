@@ -6,18 +6,19 @@ Pystachy is distributed under the MIT License (LICENSE), except for the parts be
 MicroPython arbitrary-precision integer core (mpz/mpz.c)
 ------------------------------------------------------
 
-The packed-limb multiplication, multiply-add and normalized long division adapt
+The multiply-add and normalized long division adapt
 MicroPython v1.26.1 py/mpz.c, Copyright (c) 2013, 2014 Damien P. George,
 under the MIT license reproduced in mpz/mpz.c. Pystachy supplies immutable
 single-allocation values, collector integration, parsing, Python sign/bitwise
 semantics, hashing and conversion adapters. mpz/README.md records upstream
 source identity and changes.
 
-Its text conversion follows CPython 3.13.16's Objects/longobject.c at commit
-cbc944f4bc59639a444dd971c737788ba2283a91 (long_from_binary_base,
-long_from_non_binary_base and long_to_decimal_string_internal); those parts are
-derived from Python and are used under the Python Software Foundation License
-Version 2 and copyright notice below.
+Its text conversion, addition, subtraction and multiplication follow CPython
+3.13.16's Objects/longobject.c at commit cbc944f4bc59639a444dd971c737788ba2283a91
+(long_from_binary_base, long_from_non_binary_base,
+long_to_decimal_string_internal, x_add, x_sub, v_iadd, v_isub, x_mul, kmul_split,
+k_mul and k_lopsided_mul); those parts are derived from Python and are used under
+the Python Software Foundation License Version 2 and copyright notice below.
 
 Karpathy microGPT benchmark (bench/microgpt/, bench/smoke/ml.py)
 --------------------------------------------

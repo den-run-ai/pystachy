@@ -25,14 +25,15 @@
  */
 
 /* Pystachy port: immutable, single-allocation base-2^30 values, with the
-   MicroPython mpn schoolbook multiply and normalized division adapted to indexed
+   MicroPython mpn multiply-add and normalized division adapted to indexed
    loops. This file is included by runtime.c after its numeric parsing helpers.
    No MPZ object contains a pointer; class fields and containers root the handle.
    Only fresh, unpublished result/scratch objects are mutated.
-   Parsing and decimal formatting follow CPython 3.13.16's Objects/longobject.c
-   (Python Software Foundation License Version 2; see THIRD_PARTY_NOTICES and
-   mpz/README.md): linear power-of-two bases, digit groups in other bases, and
-   Knuth's single-pass conversion to base 10^9. */
+   Parsing, decimal formatting, addition, subtraction and multiplication follow
+   CPython 3.13.16's Objects/longobject.c (Python Software Foundation License
+   Version 2; see THIRD_PARTY_NOTICES and mpz/README.md): linear power-of-two
+   bases, digit groups in other bases, Knuth's single-pass conversion to base
+   10^9, schoolbook products with a squaring loop, and Karatsuba multiplication. */
 
 #define ZBITS 30
 #define ZBASE (UINT64_C(1) << ZBITS)
@@ -141,42 +142,124 @@ void *pys_mpz_from_str(Str *s, I base) {
   if (negative) r->size = -r->size;
   return r;
 }
-/* Magnitude addition/subtraction. Subtraction requires |a| >= |b|. */
-static Mpz *zaddmag(const Mpz *a, const Mpz *b, int subtract) {
-  I an = zn(a), bn = zn(b), n = an > bn ? an : bn; Mpz *r = zalloc(n + 1);
-  uint64_t carry = 0;
-  for (I i = 0; i < n; i++) {
-    uint64_t x = i < an ? a->d[i] : 0, y = i < bn ? b->d[i] : 0;
-    if (subtract) { uint64_t d = x - y - carry; carry = x < y + carry; r->d[i] = d & ZMASK; }
-    else { uint64_t d = x + y + carry; carry = d >> ZBITS; r->d[i] = d & ZMASK; }
-  }
-  if (!subtract && carry) r->d[n++] = carry;
-  ztrim(r, n, 0); return r;
+/* Magnitude sum, as CPython's x_add: the shorter operand's digits, then the carry
+   through the longer one's. */
+static Mpz *zaddmag(const Mpz *a, const Mpz *b) {
+  I an = zn(a), bn = zn(b);
+  if (an < bn) { const Mpz *t = a; a = b; b = t; I u = an; an = bn; bn = u; }
+  Mpz *r = zalloc(an + 1); uint32_t carry = 0; I i = 0;
+  for (; i < bn; i++) { carry += a->d[i] + b->d[i]; r->d[i] = carry & ZMASK; carry >>= ZBITS; }
+  for (; i < an; i++) { carry += a->d[i]; r->d[i] = carry & ZMASK; carry >>= ZBITS; }
+  r->d[an] = carry; ztrim(r, an + 1, 0); return r;
+}
+/* Magnitude difference |a| - |b| for |a| >= |b|, as CPython's x_sub: a borrow wraps a
+   digit's uint32_t, setting bit ZBITS. */
+static Mpz *zsubmag(const Mpz *a, const Mpz *b) {
+  I an = zn(a), bn = zn(b); Mpz *r = zalloc(an); uint32_t borrow = 0; I i = 0;
+  for (; i < bn; i++) { borrow = a->d[i] - b->d[i] - borrow; r->d[i] = borrow & ZMASK; borrow = borrow >> ZBITS & 1; }
+  for (; i < an; i++) { borrow = a->d[i] - borrow; r->d[i] = borrow & ZMASK; borrow = borrow >> ZBITS & 1; }
+  ztrim(r, an, 0); return r;
 }
 static Mpz *zadd(const Mpz *a, const Mpz *b, int subtract) {
-  int na = a->size < 0, nb = (b->size < 0) ^ subtract, c = zcmpmag(a, b);
+  int na = a->size < 0, nb = (b->size < 0) ^ subtract;
   Mpz *r;
-  if (na == nb) r = zaddmag(a, b, 0);
-  else if (c >= 0) r = zaddmag(a, b, 1);
-  else { r = zaddmag(b, a, 1); na = nb; }
+  if (na == nb) r = zaddmag(a, b);
+  else if (zcmpmag(a, b) >= 0) r = zsubmag(a, b);
+  else { r = zsubmag(b, a); na = nb; }
   if (na) r->size = -r->size;
   return r;
 }
-/* Schoolbook multiplication adapted from MicroPython mpn_mul. A 30-bit digit
-   product plus one result digit and carry fits uint64_t without wrapping. */
-static Mpz *zmul(const Mpz *a, const Mpz *b) {
-  I an = zn(a), bn = zn(b);
-  if (!an || !bn) return (Mpz *)&mpz_zero;
-  Mpz *r = zalloc(an + bn);
-  for (I j = 0; j < bn; j++) {
-    uint64_t carry = 0;
+/* x[0, m) += y[0, n) for m >= n, and x[0, m) -= y[0, n), as CPython's v_iadd and v_isub:
+   a carry or borrow out of x[m - 1] is dropped (arithmetic modulo 2^(30m)). */
+static void zvadd(uint32_t *x, I m, const uint32_t *y, I n) {
+  uint32_t carry = 0; I i = 0;
+  for (; i < n; i++) { carry += x[i] + y[i]; x[i] = carry & ZMASK; carry >>= ZBITS; }
+  for (; carry && i < m; i++) { carry += x[i]; x[i] = carry & ZMASK; carry >>= ZBITS; }
+}
+static void zvsub(uint32_t *x, I m, const uint32_t *y, I n) {
+  uint32_t borrow = 0; I i = 0;
+  for (; i < n; i++) { borrow = x[i] - y[i] - borrow; x[i] = borrow & ZMASK; borrow = borrow >> ZBITS & 1; }
+  for (; borrow && i < m; i++) { borrow = x[i] - borrow; x[i] = borrow & ZMASK; borrow = borrow >> ZBITS & 1; }
+}
+/* Schoolbook product of magnitudes, as CPython's x_mul. A 30-bit digit product plus
+   one result digit and carry fits uint64_t without wrapping. The same operand twice
+   is squared (HAC 14.16): each cross product is added once, doubled, which keeps the
+   carry below 2^32 and leaves at most one more carry into a digit that is still 0. */
+static Mpz *zmulmag(const Mpz *a, const Mpz *b) {
+  I an = zn(a), bn = zn(b); Mpz *r = zalloc(an + bn); uint32_t *z = r->d;
+  if (a == b) {
     for (I i = 0; i < an; i++) {
-      carry += (uint64_t)a->d[i] * b->d[j] + r->d[i + j];
-      r->d[i + j] = carry & ZMASK; carry >>= ZBITS;
+      uint64_t f = a->d[i], carry = z[2 * i] + f * f; I k = 2 * i;
+      z[k++] = carry & ZMASK; carry >>= ZBITS; f <<= 1;
+      for (I j = i + 1; j < an; j++) { carry += z[k] + a->d[j] * f; z[k++] = carry & ZMASK; carry >>= ZBITS; }
+      if (carry) {
+        carry += z[k]; z[k] = carry & ZMASK; carry >>= ZBITS;
+        if (carry) z[k + 1] = (uint32_t)carry;
+      }
     }
-    r->d[an + j] = carry;
+  } else {
+    for (I i = 0; i < an; i++) {
+      uint64_t f = a->d[i], carry = 0; I k = i;
+      for (I j = 0; j < bn; j++) { carry += z[k] + b->d[j] * f; z[k++] = carry & ZMASK; carry >>= ZBITS; }
+      z[k] = (uint32_t)carry;
+    }
   }
-  ztrim(r, an + bn, (a->size < 0) != (b->size < 0)); return r;
+  ztrim(r, an + bn, 0); return r;
+}
+/* CPython's KARATSUBA_CUTOFF for 30-bit digits: schoolbook multiplication below it
+   (twice it for squares) beats splitting. */
+#define ZKARATSUBA 70
+/* |n| = high * 2^(30 * size) + low, as CPython's kmul_split. */
+static void zsplit(const Mpz *n, I size, Mpz **high, Mpz **low) {
+  I nn = zn(n), lo = nn < size ? nn : size, hi = nn - lo;
+  Mpz *h = zalloc(hi), *l = zalloc(lo);
+  memcpy(l->d, n->d, lo * sizeof(uint32_t)); memcpy(h->d, n->d + lo, hi * sizeof(uint32_t));
+  ztrim(h, hi, 0); ztrim(l, lo, 0); *high = h; *low = l;
+}
+static Mpz *zkmul(const Mpz *a, const Mpz *b);
+/* |b| has at least twice |a|'s digits and |a| more than ZKARATSUBA: multiply a by
+   a-sized slices of b, so that zkmul splits balanced operands (CPython's
+   k_lopsided_mul). A slice keeps its zero high digits; only its product is read. */
+static Mpz *zkmul_lopsided(const Mpz *a, const Mpz *b) {
+  I an = zn(a), bn = zn(b), n = an + bn;
+  Mpz *r = zalloc(n), *slice = zalloc(an);
+  for (I done = 0; done < bn;) {
+    I use = bn - done < an ? bn - done : an;
+    memcpy(slice->d, b->d + done, use * sizeof(uint32_t)); slice->size = use;
+    Mpz *p = zkmul(a, slice);
+    zvadd(r->d + done, n - done, p->d, zn(p));
+    done += use;
+  }
+  ztrim(r, n, 0); return r;
+}
+/* Karatsuba multiplication of magnitudes (Knuth 4.3.3), as CPython's k_mul: with
+   X = 2^(30 * shift), (ah*X + al)(bh*X + bl) = ah*bh*X^2 + al*bl
+   + ((ah + al)(bh + bl) - ah*bh - al*bl)*X takes three half-size products. Each
+   product fits its place in the result, which is computed modulo 2^(30 * n), so a
+   borrow or carry out of its top digit is dropped (CPython's comment explains). */
+static Mpz *zkmul(const Mpz *a, const Mpz *b) {
+  I an = zn(a), bn = zn(b);
+  if (an > bn) { const Mpz *t = a; a = b; b = t; I u = an; an = bn; bn = u; }
+  if (an <= (a == b ? 2 * ZKARATSUBA : ZKARATSUBA)) return an ? zmulmag(a, b) : (Mpz *)&mpz_zero;
+  if (2 * an <= bn) return zkmul_lopsided(a, b);
+  I shift = bn >> 1, n = an + bn;
+  Mpz *ah, *al, *bh, *bl;
+  zsplit(a, shift, &ah, &al);
+  if (a == b) { bh = ah; bl = al; } else zsplit(b, shift, &bh, &bl);
+  Mpz *r = zalloc(n), *t1 = zkmul(ah, bh), *t2 = zkmul(al, bl);
+  memcpy(r->d + 2 * shift, t1->d, zn(t1) * sizeof(uint32_t));
+  memcpy(r->d, t2->d, zn(t2) * sizeof(uint32_t));
+  zvsub(r->d + shift, n - shift, t2->d, zn(t2));
+  zvsub(r->d + shift, n - shift, t1->d, zn(t1));
+  Mpz *s1 = zaddmag(ah, al), *s2 = a == b ? s1 : zaddmag(bh, bl), *t3 = zkmul(s1, s2);
+  zvadd(r->d + shift, n - shift, t3->d, zn(t3));
+  ztrim(r, n, 0); return r;
+}
+static Mpz *zmul(const Mpz *a, const Mpz *b) {
+  if (!a->size || !b->size) return (Mpz *)&mpz_zero;
+  Mpz *r = zkmul(a, b);   /* nonzero operands give a fresh, unshared product */
+  if ((a->size < 0) != (b->size < 0)) r->size = -r->size;
+  return r;
 }
 /* Normalized long division, adapted from MicroPython mpn_div. The divisor is
    normalized on demand. Indexed loops never form pointers before an array. */
@@ -232,7 +315,7 @@ static Mpz *zdiv(const Mpz *a, const Mpz *b, int remainder) {
   r->size = zn(r); zdivmag(r, b, q);
   int negative = (a->size < 0) != (b->size < 0);
   if (negative && r->size) {
-    zmuladd(q, 1, 1); r = zaddmag(b, r, 1);
+    zmuladd(q, 1, 1); r = zsubmag(b, r);
   }
   if (negative) q->size = -q->size;
   if (b->size < 0) r->size = -r->size;

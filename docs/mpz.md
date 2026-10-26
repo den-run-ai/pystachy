@@ -57,8 +57,10 @@ GC-scanned representation; no pointer is hidden in an ordinary integer slot.
 The arithmetic core adapts MicroPython's compact multiplication and long division
 algorithms. [Source provenance](../mpz/README.md) records the upstream version,
 hashes, license and changes. It has no GMP or embedded-CPython dependency.
-Multiplication is schoolbook, so this is a small portable implementation, not a
-claim of performance parity with CPython or GMP. Text conversion uses CPython's
+Multiplication follows CPython: schoolbook below 70 30-bit digits (140 for
+squares, which add each cross product once) and Karatsuba above. Long division is
+schoolbook. This is a small portable implementation, not a claim of performance
+parity with CPython or GMP. Text conversion uses CPython's
 algorithms: power-of-two bases parse in linear time, other bases parse a group
 of digits (nine decimal digits) per pass, and decimal output converts to base
 10^9 in one pass per 30-bit digit. Constructing a nonzero value from a native integer allocates a wrapper and a
