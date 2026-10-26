@@ -25,9 +25,13 @@ promotes past 64 bits. Every later step is measured against these programs. Each
 
 Each program prints a checksum and then the seconds its timed loop took; startup,
 compilation and printing are excluded. The runner refuses to time a workload whose variants
-print different checksums, and records each child's peak RSS.
+print different checksums, and records each child's peak RSS. A small C launcher forks each
+program and reads its peak: Linux's `ru_maxrss` keeps the larger of a process's RSS before and
+after its `exec`, so a child forked from the Python runner itself would report at least the
+runner's own memory.
 `tools/test_bench_integers.py` (Lint CI) runs every variant at a small size under CPython,
-with `tools/rt_cpython/mpz_oracle.py` as the mpz module, and checks that they agree.
+with `tools/rt_cpython/mpz_oracle.py` as the mpz module, and checks that they agree, and that
+a child's peak RSS leaves out the memory the runner holds.
 
 ## Results
 
@@ -41,28 +45,29 @@ CPython is in parentheses.
 
 | Workload | CPython | PyPy | mpz | int64 |
 |---|---:|---:|---:|---:|
-| `lcg32` | 0.718 s | 0.009 s (83.9×) | – | 0.005 s (146×) |
-| `collatz` | 0.824 s | 0.038 s (21.5×) | – | 0.046 s (18.0×) |
-| `cross64` | 0.483 s | 0.332 s (1.45×) | 0.361 s (1.34×) | – |
-| `arith128` | 0.676 s | 0.582 s (1.16×) | 0.576 s (1.17×) | – |
-| `factorial` | 0.527 s | 0.626 s (0.84×) | 0.585 s (0.90×) | – |
-| `fibadd` | 0.986 s | 0.745 s (1.32×) | 0.950 s (1.04×) | – |
-| `bigmul` | 0.644 s | 0.360 s (1.79×) | 0.670 s (0.96×) | – |
-| `dectext` | 0.634 s | 1.020 s (0.62×) | 0.719 s (0.88×) | – |
-| `modpow` | 0.851 s | 0.531 s (1.60×) | 0.981 s (0.87×) | – |
-| `containers` | 0.534 s | 0.663 s (0.81×) | 0.587 s (0.91×) | – |
+| `lcg32` | 0.791 s | 0.009 s (90.0×) | – | 0.005 s (157×) |
+| `collatz` | 0.856 s | 0.038 s (22.3×) | – | 0.045 s (19.1×) |
+| `cross64` | 0.578 s | 0.341 s (1.70×) | 0.399 s (1.45×) | – |
+| `arith128` | 0.728 s | 0.621 s (1.17×) | 0.691 s (1.05×) | – |
+| `factorial` | 0.529 s | 0.653 s (0.81×) | 0.708 s (0.75×) | – |
+| `fibadd` | 0.966 s | 0.747 s (1.29×) | 1.069 s (0.90×) | – |
+| `bigmul` | 0.657 s | 0.381 s (1.73×) | 0.689 s (0.95×) | – |
+| `dectext` | 0.710 s | 1.102 s (0.64×) | 0.752 s (0.94×) | – |
+| `modpow` | 0.877 s | 0.532 s (1.65×) | 1.015 s (0.86×) | – |
+| `containers` | 0.536 s | 0.692 s (0.77×) | 0.628 s (0.85×) | – |
 
-Peak RSS: CPython 15 MiB (57 MiB on `containers`), PyPy 56–222 MiB, the mpz binaries 34–36 MiB
-(99 MiB on `containers`) and the int64 ones 15 MiB, as they allocate nothing.
+Peak RSS: CPython 11–12 MiB (58 MiB on `containers`), PyPy 57–222 MiB, the mpz binaries 35–37 MiB
+(99 MiB on `containers`) and the int64 ones 2 MiB, as they allocate nothing.
 
 What this shows, and does not:
 
-- **int64** loops are where Pystachy's checked ints stand today: 146× and 18× CPython, beside
-  PyPy's JIT at 84× and 22×. The roadmap's budget is to keep this speed for promoting ints.
-- **mpz**, now with CPython's algorithms (#902–#905), is within 0.87–1.34× of CPython on every
-  big-integer workload. `factorial`, `containers` and `dectext` still allocate a wrapper object
-  per value, and `modpow`'s mpz variant multiplies and reduces in a loop where CPython runs
-  three-argument `pow` in C.
+- **int64** loops are where Pystachy's checked ints stand today: 157× and 19× CPython, beside
+  PyPy's JIT at 90× and 22×. The roadmap's budget is to keep this speed for promoting ints.
+- **mpz**, now with CPython's algorithms (#902–#905), is within 0.75–1.45× of CPython on every
+  big-integer workload; an earlier run on the same VM that day gave 0.87–1.34×, so a workload's
+  ratio can move by 0.15 between runs. `factorial`, `containers` and `dectext` still allocate a
+  wrapper object per value, and `modpow`'s mpz variant multiplies and reduces in a loop where
+  CPython runs three-argument `pow` in C.
 - These are bounded microbenchmarks on a shared VM, not application results. No GMP comparison,
   JIT (`pystachy run`) timing or compile-time cost is included.
 

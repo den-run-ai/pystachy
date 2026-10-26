@@ -8,6 +8,7 @@ import importlib.util
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +53,19 @@ class IntegerBenchmarks(unittest.TestCase):
     def test_variants(self):
         self.assertEqual(runner.variants("lcg32", False), [("pys-i64", "_i64")])
         self.assertEqual(runner.variants("bigmul", True), [("pys-int", ""), ("pys-mpz", "_mpz")])
+
+    def test_peak_rss_excludes_the_runner(self):
+        # a child that the runner forked itself would report the 128 MiB held here (Linux's
+        # ru_maxrss counts a process's pages before its exec): the launcher's child must not
+        held = b"x" * (128 << 20)
+        with tempfile.TemporaryDirectory() as tmp:
+            launch = runner.launcher(tmp)
+            check, seconds, peak = runner.run(["sh", "-c", "echo 7; echo 0.5"], None, launch)
+            self.assertEqual((check, seconds), ("7", 0.5))
+            self.assertLess(peak, 32 << 10)
+            with self.assertRaisesRegex(RuntimeError, "failed \\(3\\)"):
+                runner.run(["sh", "-c", "echo 7; echo 0.5; exit 3"], None, launch)
+        self.assertEqual(len(held), 128 << 20)
 
     def test_checksums_agree(self):
         for name in runner.WORKLOADS:

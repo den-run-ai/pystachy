@@ -4,7 +4,8 @@ and Pystachy's promoting int once it exists. See README.md.
 Each program prints a checksum, then the seconds of its timed loop (startup,
 compilation and printing excluded). Every variant must print the same checksum
 before any timing counts. Variants of a workload alternate order between
-samples; peak RSS is the child's ru_maxrss.
+samples; peak RSS is the child's ru_maxrss, which a small C launcher reads (see
+LAUNCHER).
 
 usage: python3 bench/integers/run.py [--compiler ./pystachy] [--cpython python3]
            [--pypy PATH] [--python-int] [--samples 5] [--cpu N] [--json OUT] [--only NAME...]
@@ -46,16 +47,58 @@ def variants(name, python_int):
     return out
 
 
-def run(cmd, cpu):
-    full = (["taskset", "-c", str(cpu)] if cpu is not None else []) + cmd
-    proc = subprocess.Popen(full, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = proc.stdout.read(), proc.stderr.read()
-    _, status, usage = os.wait4(proc.pid, 0)
-    code = os.waitstatus_to_exitcode(status)
-    lines = out.decode().strip().splitlines()
-    if code != 0 or len(lines) < 2:
-        raise RuntimeError(f"{' '.join(cmd)} failed ({code}): {err.decode().strip()[-300:]}")
-    return lines[0], float(lines[-1]), usage.ru_maxrss
+# The launcher runs its arguments as its child and writes the child's peak RSS in KiB to stderr,
+# as the last line. Linux's ru_maxrss keeps the larger of a process's RSS before and after its
+# exec, so a child forked from the Python runner would report at least the runner's own pages; one
+# forked from this small program starts with this program's few.
+LAUNCHER = r"""
+#include <stdio.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+int main(int argc, char **argv) {
+  if (argc < 2) return 2;
+  pid_t pid = fork();
+  if (pid < 0) { perror("fork"); return 2; }
+  if (pid == 0) { execvp(argv[1], argv + 1); perror(argv[1]); _exit(127); }
+  int status;
+  struct rusage ru;
+  if (wait4(pid, &status, 0, &ru) < 0) { perror("wait4"); return 2; }
+#ifdef __APPLE__
+  long kib = ru.ru_maxrss / 1024; /* (bytes there) */
+#else
+  long kib = ru.ru_maxrss;
+#endif
+  fprintf(stderr, "peak-rss-kib %ld\n", kib);
+  return WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
+}
+"""
+RSS = "peak-rss-kib "
+
+
+def launcher(tmp):
+    """Build LAUNCHER in directory tmp with the C compiler $CC (default cc); its path."""
+    cc = os.environ.get("CC") or shutil.which("cc") or shutil.which("clang")
+    if cc is None:
+        sys.exit("bench/integers/run.py needs a C compiler (cc, or $CC) for its peak-RSS launcher")
+    src = Path(tmp) / "launch.c"
+    src.write_text(LAUNCHER)
+    exe = Path(tmp) / "launch"
+    subprocess.run(cc.split() + ["-O2", "-o", str(exe), str(src)], check=True)
+    return exe
+
+
+def run(cmd, cpu, launch):
+    """Run cmd through the launcher launch: its checksum, its seconds and its peak RSS in KiB."""
+    full = (["taskset", "-c", str(cpu)] if cpu is not None else []) + [str(launch)] + cmd
+    proc = subprocess.run(full, capture_output=True)
+    err = proc.stderr.decode().splitlines()
+    peak = int(err.pop()[len(RSS):]) if err and err[-1].startswith(RSS) else None
+    lines = proc.stdout.decode().strip().splitlines()
+    if proc.returncode != 0 or len(lines) < 2 or peak is None:
+        raise RuntimeError(f"{' '.join(cmd)} failed ({proc.returncode}): {chr(10).join(err).strip()[-300:]}")
+    return lines[0], float(lines[-1]), peak
 
 
 def main():
@@ -76,6 +119,7 @@ def main():
     report = {"compiler": args.compiler, "cpython": args.cpython, "pypy": args.pypy,
               "python_int": args.python_int, "samples": args.samples, "workloads": {}}
     try:
+        launch = launcher(tmp)
         for name in args.only or WORKLOADS:
             arg = WORKLOADS[name][0]
             cmds = {"cpython": [args.cpython, "-I", str(HERE / f"{name}.py"), arg]}
@@ -85,14 +129,14 @@ def main():
                 exe = tmp / f"{name}{suffix}"
                 subprocess.run(args.compiler.split() + ["build", str(HERE / f"{name}{suffix}.py"), "-o", str(exe)], check=True)
                 cmds[label] = [str(exe), arg]
-            checks = {label: run(cmd, args.cpu)[0] for label, cmd in cmds.items()}
+            checks = {label: run(cmd, args.cpu, launch)[0] for label, cmd in cmds.items()}
             if len(set(checks.values())) != 1:
                 sys.exit(f"{name}: checksums differ: {checks}")
             samples = {label: [] for label in cmds}
             rss = {label: 0 for label in cmds}
             for i in range(args.samples):
                 for label in (list(cmds) if i % 2 == 0 else list(reversed(cmds))):
-                    check, seconds, peak = run(cmds[label], args.cpu)
+                    check, seconds, peak = run(cmds[label], args.cpu, launch)
                     if check != checks[label]:
                         sys.exit(f"{name}/{label}: checksum changed")
                     samples[label].append(seconds)
