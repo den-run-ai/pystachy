@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable
 from src.pystachy_compiler.utils import (
     elem,
@@ -34,6 +34,8 @@ def gen_to_slot(self, v: Val, keep: bool = False) -> str:
     # the runtime reads it; but kept (keep) as an item of a tuple of its type
     if v.t == BIG:
         v = self.big_narrow(v)  # (an 8-byte slot holds a 64-bit int: bigints.py)
+    if v.t == BIGOPT:
+        v = self.big_opt_narrow(v)  # (and an int | None the box of one: bigints.py)
     if is_tuple(v.t) and BIG in v.t and not keep:
         v = self.big_tuple_narrow(v)
     if v.t == "int":
@@ -145,6 +147,14 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return v
     if t == BIG and (v.t == "int" or v.t == "bool"):
         return self.to_big(v)  # (a promoting int: bigints.py)
+    if t == BIGOPT and (v.t == BIG or v.t == "int"):
+        return self.big_box(self.to_big(v))  # (an int | None of a module that opts in: bigints.py)
+    if v.t == BIGOPT and t != "":
+        if t == "opt[int]" and self.join_hint(t, v.t):
+            return Val("undef", t)  # (as an inferred int location becomes a promoting int: see join_hint)
+        v = self.big_opt_narrow(v)  # (into 64-bit storage: the same box, where the value fits)
+        if v.t == t:
+            return v
     if v.t == BIG:
         if (t == "int" or t == "bool") and self.join_hint(t, v.t):
             return Val("undef", t)  # (an inferred int location becomes a promoting int: the next pass, see join_hint)

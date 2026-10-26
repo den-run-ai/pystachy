@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import none_display, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
+from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
     atomic_list,
@@ -1070,6 +1070,8 @@ def gen_hash_value(self, v: Val) -> Val:
         return self.dyn_hash(v)  # (by its box's type: dynamic.py)
     if t == BIG:
         return self.big_hash(v)  # (CPython's, as hint gives a 64-bit int's: bigints.py)
+    if t == BIGOPT:
+        return self.big_opt_hash(v)  # (None's, or a promoting int's: bigints.py)
     if is_tuple(t) and BIG in t:
         return self.big_tuple_hash(v)  # (of promoting ints: bigints.py)
     if self.key_class(t):
@@ -1093,7 +1095,7 @@ def gen_hashable(self, t: str) -> bool:
     # can hash() take a value of type t (but an object's, obj_hash): a number, a str, None, an
     # object, a tuple of such items, or one of these that may be None
     u = unopt(t)
-    if u == "int" or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
+    if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
         return True
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
@@ -1102,6 +1104,8 @@ def gen_repr(self, v: Val) -> Val:
         return self.kw_repr(v)
     if v.t == BIG:
         return self.big_str(v)  # (an int's repr is its str: bigints.py)
+    if v.t == BIGOPT:
+        return self.big_opt_str(v)  # (None, or a promoting int: bigints.py)
     if is_tuple(v.t) and BIG in v.t:
         return self.big_tuple_repr(v)  # (of promoting ints: bigints.py)
     if self.reference_union(v.t):

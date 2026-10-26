@@ -11,6 +11,7 @@ from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
     ANYUSE,
     BIG,
+    BIGOPT,
     CLASSVAR,
     CTYPES,
     EXCATTRS,
@@ -83,8 +84,12 @@ def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
     # In a recursive template, a two-item tuple may double this on every instance.
     # Recursive value aliases have finite self edges in mutable storage. Only
     # fold the exact element/value type; never widen an existing container.
-    # A promoting int is stored as a 64-bit int in every composite (bigints.py: NARROW).
-    if base != "tuple":
+    # A promoting int is stored as a 64-bit int in every composite (bigints.py: NARROW), but for a
+    # tuple's items and the int | None of one (BIGOPT), whose box holds it; a tuple's int | None is
+    # an opt[int]
+    if base == "tuple":
+        ts = [x.replace(BIGOPT, "opt[int]") for x in ts]
+    elif not (base == "opt" and ts == [BIG]):
         ts = [x.replace(BIG, "int") for x in ts]
     if canon and base == "list" and len(ts) == 1 and any_item(ts[0]):
         # a list of Any values or Any containers is a list[Any], whose items are boxes, and so is a
@@ -260,7 +265,8 @@ def gen_ann(self, n: Node) -> str:
             if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
                 return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
             return self.ctype("vtuple", [t])
-        ts = self.ann_items(a) if base == "tuple" else narrowed([self.ann(x) for x in a])  # (a tuple holds promoting ints: tslots)
+        # (a tuple holds promoting ints, tslots, and so does an int | None: Optional[int], Union[int, None])
+        ts = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a] if base == "optional" or base == "union" else narrowed([self.ann(x) for x in a])
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -283,6 +289,7 @@ def gen_ann(self, n: Node) -> str:
                 return us[0]  # Union[T]
             if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
                 return self.opt(us[0] if us[1] == "None" else us[1], [x for x in a if x.kind != "None"][0])  # Union[T, None]
+            us = narrowed(us)  # (a union holds 64-bit ints)
             fam = self.class_family(us)
             return fam if fam != "" else self.union_type(us)
     if self.typing_ref(n) == "Final":
@@ -909,7 +916,7 @@ def gen_optional(self, t: str) -> str:
     if t == "dyn":
         return t
     if t == BIG:
-        return self.ctype("opt", ["int"])  # (a box of a 64-bit int: bigints.py, NARROW)
+        return BIGOPT  # (a box of the promoting int: bigints.py)
     if self.rec_type(t) != t:
         return self.rec_fold(self.optional(self.rec_type(t)))
     if t in self.classes or is_opt(t):
@@ -1055,7 +1062,8 @@ def gen_widens(self, a: str, b: str) -> bool:
     if a == b:
         return True
     if is_opt(b):
-        return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b)))  # (an int | None is a box)
+        # (an int | None is a box, also one of a promoting int where the value fits: bigints.py)
+        return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b))) or (b == BIGOPT and a == "opt[int]")
     if is_gen(a) and is_gen(b) and gsend(b) == "None" and gelem(a) == gelem(b):
         return True  # (a generator that takes S from send() as one that next() alone resumes)
     if b in self.classes:

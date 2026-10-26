@@ -76,6 +76,9 @@ NONE_ITEM = "opt[?]"  # the item type of a container that holds only None so far
 # the type of an int in a module that opts in to promoting ints (# pystachy: python-int): two words,
 # an LLVM {i64, ptr} (bigints.py). Its "+" keeps it apart from every class name
 BIG = "int+"
+# an int | None of such a module (bigints.py): a box of the promoting int, which is also one of a
+# 64-bit int, opt[int], where the value fits
+BIGOPT = "opt[int+]"
 IOPS: dict[str, str] = {"&": "and", "|": "or", "^": "xor"}
 CHECKED: dict[str, str] = {"+": "sadd", "-": "ssub", "*": "smul"}  # llvm.*.with.overflow
 IRT: dict[str, str] = {"//": "pys_floordiv", "%": "pys_mod", "**": "pys_pow", "<<": "pys_shl", ">>": "pys_shr"}
@@ -726,6 +729,7 @@ RUNTIME: dict[str, str] = {
     "big.float": "float:int,%ptr|R|", "big.truediv": "float:int,%ptr,int,%ptr|R A|",
     "big.bit_length": "int:int,%ptr||", "big.bit_count": "int:int,%ptr||", "big.format": "str:int,%ptr,str|R A|",
     "big.powmod": "int+:int,%ptr,int,%ptr,int,%ptr|R A|", "big.sum": "int+:list[int],int,%ptr|R A rL|",
+    "big.box": "%ptr:int,%ptr|A|",
     # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of

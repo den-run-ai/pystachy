@@ -10,6 +10,7 @@ from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
     BIG,
+    BIGOPT,
     STR_HEADER_SIZE,
     CHECKED,
     DUNDER,
@@ -1917,6 +1918,25 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
         self.guard(self.num_cmp('!=', Val(self.mload('int', sv.v), "int"), Val('0', "int")).v, "TypeError: unsupported format string passed to NoneType.__format__")
         return self.to_str(v)
+    if v.t == BIGOPT:
+        # (None's __format__ accepts only an empty spec, a promoting int's formats its digits: bigints.py)
+        sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        some = self.label()
+        none = self.label()
+        end = self.label()
+        ph = Ins("phi", "str", "")
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, none, some)
+        self.place(none)
+        self.guard(self.num_cmp('!=', Val(self.mload('int', sv.v), "int"), Val('0', "int")).v, "TypeError: unsupported format string passed to NoneType.__format__")
+        self.incoming(ph, self.sconst("None"), self.cur)
+        self.br(end)
+        self.place(some)
+        b = self.big_unbox(v)
+        r = Val(self.rt("pys_big_format", "ptr", [f"i64 {self.big_lo(b).v}", f"ptr {self.big_hi(b).v}", f"ptr {sv.v}"]), "str")
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), "str")
     if is_opt(v.t):
         # None's __format__ accepts only an empty spec, the value's its own (the runtime checks)
         if spec.kind == "str" and unopt(v.t) != "str" and not is_sopt(v.t):
@@ -4169,6 +4189,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
+        return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
     if (a.t == BIG or b.t == BIG) and not ((op == "in" or op == "not in") and (is_tuple(b.t) or (unopt(b.t) in self.classes and unopt(b.t) != RANGEC) or is_gen(b.t))):
         # (promoting ints: bigints.py, a range's arithmetic too; the items of a tuple, an object or a
         # generator are compared below, and __contains__ takes x as its parameter does)
@@ -4374,8 +4396,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes) or (is_set(b.t) and selem(b.t) not in self.classes) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
         return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's, and no number
     kt = targs(b.t)[0] if is_dict(b.t) else selem(b.t) if is_set(b.t) else ""
-    if (op == "in" or op == "not in") and is_opt(a.t) and ((kt != "" and (unopt(a.t) == kt or (is_sopt(a.t) and bool_for_int(unopt(a.t), kt)))) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
-        # None is no key of the dict (and no int of a list[int])
+    if (op == "in" or op == "not in") and is_opt(a.t) and ((kt != "" and (unopt(a.t) == kt or (is_sopt(a.t) and bool_for_int(unopt(a.t), kt)) or (a.t == BIGOPT and kt == "int"))) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
+        # None is no key of the dict (and no int of a list[int]); a promoting int's search is exact (bigints.py)
         nn = self.ptr_cmp('!=', a, Val('null', 'None')).v
         e0 = self.cur
         l1 = self.label()
@@ -4833,8 +4855,8 @@ def gen_comparable(self, t: str, u: str) -> bool:
         return o == "dyn" or self.dyn_boxable(self.rec_type(o)) == ""
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
-    if t == u or ((self.isnum(unopt(t)) or t == BIG) and (self.isnum(unopt(u)) or u == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
-        return True  # (a promoting int is a number: bigints.py)
+    if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
+        return True  # (a promoting int is a number, also where it may be None: bigints.py)
     return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
 def gen_foreign_eq(self, a: Val, b: Val) -> Val:

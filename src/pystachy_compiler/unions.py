@@ -126,6 +126,8 @@ def gen_union_type(self, ts: list[str]) -> str:
         for m in umembers(t) if is_union(t) else [t]:
             if m not in ms:
                 ms.append(m)
+    if BIG in ms and "int" in ms:
+        ms.remove("int")  # (a promoting int holds a 64-bit one: bigints.py)
     if len(ms) == 0:
         return "None"
     if len(ms) == 1:

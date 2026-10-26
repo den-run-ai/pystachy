@@ -10,7 +10,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, int_file
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.syntax import made_var, mk
-from src.pystachy_compiler.specs import BIG, CHECKED, IOPS, IRT, RANGEC
+from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC
 from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_list, is_set, is_tuple, is_vtuple, selem, targs
 
 # pys_big_op's operation codes (pys_mpz_binop's, then shifts and **)
@@ -27,6 +27,10 @@ NARROW = "OverflowError: Python int too large to convert to C long"
 # (0 for -2**63) is read too (big_item). A tuple of 64-bit ints none of which is -2**63 is so a
 # tuple of promoting ints as it is (big_tuple_view).
 TSLOT_BIG = "-9223372036854775808"
+# An int | None of a module that opts in (BIGOPT) is a box, as an opt[int] is: null for None, else
+# runtime.c's pys_box of the value, whose second word is null, where it fits; past 64 bits, a box
+# of TSLOT_BIG and its Mpz (pys_big_box). So an opt[int] is one as it is, and one of a value that
+# fits is the opt[int] of it, which 64-bit storage takes once a test has found no Mpz (big_opt_narrow)
 
 
 def narrows(a: str, b: str) -> bool:
@@ -35,7 +39,7 @@ def narrows(a: str, b: str) -> bool:
     # conversion that branches (Gen.convert_at)
     if b == "" or a == b:
         return False
-    return a == BIG or (is_tuple(a) and (BIG in a or BIG in b))
+    return a == BIG or a == BIGOPT or (is_tuple(a) and (BIG in a or BIG in b))
 
 
 def big_viewable(a: str, b: str) -> bool:
@@ -56,7 +60,8 @@ def big_viewable(a: str, b: str) -> bool:
 
 def narrowed(ts: list[str]) -> list[str]:
     # the types ts as members of an annotation's container, tuple or union, which hold 64-bit ints
-    return ["int" if t == BIG else t for t in ts]
+    # (also as an int | None: BIGOPT)
+    return ["int" if t == BIG else "opt[int]" if t == BIGOPT else t for t in ts]
 
 
 def gen_int_policy(self, line: int) -> bool:
@@ -286,6 +291,68 @@ def gen_big_narrow(self, v: Val) -> Val:
     return self.big_lo(v)
 
 
+def gen_big_box(self, v: Val) -> Val:
+    # promoting int v as an int | None (BIGOPT): its box
+    return Val(self.rt("pys_big_box", "ptr", [f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}"]), BIGOPT).identity(v)
+
+
+def gen_big_unbox(self, v: Val) -> Val:
+    # the promoting int that int | None v, known not to be None, holds: its box's two words, an Mpz
+    # where the second is not null (whose value's first word is 0)
+    lo = Val(self.mload("int", v.v), "int")
+    w = Val(self.mload("int", self.maddr("int", v.v, "1")), "int")
+    small = self.scalar_cmp("eq", w, Val("0", "int"))
+    return self.big(Val(self.select(small, lo, Val("0", "int")), "int"), self.scalar_cast("inttoptr", w, "%ptr")).identity(v)
+
+
+def gen_big_opt_narrow(self, v: Val) -> Val:
+    # int | None v of a module that opts in as one of a 64-bit int, for 64-bit storage: the same box,
+    # where None or a value that fits; past 64 bits, OverflowError (NARROW)
+    if v.t != BIGOPT:
+        return v
+    if v.v == "null" or v.v == "undef":
+        return Val(v.v, "opt[int]")
+    test = self.label()
+    end = self.label()
+    self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, test)
+    self.place(test)
+    w = Val(self.mload("int", self.maddr("int", v.v, "1")), "int")
+    self.guard(self.scalar_cmp("ne", w, Val("0", "int")), NARROW)
+    self.br(end)
+    self.place(end)
+    return Val(v.v, "opt[int]").identity(v)
+
+
+def gen_big_opt_str(self, v: Val) -> Val:
+    # str() and repr() of int | None v of a module that opts in: "None", or its promoting int's
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", "str", "")
+    self.incoming(ph, self.sconst("None"), self.cur)
+    self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, some)
+    self.place(some)
+    r = self.big_str(self.big_unbox(v))
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "str")
+
+
+def gen_big_opt_hash(self, v: Val) -> Val:
+    # hash() of int | None v of a module that opts in: None's (Gen.hash_value), or its promoting int's
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", "int", "")
+    self.incoming(ph, str(0xFCA86420), self.cur)
+    self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, some)
+    self.place(some)
+    r = self.big_hash(self.big_unbox(v))
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "int")
+
+
 def gen_big_tuple_narrow(self, v: Val) -> Val:
     # tuple v, whose items (or its tuples' items) may be promoting ints, as the tuple of their 64-bit
     # ints: the same tuple, whose first slots are that tuple's (tslots), where each fits; else
@@ -417,6 +484,8 @@ def gen_big_binop(self, op: str, a: Val, b: Val) -> Val:
     if a.t == "float" or b.t == "float":
         # (the int converted to float first, as CPython does; OverflowError past the float range)
         return self.arith(op, self.as_float(a), self.as_float(b))
+    if a.t == BIGOPT or b.t == BIGOPT:
+        return Val("", "")  # (an int | None's TypeError for None, or its promoting int: Gen.arith)
     # (another operand: a sequence's repetition count, or an object's operator method, take a 64-bit int)
     return self.arith(op, self.big_narrow(a), self.big_narrow(b))
 

@@ -731,6 +731,13 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
                 # (not for the value it holds either)
                 self.err(f"unsupported call {name}({','.join([typestr(v.t) for v in vals])})")
             self.err(f"argument {i + 1} of {name}() may be None ({typestr(vals[i].t)}); test it with 'is not None' first")
+    if len([v for v in vals if v.t == BIG]) > 0:
+        bv = self.big_builtin(name, vals) if len(kws) == 0 else Val("", "")  # (an int | None's promoting int, unwrapped: bigints.py)
+        if bv.t != "":
+            return bv
+        vals = [self.big_narrow(v) for v in vals]
+    if name not in ["str", "repr", "ascii", "hash", "bool", "min", "max"]:
+        vals = [self.big_opt_narrow(v) for v in vals]  # (the others take an int | None's 64-bit int: bigints.py)
     key = f"{name}({','.join([v.t for v in vals])})"
     asked = key  # (math's calls convert their arguments below; a rejection names them as given)
     if self.rtmode and name.startswith("_rt."):
@@ -2314,6 +2321,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             else:
                 v = self.consume(g, pt) if join or key == "list.extend" else self.expr(args[i], want_arg, resultsoft=key in ["list.count", "list.index", "list.remove", "vtuple.count", "vtuple.index"] and i == 0)
             self.stkkey = self.nokey
+            v = self.big_opt_narrow(v)  # (a builtin method's int | None holds a 64-bit int: bigints.py)
             if self.list_id_kind(o.t) != 0 and p == "*T" and v.t in ["int", "float", "bool"]:
                 idquery = v
                 # index's later bounds may call back and rebind the query's source.
