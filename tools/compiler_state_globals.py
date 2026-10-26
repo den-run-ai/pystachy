@@ -15,7 +15,7 @@ PREFIX = "src.pystachy_compiler."
 # These are initialized when modules load, then reviewed as lookup tables. Adding
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
-bigints.BIGOPS bigints.PROMOTES
+bigints.BIGOPS bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN
