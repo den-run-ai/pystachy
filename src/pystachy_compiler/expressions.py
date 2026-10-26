@@ -3025,10 +3025,18 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False)
     e1 = self.cur
     l2 = self.label()
     l3 = self.label()
-    if n.s == "and":
+    if n.s == "and" and BIG in a.t and not ascond:
+        # x and y with x a promoting int: a false x is narrowed where it goes to the join (e1),
+        # if the join holds 64-bit ints (convert_at), and a true one, which goes to y, is not
+        e1 = self.label()
+        self.cbr(c, l2, e1)
+        self.place(e1)
+        self.br(l3)
+    elif n.s == "and":
         self.cbr(c, l2, l3)
-    elif is_sopt(a.t) and not ascond:
-        # x or y with x an int | None: a true x is unboxed where it goes to the join (e1)
+    elif (is_sopt(a.t) or BIG in a.t) and not ascond:
+        # x or y with x an int | None: a true x is unboxed where it goes to the join (e1), and a
+        # promoting int narrowed there (as for and)
         e1 = self.label()
         self.cbr(c, e1, l2)
         self.place(e1)
