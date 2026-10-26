@@ -120,7 +120,13 @@ holds an `A` have every effect, as an `O` does.
 In a module that opts in to [promoting ints](python-int.md), an `int` value is `int+`, an LLVM
 `{i64, ptr}`: the 64-bit value and a null pointer where it fits, else 0 and the value's immutable
 digits. `big.make` builds one from an `int` and a `%ptr`, and `big.lo` and `big.hi` read its two
-words; none has a memory effect. Container slots, tuples and unions hold `int`.
+words; none has a memory effect. Container slots and unions hold `int`. A fixed tuple holds an
+`int+` item in the item's own slot, the value where it fits, but -2\*\*63 (`TSLOT_BIG`) for one
+past 64 bits and for -2\*\*63 itself, whose pointer (null for -2\*\*63) is then in slot `n + i`
+past the `n` items: a `tuple.load` or `tuple.store` whose `k` is that slot and whose `s` is
+`int+` reaches it (`tslots`, `hislot`), and a read of it is guarded by its item's slot
+(`big_item`). Descriptors give such an item as `i`: such a tuple reaches the runtime narrowed
+(`to_slot`), and its `repr()`, comparisons and `hash()` are compiled item by item.
 An `Ins` uses only the fields its operation needs:
 
 | Field | Meaning |

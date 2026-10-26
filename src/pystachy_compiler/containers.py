@@ -723,8 +723,9 @@ def gen_key_items(self, t: str) -> bool:
 def gen_key_problem(self, t: str) -> str:
     # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
     # (hashed by their types at run time: TypeError: unhashable type)
-    if t == "dyn" or t == BIG or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
-        return ""  # (a promoting int is a key as a 64-bit int: bigints.py)
+    t = t.replace(BIG, "int")  # (a promoting int, also a tuple's, is a key as a 64-bit int: bigints.py)
+    if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
+        return ""
     if t in self.nts:
         return key_problem(t) + " (a NamedTuple, which CPython hashes as the tuple of its fields)"
     if t in self.classes and self.classes[t].exc != "":
@@ -793,6 +794,8 @@ def gen_key_repr(self, t: str) -> bool:
 def gen_dkey(self, k: Val, kt: str) -> Val:
     # a key to look up in a dict whose keys have type kt: one that may be None stays optional
     # (see nonekey), and a bool or a tuple with what CPython finds as such a key (lookable) is one
+    if is_tuple(k.t) and BIG in k.t and BIG not in kt:
+        k = self.big_tuple_narrow(k)  # (a key holds 64-bit ints: bigints.py)
     if is_opt(k.t) and unopt(k.t) == kt:
         return k
     if k.t == "bool" and kt == "int":
@@ -1067,6 +1070,8 @@ def gen_hash_value(self, v: Val) -> Val:
         return self.dyn_hash(v)  # (by its box's type: dynamic.py)
     if t == BIG:
         return self.big_hash(v)  # (CPython's, as hint gives a 64-bit int's: bigints.py)
+    if is_tuple(t) and BIG in t:
+        return self.big_tuple_hash(v)  # (of promoting ints: bigints.py)
     if self.key_class(t):
         return self.obj_hash(v)
     if t == "None":
@@ -1097,6 +1102,8 @@ def gen_repr(self, v: Val) -> Val:
         return self.kw_repr(v)
     if v.t == BIG:
         return self.big_str(v)  # (an int's repr is its str: bigints.py)
+    if is_tuple(v.t) and BIG in v.t:
+        return self.big_tuple_repr(v)  # (of promoting ints: bigints.py)
     if self.reference_union(v.t):
         return self.refl_union_str(v, "__repr__")  # (each class's: reflection.py)
     if v.t in self.classes:

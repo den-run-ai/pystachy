@@ -19,15 +19,39 @@ BIGLL = "{i64, ptr}"
 # the operators whose result an int of a module that opts in may need past 64 bits for: two ints
 # take them as promoting ints (% & | ^ >> of two 64-bit values always fit)
 PROMOTES: list[str] = ["+", "-", "*", "//", "<<", "**"]
-# where a promoting int past 64 bits goes into 64-bit storage (a container, a tuple, an int
+# where a promoting int past 64 bits goes into 64-bit storage (a list, dict or set, a union, an int
 # parameter of a module that does not opt in): CPython's message for an int too big for a C long
 NARROW = "OverflowError: Python int too large to convert to C long"
+# A tuple's promoting int item (utils.tslots) holds its value in the item's slot where it fits, but
+# for -2**63: there, and for a value past 64 bits, the slot holds TSLOT_BIG, and the item's Mpz word
+# (0 for -2**63) is read too (big_item). A tuple of 64-bit ints none of which is -2**63 is so a
+# tuple of promoting ints as it is (big_tuple_view).
+TSLOT_BIG = "-9223372036854775808"
 
 
 def narrows(a: str, b: str) -> bool:
-    # does a value of type a become one of type b by a test that it fits (a promoting int into
-    # 64-bit storage, big_narrow), which raises: a conversion that branches (Gen.convert_at)
-    return a == BIG and b != BIG and b != ""
+    # does a value of type a become one of type b by a test (a promoting int into 64-bit storage,
+    # big_narrow, which raises; a tuple whose items promote differently, big_tuple_view): a
+    # conversion that branches (Gen.convert_at)
+    if b == "" or a == b:
+        return False
+    return a == BIG or (is_tuple(a) and (BIG in a or BIG in b))
+
+
+def big_viewable(a: str, b: str) -> bool:
+    # are tuple types a and b the same but for promoting ints against 64-bit ints, also in their
+    # tuples' items: their slots agree (utils.tslots), so a tuple of one is one of the other as it
+    # is, but for big_tuple_view's tests
+    if not is_tuple(a) or not is_tuple(b) or a == b:
+        return False
+    x = targs(a)
+    y = targs(b)
+    if len(x) != len(y):
+        return False
+    for i in range(len(x)):
+        if x[i] != y[i] and not (x[i] == "int" and y[i] == BIG) and not (x[i] == BIG and y[i] == "int") and not big_viewable(x[i], y[i]):
+            return False
+    return True
 
 
 def narrowed(ts: list[str]) -> list[str]:
@@ -262,6 +286,111 @@ def gen_big_narrow(self, v: Val) -> Val:
     return self.big_lo(v)
 
 
+def gen_big_tuple_narrow(self, v: Val) -> Val:
+    # tuple v, whose items (or its tuples' items) may be promoting ints, as the tuple of their 64-bit
+    # ints: the same tuple, whose first slots are that tuple's (tslots), where each fits; else
+    # OverflowError, as a promoting int going into 64-bit storage raises (NARROW)
+    ts = targs(v.t)
+    for i in range(len(ts) if v.v != "undef" else 0):
+        if ts[i] == BIG:
+            self.big_narrow(self.tget(v, i))
+        elif is_tuple(ts[i]) and BIG in ts[i]:
+            self.big_tuple_narrow(self.tget(v, i))
+    return Val(v.v, v.t.replace(BIG, "int"))
+
+
+def gen_big_item(self, v: Val, lo: Val, k: int, j: str) -> Val:
+    # the promoting int item of tuple v whose slot holds lo. Its Mpz word, slot k (or, for the item
+    # at run-time index j of a tuple of promoting ints, the slot j past the items), is read only
+    # where lo is TSLOT_BIG: a tuple of 64-bit ints that big_tuple_view made one has no slot there
+    rare = self.label()
+    end = self.label()
+    ph = Ins("phi", BIG, "")
+    self.incoming(ph, self.big(lo).v, self.cur)
+    self.cbr(self.scalar_cmp("eq", lo, Val(TSLOT_BIG, "int")), rare, end)
+    self.place(rare)
+    if j == "":
+        w = self.tslot(v, k)
+    else:
+        w = Val(self.mload("int", self.maddr("int", v.v, self.scalar("add", [Val(j, "int"), Val(str(len(targs(v.t))), "int")]))), "int")
+    small = self.scalar_cmp("eq", w, Val("0", "int"))  # (-2**63 itself)
+    r = self.big(Val(self.select(small, Val(TSLOT_BIG, "int"), Val("0", "int")), "int"), self.scalar_cast("inttoptr", w, "%ptr"))
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), BIG)
+
+
+def gen_big_view_test(self, v: Val, t: str) -> str:
+    # an i1, true where tuple v cannot be a t as it is (big_tuple_view) since one of its 64-bit ints
+    # that t holds as a promoting int is -2**63; its promoting ints that t holds as 64-bit ints
+    # are narrowed (OverflowError past 64 bits)
+    a = targs(v.t)
+    b = targs(t)
+    acc = "false"
+    for i in range(len(a)):
+        c = "false"
+        if a[i] == "int" and b[i] == BIG:
+            c = self.scalar_cmp("eq", self.tget(v, i), Val(TSLOT_BIG, "int"))
+        elif a[i] == BIG and b[i] == "int":
+            self.big_narrow(self.tget(v, i))
+        elif a[i] != b[i]:
+            c = self.big_view_test(self.tget(v, i), b[i])  # (a tuple item: the same test)
+        if c != "false":
+            acc = c if acc == "false" else self.scalar("or", [Val(acc, "bool"), Val(c, "bool")])
+    return acc
+
+
+def gen_big_tuple_view(self, v: Val, t: str) -> Val:
+    # tuple v as tuple type t, which differs from its type only in promoting ints against 64-bit
+    # ints (also in its tuples' items): the same tuple, as their slots agree (tslots), unless a
+    # 64-bit int that t holds as a promoting int is -2**63, whose slot would say to read an Mpz
+    # word the tuple lacks (TSLOT_BIG): then a new tuple of t's layout, item by item
+    if v.v == "undef":
+        return Val(v.v, t)
+    copy = self.big_view_test(v, t)
+    if copy == "false":
+        return Val(v.v, t)
+    rare = self.label()
+    end = self.label()
+    ph = Ins("phi", t, "")
+    self.incoming(ph, v.v, self.cur)
+    self.cbr(copy, rare, end)
+    self.place(rare)
+    c = self.tuple_([self.coerce(self.tget(v, i), targs(t)[i]) for i in range(len(targs(t)))])
+    self.incoming(ph, c.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), t)
+
+
+def gen_big_tuple_repr(self, v: Val) -> Val:
+    # repr() of a tuple whose items (or its tuples' items) may be promoting ints, as CPython
+    # writes a tuple: the runtime's repr reads 64-bit ints (desc), so the items' are joined here
+    ts = targs(v.t)
+    parts = [Val(self.sconst("("), "str")]
+    for i in range(len(ts)):
+        if i > 0:
+            parts.append(Val(self.sconst(", "), "str"))
+        parts.append(self.repr(self.tget(v, i)))
+    parts.append(Val(self.sconst(",)" if len(ts) == 1 else ")"), "str"))
+    return self.concat(parts)
+
+
+def gen_big_tuple_hash(self, v: Val) -> Val:
+    # hash() of such a tuple, as CPython's tuplehash (xxHash's mixing, runtime.c's htuple) mixes
+    # its items' hashes, a promoting int's CPython's (big_hash)
+    ts = targs(v.t)
+    acc = Val("2870177450012600261", "int")
+    for i in range(len(ts)):
+        lane = self.hash_value(self.tget(v, i))
+        acc = Val(self.scalar("add", [acc, Val(self.scalar("mul", [lane, Val("-4417276706812531889", "int")]), "int")]), "int")  # (14029467366897019727)
+        acc = Val(self.scalar("or", [Val(self.scalar("shl", [acc, Val("31", "int")]), "int"), Val(self.scalar("lshr", [acc, Val("33", "int")]), "int")]), "int")
+        acc = Val(self.scalar("mul", [acc, Val("-7046029288634856825", "int")]), "int")  # (11400714785074694791)
+    acc = Val(self.scalar("add", [acc, Val(str(len(ts) ^ 2870177450012600261 ^ 3527539), "int")]), "int")
+    return Val(self.select(self.scalar_cmp("eq", acc, Val("-1", "int")), Val("1546275796", "int"), acc), "int")
+
+
 def gen_big_parse(self, s: Val, base: Val) -> Val:
     # int(s, base) in a module that opts in
     return Val(self.rt("pys_big_from_str", BIGLL, [f"ptr {s.v}", f"i64 {base.v}"]), BIG)
@@ -377,6 +506,15 @@ def gen_big_builtin(self, name: str, vals: list[Val]) -> Val:
         return Val(self.rt("pys_big_sum", BIGLL, [f"ptr {vals[0].v}", f"i64 {self.big_lo(sv).v}", f"ptr {self.big_hi(sv).v}"]), BIG)
     if name == "pow" and n == 2 and t in nums and vals[1].t in nums:
         return self.big_arith("**", vals[0], vals[1])
+    if name == "divmod" and n == 2 and t in nums and vals[1].t in nums:
+        # (x // y first: its ZeroDivisionError is divmod's; a tuple holds promoting ints, tslots)
+        return self.tuple_([self.big_arith("//", vals[0], vals[1]), self.big_arith("%", vals[0], vals[1])])
+    if name == "divmod" and n == 2 and (t == "float" or vals[1].t == "float") and t in nums + ["float"] and vals[1].t in nums + ["float"]:
+        # (with a float: both as floats first, the int rounded once, as CPython's float_divmod)
+        dn = self.as_float(vals[0])
+        dd = self.as_float(vals[1])
+        self.guard(self.scalar_cmp('oeq', Val(dd.v, 'float'), Val('0.0', 'float')), "ZeroDivisionError: float divmod()")
+        return self.tuple_([self.arith("//", dn, dd), self.arith("%", dn, dd)])
     if name == "pow" and n == 3 and all([v.t in nums for v in vals]) and BIG in [v.t for v in vals]:
         xs = [self.to_big(v) for v in vals]
         args = []

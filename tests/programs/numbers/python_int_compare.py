@@ -89,3 +89,22 @@ print(big in [0, 1], zero in [0, 1], big in (1, 2), big - 1 not in {1, 2}, big i
 print((2 ** 40).bit_length(), (big // big).bit_length(), (2 ** 62 + 2 ** 62 - 1).bit_count(), (-big // big).bit_length())
 r = range(0, 2 ** 62, 3)
 print(big in r, big - big in r, 2 ** 61 + 2 in r, big in range(-1, 1), -big not in r)
+
+
+# membership in an iterator object whose __next__ returns promoting ints compares them as ints
+class Count:
+    def __init__(self, n: int) -> None:
+        self.n = n
+        self.i = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.i >= self.n:
+            raise StopIteration
+        self.i += 1
+        return self.i - 1
+
+
+print(2 in Count(3), 4 in Count(3), 0 not in Count(1), zero in Count(1), True in Count(2), 1.0 in Count(2))

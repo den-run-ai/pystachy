@@ -3,8 +3,8 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
-from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
+from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
+from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, tslots, umembers
 
 # Fixed SSA result counts printed by each lowering (gen_nums handles calls).
 RESULT_NUMBERS: dict[str, int] = {
@@ -265,9 +265,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
                 t = i.a[0].t
                 ts = targs(t) if is_tuple(t) and t.endswith("]") and t.count("[") == t.count("]") else []
-                if "" in ts or "..." in ts or i.k < 0 or i.k >= len(ts):
+                if "" in ts or "..." in ts or i.k < 0 or i.k >= tslots(t):
                     self.bad_ir(fn, b, f"{i.op} needs a fixed tuple and an in-range item index")
-                if i.s != ts[i.k] or i.s.startswith("%") or i.s.startswith("*") or i.s == "#" or ((i.s == "T" or i.s == "K" or i.s == "V" or i.s == "S") and i.s not in self.classes):
+                if i.k >= len(ts) and (i.s != BIG or ts[i.k - len(ts)] != BIG):
+                    self.bad_ir(fn, b, f"{i.op} of a slot past the items needs a promoting int item's Mpz word")  # (tslots)
+                if i.k < len(ts) and (i.s != ts[i.k] or i.s.startswith("%") or i.s.startswith("*") or i.s == "#" or ((i.s == "T" or i.s == "K" or i.s == "V" or i.s == "S") and i.s not in self.classes)):
                     self.bad_ir(fn, b, f"{i.op} needs the declared native item type")
                 if (i.op == "tuple.load" and i.t != "%slot") or (i.op == "tuple.store" and (i.t != "" or i.a[1].t != "%slot")):
                     self.bad_ir(fn, b, f"{i.op} needs an opaque item slot")
