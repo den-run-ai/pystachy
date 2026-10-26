@@ -1243,7 +1243,18 @@ static Big big_wide(__int128 v) {              /* an exact 128-bit result of two
   for (; u; u >>= 30) m->d[n++] = (uint32_t)(u & 0x3FFFFFFF);
   m->size = v < 0 ? -n : n; Big r = {0, m}; return r;
 }
-static Mpz *big_mpz(I lo, void *hi) { return hi ? (Mpz *)hi : (Mpz *)pys_mpz_from_int(lo); }
+/* room in the caller's frame for the Mpz of a value that fits (three 30-bit digits hold 64 bits),
+   whose size and digits are written and read as the union's Mpz */
+typedef union { Mpz m; uint64_t words[3]; } MpzTmp;
+/* a value as an Mpz: its own, or one that fits written into tmp. The pys_mpz_* functions only read
+   their operands and return fresh values or the shared zero (a shift by 0 returns its operand,
+   which big_of then demotes), so none of tmp outlives the call that made it */
+static Mpz *big_mpz(I lo, void *hi, MpzTmp *tmp) {
+  if (hi) return hi;
+  Mpz *t = &tmp->m; uint64_t u = lo < 0 ? 0 - (uint64_t)lo : (uint64_t)lo; I n = 0;
+  for (; u; u >>= 30) t->d[n++] = (uint32_t)(u & 0x3FFFFFFF);
+  t->size = lo < 0 ? -n : n; return t;
+}
 static int big_pow64(I a, I b, I *out) {       /* a ** b for b >= 0, where it fits in 64 bits */
   I r = 1, x = a;
   if (a == 0 || a == 1) { *out = b ? a : 1; return 1; }
@@ -1280,12 +1291,15 @@ Big pys_big_op(I alo, void *ahi, I blo, void *bhi, I op) {
     default: pys_fail("ValueError: invalid int operation");
     }
   }
-  Mpz *a = big_mpz(alo, ahi);
-  if (op <= 7) return big_of(pys_mpz_binop(a, big_mpz(blo, bhi), op));
+  MpzTmp ta, tb;
+  Mpz *a = big_mpz(alo, ahi, &ta);
+  if (op <= 7) return big_of(pys_mpz_binop(a, big_mpz(blo, bhi, &tb), op));
   int negative = bhi ? ((Mpz *)bhi)->size < 0 : blo < 0;
   if (op == 8 || op == 9) {
     if (negative) pys_fail("ValueError: negative shift count");
-    if (!bhi) return big_of(pys_mpz_shift(a, blo, op == 9));
+    /* a left shift by 2**62 or more of a nonzero value needs more memory than there is: CPython's
+       MemoryError, where pys_mpz_shift's size check would raise OverflowError near 2**63 */
+    if (!bhi && (op == 9 || !zn(a) || blo < (I)1 << 62)) return big_of(pys_mpz_shift(a, blo, op == 9));
     if (op == 9 || !zn(a)) return big_small(op == 9 && a->size < 0 ? -1 : 0);
     pys_fail("MemoryError");                   /* a count past 64 bits: CPython runs out of memory */
   }

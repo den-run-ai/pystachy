@@ -33,6 +33,7 @@ from src.pystachy_compiler.bigints import (
     gen_big_fits as bigints_big_fits,
     gen_big_call as bigints_big_call,
     gen_big_arith as bigints_big_arith,
+    gen_big_known as bigints_big_known,
     gen_big_truediv as bigints_big_truediv,
     gen_big_unary as bigints_big_unary,
     gen_big_abs as bigints_big_abs,
@@ -1487,6 +1488,9 @@ class Gen:
 
     def big_arith(self, op: str, a: Val, b: Val) -> Val:
         return bigints_big_arith(self, op, a, b)
+
+    def big_known(self, op: str, x: Val, y: Val) -> str:
+        return bigints_big_known(self, op, x, y)
 
     def big_truediv(self, x: Val, y: Val) -> Val:
         return bigints_big_truediv(self, x, y)

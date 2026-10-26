@@ -62,11 +62,21 @@ values that fit are equal exactly when their first words are.
 
 An operation on two values that fit runs inline: `x + y` tests that both pointers are null, adds
 with an overflow check and branches to `pys_big_op` (`runtime.c`) only when a pointer is set or
-the addition overflows. The runtime computes the exact result and demotes it where it fits.
-Comparisons, truth and conversions take the same two paths. The pointer is an ordinary pointer
-or null, so the conservative collector sees a big value's digits through any variable, field
-or closure cell that holds it, and never mistakes a small int for a pointer. The design and its
-measurements are on #907.
+the addition overflows. `-`, `*`, `&`, `|`, `^`, `%`, `>>`, `//` (but by -1) and `<<` (by 0 to
+63, losing no bits) have inline paths too; `**` always calls the runtime. The runtime computes
+the exact result and demotes it where it fits; a 64-bit operand of a big operation is read from
+the stack, not allocated. Comparisons, truth and conversions take the same two paths.
+
+Some results fit whatever the operands: `x % y` where `y` fits (`|r| < |y|`), `x >> y` where `x`
+fits, and `x & y` where one operand fits and is not negative (`0 <= r <=` it). Their pointer is
+null on both paths where that holds, and a masked result's word is masked on both, so LLVM folds
+the pointer tests of later operations on them wherever the operand is a constant or already known
+to fit, and sees the mask's range. A loop that masks or reduces its values
+(`h = (h * 31 + c) & 0xFFFFFFFF`, `x % m`) carries them as one 64-bit word.
+
+The pointer is an ordinary pointer or null, so the conservative collector sees a big value's
+digits through any variable, field or closure cell that holds it, and never mistakes a small int
+for a pointer. The design and its measurements are on #907.
 
 ## 64-bit boundaries
 
@@ -107,35 +117,38 @@ past 64 bits it raises `NotImplementedError`.
 
 Measured on 2026-10-26 with [`bench/integers`](../bench/integers/README.md) (`--python-int`, AOT
 binaries, medians of five samples pinned to one CPU) on the shared 4-vCPU Xeon VM of its
-results; every variant printed CPython's checksum. Seconds, and speed relative to CPython
-3.13.16:
+results, with the inline paths above; every variant printed CPython's checksum. Seconds, and
+speed relative to CPython 3.13.16:
 
 | Workload | CPython | promoting `int` | `mpz` | checked int64 |
 |---|---:|---:|---:|---:|
-| `lcg32` | 0.765 s | 0.019 s (40.6×) | – | 0.005 s (150×) |
-| `collatz` | 0.890 s | 0.168 s (5.28×) | – | 0.047 s (18.9×) |
-| `cross64` | 0.489 s | 0.221 s (2.22×) | 0.557 s (0.88×) | – |
-| `arith128` | 0.902 s | 0.864 s (1.04×) | 0.646 s (1.40×) | – |
-| `factorial` | 0.528 s | 0.637 s (0.83×) | 0.621 s (0.85×) | – |
-| `fibadd` | 0.922 s | 1.101 s (0.84×) | 1.056 s (0.87×) | – |
-| `bigmul` | 0.644 s | 0.669 s (0.96×) | 0.682 s (0.94×) | – |
-| `dectext` | 0.703 s | 0.810 s (0.87×) | 0.715 s (0.98×) | – |
+| `lcg32` | 0.750 s | 0.005 s (151×) | – | 0.005 s (152×) |
+| `collatz` | 0.807 s | 0.033 s (24.6×) | – | 0.045 s (18.1×) |
+| `cross64` | 0.514 s | 0.174 s (2.96×) | 0.419 s (1.23×) | – |
+| `arith128` | 0.893 s | 0.682 s (1.31×) | 0.735 s (1.21×) | – |
+| `factorial` | 0.628 s | 0.657 s (0.96×) | 0.666 s (0.94×) | – |
+| `fibadd` | 0.961 s | 1.163 s (0.83×) | 1.112 s (0.86×) | – |
+| `bigmul` | 0.673 s | 0.682 s (0.99×) | 0.692 s (0.97×) | – |
+| `dectext` | 0.767 s | 0.719 s (1.07×) | 0.789 s (0.97×) | – |
 
-- **Values that fit.** `lcg32` and `collatz` never leave 64 bits, and the promoting int runs them
-  3.6–3.7× slower than checked int64: each operation tests both operands' pointers and keeps
-  both words of its result, and nothing proves yet that a masked or bounded value fits. The
-  representation proxy measured 1.00–1.02× with such range facts (#907), which come next.
+- **Values that fit.** `lcg32` and `collatz` never leave 64 bits. `lcg32` masks its values, so
+  they are proven to fit and run as fast as checked int64. `collatz` ran faster than its
+  checked-int64 build, which differs only in the comment (0.033 s against 0.045 s in every
+  sample, a difference not traced yet). Before the inline paths, both ran 3.6–3.7× slower than
+  checked int64.
 - **Values crossing 2^63.** `cross64`'s values leave 64 bits and come back. Those that fit stay
-  inline: 2.5× faster than `mpz` here (1.7× in an earlier run), which allocates every value.
-- **Big values.** Within 0.83–1.04× of CPython, as `mpz` is. `arith128` is slower than `mpz`
-  because each operation with a 64-bit operand turns it into a fresh `Mpz`, where the `mpz`
-  program keeps its constants as `mpz` values. On this VM a workload's ratio moves by up to
-  0.15 between runs.
+  inline: 2.4× faster than `mpz`, which allocates every value.
+- **Big values.** Within 0.83–1.31× of CPython, as `mpz` is (0.86–1.21×). A 64-bit operand of a
+  big operation is read from the stack, not allocated, so `arith128` keeps up with the `mpz`
+  program, which keeps its constants as `mpz` values. On this VM a workload's ratio moves by up
+  to 0.15 between runs.
 - `modpow` and `containers` do not run yet: their values past 64 bits reach three-argument `pow`
   and containers, which keep 64-bit ints.
 
-Peak RSS is `mpz`'s on every big workload (35–37 MiB) and 2 MiB on `lcg32` and `collatz`. Raw
+Peak RSS is `mpz`'s on every big workload (34–37 MiB) and 2 MiB on `lcg32` and `collatz`. Raw
 samples are in
+[`results/linux-x86_64-2026-10-26-python-int-fast-paths.json`](../bench/integers/results/linux-x86_64-2026-10-26-python-int-fast-paths.json);
+the first measurements, before the inline paths, in
 [`results/linux-x86_64-2026-10-26-python-int.json`](../bench/integers/results/linux-x86_64-2026-10-26-python-int.json).
 
 ## Tests
@@ -149,6 +162,12 @@ samples are in
 - `tests/programs/numbers/python_int_calls.py`: functions, defaults, keyword arguments, methods,
   fields, globals, closures, lambdas and modules with and without the comment
   (`tests/python_int_modules/`).
+- `tests/programs/numbers/python_int_bounds.py`: the inline paths of `//`, `%`, `<<` and `>>` at
+  their edges, results that always fit, and shifts past memory.
+- `tests/programs/numbers/python_int_storage.py`: values that fit in containers, tuples and unions
+  that annotations name, displays, dataclass and NamedTuple fields, and `type()`.
+- `tests/programs/numbers/python_int_spellings.py`: quoted and `Final` annotations, in modules
+  that opt in and into one that does not.
 - `tests/programs/numbers/python_int_roots.py`: values whose digits only a module variable, a
   class attribute, a field, a closure cell, a default or a generator's frame holds survive
   collections (the test runner's GC stress collects at every allocation).
