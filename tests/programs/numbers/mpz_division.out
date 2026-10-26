@@ -1,0 +1,20 @@
+normalization shifts and quotient sizes: 9000 digest 827239866
+add-back cases: 216 digest 850560636
+0 True 0
+0 True 0
+0 True 1
+-1 False 301
+0 True 301
+-1 False 1
+-1 False 1
+0 True 301
+1 False 0
+-1 False 0
+-1 False 0
+1 False 0
+1 False 1
+-2 False 301
+1 False 301
+-2 False 1
+small quotients digest 904170721
+[exit 0]
