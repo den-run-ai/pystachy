@@ -84,7 +84,9 @@ python3 bench/integers/run.py --compiler ./pystachy --cpython python3.13 \
 `--only NAME...` selects workloads, and `--python-int` adds `NAME.py` built by Pystachy, whose
 ints promote in a module that opts in. Its first measurements, of the eight workloads that keep
 their values outside containers, are in
-[results/linux-x86_64-2026-10-26-python-int.json](results/linux-x86_64-2026-10-26-python-int.json)
+[results/linux-x86_64-2026-10-26-python-int.json](results/linux-x86_64-2026-10-26-python-int.json);
+with the inline paths for values that fit, in
+[results/linux-x86_64-2026-10-26-python-int-fast-paths.json](results/linux-x86_64-2026-10-26-python-int-fast-paths.json)
 and [the promoting int guide](../../docs/python-int.md#measurements).
 
 ## History
