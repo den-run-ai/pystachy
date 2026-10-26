@@ -664,7 +664,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_check(keyv, f"{name}()")
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
-    if len([v for v in vals if v.t == BIG]) > 0 or ((name == "int" or name == "abs" or name == "pow") and self.int_policy(self.line)):
+    if len([v for v in vals if v.t == BIG]) > 0 or ((name == "int" or name == "abs" or name == "pow" or name == "sum") and self.int_policy(self.line)):
+        if name == "sum" and len(vals) == 2 and (vals[1].t == "int" or vals[1].t == BIG) and (is_tuple(vals[0].t) or is_dict(vals[0].t) or (vals[0].t in self.classes and not self.iter_object(vals[0].t))):
+            vals[0] = self.as_list(vals[0], name)  # (as below: sum(o, start) iterates o once start is evaluated)
         bv = self.big_builtin(name, vals) if len(kws) == 0 else Val("", "")  # (promoting ints: bigints.py)
         if bv.t != "":
             return bv
@@ -1314,7 +1316,7 @@ def gen_stream_start(self, name: str, args: list[Node]) -> str:
     if len(args) == 1:
         return ""
     t = self.dry(args[1])
-    return t if t == "int" or t == "float" else "-"
+    return t if t == "int" or t == "float" or t == BIG else "-"
 
 def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     # sum(), min() or max() of a generator expression or an iterator call: each item is added
@@ -1342,18 +1344,21 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     if name == "math.prod":
         sv = self.expr(args[1], "")
         self.mstore(r.stt, self.coerce(sv, r.stt).v, r.acc)
+    elif name == "sum" and r.t == BIG:
+        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")  # (an int: stream_start)
+        self.mstore(BIG, self.to_big(sv).v, r.acc)
     elif name == "sum" and r.t == "dyn":
-        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")  # (an int or a float: stream_start)
+        sv = self.big_narrow(self.expr(args[1], "")) if len(args) == 2 else Val("0", "int")  # (an int or a float: stream_start)
         self.mem_store(Val(r.acc, "*dyn"), self.dyn_box(sv))
     elif name == "sum" and r.isf != "":
         # (an int start begins CPython's int phase, a float one its float phase)
-        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")
+        sv = self.big_narrow(self.expr(args[1], "")) if len(args) == 2 else Val("0", "int")
         self.mstore('int', "0" if sv.t == "float" else self.as_int(sv).v, r.acc)
         self.mstore('float', sv.v if sv.t == "float" else fbits('0.0'), r.facc)
         self.mstore('float', fbits('0.0'), r.comp)
         self.mstore('bool', 'true' if sv.t == "float" else 'false', r.isf)
     elif name == "sum":
-        sv = self.expr(args[1], "") if len(args) == 2 else Val("0" if r.t != "float" else fbits("0.0"), "int" if r.t != "float" else "float")
+        sv = self.big_narrow(self.expr(args[1], "")) if len(args) == 2 else Val("0" if r.t != "float" else fbits("0.0"), "int" if r.t != "float" else "float")
         if r.t == "float":
             self.mstore('float', self.as_float(sv).v, r.acc)
             self.mstore('float', fbits('0.0'), r.comp)
@@ -1383,6 +1388,8 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
         return result
     if r.t == "dyn":
         return self.mem_load(Val(r.acc, "*dyn"))
+    if r.t == BIG:
+        return Val(self.mload(BIG, r.acc), BIG)
     if r.isf != "":
         return self.sum_union_end(r)
     if r.comp == "":
@@ -1486,10 +1493,16 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
     v = self.expr(e, "")
     if r.t == "":
         r.t = v.t
-        if r.name == "sum" and v.t != "int" and v.t != "bool" and v.t != "float" and not self.num_union(v.t) and v.t != "dyn":
+        if r.name == "sum" and r.stt != "float" and (v.t == BIG or ((v.t == "int" or v.t == "bool") and (r.stt == BIG or self.int_policy(self.line)))):
+            r.t = BIG  # (ints added past 64 bits, as CPython adds them: bigints.py)
+        elif r.name == "sum" and v.t == BIG:
+            r.t = "int"  # (to a float start: as 64-bit ints, as builtins take them)
+        if r.name == "sum" and v.t != "int" and v.t != "bool" and v.t != "float" and v.t != BIG and not self.num_union(v.t) and v.t != "dyn":
             self.err(f"unsupported call sum(list[{v.t}]{',' + r.stt if r.stt != '' else ''})")
         if r.name == "math.prod":
             r.acc = self.alloca(r.stt, "")
+        elif r.name == "sum" and r.t == BIG:
+            r.acc = self.alloca(BIG, "")
         elif r.name == "sum" and v.t == "dyn":
             r.acc = self.alloca("dyn", "")  # (Any values: added as dynamic values, dyn_arith)
         elif r.name == "sum" and self.num_union(v.t):
@@ -1501,9 +1514,9 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
             r.acc = self.alloca("float" if v.t == "float" or r.stt == "float" else "int", "")
             if v.t == "float":
                 r.comp = self.alloca("float", "")
-                if r.stt == "int":
+                if r.stt == "int" or r.stt == BIG:
                     r.first = self.alloca("bool", "")
-        elif v.t == "int" or v.t == "float" or v.t == "bool" or v.t == "str":
+        elif v.t == "int" or v.t == "float" or v.t == "bool" or v.t == "str" or v.t == BIG:
             r.acc = self.alloca(v.t, "")
             r.first = self.alloca("bool", "")
             if self.list_id_kind(self.ctype("list", [v.t])) != 0:
@@ -1540,6 +1553,9 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         return
     if r.t == "dyn":
         self.mem_store(Val(r.acc, "*dyn"), self.dyn_arith("+", self.mem_load(Val(r.acc, "*dyn")), v))
+        return
+    if r.t == BIG:
+        self.mstore(BIG, self.big_arith("+", Val(self.mload(BIG, r.acc), BIG), v).v, r.acc)
         return
     if r.t != "float" and r.stt != "float":
         si = self.mload('int', r.acc)
@@ -2206,8 +2222,12 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         K = kv[0]
         V = kv[1]
     elif (o.t == "bool" or o.t == BIG) and "int." + m in METHODS:
-        # (a bool is an int: True.bit_length() is 1; a promoting int's methods take its 64-bit
-        # value for now, with OverflowError past 64 bits, docs/python-int.md)
+        # (a bool is an int: True.bit_length() is 1; a promoting int's bit_length() and
+        # bit_count() count all its bits, its other methods take its 64-bit value, with
+        # OverflowError past 64 bits, docs/python-int.md)
+        bm = self.big_method(o, m) if o.t == BIG and len(args) == 0 else Val("", "")
+        if bm.t != "":
+            return bm
         base = "int"
         o = self.as_int(o)
     key = base + "." + m

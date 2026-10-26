@@ -9,8 +9,9 @@ that fits, so equal values have one representation. See docs/python-int.md.
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, int_file
 from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.syntax import made_var, mk
 from src.pystachy_compiler.specs import BIG, CHECKED, IOPS, IRT, RANGEC
-from src.pystachy_compiler.utils import elem, is_dict, is_list, is_set, is_tuple, is_vtuple, selem, targs
+from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_list, is_set, is_tuple, is_vtuple, selem, targs
 
 # pys_big_op's operation codes (pys_mpz_binop's, then shifts and **)
 BIGOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "//": 3, "%": 4, "&": 5, "|": 6, "^": 7, "<<": 8, ">>": 9, "**": 10}
@@ -323,6 +324,15 @@ def int_items(t: str) -> bool:
     return t == RANGEC
 
 
+def gen_big_method(self, v: Val, m: str) -> Val:
+    # v.bit_length() and v.bit_count() of a promoting int, or Val("", "") for another method (Gen.bmethod
+    # gives it the 64-bit value)
+    if m == "bit_length" or m == "bit_count":
+        fn = "pys_big_bit_length" if m == "bit_length" else "pys_big_bit_count"
+        return Val(self.rt(fn, "i64", [f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}"]), "int")
+    return Val("", "")
+
+
 def gen_big_builtin(self, name: str, vals: list[Val]) -> Val:
     # builtin name(vals) where a value is a promoting int, or int() in a module that opts in: the
     # result, or Val("", "") where the builtin takes 64-bit ints (Gen.builtin narrows them)
@@ -351,8 +361,24 @@ def gen_big_builtin(self, name: str, vals: list[Val]) -> Val:
         return Val(self.big_truth(vals[0]), "bool")
     if name == "round" and n == 1 and t == BIG:
         return vals[0]
+    if name == "sum" and n == 2 and vals[1].t == BIG and (self.iter_object(t) or is_gen(t)):
+        # (an iterator's or a generator's items, added as they come: reduce)
+        item = made_var("__item", self.line)
+        return self.reduce(name, [mk("listcomp", "gen", self.line, [item, item, self.vnode(vals[0])]), self.vnode(vals[1])], BIG)
+    if name == "sum" and 1 <= n <= 2 and is_list(t) and (elem(t) == "int" or elem(t) == "bool") and (n == 1 or vals[1].t == "int" or vals[1].t == BIG):
+        # (64-bit items added past 64 bits, from an int start; a bool start is rejected below)
+        sv = self.to_big(vals[1] if n == 2 else Val("0", "int"))
+        return Val(self.rt("pys_big_sum", BIGLL, [f"ptr {vals[0].v}", f"i64 {self.big_lo(sv).v}", f"ptr {self.big_hi(sv).v}"]), BIG)
     if name == "pow" and n == 2 and t in nums and vals[1].t in nums:
         return self.big_arith("**", vals[0], vals[1])
+    if name == "pow" and n == 3 and all([v.t in nums for v in vals]) and BIG in [v.t for v in vals]:
+        xs = [self.to_big(v) for v in vals]
+        args = []
+        for x in xs:
+            args += [f"i64 {self.big_lo(x).v}", f"ptr {self.big_hi(x).v}"]
+        return Val(self.rt("pys_big_powmod", BIGLL, args), BIG)
+    if (name == "hex" or name == "oct" or name == "bin") and n == 1 and t == BIG:
+        return self.format_(vals[0], mk("str", "#" + ("x" if name == "hex" else name[0]), self.line, []))
     if (name == "min" or name == "max") and n >= 2 and all([v.t in nums for v in vals]):
         # (the first of equal values, as CPython keeps it)
         best = self.to_big(vals[0])

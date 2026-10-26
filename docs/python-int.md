@@ -41,12 +41,17 @@ print(int("123456789012345678901234567890") % 97)  # 52
   (`/`) is CPython's: the quotient rounded once to the nearest float (halfway cases to even),
   `OverflowError` past the float range.
 - Comparisons are exact, also between an int and a float (`2 ** 53 + 1 > 9007199254740992.0`),
-  as are truth, `min()` and `max()` of int arguments, `isinstance(x, int)` and equality with a
-  `str`, `bytes` or container, which is never true.
+  as are truth, `min()` and `max()`, `isinstance(x, int)` and equality with a `str`, `bytes` or
+  container, which is never true.
+- `sum()` of ints adds past 64 bits, from an int start, of lists, tuples, sets, dict keys,
+  ranges, generators, iterators and `map()`: `sum(i * i for i in range(n))` is exact.
 - Integer literals may be past 64 bits, in any base. `int()` parses text (bases 0 and 2–36,
   underscores, signs, Unicode digits and whitespace, as CPython does) and converts floats; `str()`,
-  `repr()`, `f"{x}"`, `float()` (correctly rounded, `OverflowError` past the float range), `hash()`
-  (CPython's), `bool()` and `round(x)` take every value.
+  `repr()`, `float()` (correctly rounded, `OverflowError` past the float range), `hash()`
+  (CPython's), `bool()`, `round(x)`, `bin()`, `hex()`, `oct()`, `x.bit_length()`,
+  `x.bit_count()` and `pow(x, y, m)` (with a negative `y`, the inverse's power) take every value,
+  and so do f-strings, `format()` and `%` formatting with every int specification (a float type
+  converts the value to a float, as CPython does).
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
 
@@ -90,10 +95,10 @@ for a C `long`), where CPython goes on with the bigger int:
   generator yields or receives (`tests/deviations/python_int_limits.py`).
 - An `int` parameter of a function in a module that does not opt in. Its unannotated parameters
   take the promoting int, so arithmetic there promotes too.
-- Builtins and methods that take an int: `range()`, indexing and slicing, `bin()`, `hex()`,
-  `oct()`, `divmod()`, `pow(x, y, m)`, format specifications (`f"{x:x}"`, `"%d" % x`), `int`
-  methods (`x.bit_length()`), `math` functions and other library calls. `sum()` adds 64-bit
-  values, and raises `OverflowError` where the sum passes 64 bits.
+- Builtins and methods that take an int: `range()`, indexing and slicing, `divmod()`, the other
+  `int` methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they
+  meet floats: the ints of an `int | float` list, ints added to a float start, and a start past
+  64 bits with float items.
 - [Dynamic `Any`](dynamic-any.md) values, which another module that opts in to them may pass or
   take: a promoting int becomes one as a 64-bit int, and comparing a promoting int with one is
   rejected during compilation for now.
@@ -140,8 +145,11 @@ speed relative to CPython 3.13.16:
   big operation is read from the stack, not allocated, so `arith128` keeps up with the `mpz`
   program, which keeps its constants as `mpz` values. On this VM a workload's ratio moves by up
   to 0.15 between runs.
-- `modpow` and `containers` do not run yet: their values past 64 bits reach three-argument `pow`
-  and containers, which keep 64-bit ints.
+- `modpow` runs since three-argument `pow` takes every value: 0.865 s, 0.98× CPython's 0.850 s,
+  where `mpz` takes 1.017 s (0.84×), measured separately with the same settings
+  ([`results/linux-x86_64-2026-10-26-python-int-modpow.json`](../bench/integers/results/linux-x86_64-2026-10-26-python-int-modpow.json)).
+- `containers` does not run yet: its values past 64 bits reach containers, which keep 64-bit
+  ints.
 
 Peak RSS is `mpz`'s on every big workload (34–37 MiB) and 2 MiB on `lcg32` and `collatz`. Raw
 samples are in
@@ -162,6 +170,13 @@ the first measurements, before the inline paths, in
   (`tests/python_int_modules/`).
 - `tests/programs/numbers/python_int_bounds.py`: the inline paths of `//`, `%`, `<<` and `>>` at
   their edges, results that always fit, and shifts past memory.
+- `tests/programs/numbers/python_int_builtins.py`: `bit_length()`, `bit_count()`, `bin()`, `hex()`,
+  `oct()`, format specifications, `%` formatting and `pow(x, y, m)`.
+- `tests/programs/numbers/python_int_sums.py`: `sum()`, `min()` and `max()` of every iterable and
+  start.
+- `tests/programs/numbers/python_int_cpython_int.py`: `int()` assertions adapted from CPython's
+  `Lib/test/test_int.py` ([provenance](../tests/upstream/python-int.md)), and
+  `python_int_reflection.py`: `type()` and `__class__` of promoting and 64-bit ints.
 - `tests/programs/numbers/python_int_truediv.py`: true division across the float range, halfway
   cases, subnormals, signed zeros and its errors.
 - `tests/programs/numbers/python_int_storage.py`: values that fit in containers, tuples and unions

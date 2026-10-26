@@ -1321,7 +1321,7 @@ def known(c: int, cs: str) -> bool:
 
 
 def tyname(kind: int) -> str:
-    return "int" if kind == 0 else "bool" if kind == 1 else "float" if kind == 2 else "str"
+    return "int" if kind == 0 or kind == 4 else "bool" if kind == 1 else "float" if kind == 2 else "str"
 
 
 def group(dg: str, sep: int, every: int, minw: int) -> str:
@@ -1355,7 +1355,9 @@ def zero(t: str) -> bool:
 
 
 def fmt(kind: int, iv: int, fv: float, sv: str, spec: str) -> str:
-    # kind: 0 int, 1 bool, 2 float, 3 str (iv, fv or sv is the value)
+    # kind: 0 int, 1 bool, 2 float, 3 str (iv, fv or sv is the value), 4 an int past 64 bits:
+    # its sign in iv (-1 or 1) and its magnitude's digits in sv, in the base of the spec's type
+    # (pys_big_format, which formats the float types and 'c' itself)
     n = len(spec)
     p = 0
     fill = " "
@@ -1443,11 +1445,13 @@ def fmt(kind: int, iv: int, fv: float, sv: str, spec: str) -> str:
         if align == 61:
             raise ValueError("'=' alignment not allowed in string format specifier")
         body = sv[: uoff(sv, prec)] if prec >= 0 else sv
-    elif kind <= 1 and known(ty, "bcdoxXn"):
+    elif (kind <= 1 or kind == 4) and known(ty, "bcdoxXn"):
         if prec >= 0:
             raise ValueError("Precision not allowed in integer format specifier")
         if zneg:
             raise ValueError("Negative zero coercion (z) not allowed in integer format specifier")
+        if ty == 99 and kind == 4:
+            raise OverflowError("Python int too large to convert to C long")
         if ty == 99:
             if sign != 0:
                 raise ValueError("Sign not allowed with integer format specifier 'c'")
@@ -1458,25 +1462,28 @@ def fmt(kind: int, iv: int, fv: float, sv: str, spec: str) -> str:
             body = utf8(iv)
         else:
             base = 2 if ty == 98 else 8 if ty == 111 else 16 if ty == 120 or ty == 88 else 10
-            hexd = "0123456789ABCDEF" if ty == 88 else "0123456789abcdef"
-            u = _rt.wrap_sub(0, iv) if iv < 0 else iv  # |iv| as an unsigned 64-bit pattern
-            nd = 0
-            q = u
-            while True:
-                nd += 1
-                q = _rt.udiv(q, base)
-                if q == 0:
-                    break
-            dg = _rt.str_new(nd)
-            for i in range(nd):
-                _rt.str_put(dg, nd - 1 - i, _rt.byte(hexd, _rt.urem(u, base)))
-                u = _rt.udiv(u, base)
+            digits = sv
+            if kind != 4:
+                hexd = "0123456789ABCDEF" if ty == 88 else "0123456789abcdef"
+                u = _rt.wrap_sub(0, iv) if iv < 0 else iv  # |iv| as an unsigned 64-bit pattern
+                nd = 0
+                q = u
+                while True:
+                    nd += 1
+                    q = _rt.udiv(q, base)
+                    if q == 0:
+                        break
+                dg = _rt.str_new(nd)
+                for i in range(nd):
+                    _rt.str_put(dg, nd - 1 - i, _rt.byte(hexd, _rt.urem(u, base)))
+                    u = _rt.udiv(u, base)
+                digits = _rt.str_done(dg)
             head = "-" if iv < 0 else chr(sign) if sign == 43 or sign == 32 else ""
             if alt and base != 10:
                 head = head + "0" + ("X" if ty == 88 else "x" if ty == 120 else chr(ty))
             pre = len(head)
             minw = width - pre if fill == "0" and align == 61 else 0
-            body = head + group(_rt.str_done(dg), sep, 3 if base == 10 else 4, minw)
+            body = head + group(digits, sep, 3 if base == 10 else 4, minw)
     else:
         # a float, or an int with a float type
         x = fv if kind == 2 else float(iv)
@@ -1524,6 +1531,11 @@ def pys_format_int(v: int, isbool: int, spec: str) -> str:
 
 def pys_format_float(x: float, spec: str) -> str:
     return fmt(2, 0, x, "", spec)
+
+
+def pys_format_bigdigits(neg: int, digits: str, spec: str) -> str:
+    # an int past 64 bits (pys_big_format): its sign and its magnitude's digits
+    return fmt(4, -1 if neg != 0 else 1, 0.0, digits, spec)
 
 
 # ---------- bytes ----------

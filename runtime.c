@@ -1342,6 +1342,80 @@ I pys_big_hash(I lo, void *hi) {               /* CPython's: the magnitude modul
   uint64_t m = (lo < 0 ? 0 - (uint64_t)lo : (uint64_t)lo) % ((UINT64_C(1) << 61) - 1);
   I r = lo < 0 ? -(I)m : (I)m; return r == -1 ? -2 : r;
 }
+I pys_big_bit_length(I lo, void *hi) { return hi ? pys_mpz_bit_length(hi) : pys_int_bit_length(lo); }
+I pys_big_bit_count(I lo, void *hi) {          /* the ones of |x| */
+  if (!hi) return pys_int_bit_count(lo);
+  Mpz *a = hi; I c = 0;
+  for (I i = zn(a); i; i--) c += __builtin_popcount(a->d[i - 1]);
+  return c;
+}
+Str *pys_format_int(I v, I isbool, Str *spec);
+Str *pys_format_float(double x, Str *spec);
+Str *pys_format_bigdigits(I neg, Str *digits, Str *spec);
+double pys_big_float(I lo, void *hi);
+Str *pys_big_format(I lo, void *hi, Str *spec) {   /* format(x, spec), as CPython formats an int */
+  if (!hi) return pys_format_int(lo, 0, spec);
+  /* the type is the spec's last character, where it is a letter or %: a fill character is
+     followed by its alignment */
+  int t = spec->len ? (unsigned char)spec->s[spec->len - 1] : 0;
+  if (t && strchr("eEfFgG%", t)) return pys_format_float(pys_big_float(lo, hi), spec);
+  if (t == 'c') pys_fail("OverflowError: Python int too large to convert to C long");   /* (CPython's, for a code past 64 bits) */
+  Mpz *a = hi; int bits = t == 'b' ? 1 : t == 'o' ? 3 : t == 'x' || t == 'X' ? 4 : 0;
+  Str *digits;
+  if (!bits) digits = pys_mpz_str(pys_mpz_unary(a, 1));   /* (CPython's 4300-digit limit applies) */
+  else {                                       /* |x| in base 2, 8 or 16, from its bits */
+    const char *hex = t == 'X' ? "0123456789ABCDEF" : "0123456789abcdef";
+    I nbits = pys_mpz_bit_length(a), nd = (nbits + bits - 1) / bits;
+    char *buf = pys_alloc_atomic(nd + 1);
+    for (I k = 0; k < nd; k++) {               /* digit k from the least significant */
+      unsigned v = 0;
+      for (int j = bits - 1; j >= 0; j--) {
+        I bit = k * bits + j, w = bit / 30;
+        v = v << 1 | (w < zn(a) ? (a->d[w] >> (bit % 30)) & 1 : 0);
+      }
+      buf[nd - 1 - k] = hex[v];
+    }
+    digits = pys_str(buf, nd);
+  }
+  return pys_format_bigdigits(a->size < 0, digits, spec);
+}
+Big pys_big_powmod(I alo, void *ahi, I blo, void *bhi, I mlo, void *mhi) {   /* pow(a, b, m), as CPython's long_pow */
+  if (!ahi && !bhi && !mhi) return big_small(pys_powmod(alo, blo, mlo));
+  MpzTmp ta, tb, tm;
+  Mpz *a = big_mpz(alo, ahi, &ta), *b = big_mpz(blo, bhi, &tb), *m = big_mpz(mlo, mhi, &tm);
+  if (!zn(m)) pys_fail("ValueError: pow() 3rd argument cannot be 0");
+  Mpz *n = pys_mpz_unary(m, 1), *x = a;        /* n = |m| */
+  if (zn(n) == 1 && n->d[0] == 1) return big_small(0);
+  if (b->size < 0) {                           /* a negative exponent: the power of a's inverse modulo n */
+    Mpz *p = x, *q = n, *s = pys_mpz_from_int(1), *t = pys_mpz_from_int(0);   /* long_invmod: Euclid */
+    while (zn(q)) {
+      Mpz *d = pys_mpz_binop(p, q, 3), *u = pys_mpz_binop(p, pys_mpz_binop(d, q, 2), 1), *w = pys_mpz_binop(s, pys_mpz_binop(d, t, 2), 1);
+      p = q; q = u; s = t; t = w;
+    }
+    if (zn(p) != 1 || p->size < 0 || p->d[0] != 1) pys_fail("ValueError: base is not invertible for the given modulus");
+    x = s; b = pys_mpz_unary(b, 1);
+  }
+  x = pys_mpz_binop(x, n, 4);                  /* 0 <= x < n */
+  Mpz *r = pys_mpz_from_int(1);
+  for (I i = pys_mpz_bit_length(b); i; i--) {  /* left to right: square, then multiply where the bit is set */
+    r = pys_mpz_binop(pys_mpz_binop(r, r, 2), n, 4);
+    if ((b->d[(i - 1) / 30] >> ((i - 1) % 30)) & 1) r = pys_mpz_binop(pys_mpz_binop(r, x, 2), n, 4);
+  }
+  if (m->size < 0 && zn(r)) r = pys_mpz_binop(r, n, 1);   /* the result has the sign of m */
+  return big_of(r);
+}
+Big pys_big_sum(List *l, I slo, void *shi) {   /* sum(l, start) of a list of ints: past 64 bits, exactly */
+  I i = 0;
+  if (!shi) {                                  /* 64-bit additions until one overflows */
+    I s = slo, t;
+    for (; i < l->len; i++) { if (__builtin_add_overflow(s, l->a[i], &t)) break; s = t; }
+    if (i == l->len) return big_small(s);
+    slo = s;
+  }
+  Big acc = {slo, shi};
+  for (; i < l->len; i++) acc = pys_big_op(acc.lo, acc.hi, l->a[i], NULL, 0);
+  return acc;
+}
 enum { TD_MANT = 53, TD_MIN_EXP = -1021, TD_MAX_EXP = 1024 };   /* <float.h>'s DBL_MANT_DIG, DBL_MIN_EXP, DBL_MAX_EXP */
 /* a / b, rounded once: CPython 3.13.16's long_true_divide (Objects/longobject.c), whose steps and
    rounding of the low digit this follows on the Mpz core, used under the Python Software Foundation
