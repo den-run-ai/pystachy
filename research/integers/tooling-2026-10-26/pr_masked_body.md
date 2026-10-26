@@ -13,7 +13,7 @@ This implements part 1 of #125's suggested fix ("masked arithmetic, now"), follo
 
 The new code raises only where main raised (a step overflowed), and gives main's value wherever no step overflows. It lives in `gen_masked`, `gen_wexpr` and `gen_wflag` (`expressions.py`), called from `gen_expr`'s binop branch. Unsigned 64-bit values (part 3 of #125) still need big integers (#12). Refs #125.
 
-This stays a draft: it changes when an `OverflowError` is raised, and the maintainers should decide whether that is acceptable.
+Marked ready for review at the maintainer's request. It changes when an `OverflowError` is raised (see Risks), so the maintainers should decide whether that is acceptable before it merges.
 
 ### Results
 

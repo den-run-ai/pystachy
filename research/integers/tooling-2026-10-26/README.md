@@ -26,4 +26,4 @@ Not kept (rebuildable, environment-specific, or not written in this session):
 - Five runtime homes (`arithhome`, `divhome`, `oldhome`, `ubsan-home`, `ubsan-masked`): copies of `lib/`, `mpz/`, `runtime.c`, `runtime.py` and `ryu/` at the tested revisions, with their build caches.
 - `bench-upload/`: the uploaded `int-representation-bench.tar.gz`, which the session read but did not write.
 
-Copies of `mpz/mpz.c` and of the adapted CPython tests keep their sources' licenses, as the repository's `THIRD_PARTY_NOTICES` records. Claude Code wrote these files during the session, at the maintainer's request; they have had no independent review. `SHA256SUMS` lists every other file here.
+Copies of `mpz/mpz.c` and of the adapted CPython tests keep their sources' licenses, as the repository's `THIRD_PARTY_NOTICES` records. Claude Code wrote these files during the session, at the maintainer's request; they have had no independent review. `HANDOFF.md` records the state when the session stopped. `SHA256SUMS` lists every other file here.
