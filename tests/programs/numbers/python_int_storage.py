@@ -1,7 +1,8 @@
 # pystachy: python-int
 # Promoting ints (docs/python-int.md) that fit in 64 bits in the storage that keeps 64-bit ints:
-# containers, tuples and unions that annotations name (int there is the 64-bit storage type),
-# displays and comprehensions, dataclass and NamedTuple fields, and type() of the values.
+# containers and unions that annotations name (int there is the 64-bit storage type; a tuple's
+# items promote, python_int_tuples.py), displays and comprehensions, dataclass and NamedTuple
+# fields, and type() of the values.
 from dataclasses import dataclass
 from typing import NamedTuple, Optional, Union
 

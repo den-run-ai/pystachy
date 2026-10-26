@@ -46,6 +46,12 @@ from src.pystachy_compiler.bigints import (
     gen_big_float as bigints_big_float,
     gen_big_narrow as bigints_big_narrow,
     gen_big_parse as bigints_big_parse,
+    gen_big_item as bigints_big_item,
+    gen_big_tuple_hash as bigints_big_tuple_hash,
+    gen_big_tuple_view as bigints_big_tuple_view,
+    gen_big_view_test as bigints_big_view_test,
+    gen_big_tuple_narrow as bigints_big_tuple_narrow,
+    gen_big_tuple_repr as bigints_big_tuple_repr,
     gen_big_literal as bigints_big_literal,
 )
 from src.pystachy_compiler.dynamic import (
@@ -754,6 +760,8 @@ from src.pystachy_compiler.expressions import (
     gen_subscript as expressions_subscript,
     gen_tget as expressions_tget,
     gen_tstore as expressions_tstore,
+    gen_tput as expressions_tput,
+    gen_tslot as expressions_tslot,
     gen_truth as expressions_truth,
     gen_tuple_ as expressions_tuple_,
     gen_dict_merge as expressions_dict_merge,
@@ -1529,6 +1537,24 @@ class Gen:
     def big_parse(self, s: Val, base: Val) -> Val:
         return bigints_big_parse(self, s, base)
 
+    def big_tuple_narrow(self, v: Val) -> Val:
+        return bigints_big_tuple_narrow(self, v)
+
+    def big_item(self, v: Val, lo: Val, k: int, j: str) -> Val:
+        return bigints_big_item(self, v, lo, k, j)
+
+    def big_view_test(self, v: Val, t: str) -> str:
+        return bigints_big_view_test(self, v, t)
+
+    def big_tuple_view(self, v: Val, t: str) -> Val:
+        return bigints_big_tuple_view(self, v, t)
+
+    def big_tuple_repr(self, v: Val) -> Val:
+        return bigints_big_tuple_repr(self, v)
+
+    def big_tuple_hash(self, v: Val) -> Val:
+        return bigints_big_tuple_hash(self, v)
+
     def big_literal(self, text: str) -> Val:
         return bigints_big_literal(self, text)
 
@@ -2198,8 +2224,8 @@ class Gen:
     def alloca(self, t: str, name: str) -> str:
         return emission_alloca(self, t, name)
 
-    def to_slot(self, v: Val) -> str:
-        return conversions_to_slot(self, v)
+    def to_slot(self, v: Val, keep: bool = False) -> str:
+        return conversions_to_slot(self, v, keep)
 
     def from_slot(self, s: str, t: str) -> Val:
         return conversions_from_slot(self, s, t)
@@ -3801,6 +3827,12 @@ class Gen:
 
     def tstore(self, v: Val, index: int, slot: str) -> None:
         expressions_tstore(self, v, index, slot)
+
+    def tput(self, v: Val, index: int, x: Val) -> None:
+        expressions_tput(self, v, index, x)
+
+    def tslot(self, v: Val, k: int) -> Val:
+        return expressions_tslot(self, v, k)
 
     def index(self, n: Node, want: str = "") -> Val:
         return expressions_index(self, n, want)

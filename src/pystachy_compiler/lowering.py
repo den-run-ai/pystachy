@@ -4,7 +4,7 @@ from src.pystachy_compiler.diagnostics import fail
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
 from src.pystachy_compiler.lower_module import struct_types
 from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENSLOTS, GENSLOTSX, GENSTATE, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
-from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs
+from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
 def gen_lower(self, fn: IFn) -> None:
@@ -37,7 +37,7 @@ def gen_lower(self, fn: IFn) -> None:
             o.append(f"  %{i.s}.def.{i.r[0]} = alloca i1")
             o.append(f"  store i1 false, ptr %{i.s}.def.{i.r[0]}")
         elif i.k == 2:
-            o.append(f"  %stk.{i.r[0]} = alloca [{len(targs(i.t))} x i64], align 8")  # (a tuple: stack_tuple)
+            o.append(f"  %stk.{i.r[0]} = alloca [{tslots(i.t)} x i64], align 8")  # (a tuple: stack_tuple)
         else:
             r = f"%{i.s or 'h'}.{i.r[0]}"
             o.append(f"  {r} = alloca {lt(i.t)}")
@@ -93,7 +93,7 @@ def gen_tuple_rets(self) -> None:
     fns: dict[str, int] = {}
     for fn in self.fns:
         if len(fresh_rets(fn)) > 0:
-            fns[fn.f.ll] = len(targs(fn.f.ret))
+            fns[fn.f.ll] = tslots(fn.f.ret)
     for fn in self.fns:
         calls: dict[str, str] = {}
         used: dict[str, bool] = {}  # (values that an op reads other than as a tuple.load's tuple)
@@ -202,7 +202,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "alloc.fixed":
         self.rangeused = self.rangeused or i.t == RANGEC
         self.objectused = self.objectused or i.t == OBJECTC
-        size = str(8 * len(targs(i.t))) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
+        size = str(8 * tslots(i.t)) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
         if f"%t{i.r[0]}" not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
             o.append(f"  %t{i.r[0]} = call ptr @{self.rtfns['alloc'].sym}(i64 {size})")
     elif op == "tuple.store" and i.a[0].v in self.vtuples:
@@ -269,7 +269,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "ret" and len(i.a) > 0 and i.a[0].v in self.vtuples:
         # the tuple's slots, by value (tupleret): what its tuple.stores gave each, else the zero
         # of the tuple that alloc.fixed would have made
-        n = len(targs(fn.f.ret))
+        n = tslots(fn.f.ret)
         agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
         cur = "zeroinitializer"
         for k in range(n):

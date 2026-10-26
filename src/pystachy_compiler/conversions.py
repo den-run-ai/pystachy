@@ -5,6 +5,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.bigints import big_viewable
 from src.pystachy_compiler.utils import (
     elem,
     is_callable,
@@ -27,9 +28,14 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_to_slot(self, v: Val) -> str:
+def gen_to_slot(self, v: Val, keep: bool = False) -> str:
+    # v in an 8-byte slot. A slot holds a 64-bit int, so a promoting int is narrowed, and so is a
+    # tuple of them, into the tuple of their 64-bit ints, which is the same tuple (bigints.py), as
+    # the runtime reads it; but kept (keep) as an item of a tuple of its type
     if v.t == BIG:
         v = self.big_narrow(v)  # (an 8-byte slot holds a 64-bit int: bigints.py)
+    if is_tuple(v.t) and BIG in v.t and not keep:
+        v = self.big_tuple_narrow(v)
     if v.t == "int":
         return v.v
     i = Ins("slot.pack", "%slot", "")
@@ -145,6 +151,14 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         v = self.big_narrow(v)  # (into 64-bit storage, or as an int: bigints.py)
         if v.t == t:
             return v
+    if is_tuple(v.t) and BIG in v.t and t != "" and BIG not in t:
+        if is_tuple(t) and self.join_hint(t, v.t):
+            return Val("undef", t)  # (as an int location becomes a promoting int)
+        v = self.big_tuple_narrow(v)  # (a tuple of promoting ints into 64-bit storage: the same tuple, bigints.py)
+        if v.t == t:
+            return v
+    if big_viewable(v.t, t):
+        return self.big_tuple_view(v, t)  # (items that promote where t's do not, or the other way: the same tuple, bigints.py)
     if dynamic_program() and v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) and ((is_sopt(t) and unopt(t) == v.t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))):
         captured = Val(v.v, v.t).identity(v)
         captured.idfrom = self.dyn_box(v).v

@@ -6,6 +6,7 @@ from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
+    BIG,
     CODECS,
     FSETMETHODS,
     FX,
@@ -400,6 +401,24 @@ def disjoint_sets(a: str, b: str) -> bool:
 
 def is_tuple(t: str) -> bool:
     return t.startswith("tuple[")
+
+
+def tslots(t: str) -> int:
+    # the 8-byte slots of fixed tuple type t: one per item, then, where it has promoting int items
+    # (bigints.py), one more per item up to its last such: item i's Mpz word is slot len + i
+    # (hislot), whatever the other items are, so tuple types that differ in which items promote
+    # agree on where it is, and the first slots are the tuple of their 64-bit ints
+    ts = targs(t)
+    last = -1
+    for i in range(len(ts)):
+        if ts[i] == BIG:
+            last = i
+    return len(ts) + last + 1
+
+
+def hislot(t: str, i: int) -> int:
+    # the slot of item i's Mpz word, for promoting int item i of fixed tuple type t (tslots)
+    return len(targs(t)) + i
 
 
 def is_gen(t: str) -> bool:

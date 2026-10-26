@@ -8,6 +8,7 @@ from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
     STR_HEADER_SIZE,
     ABCS,
+    BIG,
     ABCSMORE,
     ABCSOTHER,
     DUNDER,
@@ -1632,6 +1633,10 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
         return v  # (for_seq steps through its numbers)
     if v.t in self.classes:
         return self.obj_iterator(v, msg, f"'{tname(v.t)}' object is not iterable")
+    if is_tuple(v.t) and BIG in targs(v.t) and all(x == "int" or x == BIG for x in targs(v.t)):
+        # (64-bit and promoting ints, as the latter, read from its slots also without tupleiter: a
+        # list holds 64-bit ints, bigints.py)
+        return self.coerce(v, self.ctype("tuple", [BIG for x in targs(v.t)]))
     if is_tuple(v.t) and "tupleiter" in self.opts and all(x == targs(v.t)[0] for x in targs(v.t)):
         return v  # (no list: for_seq reads its slots, as many as its type has)
     if not is_tuple(v.t) or v.t == "tuple[]":
@@ -1882,6 +1887,9 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     if is_vtuple(s.t):
         off = self.scalar('add', [Val(j, 'int'), Val('1', 'int')])
         return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{off}')), targs(s.t)[0])]
+    if is_tuple(s.t) and targs(s.t)[0] == BIG:
+        # (promoting ints: one's slot at j, and where it says so its Mpz word, past the items: bigints.py)
+        return [self.big_item(s, Val(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), "int"), 0, j)]
     if is_tuple(s.t):
         return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), targs(s.t)[0])]
     if s.t == "str":

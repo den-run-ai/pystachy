@@ -82,6 +82,9 @@ def gen_uop(self, v: Val, op: str) -> Val:
 def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     # Both operands are already evaluated. Boxes of a narrower union keep their
     # pointers and tags; a concrete scalar is boxed only at this dynamic boundary.
+    # A tuple of promoting ints compares as its 64-bit ints, as a union holds them (bigints.py).
+    a = self.big_tuple_narrow(a) if is_tuple(a.t) and BIG in a.t else a
+    b = self.big_tuple_narrow(b) if is_tuple(b.t) and BIG in b.t else b
     t = self.union_type([a.t, b.t])
     if t.startswith("!") and self.ueq_type(a.t) and self.ueq_type(b.t):
         # A tuple need not become a union member just to compare with a union.

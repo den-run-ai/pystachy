@@ -84,7 +84,8 @@ def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
     # Recursive value aliases have finite self edges in mutable storage. Only
     # fold the exact element/value type; never widen an existing container.
     # A promoting int is stored as a 64-bit int in every composite (bigints.py: NARROW).
-    ts = [x.replace(BIG, "int") for x in ts]
+    if base != "tuple":
+        ts = [x.replace(BIG, "int") for x in ts]
     if canon and base == "list" and len(ts) == 1 and any_item(ts[0]):
         # a list of Any values or Any containers is a list[Any], whose items are boxes, and so is a
         # dict's of them a dict[Any, Any], keys boxed too: so it becomes an Any value, and an Any
@@ -259,7 +260,7 @@ def gen_ann(self, n: Node) -> str:
             if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
                 return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
             return self.ctype("vtuple", [t])
-        ts = narrowed(self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a])
+        ts = self.ann_items(a) if base == "tuple" else narrowed([self.ann(x) for x in a])  # (a tuple holds promoting ints: tslots)
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -1028,6 +1029,8 @@ def gen_boxwider(self, a: str, b: str) -> str:
             w = self.optional(x)
         elif w == "" and (is_sopt(x) and y == unopt(x) or x == "None" and self.isnum(y)):
             w = self.optional(y)
+        elif w == "" and ((x == BIG and (y == "int" or y == "bool")) or (y == BIG and (x == "int" or x == "bool"))):
+            w = BIG  # (a promoting int holds both: bigints.py)
         elif w == "":
             w = self.boxwider(x, y)
         if w == "":

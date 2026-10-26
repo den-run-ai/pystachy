@@ -25,7 +25,7 @@ cover [typing](language/typing.md), [imports and builtins](language/modules.md),
 Integers are checked 64-bit values; `x & y` keeps the low 64 bits of arithmetic it
 masks, as described under [deviations](language/compatibility.md#numbers). A module that opts in
 to the [promoting int prototype](python-int.md) gets CPython's arbitrary-precision `int` in its
-variables, arguments, returns and fields instead. Strings are stored as UTF-8, and their lengths, indexing,
+variables, arguments, returns, fields and tuples instead. Strings are stored as UTF-8, and their lengths, indexing,
 slicing, iteration and search positions count code points, as CPython's do; a `bytes` holds its
 bytes, and its items are ints. Dictionary keys and set elements
 have a restricted set of types: integers, strings, `bytes`, objects (hashed by identity, or by their

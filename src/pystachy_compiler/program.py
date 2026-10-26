@@ -1088,11 +1088,11 @@ def gen_program(self, mods: list[Mod]) -> str:
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
-                if c in self.ocmp:
+                if c in self.ocmp and c not in cmped:
                     cmped[c] = True
                     self.obj_helpers(c, [0, 1, 2])  # (in the order of a class's helpers before ocmp)
                 else:
-                    self.obj_helpers(c, [2])
+                    self.obj_helpers(c, [2])  # (and @o.eq and @o.cmp, where ocmp, made by a pass before)
         for c in [x for x in self.ocmp]:
             if c not in cmped:
                 cmped[c] = True

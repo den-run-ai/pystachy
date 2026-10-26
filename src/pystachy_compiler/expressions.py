@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.bigints import narrows
+from src.pystachy_compiler.bigints import TSLOT_BIG, narrows
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
@@ -78,6 +78,7 @@ from src.pystachy_compiler.utils import (
     stack_keyed,
     takes_self,
     targs,
+    hislot,
     tname,
     typestr,
     unopt,
@@ -1916,7 +1917,7 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
             self.err(f"unsupported format string passed to {tname(unopt(v.t))}.__format__")
         sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
         return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}", f"ptr {sv.v}"]), "str")
-    if v.t in self.classes or v.t == "file" or v.t == "exc":
+    if v.t in self.classes or v.t == "file" or v.t == "exc" or (is_tuple(v.t) and BIG in v.t):
         if spec.kind == "str":
             self.err(f"unsupported format string passed to {tname(v.t)}.__format__")
         # a computed spec: str(v) when it turns out empty, TypeError otherwise
@@ -2005,6 +2006,7 @@ def gen_slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
     if len(ts) == 0:
         self.slice_check(step)  # (*args of a call without extra arguments)
         return o
+    ts = [x.replace(BIG, "int") for x in ts]  # (a tuple[int, ...] holds 64-bit ints: bigints.py)
     if any(x != ts[0] for x in ts) or unopt(ts[0]) not in ["int", "float", "bool", "str"]:
         self.err(f"slicing a {typestr(o.t)} by bounds or a step other than integer literals is not supported: the types of the items it selects would not be known (use literals, or a tuple[T, ...] of int, float, bool or str items)")
     vt = self.coerce(o, self.ctype("vtuple", [ts[0]]))
@@ -2220,8 +2222,7 @@ def gen_tuple_(self, vals: list[Val]) -> Val:
     t = self.ctype("tuple", [v.t for v in vals])
     p = self.alloc_fixed(t).v
     for i in range(len(vals)):
-        s = self.to_slot(vals[i])
-        self.tstore(Val(p, t), i, s)
+        self.tput(Val(p, t), i, vals[i])
     return Val(p, t)
 
 def gen_stack_tuple(self, vals: list[Val]) -> Val:
@@ -2235,8 +2236,7 @@ def gen_stack_tuple(self, vals: list[Val]) -> Val:
     self.fn.slots.append(i)
     p = f"%stk.{self.n}"
     for j in range(len(vals)):
-        s = self.to_slot(vals[j])
-        self.tstore(Val(p, t), j, s)
+        self.tput(Val(p, t), j, vals[j])
     return Val(p, t)
 
 def gen_stack_ok(self, f: FnInfo) -> bool:
@@ -2449,13 +2449,36 @@ def gen_tget(self, v: Val, i: int) -> Val:
     item.k = i
     item.a = [v]
     self.put(item, 2)
+    if item.s == BIG:
+        return self.big_item(v, self.from_slot(f"%t{item.r[1]}", "int"), hislot(v.t, i), "")  # (a promoting int item: bigints.py)
     return self.from_slot(f"%t{item.r[1]}", item.s)
 
+def gen_tslot(self, v: Val, k: int) -> Val:
+    # slot k of tuple v, past its items: a promoting int item's Mpz word, as an int (tslots)
+    w = Ins("tuple.load", "%slot", BIG)
+    w.k = k
+    w.a = [v]
+    self.put(w, 2)
+    return self.from_slot(f"%t{w.r[1]}", "int")
+
 def gen_tstore(self, v: Val, index: int, slot: str) -> None:
-    item = Ins("tuple.store", "", targs(v.t)[index])
+    # slot index of tuple v (an item's, or past them a promoting int item's Mpz word: tslots)
+    ts = targs(v.t)
+    item = Ins("tuple.store", "", ts[index] if index < len(ts) else BIG)
     item.k = index
     item.a = [v, Val(slot, "%slot")]
     self.put(item, 1)
+
+def gen_tput(self, v: Val, index: int, x: Val) -> None:
+    # x, a value of the type of item index of tuple v, into its slots: a promoting int's value, or
+    # TSLOT_BIG and its Mpz word (bigints.py)
+    if targs(v.t)[index] == BIG:
+        b = self.to_big(x)
+        w = Val(self.scalar_cast("ptrtoint", self.big_hi(b), "int"), "int")
+        self.tstore(v, index, self.select(self.scalar_cmp("ne", w, Val("0", "int")), Val(TSLOT_BIG, "int"), self.big_lo(b)))
+        self.tstore(v, hislot(v.t, index), w.v)
+        return
+    self.tstore(v, index, self.to_slot(x, BIG in targs(v.t)[index]))  # (a tuple of promoting ints, as its type's item: kept)
 
 def gen_index(self, n: Node, want: str = "") -> Val:
     c = n.kids[0]
@@ -2550,7 +2573,7 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
         i = self.expr(c if c is not None and c.kind in ["int", "unary", "True", "False"] else n.kids[1], "int")
         if i.t == "bool" and (i.v == "true" or i.v == "false"):
             i = Val("1" if i.v == "true" else "0", "int")
-        if is_tuple(t) and (i.t == "int" or i.t == "bool") and i.v.startswith("%"):
+        if is_tuple(t) and (i.t == "int" or i.t == "bool" or i.t == BIG) and i.v.startswith("%"):
             # t[i] of a variable i: the item there, of the items' type or their union, or
             # CPython's IndexError past either end
             o = self.unwrap(o, sub)
@@ -2594,7 +2617,7 @@ def gen_pick(self, o: Val, tests: list[Val], exc: str, msg: str, what: str, want
         self.place(self.label())  # (not reached)
         t = want if want != "" and "?" not in want else "None"
         return Val("0" if t == "int" else fbits("0.0") if t == "float" else "false" if t == "bool" else "null", t)
-    rt = ts[0] if len([x for x in ts if x != ts[0]]) == 0 else self.union_type(ts)
+    rt = ts[0] if len([x for x in ts if x != ts[0]]) == 0 else BIG if all(x == "int" or x == BIG for x in ts) else self.union_type(ts)
     if rt.startswith("!"):
         self.err(f"{what} is not supported: {rt[1:]}")
     ph = Ins("phi", rt, "")
@@ -4138,8 +4161,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
-    if a.t == BIG or b.t == BIG:
-        return self.big_compare(op, a, b)  # (promoting ints: bigints.py)
+    if (a.t == BIG or b.t == BIG) and not ((op == "in" or op == "not in") and is_tuple(b.t)):
+        return self.big_compare(op, a, b)  # (promoting ints: bigints.py; a tuple's items are compared below)
     if op in ["==", "!="] and a.t != b.t and self.dyn_policy(self.line) and self.wider(a.t, b.t) == "" and not (self.ueq_type(a.t) and self.ueq_type(b.t)) and self.container_pair_type(a.t, b.t):
         return self.container_pair_eq(op, a, b)
     if (op == "==" or op == "!=") and (a.t == RANGEC) != (b.t == RANGEC):
@@ -4185,7 +4208,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             # Equality need not coerce differently laid out tuple elements.
             r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
             return self.num_cmp("!=" if op == "==" else "==", Val(r, "int"), Val("0", "int"))
-        if is_vtuple(unopt(a.t)) and is_tuple(b.t):
+        if (op == "==" or op == "!=") and ((is_vtuple(a.t) and is_tuple(b.t) and BIG in b.t) or (is_tuple(a.t) and BIG in a.t and is_vtuple(b.t))):
+            pass  # (a tuple of promoting ints and a tuple[T, ...]: item by item, compare())
+        elif is_vtuple(unopt(a.t)) and is_tuple(b.t):
             b = self.coerce(b, unopt(a.t))
         elif is_tuple(a.t) and is_vtuple(unopt(b.t)):
             a = self.coerce(a, unopt(b.t))
@@ -4458,6 +4483,15 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.ptr_cmp(op, a, b)
     if op in ORDOP and is_tuple(a.t) and is_tuple(b.t) and len(targs(a.t)) != len(targs(b.t)):
         return self.tuple_order(op, a, b)  # (of different lengths, which no one tuple type holds)
+    if (is_tuple(a.t) and BIG in a.t) or (is_tuple(b.t) and BIG in b.t):
+        # a tuple of promoting ints, which the runtime's comparisons read as 64-bit ints: item by
+        # item here (bigints.py); a tuple[T, ...] holds 64-bit ints, as which the other compares
+        if op in ORDOP and is_tuple(a.t) and is_tuple(b.t):
+            return self.tuple_order(op, a, b)
+        if eq and (is_tuple(a.t) or is_vtuple(a.t)) and (is_tuple(b.t) or is_vtuple(b.t)):
+            return self.tuple_pair_eq(op, a, b)
+        a = self.big_tuple_narrow(a) if is_tuple(a.t) and BIG in a.t else a
+        b = self.big_tuple_narrow(b) if is_tuple(b.t) and BIG in b.t else b
     # T and T | None (also as items): None == None, None == x is False, and None < x raises
     ct = self.wider(a.t, b.t)
     if eq and ct == "" and self.ueq_type(a.t) and self.ueq_type(b.t):
@@ -4785,8 +4819,8 @@ def gen_comparable(self, t: str, u: str) -> bool:
         return o == "dyn" or self.dyn_boxable(self.rec_type(o)) == ""
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
-    if t == u or (self.isnum(unopt(t)) and self.isnum(unopt(u))) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
-        return True
+    if t == u or ((self.isnum(unopt(t)) or t == BIG) and (self.isnum(unopt(u)) or u == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
+        return True  # (a promoting int is a number: bigints.py)
     return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
 def gen_foreign_eq(self, a: Val, b: Val) -> Val:
