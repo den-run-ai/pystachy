@@ -21,10 +21,10 @@ In these cases a program can compile but behave differently from CPython.
 - `int` is 64-bit. Where CPython would produce a bigger int, including an intermediate
   result or `int()` of a long string, Pystachy raises `OverflowError` instead of
   wrapping. In `x & y`, a side that is a tree of `+`, `-`, `*` and `<<` (also under
-  `&`, `|` and `^`) keeps each step's low 64 bits, which gives CPython's result where
-  the other side is exact and not negative: `(k * 0xCC9E2D51) & 0xFFFFFFFF` works as
-  in CPython. Where the masked result itself can need more bits, `OverflowError` comes
-  after the whole expression is evaluated
+  `&`, `|` and `^`) keeps each step's low 64 bits (a shift's count stays checked),
+  which gives CPython's result where the other side is exact and not negative:
+  `(k * 0xCC9E2D51) & 0xFFFFFFFF` works as in CPython. Where the masked result itself
+  can need more bits, `OverflowError` comes after the whole expression is evaluated
   ([deviation](../../tests/deviations/int_masked_overflow.py)). `int ** negative int` is a `ValueError` (the result type would be dynamic;
   `0 ** -1` raises CPython's `ZeroDivisionError`), and so is a negative float to a
   fractional power (CPython returns a complex).

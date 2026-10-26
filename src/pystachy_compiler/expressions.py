@@ -3672,8 +3672,8 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
 
 def wraps(e: Node) -> bool:
     # an int tree whose result's low 64 bits depend only on its operands' low 64 bits: +, -, * and
-    # <<, which wrapping 64-bit arithmetic gets right in those bits, under &, | and ^ (see
-    # gen_masked)
+    # << (by an exact count), which wrapping 64-bit arithmetic gets right in those bits, under &, |
+    # and ^ (see gen_masked)
     if e.kind != "binop":
         return False
     if e.s == "+" or e.s == "-" or e.s == "*" or e.s == "<<":
@@ -3738,7 +3738,8 @@ def gen_wexpr(self, e: Node, want: str, resultsoft: bool) -> list[Val]:
     if not wraps(e):
         return [self.expr(e, want, resultsoft=resultsoft), Val("false", "bool")]
     a = self.wexpr(e.kids[0], want, resultsoft)
-    b = self.wexpr(e.kids[1], a[0].t, resultsoft)
+    # (a shift's count in checked arithmetic: the low bits of x << n depend on all of n)
+    b = [self.expr(e.kids[1], a[0].t, resultsoft=resultsoft), Val("false", "bool")] if e.s == "<<" else self.wexpr(e.kids[1], a[0].t, resultsoft)
     x = a[0]
     y = b[0]
     flag = self.wflag("or", a[1], b[1])
