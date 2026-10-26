@@ -58,7 +58,10 @@ The arithmetic core adapts MicroPython's compact multiplication and long divisio
 algorithms. [Source provenance](../mpz/README.md) records the upstream version,
 hashes, license and changes. It has no GMP or embedded-CPython dependency.
 Multiplication is schoolbook, so this is a small portable implementation, not a
-claim of performance parity with CPython or GMP. Constructing a nonzero value from a native integer allocates a wrapper and a
+claim of performance parity with CPython or GMP. Text conversion uses CPython's
+algorithms: power-of-two bases parse in linear time, other bases parse a group
+of digits (nine decimal digits) per pass, and decimal output converts to base
+10^9 in one pass per 30-bit digit. Constructing a nonzero value from a native integer allocates a wrapper and a
 payload even when small. Construction from native zero shares an immutable zero
 payload; copies and some arithmetic results can also share immutable payloads.
 Builtin integers retain their existing native arithmetic fast path.

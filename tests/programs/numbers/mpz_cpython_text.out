@@ -108,11 +108,11 @@ int('+111111111111111111111111111111111111111', None) ValueError: Exceeds the li
 int('-111111111111111111111111111111111111111', None) ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit
 int('1111111111111111111111111111111111111111', None) ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit
 str(10 ** maxdigits) ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit
-int('1' * (maxdigits + 1), 2) has 4301 bits
-int('1' * (maxdigits + 1), 4) has 8601 bits
-int('1' * (maxdigits + 1), 8) has 12901 bits
-int('1' * (maxdigits + 1), 16) has 17201 bits
-int('1' * (maxdigits + 1), 32) has 21501 bits
+int('1' * (maxdigits + 1), 2) has 4301 bits, int('1' * 100_000, 2) 100000
+int('1' * (maxdigits + 1), 4) has 8601 bits, int('1' * 100_000, 4) 199999
+int('1' * (maxdigits + 1), 8) has 12901 bits, int('1' * 100_000, 8) 299998
+int('1' * (maxdigits + 1), 16) has 17201 bits, int('1' * 100_000, 16) 399997
+int('1' * (maxdigits + 1), 32) has 21501 bits, int('1' * 100_000, 32) 499996
 int(s) % 1000 111
 int('1111111111111111111111111111111111111111', None) ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has 4302 digits; use sys.set_int_max_str_digits() to increase the limit
 int('1_111_111_111_111_111_111_111_111_111_11', None) ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has 4302 digits; use sys.set_int_max_str_digits() to increase the limit

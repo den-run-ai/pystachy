@@ -28,7 +28,11 @@
    MicroPython mpn schoolbook multiply and normalized division adapted to indexed
    loops. This file is included by runtime.c after its numeric parsing helpers.
    No MPZ object contains a pointer; class fields and containers root the handle.
-   Only fresh, unpublished result/scratch objects are mutated. */
+   Only fresh, unpublished result/scratch objects are mutated.
+   Parsing and decimal formatting follow CPython 3.13.16's Objects/longobject.c
+   (Python Software Foundation License Version 2; see THIRD_PARTY_NOTICES and
+   mpz/README.md): linear power-of-two bases, digit groups in other bases, and
+   Knuth's single-pass conversion to base 10^9. */
 
 #define ZBITS 30
 #define ZBASE (UINT64_C(1) << ZBITS)
@@ -100,13 +104,40 @@ void *pys_mpz_from_str(Str *s, I base) {
     if (d >= base) badlit("ValueError: invalid literal for int()", original, s);
     digits++; prev = 1; nonzero |= d != 0;
   }
-  if (!digits || prev != 1 || (old_octal && nonzero)) badlit("ValueError: invalid literal for int()", original, s);
+  if (!digits || prev != 1) badlit("ValueError: invalid literal for int()", original, s);
   if ((base & (base - 1)) && digits > 4300)
     failf("ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has %lld digits; "
           "use sys.set_int_max_str_digits() to increase the limit", (long long)digits);
+  /* CPython rejects a nonzero base-0 literal with a leading zero after the digit limit */
+  if (old_octal && nonzero) badlit("ValueError: invalid literal for int()", original, s);
+  Mpz *r;
+  if (!(base & (base - 1))) {
+    /* A power-of-two base packs bits from the last digit in linear time, as CPython's
+       long_from_binary_base does. */
+    int bits = 0; while (1 << bits < base) bits++;
+    r = zalloc((digits * bits + ZBITS - 1) / ZBITS);
+    uint64_t acc = 0; int have = 0; I n = 0;
+    for (I i = hi; i > lo; i--) {
+      if (t->s[i - 1] == '_') continue;
+      acc |= (uint64_t)digitv(t->s[i - 1]) << have; have += bits;
+      if (have >= ZBITS) { r->d[n++] = acc & ZMASK; acc >>= ZBITS; have -= ZBITS; }
+    }
+    if (have) r->d[n++] = (uint32_t)acc;
+    ztrim(r, n, negative); return r;
+  }
+  /* Other bases multiply-add the largest group of digits below 2^30 at once (nine decimal
+     digits), as CPython's long_from_non_binary_base does. A group's value and multiplier
+     stay below 2^30, so zmuladd's carry stays one digit. */
+  uint32_t width = 1, scale = (uint32_t)base;
+  while ((uint64_t)scale * base < ZBASE) { scale *= base; width++; }
   /* Each digit contributes at most six bits; ceil(digits/5) is sufficient. */
-  Mpz *r = zalloc(digits / 5 + 2);
-  for (I i = lo; i < hi; i++) if (t->s[i] != '_') zmuladd(r, (uint32_t)base, digitv(t->s[i]));
+  r = zalloc(digits / 5 + 2);
+  for (I i = lo; i < hi;) {
+    uint32_t group = 0, mul = 1;
+    for (uint32_t k = 0; k < width && i < hi; i++)
+      if (t->s[i] != '_') { group = group * base + digitv(t->s[i]); mul *= base; k++; }
+    zmuladd(r, mul, group);
+  }
   if (negative) r->size = -r->size;
   return r;
 }
@@ -310,21 +341,26 @@ Str *pys_mpz_str(void *ap) {
   /* Decimal conversion deliberately follows CPython's default 4300-digit limit.
      A value with >= 14286 bits necessarily exceeds it, avoiding huge scratch. */
   if (pys_mpz_bit_length(a) > 14285) pys_fail("ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit");
-  Mpz *scratch = zcopy(a, 0); I cap = n * 10 + 2;
-  Str *s = pys_alloc_atomic(sizeof(Str) + cap + 1); I out = 0;
-  while (n) {
-    uint64_t rem = 0;
-    for (I i = n; i; i--) {
-      uint64_t v = (rem << ZBITS) | scratch->d[i - 1];
-      scratch->d[i - 1] = v / 1000000000; rem = v % 1000000000;
+  /* Base-10^9 digits, least significant first, in one pass per digit from the most
+     significant (Knuth 4.4 Method 1b, as CPython's long_to_decimal_string_internal):
+     only a quotient carries along a pass, so each step waits on one division. There are
+     at most n + n/99 + 1 of them, CPython's bound for 30-bit digits. */
+  uint32_t *dec = pys_alloc_atomic((n + n / 99 + 1) * sizeof(uint32_t)); I m = 0;
+  for (I i = n; i; i--) {
+    uint32_t hi = a->d[i - 1];
+    for (I j = 0; j < m; j++) {
+      uint64_t z = (uint64_t)dec[j] << ZBITS | hi;
+      hi = (uint32_t)(z / 1000000000); dec[j] = (uint32_t)(z - (uint64_t)hi * 1000000000);
     }
-    while (n && !scratch->d[n - 1]) n--;
-    /* Nine digits per division, including interior zero padding. */
-    for (int i = 0; i < 9 && (n || rem || !i); i++) { s->s[out++] = '0' + rem % 10; rem /= 10; }
+    while (hi) { dec[m++] = hi % 1000000000; hi /= 1000000000; }
   }
-  if (out > 4300) pys_fail("ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit");
-  if (a->size < 0) s->s[out++] = '-';
-  for (I i = 0; i < out / 2; i++) { char c = s->s[i]; s->s[i] = s->s[out - 1 - i]; s->s[out - 1 - i] = c; }
+  int negative = a->size < 0; I out = negative + 9 * (m - 1);
+  for (uint32_t top = dec[m - 1]; top; top /= 10) out++;
+  if (out - negative > 4300) pys_fail("ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit");
+  Str *s = pys_alloc_atomic(sizeof(Str) + out + 1); I k = out;
+  for (I j = 0; j < m; j++)   /* nine digits each, zero-padded, except the most significant */
+    for (uint32_t v = dec[j], d = 0; d < 9 && (j + 1 < m || v); d++) { s->s[--k] = '0' + v % 10; v /= 10; }
+  if (negative) s->s[--k] = '-';
   s->len = out; s->chars1 = out + 1; return s;
 }
 

@@ -32,7 +32,7 @@ The complete original files were fetched before adaptation. Their license is
 | [mpz_cpython_int.py](../programs/numbers/mpz_cpython_int.py) | `IntTestCases.test_basic` base-2..36 representations of `2**32+1`, whitespace/sign and prefix checks; `test_invalid_signs`; `test_unicode`; explicit string cases from `test_underscores`; `test_int_base_limits` | Explicit `mpz`, expected decimal strings, assertions/caught exception classes. Additional prefix/underscore boundaries. |
 | [mpz_cpython_long_division.py](../programs/numbers/mpz_cpython_long_division.py) | `test_division` with seeded `getran()` operands of 1–15, 70–83 and 210 digits (900 pairs); `test_karatsuba` for operands up to 700 digits; `test_square` for bit lengths 1–399 | The cases [upstream_int_arith.py](../programs/upstream/upstream_int_arith.py) excludes for needing more than 64 bits. `getran()` keeps upstream's `random.random()` draws; its masks are computed once per bit count. Printed digests of quotients, remainders and products are CPython's. Excludes `test_karatsuba`'s 210,000-bit operands. |
 | [mpz_cpython_long_bitops.py](../programs/numbers/mpz_cpython_long_bitops.py) | `test_bitop_identities` (special values including `0xaaaaaaaaaaaaaaaa`, `getran()` operands of 1–15 digits, `check_bitop_identities_1/2/3`); negative, zero and huge shift counts; the 2**127 and 2**128 shift cases; `test_bit_length` at 63, 64 and 234 | As above. Shift counts are native ints, so `1 << 1000` counts become `sys.maxsize` and `-sys.maxsize - 1`. Powers of two and masks are computed once per bit count, and special values' complements and negations as they are checked, to bound the cost of a collection at every allocation. |
-| [mpz_cpython_text.py](../programs/numbers/mpz_cpython_text.py) | `test_format` (decimal `str`/`repr` against `slow_format()`, base-0 round trip); `test_long` string cases; `test_int`'s `test_basic` strings, full underscore literal tables, `test_error_message`, `test_issue31619`; `IntStrDigitLimitsTests` edge, limit, power-of-two-base, underscore, sign and other-base cases | Decimal formatting only (no `bin`/`oct`/`hex`). The digit limit is CPython's default 4300, which mpz cannot change. Excludes `test_power_of_two_bases_unlimited`'s 100,000-digit strings, timing-based denial-of-service tests, bytes and lone surrogates. |
+| [mpz_cpython_text.py](../programs/numbers/mpz_cpython_text.py) | `test_format` (decimal `str`/`repr` against `slow_format()`, base-0 round trip); `test_long` string cases; `test_int`'s `test_basic` strings, full underscore literal tables, `test_error_message`, `test_issue31619`; `IntStrDigitLimitsTests` edge, limit, power-of-two-base, underscore, sign and other-base cases | Decimal formatting only (no `bin`/`oct`/`hex`). The digit limit is CPython's default 4300, which mpz cannot change. Excludes timing-based denial-of-service tests, bytes and lone surrogates. |
 
 These are selected adapted assertions, not unchanged upstream modules or a run
 of the whole CPython suite. Excluded areas include true division and floats,
@@ -46,6 +46,12 @@ or C-API/refcount internals, and exhaustive/random huge-memory fixtures.
   CPython-generated operand pairs with 192 exact expected decimal arithmetic,
   division and bitwise results, plus mixed right-hand `int` and unary checks.
   Boundaries span 30-bit limbs and 63/64/65/127/128/255/256/1023-bit magnitudes.
+- [mpz_text_boundaries.py](../programs/numbers/mpz_text_boundaries.py) parses every
+  base at the boundaries of its digit groups (lengths around multiples of the most
+  digits below 2^30), checked against Horner's rule in mpz arithmetic; parses
+  100,001-digit power-of-two-base strings; formats values around powers of 10^9
+  and 2^30 and at the 4300-digit limit; and checks CPython's order of errors for a
+  base-0 literal with a leading zero past the digit limit.
 - [mpz_storage.py](../programs/numbers/mpz_storage.py) retains values through typed
   fields, returns, list items, dictionary keys and set membership, while creating
   further allocations. Aliases and copies keep their values after arithmetic and
@@ -67,7 +73,7 @@ or C-API/refcount internals, and exhaustive/random huge-memory fixtures.
 ## Reproduce
 
 ```sh
-PYTHON=python3.13 tests/record.sh mpz_arithmetic mpz_cpython_long mpz_cpython_long_division mpz_cpython_long_bitops mpz_cpython_int mpz_cpython_text mpz_storage mpz_limits mpz_applications mpz_dynamic mpz_shadow
+PYTHON=python3.13 tests/record.sh mpz_arithmetic mpz_cpython_long mpz_cpython_long_division mpz_cpython_long_bitops mpz_cpython_int mpz_cpython_text mpz_text_boundaries mpz_storage mpz_limits mpz_applications mpz_dynamic mpz_shadow
 PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/numbers/mpz_*.py tests/programs/imports/mpz_shadow.py tests/errors/library/mpz_*.py
 PYSTACHY_GC_STRESS_PROGRAM=1 PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/numbers/mpz_*.py tests/programs/imports/mpz_shadow.py tests/errors/library/mpz_*.py
 ```
