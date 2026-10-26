@@ -9,6 +9,7 @@ from src.pystachy_compiler.reflection import VARS_USES
 from src.pystachy_compiler.specs import (
     ARITY,
     BIG,
+    BIGOPT,
     CALLS,
     DEFAULTS,
     ERRNO,
@@ -670,7 +671,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         bv = self.big_builtin(name, vals) if len(kws) == 0 else Val("", "")  # (promoting ints: bigints.py)
         if bv.t != "":
             return bv
-        vals = [self.big_narrow(v) for v in vals]
+        if not ((name == "min" or name == "max") and BIGOPT in [v.t for v in vals]):
+            vals = [self.big_narrow(v) for v in vals]  # (but min() and max() of an int | None compare them as they are)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
         return self.dyn_sum(self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
@@ -727,10 +729,18 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if bad != "":
             vals[i] = self.unwrap(vals[i], "TypeError: " + bad)
         elif name not in OPTARG:
-            if f"{name}({','.join([unopt(v.t) for v in vals])})" not in CALLS and name not in OPTCALLS:
+            if f"{name}({','.join([unopt(v.t) for v in vals])})".replace(BIG, "int") not in CALLS and name not in OPTCALLS:
                 # (not for the value it holds either)
                 self.err(f"unsupported call {name}({','.join([typestr(v.t) for v in vals])})")
             self.err(f"argument {i + 1} of {name}() may be None ({typestr(vals[i].t)}); test it with 'is not None' first")
+    if len([v for v in vals if v.t == BIG]) > 0:
+        bv = self.big_builtin(name, vals) if len(kws) == 0 else Val("", "")  # (an int | None's promoting int, unwrapped: bigints.py)
+        if bv.t != "":
+            return bv
+        if not ((name == "min" or name == "max") and BIGOPT in [v.t for v in vals]):
+            vals = [self.big_narrow(v) for v in vals]
+    if name not in ["str", "repr", "ascii", "hash", "bool", "min", "max"]:
+        vals = [self.big_opt_narrow(v) for v in vals]  # (the others take an int | None's 64-bit int: bigints.py)
     key = f"{name}({','.join([v.t for v in vals])})"
     asked = key  # (math's calls convert their arguments below; a rejection names them as given)
     if self.rtmode and name.startswith("_rt."):
@@ -2201,7 +2211,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         kv = targs(o.t)
         kx = self.dkey(self.expr(args[0], kv[0]), kv[0])
         k = self.to_slot(kx)
-        d = self.expr(args[1], kv[1])
+        d = self.big_opt_narrow(self.expr(args[1], kv[1]))  # (a value holds a 64-bit int: bigints.py)
         vt = self.optdefault(d, kv[1])  # (d.pop(k, None): V | None)
         dv = self.to_slot(self.coerce(d, vt))
         fn = "pys_dict_popbox" if is_sopt(vt) and not is_sopt(kv[1]) else "pys_dict_pop_default"  # (an int's box)
@@ -2314,6 +2324,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             else:
                 v = self.consume(g, pt) if join or key == "list.extend" else self.expr(args[i], want_arg, resultsoft=key in ["list.count", "list.index", "list.remove", "vtuple.count", "vtuple.index"] and i == 0)
             self.stkkey = self.nokey
+            v = self.big_opt_narrow(v)  # (a builtin method's int | None holds a 64-bit int: bigints.py)
             if self.list_id_kind(o.t) != 0 and p == "*T" and v.t in ["int", "float", "bool"]:
                 idquery = v
                 # index's later bounds may call back and rebind the query's source.

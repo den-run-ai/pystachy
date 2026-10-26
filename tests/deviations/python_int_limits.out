@@ -1,9 +1,9 @@
 list: Python int too large to convert to C long
 tuple in a list: Python int too large to convert to C long
 dict: Python int too large to convert to C long
-optional: Python int too large to convert to C long
+int | None in a list: Python int too large to convert to C long
+int | None in a tuple: Python int too large to convert to C long
 yield: Python int too large to convert to C long
-join: Python int too large to convert to C long
 bool join: Python int too large to convert to C long
 range: Python int too large to convert to C long
 sum: integer result does not fit in 64 bits

@@ -106,21 +106,32 @@ once a test has found no item past 64 bits. The runtime reads tuples of 64-bit i
 and the code compiled for `repr()`, comparisons and `hash()` of a tuple of promoting ints reads
 its items one by one.
 
+An `int | None` is a pointer to a box, as one of a 64-bit int is: null for None, else runtime.c's
+box of the value and a null pointer where it fits, and past 64 bits a box of -2\*\*63 and the
+value's pointer, which the collector scans. Every box of a 64-bit int has that null second word,
+so an `int | None` from 64-bit code (a dict's `get()`, a module that does not opt in) is one of a
+promoting int as it is; and one whose value fits is the box that 64-bit code reads, where it
+takes it once a test has found no pointer there. Comparisons, `min()`, `max()`, `str()`, `repr()`,
+formatting, `hash()`, truth and membership in a `range` of an `int | None` are compiled for its
+promoting int, and so are the status of a `SystemExit` and the `errno` that names an `OSError`'s
+class, of it or of a promoting int (past 64 bits, -1 and none, as CPython's).
+
 ## 64-bit boundaries
 
 These places keep 64-bit ints for now. A value past 64 bits that reaches one raises
 `OverflowError: Python int too large to convert to C long` (CPython's message for an int too big
 for a C `long`), where CPython goes on with the bigger int:
 
-- The items of lists, dicts and sets (a tuple there holds 64-bit ints too), `int | None` and
-  other unions (also a tuple's, and where a join makes one: `x if c else None`, `x or None`,
-  a location given a `bool` and an int, overriding methods that return either), the items of
-  a `tuple[int, ...]` (a tuple sliced by a variable), and the values a generator yields or
-  receives (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a
-  parameter, is hashed, compared, searched, formatted with `%` and unpacked into arguments as
-  the tuple of its fields or None, which holds 64-bit ints too.
-- An `int` parameter of a function in a module that does not opt in. Its unannotated parameters
-  take the promoting int, so arithmetic there promotes too.
+- The items of lists, dicts and sets (a tuple or an `int | None` there holds 64-bit ints too),
+  a tuple's `int | None` items, unions other than `int | None` (also where a join makes one, as
+  for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
+  a variable), and the values a generator yields or receives
+  (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a parameter,
+  is hashed, compared, searched, formatted with `%` and unpacked into arguments as the tuple of
+  its fields or None, which holds 64-bit ints too.
+- An `int` or `int | None` parameter of a function in a module that does not opt in (whose
+  unannotated parameters take the promoting int, so arithmetic there promotes too), and the
+  parameters and result of a `Callable`.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
   floats: the ints of an `int | float` list, ints added to a float start, and a start past 64
@@ -224,6 +235,13 @@ the first measurements, before the inline paths, in
   unpacking, indexing, slicing, iteration, comparisons with 64-bit tuples, `hash()`, `repr()` and
   formatting, `divmod()`, fields, globals, closures and a NamedTuple, and tuples that fit going
   into a module that does not opt in (`tests/python_int_modules/fixed_pairs.py`).
+- `tests/programs/numbers/python_int_optional.py`: `int | None` past 64 bits in variables,
+  parameters, returns, defaults, fields, class attributes, globals, closures and joins, in each
+  spelling, with comparisons, `min()`, `max()`, membership, formatting, `hash()`, truth and
+  narrowing; `python_int_optional_keys.py`: values that fit as a dict's keys, a `pop()` default
+  and a set's elements, and in the unions a join makes with a bool or a `str`, membership in
+  ranges, an `OSError`'s errno and a `SystemExit`'s status; `python_int_exit.py` and
+  `python_int_exit_class.py`: that status in a program without `try` and of a subclass.
 - `tests/programs/numbers/python_int_spellings.py`: quoted and `Final` annotations, in modules
   that opt in and into one that does not.
 - `tests/programs/numbers/python_int_roots.py`: values whose digits only a module variable, a

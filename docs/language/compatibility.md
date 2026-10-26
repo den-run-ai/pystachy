@@ -382,8 +382,9 @@ above apply to well-formed text (with the surrogate exception described above).
 
 - In a module whose leading comments hold `# pystachy: python-int`, ints promote past 64 bits
   ([promoting ints](../python-int.md)) in variables, arguments, returns, fields, module
-  variables, closures and tuples. Lists, dicts, sets and the tuples they hold, `int | None` and
-  other unions, generator yields, the `int` parameters of modules that do not opt in, and
+  variables, closures, tuples and `int | None`. Lists, dicts, sets and the tuples and
+  `int | None` items they hold, a tuple's `int | None` items, other unions, generator yields, the
+  `int` and `int | None` parameters of modules that do not opt in, `Callable` signatures, and
   builtins and methods that take an int (`range()`, indexing, `math` functions, `sum()`'s ints
   among floats) keep 64-bit ints: a value past 64 bits raises `OverflowError` there, where
   CPython goes on (`tests/deviations/python_int_limits.py`). A tuple of 64-bit ints that holds

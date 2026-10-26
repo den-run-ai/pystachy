@@ -7,6 +7,7 @@ from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
     BIG,
+    BIGOPT,
     CODECS,
     FSETMETHODS,
     FX,
@@ -443,8 +444,9 @@ def unopt(t: str) -> str:
 
 
 def is_sopt(t: str) -> bool:
-    # int, float or bool | None: a pointer to an immutable box of the value (runtime.c's pys_box)
-    return t == "opt[int]" or t == "opt[float]" or t == "opt[bool]"
+    # int, float or bool | None: a pointer to an immutable box of the value (runtime.c's pys_box),
+    # also of a promoting int (BIGOPT: bigints.py)
+    return t == "opt[int]" or t == "opt[float]" or t == "opt[bool]" or t == BIGOPT
 
 
 def pure_arg(e: Node) -> bool:

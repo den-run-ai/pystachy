@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import ann_target
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import BIG, NONEVAR, OPTTYPES
+from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
 from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
@@ -126,6 +126,12 @@ def gen_union_type(self, ts: list[str]) -> str:
         for m in umembers(t) if is_union(t) else [t]:
             if m not in ms:
                 ms.append(m)
+    if BIG in ms and "int" in ms:
+        ms.remove("int")  # (a promoting int holds a 64-bit one: bigints.py)
+    if len(ms) > 1 and BIG in ms and BIGOPT in ts and BIG not in ts:
+        # (an int | None of a module that opts in, with other types: their union, which holds a 64-bit
+        # int, as the 64-bit int | None it holds makes one: bigints.py)
+        ms[ms.index(BIG)] = "int"
     if len(ms) == 0:
         return "None"
     if len(ms) == 1:

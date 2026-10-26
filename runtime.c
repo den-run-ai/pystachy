@@ -2016,8 +2016,15 @@ I pys_repr_enter(void *p) {
 }
 void pys_repr_leave(void *p) { unbusy(p); if (eh) unwind_pop(); }
 /* An int | None, float | None or bool | None (descriptor ?i, ?f, ?b) is a pointer to an immutable
-   box of its value's 8 bytes (a bool's 0 or 1), and None is null */
-void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
+   box of its value's 8 bytes (a bool's 0 or 1), and None is null. The box's second word is null,
+   so that every int's box is also one of a promoting int (docs/python-int.md) */
+void *pys_box(I v) { I *p = gc_box(1); p[0] = v; p[1] = 0; return p; }
+/* the box of a promoting int, {lo, hi}: pys_box's where it fits; past 64 bits, -2**63 and its
+   Mpz, in a box the collector scans */
+void *pys_big_box(I lo, void *hi) {
+  if (!hi) return pys_box(lo);
+  I *p = gc_box(0); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;
+}
 /* Closed union: a program-wide tag and the value's 8-byte slot. The collector
    scans the box for str, container or native reference payloads. None remains null. */
 void *pys_ubox(I tag, I v) { I *p = gc_box(0); p[0] = tag; p[1] = v; return p; }

@@ -51,6 +51,13 @@ from src.pystachy_compiler.bigints import (
     gen_big_tuple_view as bigints_big_tuple_view,
     gen_big_view_test as bigints_big_view_test,
     gen_big_tuple_narrow as bigints_big_tuple_narrow,
+    gen_big_box as bigints_big_box,
+    gen_big_unbox as bigints_big_unbox,
+    gen_big_opt_narrow as bigints_big_opt_narrow,
+    gen_big_opt_str as bigints_big_opt_str,
+    gen_big_opt_hash as bigints_big_opt_hash,
+    gen_big_opt_or as bigints_big_opt_or,
+    gen_big_status as bigints_big_status,
     gen_big_tuple_repr as bigints_big_tuple_repr,
     gen_big_literal as bigints_big_literal,
 )
@@ -1539,6 +1546,27 @@ class Gen:
 
     def big_tuple_narrow(self, v: Val) -> Val:
         return bigints_big_tuple_narrow(self, v)
+
+    def big_box(self, v: Val) -> Val:
+        return bigints_big_box(self, v)
+
+    def big_unbox(self, v: Val) -> Val:
+        return bigints_big_unbox(self, v)
+
+    def big_opt_narrow(self, v: Val) -> Val:
+        return bigints_big_opt_narrow(self, v)
+
+    def big_opt_str(self, v: Val) -> Val:
+        return bigints_big_opt_str(self, v)
+
+    def big_opt_hash(self, v: Val) -> Val:
+        return bigints_big_opt_hash(self, v)
+
+    def big_opt_or(self, v: Val, none: str) -> Val:
+        return bigints_big_opt_or(self, v, none)
+
+    def big_status(self, v: Val) -> Val:
+        return bigints_big_status(self, v)
 
     def big_item(self, v: Val, lo: Val, k: int, j: str) -> Val:
         return bigints_big_item(self, v, lo, k, j)

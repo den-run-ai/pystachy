@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
-from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.specs import BIGOPT, CHECKED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
     identity_abi,
@@ -476,9 +476,11 @@ def gen_unwrap(self, v: Val, msg: str) -> Val:
 
 def gen_deref(self, v: Val) -> Val:
     # an optional value known not to be None, as the value it holds: the same pointer, or an
-    # int's, float's or bool's box read
+    # int's, float's or bool's box read (a promoting int's two words: bigints.py)
     if not is_sopt(v.t):
         return Val(v.v, unopt(v.t)).identity(v)
+    if v.t == BIGOPT:
+        return self.big_unbox(v)
     return self.from_slot(self.mload('int', v.v), unopt(v.t)).identity(v)
 
 def gen_reboxes(self, a: str, b: str) -> bool:
@@ -521,7 +523,7 @@ def gen_boxes(self, a: str, b: str) -> bool:
     # union, also as tuple items, and a value as a dynamic one (dynamic.py)
     if b == "dyn":
         return a != "dyn" and self.dyn_boxable(a) == ""
-    return (is_sopt(b) and a == unopt(b)) or self.uboxes(a, b) or self.reboxes(a, b)
+    return (is_sopt(b) and a == unopt(b)) or (b == BIGOPT and a == "int") or self.uboxes(a, b) or self.reboxes(a, b)
 
 def gen_convert_in(self, v: Val, t: str, blk: Blk) -> Val:
     # v as a t, at the end of block blk, which has ended (see convert_at): a test the conversion
