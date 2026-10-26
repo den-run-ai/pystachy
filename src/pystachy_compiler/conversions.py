@@ -143,8 +143,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
-    if t == BIG and (v.t == "int" or v.t == "bool"):
-        return self.to_big(v)  # (a promoting int: bigints.py)
+    if t == BIG and v.t == "int":
+        return self.to_big(v)  # (a promoting int: bigints.py; a bool is rejected, as in a module that does not opt in)
     if v.t == BIG:
         if (t == "int" or t == "bool") and self.join_hint(t, v.t):
             return Val("undef", t)  # (an inferred int location becomes a promoting int: the next pass, see join_hint)

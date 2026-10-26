@@ -523,8 +523,9 @@ def gen_big_builtin(self, name: str, vals: list[Val]) -> Val:
         return Val(self.rt("pys_big_powmod", BIGLL, args), BIG)
     if (name == "hex" or name == "oct" or name == "bin") and n == 1 and t == BIG:
         return self.format_(vals[0], mk("str", "#" + ("x" if name == "hex" else name[0]), self.line, []))
-    if (name == "min" or name == "max") and n >= 2 and all([v.t in nums for v in vals]):
-        # (the first of equal values, as CPython keeps it)
+    if (name == "min" or name == "max") and n >= 2 and all([v.t == "int" or v.t == BIG for v in vals]):
+        # (the first of equal values, as CPython keeps it; with a bool, which CPython may give as it
+        # is, they are compiled as in a module that does not opt in: Gen.builtin)
         best = self.to_big(vals[0])
         for v in vals[1:]:
             x = self.to_big(v)

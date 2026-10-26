@@ -493,7 +493,7 @@ def gen_reboxes(self, a: str, b: str) -> bool:
         if x == "int+" and y != "int+":
             x = "int"  # (coerce narrows a promoting int item first, as 64-bit storage takes it: bigints.py)
         dyn = x != y and ((y == "dyn" and self.dyn_boxable(x) == "") or (x == "dyn" and self.dyn_boxable(y) == ""))
-        big = y == "int+" and (x == "int" or x == "bool")  # (a promoting int holds both, bigints.py; the other way, coerce tests)
+        big = y == "int+" and x == "int"  # (a promoting int holds it, bigints.py; the other way, coerce tests)
         if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn and not big:
             return False
     return True
@@ -514,7 +514,7 @@ def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
 
 def gen_converts(self, a: str, b: str) -> bool:
     # does a value of type a take code to be one of type b (convert_in)
-    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and (a == "int" or a == "bool"))
+    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int")
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a

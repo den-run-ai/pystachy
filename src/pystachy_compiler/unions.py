@@ -521,8 +521,10 @@ def gen_join_type(self, a: str, b: str) -> str:
         return self.ctype("tuple", ts)
     if a == b:
         return a
-    if (a == BIG and (b == "int" or b == "bool")) or (b == BIG and (a == "int" or a == "bool")):
+    if (a == BIG and b == "int") or (b == BIG and a == "int"):
         return BIG  # (a promoting int holds both: bigints.py)
+    if (a == BIG and b == "bool") or (b == BIG and a == "bool"):
+        a, b = "int", "bool"  # (with a bool, their union, which holds 64-bit ints, as in other modules)
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 

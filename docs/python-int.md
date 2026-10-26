@@ -35,6 +35,11 @@ print(int("123456789012345678901234567890") % 97)  # 52
   variable) is a promoting int, and so is a location without an annotation that receives one:
   the function is compiled again with it promoting, as a [join](language/typing.md) widens
   other types. A literal that fits is a 64-bit int until it meets one.
+- A `bool` stays a `bool`, as in a module that does not opt in: one given to an `int` parameter,
+  returned or stored as an `int` (a variable, a field, a tuple's item), or given by a conditional
+  expression, `and`, `or`, `min()` or `max()` that may give an int is rejected during compilation
+  (CPython keeps the `bool`, which prints as `True`), and a location without an annotation that
+  receives both holds their union. In arithmetic and comparisons a `bool` is the int it equals.
 - The operators `+`, `-`, `*`, `//`, `%`, `&`, `|`, `^`, `<<`, `>>`, `**`, unary `-`, `+` and `~`,
   their augmented assignments, `abs()` and `pow(x, y)` compute CPython's result. `%`, `&`, `|`,
   `^` and `>>` of two 64-bit ints never overflow, so they stay 64-bit operations. True division
@@ -109,9 +114,9 @@ for a C `long`), where CPython goes on with the bigger int:
 
 - The items of lists, dicts and sets (a tuple there holds 64-bit ints too), `int | None` and
   other unions (also a tuple's, and where a join makes one: `x if c else None`, `x or None`,
-  overriding methods that return either), the items of a `tuple[int, ...]` (a tuple sliced by a
-  variable), and the values a generator yields or receives
-  (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a
+  a location given a `bool` and an int, overriding methods that return either), the items of
+  a `tuple[int, ...]` (a tuple sliced by a variable), and the values a generator yields or
+  receives (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a
   parameter, is hashed, compared, searched, formatted with `%` and unpacked into arguments as
   the tuple of its fields or None, which holds 64-bit ints too.
 - An `int` parameter of a function in a module that does not opt in. Its unannotated parameters
@@ -212,6 +217,9 @@ the first measurements, before the inline paths, in
   annotations name, displays, dataclass and NamedTuple fields, and `type()`.
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
+- `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in
+  arithmetic, comparisons and builtins; `tests/errors/numbers/python_int_bool_*.py`: a `bool`
+  where a promoting int is stored, and joined with one.
 - `tests/programs/numbers/python_int_tuples.py`: tuples of promoting ints: annotated returns,
   unpacking, indexing, slicing, iteration, comparisons with 64-bit tuples, `hash()`, `repr()` and
   formatting, `divmod()`, fields, globals, closures and a NamedTuple, and tuples that fit going
