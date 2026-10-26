@@ -58,6 +58,7 @@ from src.pystachy_compiler.bigints import (
     gen_big_opt_hash as bigints_big_opt_hash,
     gen_big_opt_or as bigints_big_opt_or,
     gen_big_status as bigints_big_status,
+    gen_bool_numeric as bigints_bool_numeric,
     gen_big_tuple_repr as bigints_big_tuple_repr,
     gen_big_literal as bigints_big_literal,
 )
@@ -1567,6 +1568,9 @@ class Gen:
 
     def big_status(self, v: Val) -> Val:
         return bigints_big_status(self, v)
+
+    def bool_numeric(self, f: FnInfo, j: int) -> bool:
+        return bigints_bool_numeric(self, f, j)
 
     def big_item(self, v: Val, lo: Val, k: int, j: str) -> Val:
         return bigints_big_item(self, v, lo, k, j)

@@ -35,11 +35,22 @@ print(int("123456789012345678901234567890") % 97)  # 52
   variable) is a promoting int, and so is a location without an annotation that receives one:
   the function is compiled again with it promoting, as a [join](language/typing.md) widens
   other types. A literal that fits is a 64-bit int until it meets one.
-- A `bool` stays a `bool`, as in a module that does not opt in: one given to an `int` parameter,
-  returned or stored as an `int` (a variable, a field, a tuple's item), or given by a conditional
-  expression, `and`, `or`, `min()` or `max()` that may give an int is rejected during compilation
-  (CPython keeps the `bool`, which prints as `True`), and a location without an annotation that
-  receives both holds their union. In arithmetic and comparisons a `bool` is the int it equals.
+- A `bool` stays a `bool`, as in a module that does not opt in: one returned or stored as an
+  `int` (a variable, a field, a tuple's item), or given by a conditional expression, `and`, `or`,
+  `min()` or `max()` that may give an int is rejected during compilation (CPython keeps the
+  `bool`, which prints as `True`), and a location without an annotation that receives both holds
+  their union. In arithmetic and comparisons a `bool` is the int it equals.
+- A `bool` given to an `int` parameter is the promoting int it equals where the function reads
+  the parameter only as a number, so that both give the same results and errors: in arithmetic
+  with numbers (literals and the function's `int`, `float` and `bool` parameters; `&`, `|` and
+  `^` with an int literal), comparisons with numbers, tests of its truth, and the builtins
+  `int()`, `float()`, `abs()`, `round()`, `hash()`, `bool()`, `range()`, `chr()`, `hex()`,
+  `oct()` and `bin()`. Elsewhere it is rejected, as in a module that does not opt in: where the
+  function may return, store, print, format or pass on the parameter, index with it, test its
+  type or identity (`is`, `in`), read it in a nested function, lambda or comprehension, or read
+  its locals (`locals()`, `vars()`, `eval()`, `exec()`), and where the program or the function
+  binds the name of one of those builtins (in a closure, any call of one). So is one given to a
+  function through a `Callable` (a variable or parameter that holds it).
 - The operators `+`, `-`, `*`, `//`, `%`, `&`, `|`, `^`, `<<`, `>>`, `**`, unary `-`, `+` and `~`,
   their augmented assignments, `abs()` and `pow(x, y)` compute CPython's result. `%`, `&`, `|`,
   `^` and `>>` of two 64-bit ints never overflow, so they stay 64-bit operations. True division
@@ -229,8 +240,11 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in
-  arithmetic, comparisons and builtins; `tests/errors/numbers/python_int_bool_*.py`: a `bool`
-  where a promoting int is stored, and joined with one.
+  arithmetic, comparisons and builtins; `tests/programs/numbers/python_int_bool_args.py`: bools
+  given to `int` parameters (by position, keyword and default, of functions, methods, overrides,
+  a constructor and a setter) that their functions read only as numbers;
+  `tests/errors/numbers/python_int_bool_*.py`: a `bool` where a promoting int is stored, joined
+  with one, or given to a parameter that its function may show.
 - `tests/programs/numbers/python_int_tuples.py`: tuples of promoting ints: annotated returns,
   unpacking, indexing, slicing, iteration, comparisons with 64-bit tuples, `hash()`, `repr()` and
   formatting, `divmod()`, fields, globals, closures and a NamedTuple, and tuples that fit going

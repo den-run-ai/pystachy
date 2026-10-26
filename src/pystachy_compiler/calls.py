@@ -5,7 +5,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -1144,6 +1144,8 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         captured = Val(v.v, v.t).identity(v)
         captured.idfrom = self.dyn_box(v).v
         v = captured
+    if v.t == "bool" and t == BIG and self.bool_numeric(f, j):
+        v = self.to_big(v)  # (a bool that f reads only as a number: the int it equals, see bool_numeric)
     value = self.coerce(v, t, what) if t != "" else v
     if identity_abi(f) and numeric_identity(value.t) and (not f.scalar_args or f.params[j] in f.idnames):
         # Capture now, before a later argument can rebind the original local or cell.

@@ -7,9 +7,10 @@ rest, and a step that overflows, call runtime.c's pys_big_* functions, which dem
 that fits, so equal values have one representation. See docs/python-int.md.
 """
 from __future__ import annotations
+from src.pystachy_compiler.analysis import first_use, local_names
 from src.pystachy_compiler.diagnostics import LINES, int_file
-from src.pystachy_compiler.ir import Ins, Val
-from src.pystachy_compiler.syntax import made_var, mk
+from src.pystachy_compiler.ir import FnInfo, Ins, Val
+from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC
 from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_list, is_set, is_tuple, is_vtuple, selem, targs
 
@@ -62,6 +63,140 @@ def narrowed(ts: list[str]) -> list[str]:
     # the types ts as members of an annotation's container, tuple or union, which hold 64-bit ints
     # (also as an int | None: BIGOPT)
     return ["int" if t == BIG else "opt[int]" if t == BIGOPT else t for t in ts]
+
+
+# Where a bool and the int it equals give the same results and errors (bool_numeric): arithmetic,
+# whose methods are the int's (& | ^ of two bools give a bool), and builtins that take a number but
+# none that may return it as it is
+NUMOPS = ["+", "-", "*", "/", "//", "%", "**", "<<", ">>"]
+NUMCALLS = ["int", "float", "abs", "round", "hash", "bool", "range", "chr", "hex", "oct", "bin"]
+
+
+def gen_bool_numeric(self, f: FnInfo, j: int) -> bool:
+    # does function f read its parameter j only as a number, where a bool and the int it equals give
+    # the same results and errors: then a bool argument is the promoting int it equals (pcoerce),
+    # which CPython's output cannot tell apart; elsewhere it is rejected, as in a module that does
+    # not opt in (it would print as 1, not True)
+    if f.node.kind != "def" or len(f.node.kids) < 3 or f.extern or j >= len(f.params) or j == f.vararg or j == f.kwarg:
+        return False
+    body = f.node.kids[2]
+    if first_use(body, {"locals": True, "vars": True, "eval": True, "exec": True}, False) is not None:
+        return False  # (which read it by no name)
+    nums = [f.params[k] for k in range(len(f.params)) if k < len(f.ptypes) and f.ptypes[k] in [BIG, "int", "float", "bool"]]
+    names: dict[str, bool] = {}
+    local_names(body.kids, names)
+    calls: list[str] = []
+    for nm in NUMCALLS if f.clo < 0 else []:
+        # (the builtins, which neither f nor the program binds, see numeric_proof; a closure's
+        # names may be those of the functions around it)
+        if nm not in names and nm not in f.params and nm not in self.mvars and nm not in self.gtypes and nm not in self.funcs and nm not in self.classes and nm not in self.aliases and nm not in self.fglobals:
+            calls.append(nm)
+    return numeric_reads(body, "", f.params[j], nums, calls)
+
+
+def yields(e: Node, name: str) -> bool:
+    # may expression e's value be name's value itself, not one computed from it
+    if e.kind == "name":
+        return e.s == name
+    if e.kind == "boolop":
+        return yields(e.kids[0], name) or yields(e.kids[1], name)
+    if e.kind == "ifexp":
+        return yields(e.kids[1], name) or yields(e.kids[2], name)
+    if e.kind == "walrus":
+        return yields(e.kids[0], name)
+    return False
+
+
+def numeric(e: Node, nums: list[str]) -> bool:
+    # is expression e a number, whose methods are none of the program's: a literal, a parameter of
+    # nums (an int, a float or a bool), not of anything, or arithmetic of numbers
+    if e.kind == "int" or e.kind == "float" or e.kind == "True" or e.kind == "False" or (e.kind == "name" and e.s in nums):
+        return True
+    if e.kind == "unary":
+        return e.s == "not" or numeric(e.kids[0], nums)
+    if e.kind == "binop" and (e.s in NUMOPS or e.s == "&" or e.s == "|" or e.s == "^"):
+        return numeric(e.kids[0], nums) and numeric(e.kids[1], nums)
+    return False
+
+
+def numeric_store(t: Node, name: str, nums: list[str], calls: list[str]) -> bool:
+    # does store target t read name only as a number (bool_numeric): storing to a name reads none,
+    # and a subscript's key is no number's place (a dict keeps the bool it takes as a new key)
+    if t.kind == "name":
+        return True
+    if t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
+        return all([numeric_store(e, name, nums, calls) for e in t.kids])
+    return all([not yields(e, name) and numeric_reads(e, "", name, nums, calls) for e in t.kids])
+
+
+def numeric_reads(n: Node, ctx: str, name: str, nums: list[str], calls: list[str]) -> bool:
+    # does code n read name only as a number (bool_numeric), n's value going to ctx: "num" (an
+    # operand that only computes with it), "test" (its truth) or "" (anything else)
+    k = n.kind
+    if k == "name":
+        return n.s != name or ctx != ""
+    if k in ["def", "lambda", "class", "subclass", "listcomp", "asynccomp", "setcomp", "dictcomp"]:
+        return first_use(n, {name: True}, False) is None  # (a scope of its own, which this does not follow)
+    if k == "binop":
+        a = n.kids[0]
+        b = n.kids[1]
+        if n.s in NUMOPS:
+            # (another object's method would take the bool: the other operand is a number)
+            if (yields(a, name) and not numeric(b, nums)) or (yields(b, name) and not numeric(a, nums)):
+                return False
+        elif n.s == "&" or n.s == "|" or n.s == "^":
+            if (yields(a, name) and b.kind != "int") or (yields(b, name) and a.kind != "int"):
+                return False
+        elif yields(a, name) or yields(b, name):
+            return False
+        return numeric_reads(a, "num", name, nums, calls) and numeric_reads(b, "num", name, nums, calls)
+    if k == "unary":
+        # (~ of a bool warns that it is deprecated)
+        return numeric_reads(n.kids[0], "test" if n.s == "not" else "" if n.s == "~" else "num", name, nums, calls)
+    if k == "boolop":
+        return numeric_reads(n.kids[0], ctx, name, nums, calls) and numeric_reads(n.kids[1], ctx, name, nums, calls)
+    if k == "ifexp":
+        return numeric_reads(n.kids[0], "test", name, nums, calls) and numeric_reads(n.kids[1], ctx, name, nums, calls) and numeric_reads(n.kids[2], ctx, name, nums, calls)
+    if k == "cmp":
+        ops = n.s.split(",")
+        for i in range(len(n.kids)):
+            if yields(n.kids[i], name):
+                # (compared with numbers alone: no __eq__ or __contains__ of the program's takes it)
+                for op in ops[max(i - 1, 0) : i + 1]:
+                    if op == "is" or op == "is not" or op == "in" or op == "not in":
+                        return False
+                if (i > 0 and not numeric(n.kids[i - 1], nums)) or (i + 1 < len(n.kids) and not numeric(n.kids[i + 1], nums)):
+                    return False
+            if not numeric_reads(n.kids[i], "num", name, nums, calls):
+                return False
+        return True
+    if k == "call" and n.kids[0].kind == "name" and n.kids[0].s in calls:
+        for a in n.kids[1:]:
+            if a.kind == "starred" or a.kind == "dstar" or not numeric_reads(a.kids[0] if a.kind == "kw" else a, "num", name, nums, calls):
+                return False
+        return True
+    if k == "if" or k == "while":
+        return all([numeric_reads(n.kids[i], "test" if i == 0 else "", name, nums, calls) for i in range(len(n.kids))])
+    if k == "assert":
+        return numeric_reads(n.kids[0], "test", name, nums, calls) and all([numeric_reads(e, "", name, nums, calls) for e in n.kids[1:]])
+    if k == "assign" or k == "annassign":
+        ts = n.kids[:-1] if k == "assign" else n.kids[:1]
+        if not all([numeric_store(t, name, nums, calls) for t in ts]):
+            return False
+        return (k == "annassign" and len(n.kids) < 3) or numeric_reads(n.kids[-1], "", name, nums, calls)
+    if k == "augassign":
+        t = n.kids[0]
+        v = n.kids[1]
+        if t.kind == "name" and t.s == name:
+            # (name op= v reads name as op's operand)
+            ok = (n.s in NUMOPS and numeric(v, nums)) or ((n.s == "&" or n.s == "|" or n.s == "^") and v.kind == "int")
+            return ok and numeric_reads(v, "num", name, nums, calls)
+        if yields(v, name) and not (n.s in NUMOPS and numeric(t, nums)):
+            return False
+        return numeric_store(t, name, nums, calls) and numeric_reads(v, "num", name, nums, calls)
+    if k == "for":
+        return numeric_store(n.kids[0], name, nums, calls) and all([numeric_reads(e, "", name, nums, calls) for e in n.kids[1:]])
+    return all([numeric_reads(e, "", name, nums, calls) for e in n.kids])
 
 
 def gen_int_policy(self, line: int) -> bool:
