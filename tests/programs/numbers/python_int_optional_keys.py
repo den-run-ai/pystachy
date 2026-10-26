@@ -2,8 +2,9 @@
 # An int | None of a module that opts in to promoting ints (docs/python-int.md) where 64-bit storage
 # takes it: a dict's key (subscripts, augmented assignment, del), a default of pop(), a set's
 # element (discard(), remove()), a union with a bool or a str that a variable or a result joins it
-# into, and the errno of an OSError, which names its class (also of a promoting int); one past 64
-# bits is in no range, and a SystemExit's status is its value, -1 past 64 bits.
+# into, a comparison with a str | None or a union, and the errno of an OSError, which names its
+# class (also of a promoting int); one past 64 bits is in no range, and a SystemExit's status is its
+# value, -1 past 64 bits.
 
 
 def code(v: int) -> int | None:
@@ -53,6 +54,13 @@ def joined(v: int) -> None:
     print(z, type(z).__name__, w, type(w).__name__, pick(v))
 
 
+def compared(v: int) -> None:
+    y = code(v)
+    s: str | None = None if v < 0 else "s"
+    u: int | str | None = 5 if v == 5 else "5"
+    print(y == s, y != s, u == y, y == u, y != u)
+
+
 def errno(v: int) -> None:
     try:
         raise OSError(code(v), "x")
@@ -66,6 +74,7 @@ for v in (5, 7, 2 ** 70, -1):
     ranged(v)
 for v in (5, -1, 20):
     joined(v)
+    compared(v)
 for v in (2, 13, 2 ** 70, -1):
     errno(v)
 for n in (2, 2 ** 70):

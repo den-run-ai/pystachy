@@ -4196,6 +4196,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return dc
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
+    if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
+        # (with another type, an int | None of a module that opts in compares as the 64-bit int | None
+        # it holds: bigints.py)
+        a = self.big_opt_narrow(a)
+        b = self.big_opt_narrow(b)
     if (a.t == BIG or b.t == BIG) and not ((op == "in" or op == "not in") and (is_tuple(b.t) or (unopt(b.t) in self.classes and unopt(b.t) != RANGEC) or is_gen(b.t))):
         # (promoting ints: bigints.py, a range's arithmetic too; the items of a tuple, an object or a
         # generator are compared below, and __contains__ takes x as its parameter does)

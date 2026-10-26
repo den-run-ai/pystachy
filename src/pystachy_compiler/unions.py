@@ -128,6 +128,10 @@ def gen_union_type(self, ts: list[str]) -> str:
                 ms.append(m)
     if BIG in ms and "int" in ms:
         ms.remove("int")  # (a promoting int holds a 64-bit one: bigints.py)
+    if len(ms) > 1 and BIG in ms and BIGOPT in ts and BIG not in ts:
+        # (an int | None of a module that opts in, with other types: their union, which holds a 64-bit
+        # int, as the 64-bit int | None it holds makes one: bigints.py)
+        ms[ms.index(BIG)] = "int"
     if len(ms) == 0:
         return "None"
     if len(ms) == 1:
@@ -527,11 +531,6 @@ def gen_join_type(self, a: str, b: str) -> str:
         return BIG  # (a promoting int holds both: bigints.py)
     if (a == BIG and b == "bool") or (b == BIG and a == "bool"):
         a, b = "int", "bool"  # (with a bool, their union, which holds 64-bit ints, as in other modules)
-    if (a == BIGOPT and unopt(b) not in ["int", BIG, "None"]) or (b == BIGOPT and unopt(a) not in ["int", BIG, "None"]):
-        # (an int | None of a module that opts in and another type: their union, which holds 64-bit
-        # ints, bigints.py)
-        a = "opt[int]" if a == BIGOPT else "int" if a == BIG else a
-        b = "opt[int]" if b == BIGOPT else "int" if b == BIG else b
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 
