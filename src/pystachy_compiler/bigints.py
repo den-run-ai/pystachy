@@ -9,7 +9,7 @@ that fits, so equal values have one representation. See docs/python-int.md.
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, int_file
 from src.pystachy_compiler.ir import Ins, Val
-from src.pystachy_compiler.specs import BIG, CHECKED, IOPS, RANGEC
+from src.pystachy_compiler.specs import BIG, CHECKED, IOPS, IRT, RANGEC
 from src.pystachy_compiler.utils import elem, is_dict, is_list, is_set, is_tuple, is_vtuple, selem, targs
 
 # pys_big_op's operation codes (pys_mpz_binop's, then shifts and **)
@@ -76,15 +76,17 @@ def gen_big_call(self, op: str, x: Val, y: Val) -> Val:
 
 
 def gen_big_arith(self, op: str, a: Val, b: Val) -> Val:
-    # a op b of ints, bools and promoting ints, as CPython's int computes it: + - * & | ^ inline
-    # where both fit (and + - * do not overflow), everything else through pys_big_op
+    # a op b of ints, bools and promoting ints, as CPython's int computes it: inline where both
+    # fit (+ - * that do not overflow, & | ^, // by other than -1, %, >>, and << that keeps its
+    # bits), everything else through pys_big_op, whose result's Mpz is null where big_known
+    # proves it fits: LLVM then drops the tests of later operations on it where it can fold that
     x = self.to_big(a)
     y = self.to_big(b)
     if op == "/":
         return self.big_truediv(x, y)
     if op not in BIGOPS:
         self.err(f"unsupported operand type(s) for {op}: 'int' and 'int'")
-    if op not in CHECKED and op not in IOPS:
+    if op == "**":
         return self.big_call(op, x, y)
     fast = self.label()
     slow = self.label()
@@ -100,16 +102,61 @@ def gen_big_arith(self, op: str, a: Val, b: Val) -> Val:
         self.cbr(r[1], slow, done)
         self.place(done)
         v = self.big(Val(r[0], "int"))
-    else:
+    elif op in IOPS:
         v = self.big(Val(self.scalar(IOPS[op], [lx, ly]), "int"))
+    elif op == "<<":
+        # (a count of 0 to 63 whose shift loses no bits: shifting back gives x)
+        counted = self.label()
+        self.cbr(self.scalar_cmp("ult", ly, Val("64", "int")), counted, slow)
+        self.place(counted)
+        r0 = Val(self.scalar("shl", [lx, ly]), "int")
+        done = self.label()
+        self.cbr(self.scalar_cmp("eq", Val(self.scalar("ashr", [r0, ly]), "int"), lx), done, slow)
+        self.place(done)
+        v = self.big(r0)
+    elif op == "//":
+        # (MIN // -1 is 2**63: pys_big_op's; pys_floordiv raises CPython's ZeroDivisionError)
+        done = self.label()
+        self.cbr(self.scalar_cmp("ne", ly, Val("-1", "int")), done, slow)
+        self.place(done)
+        v = self.big(Val(self.rt("pys_floordiv", "i64", [f"i64 {lx.v}", f"i64 {ly.v}"]), "int"))
+    else:
+        # % and >>: pys_mod and pys_shr, whose results fit (and errors are CPython's)
+        v = self.big(Val(self.rt(IRT[op], "i64", [f"i64 {lx.v}", f"i64 {ly.v}"]), "int"))
     self.incoming(ph, v.v, self.cur)
     self.br(end)
     self.place(slow)
     w = self.big_call(op, x, y)
+    known = self.big_known(op, x, y)
+    if known != "":
+        lw = self.big_lo(w)
+        if op == "&":
+            # (r & m is r for an operand m that bounds it: LLVM learns r's range from a constant m)
+            for v in [x, y]:
+                pos = Val(self.scalar("and", [Val(self.big_fits([v]), "bool"), Val(self.scalar_cmp("sge", self.big_lo(v), Val("0", "int")), "bool")]), "bool")
+                lw = Val(self.scalar("and", [lw, Val(self.select(pos.v, self.big_lo(v), Val("-1", "int")), "int")]), "int")
+        w = self.big(lw, self.select(known, Val("null", "%ptr"), self.big_hi(w)))
     self.incoming(ph, w.v, self.cur)
     self.br(end)
     self.place(end)
     return Val(self.phi(ph), BIG)
+
+
+def gen_big_known(self, op: str, x: Val, y: Val) -> str:
+    # an i1 that is true where x op y fits in 64 bits whatever the other operand: x % y of a y that
+    # fits (|r| < |y|), x >> y of an x that fits, and x & y of an operand that fits and is not
+    # negative (0 <= r <= it); "" for the other operators
+    if op == "%":
+        return self.big_fits([y])
+    if op == ">>":
+        return self.big_fits([x])
+    if op != "&":
+        return ""
+    ok: list[str] = []
+    for v in [x, y]:
+        pos = Val(self.scalar_cmp("sge", self.big_lo(v), Val("0", "int")), "bool")
+        ok.append(self.scalar("and", [Val(self.big_fits([v]), "bool"), pos]))
+    return self.scalar("or", [Val(ok[0], "bool"), Val(ok[1], "bool")])
 
 
 def gen_big_truediv(self, x: Val, y: Val) -> Val:

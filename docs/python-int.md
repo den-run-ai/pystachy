@@ -62,11 +62,21 @@ values that fit are equal exactly when their first words are.
 
 An operation on two values that fit runs inline: `x + y` tests that both pointers are null, adds
 with an overflow check and branches to `pys_big_op` (`runtime.c`) only when a pointer is set or
-the addition overflows. The runtime computes the exact result and demotes it where it fits.
-Comparisons, truth and conversions take the same two paths. The pointer is an ordinary pointer
-or null, so the conservative collector sees a big value's digits through any variable, field
-or closure cell that holds it, and never mistakes a small int for a pointer. The design and its
-measurements are on #907.
+the addition overflows. `-`, `*`, `&`, `|`, `^`, `%`, `>>`, `//` (but by -1) and `<<` (by 0 to
+63, losing no bits) have inline paths too; `**` always calls the runtime. The runtime computes
+the exact result and demotes it where it fits; a 64-bit operand of a big operation is read from
+the stack, not allocated. Comparisons, truth and conversions take the same two paths.
+
+Some results fit whatever the operands: `x % y` where `y` fits (`|r| < |y|`), `x >> y` where `x`
+fits, and `x & y` where one operand fits and is not negative (`0 <= r <=` it). Their pointer is
+null on both paths where that holds, and a masked result's word is masked on both, so LLVM folds
+the pointer tests of later operations on them wherever the operand is a constant or already known
+to fit, and sees the mask's range. A loop that masks or reduces its values
+(`h = (h * 31 + c) & 0xFFFFFFFF`, `x % m`) carries them as one 64-bit word.
+
+The pointer is an ordinary pointer or null, so the conservative collector sees a big value's
+digits through any variable, field or closure cell that holds it, and never mistakes a small int
+for a pointer. The design and its measurements are on #907.
 
 ## 64-bit boundaries
 
@@ -149,6 +159,12 @@ samples are in
 - `tests/programs/numbers/python_int_calls.py`: functions, defaults, keyword arguments, methods,
   fields, globals, closures, lambdas and modules with and without the comment
   (`tests/python_int_modules/`).
+- `tests/programs/numbers/python_int_bounds.py`: the inline paths of `//`, `%`, `<<` and `>>` at
+  their edges, results that always fit, and shifts past memory.
+- `tests/programs/numbers/python_int_storage.py`: values that fit in containers, tuples and unions
+  that annotations name, displays, dataclass and NamedTuple fields, and `type()`.
+- `tests/programs/numbers/python_int_spellings.py`: quoted and `Final` annotations, in modules
+  that opt in and into one that does not.
 - `tests/programs/numbers/python_int_roots.py`: values whose digits only a module variable, a
   class attribute, a field, a closure cell, a default or a generator's frame holds survive
   collections (the test runner's GC stress collects at every allocation).
