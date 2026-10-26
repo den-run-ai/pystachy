@@ -490,6 +490,8 @@ def gen_reboxes(self, a: str, b: str) -> bool:
     for i in range(len(targs(a))):
         x = targs(a)[i]
         y = targs(b)[i]
+        if x == "int+" and y != "int+":
+            x = "int"  # (coerce narrows a promoting int item first, as 64-bit storage takes it: bigints.py)
         dyn = x != y and ((y == "dyn" and self.dyn_boxable(x) == "") or (x == "dyn" and self.dyn_boxable(y) == ""))
         big = y == "int+" and (x == "int" or x == "bool")  # (a promoting int holds both, bigints.py; the other way, coerce tests)
         if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn and not big:

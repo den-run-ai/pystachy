@@ -978,6 +978,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 # A later item may rebind this local before the display stores its
                 # items. Capture its object now, while repeated reads share its slot.
                 v.idfrom = self.dyn_box(v).v
+            if is_tuple(v.t) and BIG in v.t:
+                v = self.big_tuple_narrow(v)  # (an item holds 64-bit ints, and is typed so: bigints.py)
             if et == "" and v.t != "None":
                 et = v.t
             jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
@@ -1040,11 +1042,15 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             a = self.expr(n.kids[i], kv[0], returnctx, resultsoft)
             if kv[0] == "dyn" and a.idslot != "":
                 a.idfrom = self.dyn_box(a).v
+            if is_tuple(a.t) and BIG in a.t:
+                a = self.big_tuple_narrow(a)  # (keys and values hold 64-bit ints, and are typed so: bigints.py)
             if kv[0] == "":
                 kv[0] = a.t
             b = self.expr(n.kids[i + 1], kv[1], returnctx, resultsoft)
             if kv[1] == "dyn" and b.idslot != "":
                 b.idfrom = self.dyn_box(b).v
+            if is_tuple(b.t) and BIG in b.t:
+                b = self.big_tuple_narrow(b)
             if kv[1] == "" and b.t != "None":
                 kv[1] = b.t
             jt = b.t if jt == "" else self.join(jt, b.t) or "-"
@@ -4801,6 +4807,8 @@ def gen_numeric_comparable(self, t: str, u: str) -> bool:
     # optional/union widening and user comparison callbacks out of this path.
     if ("rec[" in t or "rec[" in u) and self.ueq_type(t) and self.ueq_type(u):
         return True  # paired descriptors preserve each recursive/native layout
+    if (t == BIG or u == BIG) and (self.isnum(t) or t == BIG) and (self.isnum(u) or u == BIG):
+        return True  # (a promoting int is a number, also as a tuple's item: bigints.py)
     if t == u:
         return self.ueq_type(t)
     if self.isnum(t) and self.isnum(u):

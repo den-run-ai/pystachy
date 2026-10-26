@@ -171,3 +171,19 @@ print(lo, lo[0] - 1, lo[0] == -EDGE, [lo[0]], lo[2] + 1 == lo[0], hash(lo) == ha
 mins: list[tuple[int, int]] = [(-EDGE, 7)]
 m: tuple[int, int] = mins[0]
 print(m, m[0] * 2, m == mins[0], [x for x in m], first(m))
+
+
+# items that convert one by one: a promoting int into an int | None item (narrowed, boxed),
+# promoting items compared with floats and 64-bit ints in searches, count() and nested tuples, and
+# list and dict displays whose tuples have items of other types (each holds 64-bit ints)
+def maybe_pair(p: tuple[int, int | None]) -> tuple[int, int | None]:
+    return p
+
+
+def found(x: int) -> None:
+    t = (x, 2)
+    print(maybe_pair((x, x)), maybe_pair((BIG, x)), t == (1.0, 2), t in ((1.0, 2),), ((1.0, 2), (1, 2)).count(t), (t,) == ((1.0, 2),), [t] == [(1, 2.0)])
+    print([(x, 2), (3, 4.5)], [(3.5, 4), t], {"a": t, "b": (3, "s")}, [(t, 1), ((3, 4.5), 1)])
+
+
+found(1)
