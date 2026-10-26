@@ -22,7 +22,8 @@ cover [typing](language/typing.md), [imports and builtins](language/modules.md),
 | Generics | Function templates and `Generic` or PEP 695 (`class Box[T]`) classes with inferred or explicit type arguments; module-level type aliases |
 | Recursive values (prototype) | `type JSONValue = None \| bool \| int \| float \| str \| list[JSONValue] \| dict[str, JSONValue]` and smaller closed recursive unions, narrowed with `isinstance()`; see [recursive value aliases](language/typing.md#recursive-value-aliases-prototype) |
 
-Integers are checked 64-bit values. Strings are stored as UTF-8, and their lengths, indexing,
+Integers are checked 64-bit values; `x & y` keeps the low 64 bits of arithmetic it
+masks, as described under [deviations](language/compatibility.md#numbers). Strings are stored as UTF-8, and their lengths, indexing,
 slicing, iteration and search positions count code points, as CPython's do; a `bytes` holds its
 bytes, and its items are ints. Dictionary keys and set elements
 have a restricted set of types: integers, strings, `bytes`, objects (hashed by identity, or by their
