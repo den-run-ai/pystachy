@@ -30,7 +30,7 @@ On #901's `bench/integers` mpz programs, speed relative to CPython went from 0.5
 ## Next steps
 
 1. Handle #906's Codex result; merge once the maintainer accepts the deviation.
-2. Items 5-7 of the feedback, design-sized: a built-in compiler integer behind the opt-in pragma (#901's first gate: compare tagged 63-bit with int64 plus a tag), #901's remaining gates, and switching the default only within budget. Proposed: write them up as a roadmap issue first, as AGENTS.md asks; not yet approved.
+2. Items 5-7 of the feedback, design-sized: a built-in compiler integer behind the opt-in pragma (#901's first gate: compare tagged 63-bit with int64 plus a tag), #901's remaining gates, and switching the default only within budget. Tracked in roadmap #907 (a sub-issue of #12): its decisions come first (scalar representation, container storage, fixed-width code for the compiler and `runtime.py`, identity), then an eight-step plan and a proposed budget for switching the default.
 3. Smaller follow-ups: the masked-lowering gaps above; `mpz` squares at 640 digits are about 10% slower than CPython's; `containers`, `factorial` and `fibadd` need allocation-free small values, which is item 5's subject.
 
 ## Session notes
