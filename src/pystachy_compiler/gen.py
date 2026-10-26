@@ -612,6 +612,9 @@ from src.pystachy_compiler.expressions import (
     gen_list_hint_type as expressions_list_hint_type,
     gen_argtype as expressions_argtype,
     gen_arith as expressions_arith,
+    gen_masked as expressions_masked,
+    gen_wexpr as expressions_wexpr,
+    gen_wflag as expressions_wflag,
     gen_boolop as expressions_boolop,
     gen_cat as expressions_cat,
     gen_class_attr as expressions_class_attr,
@@ -3827,6 +3830,15 @@ class Gen:
 
     def arith(self, op: str, a: Val, b: Val, shown: str='') -> Val:
         return expressions_arith(self, op, a, b, shown)
+
+    def masked(self, n: Node, want: str, resultsoft: bool) -> Val:
+        return expressions_masked(self, n, want, resultsoft)
+
+    def wexpr(self, e: Node, want: str, resultsoft: bool) -> list[Val]:
+        return expressions_wexpr(self, e, want, resultsoft)
+
+    def wflag(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_wflag(self, op, a, b)
 
     def compare(self, n: Node) -> Val:
         return expressions_compare(self, n)

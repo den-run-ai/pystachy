@@ -772,6 +772,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if not scalar_held and dynamic_program() and self.scalar_read_value(n):
             scalar_fn.scalar_reads = True
         try:
+            if n.s == "&" and (wraps(n.kids[0]) or wraps(n.kids[1])):
+                return self.masked(n, want, resultsoft)
             a = self.expr(n.kids[0], want, resultsoft=resultsoft)
             return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
         finally:
@@ -3667,6 +3669,114 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
     self.br(lend)
     self.place(lend)
     return Val(self.phi(ph), "bool")
+
+def wraps(e: Node) -> bool:
+    # an int tree whose result's low 64 bits depend only on its operands' low 64 bits: +, -, * and
+    # << (by an exact count), which wrapping 64-bit arithmetic gets right in those bits, under &, |
+    # and ^ (see gen_masked)
+    if e.kind != "binop":
+        return False
+    if e.s == "+" or e.s == "-" or e.s == "*" or e.s == "<<":
+        return True
+    return (e.s == "&" or e.s == "|" or e.s == "^") and (wraps(e.kids[0]) or wraps(e.kids[1]))
+
+
+def gen_wflag(self, op: str, a: Val, b: Val) -> Val:
+    # a op b ("or", "and") of two i1 flags of gen_wexpr, with the constants false and true folded
+    if op == "or":
+        if a.v == "false" or b.v == "true":
+            return b
+        if b.v == "false" or a.v == "true":
+            return a
+    else:
+        if a.v == "false" or b.v == "true":
+            return a
+        if b.v == "false" or a.v == "true":
+            return b
+    return Val(self.scalar(op, [Val(a.v, "bool"), Val(b.v, "bool")]), "bool")
+
+
+def gen_masked(self, n: Node, want: str, resultsoft: bool) -> Val:
+    # x & y where a side wraps (#125): that side is computed in wrapping 64-bit arithmetic, which
+    # keeps the exact result's low 64 bits, with a flag for "a step overflowed". x & y needs no
+    # other bits where the other side is exact and not negative, so CPython's result fits and is
+    # the low bits'. Otherwise a step's overflow raises OverflowError, as it does in checked
+    # arithmetic, but after the whole expression has been evaluated.
+    a = self.wexpr(n.kids[0], want, resultsoft)
+    b = self.wexpr(n.kids[1], a[0].t, resultsoft)
+    x = a[0]
+    y = b[0]
+    if x.t != "int" or y.t != "int" or x.v == "undef" or y.v == "undef":
+        bad = self.wflag("or", a[1], b[1])
+        if bad.v != "false":
+            self.guard(bad.v, "OverflowError: integer result does not fit in 64 bits")
+        return self.arith("&", x, y)
+    if dynamic_program() and x.lit and y.lit and folded_int("&", x.v, y.v) != "":
+        return self.arith("&", x, y)  # (folded, as in gen_wexpr)
+    # inexact where both sides are, or one side is and the other is negative (a literal's sign is
+    # known; another's is tested only where the other side can be inexact)
+    bad = Val("false", "bool")
+    if a[1].v != "false":
+        yneg = Val("true" if y.v.startswith("-") else "false", "bool")
+        if not y.lit:
+            yneg = Val(self.scalar_cmp("slt", Val(y.v, "int"), Val("0", "int")), "bool")
+        bad = self.wflag("and", a[1], self.wflag("or", b[1], yneg))
+    if b[1].v != "false":
+        xneg = Val("true" if x.v.startswith("-") else "false", "bool")
+        if not x.lit:
+            xneg = Val(self.scalar_cmp("slt", Val(x.v, "int"), Val("0", "int")), "bool")
+        bad = self.wflag("or", bad, self.wflag("and", b[1], xneg))
+    if bad.v != "false":
+        self.guard(bad.v, "OverflowError: integer result does not fit in 64 bits")
+    return Val(self.scalar("and", [Val(x.v, "int"), Val(y.v, "int")]), "int")
+
+
+def gen_wexpr(self, e: Node, want: str, resultsoft: bool) -> list[Val]:
+    # [value, flag] of int expression e in wrapping 64-bit arithmetic where wraps(e) (see
+    # gen_masked): flag is false or an i1 that is true where the value holds only the exact
+    # result's low 64 bits. Operands are evaluated in order, as gen_expr's binop does.
+    if not wraps(e):
+        return [self.expr(e, want, resultsoft=resultsoft), Val("false", "bool")]
+    a = self.wexpr(e.kids[0], want, resultsoft)
+    # (a shift's count in checked arithmetic: the low bits of x << n depend on all of n)
+    b = [self.expr(e.kids[1], a[0].t, resultsoft=resultsoft), Val("false", "bool")] if e.s == "<<" else self.wexpr(e.kids[1], a[0].t, resultsoft)
+    x = a[0]
+    y = b[0]
+    flag = self.wflag("or", a[1], b[1])
+    if x.t != "int" or y.t != "int" or x.v == "undef" or y.v == "undef":
+        # not two ints (bools, objects, unions): their operator, after any overflow so far
+        if flag.v != "false":
+            self.guard(flag.v, "OverflowError: integer result does not fit in 64 bits")
+        return [self.arith(e.s, x, y), Val("false", "bool")]
+    if dynamic_program() and x.lit and y.lit and folded_int(e.s, x.v, y.v) != "":
+        # literals that fold within 64 bits: gen_arith folds them in a Dynamic Any program, where
+        # the result shares its literal's constant box (999 + 1 is 1000)
+        return [self.arith(e.s, x, y), flag]
+    x = Val(x.v, "int")
+    y = Val(y.v, "int")
+    if e.s in CHECKED:
+        r = self.checked(e.s, x.v, y.v)
+        return [Val(r[0], "int"), self.wflag("or", flag, Val(r[1], "bool"))]
+    if e.s == "<<":
+        # as pys_shl: a negative count raises at once; a count of 64 or more leaves 0, exact only
+        # for 0; a smaller one is exact where shifting back gives x
+        if b[0].lit and int(y.v) > 63:
+            return [Val("0", "int"), self.wflag("or", flag, Val(self.scalar_cmp("ne", x, Val("0", "int")), "bool"))]
+        if b[0].lit and int(y.v) >= 0:
+            # (a literal count below 64: only its lost bits are checked)
+            sh = Val(self.scalar("shl", [x, y]), "int")
+            lost = self.scalar_cmp("ne", Val(self.scalar("ashr", [sh, y]), "int"), x)
+            return [sh, self.wflag("or", flag, Val(lost, "bool"))]
+        self.guard(self.scalar_cmp("slt", y, Val("0", "int")), "ValueError: negative shift count")
+        big = self.scalar_cmp("ugt", y, Val("63", "int"))
+        c = Val(self.scalar("and", [y, Val("63", "int")]), "int")
+        sh = Val(self.scalar("shl", [x, c]), "int")
+        lost = self.scalar_cmp("ne", Val(self.scalar("ashr", [sh, c]), "int"), x)
+        nonzero = self.scalar_cmp("ne", x, Val("0", "int"))
+        inexact = Val(self.select(big, Val(nonzero, "bool"), Val(lost, "bool")), "bool")
+        return [Val(self.select(big, Val("0", "int"), sh), "int"), self.wflag("or", flag, inexact)]
+    return [Val(self.scalar(IOPS[e.s], [x, y]), "int"), flag]
+
 
 def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     if self.curfn.cmpops:

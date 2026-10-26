@@ -12,6 +12,9 @@ bit xor True True
 invert True True
 nested sign True True
 nested operators True True
+masked operators True True
+masked shift True True
+masked nested True True
 minimum True True
 negative floor True True
 negative modulo True True
