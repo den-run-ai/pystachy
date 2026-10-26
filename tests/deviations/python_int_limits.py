@@ -2,12 +2,17 @@
 # Documented deviation (docs/python-int.md#64-bit-boundaries): a promoting int is two words in
 # variables, arguments, returns, fields, globals and closures, but 64-bit storage and the builtins
 # that take an int keep 64-bit ints for now (#907). A value past 64 bits stored in a list, dict,
-# set, tuple, int | None or a generator's yield, given to range() or divmod(), or added by sum()
-# among floats, raises OverflowError, where CPython goes on with the bigger int.
+# set, tuple, int | None (also x if c else None) or a generator's yield, given to range() or
+# divmod(), or added by sum() among floats, raises OverflowError, where CPython goes on with the
+# bigger int.
 
 
 def gen(n: int):
     yield n
+
+
+def square_or_none(n: int):
+    return n * n if n > 0 else None
 
 
 big = 2 ** 64
@@ -36,6 +41,10 @@ try:
         print(v)
 except OverflowError as e:
     print("yield:", e)
+try:
+    print(square_or_none(big))
+except OverflowError as e:
+    print("join:", e)
 try:
     print(range(big))
 except OverflowError as e:

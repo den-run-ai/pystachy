@@ -1,6 +1,7 @@
 """Emission component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
+from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
@@ -496,8 +497,11 @@ def gen_reboxes(self, a: str, b: str) -> bool:
 
 def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
     # v as a t, computed at the end of block label (before its terminator), where it reaches a
-    # phi from: an int boxed as an int | None, or an int | None known not to be None unboxed
-    if not self.converts(v.t, t):
+    # phi from: an int boxed as an int | None, an int | None known not to be None unboxed, or a
+    # promoting int narrowed (bigints.py), whose test branches: convedge is then the block the
+    # value reaches the phi from (label where no code does)
+    self.convedge = label
+    if not self.converts(v.t, t) and not narrows(v.t, t):
         return self.coerce(v, t)  # (no code)
     for b in self.fn.blocks:
         if b.label == label:
@@ -517,19 +521,24 @@ def gen_boxes(self, a: str, b: str) -> bool:
     return (is_sopt(b) and a == unopt(b)) or self.uboxes(a, b) or self.reboxes(a, b)
 
 def gen_convert_in(self, v: Val, t: str, blk: Blk) -> Val:
-    # v as a t, at the end of block blk, which has ended (see convert_at)
+    # v as a t, at the end of block blk, which has ended (see convert_at): a test the conversion
+    # makes branches, and its end, convedge, is a block of its own, which takes blk's terminator
     here = self.blk
     cur = self.cur
     term = self.term
+    handler = self.handler
     self.blk = blk
     last = blk.code.pop()
     self.cur = blk.label
     self.term = False
+    self.handler = blk.handler  # (a test's raise goes where one in blk would)
     r = self.deref(v) if is_sopt(v.t) and t == unopt(v.t) else self.coerce(v, t)
-    blk.code.append(last)
+    self.blk.code.append(last)
+    self.convedge = self.cur
     self.blk = here
     self.cur = cur
     self.term = term
+    self.handler = handler
     return r
 
 def gen_sconst(self, s: str) -> str:

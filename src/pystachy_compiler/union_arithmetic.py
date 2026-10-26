@@ -65,7 +65,8 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
     result_type = self.union_type([r.t for r in results])
     ph = Ins("phi", result_type, "")
     for i in range(len(results)):
-        self.incoming(ph, self.convert_at(results[i], result_type, edges[i]).v, edges[i])
+        r = self.convert_at(results[i], result_type, edges[i])
+        self.incoming(ph, r.v, self.convedge)
     return Val(self.phi(ph), result_type)
 
 def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
@@ -103,7 +104,8 @@ def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
         self.err(f"unsupported call {name}() of {typestr(u.t)}: its members' results ({', '.join([typestr(r.t) for r in results])}) have no union")
     ph = Ins("phi", result_type, "")
     for j in range(len(results)):
-        self.incoming(ph, self.convert_at(results[j], result_type, edges[j]).v, edges[j])
+        r = self.convert_at(results[j], result_type, edges[j])
+        self.incoming(ph, r.v, self.convedge)
     return Val(self.phi(ph), result_type)
 
 def gen_uorders(self, a: str, b: str) -> bool:
