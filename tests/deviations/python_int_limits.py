@@ -2,10 +2,10 @@
 # Documented deviation (docs/python-int.md#64-bit-boundaries): a promoting int is two words in
 # variables, arguments, returns, fields, globals, closures, tuples and int | None, but 64-bit
 # storage and the builtins that take an int keep 64-bit ints for now (#907). A value past 64 bits
-# stored in a list, dict or set (also in a tuple or an int | None there), a tuple's int | None item
-# or a generator's yield, given to range(), added by sum() among floats, or in a NamedTuple that may
-# be None (a parameter) hashed as the tuple of its fields, raises OverflowError, where CPython goes
-# on with the bigger int.
+# stored in a list, dict or set (also in a tuple or an int | None there), a tuple's int | None item,
+# the union of a bool and an int (a result that is either) or a generator's yield, given to
+# range(), added by sum() among floats, or in a NamedTuple that may be None (a parameter) hashed as
+# the tuple of its fields, raises OverflowError, where CPython goes on with the bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected.
 from typing import NamedTuple
@@ -13,6 +13,12 @@ from typing import NamedTuple
 
 def gen(n: int):
     yield n
+
+
+def flag_or(c: bool, n: int):
+    if c:
+        return c
+    return n
 
 
 class Ratio(NamedTuple):
@@ -54,6 +60,10 @@ try:
         print(v)
 except OverflowError as e:
     print("yield:", e)
+try:
+    print(flag_or(True, 1), flag_or(False, big))
+except OverflowError as e:
+    print("bool join:", e)
 try:
     print(range(big))
 except OverflowError as e:

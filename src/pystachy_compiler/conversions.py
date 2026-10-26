@@ -145,8 +145,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
-    if t == BIG and (v.t == "int" or v.t == "bool"):
-        return self.to_big(v)  # (a promoting int: bigints.py)
+    if t == BIG and v.t == "int":
+        return self.to_big(v)  # (a promoting int: bigints.py; a bool is rejected, as in a module that does not opt in)
     if t == BIGOPT and (v.t == BIG or v.t == "int"):
         return self.big_box(self.to_big(v))  # (an int | None of a module that opts in: bigints.py)
     if v.t == BIGOPT and t != "":
