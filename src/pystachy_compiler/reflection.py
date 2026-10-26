@@ -460,7 +460,8 @@ def gen_refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) 
         return Val("null", "None")
     ph = Ins("phi", t, "")
     for j in range(len(vals)):
-        self.incoming(ph, self.convert_at(vals[j], t, blocks[j]).v, blocks[j])
+        r = self.convert_at(vals[j], t, blocks[j])
+        self.incoming(ph, r.v, self.convedge)
     r = Val(self.phi(ph), t)
     if numeric_identity(t) and all(v.idfrom != "" or v.t == "None" for v in vals):
         # Field reads snapshot before later operands can change them. Select that

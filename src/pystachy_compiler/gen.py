@@ -1226,6 +1226,9 @@ class Gen:
         self.n = 0
         self.cur = "entry"
         self.term = False
+        # the block convert_at's value reaches its phi from, which its caller reads at once (a
+        # conversion's test may end it in a block of its own): no state a pass or dry() keeps
+        self.convedge = ""
         self.line = 0
         self.curfn = FnInfo("<module>", "@main.init", mk("block", "", 0, []), "")
         self.fn = IFn(self.curfn)  # the function being built

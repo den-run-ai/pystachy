@@ -1,6 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
+from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
@@ -2973,9 +2974,12 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     ph = Ins("phi", t, "")
     if e1 != "":
         a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)
+        e1 = self.convedge  # (where a promoting int's test ended it: convert_at)
         self.incoming(ph, a.v, e1)
     if e2 != "":
         b = self.coerce(b, t)
+        e2 = "" if self.term else self.cur  # (as for e1)
+    if e2 != "":
         self.incoming(ph, b.v, e2)
     self.br(l3)
     self.place(l3)
@@ -3021,10 +3025,18 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False)
     e1 = self.cur
     l2 = self.label()
     l3 = self.label()
-    if n.s == "and":
+    if n.s == "and" and BIG in a.t and not ascond:
+        # x and y with x a promoting int: a false x is narrowed where it goes to the join (e1),
+        # if the join holds 64-bit ints (convert_at), and a true one, which goes to y, is not
+        e1 = self.label()
+        self.cbr(c, l2, e1)
+        self.place(e1)
+        self.br(l3)
+    elif n.s == "and":
         self.cbr(c, l2, l3)
-    elif is_sopt(a.t) and not ascond:
-        # x or y with x an int | None: a true x is unboxed where it goes to the join (e1)
+    elif (is_sopt(a.t) or BIG in a.t) and not ascond:
+        # x or y with x an int | None: a true x is unboxed where it goes to the join (e1), and a
+        # promoting int narrowed there (as for and)
         e1 = self.label()
         self.cbr(c, e1, l2)
         self.place(e1)
@@ -3049,7 +3061,9 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False)
     if not ascond and not self.term and a.t != b.t and self.join(a.t, b.t) == BIG:
         rt = BIG  # (an int and a promoting int: either one, as a promoting int)
     ph = Ins("phi", rt, "")
-    a = self.convert_at(a, rt, e1) if not ascond and self.converts(a.t, rt) else a
+    if not ascond and (self.converts(a.t, rt) or narrows(a.t, rt)):
+        a = self.convert_at(a, rt, e1)
+        e1 = self.convedge  # (where a promoting int's test ended it: convert_at)
     self.incoming(ph, a.v, e1)
     if not self.term:
         b = self.coerce(b, rt)

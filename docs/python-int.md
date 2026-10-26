@@ -91,8 +91,9 @@ These places keep 64-bit ints for now. A value past 64 bits that reaches one rai
 `OverflowError: Python int too large to convert to C long` (CPython's message for an int too big
 for a C `long`), where CPython goes on with the bigger int:
 
-- The items of lists, dicts, sets and tuples, `int | None` and other unions, and the values a
-  generator yields or receives (`tests/deviations/python_int_limits.py`).
+- The items of lists, dicts, sets and tuples, `int | None` and other unions (also where a join
+  makes one: `x if c else None`, `x or None`, overriding methods that return either), and the
+  values a generator yields or receives (`tests/deviations/python_int_limits.py`).
 - An `int` parameter of a function in a module that does not opt in. Its unannotated parameters
   take the promoting int, so arithmetic there promotes too.
 - Builtins and methods that take an int: `range()`, indexing and slicing, `divmod()`, the other
@@ -181,6 +182,8 @@ the first measurements, before the inline paths, in
   cases, subnormals, signed zeros and its errors.
 - `tests/programs/numbers/python_int_storage.py`: values that fit in containers, tuples and unions
   that annotations name, displays, dataclass and NamedTuple fields, and `type()`.
+- `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
+  `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_spellings.py`: quoted and `Final` annotations, in modules
   that opt in and into one that does not.
 - `tests/programs/numbers/python_int_roots.py`: values whose digits only a module variable, a

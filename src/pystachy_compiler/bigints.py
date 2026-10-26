@@ -24,6 +24,12 @@ PROMOTES: list[str] = ["+", "-", "*", "//", "<<", "**"]
 NARROW = "OverflowError: Python int too large to convert to C long"
 
 
+def narrows(a: str, b: str) -> bool:
+    # does a value of type a become one of type b by a test that it fits (a promoting int into
+    # 64-bit storage, big_narrow), which raises: a conversion that branches (Gen.convert_at)
+    return a == BIG and b != BIG and b != ""
+
+
 def narrowed(ts: list[str]) -> list[str]:
     # the types ts as members of an annotation's container, tuple or union, which hold 64-bit ints
     return ["int" if t == BIG else t for t in ts]

@@ -1207,7 +1207,8 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             self.err(f"overrides of {short(o.t)}.{f.name}() return incompatible types; use a common return type")
     ph = Ins("phi", t, "")
     for i in range(len(vals)):
-        self.incoming(ph, self.convert_at(vals[i], t, edges[i]).v, edges[i])
+        r = self.convert_at(vals[i], t, edges[i])
+        self.incoming(ph, r.v, self.convedge)
     self.place(end)
     if len(vals) == 0:
         self.unreachable()
