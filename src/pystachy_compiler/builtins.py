@@ -9,6 +9,7 @@ from src.pystachy_compiler.reflection import VARS_USES
 from src.pystachy_compiler.specs import (
     ARITY,
     BIG,
+    BIGOPT,
     CALLS,
     DEFAULTS,
     ERRNO,
@@ -670,7 +671,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         bv = self.big_builtin(name, vals) if len(kws) == 0 else Val("", "")  # (promoting ints: bigints.py)
         if bv.t != "":
             return bv
-        vals = [self.big_narrow(v) for v in vals]
+        if not ((name == "min" or name == "max") and BIGOPT in [v.t for v in vals]):
+            vals = [self.big_narrow(v) for v in vals]  # (but min() and max() of an int | None compare them as they are)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
         return self.dyn_sum(self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
@@ -735,7 +737,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         bv = self.big_builtin(name, vals) if len(kws) == 0 else Val("", "")  # (an int | None's promoting int, unwrapped: bigints.py)
         if bv.t != "":
             return bv
-        vals = [self.big_narrow(v) for v in vals]
+        if not ((name == "min" or name == "max") and BIGOPT in [v.t for v in vals]):
+            vals = [self.big_narrow(v) for v in vals]
     if name not in ["str", "repr", "ascii", "hash", "bool", "min", "max"]:
         vals = [self.big_opt_narrow(v) for v in vals]  # (the others take an int | None's 64-bit int: bigints.py)
     key = f"{name}({','.join([v.t for v in vals])})"
