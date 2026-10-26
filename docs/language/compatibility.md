@@ -385,8 +385,7 @@ above apply to well-formed text (with the surrogate exception described above).
   variables and closures. Containers, tuples, `int | None` and other unions, generator yields,
   the `int` parameters of modules that do not opt in, and builtins and methods that take an int
   (`range()`, indexing, `hex()`, format specifications, `x.bit_length()`, `sum()`'s additions)
-  keep 64-bit ints: a value past 64 bits raises `OverflowError` there, and true division with an
-  operand past 64 bits raises `NotImplementedError`, where CPython goes on
+  keep 64-bit ints: a value past 64 bits raises `OverflowError` there, where CPython goes on
   (`tests/deviations/python_int_limits.py`). Such a module rejects `is` between ints
   (`tests/errors/numbers/python_int_is.py`), and cannot also opt in to dynamic `Any`
   (`tests/errors/numbers/python_int_dynamic_any.py`).

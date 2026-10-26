@@ -37,7 +37,9 @@ print(int("123456789012345678901234567890") % 97)  # 52
   other types. A literal that fits is a 64-bit int until it meets one.
 - The operators `+`, `-`, `*`, `//`, `%`, `&`, `|`, `^`, `<<`, `>>`, `**`, unary `-`, `+` and `~`,
   their augmented assignments, `abs()` and `pow(x, y)` compute CPython's result. `%`, `&`, `|`,
-  `^` and `>>` of two 64-bit ints never overflow, so they stay 64-bit operations.
+  `^` and `>>` of two 64-bit ints never overflow, so they stay 64-bit operations. True division
+  (`/`) is CPython's: the quotient rounded once to the nearest float (halfway cases to even),
+  `OverflowError` past the float range.
 - Comparisons are exact, also between an int and a float (`2 ** 53 + 1 > 9007199254740992.0`),
   as are truth, `min()` and `max()` of int arguments, `isinstance(x, int)` and equality with a
   `str`, `bytes` or container, which is never true.
@@ -99,13 +101,9 @@ for a C `long`), where CPython goes on with the bigger int:
   past 64 bits). Membership in a container of ints or a `range` is exact: an int past 64 bits is
   not in it.
 
-True division (`/`) of two ints that fit gives CPython's correctly rounded float; with an operand
-past 64 bits it raises `NotImplementedError`.
-
 ## Deviations
 
-- A value past 64 bits at a [64-bit boundary](#64-bit-boundaries) raises `OverflowError`, and
-  true division with an operand past 64 bits raises `NotImplementedError`
+- A value past 64 bits at a [64-bit boundary](#64-bit-boundaries) raises `OverflowError`
   (`tests/deviations/python_int_limits.py`).
 - `is` between two ints is rejected during compilation in a module that opts in
   (`tests/errors/numbers/python_int_is.py`): CPython's result depends on its small-int cache.
@@ -164,6 +162,8 @@ the first measurements, before the inline paths, in
   (`tests/python_int_modules/`).
 - `tests/programs/numbers/python_int_bounds.py`: the inline paths of `//`, `%`, `<<` and `>>` at
   their edges, results that always fit, and shifts past memory.
+- `tests/programs/numbers/python_int_truediv.py`: true division across the float range, halfway
+  cases, subnormals, signed zeros and its errors.
 - `tests/programs/numbers/python_int_storage.py`: values that fit in containers, tuples and unions
   that annotations name, displays, dataclass and NamedTuple fields, and `type()`.
 - `tests/programs/numbers/python_int_spellings.py`: quoted and `Final` annotations, in modules

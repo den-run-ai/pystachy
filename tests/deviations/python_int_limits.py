@@ -4,8 +4,7 @@
 # and methods that take an int, keep 64-bit ints for now (#907). A value past 64 bits stored in a
 # list, dict, set, tuple, int | None or a generator's yield, or given to hex(), a format
 # specification, an int method or sum(), raises OverflowError, where CPython goes on with the bigger
-# int; true division with an operand past 64 bits raises NotImplementedError, where CPython rounds
-# the quotient.
+# int.
 
 
 def gen(n: int):
@@ -38,10 +37,6 @@ try:
         print(v)
 except OverflowError as e:
     print("yield:", e)
-try:
-    print(big / 3)
-except NotImplementedError as e:
-    print("division:", e)
 try:
     print(hex(big))
 except OverflowError as e:
