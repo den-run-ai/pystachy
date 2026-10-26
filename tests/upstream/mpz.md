@@ -57,6 +57,11 @@ or C-API/refcount internals, and exhaustive/random huge-memory fixtures.
   cutoffs (70 digits, 140 for squares) and with lopsided sizes, checking
   commutativity, distributivity, residues and exact division, and squares by
   powers up to 40,000 bits; CPython checks the printed digests.
+- [mpz_division.py](../programs/numbers/mpz_division.py) divides with divisors whose
+  top digit has every bit length (every normalization shift), one-digit divisors,
+  quotients of one bit to hundreds of digits, quotient digits of 2^30 - 1 that need
+  the add-back step, remainders of 0 and divisor - 1, every sign combination and
+  dividends below the divisor; CPython checks the printed digests.
 - [mpz_storage.py](../programs/numbers/mpz_storage.py) retains values through typed
   fields, returns, list items, dictionary keys and set membership, while creating
   further allocations. Aliases and copies keep their values after arithmetic and
@@ -78,7 +83,7 @@ or C-API/refcount internals, and exhaustive/random huge-memory fixtures.
 ## Reproduce
 
 ```sh
-PYTHON=python3.13 tests/record.sh mpz_arithmetic mpz_cpython_long mpz_cpython_long_division mpz_cpython_long_bitops mpz_cpython_int mpz_cpython_text mpz_text_boundaries mpz_multiplication mpz_storage mpz_limits mpz_applications mpz_dynamic mpz_shadow
+PYTHON=python3.13 tests/record.sh mpz_arithmetic mpz_cpython_long mpz_cpython_long_division mpz_cpython_long_bitops mpz_cpython_int mpz_cpython_text mpz_text_boundaries mpz_multiplication mpz_division mpz_storage mpz_limits mpz_applications mpz_dynamic mpz_shadow
 PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/numbers/mpz_*.py tests/programs/imports/mpz_shadow.py tests/errors/library/mpz_*.py
 PYSTACHY_GC_STRESS_PROGRAM=1 PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/numbers/mpz_*.py tests/programs/imports/mpz_shadow.py tests/errors/library/mpz_*.py
 ```

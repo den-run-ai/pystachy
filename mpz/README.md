@@ -1,10 +1,10 @@
 # Minimal arbitrary-precision integer core
 
 `mpz.c` is included by `runtime.c`. It adapts MicroPython v1.26.1's
-`mpn_mul_dig_add_dig` and `mpn_div` arithmetic to immutable,
-garbage-collected values with an inline array of 30-bit digits in `uint32_t`
-slots. The sign and length occupy one signed 64-bit word. Published operands
-are never modified; temporary results and conversion scratch are private.
+`mpn_mul_dig_add_dig` to immutable, garbage-collected values with an inline
+array of 30-bit digits in `uint32_t` slots. The sign and length occupy one signed
+64-bit word. Published operands are never modified; temporary results and
+conversion scratch are private.
 
 Upstream: <https://github.com/micropython/micropython/blob/v1.26.1/py/mpz.c>
 
@@ -12,8 +12,8 @@ SHA-256 of the inspected original `py/mpz.c`:
 `6be02893c2c7f2f38cd4bb41f2398d2c72187c9064b1d5910a6a933aec1d40ea`.
 The source's MIT license is preserved in `mpz.c` and the repository notices.
 
-Text conversion, addition, subtraction and multiplication follow CPython
-3.13.16's `Objects/longobject.c`:
+Text conversion and arithmetic follow CPython 3.13.16's
+`Objects/longobject.c`:
 
 - `long_from_binary_base` packs power-of-two bases in linear time,
   `long_from_non_binary_base` multiplies and adds the largest group of digits
@@ -27,6 +27,10 @@ Text conversion, addition, subtraction and multiplication follow CPython
   `v_isub`) uses Karatsuba's three half-size products above CPython's cutoff of
   70 digits (140 for squares), and `k_lopsided_mul` multiplies a much longer
   operand slice by slice.
+- `x_divrem` divides by Knuth's Algorithm D: both operands are shifted so the
+  divisor's top digit has its high bit set, and each quotient digit is
+  estimated from two dividend digits, corrected with the divisor's second digit
+  and fixed by at most one add-back. `divrem1` divides by a one-digit divisor.
 
 These parts are used under the Python Software Foundation License Version 2
 (see the repository notices).
@@ -41,12 +45,12 @@ SHA-256 of the inspected `Objects/longobject.c`, from python.org's
 
 The Pystachy adapter supplies allocation and size checks, parsing, sign and
 floor-division rules, infinite two's-complement bitwise operations, shifts,
-64-bit checked conversion, hashing and decimal formatting. Division and
-normalization use indexed loops so they do not form pointers before arrays.
+64-bit checked conversion and hashing. Its loops are indexed so they never form
+a pointer before an array.
 No external bigint library or embedded CPython is needed.
 
-Normalized long division is schoolbook and multiplication stops at Karatsuba,
-as in CPython; this is not a claim of GMP performance. The parser
+Long division is quadratic and multiplication stops at Karatsuba, as in
+CPython for these sizes; this is not a claim of GMP performance. The parser
 reuses Pystachy's Unicode numeric normalization and CPython-style base/prefix/
 underscore rules. Non-power-of-two input and decimal output use CPython's
 default 4300-digit limit; changing that limit is not supported by this module.
