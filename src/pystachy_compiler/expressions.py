@@ -766,14 +766,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         # {} | d: the empty display takes d's type (it has nothing to evaluate first)
         b = self.expr(n.kids[1], "", resultsoft=resultsoft)
         return self.arith(n.s, self.expr(n.kids[0], unopt(b.t) if is_dict(unopt(b.t)) else ""), b)
-    if k == "binop" and n.s == "&" and not dynamic_program() and (wraps(n.kids[0]) or wraps(n.kids[1])):
-        return self.masked(n, want, resultsoft)
     if k == "binop":
         scalar_fn = self.fn
         scalar_held = scalar_fn.scalar_reads
         if not scalar_held and dynamic_program() and self.scalar_read_value(n):
             scalar_fn.scalar_reads = True
         try:
+            if n.s == "&" and (wraps(n.kids[0]) or wraps(n.kids[1])):
+                return self.masked(n, want, resultsoft)
             a = self.expr(n.kids[0], want, resultsoft=resultsoft)
             return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
         finally:
@@ -3711,6 +3711,8 @@ def gen_masked(self, n: Node, want: str, resultsoft: bool) -> Val:
         if bad.v != "false":
             self.guard(bad.v, "OverflowError: integer result does not fit in 64 bits")
         return self.arith("&", x, y)
+    if dynamic_program() and x.lit and y.lit and folded_int("&", x.v, y.v) != "":
+        return self.arith("&", x, y)  # (folded, as in gen_wexpr)
     # inexact where both sides are, or one side is and the other is negative (a literal's sign is
     # known; another's is tested only where the other side can be inexact)
     bad = Val("false", "bool")
@@ -3745,6 +3747,10 @@ def gen_wexpr(self, e: Node, want: str, resultsoft: bool) -> list[Val]:
         if flag.v != "false":
             self.guard(flag.v, "OverflowError: integer result does not fit in 64 bits")
         return [self.arith(e.s, x, y), Val("false", "bool")]
+    if dynamic_program() and x.lit and y.lit and folded_int(e.s, x.v, y.v) != "":
+        # literals that fold within 64 bits: gen_arith folds them in a Dynamic Any program, where
+        # the result shares its literal's constant box (999 + 1 is 1000)
+        return [self.arith(e.s, x, y), flag]
     x = Val(x.v, "int")
     y = Val(y.v, "int")
     if e.s in CHECKED:
