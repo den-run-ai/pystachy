@@ -28,7 +28,7 @@ The complete original files were fetched before adaptation. Their license is
 
 | Fixture | Preserved cases | Adaptation |
 |---|---|---|
-| [mpz_cpython_long.py](../programs/numbers/mpz_cpython_long.py) | `LongTest.check_division` and all twelve fixed `test_division` corner cases; `check_bitop_identities_1/2`; `test_karatsuba` multiplication identity; `test_bit_length` power boundaries; `test_hash` | Explicit `mpz`, decimal strings for oversized literals, standalone assertions, `//` and `%` instead of `divmod`, `.abs()` and `.pow()`. Four sign combinations for the division cases. Deterministic bounded values replace random/exhaustive loops. Multiplication tests do not claim a Karatsuba implementation. |
+| [mpz_cpython_long.py](../programs/numbers/mpz_cpython_long.py) | `LongTest.check_division` and all twelve fixed `test_division` corner cases; `check_bitop_identities_1/2`; `test_karatsuba` multiplication identity; `test_bit_length` power boundaries; `test_hash` | Explicit `mpz`, decimal strings for oversized literals, standalone assertions, `//` and `%` instead of `divmod`, `.abs()` and `.pow()`. Four sign combinations for the division cases. Deterministic bounded values replace random/exhaustive loops. Its multiplication identities (up to 1024 bits) stay below the 70-digit Karatsuba cutoff. |
 | [mpz_cpython_int.py](../programs/numbers/mpz_cpython_int.py) | `IntTestCases.test_basic` base-2..36 representations of `2**32+1`, whitespace/sign and prefix checks; `test_invalid_signs`; `test_unicode`; explicit string cases from `test_underscores`; `test_int_base_limits` | Explicit `mpz`, expected decimal strings, assertions/caught exception classes. Additional prefix/underscore boundaries. |
 | [mpz_cpython_long_division.py](../programs/numbers/mpz_cpython_long_division.py) | `test_division` with seeded `getran()` operands of 1–15, 70–83 and 210 digits (900 pairs); `test_karatsuba` for operands up to 700 digits; `test_square` for bit lengths 1–399 | The cases [upstream_int_arith.py](../programs/upstream/upstream_int_arith.py) excludes for needing more than 64 bits. `getran()` keeps upstream's `random.random()` draws; its masks are computed once per bit count. Printed digests of quotients, remainders and products are CPython's. Excludes `test_karatsuba`'s 210,000-bit operands. |
 | [mpz_cpython_long_bitops.py](../programs/numbers/mpz_cpython_long_bitops.py) | `test_bitop_identities` (special values including `0xaaaaaaaaaaaaaaaa`, `getran()` operands of 1–15 digits, `check_bitop_identities_1/2/3`); negative, zero and huge shift counts; the 2**127 and 2**128 shift cases; `test_bit_length` at 63, 64 and 234 | As above. Shift counts are native ints, so `1 << 1000` counts become `sys.maxsize` and `-sys.maxsize - 1`. Powers of two and masks are computed once per bit count, and special values' complements and negations as they are checked, to bound the cost of a collection at every allocation. |
@@ -52,6 +52,11 @@ or C-API/refcount internals, and exhaustive/random huge-memory fixtures.
   100,001-digit power-of-two-base strings; formats values around powers of 10^9
   and 2^30 and at the 4300-digit limit; and checks CPython's order of errors for a
   base-0 literal with a leading zero past the digit limit.
+- [mpz_multiplication.py](../programs/numbers/mpz_multiplication.py) multiplies and
+  squares solid strings of ones and quasi-random operands around the Karatsuba
+  cutoffs (70 digits, 140 for squares) and with lopsided sizes, checking
+  commutativity, distributivity, residues and exact division, and squares by
+  powers up to 40,000 bits; CPython checks the printed digests.
 - [mpz_storage.py](../programs/numbers/mpz_storage.py) retains values through typed
   fields, returns, list items, dictionary keys and set membership, while creating
   further allocations. Aliases and copies keep their values after arithmetic and
@@ -73,7 +78,7 @@ or C-API/refcount internals, and exhaustive/random huge-memory fixtures.
 ## Reproduce
 
 ```sh
-PYTHON=python3.13 tests/record.sh mpz_arithmetic mpz_cpython_long mpz_cpython_long_division mpz_cpython_long_bitops mpz_cpython_int mpz_cpython_text mpz_text_boundaries mpz_storage mpz_limits mpz_applications mpz_dynamic mpz_shadow
+PYTHON=python3.13 tests/record.sh mpz_arithmetic mpz_cpython_long mpz_cpython_long_division mpz_cpython_long_bitops mpz_cpython_int mpz_cpython_text mpz_text_boundaries mpz_multiplication mpz_storage mpz_limits mpz_applications mpz_dynamic mpz_shadow
 PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/numbers/mpz_*.py tests/programs/imports/mpz_shadow.py tests/errors/library/mpz_*.py
 PYSTACHY_GC_STRESS_PROGRAM=1 PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/numbers/mpz_*.py tests/programs/imports/mpz_shadow.py tests/errors/library/mpz_*.py
 ```
