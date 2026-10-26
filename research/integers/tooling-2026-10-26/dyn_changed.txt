@@ -1,0 +1,9 @@
+tests/programs/inference/dynany_json.py
+tests/programs/inference/dynany_json_app.py
+tests/programs/library/lib_tomllib.py
+tests/programs/library/lib_tomllib_dynamic.py
+tests/programs/library/lib_tomllib_uncaught.py
+tests/programs/upstream/upstream_json_decode_core.py
+tests/programs/upstream/upstream_tomllib_data.py
+tests/programs/upstream/upstream_tomllib_misc.py
+tests/programs/inference/dynany_identity_folded_ints.py

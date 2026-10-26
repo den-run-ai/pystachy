@@ -1,0 +1,2 @@
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python3.13 tools/check_runtime.py
+523 RUNTIME entries, 70 exception classes: signatures, coverage and effects agree with runtime.c and runtime.py (171 functions, none of which reaches itself through a lowering or runtime.c), the classes with this Python

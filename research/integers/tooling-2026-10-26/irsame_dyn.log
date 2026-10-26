@@ -1,0 +1,163 @@
+DIFF tests/programs/inference/dynany_json.py
+  IR from line 10352 (in @m.json$_Parser.key):
+@@ -10349,18 +10349,18 @@
+   store ptr zeroinitializer, ptr %size.box.96
+   %size.boxgen.96 = alloca i64
+   store i64 zeroinitializer, ptr %size.boxgen.96
+-  %slot.126 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.126
+-  %slot.box.126 = alloca ptr
+-  store ptr zeroinitializer, ptr %slot.box.126
+-  %slot.boxgen.126 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.boxgen.126
+-  %known.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.137
+-  %raw.181 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.181
+-  %text.196 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.196
+DIFF tests/programs/inference/dynany_json_app.py
+  IR from line 5680 (in @m.json$_Parser.key):
+@@ -5677,18 +5677,18 @@
+   store ptr zeroinitializer, ptr %size.box.96
+   %size.boxgen.96 = alloca i64
+   store i64 zeroinitializer, ptr %size.boxgen.96
+-  %slot.126 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.126
+-  %slot.box.126 = alloca ptr
+-  store ptr zeroinitializer, ptr %slot.box.126
+-  %slot.boxgen.126 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.boxgen.126
+-  %known.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.137
+-  %raw.181 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.181
+-  %text.196 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.196
+DIFF tests/programs/library/lib_tomllib.py
+  IR from line 25166 (in @f.re$_sre$_charset_memo.1):
+@@ -25163,14 +25163,14 @@
+   store i64 zeroinitializer, ptr %ch.boxgen.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %slot.box.34 = alloca ptr
+-  store ptr zeroinitializer, ptr %slot.box.34
+-  %slot.boxgen.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.boxgen.34
+-  %member.81 = alloca i1
+-  store i1 zeroinitializer, ptr %member.81
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %slot.box.36 = alloca ptr
++  store ptr zeroinitializer, ptr %slot.box.36
+DIFF tests/programs/library/lib_tomllib_dynamic.py
+  IR from line 14904 (in @f.re$_sre$_charset_memo.1):
+@@ -14901,14 +14901,14 @@
+   store i64 zeroinitializer, ptr %ch.boxgen.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %slot.box.34 = alloca ptr
+-  store ptr zeroinitializer, ptr %slot.box.34
+-  %slot.boxgen.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.boxgen.34
+-  %member.81 = alloca i1
+-  store i1 zeroinitializer, ptr %member.81
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %slot.box.36 = alloca ptr
++  store ptr zeroinitializer, ptr %slot.box.36
+DIFF tests/programs/library/lib_tomllib_uncaught.py
+  IR from line 14547 (in @f.re$_sre$_charset_memo.1):
+@@ -14544,14 +14544,14 @@
+   store i64 zeroinitializer, ptr %ch.boxgen.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %slot.box.34 = alloca ptr
+-  store ptr zeroinitializer, ptr %slot.box.34
+-  %slot.boxgen.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.boxgen.34
+-  %member.81 = alloca i1
+-  store i1 zeroinitializer, ptr %member.81
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %slot.box.36 = alloca ptr
++  store ptr zeroinitializer, ptr %slot.box.36
+DIFF tests/programs/upstream/upstream_json_decode_core.py
+  IR from line 6396 (in @m.json$_Parser.key):
+@@ -6393,18 +6393,18 @@
+   store ptr zeroinitializer, ptr %size.box.96
+   %size.boxgen.96 = alloca i64
+   store i64 zeroinitializer, ptr %size.boxgen.96
+-  %slot.126 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.126
+-  %slot.box.126 = alloca ptr
+-  store ptr zeroinitializer, ptr %slot.box.126
+-  %slot.boxgen.126 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.boxgen.126
+-  %known.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.137
+-  %raw.181 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.181
+-  %text.196 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.196
+DIFF tests/programs/upstream/upstream_tomllib_data.py
+  IR from line 15355 (in @f.re$_sre$_charset_memo.1):
+@@ -15352,14 +15352,14 @@
+   store i64 zeroinitializer, ptr %ch.boxgen.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %slot.box.34 = alloca ptr
+-  store ptr zeroinitializer, ptr %slot.box.34
+-  %slot.boxgen.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.boxgen.34
+-  %member.81 = alloca i1
+-  store i1 zeroinitializer, ptr %member.81
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %slot.box.36 = alloca ptr
++  store ptr zeroinitializer, ptr %slot.box.36
+DIFF tests/programs/upstream/upstream_tomllib_misc.py
+  IR from line 25515 (in @f.re$_sre$_charset_memo.1):
+@@ -25512,14 +25512,14 @@
+   store i64 zeroinitializer, ptr %ch.boxgen.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %slot.box.34 = alloca ptr
+-  store ptr zeroinitializer, ptr %slot.box.34
+-  %slot.boxgen.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.boxgen.34
+-  %member.81 = alloca i1
+-  store i1 zeroinitializer, ptr %member.81
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %slot.box.36 = alloca ptr
++  store ptr zeroinitializer, ptr %slot.box.36
+DIFF bench/pyperformance/json_loads.py
+  IR from line 432:
+@@ -429,82 +429,83 @@
+ @s.153 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.154 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.155 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
+-@s.156 = private unnamed_addr global {i64, i64, i64, [8 x i8]} {i64 7, i64 0, i64 8, [8 x i8] c": line \00"}, align 8
+-@s.157 = private unnamed_addr global {i64, i64, i64, [9 x i8]} {i64 8, i64 0, i64 9, [9 x i8] c" column \00"}, align 8
+-@s.158 = private unnamed_addr global {i64, i64, i64, [8 x i8]} {i64 7, i64 0, i64 8, [8 x i8] c" (char \00"}, align 8
+-@s.159 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c")\00"}, align 8
+-@s.160 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"\01UnicodeEncodeError\01\00"}, align 8
+-@s.161 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"utf-8\00"}, align 8
+-@s.162 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"surrogatepass\00"}, align 8
+-@s.163 = private unnamed_addr global {i64, i64, i64, [16 x i8]} {i64 15, i64 0, i64 16, [16 x i8] c"Expecting value\00"}, align 8
+-@s.164 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"maximum JSON nesting depth exceeded\00"}, align 8
+-@s.165 = private unnamed_addr global {i64, i64, i64, [15 x i8]} {i64 14, i64 0, i64 15, [15 x i8] c"RecursionError\00"}, align 8
++@s.156 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
++@s.157 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"ValueError\00"}, align 8
+9 of 3677 differ

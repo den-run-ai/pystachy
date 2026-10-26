@@ -1,0 +1,48 @@
+DIFF pystachy.py
+  IR from line 46190 (in @m.src$pystachy_compiler$lexer$Lexer.number):
+@@ -46187,10 +46187,10 @@
+   store i64 zeroinitializer, ptr %bits.291
+   %d0.303 = alloca i64
+   store i64 zeroinitializer, ptr %d0.303
+-  %isf.418 = alloca i1
+-  store i1 zeroinitializer, ptr %isf.418
+-  %k.539 = alloca i64
+-  store i64 zeroinitializer, ptr %k.539
++  %isf.420 = alloca i1
++  store i1 zeroinitializer, ptr %isf.420
++  %k.541 = alloca i64
++  store i64 zeroinitializer, ptr %k.541
+   store ptr %a0, ptr %self.1
+   %t2 = load ptr, ptr %self.1
+   %t3 = getelementptr %C.src$pystachy_compiler$lexer$Lexer, ptr %t2, i32 0, i32 0
+@@ -46642,793 +46642,795 @@
+DIFF tests/programs/apps/example_linediff.py
+  IR from line 1060:
+@@ -1057,7 +1057,7 @@
+ @s.129 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\00"}, align 8
+ @s.130 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"u\00"}, align 8
+ @s.131 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3sis\00"}, align 8
+-@s.132 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/pystachy/build/ref/lib/types.py)\00"}, align 8
++@s.132 = private unnamed_addr global {i64, i64, i64, [82 x i8]} {i64 81, i64 0, i64 82, [82 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/pystachy/lib/types.py)\00"}, align 8
+ @s.133 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.134 = private unnamed_addr global {i64, i64, i64, [18 x i8]} {i64 17, i64 0, i64 18, [18 x i8] c"get_close_matches\00"}, align 8
+ @s.135 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"ndiff\00"}, align 8
+DIFF tests/programs/apps/example_mailmerge.py
+  IR from line 992:
+@@ -989,7 +989,7 @@
+ @s.75 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\00"}, align 8
+ @s.76 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"u\00"}, align 8
+ @s.77 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3sis\00"}, align 8
+-@s.78 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/pystachy/build/ref/lib/types.py)\00"}, align 8
++@s.78 = private unnamed_addr global {i64, i64, i64, [82 x i8]} {i64 81, i64 0, i64 82, [82 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/pystachy/lib/types.py)\00"}, align 8
+ @s.79 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.80 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"ascii_letters\00"}, align 8
+ @s.81 = private unnamed_addr global {i64, i64, i64, [16 x i8]} {i64 15, i64 0, i64 16, [16 x i8] c"ascii_lowercase\00"}, align 8
+@@ -4744,10 +4744,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+253 of 3674 differ

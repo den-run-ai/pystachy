@@ -1,0 +1,2259 @@
+{
+  "schema": 1,
+  "corpus_cases": 1726,
+  "corpus_sha256": "81e7010e39a555e6309631ecafa24b7dee6e3936310250a789f75dd1eedeba8d",
+  "exceptions_sha256": "f26bca601e6e146460745a46a5c15c1c404e7022d8238f4421fcf2a6d23ff22e",
+  "shard_index": 0,
+  "shard_count": 1,
+  "modes": [
+    "jit",
+    "aot"
+  ],
+  "cases": [
+    "tests/programs/apps/example_mailmerge.py",
+    "tests/programs/apps/example_montecarlo.py",
+    "tests/programs/apps/example_route.py",
+    "tests/programs/apps/example_route_empty.py",
+    "tests/programs/apps/example_urlstats.py",
+    "tests/programs/apps/port_roman_convert.py",
+    "tests/programs/apps/port_roman_validate.py",
+    "tests/programs/containers/range_value.py",
+    "tests/programs/containers/tuple_runtime_regex.py",
+    "tests/programs/imports/import_module_attr_same_name.py",
+    "tests/programs/inference/dynany_identity_folded_ints.py",
+    "tests/programs/inference/dynany_json.py",
+    "tests/programs/inference/dynany_json_app.py",
+    "tests/programs/language/walrus.py",
+    "tests/programs/library/json_errors.py",
+    "tests/programs/library/json_mutation.py",
+    "tests/programs/library/json_roundtrip.py",
+    "tests/programs/library/json_scanner.py",
+    "tests/programs/library/json_unicode.py",
+    "tests/programs/library/lib_binascii.py",
+    "tests/programs/library/lib_datetime_timedelta.py",
+    "tests/programs/library/lib_difflib.py",
+    "tests/programs/library/lib_fnmatch.py",
+    "tests/programs/library/lib_fnmatch_raw_bytes.py",
+    "tests/programs/library/lib_fnmatch_unicode_ranges.py",
+    "tests/programs/library/lib_html.py",
+    "tests/programs/library/lib_html_entities.py",
+    "tests/programs/library/lib_html_parser.py",
+    "tests/programs/library/lib_html_parser_positions.py",
+    "tests/programs/library/lib_random.py",
+    "tests/programs/library/lib_random_distributions.py",
+    "tests/programs/library/lib_random_sequences.py",
+    "tests/programs/library/lib_random_triangular_ints.py",
+    "tests/programs/library/lib_re.py",
+    "tests/programs/library/lib_re_annotations.py",
+    "tests/programs/library/lib_re_bounds.py",
+    "tests/programs/library/lib_re_branch_filter.py",
+    "tests/programs/library/lib_re_branch_runs.py",
+    "tests/programs/library/lib_re_cache.py",
+    "tests/programs/library/lib_re_cache_churn.py",
+    "tests/programs/library/lib_re_charset.py",
+    "tests/programs/library/lib_re_class_span.py",
+    "tests/programs/library/lib_re_codepoints.py",
+    "tests/programs/library/lib_re_first.py",
+    "tests/programs/library/lib_re_flat.py",
+    "tests/programs/library/lib_re_groups.py",
+    "tests/programs/library/lib_re_ignorecase_repeat.py",
+    "tests/programs/library/lib_re_lines.py",
+    "tests/programs/library/lib_re_prefilter.py",
+    "tests/programs/library/lib_re_purge.py",
+    "tests/programs/library/lib_re_raw_subject.py",
+    "tests/programs/library/lib_re_repeat_prefix.py",
+    "tests/programs/library/lib_re_reuse.py",
+    "tests/programs/library/lib_re_unicode_memo.py",
+    "tests/programs/library/lib_re_utf8_overlong.py",
+    "tests/programs/library/lib_shlex.py",
+    "tests/programs/library/lib_shlex_upstream.py",
+    "tests/programs/library/lib_string.py",
+    "tests/programs/library/lib_string_template_kwargs.py",
+    "tests/programs/library/lib_textwrap.py",
+    "tests/programs/library/lib_textwrap_codepoints.py",
+    "tests/programs/library/lib_tomllib.py",
+    "tests/programs/library/lib_tomllib_dynamic.py",
+    "tests/programs/library/lib_tomllib_uncaught.py",
+    "tests/programs/library/lib_unicodedata_chars.py",
+    "tests/programs/library/lib_urllib_parse.py",
+    "tests/programs/library/lib_urllib_parse_cache.py",
+    "tests/programs/library/lib_warnings.py",
+    "tests/programs/library/lib_warnings_main_filter.py",
+    "tests/programs/library/lib_warnings_objects.py",
+    "tests/programs/library/lib_warnings_options.py",
+    "tests/programs/library/lib_warnings_skip_prefixes.py",
+    "tests/programs/library/lib_weakref_dead_eq.py",
+    "tests/programs/library/lib_weakref_eq.py",
+    "tests/programs/library/re_specialize.py",
+    "tests/programs/numbers/arith.py",
+    "tests/programs/numbers/bool_index_unicode_int.py",
+    "tests/programs/numbers/bool_int_args.py",
+    "tests/programs/numbers/bool_int_key.py",
+    "tests/programs/numbers/bool_key_aug.py",
+    "tests/programs/numbers/bool_key_del.py",
+    "tests/programs/numbers/bool_key_missing.py",
+    "tests/programs/numbers/bool_key_pop_missing.py",
+    "tests/programs/numbers/bool_key_tuple_missing.py",
+    "tests/programs/numbers/cmp_none_reflected.py",
+    "tests/programs/numbers/cmp_reflected.py",
+    "tests/programs/numbers/cmp_sequences.py",
+    "tests/programs/numbers/divmod_pow.py",
+    "tests/programs/numbers/eq_none.py",
+    "tests/programs/numbers/eq_none_template.py",
+    "tests/programs/numbers/eq_object_param.py",
+    "tests/programs/numbers/eq_unrelated_scalar.py",
+    "tests/programs/numbers/float_pow_inf.py",
+    "tests/programs/numbers/float_power_rounding.py",
+    "tests/programs/numbers/float_repr.py",
+    "tests/programs/numbers/idiv_zero_big.py",
+    "tests/programs/numbers/inplace.py",
+    "tests/programs/numbers/int64.py",
+    "tests/programs/numbers/int_base_kw.py",
+    "tests/programs/numbers/int_bit_count_none.py",
+    "tests/programs/numbers/int_bit_length.py",
+    "tests/programs/numbers/int_float_compare_edges.py",
+    "tests/programs/numbers/int_float_extremes.py",
+    "tests/programs/numbers/int_masked.py",
+    "tests/programs/numbers/int_whitespace.py",
+    "tests/programs/numbers/is_bool.py",
+    "tests/programs/numbers/math_dist.py",
+    "tests/programs/numbers/math_dist_snapshot.py",
+    "tests/programs/numbers/math_fmod_ieee.py",
+    "tests/programs/numbers/math_fsum.py",
+    "tests/programs/numbers/math_funcs.py",
+    "tests/programs/numbers/math_gamma.py",
+    "tests/programs/numbers/math_hypot_log.py",
+    "tests/programs/numbers/math_isclose.py",
+    "tests/programs/numbers/math_log_base_one.py",
+    "tests/programs/numbers/math_more.py",
+    "tests/programs/numbers/math_prod.py",
+    "tests/programs/numbers/math_prod_protocols.py",
+    "tests/programs/numbers/math_prod_start.py",
+    "tests/programs/numbers/math_varargs.py",
+    "tests/programs/numbers/mpz_applications.py",
+    "tests/programs/numbers/mpz_arithmetic.py",
+    "tests/programs/numbers/mpz_cpython_int.py",
+    "tests/programs/numbers/mpz_cpython_long.py",
+    "tests/programs/numbers/mpz_cpython_long_bitops.py",
+    "tests/programs/numbers/mpz_cpython_long_division.py",
+    "tests/programs/numbers/mpz_cpython_text.py",
+    "tests/programs/numbers/mpz_dynamic.py",
+    "tests/programs/numbers/mpz_limits.py",
+    "tests/programs/numbers/mpz_storage.py",
+    "tests/programs/numbers/numbers_exact.py",
+    "tests/programs/numbers/numeric_container_compare.py",
+    "tests/programs/numbers/operators.py",
+    "tests/programs/numbers/operators_bitwise.py",
+    "tests/programs/numbers/operators_bitwise_targets.py",
+    "tests/programs/numbers/operators_parser.py",
+    "tests/programs/numbers/operators_unary.py",
+    "tests/programs/numbers/pow_modular_inverse.py",
+    "tests/programs/numbers/pow_zero_negative.py",
+    "tests/programs/numbers/round_int.py",
+    "tests/programs/strings/bytes_reads.py",
+    "tests/programs/strings/unicode_library_codepoints.py",
+    "tests/programs/upstream/upstream_builtin_min_max_sum.py",
+    "tests/programs/upstream/upstream_builtin_zip_sorted.py",
+    "tests/programs/upstream/upstream_counter.py",
+    "tests/programs/upstream/upstream_datetime.py",
+    "tests/programs/upstream/upstream_dict_methods.py",
+    "tests/programs/upstream/upstream_float_format.py",
+    "tests/programs/upstream/upstream_fnmatch.py",
+    "tests/programs/upstream/upstream_html_parser.py",
+    "tests/programs/upstream/upstream_int_arith.py",
+    "tests/programs/upstream/upstream_int_format.py",
+    "tests/programs/upstream/upstream_itertools.py",
+    "tests/programs/upstream/upstream_json_decode_core.py",
+    "tests/programs/upstream/upstream_math_integer.py",
+    "tests/programs/upstream/upstream_math_sums.py",
+    "tests/programs/upstream/upstream_ordered_dict.py",
+    "tests/programs/upstream/upstream_random.py",
+    "tests/programs/upstream/upstream_re_errors.py",
+    "tests/programs/upstream/upstream_re_flags.py",
+    "tests/programs/upstream/upstream_re_match.py",
+    "tests/programs/upstream/upstream_re_sub.py",
+    "tests/programs/upstream/upstream_re_tests.py",
+    "tests/programs/upstream/upstream_re_tests_perl.py",
+    "tests/programs/upstream/upstream_textwrap_field_rebind.py",
+    "tests/programs/upstream/upstream_textwrap_indent.py",
+    "tests/programs/upstream/upstream_textwrap_layout.py",
+    "tests/programs/upstream/upstream_textwrap_unicode.py",
+    "tests/programs/upstream/upstream_textwrap_wrap.py",
+    "tests/programs/upstream/upstream_tomllib_data.py",
+    "tests/programs/upstream/upstream_tomllib_misc.py",
+    "tests/programs/upstream/upstream_weakref.py"
+  ],
+  "subset": true,
+  "oracle_cases": 172,
+  "expected_checks": 344,
+  "completed_checks": 344,
+  "passed_checks": 344,
+  "expected_failures": 0,
+  "failures": [],
+  "results": [
+    {
+      "case": "tests/programs/apps/example_mailmerge.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/example_mailmerge.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/example_montecarlo.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/example_montecarlo.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/example_route.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/example_route.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/example_route_empty.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/example_route_empty.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/example_urlstats.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/example_urlstats.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/port_roman_convert.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/port_roman_convert.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/port_roman_validate.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/port_roman_validate.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/containers/range_value.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/containers/range_value.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/containers/tuple_runtime_regex.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/containers/tuple_runtime_regex.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/imports/import_module_attr_same_name.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/imports/import_module_attr_same_name.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_identity_folded_ints.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_identity_folded_ints.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_json.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_json.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_json_app.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_json_app.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/walrus.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/walrus.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_errors.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_errors.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_mutation.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_mutation.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_roundtrip.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_roundtrip.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_scanner.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_scanner.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_unicode.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/json_unicode.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_binascii.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_binascii.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_datetime_timedelta.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_datetime_timedelta.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_difflib.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_difflib.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_fnmatch.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_fnmatch.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_fnmatch_raw_bytes.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_fnmatch_raw_bytes.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_fnmatch_unicode_ranges.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_fnmatch_unicode_ranges.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_html.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_html.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_html_entities.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_html_entities.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_html_parser.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_html_parser.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_html_parser_positions.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_html_parser_positions.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_random.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_random.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_random_distributions.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_random_distributions.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_random_sequences.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_random_sequences.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_random_triangular_ints.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_random_triangular_ints.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_annotations.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_annotations.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_bounds.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_bounds.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_branch_filter.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_branch_filter.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_branch_runs.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_branch_runs.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_cache.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_cache.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_cache_churn.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_cache_churn.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_charset.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_charset.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_class_span.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_class_span.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_codepoints.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_codepoints.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_first.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_first.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_flat.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_flat.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_groups.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_groups.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_ignorecase_repeat.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_ignorecase_repeat.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_lines.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_lines.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_prefilter.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_prefilter.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_purge.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_purge.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_raw_subject.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_raw_subject.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_repeat_prefix.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_repeat_prefix.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_reuse.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_reuse.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_unicode_memo.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_unicode_memo.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_utf8_overlong.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_re_utf8_overlong.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_shlex.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_shlex.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_shlex_upstream.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_shlex_upstream.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_string.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_string.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_string_template_kwargs.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_string_template_kwargs.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_textwrap.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_textwrap.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_textwrap_codepoints.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_textwrap_codepoints.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_tomllib.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_tomllib.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_tomllib_dynamic.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_tomllib_dynamic.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_tomllib_uncaught.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_tomllib_uncaught.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_unicodedata_chars.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_unicodedata_chars.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_urllib_parse.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_urllib_parse.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_urllib_parse_cache.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_urllib_parse_cache.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings_main_filter.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings_main_filter.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings_objects.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings_objects.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings_options.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings_options.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings_skip_prefixes.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_warnings_skip_prefixes.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_weakref_dead_eq.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_weakref_dead_eq.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_weakref_eq.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/lib_weakref_eq.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/re_specialize.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/library/re_specialize.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/arith.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/arith.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_index_unicode_int.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_index_unicode_int.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_int_args.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_int_args.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_int_key.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_int_key.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_aug.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_aug.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_del.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_del.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_missing.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_missing.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_pop_missing.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_pop_missing.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_tuple_missing.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/bool_key_tuple_missing.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/cmp_none_reflected.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/cmp_none_reflected.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/cmp_reflected.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/cmp_reflected.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/cmp_sequences.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/cmp_sequences.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/divmod_pow.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/divmod_pow.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/eq_none.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/eq_none.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/eq_none_template.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/eq_none_template.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/eq_object_param.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/eq_object_param.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/eq_unrelated_scalar.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/eq_unrelated_scalar.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/float_pow_inf.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/float_pow_inf.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/float_power_rounding.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/float_power_rounding.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/float_repr.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/float_repr.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/idiv_zero_big.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/idiv_zero_big.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/inplace.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/inplace.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int64.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int64.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_base_kw.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_base_kw.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_bit_count_none.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_bit_count_none.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_bit_length.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_bit_length.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_float_compare_edges.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_float_compare_edges.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_float_extremes.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_float_extremes.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_masked.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_masked.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_whitespace.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/int_whitespace.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/is_bool.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/is_bool.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_dist.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_dist.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_dist_snapshot.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_dist_snapshot.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_fmod_ieee.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_fmod_ieee.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_fsum.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_fsum.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_funcs.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_funcs.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_gamma.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_gamma.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_hypot_log.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_hypot_log.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_isclose.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_isclose.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_log_base_one.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_log_base_one.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_more.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_more.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_prod.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_prod.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_prod_protocols.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_prod_protocols.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_prod_start.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_prod_start.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_varargs.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/math_varargs.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_applications.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_applications.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_arithmetic.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_arithmetic.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_int.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_int.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_long.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_long.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_long_bitops.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_long_bitops.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_long_division.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_long_division.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_text.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_cpython_text.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_dynamic.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_dynamic.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_limits.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_limits.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_storage.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/mpz_storage.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/numbers_exact.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/numbers_exact.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/numeric_container_compare.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/numeric_container_compare.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators_bitwise.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators_bitwise.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators_bitwise_targets.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators_bitwise_targets.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators_parser.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators_parser.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators_unary.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/operators_unary.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/pow_modular_inverse.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/pow_modular_inverse.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/pow_zero_negative.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/pow_zero_negative.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/round_int.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/numbers/round_int.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/strings/bytes_reads.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/strings/bytes_reads.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/strings/unicode_library_codepoints.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/strings/unicode_library_codepoints.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_builtin_min_max_sum.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_builtin_min_max_sum.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_builtin_zip_sorted.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_builtin_zip_sorted.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_counter.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_counter.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_datetime.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_datetime.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_dict_methods.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_dict_methods.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_float_format.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_float_format.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_fnmatch.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_fnmatch.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_html_parser.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_html_parser.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_int_arith.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_int_arith.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_int_format.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_int_format.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_itertools.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_itertools.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_json_decode_core.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_json_decode_core.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_math_integer.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_math_integer.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_math_sums.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_math_sums.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_ordered_dict.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_ordered_dict.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_random.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_random.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_errors.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_errors.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_flags.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_flags.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_match.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_match.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_sub.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_sub.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_tests.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_tests.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_tests_perl.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_re_tests_perl.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_field_rebind.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_field_rebind.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_indent.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_indent.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_layout.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_layout.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_unicode.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_unicode.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_wrap.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_textwrap_wrap.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_tomllib_data.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_tomllib_data.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_weakref.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/upstream/upstream_weakref.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    }
+  ]
+}

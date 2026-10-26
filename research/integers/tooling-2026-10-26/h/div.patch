@@ -1,0 +1,113 @@
+--- a/mpz/mpz.c
++++ b/mpz/mpz.c
+@@ -260,64 +260,65 @@
+   if ((a->size < 0) != (b->size < 0)) r->size = -r->size;
+   return r;
+ }
+-/* Normalized long division, adapted from MicroPython mpn_div. The divisor is
+-   normalized on demand. Indexed loops never form pointers before an array. */
+-static void zdivmag(Mpz *r, const Mpz *b, Mpz *q) {
+-  I rn = zn(r), bn = zn(b); int c = zcmpmag(r, b);
+-  if (c < 0) { q->size = 0; return; }
+-  if (!c) { r->size = 0; q->size = 1; q->d[0] = 1; return; }
+-  unsigned shift = 0; uint32_t top = b->d[bn - 1];
+-  while (!(top & (UINT32_C(1) << (ZBITS - 1)))) { top <<= 1; shift++; }
+-  uint64_t carry = 0;
+-  for (I i = 0; i <= rn; i++) {
+-    uint64_t v = ((uint64_t)r->d[i] << shift) | carry;
+-    r->d[i] = v & ZMASK; carry = v >> ZBITS;
+-  }
+-  rn++;
+-  uint64_t lead = (uint64_t)b->d[bn - 1] << shift;
+-  if (bn >= 2) lead |= (uint64_t)b->d[bn - 2] >> (ZBITS - shift);
+-  I qn = rn - bn;
+-  for (I k = qn; k; k--) {
+-    I high = k + bn - 1;
+-    uint64_t quotient = (((uint64_t)r->d[high] << ZBITS) | r->d[high - 1]) / lead;
+-    uint64_t norm = 0; int64_t borrow = 0;
+-    for (I j = 0; j < bn; j++) {
+-      norm = ((uint64_t)b->d[j] << shift) | (norm >> ZBITS);
+-      uint64_t product = quotient * (norm & ZMASK);
+-      int64_t low = (borrow & ZMASK) + r->d[k - 1 + j] - (product & ZMASK);
+-      r->d[k - 1 + j] = low & ZMASK;
+-      borrow = (borrow >> ZBITS) - (int64_t)(product >> ZBITS) + (low >> ZBITS);
++/* Long division of magnitudes |a| >= |b| with |b| of at least two digits, as CPython's
++   x_divrem (Knuth 4.3.1 Algorithm D). Both operands are shifted left so that the divisor's
++   top digit has its high bit set; each quotient digit is estimated from the dividend's top
++   two digits and corrected with the divisor's second digit, so it is at most one too large,
++   which one add-back fixes. q has room for one more digit; r gets the remainder. */
++static void zdivrem(const Mpz *a, const Mpz *b, Mpz *q, Mpz *r) {
++  I an = zn(a), bn = zn(b), vn = an;
++  int d = 0; for (uint32_t top = b->d[bn - 1]; !(top & (UINT32_C(1) << (ZBITS - 1))); top <<= 1) d++;
++  uint32_t *w = r->d, *v = pys_alloc_atomic((an + 1) * sizeof(uint32_t)), carry = 0;
++  for (I i = 0; i < bn; i++) { uint64_t x = (uint64_t)b->d[i] << d | carry; w[i] = x & ZMASK; carry = x >> ZBITS; }
++  carry = 0;
++  for (I i = 0; i < an; i++) { uint64_t x = (uint64_t)a->d[i] << d | carry; v[i] = x & ZMASK; carry = x >> ZBITS; }
++  if (carry || v[an - 1] >= w[bn - 1]) v[vn++] = carry;
++  I k = vn - bn; uint32_t wm1 = w[bn - 1], wm2 = w[bn - 2];
++  for (I j = k; j--;) {   /* divide v[j, j + bn] by w: one quotient digit */
++    uint32_t vtop = v[j + bn];
++    uint64_t vv = (uint64_t)vtop << ZBITS | v[j + bn - 1];
++    uint32_t qd = (uint32_t)(vv / wm1), rem = (uint32_t)(vv % wm1);
++    while ((uint64_t)wm2 * qd > ((uint64_t)rem << ZBITS | v[j + bn - 2])) {
++      qd--; rem += wm1;
++      if (rem >= ZBASE) break;
+     }
+-    borrow += r->d[high];
+-    while (borrow) {
+-      norm = 0; carry = 0;
+-      for (I j = 0; j < bn; j++) {
+-        norm = ((uint64_t)b->d[j] << shift) | (norm >> ZBITS);
+-        carry += r->d[k - 1 + j] + (norm & ZMASK);
+-        r->d[k - 1 + j] = carry & ZMASK; carry >>= ZBITS;
+-      }
+-      borrow += (int64_t)carry; quotient--;
++    int32_t zhi = 0;   /* v[j, j + bn) -= qd * w, with a signed carry in [-qd, 0] */
++    for (I i = 0; i < bn; i++) {
++      int64_t z = (int64_t)v[j + i] + zhi - (int64_t)qd * w[i];
++      v[j + i] = (uint32_t)z & ZMASK; zhi = (int32_t)(z >> ZBITS);
+     }
+-    q->d[k - 1] = quotient & ZMASK;
++    if ((int32_t)vtop + zhi < 0) {   /* qd was one too large: add w back */
++      uint32_t c = 0;
++      for (I i = 0; i < bn; i++) { c += v[j + i] + w[i]; v[j + i] = c & ZMASK; c >>= ZBITS; }
++      qd--;
++    }
++    q->d[j] = qd;
+   }
+-  carry = 0;
++  ztrim(q, k, 0);
++  carry = 0;   /* the remainder is v[0, bn) shifted back right */
+   for (I i = bn; i; i--) {
+-    uint32_t digit = r->d[i - 1];
+-    r->d[i - 1] = ((digit >> shift) | carry) & ZMASK;
+-    carry = (uint64_t)digit << (ZBITS - shift);
++    uint32_t x = v[i - 1];
++    w[i - 1] = (x >> d | carry) & ZMASK; carry = (uint32_t)((uint64_t)x << (ZBITS - d) & ZMASK);
+   }
+-  ztrim(q, qn, 0); ztrim(r, bn, 0);
++  ztrim(r, bn, 0);
+ }
+ static Mpz *zdiv(const Mpz *a, const Mpz *b, int remainder) {
+   if (!b->size) pys_fail(remainder ? "ZeroDivisionError: integer modulo by zero" : "ZeroDivisionError: integer division or modulo by zero");
+-  Mpz *q = zalloc(zn(a) + 1), *r = zcopy(a, 1);
+-  r->size = zn(r); zdivmag(r, b, q);
++  I an = zn(a), bn = zn(b);
++  /* q and r are private until returned; q keeps a spare digit for zmuladd below */
++  Mpz *q = zalloc(an + 1), *r;
++  if (zcmpmag(a, b) < 0) { r = zcopy(a, 0); r->size = an; }
++  else if (bn == 1) {   /* one-digit divisor, as CPython's divrem1 */
++    uint64_t rem = 0; uint32_t n = b->d[0];
++    for (I i = an; i; i--) { uint64_t x = rem << ZBITS | a->d[i - 1]; q->d[i - 1] = (uint32_t)(x / n); rem = x % n; }
++    ztrim(q, an, 0); r = pys_mpz_from_int((I)rem);   /* fresh unless the shared zero */
++  } else { r = zalloc(bn); zdivrem(a, b, q, r); }
+   int negative = (a->size < 0) != (b->size < 0);
+   if (negative && r->size) {
+     zmuladd(q, 1, 1); r = zsubmag(b, r);
+   }
+   if (negative) q->size = -q->size;
+-  if (b->size < 0) r->size = -r->size;
++  if (b->size < 0 && r->size) r->size = -r->size;
+   return remainder ? r : q;
+ }
+ /* Read an infinite two's-complement operand one limb at a time. One extra limb

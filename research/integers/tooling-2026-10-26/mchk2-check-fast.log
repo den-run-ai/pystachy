@@ -1,0 +1,42 @@
+ruff check
+All checks passed!
+mypy --config-file mypy.ini
+Success: no issues found in 47 source files
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python tools/check_repository_hygiene.py
+repository hygiene: tracked paths are clean
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python -m unittest discover -s tools -p test_repository_hygiene.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.389s
+
+OK
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python -m unittest discover -s tools -p test_function_summaries.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.047s
+
+OK
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python -m unittest discover -s tools -p 'test_typed*.py'
+.......................................................................................................................................
+----------------------------------------------------------------------
+Ran 135 tests in 5.353s
+
+OK
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python -m unittest discover -s tools -p test_json_any_loader.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.688s
+
+OK
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python -m unittest discover -s tools -p test_numeric_identity.py
+..................................................
+----------------------------------------------------------------------
+Ran 50 tests in 0.375s
+
+OK
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python -m unittest discover -s tools -p test_dynany_comparisons.py
+..................................................
+----------------------------------------------------------------------
+Ran 50 tests in 6.951s
+
+OK

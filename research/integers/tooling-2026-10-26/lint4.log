@@ -1,0 +1,7 @@
+ruff check
+All checks passed!
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python3.13 tools/runtime_roots.py
+54 static pointer stores: 0 GC root problems
+shellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh
+"/usr/lib/llvm-18/bin/"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c pyext.c pyembed.c
+"/usr/lib/llvm-18/bin/"clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c

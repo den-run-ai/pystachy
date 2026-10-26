@@ -1,0 +1,8 @@
+PYTHON="/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python" tests/record.sh --check
+CPython 3.13.16: 1723 recordings, 103 deviations, 11 files of lib/ checked; 0 failed
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python tools/check_agent_source.py
+6 pinned AskMe files verified at 9256333b07628f6e4b399f41916f36d463914501
+
+real	1m13.451s
+user	0m53.743s
+sys	0m14.570s

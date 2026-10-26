@@ -1,0 +1,790 @@
+tests/programs/apps/example_mailmerge.py changed f.re$_sre$_branch_high.1
+tests/programs/apps/example_mailmerge.py changed f.re$_sre$_branch_high.2
+tests/programs/apps/example_mailmerge.py changed f.re$_sre$_branch_search.1
+tests/programs/apps/example_mailmerge.py changed f.re$_sre$_branch_search.2
+tests/programs/apps/example_mailmerge.py changed f.re$_sre$_charset_memo.1
+tests/programs/apps/example_mailmerge.py changed f.re$_sre$_charset_memo.2
+tests/programs/apps/example_mailmerge.py changed f.re$_sre$_span_rest.1
+tests/programs/apps/example_mailmerge.py changed f.re$_sre$_span_rest.2
+tests/programs/apps/example_mailmerge.py strings ['negative shift count'] added, [] removed
+tests/programs/apps/example_montecarlo.py changed f._pyrandom$_hash_float
+tests/programs/apps/example_montecarlo.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/apps/example_montecarlo.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/apps/example_montecarlo.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/apps/example_montecarlo.py strings ['negative shift count'] added, [] removed
+tests/programs/apps/example_route.py changed f.re$_sre$_charset_memo.1
+tests/programs/apps/example_route.py changed f.re$_sre$_charset_memo.2
+tests/programs/apps/example_route.py changed f.re$_sre$_span_rest.1
+tests/programs/apps/example_route.py changed f.re$_sre$_span_rest.2
+tests/programs/apps/example_route_empty.py changed f.re$_sre$_charset_memo.1
+tests/programs/apps/example_route_empty.py changed f.re$_sre$_charset_memo.2
+tests/programs/apps/example_route_empty.py changed f.re$_sre$_span_rest.1
+tests/programs/apps/example_route_empty.py changed f.re$_sre$_span_rest.2
+tests/programs/apps/example_urlstats.py changed f.re$_sre$_branch_high.1
+tests/programs/apps/example_urlstats.py changed f.re$_sre$_branch_high.2
+tests/programs/apps/example_urlstats.py changed f.re$_sre$_branch_search.1
+tests/programs/apps/example_urlstats.py changed f.re$_sre$_branch_search.2
+tests/programs/apps/example_urlstats.py changed f.re$_sre$_charset_memo.1
+tests/programs/apps/example_urlstats.py changed f.re$_sre$_charset_memo.2
+tests/programs/apps/example_urlstats.py changed f.re$_sre$_span_rest.1
+tests/programs/apps/example_urlstats.py changed f.re$_sre$_span_rest.2
+tests/programs/apps/example_urlstats.py strings ['negative shift count'] added, [] removed
+tests/programs/apps/port_roman_convert.py changed f.re$_sre$_branch_high.1
+tests/programs/apps/port_roman_convert.py changed f.re$_sre$_branch_high.2
+tests/programs/apps/port_roman_convert.py changed f.re$_sre$_branch_search.1
+tests/programs/apps/port_roman_convert.py changed f.re$_sre$_branch_search.2
+tests/programs/apps/port_roman_convert.py changed f.re$_sre$_charset_memo.1
+tests/programs/apps/port_roman_convert.py changed f.re$_sre$_charset_memo.2
+tests/programs/apps/port_roman_convert.py changed f.re$_sre$_span_rest.1
+tests/programs/apps/port_roman_convert.py changed f.re$_sre$_span_rest.2
+tests/programs/apps/port_roman_convert.py strings ['negative shift count'] added, [] removed
+tests/programs/apps/port_roman_validate.py changed f.re$_sre$_branch_high.1
+tests/programs/apps/port_roman_validate.py changed f.re$_sre$_branch_high.2
+tests/programs/apps/port_roman_validate.py changed f.re$_sre$_branch_search.1
+tests/programs/apps/port_roman_validate.py changed f.re$_sre$_branch_search.2
+tests/programs/apps/port_roman_validate.py changed f.re$_sre$_charset_memo.1
+tests/programs/apps/port_roman_validate.py changed f.re$_sre$_charset_memo.2
+tests/programs/apps/port_roman_validate.py changed f.re$_sre$_span_rest.1
+tests/programs/apps/port_roman_validate.py changed f.re$_sre$_span_rest.2
+tests/programs/apps/port_roman_validate.py strings ['negative shift count'] added, [] removed
+tests/programs/containers/range_value.py changed f._pyrandom$_hash_float
+tests/programs/containers/range_value.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/containers/range_value.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/containers/range_value.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/containers/range_value.py strings ['negative shift count'] added, [] removed
+tests/programs/containers/tuple_runtime_regex.py changed f.re$_sre$_charset_memo.1
+tests/programs/containers/tuple_runtime_regex.py changed f.re$_sre$_charset_memo.2
+tests/programs/containers/tuple_runtime_regex.py changed f.re$_sre$_span_rest.1
+tests/programs/containers/tuple_runtime_regex.py changed f.re$_sre$_span_rest.2
+tests/programs/imports/import_module_attr_same_name.py changed f.re$_sre$_charset_memo.1
+tests/programs/imports/import_module_attr_same_name.py changed f.re$_sre$_charset_memo.2
+tests/programs/imports/import_module_attr_same_name.py changed f.re$_sre$_span_rest.1
+tests/programs/imports/import_module_attr_same_name.py changed f.re$_sre$_span_rest.2
+tests/programs/language/walrus.py changed f.re$_sre$_branch_high.1
+tests/programs/language/walrus.py changed f.re$_sre$_branch_high.2
+tests/programs/language/walrus.py changed f.re$_sre$_branch_search.1
+tests/programs/language/walrus.py changed f.re$_sre$_branch_search.2
+tests/programs/language/walrus.py changed f.re$_sre$_charset_memo.1
+tests/programs/language/walrus.py changed f.re$_sre$_charset_memo.2
+tests/programs/language/walrus.py changed f.re$_sre$_span_rest.1
+tests/programs/language/walrus.py changed f.re$_sre$_span_rest.2
+tests/programs/language/walrus.py strings ['negative shift count'] added, [] removed
+tests/programs/library/json_errors.py changed m.json$_Parser.key
+tests/programs/library/json_mutation.py changed m.json$_Parser.key
+tests/programs/library/json_roundtrip.py changed m.json$_Parser.key
+tests/programs/library/json_scanner.py changed m.json$_Parser.key
+tests/programs/library/json_unicode.py changed m.json$_Parser.key
+tests/programs/library/lib_binascii.py changed f.binascii$_crc_hqx_table
+tests/programs/library/lib_binascii.py changed f.binascii$a2b_base64.1
+tests/programs/library/lib_binascii.py changed f.binascii$a2b_base64.2
+tests/programs/library/lib_binascii.py changed f.binascii$a2b_uu.1
+tests/programs/library/lib_binascii.py changed f.binascii$a2b_uu.2
+tests/programs/library/lib_binascii.py changed f.binascii$crc_hqx
+tests/programs/library/lib_binascii.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_datetime_timedelta.py changed f.datetime$_big_shr_round
+tests/programs/library/lib_datetime_timedelta.py changed f.datetime$_scale_delta
+tests/programs/library/lib_datetime_timedelta.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_difflib.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_difflib.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_difflib.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_difflib.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_fnmatch.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_fnmatch.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_fnmatch.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_fnmatch.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_fnmatch_raw_bytes.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_fnmatch_raw_bytes.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_fnmatch_raw_bytes.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_fnmatch_raw_bytes.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_fnmatch_unicode_ranges.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_fnmatch_unicode_ranges.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_fnmatch_unicode_ranges.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_fnmatch_unicode_ranges.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_html.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_html.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_html.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_html.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_html.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_html.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_html.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_html.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_html.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_html_entities.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_html_entities.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_html_entities.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_html_entities.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_html_entities.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_html_entities.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_html_entities.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_html_entities.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_html_entities.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_html_parser.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_html_parser.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_html_parser.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_html_parser.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_html_parser.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_html_parser.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_html_parser.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_html_parser.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_html_parser.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_html_parser_positions.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_html_parser_positions.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_html_parser_positions.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_html_parser_positions.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_html_parser_positions.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_html_parser_positions.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_html_parser_positions.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_html_parser_positions.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_html_parser_positions.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_random.py changed f._pyrandom$_hash_float
+tests/programs/library/lib_random.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/library/lib_random.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/library/lib_random.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/library/lib_random.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_random_distributions.py changed f._pyrandom$_hash_float
+tests/programs/library/lib_random_distributions.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/library/lib_random_distributions.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/library/lib_random_distributions.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/library/lib_random_distributions.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_random_sequences.py changed f._pyrandom$_hash_float
+tests/programs/library/lib_random_sequences.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/library/lib_random_sequences.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/library/lib_random_sequences.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/library/lib_random_sequences.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_random_triangular_ints.py changed f._pyrandom$_hash_float
+tests/programs/library/lib_random_triangular_ints.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/library/lib_random_triangular_ints.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/library/lib_random_triangular_ints.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/library/lib_random_triangular_ints.py strings ['ValueError', 'negative shift count'] added, [] removed
+tests/programs/library/lib_re.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_annotations.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_annotations.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_annotations.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_annotations.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_annotations.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_annotations.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_annotations.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_annotations.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_annotations.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_bounds.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_bounds.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_bounds.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_bounds.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_bounds.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_bounds.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_bounds.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_bounds.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_bounds.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_branch_filter.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_branch_filter.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_branch_filter.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_branch_filter.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_branch_filter.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_branch_filter.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_branch_filter.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_branch_filter.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_branch_filter.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_branch_runs.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_branch_runs.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_branch_runs.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_branch_runs.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_branch_runs.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_branch_runs.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_branch_runs.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_branch_runs.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_branch_runs.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_cache.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_cache.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_cache.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_cache.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_cache_churn.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_cache_churn.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_cache_churn.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_cache_churn.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_cache_churn.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_cache_churn.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_cache_churn.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_cache_churn.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_cache_churn.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_charset.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_charset.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_charset.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_charset.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_charset.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_charset.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_charset.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_charset.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_charset.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_class_span.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_class_span.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_class_span.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_class_span.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_class_span.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_class_span.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_class_span.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_class_span.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_class_span.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_codepoints.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_codepoints.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_codepoints.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_codepoints.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_codepoints.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_codepoints.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_codepoints.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_codepoints.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_codepoints.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_first.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_first.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_first.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_first.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_first.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_first.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_first.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_first.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_first.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_flat.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_flat.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_flat.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_flat.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_flat.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_flat.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_flat.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_flat.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_flat.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_groups.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_groups.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_groups.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_groups.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_ignorecase_repeat.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_ignorecase_repeat.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_ignorecase_repeat.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_ignorecase_repeat.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_ignorecase_repeat.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_ignorecase_repeat.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_ignorecase_repeat.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_ignorecase_repeat.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_ignorecase_repeat.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_lines.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_lines.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_lines.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_lines.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_lines.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_lines.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_lines.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_lines.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_lines.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_prefilter.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_prefilter.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_prefilter.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_prefilter.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_prefilter.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_prefilter.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_prefilter.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_prefilter.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_prefilter.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_purge.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_purge.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_purge.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_purge.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_purge.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_purge.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_purge.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_purge.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_purge.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_raw_subject.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_raw_subject.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_raw_subject.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_raw_subject.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_raw_subject.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_raw_subject.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_raw_subject.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_raw_subject.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_raw_subject.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_repeat_prefix.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_repeat_prefix.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_repeat_prefix.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_repeat_prefix.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_repeat_prefix.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_repeat_prefix.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_repeat_prefix.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_repeat_prefix.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_repeat_prefix.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_reuse.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_reuse.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_reuse.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_reuse.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_reuse.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_reuse.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_reuse.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_reuse.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_reuse.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_unicode_memo.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_unicode_memo.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_unicode_memo.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_unicode_memo.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_unicode_memo.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_unicode_memo.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_unicode_memo.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_unicode_memo.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_unicode_memo.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_re_utf8_overlong.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_re_utf8_overlong.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_re_utf8_overlong.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_re_utf8_overlong.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_re_utf8_overlong.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_re_utf8_overlong.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_re_utf8_overlong.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_re_utf8_overlong.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_re_utf8_overlong.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_shlex.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_shlex.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_shlex.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_shlex.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_shlex.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_shlex.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_shlex.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_shlex.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_shlex.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_shlex_upstream.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_shlex_upstream.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_shlex_upstream.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_shlex_upstream.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_shlex_upstream.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_shlex_upstream.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_shlex_upstream.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_shlex_upstream.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_shlex_upstream.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_string.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_string.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_string.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_string.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_string.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_string.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_string.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_string.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_string.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_string_template_kwargs.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_string_template_kwargs.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_string_template_kwargs.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_string_template_kwargs.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_string_template_kwargs.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_string_template_kwargs.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_string_template_kwargs.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_string_template_kwargs.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_string_template_kwargs.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_textwrap.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_textwrap.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_textwrap.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_textwrap.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_textwrap.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_textwrap.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_textwrap.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_textwrap.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_textwrap.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_textwrap_codepoints.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_textwrap_codepoints.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_textwrap_codepoints.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_textwrap_codepoints.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_textwrap_codepoints.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_textwrap_codepoints.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_textwrap_codepoints.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_textwrap_codepoints.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_textwrap_codepoints.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_unicodedata_chars.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_unicodedata_chars.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_unicodedata_chars.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_unicodedata_chars.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_unicodedata_chars.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_unicodedata_chars.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_unicodedata_chars.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_unicodedata_chars.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_unicodedata_chars.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_urllib_parse.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_urllib_parse.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_urllib_parse.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_urllib_parse.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_urllib_parse.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_urllib_parse.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_urllib_parse.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_urllib_parse.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_urllib_parse.py strings ['negative shift count'] added, [] removed
+tests/programs/library/lib_urllib_parse_cache.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_urllib_parse_cache.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_urllib_parse_cache.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_urllib_parse_cache.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_warnings.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_warnings.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_warnings.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_warnings.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_warnings_main_filter.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_warnings_main_filter.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_warnings_main_filter.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_warnings_main_filter.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_warnings_objects.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_warnings_objects.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_warnings_objects.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_warnings_objects.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_warnings_options.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_warnings_options.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_warnings_options.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_warnings_options.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_warnings_skip_prefixes.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_warnings_skip_prefixes.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_warnings_skip_prefixes.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_warnings_skip_prefixes.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_weakref_dead_eq.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_weakref_dead_eq.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_weakref_dead_eq.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_weakref_dead_eq.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_weakref_eq.py changed f.re$_sre$_branch_high.1
+tests/programs/library/lib_weakref_eq.py changed f.re$_sre$_branch_high.2
+tests/programs/library/lib_weakref_eq.py changed f.re$_sre$_branch_search.1
+tests/programs/library/lib_weakref_eq.py changed f.re$_sre$_branch_search.2
+tests/programs/library/lib_weakref_eq.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/lib_weakref_eq.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/lib_weakref_eq.py changed f.re$_sre$_span_rest.1
+tests/programs/library/lib_weakref_eq.py changed f.re$_sre$_span_rest.2
+tests/programs/library/lib_weakref_eq.py strings ['negative shift count'] added, [] removed
+tests/programs/library/re_specialize.py changed f.re$_sre$_branch_high.1
+tests/programs/library/re_specialize.py changed f.re$_sre$_branch_high.2
+tests/programs/library/re_specialize.py changed f.re$_sre$_branch_search.1
+tests/programs/library/re_specialize.py changed f.re$_sre$_branch_search.2
+tests/programs/library/re_specialize.py changed f.re$_sre$_charset_memo.1
+tests/programs/library/re_specialize.py changed f.re$_sre$_charset_memo.2
+tests/programs/library/re_specialize.py changed f.re$_sre$_span_rest.1
+tests/programs/library/re_specialize.py changed f.re$_sre$_span_rest.2
+tests/programs/library/re_specialize.py strings ['negative shift count'] added, [] removed
+tests/programs/numbers/arith.py changed main.init
+tests/programs/numbers/int_masked.py changed f.djb2_62
+tests/programs/numbers/int_masked.py changed f.fnv1a64_63
+tests/programs/numbers/int_masked.py changed f.java_next
+tests/programs/numbers/int_masked.py changed f.mix_k
+tests/programs/numbers/int_masked.py changed f.murmur3_32
+tests/programs/numbers/int_masked.py changed f.rotl32
+tests/programs/numbers/int_masked.py changed f.splitmix_low
+tests/programs/numbers/int_masked.py changed f.xorshift32
+tests/programs/numbers/int_masked.py changed main.init
+tests/programs/numbers/int_masked.py strings ['ValueError', 'negative shift count'] added, [] removed
+tests/programs/numbers/int_masked.py other-globals differ
+tests/programs/numbers/mpz_cpython_long_bitops.py changed f._pyrandom$_hash_float
+tests/programs/numbers/mpz_cpython_long_bitops.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/numbers/mpz_cpython_long_bitops.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/numbers/mpz_cpython_long_bitops.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/numbers/mpz_cpython_long_bitops.py strings ['negative shift count'] added, [] removed
+tests/programs/numbers/mpz_cpython_long_division.py changed f._pyrandom$_hash_float
+tests/programs/numbers/mpz_cpython_long_division.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/numbers/mpz_cpython_long_division.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/numbers/mpz_cpython_long_division.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/numbers/mpz_cpython_long_division.py strings ['ValueError', 'negative shift count'] added, [] removed
+tests/programs/numbers/mpz_cpython_text.py changed f._pyrandom$_hash_float
+tests/programs/numbers/mpz_cpython_text.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/numbers/mpz_cpython_text.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/numbers/mpz_cpython_text.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/numbers/mpz_cpython_text.py strings ['ValueError', 'negative shift count'] added, [] removed
+tests/programs/strings/bytes_reads.py changed f.hash_bytes
+tests/programs/strings/bytes_reads.py changed main.init
+tests/programs/strings/unicode_library_codepoints.py changed f._pyrandom$_hash_float
+tests/programs/strings/unicode_library_codepoints.py changed f.re$_sre$_branch_high.1
+tests/programs/strings/unicode_library_codepoints.py changed f.re$_sre$_branch_high.2
+tests/programs/strings/unicode_library_codepoints.py changed f.re$_sre$_branch_search.1
+tests/programs/strings/unicode_library_codepoints.py changed f.re$_sre$_branch_search.2
+tests/programs/strings/unicode_library_codepoints.py changed f.re$_sre$_charset_memo.1
+tests/programs/strings/unicode_library_codepoints.py changed f.re$_sre$_charset_memo.2
+tests/programs/strings/unicode_library_codepoints.py changed f.re$_sre$_span_rest.1
+tests/programs/strings/unicode_library_codepoints.py changed f.re$_sre$_span_rest.2
+tests/programs/strings/unicode_library_codepoints.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/strings/unicode_library_codepoints.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/strings/unicode_library_codepoints.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/strings/unicode_library_codepoints.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_builtin_min_max_sum.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_builtin_min_max_sum.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_builtin_min_max_sum.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_builtin_min_max_sum.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_builtin_min_max_sum.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_builtin_zip_sorted.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_builtin_zip_sorted.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_builtin_zip_sorted.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_builtin_zip_sorted.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_builtin_zip_sorted.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_counter.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_counter.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_counter.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_counter.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_counter.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_datetime.py changed f.datetime$_big_shr_round
+tests/programs/upstream/upstream_datetime.py changed f.datetime$_scale_delta
+tests/programs/upstream/upstream_datetime.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_dict_methods.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_dict_methods.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_dict_methods.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_dict_methods.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_dict_methods.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_float_format.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_float_format.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_float_format.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_float_format.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_float_format.py strings ['ValueError', 'negative shift count'] added, [] removed
+tests/programs/upstream/upstream_fnmatch.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_fnmatch.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_fnmatch.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_fnmatch.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_html_parser.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_html_parser.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_html_parser.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_html_parser.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_html_parser.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_html_parser.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_html_parser.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_html_parser.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_html_parser.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_int_arith.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_int_arith.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_int_arith.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_int_arith.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_int_arith.py strings ['ValueError', 'negative shift count'] added, [] removed
+tests/programs/upstream/upstream_int_format.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_int_format.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_int_format.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_int_format.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_int_format.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_itertools.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_itertools.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_itertools.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_itertools.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_itertools.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_math_integer.py changed f.count_set_bits
+tests/programs/upstream/upstream_math_sums.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_math_sums.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_math_sums.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_math_sums.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_math_sums.py strings ['ValueError', 'negative shift count'] added, [] removed
+tests/programs/upstream/upstream_ordered_dict.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_ordered_dict.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_ordered_dict.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_ordered_dict.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_ordered_dict.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_random.py changed f._pyrandom$_hash_float
+tests/programs/upstream/upstream_random.py changed m._pyrandom$Random._genrand_uint32.1
+tests/programs/upstream/upstream_random.py changed m._pyrandom$Random._init_by_array.1
+tests/programs/upstream/upstream_random.py changed m._pyrandom$Random._init_genrand.1
+tests/programs/upstream/upstream_random.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_re_errors.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_re_errors.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_re_errors.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_re_errors.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_re_errors.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_re_errors.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_re_errors.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_re_errors.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_re_errors.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_re_flags.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_re_flags.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_re_flags.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_re_flags.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_re_flags.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_re_flags.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_re_flags.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_re_flags.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_re_flags.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_re_match.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_re_match.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_re_match.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_re_match.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_re_match.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_re_match.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_re_match.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_re_match.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_re_match.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_re_sub.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_re_sub.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_re_sub.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_re_sub.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_re_sub.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_re_sub.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_re_sub.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_re_sub.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_re_sub.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_re_tests.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_re_tests.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_re_tests.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_re_tests.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_re_tests.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_re_tests.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_re_tests.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_re_tests.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_re_tests.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_re_tests_perl.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_re_tests_perl.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_re_tests_perl.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_re_tests_perl.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_re_tests_perl.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_re_tests_perl.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_re_tests_perl.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_re_tests_perl.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_re_tests_perl.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_textwrap_field_rebind.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_textwrap_field_rebind.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_textwrap_field_rebind.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_textwrap_field_rebind.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_textwrap_field_rebind.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_textwrap_field_rebind.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_textwrap_field_rebind.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_textwrap_field_rebind.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_textwrap_field_rebind.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_textwrap_indent.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_textwrap_indent.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_textwrap_indent.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_textwrap_indent.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_textwrap_indent.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_textwrap_indent.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_textwrap_indent.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_textwrap_indent.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_textwrap_indent.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_textwrap_layout.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_textwrap_layout.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_textwrap_layout.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_textwrap_layout.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_textwrap_layout.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_textwrap_layout.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_textwrap_layout.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_textwrap_layout.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_textwrap_layout.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_textwrap_unicode.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_textwrap_unicode.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_textwrap_unicode.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_textwrap_unicode.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_textwrap_unicode.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_textwrap_unicode.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_textwrap_unicode.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_textwrap_unicode.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_textwrap_unicode.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_textwrap_wrap.py changed f.re$_sre$_branch_high.1
+tests/programs/upstream/upstream_textwrap_wrap.py changed f.re$_sre$_branch_high.2
+tests/programs/upstream/upstream_textwrap_wrap.py changed f.re$_sre$_branch_search.1
+tests/programs/upstream/upstream_textwrap_wrap.py changed f.re$_sre$_branch_search.2
+tests/programs/upstream/upstream_textwrap_wrap.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_textwrap_wrap.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_textwrap_wrap.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_textwrap_wrap.py changed f.re$_sre$_span_rest.2
+tests/programs/upstream/upstream_textwrap_wrap.py strings ['negative shift count'] added, [] removed
+tests/programs/upstream/upstream_weakref.py changed f.re$_sre$_charset_memo.1
+tests/programs/upstream/upstream_weakref.py changed f.re$_sre$_charset_memo.2
+tests/programs/upstream/upstream_weakref.py changed f.re$_sre$_span_rest.1
+tests/programs/upstream/upstream_weakref.py changed f.re$_sre$_span_rest.2
+tests/deviations/int_masked_overflow.py changed main.init
+tests/deviations/json_invalid_utf8.py changed m.json$_Parser.key
+tests/deviations/json_limits.py changed m.json$_Parser.key
+tests/deviations/lib_binascii_sep_none.py changed f.binascii$_crc_hqx_table
+tests/deviations/lib_binascii_sep_none.py strings ['ValueError', 'negative shift count'] added, [] removed
+tests/deviations/lib_html_parser_names.py changed f.re$_sre$_branch_high.1
+tests/deviations/lib_html_parser_names.py changed f.re$_sre$_branch_high.2
+tests/deviations/lib_html_parser_names.py changed f.re$_sre$_branch_search.1
+tests/deviations/lib_html_parser_names.py changed f.re$_sre$_branch_search.2
+tests/deviations/lib_html_parser_names.py changed f.re$_sre$_charset_memo.1
+tests/deviations/lib_html_parser_names.py changed f.re$_sre$_charset_memo.2
+tests/deviations/lib_html_parser_names.py changed f.re$_sre$_span_rest.1
+tests/deviations/lib_html_parser_names.py changed f.re$_sre$_span_rest.2
+tests/deviations/lib_html_parser_names.py strings ['negative shift count'] added, [] removed
+tests/deviations/lib_random.py changed f._pyrandom$_hash_float
+tests/deviations/lib_random.py changed m._pyrandom$Random._genrand_uint32.1
+tests/deviations/lib_random.py changed m._pyrandom$Random._init_by_array.1
+tests/deviations/lib_random.py changed m._pyrandom$Random._init_genrand.1
+tests/deviations/lib_random.py strings ['negative shift count'] added, [] removed
+tests/deviations/lib_re.py changed f.re$_sre$_branch_high.1
+tests/deviations/lib_re.py changed f.re$_sre$_branch_high.2
+tests/deviations/lib_re.py changed f.re$_sre$_branch_search.1
+tests/deviations/lib_re.py changed f.re$_sre$_branch_search.2
+tests/deviations/lib_re.py changed f.re$_sre$_charset_memo.1
+tests/deviations/lib_re.py changed f.re$_sre$_charset_memo.2
+tests/deviations/lib_re.py changed f.re$_sre$_span_rest.1
+tests/deviations/lib_re.py changed f.re$_sre$_span_rest.2
+tests/deviations/lib_re.py strings ['negative shift count'] added, [] removed
+tests/deviations/lib_re_bounded_decoding.py changed f.re$_sre$_branch_high.1
+tests/deviations/lib_re_bounded_decoding.py changed f.re$_sre$_branch_high.2
+tests/deviations/lib_re_bounded_decoding.py changed f.re$_sre$_branch_search.1
+tests/deviations/lib_re_bounded_decoding.py changed f.re$_sre$_branch_search.2
+tests/deviations/lib_re_bounded_decoding.py changed f.re$_sre$_charset_memo.1
+tests/deviations/lib_re_bounded_decoding.py changed f.re$_sre$_charset_memo.2
+tests/deviations/lib_re_bounded_decoding.py changed f.re$_sre$_span_rest.1
+tests/deviations/lib_re_bounded_decoding.py changed f.re$_sre$_span_rest.2
+tests/deviations/lib_re_bounded_decoding.py strings ['negative shift count'] added, [] removed
+tests/deviations/lib_re_decoding.py changed f.re$_sre$_branch_high.1
+tests/deviations/lib_re_decoding.py changed f.re$_sre$_branch_high.2
+tests/deviations/lib_re_decoding.py changed f.re$_sre$_branch_search.1
+tests/deviations/lib_re_decoding.py changed f.re$_sre$_branch_search.2
+tests/deviations/lib_re_decoding.py changed f.re$_sre$_charset_memo.1
+tests/deviations/lib_re_decoding.py changed f.re$_sre$_charset_memo.2
+tests/deviations/lib_re_decoding.py changed f.re$_sre$_span_rest.1
+tests/deviations/lib_re_decoding.py changed f.re$_sre$_span_rest.2
+tests/deviations/lib_re_decoding.py strings ['negative shift count'] added, [] removed
+tests/deviations/lib_re_purge_decoding.py changed f.re$_sre$_branch_high.1
+tests/deviations/lib_re_purge_decoding.py changed f.re$_sre$_branch_high.2
+tests/deviations/lib_re_purge_decoding.py changed f.re$_sre$_branch_search.1
+tests/deviations/lib_re_purge_decoding.py changed f.re$_sre$_branch_search.2
+tests/deviations/lib_re_purge_decoding.py changed f.re$_sre$_charset_memo.1
+tests/deviations/lib_re_purge_decoding.py changed f.re$_sre$_charset_memo.2
+tests/deviations/lib_re_purge_decoding.py changed f.re$_sre$_span_rest.1
+tests/deviations/lib_re_purge_decoding.py changed f.re$_sre$_span_rest.2
+tests/deviations/lib_re_purge_decoding.py strings ['negative shift count'] added, [] removed
+tests/deviations/lib_re_release.py changed f.re$_sre$_branch_high.1
+tests/deviations/lib_re_release.py changed f.re$_sre$_branch_high.2
+tests/deviations/lib_re_release.py changed f.re$_sre$_branch_search.1
+tests/deviations/lib_re_release.py changed f.re$_sre$_branch_search.2
+tests/deviations/lib_re_release.py changed f.re$_sre$_charset_memo.1
+tests/deviations/lib_re_release.py changed f.re$_sre$_charset_memo.2
+tests/deviations/lib_re_release.py changed f.re$_sre$_span_rest.1
+tests/deviations/lib_re_release.py changed f.re$_sre$_span_rest.2
+tests/deviations/lib_re_release.py strings ['negative shift count'] added, [] removed
+tests/deviations/lib_urllib_parse.py changed f.re$_sre$_branch_high.1
+tests/deviations/lib_urllib_parse.py changed f.re$_sre$_branch_high.2
+tests/deviations/lib_urllib_parse.py changed f.re$_sre$_branch_search.1
+tests/deviations/lib_urllib_parse.py changed f.re$_sre$_branch_search.2
+tests/deviations/lib_urllib_parse.py changed f.re$_sre$_charset_memo.1
+tests/deviations/lib_urllib_parse.py changed f.re$_sre$_charset_memo.2
+tests/deviations/lib_urllib_parse.py changed f.re$_sre$_span_rest.1
+tests/deviations/lib_urllib_parse.py changed f.re$_sre$_span_rest.2
+tests/deviations/lib_urllib_parse.py strings ['negative shift count'] added, [] removed
+tests/deviations/lib_warnings_location.py changed f.re$_sre$_charset_memo.1
+tests/deviations/lib_warnings_location.py changed f.re$_sre$_charset_memo.2
+tests/deviations/lib_warnings_location.py changed f.re$_sre$_span_rest.1
+tests/deviations/lib_warnings_location.py changed f.re$_sre$_span_rest.2
+tests/deviations/lib_warnings_message_type.py changed f.re$_sre$_charset_memo.1
+tests/deviations/lib_warnings_message_type.py changed f.re$_sre$_charset_memo.2
+tests/deviations/lib_warnings_message_type.py changed f.re$_sre$_span_rest.1
+tests/deviations/lib_warnings_message_type.py changed f.re$_sre$_span_rest.2
+bench/json_records.py changed m.json$_Parser.key
+bench/pyperformance/regex_dna.py changed f.re$_sre$_branch_high.1
+bench/pyperformance/regex_dna.py changed f.re$_sre$_branch_high.2
+bench/pyperformance/regex_dna.py changed f.re$_sre$_branch_search.1
+bench/pyperformance/regex_dna.py changed f.re$_sre$_branch_search.2
+bench/pyperformance/regex_dna.py changed f.re$_sre$_charset_memo.1
+bench/pyperformance/regex_dna.py changed f.re$_sre$_charset_memo.2
+bench/pyperformance/regex_dna.py changed f.re$_sre$_span_rest.1
+bench/pyperformance/regex_dna.py changed f.re$_sre$_span_rest.2
+bench/pyperformance/regex_dna.py strings ['negative shift count'] added, [] removed
+bench/pyperformance/regex_effbot.py changed f.re$_sre$_branch_high.1
+bench/pyperformance/regex_effbot.py changed f.re$_sre$_branch_high.2
+bench/pyperformance/regex_effbot.py changed f.re$_sre$_branch_search.1
+bench/pyperformance/regex_effbot.py changed f.re$_sre$_branch_search.2
+bench/pyperformance/regex_effbot.py changed f.re$_sre$_charset_memo.1
+bench/pyperformance/regex_effbot.py changed f.re$_sre$_charset_memo.2
+bench/pyperformance/regex_effbot.py changed f.re$_sre$_span_rest.1
+bench/pyperformance/regex_effbot.py changed f.re$_sre$_span_rest.2
+bench/pyperformance/regex_effbot.py strings ['negative shift count'] added, [] removed
+bench/pyperformance/regex_v8.py changed f.re$_sre$_branch_high.1
+bench/pyperformance/regex_v8.py changed f.re$_sre$_branch_high.2
+bench/pyperformance/regex_v8.py changed f.re$_sre$_branch_search.1
+bench/pyperformance/regex_v8.py changed f.re$_sre$_branch_search.2
+bench/pyperformance/regex_v8.py changed f.re$_sre$_charset_memo.1
+bench/pyperformance/regex_v8.py changed f.re$_sre$_charset_memo.2
+bench/pyperformance/regex_v8.py changed f.re$_sre$_span_rest.1
+bench/pyperformance/regex_v8.py changed f.re$_sre$_span_rest.2
+bench/pyperformance/regex_v8.py strings ['negative shift count'] added, [] removed

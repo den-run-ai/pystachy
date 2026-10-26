@@ -1,0 +1,2 @@
+tools/check_ir.sh ./pystachy 
+the IR check and llvm-as accept the IR of 1908 programs

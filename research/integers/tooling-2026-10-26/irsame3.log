@@ -1,0 +1,2201 @@
+DIFF pystachy.py
+  IR from line 46190 (in @m.src$pystachy_compiler$lexer$Lexer.number):
+@@ -46187,10 +46187,10 @@
+   store i64 zeroinitializer, ptr %bits.291
+   %d0.303 = alloca i64
+   store i64 zeroinitializer, ptr %d0.303
+-  %isf.418 = alloca i1
+-  store i1 zeroinitializer, ptr %isf.418
+-  %k.539 = alloca i64
+-  store i64 zeroinitializer, ptr %k.539
++  %isf.420 = alloca i1
++  store i1 zeroinitializer, ptr %isf.420
++  %k.541 = alloca i64
++  store i64 zeroinitializer, ptr %k.541
+   store ptr %a0, ptr %self.1
+   %t2 = load ptr, ptr %self.1
+   %t3 = getelementptr %C.src$pystachy_compiler$lexer$Lexer, ptr %t2, i32 0, i32 0
+@@ -46642,793 +46642,795 @@
+DIFF tests/programs/apps/example_mailmerge.py
+  IR from line 4747 (in @f.re$_sre$_charset_memo.1):
+@@ -4744,10 +4744,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4771,98 +4771,100 @@
+DIFF tests/programs/apps/example_montecarlo.py
+  IR from line 505:
+@@ -502,34 +502,35 @@
+ @s.192 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.193 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.194 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
+-@s.195 = private unnamed_addr global {i64, i64, i64, [37 x i8]} {i64 36, i64 0, i64 37, [37 x i8] c"Cannot choose from an empty sequence\00"}, align 8
+-@s.196 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"IndexError\00"}, align 8
+-@s.197 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"number of bits must be non-negative\00"}, align 8
+-@s.198 = private unnamed_addr global {i64, i64, i64, [33 x i8]} {i64 32, i64 0, i64 33, [33 x i8] c"Missing a non-None stop argument\00"}, align 8
+-@s.199 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c"TypeError\00"}, align 8
+-@s.200 = private unnamed_addr global {i64, i64, i64, [28 x i8]} {i64 27, i64 0, i64 28, [28 x i8] c"empty range for randrange()\00"}, align 8
+-@s.201 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_floor' is not defined\00"}, align 8
+-@s.202 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"\01TypeError\01\00"}, align 8
+-@s.203 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c"fmean requires at least one data point\00"}, align 8
+-@s.204 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"s\00"}, align 8
+-@s.205 = private unnamed_addr global {i64, i64, i64, [27 x i8]} {i64 26, i64 0, i64 27, [27 x i8] c"name 'fsum' is not defined\00"}, align 8
+-@s.206 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"f\00"}, align 8
+DIFF tests/programs/apps/example_route.py
+  IR from line 9966 (in @f.re$_sre$_charset_memo.1):
+@@ -9963,10 +9963,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9990,98 +9990,100 @@
+DIFF tests/programs/apps/example_route_empty.py
+  IR from line 9313 (in @f.re$_sre$_charset_memo.1):
+@@ -9310,10 +9310,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9337,98 +9337,100 @@
+DIFF tests/programs/apps/example_urlstats.py
+  IR from line 14285 (in @f.re$_sre$_charset_memo.1):
+@@ -14282,10 +14282,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -14309,98 +14309,100 @@
+DIFF tests/programs/apps/port_roman_convert.py
+  IR from line 6422 (in @f.re$_sre$_charset_memo.1):
+@@ -6419,10 +6419,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -6446,98 +6446,100 @@
+DIFF tests/programs/apps/port_roman_validate.py
+  IR from line 5092 (in @f.re$_sre$_charset_memo.1):
+@@ -5089,10 +5089,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -5116,98 +5116,100 @@
+DIFF tests/programs/containers/range_value.py
+  IR from line 563:
+@@ -560,20 +560,21 @@
+ @s.297 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.298 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.299 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
+-@s.300 = private unnamed_addr global {i64, i64, i64, [31 x i8]} {i64 30, i64 0, i64 31, [31 x i8] c"range() arg 3 must not be zero\00"}, align 8
+-@s.301 = private unnamed_addr global {i64, i64, i64, [7 x i8]} {i64 6, i64 0, i64 7, [7 x i8] c"range(\00"}, align 8
+-@s.302 = private unnamed_addr global {i64, i64, i64, [3 x i8]} {i64 2, i64 0, i64 3, [3 x i8] c", \00"}, align 8
+-@s.303 = private unnamed_addr global {i64, i64, i64, [45 x i8]} {i64 44, i64 0, i64 45, [45 x i8] c"Python int too large to convert to C ssize_t\00"}, align 8
+-@s.304 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"range object index out of range\00"}, align 8
+-@s.305 = private unnamed_addr global {i64, i64, i64, [8 x i8]} {i64 7, i64 0, i64 8, [8 x i8] c"T3i?s?s\00"}, align 8
+-@s.306 = private unnamed_addr global {i64, i64, i64, [7 x i8]} {i64 6, i64 0, i64 7, [7 x i8] c"T3ii?s\00"}, align 8
+-@s.307 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3iii\00"}, align 8
+-@s.308 = private unnamed_addr global {i64, i64, i64, [17 x i8]} {i64 16, i64 0, i64 17, [17 x i8] c" is not in range\00"}, align 8
+-@s.309 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"lookup_error('surrogateescape')\00"}, align 8
+-@s.310 = private unnamed_addr global {i64, i64, i64, [30 x i8]} {i64 29, i64 0, i64 30, [30 x i8] c"lookup_error('surrogatepass')\00"}, align 8
+-@s.311 = private unnamed_addr global {i64, i64, i64, [8 x i8]} {i64 7, i64 0, i64 8, [8 x i8] c"codecs.\00"}, align 8
+DIFF tests/programs/containers/tuple_runtime_regex.py
+  IR from line 4512 (in @f.re$_sre$_charset_memo.1):
+@@ -4509,10 +4509,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4536,98 +4536,100 @@
+DIFF tests/programs/imports/import_module_attr_same_name.py
+  IR from line 7974 (in @f.re$_sre$_charset_memo.1):
+@@ -7971,10 +7971,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -7998,98 +7998,100 @@
+DIFF tests/programs/language/walrus.py
+  IR from line 6025 (in @f.re$_sre$_charset_memo.1):
+@@ -6022,10 +6022,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -6049,98 +6049,100 @@
+DIFF tests/programs/library/json_errors.py
+  IR from line 3729 (in @m.json$_Parser.key):
+@@ -3726,14 +3726,14 @@
+   store ptr zeroinitializer, ptr %data.53
+   %size.64 = alloca i64
+   store i64 zeroinitializer, ptr %size.64
+-  %slot.92 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.92
+-  %known.99 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.99
+-  %raw.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.137
+-  %text.147 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.147
++  %slot.91 = alloca i64
++  store i64 zeroinitializer, ptr %slot.91
++  %known.98 = alloca ptr
++  store ptr zeroinitializer, ptr %known.98
+DIFF tests/programs/library/json_mutation.py
+  IR from line 5288 (in @m.json$_Parser.key):
+@@ -5285,14 +5285,14 @@
+   store ptr zeroinitializer, ptr %data.53
+   %size.64 = alloca i64
+   store i64 zeroinitializer, ptr %size.64
+-  %slot.92 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.92
+-  %known.99 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.99
+-  %raw.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.137
+-  %text.147 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.147
++  %slot.91 = alloca i64
++  store i64 zeroinitializer, ptr %slot.91
++  %known.98 = alloca ptr
++  store ptr zeroinitializer, ptr %known.98
+DIFF tests/programs/library/json_roundtrip.py
+  IR from line 5174 (in @m.json$_Parser.key):
+@@ -5171,14 +5171,14 @@
+   store ptr zeroinitializer, ptr %data.53
+   %size.64 = alloca i64
+   store i64 zeroinitializer, ptr %size.64
+-  %slot.92 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.92
+-  %known.99 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.99
+-  %raw.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.137
+-  %text.147 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.147
++  %slot.91 = alloca i64
++  store i64 zeroinitializer, ptr %slot.91
++  %known.98 = alloca ptr
++  store ptr zeroinitializer, ptr %known.98
+DIFF tests/programs/library/json_scanner.py
+  IR from line 5600 (in @m.json$_Parser.key):
+@@ -5597,14 +5597,14 @@
+   store ptr zeroinitializer, ptr %data.53
+   %size.64 = alloca i64
+   store i64 zeroinitializer, ptr %size.64
+-  %slot.92 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.92
+-  %known.99 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.99
+-  %raw.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.137
+-  %text.147 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.147
++  %slot.91 = alloca i64
++  store i64 zeroinitializer, ptr %slot.91
++  %known.98 = alloca ptr
++  store ptr zeroinitializer, ptr %known.98
+DIFF tests/programs/library/json_unicode.py
+  IR from line 5119 (in @m.json$_Parser.key):
+@@ -5116,14 +5116,14 @@
+   store ptr zeroinitializer, ptr %data.53
+   %size.64 = alloca i64
+   store i64 zeroinitializer, ptr %size.64
+-  %slot.92 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.92
+-  %known.99 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.99
+-  %raw.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.137
+-  %text.147 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.147
++  %slot.91 = alloca i64
++  store i64 zeroinitializer, ptr %slot.91
++  %known.98 = alloca ptr
++  store ptr zeroinitializer, ptr %known.98
+DIFF tests/programs/library/lib_binascii.py
+  IR from line 1384 (in @f.binascii$a2b_base64.1):
+@@ -1381,128 +1381,134 @@
+   store i64 2, ptr %quad.8
+   %t146 = load ptr, ptr %out.6
+   %t147 = load i64, ptr %left.9
+-  %t148 = call i64 @pys_shl(i64 %t147, i64 2)
+-  %t149 = load i64, ptr %v.91
+-  %t150 = call i64 @pys_shr(i64 %t149, i64 4)
+-  %t151 = or i64 %t148, %t150
+-  %t152 = and i64 %t151, 255
+-  call void @pys_list_append(ptr %t146, i64 %t152)
+-  %t153 = load i64, ptr %v.91
+-  %t154 = and i64 %t153, 15
+-  store i64 %t154, ptr %left.9
++  %t148 = shl i64 %t147, 2
++  %t149 = ashr i64 %t148, 2
++  %t150 = icmp ne i64 %t149, %t147
+DIFF tests/programs/library/lib_datetime_timedelta.py
+  IR from line 365:
+@@ -362,46 +362,47 @@
+ @s.210 = private unnamed_addr global {i64, i64, i64, [37 x i8]} {i64 36, i64 0, i64 37, [37 x i8] c"name '_big_shr_round' is not defined\00"}, align 8
+ @s.211 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"name '_big_divmod' is not defined\00"}, align 8
+ @s.212 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_big_add1' is not defined\00"}, align 8
+-@s.213 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"name '_big_to_delta' is not defined\00"}, align 8
+-@s.214 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"cannot convert float NaN to integer\00"}, align 8
+-@s.215 = private unnamed_addr global {i64, i64, i64, [41 x i8]} {i64 40, i64 0, i64 41, [41 x i8] c"cannot convert float infinity to integer\00"}, align 8
+-@s.216 = private unnamed_addr global {i64, i64, i64, [41 x i8]} {i64 40, i64 0, i64 41, [41 x i8] c"Python int too large to convert to C int\00"}, align 8
+-@s.217 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_accum' is not defined\00"}, align 8
+-@s.218 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"days=\00"}, align 8
+-@s.219 = private unnamed_addr global {i64, i64, i64, [35 x i8]} {i64 34, i64 0, i64 35, [35 x i8] c"; must have magnitude <= 999999999\00"}, align 8
+-@s.220 = private unnamed_addr global {i64, i64, i64, [31 x i8]} {i64 30, i64 0, i64 31, [31 x i8] c"name '_c_round' is not defined\00"}, align 8
+-@s.221 = private unnamed_addr global {i64, i64, i64, [9 x i8]} {i64 8, i64 0, i64 9, [9 x i8] c"seconds=\00"}, align 8
+-@s.222 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"microseconds=\00"}, align 8
+-@s.223 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"0\00"}, align 8
+-@s.224 = private unnamed_addr global {i64, i64, i64, [3 x i8]} {i64 2, i64 0, i64 3, [3 x i8] c", \00"}, align 8
+DIFF tests/programs/library/lib_difflib.py
+  IR from line 11909 (in @f.re$_sre$_charset_memo.1):
+@@ -11906,10 +11906,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -11933,98 +11933,100 @@
+DIFF tests/programs/library/lib_fnmatch.py
+  IR from line 8683 (in @f.re$_sre$_charset_memo.1):
+@@ -8680,10 +8680,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -8707,98 +8707,100 @@
+DIFF tests/programs/library/lib_fnmatch_raw_bytes.py
+  IR from line 8475 (in @f.re$_sre$_charset_memo.1):
+@@ -8472,10 +8472,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -8499,98 +8499,100 @@
+DIFF tests/programs/library/lib_fnmatch_unicode_ranges.py
+  IR from line 8303 (in @f.re$_sre$_charset_memo.1):
+@@ -8300,10 +8300,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -8327,98 +8327,100 @@
+DIFF tests/programs/library/lib_html.py
+  IR from line 14941 (in @f.re$_sre$_charset_memo.1):
+@@ -14938,10 +14938,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -14965,98 +14965,100 @@
+DIFF tests/programs/library/lib_html_entities.py
+  IR from line 14911 (in @f.re$_sre$_charset_memo.1):
+@@ -14908,10 +14908,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -14935,98 +14935,100 @@
+DIFF tests/programs/library/lib_html_parser.py
+  IR from line 15882 (in @f.re$_sre$_charset_memo.1):
+@@ -15879,10 +15879,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -15906,98 +15906,100 @@
+DIFF tests/programs/library/lib_html_parser_positions.py
+  IR from line 15737 (in @f.re$_sre$_charset_memo.1):
+@@ -15734,10 +15734,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -15761,98 +15761,100 @@
+DIFF tests/programs/library/lib_random.py
+  IR from line 250:
+@@ -248,6 +248,7 @@
+ @s.108 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.109 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.110 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.111 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -413,32 +414,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/library/lib_random_distributions.py
+  IR from line 270:
+@@ -268,6 +268,7 @@
+ @s.146 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.147 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.148 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.149 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -433,32 +434,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/library/lib_random_sequences.py
+  IR from line 306:
+@@ -304,6 +304,7 @@
+ @s.178 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"s\00"}, align 8
+ @s.179 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.180 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.181 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -469,32 +470,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/library/lib_random_triangular_ints.py
+  IR from line 176:
+@@ -174,6 +174,8 @@
+ @s.68 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.69 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.70 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.71 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
++@s.72 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"ValueError\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -339,32 +341,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+DIFF tests/programs/library/lib_re.py
+  IR from line 4845 (in @f.re$_sre$_charset_memo.1):
+@@ -4842,10 +4842,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4869,98 +4869,100 @@
+DIFF tests/programs/library/lib_re_annotations.py
+  IR from line 3407 (in @f.re$_sre$_charset_memo.1):
+@@ -3404,10 +3404,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3431,98 +3431,100 @@
+DIFF tests/programs/library/lib_re_bounds.py
+  IR from line 3777 (in @f.re$_sre$_charset_memo.1):
+@@ -3774,10 +3774,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3801,98 +3801,100 @@
+DIFF tests/programs/library/lib_re_branch_filter.py
+  IR from line 3584 (in @f.re$_sre$_charset_memo.1):
+@@ -3581,10 +3581,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3608,98 +3608,100 @@
+DIFF tests/programs/library/lib_re_branch_runs.py
+  IR from line 5173 (in @f.re$_sre$_charset_memo.1):
+@@ -5170,10 +5170,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -5197,98 +5197,100 @@
+DIFF tests/programs/library/lib_re_cache.py
+  IR from line 4807 (in @f.re$_sre$_charset_memo.1):
+@@ -4804,10 +4804,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4831,98 +4831,100 @@
+DIFF tests/programs/library/lib_re_cache_churn.py
+  IR from line 4482 (in @f.re$_sre$_charset_memo.1):
+@@ -4479,10 +4479,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4506,98 +4506,100 @@
+DIFF tests/programs/library/lib_re_charset.py
+  IR from line 3437 (in @f.re$_sre$_charset_memo.1):
+@@ -3434,10 +3434,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3461,98 +3461,100 @@
+DIFF tests/programs/library/lib_re_class_span.py
+  IR from line 3471 (in @f.re$_sre$_charset_memo.1):
+@@ -3468,10 +3468,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3495,98 +3495,100 @@
+DIFF tests/programs/library/lib_re_codepoints.py
+  IR from line 3790 (in @f.re$_sre$_charset_memo.1):
+@@ -3787,10 +3787,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3814,98 +3814,100 @@
+DIFF tests/programs/library/lib_re_first.py
+  IR from line 3699 (in @f.re$_sre$_charset_memo.1):
+@@ -3696,10 +3696,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3723,98 +3723,100 @@
+DIFF tests/programs/library/lib_re_flat.py
+  IR from line 3586 (in @f.re$_sre$_charset_memo.1):
+@@ -3583,10 +3583,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3610,98 +3610,100 @@
+DIFF tests/programs/library/lib_re_groups.py
+  IR from line 4227 (in @f.re$_sre$_charset_memo.1):
+@@ -4224,10 +4224,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4251,98 +4251,100 @@
+DIFF tests/programs/library/lib_re_ignorecase_repeat.py
+  IR from line 5211 (in @f.re$_sre$_charset_memo.1):
+@@ -5208,10 +5208,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -5235,98 +5235,100 @@
+DIFF tests/programs/library/lib_re_lines.py
+  IR from line 3586 (in @f.re$_sre$_charset_memo.1):
+@@ -3583,10 +3583,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3610,98 +3610,100 @@
+DIFF tests/programs/library/lib_re_prefilter.py
+  IR from line 3911 (in @f.re$_sre$_charset_memo.1):
+@@ -3908,10 +3908,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3935,98 +3935,100 @@
+DIFF tests/programs/library/lib_re_purge.py
+  IR from line 3419 (in @f.re$_sre$_charset_memo.1):
+@@ -3416,10 +3416,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3443,98 +3443,100 @@
+DIFF tests/programs/library/lib_re_raw_subject.py
+  IR from line 3590 (in @f.re$_sre$_charset_memo.1):
+@@ -3587,10 +3587,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3614,98 +3614,100 @@
+DIFF tests/programs/library/lib_re_repeat_prefix.py
+  IR from line 4699 (in @f.re$_sre$_charset_memo.1):
+@@ -4696,10 +4696,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4723,98 +4723,100 @@
+DIFF tests/programs/library/lib_re_reuse.py
+  IR from line 3686 (in @f.re$_sre$_charset_memo.1):
+@@ -3683,10 +3683,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3710,98 +3710,100 @@
+DIFF tests/programs/library/lib_re_unicode_memo.py
+  IR from line 3543 (in @f.re$_sre$_charset_memo.1):
+@@ -3540,10 +3540,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3567,98 +3567,100 @@
+DIFF tests/programs/library/lib_re_utf8_overlong.py
+  IR from line 6965 (in @f.re$_sre$_charset_memo.1):
+@@ -6962,10 +6962,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -6989,98 +6989,100 @@
+DIFF tests/programs/library/lib_shlex.py
+  IR from line 12016 (in @f.re$_sre$_charset_memo.1):
+@@ -12013,10 +12013,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -12040,98 +12040,100 @@
+DIFF tests/programs/library/lib_shlex_upstream.py
+  IR from line 9301 (in @f.re$_sre$_charset_memo.1):
+@@ -9298,10 +9298,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9325,98 +9325,100 @@
+DIFF tests/programs/library/lib_string.py
+  IR from line 3470 (in @f.re$_sre$_charset_memo.1):
+@@ -3467,10 +3467,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3494,98 +3494,100 @@
+DIFF tests/programs/library/lib_string_template_kwargs.py
+  IR from line 3289 (in @f.re$_sre$_charset_memo.1):
+@@ -3286,10 +3286,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3313,98 +3313,100 @@
+DIFF tests/programs/library/lib_textwrap.py
+  IR from line 6058 (in @f.re$_sre$_charset_memo.1):
+@@ -6055,10 +6055,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -6082,98 +6082,100 @@
+DIFF tests/programs/library/lib_textwrap_codepoints.py
+  IR from line 6092 (in @f.re$_sre$_charset_memo.1):
+@@ -6089,10 +6089,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -6116,98 +6116,100 @@
+DIFF tests/programs/library/lib_unicodedata_chars.py
+  IR from line 9312 (in @f.re$_sre$_charset_memo.1):
+@@ -9309,10 +9309,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9336,98 +9336,100 @@
+DIFF tests/programs/library/lib_urllib_parse.py
+  IR from line 27441 (in @f.re$_sre$_charset_memo.1):
+@@ -27438,10 +27438,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -27465,98 +27465,100 @@
+DIFF tests/programs/library/lib_urllib_parse_cache.py
+  IR from line 11377 (in @f.re$_sre$_charset_memo.1):
+@@ -11374,10 +11374,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -11401,98 +11401,100 @@
+DIFF tests/programs/library/lib_warnings.py
+  IR from line 14631 (in @f.re$_sre$_charset_memo.1):
+@@ -14628,10 +14628,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -14655,98 +14655,100 @@
+DIFF tests/programs/library/lib_warnings_main_filter.py
+  IR from line 8057 (in @f.re$_sre$_charset_memo.1):
+@@ -8054,10 +8054,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -8081,98 +8081,100 @@
+DIFF tests/programs/library/lib_warnings_objects.py
+  IR from line 9132 (in @f.re$_sre$_charset_memo.1):
+@@ -9129,10 +9129,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9156,98 +9156,100 @@
+DIFF tests/programs/library/lib_warnings_options.py
+  IR from line 8371 (in @f.re$_sre$_charset_memo.1):
+@@ -8368,10 +8368,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -8395,98 +8395,100 @@
+DIFF tests/programs/library/lib_warnings_skip_prefixes.py
+  IR from line 8742 (in @f.re$_sre$_charset_memo.1):
+@@ -8739,10 +8739,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -8766,98 +8766,100 @@
+DIFF tests/programs/library/lib_weakref_dead_eq.py
+  IR from line 6070 (in @f.re$_sre$_charset_memo.1):
+@@ -6067,10 +6067,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -6094,98 +6094,100 @@
+DIFF tests/programs/library/lib_weakref_eq.py
+  IR from line 6269 (in @f.re$_sre$_charset_memo.1):
+@@ -6266,10 +6266,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -6293,98 +6293,100 @@
+DIFF tests/programs/library/re_specialize.py
+  IR from line 21736 (in @f.re$_sre$_charset_memo.1):
+@@ -21733,10 +21733,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -21760,98 +21760,100 @@
+DIFF tests/programs/numbers/arith.py
+  IR from line 829 (in @main.init):
+@@ -826,42 +826,39 @@
+   %t474 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t473, i64 31)
+   %t475 = extractvalue {i64, i1} %t474, 0
+   %t476 = extractvalue {i64, i1} %t474, 1
+-  br i1 %t476, label %L6, label %L477
+-L477:
+-  %t478 = load ptr, ptr @g.c
+-  %t479 = call i64 @pys_ord(ptr %t478)
+-  %t480 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t475, i64 %t479)
+-  %t481 = extractvalue {i64, i1} %t480, 0
+-  %t482 = extractvalue {i64, i1} %t480, 1
+-  br i1 %t482, label %L6, label %L483
+-L483:
+-  %t484 = and i64 %t481, 4294967295
+-  store i64 %t484, ptr @g.h
++  %t477 = load ptr, ptr @g.c
+DIFF tests/programs/numbers/int_masked.py
+  IR from line 21:
+@@ -18,7 +18,9 @@
+ @s.8 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ValueError:\00"}, align 8
+ @s.9 = private unnamed_addr global {i64, i64, i64, [39 x i8]} {i64 38, i64 0, i64 39, [39 x i8] c"integer result does not fit in 64 bits\00"}, align 8
+ @s.10 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"OverflowError\00"}, align 8
+-@s.11 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"f\00"}, align 8
++@s.11 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
++@s.12 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"ValueError\00"}, align 8
++@s.13 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"f\00"}, align 8
+ define internal void @main.init() personality ptr @pys_personality {
+ entry:
+   %h.12 = alloca i64
+@@ -33,12 +35,12 @@
+   store i64 zeroinitializer, ptr %h.71
+   %i.78 = alloca i64
+   store i64 zeroinitializer, ptr %i.78
+-  %h.271 = alloca i64
+DIFF tests/programs/numbers/mpz_cpython_long_bitops.py
+  IR from line 311:
+@@ -308,9 +308,10 @@
+ @s.166 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.167 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.168 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
+-@s.169 = private unnamed_addr global {i64, i64, i64, [31 x i8]} {i64 30, i64 0, i64 31, [31 x i8] c"range() arg 3 must not be zero\00"}, align 8
++@s.169 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ @s.170 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"ValueError\00"}, align 8
+-@s.171 = private unnamed_addr global {i64, i64, i64, [50 x i8]} {i64 49, i64 0, i64 50, [50 x i8] c"mpz() can't convert non-string with explicit base\00"}, align 8
++@s.171 = private unnamed_addr global {i64, i64, i64, [31 x i8]} {i64 30, i64 0, i64 31, [31 x i8] c"range() arg 3 must not be zero\00"}, align 8
++@s.172 = private unnamed_addr global {i64, i64, i64, [50 x i8]} {i64 49, i64 0, i64 50, [50 x i8] c"mpz() can't convert non-string with explicit base\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -476,32 +477,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+DIFF tests/programs/numbers/mpz_cpython_long_division.py
+  IR from line 263:
+@@ -260,7 +260,9 @@
+ @s.135 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.136 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.137 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
+-@s.138 = private unnamed_addr global {i64, i64, i64, [50 x i8]} {i64 49, i64 0, i64 50, [50 x i8] c"mpz() can't convert non-string with explicit base\00"}, align 8
++@s.138 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
++@s.139 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"ValueError\00"}, align 8
++@s.140 = private unnamed_addr global {i64, i64, i64, [50 x i8]} {i64 49, i64 0, i64 50, [50 x i8] c"mpz() can't convert non-string with explicit base\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -426,32 +428,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+DIFF tests/programs/numbers/mpz_cpython_text.py
+  IR from line 449:
+@@ -446,7 +446,9 @@
+ @s.304 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.305 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.306 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
+-@s.307 = private unnamed_addr global {i64, i64, i64, [50 x i8]} {i64 49, i64 0, i64 50, [50 x i8] c"mpz() can't convert non-string with explicit base\00"}, align 8
++@s.307 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
++@s.308 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"ValueError\00"}, align 8
++@s.309 = private unnamed_addr global {i64, i64, i64, [50 x i8]} {i64 49, i64 0, i64 50, [50 x i8] c"mpz() can't convert non-string with explicit base\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -612,32 +614,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+DIFF tests/programs/strings/bytes_reads.py
+  IR from line 51 (in @main.init):
+@@ -48,30 +48,30 @@
+   store ptr zeroinitializer, ptr %h.206
+   %h.242 = alloca i64
+   store i64 zeroinitializer, ptr %h.242
+-  %h.270 = alloca i64
+-  store i64 zeroinitializer, ptr %h.270
+-  %h.299 = alloca i64
+-  store i64 zeroinitializer, ptr %h.299
+-  %i.312 = alloca i64
+-  store i64 zeroinitializer, ptr %i.312
+-  %x.313 = alloca i64
+-  store i64 zeroinitializer, ptr %x.313
+-  %h.327 = alloca i64
+-  store i64 zeroinitializer, ptr %h.327
+-  %__item.349 = alloca ptr
+-  store ptr zeroinitializer, ptr %__item.349
+DIFF tests/programs/strings/unicode_library_codepoints.py
+  IR from line 2189:
+@@ -2186,281 +2186,282 @@
+ @s.747 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.748 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.749 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
+-@s.750 = private unnamed_addr global {i64, i64, i64, [30 x i8]} {i64 29, i64 0, i64 30, [30 x i8] c"name '_ranges' is not defined\00"}, align 8
+-@s.751 = private unnamed_addr global {i64, i64, i64, [30 x i8]} {i64 29, i64 0, i64 30, [30 x i8] c"name '_decode' is not defined\00"}, align 8
+-@s.752 = private unnamed_addr global {i64, i64, i64, [31 x i8]} {i64 30, i64 0, i64 31, [31 x i8] c"name '_mapmemo' is not defined\00"}, align 8
+-@s.753 = private unnamed_addr global {i64, i64, i64, [31 x i8]} {i64 30, i64 0, i64 31, [31 x i8] c"name '_mapkeys' is not defined\00"}, align 8
+-@s.754 = private unnamed_addr global {i64, i64, i64, [31 x i8]} {i64 30, i64 0, i64 31, [31 x i8] c"name '_mapvals' is not defined\00"}, align 8
+-@s.755 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"name 'ascii_isalnum' is not defined\00"}, align 8
+-@s.756 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"name 'uni_isalnum' is not defined\00"}, align 8
+-@s.757 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"name 'uni_isdecimal' is not defined\00"}, align 8
+-@s.758 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"name 'uni_isspace' is not defined\00"}, align 8
+-@s.759 = private unnamed_addr global {i64, i64, i64, [38 x i8]} {i64 37, i64 0, i64 38, [38 x i8] c"name 'uni_islinebreak' is not defined\00"}, align 8
+-@s.760 = private unnamed_addr global {i64, i64, i64, [42 x i8]} {i64 41, i64 0, i64 42, [42 x i8] c"charset() ended without returning a value\00"}, align 8
+-@s.761 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"name 'upper_unicode' is not defined\00"}, align 8
+DIFF tests/programs/upstream/upstream_builtin_min_max_sum.py
+  IR from line 349:
+@@ -347,6 +347,7 @@
+ @s.186 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.187 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.188 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.189 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.operator() {
+ entry:
+   %h.5 = alloca ptr
+@@ -770,32 +771,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/upstream/upstream_builtin_zip_sorted.py
+  IR from line 214:
+@@ -212,6 +212,7 @@
+ @s.102 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.103 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.104 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.105 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -377,32 +378,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/upstream/upstream_counter.py
+  IR from line 364:
+@@ -362,6 +362,7 @@
+ @s.237 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.238 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.239 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.240 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.collections() {
+ entry:
+   %h.5 = alloca ptr
+@@ -586,32 +587,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/upstream/upstream_datetime.py
+  IR from line 711:
+@@ -708,86 +708,87 @@
+ @s.510 = private unnamed_addr global {i64, i64, i64, [37 x i8]} {i64 36, i64 0, i64 37, [37 x i8] c"name '_big_shr_round' is not defined\00"}, align 8
+ @s.511 = private unnamed_addr global {i64, i64, i64, [34 x i8]} {i64 33, i64 0, i64 34, [34 x i8] c"name '_big_divmod' is not defined\00"}, align 8
+ @s.512 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_big_add1' is not defined\00"}, align 8
+-@s.513 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"name '_big_to_delta' is not defined\00"}, align 8
+-@s.514 = private unnamed_addr global {i64, i64, i64, [26 x i8]} {i64 25, i64 0, i64 26, [26 x i8] c"time.struct_time(tm_year=\00"}, align 8
+-@s.515 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c", tm_mon=\00"}, align 8
+-@s.516 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c", tm_mday=\00"}, align 8
+-@s.517 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c", tm_hour=\00"}, align 8
+-@s.518 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c", tm_min=\00"}, align 8
+-@s.519 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c", tm_sec=\00"}, align 8
+-@s.520 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c", tm_wday=\00"}, align 8
+-@s.521 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c", tm_yday=\00"}, align 8
+-@s.522 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c", tm_isdst=\00"}, align 8
+-@s.523 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"cannot convert float NaN to integer\00"}, align 8
+-@s.524 = private unnamed_addr global {i64, i64, i64, [41 x i8]} {i64 40, i64 0, i64 41, [41 x i8] c"cannot convert float infinity to integer\00"}, align 8
+DIFF tests/programs/upstream/upstream_dict_methods.py
+  IR from line 286:
+@@ -284,6 +284,7 @@
+ @s.175 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.176 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.177 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.178 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -449,32 +450,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/upstream/upstream_float_format.py
+  IR from line 464:
+@@ -462,6 +462,8 @@
+ @s.350 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.351 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.352 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.353 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
++@s.354 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"ValueError\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -627,32 +629,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+DIFF tests/programs/upstream/upstream_fnmatch.py
+  IR from line 10362 (in @f.re$_sre$_charset_memo.1):
+@@ -10359,10 +10359,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -10386,98 +10386,100 @@
+DIFF tests/programs/upstream/upstream_html_parser.py
+  IR from line 16168 (in @f.re$_sre$_charset_memo.1):
+@@ -16165,10 +16165,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -16192,98 +16192,100 @@
+DIFF tests/programs/upstream/upstream_int_arith.py
+  IR from line 299:
+@@ -297,6 +297,8 @@
+ @s.181 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.182 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.183 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.184 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
++@s.185 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"ValueError\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -462,32 +464,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+DIFF tests/programs/upstream/upstream_int_format.py
+  IR from line 412:
+@@ -410,6 +410,7 @@
+ @s.284 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.285 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.286 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.287 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -575,32 +576,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/upstream/upstream_itertools.py
+  IR from line 999:
+@@ -996,7 +996,8 @@
+ @s.645 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.646 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.647 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
+-@s.648 = private unnamed_addr global {i64, i64, i64, [31 x i8]} {i64 30, i64 0, i64 31, [31 x i8] c"range() arg 3 must not be zero\00"}, align 8
++@s.648 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
++@s.649 = private unnamed_addr global {i64, i64, i64, [31 x i8]} {i64 30, i64 0, i64 31, [31 x i8] c"range() arg 3 must not be zero\00"}, align 8
+ define internal void @init.operator() {
+ entry:
+   %h.5 = alloca ptr
+@@ -1607,32 +1608,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+DIFF tests/programs/upstream/upstream_math_integer.py
+  IR from line 117 (in @f.count_set_bits):
+@@ -114,22 +114,24 @@
+   %t9 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t8, i64 1)
+   %t10 = extractvalue {i64, i1} %t9, 0
+   %t11 = extractvalue {i64, i1} %t9, 1
+-  br i1 %t11, label %L12, label %L13
+-L13:
+-  %t14 = and i64 %t7, %t10
+-  %t15 = call i64 @f.count_set_bits(i64 %t14)
+-  %t16 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 1, i64 %t15)
+-  %t17 = extractvalue {i64, i1} %t16, 0
+-  %t18 = extractvalue {i64, i1} %t16, 1
+-  br i1 %t18, label %L12, label %L19
+-L19:
++  %t12 = icmp slt i64 %t7, 0
++  %t13 = and i1 %t11, %t12
++  br i1 %t13, label %L14, label %L15
+DIFF tests/programs/upstream/upstream_math_sums.py
+  IR from line 410:
+@@ -408,6 +408,8 @@
+ @s.294 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.295 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.296 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.297 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
++@s.298 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"ValueError\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -573,32 +575,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+DIFF tests/programs/upstream/upstream_ordered_dict.py
+  IR from line 313:
+@@ -311,6 +311,7 @@
+ @s.182 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.183 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.184 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.185 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.collections() {
+ entry:
+   %h.5 = alloca ptr
+@@ -535,32 +536,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/upstream/upstream_random.py
+  IR from line 383:
+@@ -381,6 +381,7 @@
+ @s.247 = private unnamed_addr global {i64, i64, i64, [48 x i8]} {i64 47, i64 0, i64 48, [48 x i8] c"module 'random' has no attribute 'gammavariate'\00"}, align 8
+ @s.248 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.249 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.250 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -546,32 +547,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/programs/upstream/upstream_re_errors.py
+  IR from line 3661 (in @f.re$_sre$_charset_memo.1):
+@@ -3658,10 +3658,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3685,98 +3685,100 @@
+DIFF tests/programs/upstream/upstream_re_flags.py
+  IR from line 12822 (in @f.re$_sre$_charset_memo.1):
+@@ -12819,10 +12819,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -12846,98 +12846,100 @@
+DIFF tests/programs/upstream/upstream_re_match.py
+  IR from line 4796 (in @f.re$_sre$_charset_memo.1):
+@@ -4793,10 +4793,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4820,98 +4820,100 @@
+DIFF tests/programs/upstream/upstream_re_sub.py
+  IR from line 3603 (in @f.re$_sre$_charset_memo.1):
+@@ -3600,10 +3600,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3627,98 +3627,100 @@
+DIFF tests/programs/upstream/upstream_re_tests.py
+  IR from line 9481 (in @f.re$_sre$_charset_memo.1):
+@@ -9478,10 +9478,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9505,98 +9505,100 @@
+DIFF tests/programs/upstream/upstream_re_tests_perl.py
+  IR from line 9695 (in @f.re$_sre$_charset_memo.1):
+@@ -9692,10 +9692,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9719,98 +9719,100 @@
+DIFF tests/programs/upstream/upstream_textwrap_field_rebind.py
+  IR from line 5903 (in @f.re$_sre$_charset_memo.1):
+@@ -5900,10 +5900,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -5927,98 +5927,100 @@
+DIFF tests/programs/upstream/upstream_textwrap_indent.py
+  IR from line 3934 (in @f.re$_sre$_charset_memo.1):
+@@ -3931,10 +3931,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3958,98 +3958,100 @@
+DIFF tests/programs/upstream/upstream_textwrap_layout.py
+  IR from line 9825 (in @f.re$_sre$_charset_memo.1):
+@@ -9822,10 +9822,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9849,98 +9849,100 @@
+DIFF tests/programs/upstream/upstream_textwrap_unicode.py
+  IR from line 6005 (in @f.re$_sre$_charset_memo.1):
+@@ -6002,10 +6002,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -6029,98 +6029,100 @@
+DIFF tests/programs/upstream/upstream_textwrap_wrap.py
+  IR from line 9712 (in @f.re$_sre$_charset_memo.1):
+@@ -9709,10 +9709,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9736,98 +9736,100 @@
+DIFF tests/programs/upstream/upstream_weakref.py
+  IR from line 6824 (in @f.re$_sre$_charset_memo.1):
+@@ -6821,10 +6821,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -6848,98 +6848,100 @@
+DIFF tests/deviations/int_masked_overflow.py
+  IR from line 19 (in @main.init):
+@@ -16,14 +16,14 @@
+   store i64 zeroinitializer, ptr %h.3
+   %h.15 = alloca ptr
+   store ptr zeroinitializer, ptr %h.15
+-  %h.41 = alloca ptr
+-  store ptr zeroinitializer, ptr %h.41
+-  %h.63 = alloca ptr
+-  store ptr zeroinitializer, ptr %h.63
+-  %h.85 = alloca ptr
+-  store ptr zeroinitializer, ptr %h.85
+-  %h.119 = alloca ptr
+-  store ptr zeroinitializer, ptr %h.119
++  %h.43 = alloca ptr
++  store ptr zeroinitializer, ptr %h.43
++  %h.71 = alloca ptr
++  store ptr zeroinitializer, ptr %h.71
+DIFF tests/deviations/json_invalid_utf8.py
+  IR from line 5098 (in @m.json$_Parser.key):
+@@ -5095,14 +5095,14 @@
+   store ptr zeroinitializer, ptr %data.53
+   %size.64 = alloca i64
+   store i64 zeroinitializer, ptr %size.64
+-  %slot.92 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.92
+-  %known.99 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.99
+-  %raw.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.137
+-  %text.147 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.147
++  %slot.91 = alloca i64
++  store i64 zeroinitializer, ptr %slot.91
++  %known.98 = alloca ptr
++  store ptr zeroinitializer, ptr %known.98
+DIFF tests/deviations/json_limits.py
+  IR from line 5150 (in @m.json$_Parser.key):
+@@ -5147,14 +5147,14 @@
+   store ptr zeroinitializer, ptr %data.53
+   %size.64 = alloca i64
+   store i64 zeroinitializer, ptr %size.64
+-  %slot.92 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.92
+-  %known.99 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.99
+-  %raw.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.137
+-  %text.147 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.147
++  %slot.91 = alloca i64
++  store i64 zeroinitializer, ptr %slot.91
++  %known.98 = alloca ptr
++  store ptr zeroinitializer, ptr %known.98
+DIFF tests/deviations/lib_binascii_sep_none.py
+  IR from line 419 (in @f.binascii$_crc_hqx_table):
+@@ -416,39 +416,43 @@
+   br i1 %t24, label %L25, label %L26
+ L25:
+   %t28 = load i64, ptr %c.13
+-  %t29 = call i64 @pys_shl(i64 %t28, i64 1)
+-  %t30 = xor i64 %t29, 4129
+-  %t31 = and i64 %t30, 65535
++  %t29 = shl i64 %t28, 1
++  %t30 = ashr i64 %t29, 1
++  %t31 = icmp ne i64 %t30, %t28
++  %t32 = xor i64 %t29, 4129
++  %t33 = and i64 %t32, 65535
+   br label %L27
+ L26:
+-  %t32 = load i64, ptr %c.13
+-  %t33 = call i64 @pys_shl(i64 %t32, i64 1)
+DIFF tests/deviations/lib_html_parser_names.py
+  IR from line 15744 (in @f.re$_sre$_charset_memo.1):
+@@ -15741,10 +15741,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -15768,98 +15768,100 @@
+DIFF tests/deviations/lib_random.py
+  IR from line 239:
+@@ -237,6 +237,7 @@
+ @s.109 = private unnamed_addr global {i64, i64, i64, [32 x i8]} {i64 31, i64 0, i64 32, [32 x i8] c"name '_isfinite' is not defined\00"}, align 8
+ @s.110 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_isinf' is not defined\00"}, align 8
+ @s.111 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c"name '_frexp' is not defined\00"}, align 8
++@s.112 = private unnamed_addr global {i64, i64, i64, [21 x i8]} {i64 20, i64 0, i64 21, [21 x i8] c"negative shift count\00"}, align 8
+ define internal void @init.bisect() {
+ entry:
+   %h.5 = alloca ptr
+@@ -402,32 +403,29 @@
+   %t59 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 1812433253, i64 %t58)
+   %t60 = extractvalue {i64, i1} %t59, 0
+   %t61 = extractvalue {i64, i1} %t59, 1
+-  br i1 %t61, label %L27, label %L62
+-L62:
+-  %t63 = load i64, ptr %mti.21
+-  %t64 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t60, i64 %t63)
+DIFF tests/deviations/lib_re.py
+  IR from line 4561 (in @f.re$_sre$_charset_memo.1):
+@@ -4558,10 +4558,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4585,98 +4585,100 @@
+DIFF tests/deviations/lib_re_bounded_decoding.py
+  IR from line 5197 (in @f.re$_sre$_charset_memo.1):
+@@ -5194,10 +5194,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -5221,98 +5221,100 @@
+DIFF tests/deviations/lib_re_decoding.py
+  IR from line 3394 (in @f.re$_sre$_charset_memo.1):
+@@ -3391,10 +3391,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3418,98 +3418,100 @@
+DIFF tests/deviations/lib_re_purge_decoding.py
+  IR from line 5066 (in @f.re$_sre$_charset_memo.1):
+@@ -5063,10 +5063,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -5090,98 +5090,100 @@
+DIFF tests/deviations/lib_re_release.py
+  IR from line 3545 (in @f.re$_sre$_charset_memo.1):
+@@ -3542,10 +3542,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -3569,98 +3569,100 @@
+DIFF tests/deviations/lib_urllib_parse.py
+  IR from line 9941 (in @f.re$_sre$_charset_memo.1):
+@@ -9938,10 +9938,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -9965,98 +9965,100 @@
+DIFF tests/deviations/lib_warnings_location.py
+  IR from line 7576 (in @f.re$_sre$_charset_memo.1):
+@@ -7573,10 +7573,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -7600,98 +7600,100 @@
+DIFF tests/deviations/lib_warnings_message_type.py
+  IR from line 8836 (in @f.re$_sre$_charset_memo.1):
+@@ -8833,10 +8833,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -8860,98 +8860,100 @@
+DIFF bench/json_records.py
+  IR from line 6575 (in @m.json$_Parser.key):
+@@ -6572,14 +6572,14 @@
+   store ptr zeroinitializer, ptr %data.53
+   %size.64 = alloca i64
+   store i64 zeroinitializer, ptr %size.64
+-  %slot.92 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.92
+-  %known.99 = alloca ptr
+-  store ptr zeroinitializer, ptr %known.99
+-  %raw.137 = alloca ptr
+-  store ptr zeroinitializer, ptr %raw.137
+-  %text.147 = alloca ptr
+-  store ptr zeroinitializer, ptr %text.147
++  %slot.91 = alloca i64
++  store i64 zeroinitializer, ptr %slot.91
++  %known.98 = alloca ptr
++  store ptr zeroinitializer, ptr %known.98
+DIFF bench/pyperformance/regex_dna.py
+  IR from line 4325 (in @f.re$_sre$_charset_memo.1):
+@@ -4322,10 +4322,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4349,98 +4349,100 @@
+DIFF bench/pyperformance/regex_effbot.py
+  IR from line 5134 (in @f.re$_sre$_charset_memo.1):
+@@ -5131,10 +5131,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -5158,98 +5158,100 @@
+DIFF bench/pyperformance/regex_v8.py
+  IR from line 4244 (in @f.re$_sre$_charset_memo.1):
+@@ -4241,10 +4241,10 @@
+   store i64 zeroinitializer, ptr %ch.5
+   %table.12 = alloca ptr
+   store ptr zeroinitializer, ptr %table.12
+-  %slot.34 = alloca i64
+-  store i64 zeroinitializer, ptr %slot.34
+-  %member.79 = alloca i1
+-  store i1 zeroinitializer, ptr %member.79
++  %slot.36 = alloca i64
++  store i64 zeroinitializer, ptr %slot.36
++  %member.81 = alloca i1
++  store i1 zeroinitializer, ptr %member.81
+   store ptr %a0, ptr %state.1
+   store ptr %a1, ptr %code.2
+   store i64 %a2, ptr %i.3
+@@ -4268,98 +4268,100 @@
+122 of 3674 differ
+
+real	0m57.220s
+user	2m57.743s
+sys	0m36.391s

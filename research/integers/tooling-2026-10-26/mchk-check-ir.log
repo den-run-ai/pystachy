@@ -1,0 +1,6 @@
+tools/check_ir.sh ./pystachy 
+the IR check and llvm-as accept the IR of 1905 programs
+
+real	0m40.746s
+user	2m1.936s
+sys	0m32.504s

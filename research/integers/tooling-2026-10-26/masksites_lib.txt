@@ -1,0 +1,24 @@
+lib/_pyrandom.py:113: Random._init_genrand: 1812433253 * (mt[mti - 1] ^ mt[mti - 1] >> 30) + mti & 4294967295
+lib/_pyrandom.py:125: Random._init_by_array: (mt[i] ^ (mt[i - 1] ^ mt[i - 1] >> 30) * 1664525) + init_key[j] + j & 4294967295
+lib/_pyrandom.py:138: Random._init_by_array: (mt[i] ^ (mt[i - 1] ^ mt[i - 1] >> 30) * 1566083941) - i & 4294967295
+lib/_pyrandom.py:258: _hash_float: x & (1 << _PyHASH_BITS - 28) - 1
+lib/_pyrandom.py:268: _hash_float: x & (1 << _PyHASH_BITS - e) - 1
+lib/_pyrandom.py:93: Random._genrand_uint32: y << 7 & 2636928640
+lib/_pyrandom.py:94: Random._genrand_uint32: y << 15 & 4022730752
+lib/_pystachy_binascii.py:201: a2b_base64: (left << 2 | v >> 4) & 255
+lib/_pystachy_binascii.py:205: a2b_base64: (left << 4 | v >> 2) & 255
+lib/_pystachy_binascii.py:209: a2b_base64: (left << 6 | v) & 255
+lib/_pystachy_binascii.py:244: _crc_hqx_table: (c << 1 ^ 4129) & 65535
+lib/_pystachy_binascii.py:244: _crc_hqx_table: c << 1 & 65535
+lib/_pystachy_binascii.py:256: crc_hqx: c << 8 & 65280
+lib/_pystachy_binascii.py:287: a2b_uu: a[0] - 32 & 63
+lib/_pystachy_binascii.py:299: a2b_uu: c - 32 & 63
+lib/datetime.py:1036: _scale_delta: q1 & (1 << e) - 1
+lib/datetime.py:967: _big_shr_round: a[(k - 1) // 8] & (1 << (k - 1) % 8) - 1
+lib/json.py:180: _Parser.key: size * 31 + data[begin + 1] & 63
+lib/random.py:187: Random.seed: (1000003 * x ^ c) & 18446744073709551615
+lib/re/_sre.py:1903: _branch_high: ch & HIGH_MEMO - 1
+lib/re/_sre.py:1953: _branch_search: (d << 1 | starts) & pf[5 + c]
+lib/re/_sre.py:1957: _branch_search: d << 1 & later
+lib/re/_sre.py:359: _charset_memo: ch & HIGH_MEMO - 1
+lib/re/_sre.py:537: _span_rest: ch & HIGH_MEMO - 1

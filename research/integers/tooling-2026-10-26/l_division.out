@@ -1,0 +1,4 @@
+test_division: 900 random pairs, digest 911367248
+test_karatsuba: 120 products, largest 42000 bits
+test_square: 399 bit lengths
+identities 918

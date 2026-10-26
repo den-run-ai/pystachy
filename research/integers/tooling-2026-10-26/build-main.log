@@ -1,0 +1,19 @@
+mkdir -p build
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python pystachy.py build pystachy.py -o build/pystachy1
+build/pystachy1 build pystachy.py -o build/pystachy2
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python pystachy.py ir pystachy.py -o build/stage1.ll
+build/pystachy1 ir pystachy.py -o build/stage2.ll
+build/pystachy2 ir pystachy.py -o build/stage3.ll
+cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
+fixed point: stage1 == stage2 == stage3 (712344 lines of IR)
+/tmp/claude-0/-home-user-pystachy/80e493c9-d480-5623-9bd5-4c9b75414b39/scratchpad/venv/bin/python pystachy.py rt runtime.py -o build/rt1.ll
+build/pystachy1 rt runtime.py -o build/rt2.ll
+build/pystachy2 rt runtime.py -o build/rt3.ll
+cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (18735 lines)
+cp build/pystachy2 pystachy
+
+real	3m59.737s
+user	3m38.205s
+sys	0m17.309s
+exit=0
