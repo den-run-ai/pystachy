@@ -111,7 +111,9 @@ for a C `long`), where CPython goes on with the bigger int:
   other unions (also a tuple's, and where a join makes one: `x if c else None`, `x or None`,
   overriding methods that return either), the items of a `tuple[int, ...]` (a tuple sliced by a
   variable), and the values a generator yields or receives
-  (`tests/deviations/python_int_limits.py`).
+  (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a
+  parameter, is hashed, compared, searched, formatted with `%` and unpacked into arguments as
+  the tuple of its fields or None, which holds 64-bit ints too.
 - An `int` parameter of a function in a module that does not opt in. Its unannotated parameters
   take the promoting int, so arithmetic there promotes too.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`

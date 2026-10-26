@@ -3259,6 +3259,8 @@ def gen_ntup(self, v: Val, known: bool = False) -> Val:
     t = self.tuple_([self.getfield(v, Val(self.fgep(v, ci.fpos[x]), ci.ftypes[x]), x) for x in ci.fields])
     if not maybe:
         return t
+    if BIG in t.t:
+        t = self.big_tuple_narrow(t)  # (a tuple | None holds 64-bit ints: bigints.py, NARROW)
     l1 = self.cur
     self.br(lend)
     self.place(lend)
