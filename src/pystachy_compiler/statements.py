@@ -813,7 +813,7 @@ def gen_stmt(self, n: Node) -> None:
             j = self.join(self.ret, v.t) if self.curfn.infer and v.t != self.ret else self.ret
             if j != self.ret and j != "" and is_opt(j):
                 self.reopt(j)  # a template's function returns T and None (or T | None): T | None
-            if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret):
+            if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret) and not (self.ret == "int+" and (v.t == "int" or v.t == "bool")):
                 if v.t == "None":
                     self.err(self.nonemix(self.curfn, self.ret))
                 if v.t != "dyn" or not self.dyn_widen("", self.ret):  # (an Any value: compiled again returning Any)

@@ -242,6 +242,11 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  %t{i.r[1]} = load i64, ptr %t{i.r[0]}")
     elif op == "dyn.type":
         o.append(f"  %t{i.r[0]} = load ptr, ptr {i.a[0].v}")
+    elif op == "big.make":
+        o.append(f"  %t{i.r[0]} = insertvalue {{i64, ptr}} undef, i64 {i.a[0].v}, 0")
+        o.append(f"  %t{i.r[1]} = insertvalue {{i64, ptr}} %t{i.r[0]}, ptr {i.a[1].v}, 1")
+    elif op == "big.lo" or op == "big.hi":
+        o.append(f"  %t{i.r[0]} = extractvalue {{i64, ptr}} {i.a[0].v}, {0 if op == 'big.lo' else 1}")
     elif op == "br":
         o.append(f"  br label %{i.b[0]}")
     elif op == "cbr":

@@ -21,6 +21,31 @@ from src.pystachy_compiler.memory_ir import (
     gen_mstore as memory_ir_mstore,
     gen_maddr as memory_ir_maddr,
 )
+from src.pystachy_compiler.bigints import (
+    gen_big_builtin as bigints_big_builtin,
+    gen_big_compare as bigints_big_compare,
+    gen_big_binop as bigints_big_binop,
+    gen_int_policy as bigints_int_policy,
+    gen_big as bigints_big,
+    gen_big_lo as bigints_big_lo,
+    gen_big_hi as bigints_big_hi,
+    gen_to_big as bigints_to_big,
+    gen_big_fits as bigints_big_fits,
+    gen_big_call as bigints_big_call,
+    gen_big_arith as bigints_big_arith,
+    gen_big_truediv as bigints_big_truediv,
+    gen_big_unary as bigints_big_unary,
+    gen_big_abs as bigints_big_abs,
+    gen_big_cmp as bigints_big_cmp,
+    gen_big_float_cmp as bigints_big_float_cmp,
+    gen_big_truth as bigints_big_truth,
+    gen_big_str as bigints_big_str,
+    gen_big_hash as bigints_big_hash,
+    gen_big_float as bigints_big_float,
+    gen_big_narrow as bigints_big_narrow,
+    gen_big_parse as bigints_big_parse,
+    gen_big_literal as bigints_big_literal,
+)
 from src.pystachy_compiler.dynamic import (
     gen_dyn_again as dynamic_dyn_again,
     gen_dyn_ahead as dynamic_dyn_ahead,
@@ -1437,6 +1462,76 @@ class Gen:
         # compiled, with those types (each item's memo is its position)
         self.dmemo: list[Node] = []
         self.dmemot: list[str] = []
+
+    # ---- promoting ints (bigints.py)
+    def int_policy(self, line: int) -> bool:
+        return bigints_int_policy(self, line)
+
+    def big(self, lo: Val, hi: str = "null") -> Val:
+        return bigints_big(self, lo, hi)
+
+    def big_lo(self, v: Val) -> Val:
+        return bigints_big_lo(self, v)
+
+    def big_hi(self, v: Val) -> Val:
+        return bigints_big_hi(self, v)
+
+    def to_big(self, v: Val) -> Val:
+        return bigints_to_big(self, v)
+
+    def big_fits(self, vs: list[Val]) -> str:
+        return bigints_big_fits(self, vs)
+
+    def big_call(self, op: str, x: Val, y: Val) -> Val:
+        return bigints_big_call(self, op, x, y)
+
+    def big_arith(self, op: str, a: Val, b: Val) -> Val:
+        return bigints_big_arith(self, op, a, b)
+
+    def big_truediv(self, x: Val, y: Val) -> Val:
+        return bigints_big_truediv(self, x, y)
+
+    def big_unary(self, op: str, v: Val) -> Val:
+        return bigints_big_unary(self, op, v)
+
+    def big_abs(self, v: Val) -> Val:
+        return bigints_big_abs(self, v)
+
+    def big_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return bigints_big_cmp(self, op, a, b)
+
+    def big_float_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return bigints_big_float_cmp(self, op, a, b)
+
+    def big_truth(self, v: Val) -> str:
+        return bigints_big_truth(self, v)
+
+    def big_str(self, v: Val) -> Val:
+        return bigints_big_str(self, v)
+
+    def big_hash(self, v: Val) -> Val:
+        return bigints_big_hash(self, v)
+
+    def big_float(self, v: Val) -> Val:
+        return bigints_big_float(self, v)
+
+    def big_narrow(self, v: Val) -> Val:
+        return bigints_big_narrow(self, v)
+
+    def big_parse(self, s: Val, base: Val) -> Val:
+        return bigints_big_parse(self, s, base)
+
+    def big_literal(self, text: str) -> Val:
+        return bigints_big_literal(self, text)
+
+    def big_binop(self, op: str, a: Val, b: Val) -> Val:
+        return bigints_big_binop(self, op, a, b)
+
+    def big_compare(self, op: str, a: Val, b: Val) -> Val:
+        return bigints_big_compare(self, op, a, b)
+
+    def big_builtin(self, name: str, vals: list[Val]) -> Val:
+        return bigints_big_builtin(self, name, vals)
 
     # ---- dynamic values (dynamic.py)
     def dyn_policy(self, line: int) -> bool:

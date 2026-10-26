@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import none_display, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
+from src.pystachy_compiler.specs import BIG, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
     atomic_list,
@@ -723,8 +723,8 @@ def gen_key_items(self, t: str) -> bool:
 def gen_key_problem(self, t: str) -> str:
     # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
     # (hashed by their types at run time: TypeError: unhashable type)
-    if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
-        return ""
+    if t == "dyn" or t == BIG or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
+        return ""  # (a promoting int is a key as a 64-bit int: bigints.py)
     if t in self.nts:
         return key_problem(t) + " (a NamedTuple, which CPython hashes as the tuple of its fields)"
     if t in self.classes and self.classes[t].exc != "":
@@ -910,6 +910,8 @@ def gen_to_str(self, v: Val) -> Val:
         return self.kw_repr(v)
     if t == "int":
         return Val(self.rt("pys_str_int", "ptr", [f"i64 {v.v}"]), "str")
+    if t == BIG:
+        return self.big_str(v)
     if t == "float":
         return Val(self.rt("pys_str_float", "ptr", [f"double {v.v}"]), "str")
     if t == "bool":
@@ -1063,6 +1065,8 @@ def gen_hash_value(self, v: Val) -> Val:
     t = v.t
     if t == "dyn":
         return self.dyn_hash(v)  # (by its box's type: dynamic.py)
+    if t == BIG:
+        return self.big_hash(v)  # (CPython's, as hint gives a 64-bit int's: bigints.py)
     if self.key_class(t):
         return self.obj_hash(v)
     if t == "None":

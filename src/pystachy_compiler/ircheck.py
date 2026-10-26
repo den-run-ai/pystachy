@@ -16,6 +16,7 @@ RESULT_NUMBERS: dict[str, int] = {
     "union.tag": 1, "num.cast": 1, "num.cmp": 1, "alloc.fixed": 1,
     "tuple.store": 1, "mem.load": 1, "int.ucmp": 1, "ptr.cmp": 1,
     "empty.kind": 1, "gen.yield": 2, "gen.ret": 2, "gen.promise": 1,
+    "big.make": 2, "big.lo": 1, "big.hi": 1,
 }
 
 
@@ -322,6 +323,12 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} needs one dyn operand and no extra metadata")
                 if (i.op == "dyn.type" and (i.t != "dyntype" or i.s != "")) or (i.op == "dyn.payload" and (i.t != "%slot" or i.s == "" or i.s == "dyn" or i.s.startswith("%"))):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or payload type")
+            if i.op == "big.make" or i.op == "big.lo" or i.op == "big.hi":
+                # a promoting int's two words: big.make (int, %ptr) -> int+, big.lo -> int, big.hi -> %ptr
+                ts = ["int", "%ptr"] if i.op == "big.make" else ["int+"]
+                rt = "int+" if i.op == "big.make" else "int" if i.op == "big.lo" else "%ptr"
+                if len(i.a) != len(ts) or [a.t for a in i.a] != ts or i.t != rt or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, f"{i.op} has invalid operands, result type or metadata")
             if i.op.startswith("gen."):
                 self.verify_gen(fn, b, i, j)
             n = self.nums(i)

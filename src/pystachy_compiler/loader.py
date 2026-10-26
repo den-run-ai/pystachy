@@ -49,7 +49,7 @@ from src.pystachy_compiler.analysis import (
     top_bindings,
     walrus_names,
 )
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, LINES, MODDUNDERS, RAW, dynamic_pragma, fail
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, INTFILES, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
@@ -296,11 +296,11 @@ class Loader:
         # the main parser starts at file zero, and old opt-ins must not apply to new files.
         FILES.clear()
         DYNFILES.clear()
+        INTFILES.clear()
         m = Mod("", path, "")
-        if dynamic_pragma(src):
-            DYNFILES[len(FILES)] = True
+        self.pragmas(src, len(FILES), 1)
         FILES.append(path)
-        m.body = Parser(Lexer(src, 1).file()).module()
+        m.body = self.parse_source(src, 1)
         tb_import(m.body)
         cm_methods(m.body, cm_names(m.body))
         self.prescan(m)
@@ -635,12 +635,27 @@ class Loader:
         f.close()
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
-        if dynamic_pragma(src):
-            DYNFILES[k] = True
-        self.parsed[path] = Parser(Lexer(src, k * LINES + 1).file()).module()
+        self.pragmas(src, k, k * LINES + 1)
+        self.parsed[path] = self.parse_source(src, k * LINES + 1)
         tb_import(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
         return self.parsed[path]
+
+    def pragmas(self, src: str, k: int, line: int) -> None:
+        # the opt-ins of file k, whose source is src: dynamic Any, and promoting ints
+        if dynamic_pragma(src):
+            DYNFILES[k] = True
+        if int_pragma(src):
+            if k in DYNFILES:
+                fail("a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet", line)
+            INTFILES[k] = True
+
+    def parse_source(self, src: str, line: int) -> Node:
+        # the module that source src, whose first line is line, holds; a module whose ints promote
+        # keeps the digits of a literal past 64 bits (Parser.exact_ints)
+        p = Parser(Lexer(src, line).file())
+        p.exact_ints = (line // LINES) in INTFILES
+        return p.module()
 
     def bindings(self, m: Mod) -> None:
         # the names m's top-level code binds (imports of user modules are added by imports())

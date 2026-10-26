@@ -73,6 +73,9 @@ HEX = "0123456789ABCDEF"
 # only comparisons with None may read until a binding of another value types it
 NONEVAR = "opt[None]"
 NONE_ITEM = "opt[?]"  # the item type of a container that holds only None so far (Gen.none_container)
+# the type of an int in a module that opts in to promoting ints (# pystachy: python-int): two words,
+# an LLVM {i64, ptr} (bigints.py). Its "+" keeps it apart from every class name
+BIG = "int+"
 IOPS: dict[str, str] = {"&": "and", "|": "or", "^": "xor"}
 CHECKED: dict[str, str] = {"+": "sadd", "-": "ssub", "*": "smul"}  # llvm.*.with.overflow
 IRT: dict[str, str] = {"//": "pys_floordiv", "%": "pys_mod", "**": "pys_pow", "<<": "pys_shl", ">>": "pys_shr"}
@@ -599,6 +602,7 @@ IROPS: dict[str, str] = {
     "empty.kind": "wD",
     "union.tag": "rL rD rO", "union.payload": "rL rD rO", "union.raw": "rL rD rO",
     "dyn.type": "", "dyn.payload": "",
+    "big.make": "", "big.lo": "", "big.hi": "",
     "landing": "T", "throw": "T R N", "exc.match": "",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
     # generator function's entry block (the frame, its promise and the initial suspend), gen.yield
@@ -659,7 +663,8 @@ LOOKUPS = 32
 # their second; 3, each value of tuple.load and tuple.store
 VALUE_AT: dict[str, int] = {"select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
                             "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
-                            "ptr.cmp": 1, "dyn.type": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2, "tuple.load": 3, "tuple.store": 3}
+                            "ptr.cmp": 1, "dyn.type": 1, "big.lo": 1, "big.hi": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2,
+                            "big.make": 2, "tuple.load": 3, "tuple.store": 3}
 # Types are serialized strings. Bound their size before joining children, and the active
 # template signatures before making keys or call contexts; a depth limit alone misses
 # exponential width growth such as f((x, x)). These are compiler resource limits.
@@ -713,6 +718,12 @@ RUNTIME: dict[str, str] = {
     "mpz.shift": "%ptr:%ptr,int,int|R A|", "mpz.pow": "%ptr:%ptr,int|R A|",
     "mpz.cmp": "int:%ptr,%ptr||", "mpz.hash": "int:%ptr||",
     "mpz.to_int": "int:%ptr|R|", "mpz.bit_length": "int:%ptr||", "mpz.str": "str:%ptr|R A|",
+    # promoting ints (bigints.py): each takes a value as its two words, int and %ptr, and returns
+    # one as an int+, {i64, ptr}; a result that fits in 64 bits is demoted
+    "big.op": "int+:int,%ptr,int,%ptr,int|R A|", "big.cmp": "int:int,%ptr,int,%ptr||",
+    "big.cmp_float": "int:int,%ptr,float|R A|", "big.str": "str:int,%ptr|R A|",
+    "big.from_str": "int+:str,int|R A|", "big.from_float": "int+:float|R A|", "big.hash": "int:int,%ptr||",
+    "big.float": "float:int,%ptr|R|",
     # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of

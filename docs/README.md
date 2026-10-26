@@ -12,6 +12,7 @@ at specific compiler revisions.
 | [Packages and apps](packages.md) | Source wheels, dependency locks, CPython reuse and standalone deployment |
 | [Language](language.md) | Supported Python, types, inference and compatibility limits |
 | [Dynamic `Any` (prototype)](dynamic-any.md) | Opt-in runtime-typed `Any` values: representation, contract, deviations and costs |
+| [Promoting ints (prototype)](python-int.md) | Opt-in CPython `int` past 64 bits: representation, 64-bit boundaries, deviations and costs |
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
 | [Third-party ports](../ports/README.md) | Port examples, usage and per-package restrictions |

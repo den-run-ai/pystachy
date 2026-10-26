@@ -183,11 +183,14 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         # for a numeric binding's box: every closure and nonlocal writer shares it.
         # Like runtime.c's gc_box, request 15 for the 16-byte scanned slot. Only the
         # base and second-word addresses escape; no one-past-cell pointer is made.
+        # A module whose ints promote takes two words for the value (bigints.py): 15 and 23
+        # for the 16- and 24-byte slots, the box's address then in the third word.
+        big = self.int_policy(f.node.line)
         for cv in self.cellvars(f, body):
-            self.cells[cv] = self.rt("pys_alloc", "ptr", ["i64 15" if identity_abi(f) else "i64 8"])
+            self.cells[cv] = self.rt("pys_alloc", "ptr", [("i64 23" if big else "i64 15") if identity_abi(f) else ("i64 15" if big else "i64 8")])
             if identity_abi(f):
                 # Define the address before any branch or loop can first bind the cell.
-                self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '1', True)
+                self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '2' if big else '1', True)
         lf: dict[str, bool] = {}
         for st in body if f.clo < 0 or self.closures[f.clo].name != "<lambda>" else []:
             lambda_flags(st, False, lf)

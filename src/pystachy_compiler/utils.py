@@ -77,6 +77,8 @@ def lt(t: str) -> str:
         return "void"
     if t == "%slot":
         return "i64"  # (the IR's pseudo-type of a value in an 8-byte container slot)
+    if t == "int+":
+        return "{i64, ptr}"  # (a promoting int: its 64-bit value, and its Mpz or null, bigints.py)
     return "ptr"
 
 
@@ -196,6 +198,8 @@ def tname(t: str) -> str:
     # the CPython name of a type, for error messages
     if t == "None":
         return "NoneType"
+    if t == "int+":
+        return "int"
     if t == "file":
         return "TextIOWrapper"
     if is_vtuple(t):
@@ -553,7 +557,7 @@ def typestr(t: str) -> str:
     # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
     # opt[T] is T | None, a builtin exception BaseException, a class its own name, a function value
     # the function (fn_shown)
-    t = recnames(t.replace("[?,?]", "").replace("[?]", ""))
+    t = recnames(t.replace("[?,?]", "").replace("[?]", "").replace("int+", "int"))
     while "vtuple[" in t:
         a = t.find("vtuple[")
         b = a + 7

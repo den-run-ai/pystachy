@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import ann_target
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import NONEVAR, OPTTYPES
+from src.pystachy_compiler.specs import BIG, NONEVAR, OPTTYPES
 from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
@@ -518,6 +518,8 @@ def gen_join_type(self, a: str, b: str) -> str:
         return self.ctype("tuple", ts)
     if a == b:
         return a
+    if (a == BIG and (b == "int" or b == "bool")) or (b == BIG and (a == "int" or a == "bool")):
+        return BIG  # (a promoting int holds both: bigints.py)
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 

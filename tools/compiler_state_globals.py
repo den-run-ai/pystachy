@@ -15,6 +15,7 @@ PREFIX = "src.pystachy_compiler."
 # These are initialized when modules load, then reviewed as lookup tables. Adding
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
+bigints.BIGOPS bigints.PROMOTES
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN
@@ -53,6 +54,7 @@ REWOUND = {
 RESET = {
     "diagnostics.FILES": "loader rebuilds the program file-index space before parsing",
     "diagnostics.DYNFILES": "loader resets file-index opt-ins with the file table",
+    "diagnostics.INTFILES": "loader resets file-index python-int opt-ins with the file table",
 }
 RETAINED = {
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
@@ -63,7 +65,8 @@ RETAINED = {
 # Keep #767 open for those contracts and for indirect mutation/alias effects.
 WRITERS = {
     "diagnostics.FILES": {"loader.Loader.program", "loader.Loader.parse"},
-    "diagnostics.DYNFILES": {"loader.Loader.program", "loader.Loader.parse"},
+    "diagnostics.DYNFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
+    "diagnostics.INTFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
     "names.RENAMED": {"program.gen_program", "driver.compile_program"},
     "specs.LIBS": {"lower_module.gen_cextern", "driver.compile_program", "driver.main"},

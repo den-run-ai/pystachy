@@ -23,7 +23,9 @@ cover [typing](language/typing.md), [imports and builtins](language/modules.md),
 | Recursive values (prototype) | `type JSONValue = None \| bool \| int \| float \| str \| list[JSONValue] \| dict[str, JSONValue]` and smaller closed recursive unions, narrowed with `isinstance()`; see [recursive value aliases](language/typing.md#recursive-value-aliases-prototype) |
 
 Integers are checked 64-bit values; `x & y` keeps the low 64 bits of arithmetic it
-masks, as described under [deviations](language/compatibility.md#numbers). Strings are stored as UTF-8, and their lengths, indexing,
+masks, as described under [deviations](language/compatibility.md#numbers). A module that opts in
+to the [promoting int prototype](python-int.md) gets CPython's arbitrary-precision `int` in its
+variables, arguments, returns and fields instead. Strings are stored as UTF-8, and their lengths, indexing,
 slicing, iteration and search positions count code points, as CPython's do; a `bytes` holds its
 bytes, and its items are ints. Dictionary keys and set elements
 have a restricted set of types: integers, strings, `bytes`, objects (hashed by identity, or by their
@@ -257,7 +259,7 @@ separately in [FFI](ffi.md).
 
 The main gaps are multiple inheritance, general object unions, dynamic `Any` values outside the
 opt-in [prototype](dynamic-any.md), `async`, `bytearray`, `memoryview` and binary files, complex
-and arbitrary-precision numbers, `match`, attribute values looked up by names only the run time
+numbers, arbitrary-precision ints outside the opt-in [prototype](python-int.md), `match`, attribute values looked up by names only the run time
 knows (their text and `hasattr()` are supported), slice objects and unrestricted argument
 expansion.
 

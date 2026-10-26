@@ -4,9 +4,10 @@ Ten bounded workloads for Pystachy's integer roadmap (#907): CPython-compatible 
 promotes past 64 bits. Every later step is measured against these programs. Each workload has:
 
 - **`NAME.py`**, written with ordinary `int`, as CPython and PyPy run it. It starts with
-  `# pystachy: python-int`, the opt-in to promoting ints, which CPython ignores. Pystachy
-  times it only with `--python-int`, once a compiler promotes ints; until then a value past
-  64 bits raises `OverflowError` in it.
+  `# pystachy: python-int`, the opt-in to [promoting ints](../../docs/python-int.md), which
+  CPython ignores. Pystachy times it only with `--python-int`. `modpow` and `containers` still
+  raise `OverflowError` there: their values past 64 bits reach three-argument `pow` and
+  containers, which keep 64-bit ints for now.
 - **`NAME_mpz.py`**, the same work with the explicit [`mpz`](../../docs/mpz.md) type.
 - **`NAME_i64.py`**, checked 64-bit `int`, only where every value fits (`lcg32`, `collatz`).
 
@@ -80,7 +81,11 @@ python3 bench/integers/run.py --compiler ./pystachy --cpython python3.13 \
   --pypy /path/to/pypy3 --samples 5 --cpu 3 --json build/integers.json
 ```
 
-`--only NAME...` selects workloads, and `--python-int` adds `NAME.py` built by Pystachy.
+`--only NAME...` selects workloads, and `--python-int` adds `NAME.py` built by Pystachy, whose
+ints promote in a module that opts in. Its first measurements, of the eight workloads that keep
+their values outside containers, are in
+[results/linux-x86_64-2026-10-26-python-int.json](results/linux-x86_64-2026-10-26-python-int.json)
+and [the promoting int guide](../../docs/python-int.md#measurements).
 
 ## History
 

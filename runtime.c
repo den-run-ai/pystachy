@@ -1218,6 +1218,130 @@ I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a
   if (i != j) return i < j ? -1 : 1;
   return d > t ? -1 : d < t ? 1 : 0;
 }
+/* ---------- promoting ints (# pystachy: python-int, docs/python-int.md) ----------
+   An int of a module that opts in is two words, {lo, hi}: hi is NULL and lo the value where it
+   fits in 64 bits; otherwise hi is the value's immutable Mpz, which never fits, and lo is 0.
+   Compiled code does 64-bit operands and results inline and calls these for the rest. Every
+   result is demoted where it fits, so a value has one representation: values whose hi is NULL
+   are equal where their lo are, and a value with an Mpz never equals one without. */
+typedef struct { I lo; void *hi; } Big;
+static Big big_small(I v) { Big r = {v, NULL}; return r; }
+static Big big_of(Mpz *m) {                    /* m's value, demoted where it fits */
+  I n = zn(m);
+  if (n < 3 || (n == 3 && m->d[2] < 16)) {     /* at most 64 bits of magnitude */
+    uint64_t u = 0;
+    for (I i = n; i; i--) u = (u << 30) | m->d[i - 1];
+    if (m->size >= 0 && u <= INT64_MAX) return big_small((I)u);
+    if (m->size < 0 && u <= UINT64_C(1) << 63) return big_small((I)(0 - u));
+  }
+  Big r = {0, m}; return r;
+}
+static Big big_wide(__int128 v) {              /* an exact 128-bit result of two 64-bit operands */
+  if (v >= INT64_MIN && v <= INT64_MAX) return big_small((I)v);
+  unsigned __int128 u = v < 0 ? -(unsigned __int128)v : (unsigned __int128)v; I n = 0;
+  Mpz *m = zalloc(5);                          /* 2^127 has 128 bits: five 30-bit digits */
+  for (; u; u >>= 30) m->d[n++] = (uint32_t)(u & 0x3FFFFFFF);
+  m->size = v < 0 ? -n : n; Big r = {0, m}; return r;
+}
+static Mpz *big_mpz(I lo, void *hi) { return hi ? (Mpz *)hi : (Mpz *)pys_mpz_from_int(lo); }
+static int big_pow64(I a, I b, I *out) {       /* a ** b for b >= 0, where it fits in 64 bits */
+  I r = 1, x = a;
+  if (a == 0 || a == 1) { *out = b ? a : 1; return 1; }
+  if (a == -1) { *out = b & 1 ? -1 : 1; return 1; }
+  for (;;) {                                   /* |a| >= 2: past 63 steps it no longer fits */
+    if ((b & 1) && __builtin_mul_overflow(r, x, &r)) return 0;
+    if (!(b >>= 1)) { *out = r; return 1; }
+    if (__builtin_mul_overflow(x, x, &x)) return 0;
+  }
+}
+/* a op b; op is pys_mpz_binop's 0 + 1 - 2 * 3 // 4 % 5 & 6 | 7 ^, or 8 <<, 9 >>, 10 ** */
+Big pys_big_op(I alo, void *ahi, I blo, void *bhi, I op) {
+  if (!ahi && !bhi) {                          /* both fit: where the compiled 64-bit step overflowed */
+    I r;
+    switch (op) {
+    case 0: return big_wide((__int128)alo + blo);
+    case 1: return big_wide((__int128)alo - blo);
+    case 2: return big_wide((__int128)alo * blo);
+    case 3: return blo == -1 ? big_wide(-(__int128)alo) : big_small(pys_floordiv(alo, blo));
+    case 4: return big_small(pys_mod(alo, blo));
+    case 5: return big_small(alo & blo);
+    case 6: return big_small(alo | blo);
+    case 7: return big_small(alo ^ blo);
+    case 8:
+      if (blo < 0) pys_fail("ValueError: negative shift count");
+      if (!alo) return big_small(0);
+      if (blo < 64 && (r = (I)((uint64_t)alo << blo)) >> blo == alo) return big_small(r);
+      break;
+    case 9: return big_small(pys_shr(alo, blo));
+    case 10:
+      if (blo < 0) pys_fail(alo ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
+      if (big_pow64(alo, blo, &r)) return big_small(r);
+      break;
+    default: pys_fail("ValueError: invalid int operation");
+    }
+  }
+  Mpz *a = big_mpz(alo, ahi);
+  if (op <= 7) return big_of(pys_mpz_binop(a, big_mpz(blo, bhi), op));
+  int negative = bhi ? ((Mpz *)bhi)->size < 0 : blo < 0;
+  if (op == 8 || op == 9) {
+    if (negative) pys_fail("ValueError: negative shift count");
+    if (!bhi) return big_of(pys_mpz_shift(a, blo, op == 9));
+    if (op == 9 || !zn(a)) return big_small(op == 9 && a->size < 0 ? -1 : 0);
+    pys_fail("MemoryError");                   /* a count past 64 bits: CPython runs out of memory */
+  }
+  if (op != 10) pys_fail("ValueError: invalid int operation");
+  if (negative) pys_fail(zn(a) ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
+  if (!bhi) return big_of(pys_mpz_pow(a, blo));
+  /* an exponent past 64 bits: only 0, 1 and -1 have a power that fits in memory */
+  if (!ahi && (alo == 0 || alo == 1)) return big_small(alo);
+  if (!ahi && alo == -1) return big_small(((Mpz *)bhi)->d[0] & 1 ? -1 : 1);
+  pys_fail("MemoryError");
+}
+I pys_big_cmp(I alo, void *ahi, I blo, void *bhi) {   /* -1, 0 or 1 */
+  if (!ahi && !bhi) return (alo > blo) - (alo < blo);
+  if (ahi && bhi) return pys_mpz_cmp(ahi, bhi);
+  /* one Mpz, which never fits: its sign orders it past every 64-bit value */
+  return ahi ? (((Mpz *)ahi)->size < 0 ? -1 : 1) : (((Mpz *)bhi)->size < 0 ? 1 : -1);
+}
+I pys_big_cmp_float(I lo, void *hi, double d) {   /* exactly, as CPython: -1, 0, 1, or 2 where d is a NaN */
+  if (!hi) return pys_cmp_if(lo, d);
+  if (isnan(d)) return 2;
+  Mpz *a = hi;
+  if (isinf(d)) return d > 0 ? -1 : 1;
+  if (fabs(d) < 9223372036854775808.0) return a->size < 0 ? -1 : 1;   /* a is past 2^63 */
+  int e; double m = frexp(fabs(d), &e);        /* |d| = m * 2^e, 0.5 <= m < 1, an integer here */
+  Mpz *t = pys_mpz_shift(pys_mpz_from_int((I)ldexp(m, 53)), e - 53, 0);
+  return pys_mpz_cmp(a, d < 0 ? pys_mpz_unary(t, 0) : t);
+}
+Str *pys_big_str(I lo, void *hi) { return hi ? pys_mpz_str(hi) : pys_str_int(lo); }
+Big pys_big_from_str(Str *s, I base) { return big_of(pys_mpz_from_str(s, base)); }
+Big pys_big_from_float(double d) {             /* int(d): truncated toward zero, exactly */
+  if (isnan(d)) pys_fail("ValueError: cannot convert float NaN to integer");
+  if (isinf(d)) pys_fail("OverflowError: cannot convert float infinity to integer");
+  if (d > -9223372036854775808.0 && d < 9223372036854775808.0) return big_small((I)d);
+  int e; double m = frexp(fabs(d), &e);        /* |d| = m * 2^e: an integer, 53 bits shifted left */
+  Mpz *t = pys_mpz_shift(pys_mpz_from_int((I)ldexp(m, 53)), e - 53, 0);
+  return big_of(d < 0 ? pys_mpz_unary(t, 0) : t);
+}
+I pys_big_hash(I lo, void *hi) {               /* CPython's: the magnitude modulo 2^61 - 1, then the sign */
+  if (hi) return pys_mpz_hash(hi);
+  uint64_t m = (lo < 0 ? 0 - (uint64_t)lo : (uint64_t)lo) % ((UINT64_C(1) << 61) - 1);
+  I r = lo < 0 ? -(I)m : (I)m; return r == -1 ? -2 : r;
+}
+double pys_big_float(I lo, void *hi) {         /* rounded once, to nearest even, as CPython's int.__float__ */
+  if (!hi) return (double)lo;
+  Mpz *a = hi; I n = zn(a), k = n < 3 ? n : 3, bits = pys_mpz_bit_length(a);
+  if (bits > 1024) pys_fail("OverflowError: int too large to convert to float");
+  /* the top digits, at most 90 bits, then 64 of them with a sticky bit for the rest */
+  unsigned __int128 top = 0; int sticky = 0;
+  for (I i = n; i > n - k; i--) top = (top << 30) | a->d[i - 1];
+  for (I i = n - k; i && !sticky; i--) sticky = a->d[i - 1] != 0;
+  I e = (n - k) * 30, tb = bits - e, s = tb > 64 ? tb - 64 : 0;
+  if (s) { sticky |= (top & (((unsigned __int128)1 << s) - 1)) != 0; top >>= s; e += s; }
+  double r = ldexp((double)((uint64_t)top | (uint64_t)sticky), (int)e);   /* 64 bits: the sticky bit is below the rounding */
+  if (isinf(r)) pys_fail("OverflowError: int too large to convert to float");
+  return a->size < 0 ? -r : r;
+}
 /* no_builtin("pow") keeps pow a call of libm's, as in CPython's float_pow and math.pow. The AOT tier's
    whole-program -O2 would otherwise rewrite a call with a constant argument: pow(x, 2.0) as x * x,
    pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y), which glibc's pow does not always round alike
