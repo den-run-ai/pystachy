@@ -126,7 +126,8 @@ for a C `long`), where CPython goes on with the bigger int:
   rejected during compilation for now.
 - `x in c` where the items of `c` are not ints (a `list[float]` may hold a float equal to an int
   past 64 bits), and a tuple of promoting ints looked up in a list or as a key. Membership in a
-  container of ints or a `range` is exact: an int past 64 bits is not in it.
+  container of ints, a `range`, a generator or an iterator object is exact: an int past 64 bits
+  is not in it. An object's `__contains__` takes `x` as its parameter does.
 
 ## Deviations
 
@@ -189,7 +190,8 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_arith.py`: every operator on operands around the 64-bit
   edges, demotion, augmented assignment and mixed `bool` operands.
 - `tests/programs/numbers/python_int_compare.py`: comparisons with ints, bools and floats,
-  `isinstance`, `and`/`or`, membership and `int` methods.
+  `isinstance`, `and`/`or`, membership (also in objects, iterators, generators and NamedTuples)
+  and `int` methods.
 - `tests/programs/numbers/python_int_text.py`: literals, `int()` of text and floats, `float()`,
   `str()`, `hash()` and their errors.
 - `tests/programs/numbers/python_int_calls.py`: functions, defaults, keyword arguments, methods,

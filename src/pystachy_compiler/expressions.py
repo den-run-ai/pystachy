@@ -4169,8 +4169,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
-    if (a.t == BIG or b.t == BIG) and not ((op == "in" or op == "not in") and is_tuple(b.t)):
-        return self.big_compare(op, a, b)  # (promoting ints: bigints.py; a tuple's items are compared below)
+    if (a.t == BIG or b.t == BIG) and not ((op == "in" or op == "not in") and (is_tuple(b.t) or (unopt(b.t) in self.classes and unopt(b.t) != RANGEC) or is_gen(b.t))):
+        # (promoting ints: bigints.py, a range's arithmetic too; the items of a tuple, an object or a
+        # generator are compared below, and __contains__ takes x as its parameter does)
+        return self.big_compare(op, a, b)
     if op in ["==", "!="] and a.t != b.t and self.dyn_policy(self.line) and self.wider(a.t, b.t) == "" and not (self.ueq_type(a.t) and self.ueq_type(b.t)) and self.container_pair_type(a.t, b.t):
         return self.container_pair_eq(op, a, b)
     if (op == "==" or op == "!=") and (a.t == RANGEC) != (b.t == RANGEC):
@@ -4358,6 +4360,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             b = self.obj_iterator(b, "TypeError: argument of type 'NoneType' is not iterable", f"argument of type '{tname(b.t)}' is not iterable")
             if not is_list(b.t) and not is_gen(b.t):
                 return self.iter_in(op, a, b)
+            if is_list(b.t) and a.t == BIG:
+                return self.cmp2(op, a, b)  # (a list's items: as big_compare finds a promoting int among them)
         else:
             self.notnone(b, "TypeError: argument of type 'NoneType' is not iterable")
             r = self.truth(self.protocol(b, "__contains__", [a]))

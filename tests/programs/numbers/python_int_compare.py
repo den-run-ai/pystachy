@@ -2,6 +2,9 @@
 # Promoting ints (docs/python-int.md): comparisons with ints past 64 bits, with 64-bit ints, bools
 # and floats (exact, as CPython compares an int with a float), in chains and conditions.
 
+from collections.abc import Iterator
+from typing import NamedTuple
+
 MAX = 9223372036854775807
 MIN = -9223372036854775808
 
@@ -108,3 +111,59 @@ class Count:
 
 
 print(2 in Count(3), 4 in Count(3), 0 not in Count(1), zero in Count(1), True in Count(2), 1.0 in Count(2))
+
+
+# x in o of an object takes x as it is: its __contains__ as the parameter does, an iterator's or a
+# generator's items compared exactly, also past 64 bits
+class Evens:
+    def __contains__(self, x: int) -> bool:
+        return x % 2 == 0
+
+
+class Odds(Evens):
+    def __contains__(self, x: int) -> bool:
+        return x % 2 == 1
+
+
+class Box:
+    def __iter__(self):
+        return iter([1, 2, 3])
+
+
+def pick(odd: bool) -> Evens:
+    if odd:
+        return Odds()
+    return Evens()
+
+
+def upto(n: int):
+    for i in range(n):
+        yield i
+
+
+class Pair(NamedTuple):
+    x: int
+    y: int
+
+
+class Floats:
+    def __iter__(self) -> Iterator[float]:
+        return iter([1.0, 2.0])
+
+
+class Flags:
+    def __iter__(self) -> Iterator[bool]:
+        return iter([True, False])
+
+
+class Ints:
+    def __iter__(self) -> Iterator[int]:
+        return iter([1, 2])
+
+
+c = Count(5)
+print(big in Count(3), -big not in Count(3), big in Evens(), big + 1 in Evens(), big in pick(True), big + 1 in pick(True))
+print(big in Box(), 2 in Box(), big in upto(3), 2 in upto(3), big in c, next(c, -1))
+print(big in Pair(1, big), big + 1 in Pair(1, big), big in Pair(3, 4), 4 in Pair(3, 4))
+one = big // big
+print(one in Floats(), zero in Floats(), zero in Flags(), one not in Flags(), big in Ints(), one in Ints())

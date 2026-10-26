@@ -388,9 +388,8 @@ above apply to well-formed text (with the surrogate exception described above).
   among floats) keep 64-bit ints: a value past 64 bits raises `OverflowError` there, where
   CPython goes on (`tests/deviations/python_int_limits.py`). A tuple of 64-bit ints that holds
   -2\*\*63 becomes a new tuple where a tuple of promoting ints is expected, which `is` tells
-  apart. Such a module
-  rejects `is` between ints (`tests/errors/numbers/python_int_is.py`), and cannot also opt in to
-  dynamic `Any` (`tests/errors/numbers/python_int_dynamic_any.py`).
+  apart. Such a module rejects `is` between ints (`tests/errors/numbers/python_int_is.py`), and
+  cannot also opt in to dynamic `Any` (`tests/errors/numbers/python_int_dynamic_any.py`).
 
 ## Rejected rather than miscompiled
 
