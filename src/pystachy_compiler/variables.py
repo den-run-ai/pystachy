@@ -26,7 +26,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, 
 from src.pystachy_compiler.dynamic import XCMP, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import owner, short
-from src.pystachy_compiler.specs import INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
+from src.pystachy_compiler.specs import BIG, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
@@ -63,6 +63,8 @@ def gen_global_var(self, g: str, ty: str) -> None:
     self.globs.append(Val(g, ty))
     if lt(ty) == "ptr":
         self.gcroots.append(g)
+    elif ty == BIG:
+        self.gcroots.append(f"getelementptr inbounds ({lt(ty)}, ptr {g}, i32 0, i32 1)")  # (its Mpz word)
 
 def gen_is_global(self, name: str) -> bool:
     if name in self.ltype or name in self.compvars:

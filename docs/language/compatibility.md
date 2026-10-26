@@ -30,7 +30,9 @@ In these cases a program can compile but behave differently from CPython.
   fractional power (CPython returns a complex).
 
   Explicit [`mpz.mpz`](../mpz.md) values provide a separate arbitrary-precision
-  arithmetic path. They do not automatically replace or promote ordinary `int`.
+  arithmetic path. They do not automatically replace or promote ordinary `int`. A module that
+  opts in to [promoting ints](#promoting-ints-opt-in-prototype) gets CPython's `int`, with the
+  limits below.
 
 - The native JSON prototype also rejects integer tokens outside signed 64-bit
   range with `OverflowError`. Its decoder and encoder allow at most 256 nested
@@ -375,6 +377,19 @@ above apply to well-formed text (with the surrogate exception described above).
   `in` of an `Any` item in a typed container and function values printing as `<function>`, are
   listed in its
   [deviations](../dynamic-any.md#deviations).
+
+### Promoting ints (opt-in prototype)
+
+- In a module whose leading comments hold `# pystachy: python-int`, ints promote past 64 bits
+  ([promoting ints](../python-int.md)) in variables, arguments, returns, fields, module
+  variables and closures. Containers, tuples, `int | None` and other unions, generator yields,
+  the `int` parameters of modules that do not opt in, and builtins and methods that take an int
+  (`range()`, indexing, `hex()`, format specifications, `x.bit_length()`, `sum()`'s additions)
+  keep 64-bit ints: a value past 64 bits raises `OverflowError` there, and true division with an
+  operand past 64 bits raises `NotImplementedError`, where CPython goes on
+  (`tests/deviations/python_int_limits.py`). Such a module rejects `is` between ints
+  (`tests/errors/numbers/python_int_is.py`), and cannot also opt in to dynamic `Any`
+  (`tests/errors/numbers/python_int_dynamic_any.py`).
 
 ## Rejected rather than miscompiled
 

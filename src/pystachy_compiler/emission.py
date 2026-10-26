@@ -507,7 +507,7 @@ def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
 
 def gen_converts(self, a: str, b: str) -> bool:
     # does a value of type a take code to be one of type b (convert_in)
-    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a))
+    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and (a == "int" or a == "bool"))
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a
@@ -562,7 +562,11 @@ def gen_alloca(self, t: str, name: str) -> str:
     if t == "":
         self.err(f"cannot infer the type of '{name}'; add a type annotation")
     if name != "" and name in self.cells and name not in self.compvars:
-        # a variable a closure takes: its cell, which the function allocated as it began
+        # a variable a closure takes: its cell, which the function allocated as it began (an int
+        # of a module whose ints promote is a promoting int there, which a nonlocal write may
+        # need: bigints.py)
+        if t == "int" and self.int_policy(self.line):
+            t = "int+"
         self.ltype[name] = t
         self.lreg[name] = self.cells[name]
         self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t == "dyn" or t in self.classes

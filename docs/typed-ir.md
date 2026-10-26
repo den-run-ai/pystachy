@@ -117,6 +117,10 @@ as the static type its `s` names, after a test has proved it; neither has a memo
 a box never changes. A box in a container slot is descriptor `A`, which runtime walks follow
 through the box's own `DynType`, and a boxed function is `Z`; runtime calls whose descriptor
 holds an `A` have every effect, as an `O` does.
+In a module that opts in to [promoting ints](python-int.md), an `int` value is `int+`, an LLVM
+`{i64, ptr}`: the 64-bit value and a null pointer where it fits, else 0 and the value's immutable
+digits. `big.make` builds one from an `int` and a `%ptr`, and `big.lo` and `big.hi` read its two
+words; none has a memory effect. Container slots, tuples and unions hold `int`.
 An `Ins` uses only the fields its operation needs:
 
 | Field | Meaning |
@@ -152,6 +156,7 @@ The exact operation table is `IROPS`; its current groups are:
 | Container payload conversions | `slot.pack`, `slot.unpack` |
 | Fresh empty result layout | `empty.kind` (typed dict/set key kind, or a deferred result hole) |
 | Closed union reads | `union.tag`, `union.payload`, `union.raw` |
+| Promoting ints | `big.make`, `big.lo`, `big.hi` |
 | Numeric promotion and comparison | `num.cast`, `num.cmp`, `int.ucmp` |
 | Native reference identity and null tests | `ptr.cmp` |
 | Calls | `rt`, `call`, `icall`, `init` |

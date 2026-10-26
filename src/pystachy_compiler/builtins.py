@@ -8,6 +8,7 @@ from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.reflection import VARS_USES
 from src.pystachy_compiler.specs import (
     ARITY,
+    BIG,
     CALLS,
     DEFAULTS,
     ERRNO,
@@ -663,6 +664,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_check(keyv, f"{name}()")
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
+    if len([v for v in vals if v.t == BIG]) > 0 or ((name == "int" or name == "abs" or name == "pow") and self.int_policy(self.line)):
+        bv = self.big_builtin(name, vals) if len(kws) == 0 else Val("", "")  # (promoting ints: bigints.py)
+        if bv.t != "":
+            return bv
+        vals = [self.big_narrow(v) for v in vals]
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
         return self.dyn_sum(self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
@@ -2199,14 +2205,16 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         kv = targs(o.t)
         K = kv[0]
         V = kv[1]
-    elif o.t == "bool" and "int." + m in METHODS:
-        base = "int"  # (a bool is an int: True.bit_length() is 1)
+    elif (o.t == "bool" or o.t == BIG) and "int." + m in METHODS:
+        # (a bool is an int: True.bit_length() is 1; a promoting int's methods take its 64-bit
+        # value for now, with OverflowError past 64 bits, docs/python-int.md)
+        base = "int"
         o = self.as_int(o)
     key = base + "." + m
     if key not in METHODS and o.t == "exc":
         self.err(f"BaseException.{m}() is not supported (of a builtin exception, str(e), repr(e) and formatting are)")
     if key not in METHODS:
-        self.err(f"'{o.t}' has no method '{m}'")
+        self.err(f"'{tname(o.t) if o.t == BIG else o.t}' has no method '{m}'")
     if key == "dict.get" and (len(args) == 0 or len(args) > 2):
         # (CPython's TypeError; not left to the arity check below, as d.get(k, d2, None) would
         # read as d.get(k, None))

@@ -173,8 +173,13 @@ def functions(ll):
     for line in ll.split("\n"):
         m = re.match(r"(define|declare) (.*?)@([\w.]+)\((.*)\)(.*?)(\{)?$", line)
         if m:
-            words = m.group(2).split()
-            result = words[-1] if words else ""
+            head = m.group(2).rstrip()
+            if head.endswith("}"):
+                # (a two-word struct result, which clang prints as { i64, ptr }: as RUNTIME writes it)
+                result = "{" + ", ".join(t.strip() for t in head[head.rfind("{") + 1 : -1].split(",")) + "}"
+            else:
+                words = head.split()
+                result = words[-1] if words else ""
             params = []
             depth = 0
             part = ""

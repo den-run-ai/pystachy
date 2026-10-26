@@ -35,13 +35,18 @@ DYNPRAGMA = "# pystachy: dynamic-any"
 def dynamic_pragma(src: str) -> bool:
     # does source src opt in: a comment line DYNPRAGMA (spaces around it allowed) among the
     # comment and blank lines it starts with (after a byte order mark)
+    return leading_pragma(src, DYNPRAGMA)
+
+
+def leading_pragma(src: str, pragma: str) -> bool:
+    # is comment line pragma among the comment and blank lines source src starts with
     at = 3 if src.startswith(chr(239) + chr(187) + chr(191)) else 0
     while at < len(src):
         e = src.find("\n", at)
         ln = (src[at:] if e < 0 else src[at:e]).strip()
         if ln != "" and not ln.startswith("#"):
             return False
-        if ln == DYNPRAGMA:
+        if ln == pragma:
             return True
         at = len(src) if e < 0 else e + 1
     return False
@@ -49,6 +54,20 @@ def dynamic_pragma(src: str) -> bool:
 
 def dynamic_file(k: int) -> bool:
     return k in DYNFILES
+
+
+# the files of the modules whose ints promote past 64 bits, as CPython's do (docs/python-int.md),
+# by their index in FILES: those whose lines before their first line of code hold INTPRAGMA
+INTFILES: dict[int, bool] = {}
+INTPRAGMA = "# pystachy: python-int"
+
+
+def int_pragma(src: str) -> bool:
+    return leading_pragma(src, INTPRAGMA)
+
+
+def int_file(k: int) -> bool:
+    return k in INTFILES
 
 
 def dynamic_program() -> bool:

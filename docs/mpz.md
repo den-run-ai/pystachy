@@ -72,11 +72,12 @@ Builtin integers retain their existing native arithmetic fast path.
 ## Compatibility boundary
 
 The initial API focuses on exact integer arithmetic. Automatic overflow
-promotion, builtin-int identity and `isinstance(x, int)`, CPython's object ABI,
-mixed floating-point arithmetic/conversion, JSON hooks and a general integer
-index protocol are outside this implementation. Use explicit conversions at
-those boundaries. These limits are intentional and do not establish full
-CPython `int` compatibility.
+promotion of ordinary `int` is the separate opt-in [promoting int](python-int.md),
+which uses this C core for values past 64 bits. Builtin-int identity and
+`isinstance(x, int)`, CPython's object ABI, mixed floating-point
+arithmetic/conversion, JSON hooks and a general integer index protocol are outside
+this implementation. Use explicit conversions at those boundaries. These limits are
+intentional and do not establish full CPython `int` compatibility.
 
 CPython differential tests use an independent wrapper over its builtin `int` in
 `tools/rt_cpython/mpz_oracle.py`. The native execution path uses the C arithmetic core;

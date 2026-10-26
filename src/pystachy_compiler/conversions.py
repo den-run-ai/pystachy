@@ -4,7 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.specs import BIG, DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.utils import (
     elem,
     is_callable,
@@ -28,6 +28,8 @@ from src.pystachy_compiler.utils import (
 
 
 def gen_to_slot(self, v: Val) -> str:
+    if v.t == BIG:
+        v = self.big_narrow(v)  # (an 8-byte slot holds a 64-bit int: bigints.py)
     if v.t == "int":
         return v.v
     i = Ins("slot.pack", "%slot", "")
@@ -61,11 +63,15 @@ def gen_rres(self, r: str, t: str) -> Val:
 def gen_as_int(self, v: Val) -> Val:
     if v.t == "bool":
         return self.num_cast(v, "int")
+    if v.t == BIG:
+        return self.big_narrow(v)  # (a promoting int, where a 64-bit int is needed: bigints.py)
     return v
 
 def gen_as_float(self, v: Val) -> Val:
     if v.t == "int" or v.t == "bool":
         return self.num_cast(v, "float")
+    if v.t == BIG:
+        return self.big_float(v)  # (rounded once, as CPython converts an int operand of a float operation)
     return v
 
 def gen_num_cast(self, v: Val, t: str) -> Val:
@@ -131,6 +137,14 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
+    if t == BIG and (v.t == "int" or v.t == "bool"):
+        return self.to_big(v)  # (a promoting int: bigints.py)
+    if v.t == BIG:
+        if (t == "int" or t == "bool") and self.join_hint(t, v.t):
+            return Val("undef", t)  # (an inferred int location becomes a promoting int: the next pass, see join_hint)
+        v = self.big_narrow(v)  # (into 64-bit storage, or as an int: bigints.py)
+        if v.t == t:
+            return v
     if dynamic_program() and v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) and ((is_sopt(t) and unopt(t) == v.t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))):
         captured = Val(v.v, v.t).identity(v)
         captured.idfrom = self.dyn_box(v).v
@@ -207,8 +221,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
     # ("<", ">", ...; a list or tuple compares its items with == first)
     if t == "dyn":
         return "A"  # (a dynamic value's box, walked by its own DynType's descriptor)
-    if t == "int":
-        return "i"
+    if t == "int" or t == BIG:
+        return "i"  # (a promoting int as a container holds it: 64-bit, bigints.py)
     if t == "float":
         return "f"
     if t == "bool":

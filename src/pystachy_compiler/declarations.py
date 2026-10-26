@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
+from src.pystachy_compiler.bigints import PROMOTES, narrowed
 from src.pystachy_compiler.diagnostics import Rejoin, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
@@ -9,6 +10,7 @@ from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
     ANYUSE,
+    BIG,
     CLASSVAR,
     CTYPES,
     EXCATTRS,
@@ -81,6 +83,8 @@ def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
     # In a recursive template, a two-item tuple may double this on every instance.
     # Recursive value aliases have finite self edges in mutable storage. Only
     # fold the exact element/value type; never widen an existing container.
+    # A promoting int is stored as a 64-bit int in every composite (bigints.py: NARROW).
+    ts = [x.replace(BIG, "int") for x in ts]
     if canon and base == "list" and len(ts) == 1 and any_item(ts[0]):
         # a list of Any values or Any containers is a list[Any], whose items are boxes, and so is a
         # dict's of them a dict[Any, Any], keys boxed too: so it becomes an Any value, and an Any
@@ -153,6 +157,8 @@ def gen_ann(self, n: Node) -> str:
         if s in self.tmpl:
             why = "namedtuple() made it, whose fields each call types" if s in self.cnts else "its __init__ takes a parameter without an annotation"
             return f"!class {shown(s)} is a class template ({why}): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out"
+        if s == "int" and self.int_policy(n.line):
+            return BIG  # (a promoting int: bigints.py)
         if s == "int" or s == "float" or s == "bool" or s == "str" or s == "bytes" or s in self.classes:
             return s
         if s == "range" and RANGEC in self.classes:
@@ -194,7 +200,7 @@ def gen_ann(self, n: Node) -> str:
     elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
         return self.opt(self.ann(n.kids[1]), n.kids[1])  # None | T
     elif k == "binop" and n.s == "|":
-        ts: list[str] = [self.ann(x) for x in self.union_members(n, [])]
+        ts: list[str] = narrowed([self.ann(x) for x in self.union_members(n, [])])
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -249,11 +255,11 @@ def gen_ann(self, n: Node) -> str:
         if base == "union" and len([x for x in a if self.pathlike(x)]) > 0:
             return self.path_union(a)
         if base == "tuple" and len(a) == 2 and a[1].kind == "ellipsis":
-            t = self.ann(a[0])
+            t = narrowed([self.ann(a[0])])[0]
             if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
                 return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
             return self.ctype("vtuple", [t])
-        ts = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
+        ts = narrowed(self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a])
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -901,6 +907,8 @@ def gen_optional(self, t: str) -> str:
     # the type of a value that is a t or None, "" if there is none (a dynamic value may be None)
     if t == "dyn":
         return t
+    if t == BIG:
+        return self.ctype("opt", ["int"])  # (a box of a 64-bit int: bigints.py, NARROW)
     if self.rec_type(t) != t:
         return self.rec_fold(self.optional(self.rec_type(t)))
     if t in self.classes or is_opt(t):
@@ -933,6 +941,8 @@ def gen_join(self, a: str, b: str) -> str:
     # make T | None), or "" (a dynamic value and one that boxes: a dynamic value)
     if a == b or self.widens(b, a):
         return a
+    if (a == BIG and (b == "int" or b == "bool")) or (b == BIG and (a == "int" or a == "bool")):
+        return BIG  # (a promoting int holds both: bigints.py)
     if (a == "dyn" and self.boxes(b, a)) or (b == "dyn" and self.boxes(a, b)):
         return "dyn"
     if self.widens(a, b):
@@ -2198,6 +2208,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return "str"
     if k == "unary" and e.s != "not":
         t = self.guess(e.kids[0], f)
+        if e.s == "-" and (t == "int" or t == "bool") and self.int_policy(e.line):
+            return BIG  # (as unary() computes it in a module whose ints promote: bigints.py)
         # (-True is -1, as unary() computes it; -o is what o.__neg__ returns, unknown as for o + o)
         return "int" if t == "bool" else "" if t in self.classes and UNARY[e.s] in self.classes[t].methods else t
     if k == "name" and e.s in f.params:
@@ -2376,6 +2388,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
     if k == "binop":
         a = self.guess(e.kids[0], f)
         b = self.guess(e.kids[1], f)
+        if (self.isnum(a) or a == BIG) and (self.isnum(b) or b == BIG) and (a == BIG or b == BIG or (a != "float" and b != "float" and e.s in PROMOTES and self.int_policy(e.line))):
+            # (a promoting int, as arith() computes it: bigints.py)
+            return "float" if e.s == "/" or a == "float" or b == "float" else BIG
         if self.isnum(a) and self.isnum(b):
             if e.s == "/" or a == "float" or b == "float":
                 return "float"

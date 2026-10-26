@@ -173,8 +173,10 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
   native storage and aliases within the [comparison acceptance matrix](docs/dynamic-any.md#operations).
   Numeric identity still has limitations at some typed storage boundaries. Read the
   [dynamic contract and deviations](docs/dynamic-any.md#deviations) before enabling it.
-- Ordinary integers are checked 64-bit values; overflow raises `OverflowError`.
-  The explicit experimental [`mpz`](docs/mpz.md) type provides arbitrary-precision integer arithmetic.
+- Ordinary integers are checked 64-bit values; overflow raises `OverflowError`. A module that
+  opts in to the experimental [promoting ints](docs/python-int.md) gets CPython's `int` in its
+  variables, arguments, returns and fields, while its containers keep 64-bit ints. The explicit
+  experimental [`mpz`](docs/mpz.md) type provides arbitrary-precision integer arithmetic.
 - Strings store UTF-8 with code-point lengths, indexing, slicing and search offsets; Unicode case mapping remains incomplete.
   Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)
   to flag byte-oriented operations on non-ASCII input.

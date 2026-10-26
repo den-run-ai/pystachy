@@ -8,6 +8,7 @@ from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, L
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
+    BIG,
     STR_HEADER_SIZE,
     CHECKED,
     DUNDER,
@@ -363,6 +364,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
     # not a type Pystachy knows
     if t == "dyn":
         return -1  # (its box's type decides: dynamic.py)
+    if t == BIG:
+        t = "int"  # (a promoting int is an int)
     if c.kind == "binop" and c.s == "|":
         # (a union, where None is NoneType; None | None raises, and so does a tuple in it)
         if not self.puretype(c, False):
@@ -530,6 +533,8 @@ def gen_truth(self, v: Val) -> str:
         return "true" if len(kw_names(t)) > 0 else "false"  # (**kwargs: true where a keyword argument was given)
     if t == "int":
         return self.num_cmp("!=", v, Val("0", "int")).v
+    if t == BIG:
+        return self.big_truth(v)
     if t == "float":
         return self.num_cmp("!=", v, Val("0.0", "float")).v
     if t == "str" or t == "bytes" or is_list(t) or is_dict(t) or is_set(t) or is_vtuple(t):
@@ -694,6 +699,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         # (exc_ctors: an object of exception class n.s, made of the arguments n.kids)
         return self.exc_of(self.exc_object(n.s, n.kids))
     if k == "int":
+        if self.int_policy(n.line) and (not int_fits(n.s) or n.s.lstrip("-")[:2] in ["0x", "0o", "0b"]):
+            # (past 64 bits, in a module whose ints promote: the parser keeps a 0x, 0o or 0b
+            # literal's digits only there, Parser.exact_ints; bigints.py)
+            return self.big_literal(n.s)
         if not int_fits(n.s):
             self.err("integer literal does not fit in 64 bits")
         lit = Val(n.s, "int")
@@ -772,7 +781,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if not scalar_held and dynamic_program() and self.scalar_read_value(n):
             scalar_fn.scalar_reads = True
         try:
-            if n.s == "&" and (wraps(n.kids[0]) or wraps(n.kids[1])):
+            if n.s == "&" and (wraps(n.kids[0]) or wraps(n.kids[1])) and not self.int_policy(n.line):
                 return self.masked(n, want, resultsoft)
             a = self.expr(n.kids[0], want, resultsoft=resultsoft)
             return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
@@ -1880,6 +1889,8 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         return self.call_fn(self.classes[v.t].methods["__format__"], [v, sv], [])
     if empty:
         return self.to_str(v)
+    if v.t == BIG:
+        v = self.big_narrow(v)  # (a promoting int formats as a 64-bit int: bigints.py)
     if is_union(unopt(v.t)):
         # Both value and spec run once, before the selected native member formats
         # or raises. A nonempty spec is legal for some members and not for others.
@@ -2951,6 +2962,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
         t = self.join(a.t, b.t)  # x if c else None: T | None
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == "dyn":
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
+    if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == BIG:
+        t = BIG  # (an int and a promoting int: the int made one in its arm, bigints.py)
     ph = Ins("phi", t, "")
     if e1 != "":
         a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)
@@ -3027,6 +3040,8 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False)
             rt = self.join(rt, b.t)
     if not ascond and not self.term and a.t != b.t and self.join(a.t, b.t) == "dyn":
         rt = "dyn"  # (either operand, the other boxed where it reaches the join: dynamic.py)
+    if not ascond and not self.term and a.t != b.t and self.join(a.t, b.t) == BIG:
+        rt = BIG  # (an int and a promoting int: either one, as a promoting int)
     ph = Ins("phi", rt, "")
     a = self.convert_at(a, rt, e1) if not ascond and self.converts(a.t, rt) else a
     self.incoming(ph, a.v, e1)
@@ -3062,6 +3077,8 @@ def gen_unary(self, n: Node) -> Val:
         return self.unumeric(op, v, Val("", ""), "", True)
     if is_sopt(v.t):
         v = self.unwrap(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
+    if v.t == BIG or (op == "-" and (v.t == "int" or v.t == "bool") and self.int_policy(n.line)):
+        return self.big_unary(op, v)  # (promoting ints: bigints.py)
     v = self.as_int(v)
     if v.t == "int" and v.lit and dynamic_program() and (op == "-" or op == "~"):
         folded = folded_int("-" if op == "-" else "^", "0" if op == "-" else "-1", v.v)
@@ -3794,6 +3811,10 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             return v
     if a.t == "dyn" or b.t == "dyn":
         return self.dyn_arith(op, a, b, shown == op + "=")  # (a dynamic value's, in place where shown is op=: dynamic.py)
+    if a.t == BIG or b.t == BIG or ((a.t == "int" or a.t == "bool") and (b.t == "int" or b.t == "bool") and self.int_policy(self.line)):
+        pr = self.big_binop(op, a, b)  # (promoting ints: bigints.py)
+        if pr.t != "":
+            return pr
     if is_union(unopt(a.t)) or is_union(unopt(b.t)):
         return self.unumeric(op, a, b, shown, False)
     du = self.dunder(op, a, b, shown)
@@ -3957,6 +3978,9 @@ def gen_compare(self, n: Node) -> Val:
         if is_sopt(a.t) and unopt(a.t) != "float":
             nn = self.ptr_cmp('!=', a, Val('null', 'None')).v
             a = Val(self.optint(a, "0"), "int")
+        if a.t == BIG:
+            nn = self.big_fits([a])  # (a promoting int past 64 bits is in no range: its bounds are 64-bit)
+            a = self.big_lo(a)
         if a.t != "int" and a.t != "bool":
             self.err(f"'in range(...)' needs an int, not {typestr(a.t)}")
         vs = self.range_args(n.kids[1].kids[1:])
@@ -4094,6 +4118,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if a.t == BIG or b.t == BIG:
+        return self.big_compare(op, a, b)  # (promoting ints: bigints.py)
     if op in ["==", "!="] and a.t != b.t and self.dyn_policy(self.line) and self.wider(a.t, b.t) == "" and not (self.ueq_type(a.t) and self.ueq_type(b.t)) and self.container_pair_type(a.t, b.t):
         return self.container_pair_eq(op, a, b)
     if (op == "==" or op == "!=") and (a.t == RANGEC) != (b.t == RANGEC):
