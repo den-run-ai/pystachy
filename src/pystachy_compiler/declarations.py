@@ -942,7 +942,7 @@ def gen_join(self, a: str, b: str) -> str:
     # make T | None), or "" (a dynamic value and one that boxes: a dynamic value)
     if a == b or self.widens(b, a):
         return a
-    if (a == BIG and (b == "int" or b == "bool")) or (b == BIG and (a == "int" or a == "bool")):
+    if (a == BIG and b == "int") or (b == BIG and a == "int"):
         return BIG  # (a promoting int holds both: bigints.py)
     if (a == "dyn" and self.boxes(b, a)) or (b == "dyn" and self.boxes(a, b)):
         return "dyn"
@@ -1029,7 +1029,7 @@ def gen_boxwider(self, a: str, b: str) -> str:
             w = self.optional(x)
         elif w == "" and (is_sopt(x) and y == unopt(x) or x == "None" and self.isnum(y)):
             w = self.optional(y)
-        elif w == "" and ((x == BIG and (y == "int" or y == "bool")) or (y == BIG and (x == "int" or x == "bool"))):
+        elif w == "" and ((x == BIG and y == "int") or (y == BIG and x == "int")):
             w = BIG  # (a promoting int holds both: bigints.py)
         elif w == "":
             w = self.boxwider(x, y)
