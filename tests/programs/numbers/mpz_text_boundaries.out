@@ -1,0 +1,47 @@
+digit group boundaries 420 digest 818153274
+base 2 bit lengths: 100000 100001
+base 4 bit lengths: 200000 200001
+base 8 bit lengths: 300000 300001
+base 16 bit lengths: 400000 400001
+base 32 bit lengths: 500000 500001
+999999999
+1000000000
+1000000001
+-1000000000
+-999999999
+999999999999999999
+1000000000000000000
+1000000000000000001
+-1000000000000000000
+-999999999999999999
+999999999999999999999999999
+1000000000000000000000000000
+1000000000000000000000000001
+-1000000000000000000000000000
+-999999999999999999999999999
+36 9999 9999999999
+37 1000 0000000000
+37 1000 0000000001
+38 -100 0000000000
+37 -999 9999999999
+99 9999 9999999999
+100 1000 0000000000
+100 1000 0000000001
+101 -100 0000000000
+100 -999 9999999999
+1073741823 1073741824 1073741825 -1073741823
+1152921504606846975 1152921504606846976 1152921504606846977 -1152921504606846975
+1237940039285380274899124223 1237940039285380274899124224 1237940039285380274899124225 -1237940039285380274899124223
+1329227995784915872903807060280344575 1329227995784915872903807060280344576 1329227995784915872903807060280344577 -1329227995784915872903807060280344575
+4300 nines: 4300 4301
+ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit
+ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit
+ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit
+ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit
+int(011111111111..., 0) ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit
+int(007777777777..., 0) ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit
+int(000000000000..., 0) ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit
+int(01111111111..., 0) ValueError: invalid literal for int() with base 0: '01111111111'
+int(000000000000..., 0) = 0
+int(0_0000000000..., 0) ValueError: Exceeds the limit (4300 digits) for integer string conversion: value has 4301 digits; use sys.set_int_max_str_digits() to increase the limit
+[exit 0]

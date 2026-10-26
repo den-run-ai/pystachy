@@ -19,12 +19,11 @@
 # divmod(x, base) is x // base and x % base, and int(r) is r.to_int().
 # IntStrDigitLimitsTests sets sys.set_int_max_str_digits(2048); mpz's limit is CPython's default,
 # 4300 digits, which CPython applies here unchanged: maxdigits is 4300.
-# EXCLUDED upstream cases: test_power_of_two_bases_unlimited's '1' * 100_000 (a quadratic parse
-# here); test_disabled_limit, test_denial_of_service_prevented_int_to_str and _str_to_int and
-# test_int_max_str_digits_is_per_interpreter (mpz's limit cannot change; CPU timing);
-# test_basic's floats, bytes and int(1, 12); test_error_message's bytes and lone surrogates;
-# test_long's invalid bases 2**63, -2**63-1, 2**100 and -2**100 (a base is a native int); the
-# other methods are listed in mpz_cpython_int.py and upstream_int_construct.py.
+# EXCLUDED upstream cases: test_disabled_limit, test_denial_of_service_prevented_int_to_str and
+# _str_to_int and test_int_max_str_digits_is_per_interpreter (mpz's limit cannot change; CPU
+# timing); test_basic's floats, bytes and int(1, 12); test_error_message's bytes and lone
+# surrogates; test_long's invalid bases 2**63, -2**63-1, 2**100 and -2**100 (a base is a native
+# int); the other methods are listed in mpz_cpython_int.py and upstream_int_construct.py.
 import random
 import sys
 
@@ -455,8 +454,10 @@ def test_power_of_two_bases_unlimited() -> None:
     for base in (2, 4, 8, 16, 32):
         # with self.subTest(base=base):
         x = mpz('1' * (maxdigits + 1), base)
-        print("int('1' * (maxdigits + 1), %d) has %d bits" % (base, x.bit_length()))
-        # and int('1' * 100_000, base) upstream
+        assert maxdigits < 100_000
+        y = mpz('1' * 100_000, base)
+        print("int('1' * (maxdigits + 1), %d) has %d bits, int('1' * 100_000, %d) %d"
+              % (base, x.bit_length(), base, y.bit_length()))
 
 
 def test_underscores_ignored() -> None:
