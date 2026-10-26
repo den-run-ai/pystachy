@@ -2,6 +2,7 @@
 # Promoting ints (docs/python-int.md): comparisons with ints past 64 bits, with 64-bit ints, bools
 # and floats (exact, as CPython compares an int with a float), in chains and conditions.
 
+from collections.abc import Iterator
 from typing import NamedTuple
 
 MAX = 9223372036854775807
@@ -145,7 +146,24 @@ class Pair(NamedTuple):
     y: int
 
 
+class Floats:
+    def __iter__(self) -> Iterator[float]:
+        return iter([1.0, 2.0])
+
+
+class Flags:
+    def __iter__(self) -> Iterator[bool]:
+        return iter([True, False])
+
+
+class Ints:
+    def __iter__(self) -> Iterator[int]:
+        return iter([1, 2])
+
+
 c = Count(5)
 print(big in Count(3), -big not in Count(3), big in Evens(), big + 1 in Evens(), big in pick(True), big + 1 in pick(True))
 print(big in Box(), 2 in Box(), big in upto(3), 2 in upto(3), big in c, next(c, -1))
 print(big in Pair(1, big), big + 1 in Pair(1, big), big in Pair(3, 4), 4 in Pair(3, 4))
+one = big // big
+print(one in Floats(), zero in Floats(), zero in Flags(), one not in Flags(), big in Ints(), one in Ints())

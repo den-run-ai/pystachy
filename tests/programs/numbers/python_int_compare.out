@@ -32,4 +32,5 @@ True False False True True True
 False True True False False True
 False True False True False -1
 True False False True
+True False True False False True
 [exit 0]
