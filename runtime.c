@@ -1343,7 +1343,10 @@ I pys_big_hash(I lo, void *hi) {               /* CPython's: the magnitude modul
   I r = lo < 0 ? -(I)m : (I)m; return r == -1 ? -2 : r;
 }
 enum { TD_MANT = 53, TD_MIN_EXP = -1021, TD_MAX_EXP = 1024 };   /* <float.h>'s DBL_MANT_DIG, DBL_MIN_EXP, DBL_MAX_EXP */
-double pys_big_truediv(I alo, void *ahi, I blo, void *bhi) {   /* a / b, rounded once: CPython's long_true_divide */
+/* a / b, rounded once: CPython 3.13.16's long_true_divide (Objects/longobject.c), whose steps and
+   rounding of the low digit this follows on the Mpz core, used under the Python Software Foundation
+   License Version 2 (THIRD_PARTY_NOTICES) */
+double pys_big_truediv(I alo, void *ahi, I blo, void *bhi) {
   if (!ahi && !bhi) return pys_idiv(alo, blo);
   MpzTmp ta, tb;
   Mpz *a = big_mpz(alo, ahi, &ta), *b = big_mpz(blo, bhi, &tb);
