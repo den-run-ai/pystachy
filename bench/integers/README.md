@@ -5,9 +5,9 @@ promotes past 64 bits. Every later step is measured against these programs. Each
 
 - **`NAME.py`**, written with ordinary `int`, as CPython and PyPy run it. It starts with
   `# pystachy: python-int`, the opt-in to [promoting ints](../../docs/python-int.md), which
-  CPython ignores. Pystachy times it only with `--python-int`. `modpow` and `containers` still
-  raise `OverflowError` there: their values past 64 bits reach three-argument `pow` and
-  containers, which keep 64-bit ints for now.
+  CPython ignores. Pystachy times it only with `--python-int`. `containers` still raises
+  `OverflowError` there: its values past 64 bits reach containers, which keep 64-bit ints for
+  now.
 - **`NAME_mpz.py`**, the same work with the explicit [`mpz`](../../docs/mpz.md) type.
 - **`NAME_i64.py`**, checked 64-bit `int`, only where every value fits (`lcg32`, `collatz`).
 
@@ -86,8 +86,10 @@ ints promote in a module that opts in. Its first measurements, of the eight work
 their values outside containers, are in
 [results/linux-x86_64-2026-10-26-python-int.json](results/linux-x86_64-2026-10-26-python-int.json);
 with the inline paths for values that fit, in
-[results/linux-x86_64-2026-10-26-python-int-fast-paths.json](results/linux-x86_64-2026-10-26-python-int-fast-paths.json)
-and [the promoting int guide](../../docs/python-int.md#measurements).
+[results/linux-x86_64-2026-10-26-python-int-fast-paths.json](results/linux-x86_64-2026-10-26-python-int-fast-paths.json);
+`modpow`, once three-argument `pow` took every value, in
+[results/linux-x86_64-2026-10-26-python-int-modpow.json](results/linux-x86_64-2026-10-26-python-int-modpow.json);
+and all of them in [the promoting int guide](../../docs/python-int.md#measurements).
 
 ## History
 

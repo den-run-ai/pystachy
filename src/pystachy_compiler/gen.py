@@ -23,6 +23,7 @@ from src.pystachy_compiler.memory_ir import (
 )
 from src.pystachy_compiler.bigints import (
     gen_big_builtin as bigints_big_builtin,
+    gen_big_method as bigints_big_method,
     gen_big_compare as bigints_big_compare,
     gen_big_binop as bigints_big_binop,
     gen_int_policy as bigints_int_policy,
@@ -1536,6 +1537,9 @@ class Gen:
 
     def big_builtin(self, name: str, vals: list[Val]) -> Val:
         return bigints_big_builtin(self, name, vals)
+
+    def big_method(self, v: Val, m: str) -> Val:
+        return bigints_big_method(self, v, m)
 
     # ---- dynamic values (dynamic.py)
     def dyn_policy(self, line: int) -> bool:

@@ -1810,6 +1810,10 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
         # one character, of a str or a code point (a precision, flags but '-' change nothing)
         if unopt(v.t) == "str":
             v = self.unwrap(v, "TypeError: %c requires int or char")
+        if v.t == BIG:
+            # (past 64 bits, no code point: CPython's error for one out of range)
+            self.guard(self.scalar("xor", [Val(self.big_fits([v]), "bool"), Val("true", "bool")]), "OverflowError: %c arg not in range(0x110000)")
+            v = self.big_lo(v)
         v = v if v.t == "str" else self.as_int(v)
         if v.t != "str" and v.t != "int":
             self.err("%c requires int or char")
@@ -1825,11 +1829,11 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
             self.err(f"%{t} with a precision is not supported")
         if v.t == "float" and (t == "d" or t == "i" or t == "u"):
             v = Val(self.rt("pys_f2i", "i64", [f"double {v.v}"]), "int")  # %d truncates a float, as int() does
-        v = self.as_int(v)
-        if v.t != "int":
+        v = v if v.t == BIG else self.as_int(v)  # (a promoting int's own digits: format_)
+        if v.t != "int" and v.t != BIG:
             self.err(f"%{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not {tname(v.t)}")
         return self.format_(v, mk("str", spec + ("d" if t == "i" or t == "u" else t), self.line, []))
-    v = self.as_float(self.as_int(v))
+    v = self.as_float(v if v.t == BIG else self.as_int(v))
     if v.t != "float":
         self.err(f"must be real number, not {tname(v.t)}")
     return self.format_(v, mk("str", spec + (prec if prec != "" else ".6") + t, self.line, []))
@@ -1890,7 +1894,9 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
     if empty:
         return self.to_str(v)
     if v.t == BIG:
-        v = self.big_narrow(v)  # (a promoting int formats as a 64-bit int: bigints.py)
+        # (a promoting int's digits, in the spec's base, for runtime.py's int formatting: bigints.py)
+        sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        return Val(self.rt("pys_big_format", "ptr", [f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}", f"ptr {sv.v}"]), "str")
     if is_union(unopt(v.t)):
         # Both value and spec run once, before the selected native member formats
         # or raises. A nonempty spec is legal for some members and not for others.

@@ -1,10 +1,9 @@
 # pystachy: python-int
 # Documented deviation (docs/python-int.md#64-bit-boundaries): a promoting int is two words in
-# variables, arguments, returns, fields, globals and closures, but 64-bit storage, and the builtins
-# and methods that take an int, keep 64-bit ints for now (#907). A value past 64 bits stored in a
-# list, dict, set, tuple, int | None or a generator's yield, or given to hex(), a format
-# specification, an int method or sum(), raises OverflowError, where CPython goes on with the bigger
-# int.
+# variables, arguments, returns, fields, globals and closures, but 64-bit storage and the builtins
+# that take an int keep 64-bit ints for now (#907). A value past 64 bits stored in a list, dict,
+# set, tuple, int | None or a generator's yield, given to range() or divmod(), or added by sum()
+# among floats, raises OverflowError, where CPython goes on with the bigger int.
 
 
 def gen(n: int):
@@ -38,19 +37,16 @@ try:
 except OverflowError as e:
     print("yield:", e)
 try:
-    print(hex(big))
+    print(range(big))
 except OverflowError as e:
-    print("hex:", e)
+    print("range:", e)
 try:
-    print(f"{big:,}")
+    print(divmod(big, 7))
 except OverflowError as e:
-    print("format:", e)
+    print("divmod:", e)
 try:
-    print(big.bit_length())
-except OverflowError as e:
-    print("method:", e)
-try:
-    print(sum([2 ** 62, 2 ** 62]))
+    mixed: list[int | float] = [2 ** 62, 2 ** 62, 0.5]
+    print(sum(mixed))
 except OverflowError as e:
     print("sum:", e)
 try:

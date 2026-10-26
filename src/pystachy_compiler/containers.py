@@ -1095,6 +1095,8 @@ def gen_hashable(self, t: str) -> bool:
 def gen_repr(self, v: Val) -> Val:
     if is_kw(v.t):
         return self.kw_repr(v)
+    if v.t == BIG:
+        return self.big_str(v)  # (an int's repr is its str: bigints.py)
     if self.reference_union(v.t):
         return self.refl_union_str(v, "__repr__")  # (each class's: reflection.py)
     if v.t in self.classes:
