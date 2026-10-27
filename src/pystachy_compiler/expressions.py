@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, held, narrows
+from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, held, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
@@ -4504,9 +4504,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 et = self.union_type([elem(b.t), a.t])
             if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "" and not self.isnum(elem(b.t)):
                 et = self.optional(elem(b.t))
-            s = self.to_slot(self.list_hold(a, et) if et == elem(b.t) else self.coerce(a, et))  # (a tuple of ints as the list holds it: bigints.held)
+            s = self.to_slot(self.search_hold(a, et, elem(b.t)))  # (a tuple of ints as the list holds it, also one that may be None: bigints.py)
             self.exc_eq(et)
-            r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(held(et) if et == elem(b.t) else et, '=='))}"])
+            r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(search_type(elem(b.t), et), '=='))}"])
             r = self.scalar('add', [Val(r, 'int'), Val('1', 'int')])
             if ok != "true":
                 r = self.select(ok, Val(r, "int"), Val("0", "int"))

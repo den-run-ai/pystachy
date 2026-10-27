@@ -4,10 +4,11 @@
 # pop(); sorting (by key too), min(), max(), in, index(), count(), remove(), comparisons and
 # repr(); nested tuples; tuples holding -2**63, also from a module that does not opt in
 # (fixed_tuple_lists), which reads and adds the tuples that fit; the lists of tuples that dicts
-# and sets give; and math.isclose() of the promoting ints that a list's tuples give.
+# and sets give; math.isclose() of the promoting ints that a list's tuples give; and searches by a
+# tuple that may be None, also in fixed_tuple_lists.
 import math
 import sys
-from fixed_tuple_lists import first, made, push, total
+from fixed_tuple_lists import drop, edge_pair, first, made, push, search, total
 
 ONE = len(sys.argv) - 2  # (1, which the compiler does not know)
 BIG = 2 ** 64 * ONE
@@ -90,3 +91,20 @@ try:
     print(math.isclose([(10 ** 400, 1)][0][0], 1.0))
 except OverflowError as e:
     print("OverflowError:", e)
+
+
+# searches by a tuple that may be None (which holds 64-bit ints), also in a module that does not opt in
+def opt_search(xs: list[tuple[int, int]], t: tuple[int, int] | None) -> None:
+    print(t in xs, t not in xs, xs.count(t), xs.index(t) if t in xs else -1)
+    if t in xs:
+        xs.remove(t)
+
+
+ws = [(BIG, 1), (EDGE, 1), (5, 6)]
+opt_search(ws, (EDGE, 1))
+opt_search(ws, None)
+opt_search(ws, edge_pair())
+print(ws, search(ws, edge_pair()), search(ws, None), search(ws, (5, 6)))
+drop(ws, edge_pair())
+drop(ws, None)
+print(ws)

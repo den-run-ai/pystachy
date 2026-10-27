@@ -7,7 +7,7 @@ from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.reflection import VARS_USES
-from src.pystachy_compiler.bigints import held
+from src.pystachy_compiler.bigints import held, search_type
 from src.pystachy_compiler.specs import (
     ARITY,
     BIG,
@@ -2308,7 +2308,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             continue
         if p == "#":
             self.exc_eq(dt)
-            av.append(f"ptr {self.sconst(self.desc(held(dt) if base == 'list' else dt, '=='))}")  # (count, index, remove; a list's tuple of ints: held)
+            av.append(f"ptr {self.sconst(self.desc(search_type(T, dt) if base == 'list' else dt, '=='))}")  # (count, index, remove; a list's tuple of ints: bigints.py)
             continue
         dflt = ""
         e = p.find("=")
@@ -2433,6 +2433,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 dt = pt
             if base == "list" and p == "*T" and pt == T and held(T) != T:
                 v = self.list_hold(v, T)  # (an item, or the item searched for, of a list of tuples of ints: bigints.py)
+            elif base == "list" and p == "*T" and search_type(T, pt) != pt:
+                v = self.search_hold(v, pt, T)  # (the tuple searched for, which may be None: bigints.py)
             v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
             if self.list_id_kind(o.t) != 0 and p == "*T":
                 idstore = v

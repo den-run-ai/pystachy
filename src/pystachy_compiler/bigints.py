@@ -96,6 +96,17 @@ def held(t: str) -> str:
     return big_view(t) if int_lists() and int_tuple(t) else t
 
 
+def search_type(t: str, et: str) -> str:
+    # the type whose descriptor compares the items of a list of t with the value of type et that a
+    # search of it takes (in, index(), count(), remove()): the type in which the list holds a tuple
+    # of ints (held), for et that tuple's type or the type of it or None; else et
+    if et == t:
+        return held(t)
+    if is_opt(et) and unopt(et) == t and held(t) != t:
+        return "opt[" + held(t) + "]"
+    return et
+
+
 def held_shape(t: str) -> str:
     # runtime.c's descriptor of the layout of a tuple of ints that a list holds (held), for
     # pys_list_hold and pys_list_narrow_held: J an int, T a tuple that holds one, i an item they do
@@ -653,6 +664,28 @@ def gen_list_coerce(self, v: Val, et: str) -> Val:
     if v.t == BIG and et == "int" and int_lists():
         return v
     return self.coerce(v, et)
+
+
+def gen_search_hold(self, v: Val, et: str, t: str) -> Val:
+    # v as the value of type et that a search of a list of t compares its items with (search_type):
+    # a tuple of ints in the layout the list holds its tuples in, as a store gives it (list_hold),
+    # also where et is that tuple's type or None and v is not None
+    if et == t:
+        return self.list_hold(v, t)
+    v = self.coerce(v, et)
+    if search_type(t, et) == et:
+        return v
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", et, "")
+    self.incoming(ph, "null", self.cur)
+    self.cbr(self.isnull(v), end, some)
+    self.place(some)
+    h = self.list_hold(Val(v.v, t), t)
+    self.incoming(ph, h.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), et)
 
 
 def gen_held_list(self, v: Val) -> Val:

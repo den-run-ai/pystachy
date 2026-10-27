@@ -29,4 +29,9 @@ True {1: 2, 3: -9223372036854775808, 7: 8} {(1, 2): 0, (3, -9223372036854775808)
 True True
 True True
 OverflowError: int too large to convert to float
+True False 1 1
+False True 0 -1
+False True 0 -1
+[(18446744073709551616, 1), (5, 6)] (False, 0, -1) (False, 0, -1) (True, 1, 1)
+[(18446744073709551616, 1), (5, 6)]
 [exit 0]

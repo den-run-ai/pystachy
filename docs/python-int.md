@@ -89,8 +89,8 @@ print(int("123456789012345678901234567890") % 97)  # 52
   indexing, iteration, unpacking and `pop()` read them as tuples of promoting ints. `sort()`,
   `sorted()` (by key too, and by keys that are such tuples), `min()`, `max()`, `in`, `index()`,
   `count()`, `remove()`, `==`, `<` and the other comparisons and `repr()` take every item, exactly
-  (also against tuples of floats), and so do the lists that a dict's keys, values and items and a
-  set's elements make (`list(d)`, `d.items()`, `sorted(s)`).
+  (also against tuples of floats, and by a tuple that may be None), and so do the lists that a
+  dict's keys, values and items and a set's elements make (`list(d)`, `d.items()`, `sorted(s)`).
 - The values of a dict of ints are promoting ints, in a program where a module opts in and none
   opts in to [dynamic `Any`](dynamic-any.md), as a list's items are: item assignment, `+=`,
   displays, comprehensions, `setdefault()`, `update()`, `dict()` and `copy()` store values past
@@ -412,8 +412,8 @@ the first measurements, before the inline paths, in
   unpacking, indexing, slicing, iteration, comparisons with 64-bit tuples, `hash()`, `repr()` and
   formatting, `divmod()`, fields, globals, closures and a NamedTuple, and tuples that fit going
   into a module that does not opt in (`tests/python_int_modules/fixed_pairs.py`);
-  `python_int_tuple_lists.py`: lists of them, their stores, reads, sorting, searches, comparisons
-  and nested tuples, -2\*\*63, a module that does not opt in
+  `python_int_tuple_lists.py`: lists of them, their stores, reads, sorting, searches (also by a
+  tuple that may be None), comparisons and nested tuples, -2\*\*63, a module that does not opt in
   (`tests/python_int_modules/fixed_tuple_lists.py`) and the lists that dicts and sets give;
   `python_int_tuple_walks.py`: those that `runtime.c`'s walks read (`J`), nested and holding
   lists and dicts, with -2\*\*63, exactly against floats and 64-bit tuples, past the digits
