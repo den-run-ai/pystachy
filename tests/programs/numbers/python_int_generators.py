@@ -1,6 +1,8 @@
 # pystachy: python-int
 # Generators that yield and return ints past 64 bits: for loops, next(), unpacking, yield from,
 # send(), throw(), generator expressions and a module that does not opt in (fixed_iter).
+import math
+import struct
 from typing import Generator, Iterator
 
 from fixed_iter import count_up, total
@@ -55,6 +57,22 @@ def guarded():
     yield 3
 
 
+class Index:
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+    def __index__(self) -> int:
+        return self.v
+
+
+def one():
+    yield 1
+
+
+def descending(n: int) -> list[int]:
+    return sorted([1, 2], reverse=n)
+
+
 class Counter:
     def __init__(self, start: int):
         self.start = start
@@ -91,3 +109,9 @@ print(total(count_up(4)), [v * 2 ** 64 for v in count_up(3)])
 print(total(x for x in [1, 2, 3]))
 for x, y in zip(powers(3), mixed()):
     print(x + y)
+# promoting ints, from a generator or a parameter, where a bool or an int is taken
+ws = [3, 1, 2]
+ws.sort(reverse=next(one()))
+print(sorted([1, 2], reverse=next(one())), ws, descending(2 ** 64), descending(0))
+print(struct.pack("<q", next(one())), struct.pack("<d", 2 ** 64), struct.unpack_from("<b", b"\x01\x02", next(one())))
+print(math.prod([Index(2), Index(3)], start=[0]))

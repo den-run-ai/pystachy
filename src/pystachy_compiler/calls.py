@@ -673,7 +673,7 @@ def gen_at_arg(self, n: Node, f: FnInfo, j: int, offs: dict[int, Val]) -> Val:
         self.err("ffi.at() takes a list and an index: ffi.at(xs, k)")
     xs = self.pcoerce(self.expr(n.kids[1], f.ptypes[j]), f.ptypes[j], f, j)
     k = self.expr(n.kids[2], "int")
-    if k.t != "int" and k.t != "bool":
+    if k.t != "int" and k.t != "bool" and k.t != BIG:
         self.err(f"ffi.at() takes an int index, not {typestr(k.t)}")
     offs[j] = self.as_int(k)
     return xs

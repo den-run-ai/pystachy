@@ -1875,11 +1875,11 @@ def gen_reverse_arg(self, n: Node, name: str) -> str:
     return self.reverse_val(self.expr(n, "bool"), name)
 
 def gen_reverse_val(self, r: Val, name: str) -> str:
-    # sorted(..., reverse=r) and list.sort(reverse=r): r is a bool or an int (an Any value: its
-    # truth, as CPython 3.13 takes any object's)
+    # sorted(..., reverse=r) and list.sort(reverse=r): r is a bool or an int, promoting too (an Any
+    # value: its truth, as CPython 3.13 takes any object's)
     if r.t == "dyn":
         return self.scalar_cast('zext', Val(self.dyn_truth(r), 'bool'), 'int')
-    if r.t != "bool" and r.t != "int":
+    if r.t != "bool" and r.t != "int" and r.t != BIG:
         self.err(f"{name}() argument 'reverse' must be a bool, not {tname(r.t)}")
     return self.scalar_cast('zext', Val(self.truth(r), 'bool'), 'int')
 
@@ -2617,7 +2617,7 @@ def gen_prod_item(self, s: Val, item: Val) -> Val:
                 self.err("math.prod() must preserve its start type; type-changing __rmul__ is not supported")
         elif seq and "__index__" in methods:
             index = self.protocol(item, "__index__", [])
-            if index.t != "int" and index.t != "bool":
+            if index.t != "int" and index.t != "bool" and index.t != BIG:
                 self.raise_("TypeError", self.sconst(f"__index__ returned non-int (type {tname(index.t)})"))
                 result = s
             else:
