@@ -317,6 +317,10 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_roots.py`: values whose digits only a module variable, a
   class attribute, a field, a closure cell, a default or a generator's frame holds survive
   collections (the test runner's GC stress collects at every allocation).
+- `tests/programs/upstream/upstream_micropython_*.py`: 35 of MicroPython's integer tests
+  (arithmetic, bitwise operations, shifts, comparisons, `divmod()`, `pow()`, `abs()`, `bin()`,
+  `hex()`, `oct()`, constant folding and slices past 64 bits), unchanged after a header that opts
+  them in ([provenance and the tests left out](../tests/upstream/micropython.md)).
 - `tests/deviations/python_int_limits.py` and the two rejections above.
 - `tools/test_compiler_state_files.py`: the opt-in follows its file through imports, restarts and
   later compilations.

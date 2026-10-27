@@ -13,6 +13,15 @@ single-allocation values, collector integration, parsing, Python sign/bitwise
 semantics, hashing and conversion adapters. mpz/README.md records upstream
 source identity and changes.
 
+MicroPython's integer tests (tests/programs/upstream/upstream_micropython_*.py)
+-------------------------------------------------------------------------------
+
+These are 35 of MicroPython's tests/basics/ integer tests at commit
+a39e77f08d1daf13658ccae99b763003a8218bdf, each unchanged after a header that opts
+it in to promoting ints, Copyright (c) 2013-2026 Damien P. George, under the MIT
+license reproduced in tests/upstream/MICROPYTHON-LICENSE.txt.
+tests/upstream/micropython.md records each file's SHA-256.
+
 Its text conversion and arithmetic follow CPython 3.13.16's Objects/longobject.c
 at commit cbc944f4bc59639a444dd971c737788ba2283a91 (long_from_binary_base,
 long_from_non_binary_base, long_to_decimal_string_internal, x_add, x_sub, v_iadd,
