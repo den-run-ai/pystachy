@@ -96,10 +96,11 @@ print(int("123456789012345678901234567890") % 97)  # 52
   read them. `sorted()`, `min()`, `max()`, `sum()`, `list()`, `repr()`, comparisons and copies
   take every element.
 - The keys of a dict of int keys are promoting ints too, as its values are: displays,
-  comprehensions, item assignment, `op=`, `update()`, copies and `dict.fromkeys()` store keys past
-  64 bits; indexing, `in` and `del` find them exactly (also by an `int | None`), and in a module that
-  opts in, iteration over the dict and its `items()` reads them. `keys()` makes a list of ints that
-  holds them, and `repr()`, `==`, `!=` and the sets of a dict's keys take them.
+  comprehensions, item assignment, `op=`, `update()`, copies, `dict.fromkeys()` and `setdefault()`
+  store keys past 64 bits; indexing, `in` and `del` find them exactly (also by an `int | None`), so
+  do `get()` and `pop()`, and in a module that opts in, iteration over the dict and its `items()`
+  reads them. `keys()` makes a list of ints that holds them, and `repr()`, `==`, `!=` and the sets
+  of a dict's keys take them.
 - A generator yields and returns promoting ints, in a program where a module opts in: a `for`
   loop, a comprehension, `next()`, unpacking, `send()` and `throw()` in a module that opts in read
   them, and so do `list()`, `sorted()`, `sum()`, `min()`, `max()`, `in`, `enumerate()`, `zip()`
@@ -215,8 +216,8 @@ for a C `long`), where CPython goes on with the bigger int:
 
 - The keys of dicts of other types than `int`, the items of lists of other types than `int` (a tuple
   or an `int | None` in a list holds 64-bit ints too), the values of dicts of other types than
-  `int` and the tuples that `items()` and `popitem()` make of a dict of ints (or of int keys), the
-  key of `get()`, `pop()` and `setdefault()`, the items and values
+  `int` and the tuples that `items()` and `popitem()` make of a dict of ints (or of int keys), an
+  `int | None` key given to `get()`, `pop()` or `setdefault()`, the items and values
   of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
   items, unions other than `int | None` (also where a join makes one, as
   for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
@@ -352,7 +353,9 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_dict_keys.py`: dicts whose keys are past 64 bits: displays,
   comprehensions, stores, lookups and their `KeyError`, `in`, `del`, `op=`, iteration, `keys()`,
   `items()`, comparisons, copies, `update()`, `dict.fromkeys()`, sets of the keys, keys of one hash
-  and -2\*\*63, nested dicts and `int | None` keys.
+  and -2\*\*63, nested dicts and `int | None` keys; `python_int_dict_key_methods.py`: their `get()`,
+  `pop()` and `setdefault()` with int, str, float and list values, defaults and `KeyError`, and a
+  dict that such a call types.
 - `tests/programs/numbers/python_int_recursion.py`: recursive functions and methods, one with a
   `dict[int, int]` memo; `python_int_forward_ref.py`: quoted annotations that name promoting ints
   ([provenance](../tests/upstream/python-int.md)).

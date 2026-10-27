@@ -2228,13 +2228,18 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         return Val("null", "None")
     if is_dict(o.t) and m == "pop" and len(args) == 2:
         kv = targs(o.t)
-        kx = self.dkey(self.expr(args[0], kv[0]), kv[0])
-        k = self.to_slot(kx)
+        kx = self.expr(args[0], kv[0])
+        if not (kx.t == BIG and self.dict_bigkey(o.t)):
+            kx = self.dkey(kx, kv[0])
+        k = "" if kx.t == BIG else self.to_slot(kx)  # (a promoting int key of a dict of int keys: dict_key_args)
         d = self.big_opt_narrow(self.expr(args[1], kv[1]))  # (a value holds a 64-bit int: bigints.py)
         vt = self.optdefault(d, kv[1])  # (d.pop(k, None): V | None)
         dv = self.to_slot(self.coerce(d, vt))
         fn = "pys_dict_popbox" if is_sopt(vt) and not is_sopt(kv[1]) else "pys_dict_pop_default"  # (an int's box)
-        r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]))
+        if kx.t == BIG:
+            r = self.rt(self.dict_key_fn(fn, kx), "i64", [f"ptr {o.v}"] + self.dict_key_args(kx, k) + [f"i64 {dv}"], self.key_fx(kv[0]))
+        else:
+            r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]))
         if fn == "pys_dict_popbox" and self.dict_int(o.t):
             return self.dict_box(r)  # (a value past 64 bits: bigints.py)
         return self.from_slot(r, vt)
@@ -2286,6 +2291,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     nmsg: list[str] = []
     dt = T  # the item type the # descriptor describes
     kx = Val("", "")  # a dict's key that may be None (see nonekey)
+    bigkey = Val("", "")  # a promoting int key of a dict of int keys (dict_key_args)
     bk = Val("", "")  # d.pop(k) of a bool where the keys are ints (bool_find)
     numx = Val("", "")  # xs.index(x), count(x) or remove(x) of a number x of another type
     numok = "true"  # (whether an item can equal it, see numkey)
@@ -2382,6 +2388,11 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 v = Val(self.optint(v, dflt), "int")
             if p == "int":
                 v = self.as_int(v)  # an index or a count may be a bool, as in CPython
+            if base == "dict" and i == 0 and v.t == BIG and self.dict_bigkey(o.t) and (m == "get" or m == "pop" or m == "setdefault"):
+                bigkey = v  # (its {lo, m}, which the runtime functions BKEY names take: bigints.py)
+                av += self.dict_key_args(v, "")
+                i += 1
+                continue
             if base == "dict" and i == 0 and is_opt(v.t) and ((unopt(v.t) == K and (m == "get" or m == "pop")) or (bool_for_int(unopt(v.t), K) and is_sopt(v.t) and m == "get")):
                 kx = v  # (a bool | None gets the int key it equals, raising no KeyError that would name it)
                 pt = v.t
@@ -2474,7 +2485,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     if kx.t != "":
         res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x)
     else:
-        res = self.rt(fn, "i64" if slot else rtt(rtype), av, x)
+        res = self.rt(self.dict_key_fn(fn, bigkey) if bigkey.t != "" else fn, "i64" if slot else rtt(rtype), av, x)
     if numok != "true" and m == "count":
         res = self.select(numok, Val(res, "int"), Val("0", "int"))
     if fn == "pys_dict_getbox" and self.dict_int(o.t):

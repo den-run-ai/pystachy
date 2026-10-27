@@ -3776,12 +3776,15 @@ LOOKUP void pys_dict_set_big(Dict *d, I k, I lo, Mpz *m) {
   dbig_make(d); d->vb[e] = (I)m;
 }
 /* d[k] = v of key k past 64 bits, its Mpz m, whose hash is h (hbig): its entry */
-static I dbput(Dict *d, Mpz *m, uint64_t h, I v) {
-  I f = -1, i = dbfind(d, m, h, &f);
-  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); return e; }
+static I dbadd(Dict *d, Mpz *m, uint64_t h, I v, I f) {   /* and of key m, which d has not, into idx slot f (dbfind's *free) */
   dadd(d, INT64_MIN, h, v, f);
   if (!d->kb) d->kb = pys_alloc(d->size * 2 / 3 * 8);
   d->kb[d->n - 1] = (I)m; return d->n - 1;
+}
+static I dbput(Dict *d, Mpz *m, uint64_t h, I v) {
+  I f = -1, i = dbfind(d, m, h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); return e; }
+  return dbadd(d, m, h, v, f);
 }
 static I dtake(Dict *d, I i) {                       /* the value of the entry in idx slot i, which is deleted */
   I e = d->idx[i] - 1, v = d->vals[e];
@@ -3877,6 +3880,53 @@ void pys_dict_big_del(Dict *d, I lo, Mpz *m) {
   I i = dbfind(d, m, hbig(m), 0);
   if (i < 0) bkeyerr(m);
   dtake(d, i);
+}
+/* get(k), pop(k), setdefault(k, v) and their boxes, as the functions above without bkey_, of a
+   dict of int keys and a promoting int key {lo, m}: one that fits as theirs; past 64 bits, by the
+   idx slot dbfind finds. bkey_big_pop and bkey_big_setdefault are big_pop's and big_setdefault's */
+LOOKUP I pys_dict_bkey_get(Dict *d, I lo, Mpz *m, I dflt) {
+  if (!m) return pys_dict_get(d, lo, dflt);
+  I i = dbfind(d, m, hbig(m), 0); return i < 0 ? dflt : d->vals[d->idx[i] - 1];
+}
+LOOKUP I pys_dict_bkey_getbox(Dict *d, I lo, Mpz *m, I dflt) {
+  if (!m) return pys_dict_getbox(d, lo, dflt);
+  I i = dbfind(d, m, hbig(m), 0); if (i < 0) return dflt;
+  I e = d->idx[i] - 1; return (I)pys_big_box(d->vals[e], dbig(d, e));
+}
+static I dbpop(Dict *d, Mpz *m, I dflt, int has) {   /* (dpop's) */
+  I i = dbfind(d, m, hbig(m), 0);
+  if (i < 0) { if (!has) bkeyerr(m); return dflt; }
+  return dtake(d, i);
+}
+LOOKUP I pys_dict_bkey_pop(Dict *d, I lo, Mpz *m) { return m ? dbpop(d, m, 0, 0) : pys_dict_pop(d, lo); }
+LOOKUP I pys_dict_bkey_pop_default(Dict *d, I lo, Mpz *m, I dflt) { return m ? dbpop(d, m, dflt, 1) : pys_dict_pop_default(d, lo, dflt); }
+LOOKUP I pys_dict_bkey_popbox(Dict *d, I lo, Mpz *m, I dflt) {
+  if (!m) return pys_dict_popbox(d, lo, dflt);
+  I i = dbfind(d, m, hbig(m), 0); if (i < 0) return dflt;
+  Mpz *b = dbig(d, d->idx[i] - 1);
+  return (I)pys_big_box(dtake(d, i), b);
+}
+LOOKUP I pys_dict_bkey_setdefault(Dict *d, I lo, Mpz *m, I v) {
+  if (!m) return pys_dict_setdefault(d, lo, v);
+  uint64_t h = hbig(m); I f = -1, i = dbfind(d, m, h, &f);
+  if (i >= 0) return d->vals[d->idx[i] - 1];
+  dbadd(d, m, h, v, f); return v;
+}
+LOOKUP Big pys_dict_bkey_big_pop(Dict *d, I klo, Mpz *km, I has, I lo, Mpz *m) {
+  if (!km) return pys_dict_big_pop(d, klo, has, lo, m);
+  I i = dbfind(d, km, hbig(km), 0);
+  if (i < 0) { if (!has) bkeyerr(km); Big r = {lo, m}; return r; }
+  Mpz *b = dbig(d, d->idx[i] - 1);
+  I v = dtake(d, i);
+  Big r = {b ? 0 : v, b}; return r;
+}
+LOOKUP Big pys_dict_bkey_big_setdefault(Dict *d, I klo, Mpz *km, I lo, Mpz *m) {
+  if (!km) return pys_dict_big_setdefault(d, klo, lo, m);
+  uint64_t h = hbig(km); I f = -1, i = dbfind(d, km, h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
+  I e = dbadd(d, km, h, m ? INT64_MIN : lo, f);
+  if (m) { dbig_make(d); d->vb[e] = (I)m; }
+  Big r = {lo, m}; return r;
 }
 /* for loops: entry e's key and value; the next entry from e (reversed: the previous one), or
    -1 at the end, failing like CPython's dict iterators when the dict changed meanwhile:
