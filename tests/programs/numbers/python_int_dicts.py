@@ -28,6 +28,9 @@ print(counts, sum(counts.values()), sorted(counts.values()))
 print(d.setdefault("z", 3 * big), d.setdefault("z", 0), d.pop("z"), d.pop("q", -1), d.pop("c", 0))
 sq = {k: k ** 30 for k in range(3)}
 print(sq, sq == {0: 0, 1: 1, 2: 2 ** 30}, {1: big} == {1: big}, {1: big} == {1: big + 1}, {1: big} != {1: 0})
+cubes = {k: big * k for k in range(3)}
+names = {str(k): 2 ** (62 + k) for k in range(3)}
+print(cubes, names, {k: (big if k else 1) for k in range(2)}, cubes[2] - cubes[1])
 e = dict(d)
 e.update({"w": big * big})
 f = e.copy()

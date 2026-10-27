@@ -1032,6 +1032,8 @@ def gen_stmt(self, n: Node) -> None:
             self.lct[-1] = self.ctype("dict", kv)
             if self.lct[-1] == "dict[dyn,dyn]":
                 kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
+            elif BIG in kv[0] or BIG in kv[1]:
+                kv = targs(self.lct[-1])  # (a promoting int is an int there, ctype's, which dict_store keeps past 64 bits)
         ks = self.to_slot(self.store_key(kx, kv[0]))
         self.dict_store(self.lcs[-1], ks, self.list_coerce(vx, kv[1]), kv)
     elif k == "lcappend":
