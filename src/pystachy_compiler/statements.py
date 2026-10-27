@@ -1045,7 +1045,7 @@ def gen_stmt(self, n: Node) -> None:
         elif n.s == "discard":
             self.sdiscard(f"ptr {self.lcs[-1]}", v, et)
         else:
-            self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.coerce(v, et), "append")
+            self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.list_coerce(v, et), "append")
     elif k == "defaults" or k == "cdefaults":
         if k == "defaults":
             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != "" else [], {})
@@ -1242,7 +1242,7 @@ def gen_augassign(self, n: Node) -> None:
             i = self.ival(t.kids[1])
             o = self.unwrap(o, sub)
             cur = self.list_item(o, i)
-            r = self.coerce(self.inplace(op, cur, n.kids[1]), et)
+            r = self.list_coerce(self.inplace(op, cur, n.kids[1]), et)
             self.list_store(o, r, "set", i.v)
         elif is_dict(unopt(o.t)):
             # d[k] op= v stores k where d[k] has found it: k is looked up as d[k] does (dkey),

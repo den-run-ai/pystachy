@@ -8,7 +8,7 @@ that fits, so equal values have one representation. See docs/python-int.md.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import first_use, local_names
-from src.pystachy_compiler.diagnostics import LINES, int_file
+from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC
@@ -28,6 +28,12 @@ NARROW = "OverflowError: Python int too large to convert to C long"
 # (0 for -2**63) is read too (big_item). A tuple of 64-bit ints none of which is -2**63 is so a
 # tuple of promoting ints as it is (big_tuple_view).
 TSLOT_BIG = "-9223372036854775808"
+# A list of ints of a program whose lists hold promoting ints (int_lists: a module opts in, none to
+# dynamic Any) holds an item past 64 bits as a tuple does: TSLOT_BIG in its slot, and its Mpz in the
+# list's companion (runtime.c's BIGIDS), read only where the slot holds TSLOT_BIG (big_list_value).
+# Every module of the program reads a list's int so: one that opts in as a promoting int, another as
+# its 64-bit int (NARROW past 64 bits); a promoting int goes into the list as it is from any module
+# (big_list_store), and runtime.c's list code keeps the companion in step with the items.
 # An int | None of a module that opts in (BIGOPT) is a box, as an opt[int] is: null for None, else
 # runtime.c's pys_box of the value, whose second word is null, where it fits; past 64 bits, a box
 # of TSLOT_BIG and its Mpz (pys_big_box). So an opt[int] is one as it is, and one of a value that
@@ -518,6 +524,106 @@ def gen_big_status(self, v: Val) -> Val:
     return Val(self.select(self.big_fits([v]), self.big_lo(v), Val("-1", "int")), "int")
 
 
+def gen_big_list_value(self, o: Val, i: str, raw: str) -> Val:
+    # raw, the slot of list[int] o at index i (in range, or negative as pys_list_get takes it), as
+    # the int that the list holds there (int_lists): a promoting int in a module that opts in, else
+    # the 64-bit int, NARROW past 64 bits. The Mpz is read only where the slot holds TSLOT_BIG
+    rare = self.label()
+    end = self.label()
+    ph = Ins("phi", BIG, "")
+    self.incoming(ph, self.big(Val(raw, "int")).v, self.cur)
+    self.cbr(self.scalar_cmp("eq", Val(raw, "int"), Val(TSLOT_BIG, "int")), rare, end)
+    self.place(rare)
+    w = Val(self.scalar_cast("ptrtoint", Val(self.rt("pys_list_big_at", "ptr", [f"ptr {o.v}", f"i64 {i}"]), "%ptr"), "int"), "int")
+    small = self.scalar_cmp("eq", w, Val("0", "int"))  # (-2**63 itself)
+    r = self.big(Val(self.select(small, Val(TSLOT_BIG, "int"), Val("0", "int")), "int"), self.scalar_cast("inttoptr", w, "%ptr"))
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    v = Val(self.phi(ph), BIG)
+    return v if self.int_policy(self.line) else self.big_narrow(v)
+
+
+def gen_item_type(self, t: str) -> str:
+    # the type of the item that a read of list type t gives here (list_value): a promoting int, in
+    # a module that opts in, where the program's lists of ints hold them (int_lists)
+    if is_list(t) and elem(t) == "int" and int_lists() and self.int_policy(self.line):
+        return BIG
+    return elem(t)
+
+
+def gen_big_list_store(self, o: Val, v: Val, method: str, index: str) -> None:
+    # promoting int v into list[int] o (int_lists): appended, set at index or inserted at index, as
+    # the 64-bit int it is where it fits (whose store clears the item's companion entry), else as
+    # TSLOT_BIG and its Mpz (pys_list_*_big)
+    fits = self.label()
+    past = self.label()
+    end = self.label()
+    pre = [f"ptr {o.v}"] + ([f"i64 {index}"] if index != "" else [])
+    self.cbr(self.big_fits([v]), fits, past)
+    self.place(fits)
+    self.rt({"append": "pys_list_append", "set": "pys_list_set", "insert": "pys_list_insert"}[method], "void", pre + [f"i64 {self.big_lo(v).v}"])
+    self.br(end)
+    self.place(past)
+    self.rt({"append": "pys_list_append_big", "set": "pys_list_set_big", "insert": "pys_list_insert_big"}[method], "void", pre + [f"ptr {self.big_hi(v).v}"])
+    self.br(end)
+    self.place(end)
+
+
+def gen_list_coerce(self, v: Val, et: str) -> Val:
+    # v as an item of a list of et: a promoting int stays one where et is int and the program's lists
+    # of ints hold them (int_lists), which list_store stores as it is (big_list_store)
+    if v.t == BIG and et == "int" and int_lists():
+        return v
+    return self.coerce(v, et)
+
+
+def gen_big_list_minmax(self, o: Val, maximum: bool) -> Val:
+    # min() or max() of list[int] o (int_lists): the promoting int, narrowed in a module that does not
+    # opt in
+    v = Val(self.rt("pys_list_big_minmax", BIGLL, [f"ptr {o.v}", f"i64 {1 if maximum else 0}"]), BIG)
+    return v if self.int_policy(self.line) else self.big_narrow(v)
+
+
+def gen_big_list_find(self, o: Val, x: Val, op: int, st: str, en: str) -> Val:
+    # x in o (op 0: the index, or -1), o.count(x) (1), o.index(x, st, en) (2) or o.remove(x) (3) of
+    # list[int] o (int_lists) and x a promoting int or a float, which an item past 64 bits may equal:
+    # exactly (pys_list_big_find)
+    if x.t == "float":
+        args = ["i64 " + self.to_slot(x), "ptr null", "i64 1"]
+    else:
+        x = self.to_big(x)
+        args = [f"i64 {self.big_lo(x).v}", f"ptr {self.big_hi(x).v}", "i64 0"]
+    return Val(self.rt("pys_list_big_find", "i64", [f"ptr {o.v}"] + args + [f"i64 {op}", f"i64 {st}", f"i64 {en}"]), "int")
+
+
+def gen_big_list_method(self, o: Val, m: str, args: list[Node]) -> Val:
+    # o.m(args) of list[int] o in a program whose lists hold promoting ints (int_lists): pop() and
+    # pop(i) give the promoting int (big_list_value's), append(x) and insert(i, x) of a promoting int
+    # store it (big_list_store), and index(), count() and remove() of a promoting int or a float look
+    # for it exactly (big_list_find); Val("", "") for the rest, which bmethod compiles as for 64-bit
+    # ints (runtime.c's searches skip the items past 64 bits, which equal no 64-bit int)
+    if any([a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" for a in args]):
+        return Val("", "")
+    ints = ["int", "bool", BIG]
+    if m == "pop" and len(args) <= 1 and (len(args) == 0 or self.dry(args[0]) in ints):
+        i = self.as_int(self.expr(args[0], "")) if len(args) == 1 else Val("-1", "int")
+        v = Val(self.rt("pys_list_big_pop", BIGLL, [f"ptr {o.v}", f"i64 {i.v}"]), BIG)
+        return v if self.int_policy(self.line) else self.big_narrow(v)
+    if ((m == "append" and len(args) == 1) or (m == "insert" and len(args) == 2 and self.dry(args[0]) in ints)) and self.dry(args[-1]) == BIG:
+        i = self.as_int(self.expr(args[0], "")) if m == "insert" else Val("", "")
+        self.list_store(o, self.expr(args[-1], ""), m, i.v)
+        return Val("null", "None")
+    if m in ["index", "count", "remove"] and len(args) >= 1 and len(args) <= (3 if m == "index" else 1) and self.dry(args[0]) in [BIG, "float"]:
+        if not all([self.dry(a) in ints for a in args[1:]]):
+            return Val("", "")
+        x = self.expr(args[0], "")
+        bounds = [self.as_int(self.expr(a, "")).v for a in args[1:]] + ["0", "9223372036854775807"][len(args) - 1 :]
+        r = self.big_list_find(o, x, {"count": 1, "index": 2, "remove": 3}[m], bounds[0], bounds[1])
+        return Val("null", "None") if m == "remove" else r
+    return Val("", "")
+
+
 def gen_big_len(self, v: Val) -> Val:
     # promoting int v, the result of an object's __len__, as the 64-bit length that CPython's
     # slot_sq_length takes: ValueError where it is negative (past 64 bits too), then OverflowError
@@ -685,6 +791,9 @@ def gen_big_compare(self, op: str, a: Val, b: Val) -> Val:
         return Val("false" if op == "is" else "true", "bool")  # (a promoting int is never None)
     if op == "is" or op == "is not":
         self.err("'is' between ints is not supported in python-int modules yet")
+    if (op == "in" or op == "not in") and a.t == BIG and is_list(b.t) and elem(b.t) == "int" and int_lists():
+        # (a list of ints may hold one past 64 bits: exactly)
+        return self.num_cmp(">=" if op == "in" else "<", self.big_list_find(b, a, 0, "0", "0"), Val("0", "int"))
     if (op == "in" or op == "not in") and a.t == BIG and int_items(b.t):
         # an int of 64-bit storage equals a value that fits in 64 bits: its lo (a float item may
         # equal one past 64 bits, so other containers take the value narrowed, as other operands do)

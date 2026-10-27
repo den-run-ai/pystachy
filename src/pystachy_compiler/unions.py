@@ -529,8 +529,9 @@ def gen_join_type(self, a: str, b: str) -> str:
         return a
     if (a == BIG and b == "int") or (b == BIG and a == "int"):
         return BIG  # (a promoting int holds both: bigints.py)
-    if (a == BIG and b == "bool") or (b == BIG and a == "bool"):
-        a, b = "int", "bool"  # (with a bool, their union, which holds 64-bit ints, as in other modules)
+    if (a == BIG and b in ["bool", "float", "str"]) or (b == BIG and a in ["bool", "float", "str"]):
+        # (with a bool, a float or a str, their union, which holds 64-bit ints, as in other modules)
+        a, b = "int" if a == BIG else a, "int" if b == BIG else b
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 

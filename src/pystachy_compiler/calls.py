@@ -16,7 +16,6 @@ from src.pystachy_compiler.utils import (
     numeric_identity,
     clone,
     codec,
-    elem,
     fbits,
     has_method,
     hpush,
@@ -1013,7 +1012,7 @@ def gen_nt_make(self, c: str, args: list[Node], want: str) -> Val:
     self.place(bad)
     self.raise_("TypeError", self.concat([Val(self.sconst(f"Expected {n} arguments, got "), "str"), self.to_str(Val(ln, "int"))]).v)
     self.place(ok)
-    return self.nt_new(c, [self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.from_slot(self.list_slot(v, str(i)), elem(v.t)) for i in range(n)], want)
+    return self.nt_new(c, [self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.list_value(v, str(i), self.list_slot(v, str(i))) for i in range(n)], want)
 
 def gen_dc_replace(self, args: list[Node]) -> Val:
     # dataclasses.replace(obj, **changes): a new object of obj's class, which its __init__ makes

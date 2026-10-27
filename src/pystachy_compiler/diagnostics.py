@@ -75,6 +75,13 @@ def dynamic_program() -> bool:
     return len(DYNFILES) > 0
 
 
+def int_lists() -> bool:
+    # do the program's lists of ints hold promoting ints past 64 bits (docs/python-int.md): a module
+    # opts in to them, and none to dynamic Any, whose lists of ints keep identities instead
+    # (runtime.c's BIGIDS). Its modules then read a list's int through a test (Gen.list_value)
+    return len(INTFILES) > 0 and len(DYNFILES) == 0
+
+
 def shown(s: str) -> str:
     # a name as Python spells it: the "$" of a qualified name (heapq$heappush) between two
     # identifier characters is the "." of a module attribute; the main program's names are

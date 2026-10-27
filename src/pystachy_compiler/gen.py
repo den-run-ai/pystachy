@@ -59,6 +59,13 @@ from src.pystachy_compiler.bigints import (
     gen_big_opt_or as bigints_big_opt_or,
     gen_big_status as bigints_big_status,
     gen_big_len as bigints_big_len,
+    gen_big_list_value as bigints_big_list_value,
+    gen_item_type as bigints_item_type,
+    gen_big_list_store as bigints_big_list_store,
+    gen_list_coerce as bigints_list_coerce,
+    gen_big_list_minmax as bigints_big_list_minmax,
+    gen_big_list_find as bigints_big_list_find,
+    gen_big_list_method as bigints_big_list_method,
     gen_big_hashed as bigints_big_hashed,
     gen_bool_numeric as bigints_bool_numeric,
     gen_big_tuple_repr as bigints_big_tuple_repr,
@@ -380,6 +387,7 @@ from src.pystachy_compiler.containers import (
     gen_list_find as containers_list_find,
     gen_list_identity as containers_list_identity,
     gen_list_item as containers_list_item,
+    gen_list_value as containers_list_value,
     gen_list_store as containers_list_store,
     gen_list_minmax as containers_list_minmax,
     gen_none_container as containers_none_container,
@@ -1573,6 +1581,27 @@ class Gen:
 
     def big_len(self, v: Val) -> Val:
         return bigints_big_len(self, v)
+
+    def big_list_value(self, o: Val, i: str, raw: str) -> Val:
+        return bigints_big_list_value(self, o, i, raw)
+
+    def item_type(self, t: str) -> str:
+        return bigints_item_type(self, t)
+
+    def big_list_store(self, o: Val, v: Val, method: str, index: str) -> None:
+        bigints_big_list_store(self, o, v, method, index)
+
+    def list_coerce(self, v: Val, et: str) -> Val:
+        return bigints_list_coerce(self, v, et)
+
+    def big_list_minmax(self, o: Val, maximum: bool) -> Val:
+        return bigints_big_list_minmax(self, o, maximum)
+
+    def big_list_find(self, o: Val, x: Val, op: int, st: str, en: str) -> Val:
+        return bigints_big_list_find(self, o, x, op, st, en)
+
+    def big_list_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return bigints_big_list_method(self, o, m, args)
 
     def big_hashed(self, v: Val) -> Val:
         return bigints_big_hashed(self, v)
@@ -3891,6 +3920,9 @@ class Gen:
 
     def list_item(self, o: Val, i: Val) -> Val:
         return containers_list_item(self, o, i)
+
+    def list_value(self, o: Val, i: str, raw: str) -> Val:
+        return containers_list_value(self, o, i, raw)
 
     def list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
         containers_list_store(self, o, v, method, index)

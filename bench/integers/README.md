@@ -5,9 +5,9 @@ promotes past 64 bits. Every later step is measured against these programs. Each
 
 - **`NAME.py`**, written with ordinary `int`, as CPython and PyPy run it. It starts with
   `# pystachy: python-int`, the opt-in to [promoting ints](../../docs/python-int.md), which
-  CPython ignores. Pystachy times it only with `--python-int`. `containers` still raises
-  `OverflowError` there: its values past 64 bits reach containers, which keep 64-bit ints for
-  now.
+  CPython ignores. Pystachy times it only with `--python-int`, which `containers` takes since
+  lists hold promoting ints
+  ([its results](results/linux-x86_64-2026-10-27-python-int-containers.json)).
 - **`NAME_mpz.py`**, the same work with the explicit [`mpz`](../../docs/mpz.md) type.
 - **`NAME_i64.py`**, checked 64-bit `int`, only where every value fits (`lcg32`, `collatz`).
 

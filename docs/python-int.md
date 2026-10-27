@@ -10,9 +10,10 @@ In that module, `int` behaves as CPython's: a result that needs more than 64 bit
 bigger int instead of raising `OverflowError`, and a result that fits is a 64-bit value again.
 Modules without the comment, including the compiler, `runtime.py` and `lib/`, keep the checked
 64-bit `int` of the [language guide](language.md). The roadmap is #907; this page describes its
-step 3, the compiler-level integer, and the first part of step 6, tuples. Values past 64 bits stay
-in variables, arguments, returns, fields, module variables, closures and tuples; lists, dicts,
-sets and the other containers still hold 64-bit ints ([boundaries](#64-bit-boundaries)).
+step 3, the compiler-level integer, and the first parts of step 6, tuples and lists. Values past
+64 bits stay in variables, arguments, returns, fields, module variables, closures, tuples and
+lists of ints; dicts, sets and the other containers still hold 64-bit ints
+([boundaries](#64-bit-boundaries)).
 
 ```python
 # pystachy: python-int
@@ -73,6 +74,13 @@ print(int("123456789012345678901234567890") % 97)  # 52
   `*` by a literal, iteration, `in`, `index()` and `count()` take them, as do comparisons (also
   with tuples of 64-bit ints, bools and floats, exactly), `hash()` (CPython's), `repr()`,
   f-strings, `format()` and `%` formatting. `divmod()` returns a tuple of promoting ints.
+- A `list[int]` holds promoting ints, in a program where a module opts in and none opts in to
+  [dynamic `Any`](dynamic-any.md): displays, comprehensions, `append()`, `insert()`, item and
+  slice assignment, `extend()` and `+=` store values past 64 bits, and in a module that opts in,
+  indexing, iteration, unpacking and `pop()` read them. `in`, `index()`, `count()` and
+  `remove()` compare exactly (also with floats), and so do `==`, `<` and the other comparisons;
+  `sort()`, `sorted()` (by key too), `min()`, `max()`, `sum()`, `repr()`, copies, slices, `+`,
+  `*` and `reverse()` take every item.
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
 - An object's `__len__` and `__hash__` may return a promoting int, annotated `-> int` or not.
@@ -121,6 +129,18 @@ once a test has found no item past 64 bits. The runtime reads tuples of 64-bit i
 and the code compiled for `repr()`, comparisons and `hash()` of a tuple of promoting ints reads
 its items one by one.
 
+A list of ints holds an item that fits in its 8-byte slot, as a list of 64-bit ints holds it. An
+item past 64 bits holds -2\*\*63 there, and its pointer in a companion array beside the items,
+which the collector scans and the first such item makes: the list's identity companion of
+[dynamic `Any`](dynamic-any.md), of a kind of its own. Its other entries are null, -2\*\*63's
+among them, so every list operation of `runtime.c` that moves, copies or drops items keeps the
+companion in step as it is. A read of a list's int compares its slot with -2\*\*63 and reads the
+pointer only where they are equal; that is the cost a read pays in every module of a program
+that opts in. Code of a module that does not opt in reads the item as a 64-bit int and raises
+`OverflowError` past 64 bits, and so do the runtime functions that take a list's ints as 64-bit
+ints ([boundaries](#64-bit-boundaries)). `runtime.c`'s sorting compares a list that holds an item
+past 64 bits through the ranks of its items, 64-bit ints in their order.
+
 An `int | None` is a pointer to a box, as one of a 64-bit int is: null for None, else runtime.c's
 box of the value and a null pointer where it fits, and past 64 bits a box of -2\*\*63 and the
 value's pointer, which the collector scans. Every box of a 64-bit int has that null second word,
@@ -137,8 +157,9 @@ These places keep 64-bit ints for now. A value past 64 bits that reaches one rai
 `OverflowError: Python int too large to convert to C long` (CPython's message for an int too big
 for a C `long`), where CPython goes on with the bigger int:
 
-- The items of lists, dicts and sets (a tuple or an `int | None` there holds 64-bit ints too),
-  a tuple's `int | None` items, unions other than `int | None` (also where a join makes one, as
+- The items of dicts and sets, of lists of other types than `int` (a tuple or an `int | None`
+  in a list holds 64-bit ints too), and of lists of ints in a program that opts in to dynamic
+  `Any`, a tuple's `int | None` items, unions other than `int | None` (also where a join makes one, as
   for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
   a variable), and the values a generator yields or receives
   (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a parameter,
@@ -147,6 +168,9 @@ for a C `long`), where CPython goes on with the bigger int:
 - An `int` or `int | None` parameter of a function in a module that does not opt in (whose
   unannotated parameters take the promoting int, so arithmetic there promotes too), and the
   parameters and result of a `Callable`.
+- A list's int read in a module that does not opt in, such as `lib/`'s `heapq`, `bisect` and
+  `random.shuffle()`, and the ints of a list given to `tuple()`, `set()` and the set operations,
+  `dict.fromkeys()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
   floats: the ints of an `int | float` list, ints added to a float start, and a start past 64
@@ -157,8 +181,9 @@ for a C `long`), where CPython goes on with the bigger int:
   rejected during compilation for now.
 - `x in c` where the items of `c` are not ints (a `list[float]` may hold a float equal to an int
   past 64 bits), and a tuple of promoting ints looked up in a list or as a key. Membership in a
-  container of ints, a `range`, a generator or an iterator object is exact: an int past 64 bits
-  is not in it. An object's `__contains__` takes `x` as its parameter does.
+  list of ints is exact; in another container of ints, a `range`, a generator or an iterator
+  object too: an int past 64 bits is not in it. An object's `__contains__` takes `x` as its
+  parameter does.
 
 ## Deviations
 
@@ -207,8 +232,13 @@ speed relative to CPython 3.13.16:
 - `modpow` runs since three-argument `pow` takes every value: 0.865 s, 0.98× CPython's 0.850 s,
   where `mpz` takes 1.017 s (0.84×), measured separately with the same settings
   ([`results/linux-x86_64-2026-10-26-python-int-modpow.json`](../bench/integers/results/linux-x86_64-2026-10-26-python-int-modpow.json)).
-- `containers` does not run yet: its values past 64 bits reach containers, which keep 64-bit
-  ints.
+- `containers` runs since lists hold promoting ints: 0.248 s, 1.86× the 0.462 s of CPython
+  3.13.17 (the container's own, not the pinned 3.13.16), where `mpz` takes 0.648 s (0.71×),
+  with 57, 55 and 99 MiB peak RSS, measured on 2026-10-27 with the same settings on the same
+  kind of VM
+  ([`results/linux-x86_64-2026-10-27-python-int-containers.json`](../bench/integers/results/linux-x86_64-2026-10-27-python-int-containers.json)).
+  `runtime.c` sorts its list's 64-bit items as before and puts the items past 64 bits,
+  compared as such, before and after them.
 
 Peak RSS is `mpz`'s on every big workload (34–37 MiB) and 2 MiB on `lcg32` and `collatz`. Raw
 samples are in
@@ -234,13 +264,18 @@ the first measurements, before the inline paths, in
   `oct()`, format specifications, `%` formatting and `pow(x, y, m)`.
 - `tests/programs/numbers/python_int_sums.py`: `sum()`, `min()` and `max()` of every iterable and
   start.
-- `tests/programs/numbers/python_int_cpython_int.py`: `int()` assertions adapted from CPython's
-  `Lib/test/test_int.py` ([provenance](../tests/upstream/python-int.md)), and
+- `tests/programs/numbers/python_int_cpython_int.py` and `python_int_cpython_long.py`: `int()`
+  and arithmetic assertions adapted from CPython's `Lib/test/test_int.py` and
+  `Lib/test/test_long.py` ([provenance](../tests/upstream/python-int.md));
+  `python_int_import.py`: a module without the comment that calls one with it; and
   `python_int_reflection.py`: `type()` and `__class__` of promoting and 64-bit ints.
 - `tests/programs/numbers/python_int_truediv.py`: true division across the float range, halfway
   cases, subnormals, signed zeros and its errors.
 - `tests/programs/numbers/python_int_storage.py`: values that fit in containers and unions that
   annotations name, displays, dataclass and NamedTuple fields, and `type()`.
+- `tests/programs/numbers/python_int_lists.py`: lists of ints past 64 bits: stores, reads,
+  searches by promoting ints and floats, sorting, `min()`, `max()`, `sum()`, comparisons, copies,
+  nested lists, a field and a function's result.
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in

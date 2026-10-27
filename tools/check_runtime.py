@@ -86,8 +86,10 @@ TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 NO_USER = {"set.copy"}
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise"}
 # the depth guard of runtime.c's descriptor walks (repr_depth, eqpair_depth), which counts only the
-# edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?
-DEEP = {"rec_deep"}
+# edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?;
+# and repr_depth's raise for a list's int past CPython's 4300 digits, which an op whose descriptor
+# holds no list of ints never reaches, nor one of a program whose lists hold no promoting ints (Gen.opfx)
+DEEP = {"rec_deep", "digits_deep"}
 # and those walks, its only callers: R? stands for nothing else
 DEEP_WALKS = {"repr_depth", "eqpair_depth"}
 # what the raise funnels build their exception with: in a program that has a try, a raise allocates

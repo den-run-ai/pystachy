@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, narrows
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
-from src.pystachy_compiler.diagnostics import dynamic_program, shown
+from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.ir import ClassInfo, FmtArgs, FnInfo, Ins, IterArg, Loop, Val
 from src.pystachy_compiler.names import short
@@ -1027,7 +1027,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         lty = self.ctype("list", [et])
         if lty == "list[dyn]":
             et = "dyn"  # (where the items are Any values or containers: ctype)
-        items = [self.coerce(v, et) for v in items]
+        items = [self.list_coerce(v, et) for v in items]
         r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
             self.list_store(Val(r, lty), v, "append")
@@ -2677,7 +2677,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     if self.list_id_kind(o.t) != 0 and not self.fn.scalar_reads:
         return self.list_item(o, i)
     if o.t != "list[int]" or "listfast" not in self.opts:
-        return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(o.t))
+        return self.list_value(o, i.v, self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]))
     fast = self.label()
     slow = self.label()
     done = self.label()
@@ -2697,7 +2697,7 @@ def gen_list_read(self, o: Val, i: Val) -> Val:
     self.incoming(ph, v, self.cur)
     self.br(done)
     self.place(done)
-    return Val(self.phi(ph), "int")
+    return self.list_value(o, i.v, self.phi(ph))
 
 def gen_bytes_read(self, o: Val, i: Val) -> Val:
     # b[i] of a bytes o (not None): as list_read, an index below the length (an unsigned
@@ -4466,6 +4466,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 # coercing the needle would wrongly widen mutable containers.
                 r = self.rt("pys_list_find_pair", "i64", [f"ptr {b.v}", "i64 " + self.to_slot(a), f"ptr {self.sconst(self.desc(elem(b.t), '=='))}", f"ptr {self.sconst(self.desc(a.t, '=='))}"])
                 return self.num_cmp(">=" if op == "in" else "<", Val(r, "int"), Val("0", "int"))
+            if a.t == "float" and elem(b.t) == "int" and int_lists():
+                # (an int past 64 bits may equal it: bigints.py)
+                return self.num_cmp(">=" if op == "in" else "<", self.big_list_find(b, a, 0, "0", "0"), Val("0", "int"))
             ok = "true"
             if self.isnum(a.t) and self.isnum(unopt(elem(b.t))) and a.t != unopt(elem(b.t)):
                 nk = self.numkey(a, unopt(elem(b.t)))  # (1 in [1.0]: the item that equals it)

@@ -687,7 +687,9 @@ TEMPLATE_RETAINED = 16777216
 # running out of memory ends the program); U may run user code, and so has every other letter (U?:
 # when the static type, the descriptor of a # parameter or a dict's keys, Ins.x, holds a class; R?:
 # R when Ins.x holds a recursive alias's edge, R<n>:, of which runtime.c's descriptor walks follow
-# at most 512 before raising RecursionError, in rec_deep); I
+# at most 512 before raising RecursionError, in rec_deep, or a list of ints, Li, in a program whose
+# lists hold promoting ints (int_lists), of which repr raises CPython's ValueError for one past 4300
+# digits, in digits_deep); I
 # does I/O, or uses the process or global runtime state; rL wL, rD wD, rO wO, rG wG, rF wF read or
 # write lists, dicts, objects' fields and flags, globals and their flags, files. Strings and tuples
 # are immutable, slots are never address-taken, dict keys are ints, strs, objects, or tuples of
@@ -713,6 +715,12 @@ for _j in range(len(FX)):
 # graphs show). A function of runtime.py has R where it may raise in the linked runtime: a raise
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
 # result too long in join and replace, where CPython raises OverflowError too
+# the runtime functions that take a list's ints as 64-bit ints and do not test them (they raise
+# nothing for it): a program whose lists may hold promoting ints past 64 bits (int_lists) narrows
+# their lists first (pys_list_narrow, Gen.rt), as other 64-bit storage takes a promoting int
+NARROWED: list[str] = ["dict.fromkeys", "m.floats", "m.prod_int", "set.and_list", "set.ge_list", "set.isdisjoint_list",
+                       "set.isub_list", "set.ixor_list", "set.le_list", "set.sub_list", "set.update_list", "set.xor_list",
+                       "sum.int_float"]
 RUNTIME: dict[str, str] = {
     # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
     # the library's scanned wrapper keeps their pointer alive.
@@ -730,6 +738,12 @@ RUNTIME: dict[str, str] = {
     "big.bit_length": "int:int,%ptr||", "big.bit_count": "int:int,%ptr||", "big.format": "str:int,%ptr,str|R A|",
     "big.powmod": "int+:int,%ptr,int,%ptr,int,%ptr|R A|", "big.sum": "int+:list[int],int,%ptr|R A rL|",
     "big.box": "%ptr:int,%ptr|A|",
+    # a list of ints whose items may be promoting ints past 64 bits (runtime.c's BIGIDS: -2**63 in
+    # the item's slot, its Mpz in the list's companion), in a program where int_lists() holds
+    "list.set_big": "None:S,int,%ptr|R A rL wL|", "list.append_big": "None:S,%ptr|R A rL wL|",
+    "list.insert_big": "None:S,int,%ptr|R A rL wL|", "list.big_at": "%ptr:S,int|rL|",
+    "list.big_pop": "int+:S,int|R rL wL|", "list.big_minmax": "int+:S,bool|R rL|",
+    "list.big_find": "int:S,int,%ptr,bool,int,int,int|R A rL wL|", "list.narrow": "None:S|R rL|",
     # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of

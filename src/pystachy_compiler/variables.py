@@ -1726,7 +1726,7 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         if name in self.gidbox and numeric_identity(t):
             self.dyn_id_store(self.gidbox[name], v, t)  # (the object it now holds: dyn_box)
     else:
-        if name in self.compshare and name in self.compvars and not self.widens(v.t, self.compshare[name]):
+        if name in self.compshare and name in self.compvars and not self.widens(v.t, self.compshare[name]) and not (v.t in ["int", BIG] and self.compshare[name] in ["int", BIG]):
             # (a comprehension's for clause that binds it into an earlier clause's variable, which
             # keeps its type: see the statement "compfor")
             self.err(f"comprehension variable '{name}' is {typestr(self.compshare[name])} in an earlier for clause and {typestr(v.t)} in a later one, and a clause between them can read either (not supported)")
@@ -1980,7 +1980,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1])
             o = self.unwrap(o, nosub)
-            self.list_store(o, self.coerce(v, elem(o.t)), "set", ix.v)
+            self.list_store(o, self.list_coerce(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
             kv = targs(unopt(o.t))
             key = self.to_slot(self.store_key(self.expr(t.kids[1], kv[0]), kv[0]))
@@ -2028,9 +2028,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
             if v.t == "str":
                 self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
             elif first:
-                items.append(self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.from_slot(self.list_slot(v, str(i)), elem(v.t)))
+                items.append(self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.list_value(v, str(i), self.list_slot(v, str(i))))
             else:
-                self.assign(t.kids[i], self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.from_slot(self.list_slot(v, str(i)), elem(v.t)))
+                self.assign(t.kids[i], self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.list_value(v, str(i), self.list_slot(v, str(i))))
         for i in range(len(items)):
             self.assign(t.kids[i], items[i])
     elif k == "tuple" and is_gen(v.t):
@@ -2210,12 +2210,12 @@ def gen_star_assign(self, t: Node, v: Val) -> None:
         size = self.mload('int', xs.v)
         self.rt("pys_unpack_ex_check", "void", [f"i64 {size}", f"i64 {s + after}"])
         for i in range(s):
-            items.append(self.list_item(xs, Val(str(i), "int")) if self.list_id_kind(xs.t) != 0 else self.from_slot(self.list_slot(xs, str(i)), elem(xs.t)))
+            items.append(self.list_item(xs, Val(str(i), "int")) if self.list_id_kind(xs.t) != 0 else self.list_value(xs, str(i), self.list_slot(xs, str(i))))
         end = self.scalar('sub', [Val(size, 'int'), Val(str(after), 'int')])
         items.append(Val(self.rt("pys_list_slice", "ptr", [f"ptr {xs.v}", f"i64 {s}", f"i64 {end}"]), xs.t))
         for i in range(after):
             at = self.scalar('add', [Val(end, 'int'), Val(str(i), 'int')])
-            items.append(self.list_item(xs, Val(at, "int")) if self.list_id_kind(xs.t) != 0 else self.from_slot(self.list_slot(xs, at), elem(xs.t)))
+            items.append(self.list_item(xs, Val(at, "int")) if self.list_id_kind(xs.t) != 0 else self.list_value(xs, at, self.list_slot(xs, at)))
     for i in range(len(t.kids)):
         self.assign(star if i == s else t.kids[i], items[i])
 def gen_list_slot(self, o: Val, i: str) -> str:
