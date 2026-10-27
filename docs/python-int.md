@@ -75,6 +75,10 @@ print(int("123456789012345678901234567890") % 97)  # 52
   f-strings, `format()` and `%` formatting. `divmod()` returns a tuple of promoting ints.
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
+- An object's `__len__` and `__hash__` may return a promoting int, annotated `-> int` or not.
+  `len()` and truth take it as CPython does: a negative one, however large, is a `ValueError`,
+  and a positive one past 64 bits an `OverflowError` (`cannot fit 'int' into an index-sized
+  integer`). `hash()`, dicts and sets take one past 64 bits as the hash of that int.
 
 Errors are CPython's: `ZeroDivisionError` for `//` and `%` by zero, `ValueError` for a negative
 shift count, `MemoryError` for a shift or power whose result could not fit in memory. As in
@@ -256,6 +260,8 @@ the first measurements, before the inline paths, in
   and a set's elements, and in the unions a join makes with a bool or a `str`, membership in
   ranges, an `OSError`'s errno and a `SystemExit`'s status; `python_int_exit.py` and
   `python_int_exit_class.py`: that status in a program without `try` and of a subclass.
+- `tests/programs/numbers/python_int_special.py`: `__len__` and `__hash__` results past 64 bits,
+  annotated and not, through `len()`, truth, `hash()`, dict keys and set elements.
 - `tests/programs/numbers/python_int_spellings.py`: quoted and `Final` annotations, in modules
   that opt in and into one that does not.
 - `tests/programs/numbers/python_int_roots.py`: values whose digits only a module variable, a

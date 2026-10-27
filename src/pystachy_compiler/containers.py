@@ -1045,7 +1045,8 @@ def gen_obj_hash(self, v: Val) -> Val:
         if k == "id":
             r = Val(self.rt("pys_hash_id", "i64", [f"ptr {v.v}"]), "int")
         elif k == "user":
-            h = self.as_int(self.call_fn(c.methods["__hash__"], [Val(v.v, c.name)], [], direct=True))
+            h = self.call_fn(c.methods["__hash__"], [Val(v.v, c.name)], [], direct=True)
+            h = self.big_hashed(h) if h.t == BIG else self.as_int(h)
             r = Val(self.select(self.num_cmp('==', h, Val('-1', 'int')).v, Val('-2', 'int'), h), "int")
         else:
             self.raise_("TypeError", self.sconst(f"unhashable type: '{short(c.name)}'"))

@@ -518,6 +518,21 @@ def gen_big_status(self, v: Val) -> Val:
     return Val(self.select(self.big_fits([v]), self.big_lo(v), Val("-1", "int")), "int")
 
 
+def gen_big_len(self, v: Val) -> Val:
+    # promoting int v, the result of an object's __len__, as the 64-bit length that CPython's
+    # slot_sq_length takes: ValueError where it is negative (past 64 bits too), then OverflowError
+    # where it does not fit
+    self.guard(self.big_cmp("<", v, Val("0", "int")).v, "ValueError: __len__() should return >= 0")
+    self.guard(self.scalar("xor", [Val(self.big_fits([v]), "bool"), Val("true", "bool")]), "OverflowError: cannot fit 'int' into an index-sized integer")
+    return self.big_lo(v)
+
+
+def gen_big_hashed(self, v: Val) -> Val:
+    # promoting int v, the result of an object's __hash__, as the hash that CPython's slot_tp_hash
+    # takes: v where it fits in 64 bits, else int's hash of it (the caller makes -1 -2)
+    return Val(self.select(self.big_fits([v]), self.big_lo(v), self.big_hash(v)), "int")
+
+
 def gen_big_tuple_narrow(self, v: Val) -> Val:
     # tuple v, whose items (or its tuples' items) may be promoting ints, as the tuple of their 64-bit
     # ints: the same tuple, whose first slots are that tuple's (tslots), where each fits; else

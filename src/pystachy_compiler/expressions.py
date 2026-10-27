@@ -590,8 +590,12 @@ def gen_truth(self, v: Val) -> str:
                 if "__bool__" in c.methods:
                     r = self.coerce(self.call_fn(c.methods["__bool__"], [Val(v.v, c.name)], [], direct=True), "bool").v
                 elif "__len__" in c.methods:
-                    size = self.coerce(self.call_fn(c.methods["__len__"], [Val(v.v, c.name)], [], direct=True), "int")
-                    self.guard(self.num_cmp('<', Val(size.v, "int"), Val('0', "int")).v, "ValueError: __len__() should return >= 0")
+                    size = self.call_fn(c.methods["__len__"], [Val(v.v, c.name)], [], direct=True)
+                    if size.t == BIG:
+                        size = self.big_len(size)
+                    else:
+                        size = self.coerce(size, "int")
+                        self.guard(self.num_cmp('<', Val(size.v, "int"), Val('0', "int")).v, "ValueError: __len__() should return >= 0")
                     r = self.num_cmp('!=', Val(size.v, "int"), Val('0', "int")).v
                 if not self.term:
                     self.incoming(ph, r, self.cur)
