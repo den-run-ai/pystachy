@@ -1627,6 +1627,10 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
         elif self.qtype(name) == "dict[dyn,dyn]":
             k = self.store_key(k, "dyn")  # (a dict of Any containers holds boxes, keys too: ctype)
             v = self.coerce(v, "dyn")
+        elif self.dict_int(self.qtype(name)) and not is_opt(k.t) and (v.t == "int" or v.t == BIG):
+            # (whose values may be past 64 bits, as a later run of this call may find: bigints.py)
+            d = Val(o.v, self.qtype(name))
+            return self.big_dict_call(d, m, k, self.to_slot(k), self.to_big(v), True, self.key_fx(targs(d.t)[0]))
         return self.from_slot(self.rt(f"pys_dict_{m}", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(k), "i64 " + self.to_slot(v)], self.key_fx(targs(self.qtype(name))[0])), v.t)
     # any other method: the type a later use shows (or an error), then the method as usual
     return self.method(self.load_name(name), m, args)
