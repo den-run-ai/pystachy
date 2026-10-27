@@ -1432,6 +1432,36 @@ static int list_has_big(List *l) {   /* does l hold an item past 64 bits */
   return 0;
 }
 static void list_narrow(List *l) { if (list_has_big(l)) pys_fail(NARROW); }   /* l's ints for 64-bit code */
+/* In a program whose lists hold promoting ints, a list of tuples of ints holds each in the layout of
+   a tuple of promoting ints (the compiler's bigints.held): a tuple of its whose int, also one of a
+   tuple it holds, is -2**63 has that int's Mpz word (titem), which a tuple of 64-bit ints lacks.
+   pys_list_hold gives that layout to the tuples of a list made of another storage's items (a dict's
+   keys, values or items, a set's elements, a tuple's), which hold 64-bit ints: such a tuple becomes a
+   copy whose Mpz words are null. pys_list_narrow_held takes a list of them to a storage of 64-bit
+   ints: OverflowError where an int is past 64 bits. Their descriptor d (bigints.held_shape) says J
+   for an int, T for a tuple that holds one, and i for an item they do not read */
+static const char *skip(const char *d);
+static I thold(I v, const char *d) {   /* tuple v of descriptor d (T), in the held layout: v, or a copy */
+  I *t = (I *)v, n = d[1] - '0', last = -1, w[9]; int copy = 0; const char *e = d + 2;
+  for (I i = 0; i < n; i++, e = skip(e)) {
+    w[i] = *e == 'T' ? thold(t[i], e) : t[i];
+    if (*e == 'J') last = i;
+    copy |= (*e == 'J' && t[i] == INT64_MIN) || w[i] != t[i];
+  }
+  if (!copy) return v;
+  I *r = pys_alloc((n + last + 1) * 8);   /* (zeroed: its Mpz words are null) */
+  memcpy(r, w, n * 8);
+  return (I)r;
+}
+void pys_list_hold(List *l, Str *d) { for (I i = 0; i < l->len; i++) l->a[i] = thold(l->a[i], d->s); }
+static void tnarrow(I v, const char *d) {
+  I *t = (I *)v, n = d[1] - '0'; const char *e = d + 2;
+  for (I i = 0; i < n; i++, e = skip(e)) {
+    if (*e == 'J' && t[i] == INT64_MIN && t[n + i]) pys_fail(NARROW);
+    if (*e == 'T') tnarrow(t[i], e);
+  }
+}
+void pys_list_narrow_held(List *l, Str *d) { for (I i = 0; i < l->len; i++) tnarrow(l->a[i], d->s); }
 static I mpz_cmp_float(Mpz *m, double d) {   /* m, past 64 bits, against d, exactly and allocating nothing: -1, 0, 1, or 2 for a NaN */
   if (isnan(d)) return 2;
   if (isinf(d)) return d > 0 ? -1 : 1;
@@ -2390,7 +2420,10 @@ static int eqv(I a, I b, const char *d) {
   case 'T': {
     I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
     if (!x || !y) return x == y;
-    for (I i = 0; i < n; i++, e = skip(e)) if (!eqitem(titem(x, n, i, e, wx), titem(y, n, i, e, wy), e)) return 0;
+    for (I i = 0; i < n; i++, e = skip(e)) {
+      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) { if (x[i] != y[i]) return 0; continue; }   /* (promoting ints that fit: their slots) */
+      if (!eqitem(titem(x, n, i, e, wx), titem(y, n, i, e, wy), e)) return 0;
+    }
     return 1;
   }
   case 'V': {
@@ -2534,6 +2567,10 @@ static int opv(I a, I b, const char *d, I op) {
   case 'T': {
     I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
     for (I i = 0; i < n; i++, e = skip(e)) {
+      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) {   /* (as eqv's) */
+        if (x[i] != y[i]) return cmpop((x[i] > y[i]) - (x[i] < y[i]), op);
+        continue;
+      }
       I p = titem(x, n, i, e, wx), q = titem(y, n, i, e, wy);
       if (!eqitem(p, q, e)) return opv(p, q, e, op);
     }

@@ -1,16 +1,17 @@
 # pystachy: python-int
 # Documented deviation (docs/python-int.md#64-bit-boundaries): a promoting int is two words in
-# variables, arguments, returns, fields, globals, closures, tuples, int | None, lists of ints, the
-# keys and values of dicts of ints, sets of ints and generators, but 64-bit storage and the builtins
-# that take an int keep 64-bit ints for now (#907). A value past 64 bits stored in a tuple or an
-# int | None in a list, a tuple's int | None item, the union of a bool and an int (a result that is
-# either) or sent to a generator, given to range(), added by sum() among floats, in a NamedTuple
-# that may be None (a parameter) hashed as the tuple of its fields, a dict's key or value that
-# items() puts in a tuple, or a list's item, a dict's key, a set's element or a generator's value
-# that tuple() or a module that does not opt in (heapq, the iterator of iter()) reads, raises
-# OverflowError, where CPython goes on with the bigger int.
+# variables, arguments, returns, fields, globals, closures, tuples, int | None, lists of ints and of
+# tuples of ints, the keys and values of dicts of ints, sets of ints and generators, but 64-bit
+# storage and the builtins that take an int keep 64-bit ints for now (#907). A value past 64 bits
+# stored in an int | None in a list, a tuple's int | None item, the union of a bool and an int (a
+# result that is either) or sent to a generator, given to range(), added by sum() among floats, in a
+# NamedTuple that may be None (a parameter) hashed as the tuple of its fields, a dict's key or value
+# that items() puts in a tuple, a list's tuple that set() or dict() takes, or a list's item (a tuple's
+# too), a dict's key, a set's element or a generator's value that tuple() or a module that does not
+# opt in (heapq, the iterator of iter()) reads, raises OverflowError, where CPython goes on with the
+# bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
-# ints is expected.
+# ints is expected, as in a list of tuples of ints.
 import heapq
 from typing import Generator, NamedTuple
 
@@ -50,11 +51,19 @@ try:
     heapq.heappush(ys, 0)
 except OverflowError as e:
     print("heapq:", e, ys)
+pairs = [(big, 1)]
 try:
-    pairs = [(big, 1)]
-    print(pairs)
+    print(set(pairs))
 except OverflowError as e:
-    print("tuple in a list:", e)
+    print("set() of a list of tuples:", e)
+try:
+    print(dict(pairs))
+except OverflowError as e:
+    print("dict() of pairs:", e)
+try:
+    print(heapq.heappop(pairs))
+except OverflowError as e:
+    print("tuple in a list in heapq:", e)
 keyed = {big: "k"}
 try:
     print(list(keyed.items()))
@@ -114,8 +123,10 @@ try:
     print(ratio_hash(Ratio(big, 3)))
 except OverflowError as e:
     print("NamedTuple:", e)
-p = list(enumerate([5], -2 ** 63))[0]
-q: tuple[int, int] = p
-print("tuple identity:", q == p, q is p)
+for p in enumerate([5], -2 ** 63):
+    q: tuple[int, int] = p
+    print("tuple identity:", q == p, q is p)
+keys = {p: 1}
+print("tuple identity in a list of keys:", list(keys)[0] == p, list(keys)[0] is p)
 xs.append(big - 2 ** 63 - 1)
 print(xs, (big - 1) in xs, big in xs, [x * big for x in [0]], 2 ** 62 / 2, hex(big - 2 ** 63 - 1), (2 ** 63 - 1).bit_length())
