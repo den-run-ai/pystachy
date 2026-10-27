@@ -12,7 +12,7 @@ from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC
-from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_list, is_set, is_tuple, is_vtuple, selem, targs
+from src.pystachy_compiler.utils import bool_for_int, elem, is_dict, is_gen, is_list, is_opt, is_set, is_tuple, is_vtuple, selem, targs
 
 # pys_big_op's operation codes (pys_mpz_binop's, then shifts and **)
 BIGOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "//": 3, "%": 4, "&": 5, "|": 6, "^": 7, "<<": 8, ">>": 9, "**": 10}
@@ -571,11 +571,113 @@ def gen_big_list_store(self, o: Val, v: Val, method: str, index: str) -> None:
 
 
 def gen_list_coerce(self, v: Val, et: str) -> Val:
-    # v as an item of a list of et: a promoting int stays one where et is int and the program's lists
-    # of ints hold them (int_lists), which list_store stores as it is (big_list_store)
+    # v as an item of a list of et, or a value of a dict of et: a promoting int stays one where et is
+    # int and the program's lists and dicts of ints hold them (int_lists), which list_store and
+    # dict_store store as it is (big_list_store, pys_dict_set_big)
     if v.t == BIG and et == "int" and int_lists():
         return v
     return self.coerce(v, et)
+
+
+def gen_dict_int(self, t: str) -> bool:
+    # does dict type t hold promoting ints as its values: a dict of ints, in a program whose lists
+    # and dicts of ints hold them (int_lists; runtime.c's dbig)
+    return is_dict(t) and targs(t)[1] == "int" and int_lists()
+
+
+def gen_big_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
+    # the value of entry e of d, a dict of ints (dict_int): a promoting int in a module that opts
+    # in (or keep), else the 64-bit int, NARROW past 64 bits. The Mpz is read only where the slot
+    # holds TSLOT_BIG, as a list's (big_list_value)
+    raw = self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"])
+    rare = self.label()
+    end = self.label()
+    ph = Ins("phi", BIG, "")
+    self.incoming(ph, self.big(Val(raw, "int")).v, self.cur)
+    self.cbr(self.scalar_cmp("eq", Val(raw, "int"), Val(TSLOT_BIG, "int")), rare, end)
+    self.place(rare)
+    w = Val(self.scalar_cast("ptrtoint", Val(self.rt("pys_dict_big_val", "ptr", [f"ptr {d.v}", f"i64 {e}"]), "%ptr"), "int"), "int")
+    small = self.scalar_cmp("eq", w, Val("0", "int"))  # (-2**63 itself)
+    r = self.big(Val(self.select(small, Val(TSLOT_BIG, "int"), Val("0", "int")), "int"), self.scalar_cast("inttoptr", w, "%ptr"))
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    v = Val(self.phi(ph), BIG)
+    return v if keep or self.int_policy(self.line) else self.big_narrow(v)
+
+
+def gen_dict_box(self, b: str) -> Val:
+    # the slot b of the int | None that get(k) or pop(k, None) of a dict of ints (dict_int) gives,
+    # whose box pys_dict_getbox or pys_dict_popbox makes of a value past 64 bits as of a promoting
+    # int (pys_big_box): that int | None in a module that opts in, else narrowed
+    v = Val(self.from_slot(b, "opt[int]").v, BIGOPT)
+    return v if self.int_policy(self.line) else self.big_opt_narrow(v)
+
+
+def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
+    # o.m(args) of o, a dict of ints whose values may be past 64 bits (dict_int): get(k), get(k, x),
+    # pop(k), pop(k, x) and setdefault(k, x) give the promoting int (in a module that does not opt
+    # in, the 64-bit int, NARROW past 64 bits), and store or give x, an int, as one; get(k) and
+    # pop(k, None) the box of an int | None (dict_box). Val("", "") for the rest, which bmethod
+    # compiles as for 64-bit values (its 64-bit reads narrow the dict first: NARROWED), but for the
+    # box of an int | None (dict_box): a key that may be None but of get(k, x), and a bool key of
+    # pop(k), whose KeyError names it as the bool it is (bool_find), or of setdefault() (rejected)
+    if any([a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" for a in args]):
+        return Val("", "")
+    kv = targs(o.t)
+    if not ((m == "get" or m == "pop") and len(args) in [1, 2]) and not (m == "setdefault" and len(args) == 2):
+        return Val("", "")
+    kt = self.dry(args[0])
+    dt = self.dry(args[1]) if len(args) == 2 else ""
+    box = (m == "get" and len(args) == 1) or (m == "pop" and dt == "None")
+    if (is_opt(kt) and (box or m != "get")) or kt == "None" or (bool_for_int(kt, kv[0]) and (m == "setdefault" or (m == "pop" and len(args) == 1))):
+        return Val("", "")
+    if len(args) == 2 and not box and dt != "int" and dt != BIG:
+        return Val("", "")
+    kx = self.dkey(self.expr(args[0], kv[0]), kv[0])
+    k = self.to_slot(kx)
+    x = self.key_fx(kv[0])
+    if box:
+        if len(args) == 2:
+            self.expr(args[1], "")
+        fn = "pys_dict_getbox" if m == "get" else "pys_dict_popbox"
+        return self.dict_box(self.rt(fn, "i64", [f"ptr {o.v}", f"i64 {k}", "i64 0"], x))
+    d = self.to_big(self.expr(args[1], "")) if len(args) == 2 else self.big(Val("0", "int"))
+    if m == "get":
+        e = self.nonekey(kx, "-1", "pys_dict_find", [f"ptr {o.v}", f"i64 {k}"], x)  # (a key that is None: none)
+        found = self.label()
+        end = self.label()
+        ph = Ins("phi", BIG, "")
+        self.incoming(ph, d.v, self.cur)
+        self.cbr(self.num_cmp(">=", Val(e, "int"), Val("0", "int")).v, found, end)
+        self.place(found)
+        self.incoming(ph, self.big_dict_value(o, e, True).v, self.cur)
+        self.br(end)
+        self.place(end)
+        v = Val(self.phi(ph), BIG)
+    elif m == "pop":
+        has = "1" if len(args) == 2 else "0"
+        v = Val(self.rt("pys_dict_big_pop", BIGLL, [f"ptr {o.v}", f"i64 {k}", f"i64 {has}", f"i64 {self.big_lo(d).v}", f"ptr {self.big_hi(d).v}"], x), BIG)
+    else:
+        v = Val(self.rt("pys_dict_big_setdefault", BIGLL, [f"ptr {o.v}", f"i64 {k}", f"i64 {self.big_lo(d).v}", f"ptr {self.big_hi(d).v}"], x), BIG)
+    return v if self.int_policy(self.line) else self.big_narrow(v)
+
+
+def gen_dict_store(self, d: str, key: str, v: Val, kv: list[str], e: str = "") -> None:
+    # d[k] = v, of dict d of key and value types kv (key: k's slot; e: k's entry, which
+    # entry_set writes, where a lookup has found it), v coerced (list_coerce): a promoting int
+    # into a dict of ints (dict_int) as pys_dict_set_big stores it, past 64 bits as TSLOT_BIG and
+    # its Mpz
+    if v.t == BIG and kv[1] == "int" and int_lists():
+        b = [f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}"]
+        if e != "":
+            self.rt("pys_dict_entry_set_big", "void", [f"ptr {d}", f"i64 {e}"] + b)
+        else:
+            self.rt("pys_dict_set_big", "void", [f"ptr {d}", f"i64 {key}"] + b, self.key_fx(kv[0]))
+    elif e != "":
+        self.rt("pys_dict_entry_set", "void", [f"ptr {d}", f"i64 {e}", "i64 " + self.to_slot(v)])
+    else:
+        self.rt("pys_dict_set", "void", [f"ptr {d}", f"i64 {key}", "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
 
 
 def gen_big_list_minmax(self, o: Val, maximum: bool) -> Val:

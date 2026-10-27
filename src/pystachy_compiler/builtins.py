@@ -2048,6 +2048,8 @@ def gen_walk(self, name: str, args: list[Node]) -> Val:
         return Val(self.rt("pys_set_next", "i64", [f"ptr {o.v}"] + ns), "int")
     if name == "__pys_dict_key" and len(ns) == 1:
         return self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {o.v}"] + ns), targs(o.t)[0])
+    if name == "__pys_dict_val" and len(ns) == 1 and self.dict_int(o.t):
+        return self.big_dict_value(o, ns[0][4:])  # (an int past 64 bits: bigints.py)
     if name == "__pys_dict_val" and len(ns) == 1:
         return self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}"] + ns), targs(o.t)[1])
     if name == "__pys_set_key" and len(ns) == 1:
@@ -2172,6 +2174,10 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         lm = self.big_list_method(o, m, args)  # (items past 64 bits: bigints.py)
         if lm.t != "":
             return lm
+    if self.dict_int(o.t) and m in ["get", "pop", "setdefault"]:
+        dm = self.big_dict_method(o, m, args)  # (values past 64 bits: bigints.py)
+        if dm.t != "":
+            return dm
     if is_list(o.t) and m == "sort":
         rev = "0"
         keyv = Val("", "")
@@ -2224,7 +2230,10 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         vt = self.optdefault(d, kv[1])  # (d.pop(k, None): V | None)
         dv = self.to_slot(self.coerce(d, vt))
         fn = "pys_dict_popbox" if is_sopt(vt) and not is_sopt(kv[1]) else "pys_dict_pop_default"  # (an int's box)
-        return self.from_slot(self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0])), vt)
+        r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]))
+        if fn == "pys_dict_popbox" and self.dict_int(o.t):
+            return self.dict_box(r)  # (a value past 64 bits: bigints.py)
+        return self.from_slot(r, vt)
     base = o.t
     T = ""
     K = ""
@@ -2464,6 +2473,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         res = self.rt(fn, "i64" if slot else rtt(rtype), av, x)
     if numok != "true" and m == "count":
         res = self.select(numok, Val(res, "int"), Val("0", "int"))
+    if fn == "pys_dict_getbox" and self.dict_int(o.t):
+        return self.dict_box(res)  # (a value past 64 bits: bigints.py)
     if slot:
         return self.from_slot(res, rtype)
     return self.rres(res, rtype)

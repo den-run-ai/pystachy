@@ -1095,12 +1095,14 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if self.ctype("dict", kv) == "dict[dyn,dyn]":
             kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
         ks = [self.store_key(x, kv[0]) for x in ks]
-        vs = [self.coerce(x, kv[1]) for x in vs]
+        if kv[1] == BIG:
+            kv[1] = "int"  # (a dict of ints, which holds promoting ints where the program's dicts do: dict_store)
+        vs = [self.list_coerce(x, kv[1]) for x in vs]
         if self.key_problem(kv[0]) != "":
             self.err(self.key_problem(kv[0]))
         r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"])
         for i in range(len(ks)):
-            self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(ks[i]), "i64 " + self.to_slot(vs[i])], self.key_fx(kv[0]))
+            self.dict_store(r, self.to_slot(ks[i]), vs[i], kv)
         return Val(r, self.ctype("dict", kv))
     if k == "tuple":
         ws = targs(want) if is_tuple(want) else ["dyn"] * len(n.kids) if want == "dyn" else []  # (dynamic items: dynamic.py)
@@ -2206,7 +2208,8 @@ def gen_dict_merge(self, n: Node, want: str) -> Val:
             if r.t != "":
                 kv = targs(r.t)
                 key = self.store_key(self.expr(x, kv[0]), kv[0])
-                self.rt("pys_dict_set", "void", [f"ptr {r.v}", "i64 " + self.to_slot(key), "i64 " + self.to_slot(self.coerce(self.expr(n.kids[i + 1], kv[1]), kv[1]))], self.key_fx(kv[0]))
+                ks = self.to_slot(key)
+                self.dict_store(r.v, ks, self.list_coerce(self.expr(n.kids[i + 1], kv[1]), kv[1]), kv)
             elif kw and x.kind != "str":
                 self.err("a key of a dict display with ** of a **kwargs record must be a str literal")
             elif kw:
@@ -2235,7 +2238,8 @@ def gen_dict_merge(self, n: Node, want: str) -> Val:
                 kv = targs(v.t)
                 r = Val(self.rt("pys_dict_new_atomic" if atomic_dict(v.t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"]), v.t)
                 for j in range(0, len(pairs), 2):
-                    self.rt("pys_dict_set", "void", [f"ptr {r.v}", "i64 " + self.to_slot(self.store_key(pairs[j], kv[0])), "i64 " + self.to_slot(self.coerce(pairs[j + 1], kv[1]))], self.key_fx(kv[0]))
+                    ks = self.to_slot(self.store_key(pairs[j], kv[0]))
+                    self.dict_store(r.v, ks, self.list_coerce(pairs[j + 1], kv[1]), kv)
             self.rt("pys_dict_update", "void", [f"ptr {r.v}", f"ptr {v.v}"], self.key_fx(targs(r.t)[0]))
         else:
             self.err(f"** of a {typestr(v.t)} in a dict display is not supported: of a function's **kwargs (with str keys), or of dicts of one type, it is")
@@ -2600,7 +2604,11 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
         o = self.unwrap(o, sub)
         if bool_for_int(kval.t, kv[0]):
             key = self.to_slot(kx)
+            if self.dict_int(t):
+                return self.big_dict_value(o, self.bool_find(o.v, kval, key))  # (an int past 64 bits: bigints.py)
             return self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {self.bool_find(o.v, kval, key)}"]), kv[1])
+        if self.dict_int(t):
+            return self.big_dict_value(o, self.nonekey(kx, "", "pys_dict_entry", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0])))
         return self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0])), kv[1])
     if is_tuple(t) or t in self.nts:
         ts = targs(t) if is_tuple(t) else self.classes[t].fields  # (a NamedTuple's fields)
@@ -4754,7 +4762,7 @@ def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
     e = Val(self.rt("pys_dict_eq_next", "i64", [f"ptr {a.v}", f"i64 {self.mload('int', index)}"]), "int")
     self.cbr(self.num_cmp(">=", e, Val("0", "int")).v, item, finish)
     self.place(item)
-    x = self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {a.v}", f"i64 {e.v}"]), ax[1])
+    x = self.big_dict_value(a, e.v) if self.dict_int(a.t) else self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {a.v}", f"i64 {e.v}"]), ax[1])
     if ax[0] == bx[0]:
         match = Val(self.rt("pys_dict_eq_find", "i64", [f"ptr {b.v}", f"ptr {a.v}", f"i64 {e.v}"], self.key_fx(ax[0])), "int")
     else:
@@ -4769,7 +4777,7 @@ def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
         match = Val(self.rt("pys_dict_eq_pair_find", "i64", [f"ptr {b.v}", f"ptr {a.v}", f"i64 {e.v}", f"ptr {f.ll}"]), "int")
     self.cbr(self.num_cmp(">=", match, Val("0", "int")).v, compare, miss)
     self.place(compare)
-    y = self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {b.v}", f"i64 {match.v}"]), bx[1])
+    y = self.big_dict_value(b, match.v) if self.dict_int(b.t) else self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {b.v}", f"i64 {match.v}"]), bx[1])
     self.pair_item_eq(x, y, step)
     self.br(miss)
     self.place(step)

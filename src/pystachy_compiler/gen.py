@@ -63,6 +63,11 @@ from src.pystachy_compiler.bigints import (
     gen_item_type as bigints_item_type,
     gen_big_list_store as bigints_big_list_store,
     gen_list_coerce as bigints_list_coerce,
+    gen_dict_int as bigints_dict_int,
+    gen_big_dict_value as bigints_big_dict_value,
+    gen_dict_box as bigints_dict_box,
+    gen_big_dict_method as bigints_big_dict_method,
+    gen_dict_store as bigints_dict_store,
     gen_big_list_minmax as bigints_big_list_minmax,
     gen_big_list_find as bigints_big_list_find,
     gen_big_list_method as bigints_big_list_method,
@@ -1599,6 +1604,21 @@ class Gen:
 
     def list_coerce(self, v: Val, et: str) -> Val:
         return bigints_list_coerce(self, v, et)
+
+    def dict_int(self, t: str) -> bool:
+        return bigints_dict_int(self, t)
+
+    def big_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
+        return bigints_big_dict_value(self, d, e, keep)
+
+    def dict_box(self, b: str) -> Val:
+        return bigints_dict_box(self, b)
+
+    def big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return bigints_big_dict_method(self, o, m, args)
+
+    def dict_store(self, d: str, key: str, v: Val, kv: list[str], e: str = "") -> None:
+        return bigints_dict_store(self, d, key, v, kv, e)
 
     def big_list_minmax(self, o: Val, maximum: bool) -> Val:
         return bigints_big_list_minmax(self, o, maximum)

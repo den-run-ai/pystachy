@@ -10,10 +10,11 @@ In that module, `int` behaves as CPython's: a result that needs more than 64 bit
 bigger int instead of raising `OverflowError`, and a result that fits is a 64-bit value again.
 Modules without the comment, including the compiler, `runtime.py` and `lib/`, keep the checked
 64-bit `int` of the [language guide](language.md). The roadmap is #907; this page describes its
-step 3, the compiler-level integer, and the first parts of step 6: tuples, lists and generators.
-Values past 64 bits stay in variables, arguments, returns, fields, module variables, closures,
-tuples, lists of ints and the values generators yield and return; dicts, sets and the other
-containers still hold 64-bit ints ([boundaries](#64-bit-boundaries)).
+step 3, the compiler-level integer, and the first parts of step 6: tuples, lists, dicts and
+generators. Values past 64 bits stay in variables, arguments, returns, fields, module variables,
+closures, tuples, lists of ints, the values of dicts of ints and the values generators yield and
+return; dict keys, sets and the other containers still hold 64-bit ints
+([boundaries](#64-bit-boundaries)).
 
 ```python
 # pystachy: python-int
@@ -81,6 +82,12 @@ print(int("123456789012345678901234567890") % 97)  # 52
   `remove()` compare exactly (also with floats), and so do `==`, `<` and the other comparisons;
   `sort()`, `sorted()` (by key too), `min()`, `max()`, `sum()`, `repr()`, copies, slices, `+`,
   `*` and `reverse()` take every item.
+- The values of a dict of ints are promoting ints, in a program where a module opts in and none
+  opts in to [dynamic `Any`](dynamic-any.md), as a list's items are: item assignment, `+=`,
+  displays, comprehensions, `setdefault()`, `update()`, `dict()` and `copy()` store values past
+  64 bits, and in a module that opts in, indexing, `get()`, `pop()`, `setdefault()` and iteration
+  over `values()` and `items()` read them. `values()` makes a list of ints that holds them, and
+  `repr()`, `==` and `!=` take them. A memo table (`memo[n] = fib(n - 1) + fib(n - 2)`) is exact.
 - A generator yields and returns promoting ints, in a program where a module opts in: a `for`
   loop, a comprehension, `next()`, unpacking, `send()` and `throw()` in a module that opts in read
   them, and so do `list()`, `sorted()`, `sum()`, `min()`, `max()`, `in`, `enumerate()`, `zip()`
@@ -146,6 +153,14 @@ that opts in. Code of a module that does not opt in reads the item as a 64-bit i
 ints ([boundaries](#64-bit-boundaries)). `runtime.c`'s sorting compares a list that holds an item
 past 64 bits through the ranks of its items, 64-bit ints in their order.
 
+A dict of ints holds a value that fits in its 8-byte slot, as before, and one past 64 bits as
+-2\*\*63 there, with its pointer in a companion array beside the entries, which the collector
+scans and the first such value makes (`runtime.c`'s `dbig`). Every store of a value clears its
+entry's word, and the dict's rebuilds, copies and `update()` carry the words with the entries. A
+read of a value compares its slot with -2\*\*63 and reads the pointer only where they are equal,
+as a list's read does, by the entry it found: a module that opts in gets the promoting int, other
+code the 64-bit int, with `OverflowError` past 64 bits.
+
 A generator's promise, the words where it leaves the value it yielded last and the one it
 returned, holds an int in one word, as before, and in a program where a module opts in, its
 pointer in a word of its own: null where the value fits, as every `yield` of an int writes it,
@@ -168,9 +183,11 @@ These places keep 64-bit ints for now. A value past 64 bits that reaches one rai
 `OverflowError: Python int too large to convert to C long` (CPython's message for an int too big
 for a C `long`), where CPython goes on with the bigger int:
 
-- The items of dicts and sets, of lists of other types than `int` (a tuple or an `int | None`
-  in a list holds 64-bit ints too), and of lists of ints in a program that opts in to dynamic
-  `Any`, a tuple's `int | None` items, unions other than `int | None` (also where a join makes one, as
+- The keys of dicts, the elements of sets, the items of lists of other types than `int` (a tuple
+  or an `int | None` in a list holds 64-bit ints too), the values of dicts of other types than
+  `int` and the tuples that `items()` and `popitem()` make of a dict of ints, the items and values
+  of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
+  items, unions other than `int | None` (also where a join makes one, as
   for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
   a variable), and the values sent to a generator (`send()`)
   (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a parameter,
@@ -179,10 +196,12 @@ for a C `long`), where CPython goes on with the bigger int:
 - An `int` or `int | None` parameter of a function in a module that does not opt in (whose
   unannotated parameters take the promoting int, so arithmetic there promotes too), and the
   parameters and result of a `Callable`.
-- A list's int or a generator's value read in a module that does not opt in, such as `lib/`'s
-  `heapq`, `bisect` and `random.shuffle()`, and the ints of a list given to `tuple()`, `set()` and
-  the set operations,
-  `dict.fromkeys()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`.
+- A list's int, a dict's value or a generator's value read in a module that does not opt in, such
+  as `lib/`'s `heapq`, `bisect`, `random.shuffle()` and `collections`' `defaultdict` and
+  `Counter`, and the ints of a list given to `tuple()`, `set()` and the set operations,
+  `dict.fromkeys()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`. Of a
+  dict of ints that holds a value past 64 bits, `pop()` with a key that may be None, and `pop()`
+  of a bool key without a default, read its values as 64-bit ints, and so raise for any such value.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
   floats: the ints of an `int | float` list, ints added to a float start, and a start past 64
@@ -288,6 +307,9 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_lists.py`: lists of ints past 64 bits: stores, reads,
   searches by promoting ints and floats, sorting, `min()`, `max()`, `sum()`, comparisons, copies,
   nested lists, a field and a function's result.
+- `tests/programs/numbers/python_int_dicts.py`: dicts of ints whose values are past 64 bits: a memo
+  table, stores, `get()`, `pop()`, `setdefault()`, `+=`, displays, comprehensions, copies,
+  `update()`, iteration, `values()`, comparisons, nested dicts, a field and bool keys.
 - `tests/programs/numbers/python_int_generators.py`: generators that yield and return ints past 64
   bits, through `for` loops, `next()`, unpacking, `yield from`, `send()`, `throw()`, generator
   expressions, a method and a module that does not opt in (`tests/python_int_modules/fixed_iter.py`).
