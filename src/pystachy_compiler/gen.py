@@ -79,6 +79,7 @@ from src.pystachy_compiler.bigints import (
     gen_dict_box as bigints_dict_box,
     gen_big_dict_method as bigints_big_dict_method,
     gen_big_dict_call as bigints_big_dict_call,
+    gen_big_popitem as bigints_big_popitem,
     gen_dict_store as bigints_dict_store,
     gen_set_int as bigints_set_int,
     gen_big_set_value as bigints_big_set_value,
@@ -1669,6 +1670,9 @@ class Gen:
 
     def big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, x: str) -> Val:
         return bigints_big_dict_call(self, o, m, kx, k, d, has, x)
+
+    def big_popitem(self, o: Val) -> Val:
+        return bigints_big_popitem(self, o)
 
     def dict_store(self, d: str, key: str, v: Val, kv: list[str], e: str = "") -> None:
         return bigints_dict_store(self, d, key, v, kv, e)

@@ -3810,19 +3810,27 @@ I pys_dict_pop_default(Dict *d, I k, I dflt) { return dpop(d, k, dflt, 1); }
    was, as CPython sets dk_nentries, so the holes before it are not walked again: popping every
    item takes linear time. Its idx slot is found by its position (lookdict_index), not its key,
    and stays deleted, so the entries cut off still fill the table until it is rebuilt (CPython
-   does not give dk_usable back): otherwise inserts after pops would use up its empty slots */
-I *pys_dict_popitem(Dict *d) {
+   does not give dk_usable back): otherwise inserts after pops would use up its empty slots.
+   big: the tuple of promoting ints (bigints.py, utils.tslots), whose key or value past 64 bits
+   holds -2**63 and its Mpz in slot 2 or 3; else a tuple of 64-bit ints. (That tuple is one of
+   promoting ints too, where neither slot holds -2**63: only there is an Mpz word read) */
+static inline __attribute__((always_inline)) I *dpopitem(Dict *d, int big) {
   if (!d->len) pys_fail("KeyError: 'popitem(): dictionary is empty'");
   I e = d->n - 1;
   while (!dlive(d, e)) e--;   /* (a class's key may hash to 0: see dlive) */
-  if (dbig(d, e) || kbig(d, e)) pys_fail(NARROW);   /* (a tuple's int is a 64-bit one here) */
+  if (!big && (dbig(d, e) || kbig(d, e))) pys_fail(NARROW);
   uint64_t h = d->hs[e], m = dmask(d), i = h & m, p = h;
   DICT_PROBE();
   while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
-  I *t = pys_alloc(16); t[0] = d->keys[e]; t[1] = d->vals[e];
+  I *t;
+  if (big && (d->keys[e] == INT64_MIN || d->vals[e] == INT64_MIN)) { t = pys_alloc(32); t[2] = (I)kbig(d, e); t[3] = (I)dbig(d, e); }
+  else t = pys_alloc(16);
+  t[0] = d->keys[e]; t[1] = d->vals[e];
   d->idx[i] = -1; d->hs[e] = d->kind & KTAG ? (uint64_t)-1 : 0; d->keys[e] = d->vals[e] = 0; dbig_clear(d, e); kbig_clear(d, e); d->len--; d->cut += d->n - e; d->n = e;
   return t;
 }
+I *pys_dict_popitem(Dict *d) { return dpopitem(d, 0); }
+I *pys_dict_big_popitem(Dict *d) { return dpopitem(d, 1); }   /* (of a dict of ints or of int keys) */
 I pys_dict_del(Dict *d, I k) { uint64_t h; I i = dhfind(d, k, &h, 0); if (i < 0) keyerr(d, k); return dtake(d, i); }
 /* d.get(k) and d.pop(k, None) of int, float and bool values: the value's box, or dflt (None or a box) */
 LOOKUP I pys_dict_getbox(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : (I)pys_big_box(d->vals[e], dbig(d, e)); }

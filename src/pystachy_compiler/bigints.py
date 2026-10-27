@@ -755,6 +755,15 @@ def gen_big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, 
     return v if self.int_policy(self.line) else self.big_narrow(v)
 
 
+def gen_big_popitem(self, o: Val) -> Val:
+    # o.popitem() of o, a dict of ints or of int keys (dict_int, dict_bigkey), in a module that opts
+    # in: its (key, value) tuple of promoting ints, which pys_dict_big_popitem makes with the slots
+    # of one (utils.tslots); in other modules, bmethod's pys_dict_popitem raises past 64 bits
+    kv = targs(o.t)
+    t = self.ctype("tuple", [BIG if kv[0] == "int" else kv[0], BIG if kv[1] == "int" else kv[1]])
+    return Val(self.rt("pys_dict_big_popitem", "ptr", [f"ptr {o.v}"], self.key_fx(kv[0])), t)
+
+
 def gen_dict_store(self, d: str, key: str, v: Val, kv: list[str], e: str = "") -> None:
     # d[k] = v, of dict d of key and value types kv (key: k's slot; e: k's entry, which
     # entry_set writes, where a lookup has found it), v coerced (list_coerce): a promoting int
