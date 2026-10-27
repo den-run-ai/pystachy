@@ -311,7 +311,8 @@ the first measurements, before the inline paths, in
   table, stores, `get()`, `pop()`, `setdefault()`, `+=`, displays, comprehensions, copies,
   `update()`, iteration, `values()`, comparisons, nested dicts, a field and bool keys;
   `python_int_dicts_nested.py`: `get()` calls nested 40 deep, in defaults and in keys, which each
-  decide on their arguments' types once.
+  decide on their arguments' types once; `python_int_repr_limit.py`: `repr()` of lists and dicts
+  whose int has more than 4,300 digits raises CPython's `ValueError`, which `try` catches.
 - `tests/programs/numbers/python_int_recursion.py`: recursive functions and methods, one with a
   `dict[int, int]` memo; `python_int_forward_ref.py`: quoted annotations that name promoting ints
   ([provenance](../tests/upstream/python-int.md)).
