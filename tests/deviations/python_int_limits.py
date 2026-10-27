@@ -1,13 +1,15 @@
 # pystachy: python-int
 # Documented deviation (docs/python-int.md#64-bit-boundaries): a promoting int is two words in
-# variables, arguments, returns, fields, globals, closures, tuples and int | None, but 64-bit
-# storage and the builtins that take an int keep 64-bit ints for now (#907). A value past 64 bits
-# stored in a list, dict or set (also in a tuple or an int | None there), a tuple's int | None item,
+# variables, arguments, returns, fields, globals, closures, tuples, int | None and lists of ints,
+# but 64-bit storage and the builtins that take an int keep 64-bit ints for now (#907). A value past
+# 64 bits stored in a dict or set, in a tuple or an int | None in a list, a tuple's int | None item,
 # the union of a bool and an int (a result that is either) or a generator's yield, given to
-# range(), added by sum() among floats, or in a NamedTuple that may be None (a parameter) hashed as
-# the tuple of its fields, raises OverflowError, where CPython goes on with the bigger int.
+# range(), added by sum() among floats, in a NamedTuple that may be None (a parameter) hashed as
+# the tuple of its fields, or a list's item that tuple(), set() or a module that does not opt in
+# (heapq) reads, raises OverflowError, where CPython goes on with the bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected.
+import heapq
 from typing import NamedTuple
 
 
@@ -32,10 +34,19 @@ def ratio_hash(r: Ratio) -> int:
 
 big = 2 ** 64
 xs = [1, 2]
+ys = [big, 1]
 try:
-    xs.append(big)
+    print(tuple(ys))
 except OverflowError as e:
-    print("list:", e)
+    print("tuple of a list:", e)
+try:
+    print(set(ys))
+except OverflowError as e:
+    print("set of a list:", e)
+try:
+    heapq.heappush(ys, 0)
+except OverflowError as e:
+    print("heapq:", e, ys)
 try:
     pairs = [(big, 1)]
     print(pairs)

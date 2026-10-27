@@ -1,6 +1,7 @@
 """Builtins component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
+from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.ir import Data, Ins, IterArg, Loop, Reduce, Val
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import short
@@ -1118,7 +1119,7 @@ def gen_key_minmax(self, xs: Val, key: Val, name: str) -> Val:
     # min(xs, key=...) and max(...): CPython calls the key on each item in turn and compares the
     # key with the best so far (key < best for min, key > best for max), keeping the first best
     # item; the list's length is read again at each step, as its iterator does
-    et = elem(xs.t)
+    et = self.item_type(xs.t)
     lnone = self.key_none(key, et, ">" if name == "max" else "<", f"{name}()")
     best = self.alloca(et, "")
     identity = self.alloca("dyn", "") if self.list_id_kind(xs.t) != 0 else ""
@@ -1183,7 +1184,7 @@ def gen_key_none_join(self, r: Val, lnone: str, xs: Val, vals: list[Val], name: 
     if len(vals) > 0:
         xs = Val(self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"]), self.ctype("list", [r.t]))
         for v in vals:
-            self.list_store(xs, self.coerce(v, r.t), "append")
+            self.list_store(xs, self.list_coerce(v, r.t), "append")
     if is_list(xs.t):
         d = self.sconst(self.desc(r.t, ">" if name == "max" else "<"))
         r0 = self.list_minmax(xs, d, name == "max")
@@ -1389,6 +1390,10 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     if name != "sum" and r.collect:
         d = self.sconst(self.desc(r.t, ">" if name == "max" else "<"))
         lv = self.mload('%ptr', r.acc)
+        if (r.t == "int" or r.t == BIG) and int_lists():
+            # (its items may be past 64 bits: bigints.py; the result keeps the items' type)
+            big = Val(self.rt("pys_list_big_minmax", "{i64, ptr}", [f"ptr {lv}", f"i64 {1 if name == 'max' else 0}"]), BIG)
+            return big if r.t == BIG else self.big_narrow(big)
         return self.from_slot(self.rt("pys_list_minmax", "i64", [f"ptr {lv}", f"ptr {d}", f"i64 {1 if name == 'max' else 0}"]), r.t)
     if name != "sum":
         self.guard(self.mload('bool', r.first), f"ValueError: {name}() iterable argument is empty")
@@ -1539,7 +1544,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.mstore(r.stt, self.coerce(result, r.stt, "math.prod() must preserve its start type").v, r.acc)
         return
     if r.collect:
-        self.list_store(Val(self.mload("%ptr", r.acc), self.ctype("list", [r.t])), self.coerce(v, r.t), "append")
+        self.list_store(Val(self.mload("%ptr", r.acc), self.ctype("list", [r.t])), self.list_coerce(v, r.t), "append")
         return
     if r.name != "sum":
         # the first item is kept; another where it is greater (max) or less (min) than the kept one
@@ -2163,6 +2168,10 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     dropped = mc is not None and mc is self.stmtexpr and len(args) == 1 and len(mc.kids) == 2 and args[0] is mc.kids[1]
     if is_set(o.t):
         return self.smethod(o, m, args)
+    if is_list(o.t) and elem(o.t) == "int" and int_lists() and m in ["pop", "append", "insert", "index", "count", "remove"]:
+        lm = self.big_list_method(o, m, args)  # (items past 64 bits: bigints.py)
+        if lm.t != "":
+            return lm
     if is_list(o.t) and m == "sort":
         rev = "0"
         keyv = Val("", "")
@@ -2620,7 +2629,7 @@ def gen_prod_item(self, s: Val, item: Val) -> Val:
         self.br(end)
         self.place(end)
         return result
-    if seq and (item.t == "int" or item.t == "bool"):
+    if seq and (item.t == "int" or item.t == "bool" or item.t == BIG):
         return self.arith("*", s, item)
     other_seq = item.t == "str" or is_list(item.t) or is_tuple(item.t) or is_vtuple(item.t)
     bad = f"can't multiply sequence by non-int of type '{tname(item.t) if seq else tname(s.t)}'" if seq or other_seq else f"unsupported operand type(s) for *: '{tname(s.t)}' and '{tname(item.t)}'"

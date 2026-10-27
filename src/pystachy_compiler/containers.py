@@ -1,7 +1,7 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import none_display, walrus_names
-from src.pystachy_compiler.diagnostics import dynamic_program, shown
+from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
@@ -54,12 +54,24 @@ def gen_list_item(self, o: Val, i: Val) -> Val:
     if k != 0:
         b = self.rt("pys_list_get_identity", "ptr", [f"ptr {o.v}", f"i64 {i.v}", f"i64 {k}"])
         return self.dyn_unbox(Val(b, "dyn"), elem(o.t))
-    return self.from_slot(self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), elem(o.t))
+    return self.list_value(o, i.v, self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]))
+
+
+def gen_list_value(self, o: Val, i: str, raw: str) -> Val:
+    # raw, the slot of list o at index i (as pys_list_get takes it), as the item it holds: where the
+    # program's lists of ints may hold promoting ints past 64 bits, an int through big_list_value
+    if elem(o.t) == "int" and int_lists():
+        return self.big_list_value(o, i, raw)
+    return self.from_slot(raw, elem(o.t))
 
 
 def gen_list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
-    # v has already been coerced to the list's item type. Its source box must survive
+    # v has already been coerced to the list's item type (list_coerce: a promoting int stays one
+    # where the list may hold it, big_list_store). Its source box must survive
     # the store: equal payloads can name different objects, including distinct NaNs.
+    if v.t == BIG and elem(o.t) == "int" and int_lists():
+        self.big_list_store(o, v, method, index)
+        return
     k = self.list_id_kind(o.t)
     args = [f"ptr {o.v}"]
     if index != "":
@@ -79,6 +91,8 @@ def gen_list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
         args.append(f"i64 {k}")
         b = self.rt("pys_list_minmax_identity", "ptr", args)
         return self.dyn_unbox(Val(b, "dyn"), elem(o.t))
+    if elem(o.t) == "int" and int_lists():
+        return self.big_list_minmax(o, maximum)
     return self.from_slot(self.rt("pys_list_minmax", "i64", args), elem(o.t))
 
 
@@ -309,10 +323,10 @@ def gen_star_display(self, n: Node, want: str) -> Val:
         if lists[i]:
             self.rt("pys_list_extend", "void", [f"ptr {r}", f"ptr {parts[i].v}"])
         else:
-            self.list_store(Val(r, self.ctype("list", [et])), self.coerce(parts[i], et), "append")
+            self.list_store(Val(r, self.ctype("list", [et])), self.list_coerce(parts[i], et), "append")
     if n.kind == "list":
         return Val(r, self.ctype("list", [et]))
-    if unopt(et) not in ["int", "float", "bool", "str", "dyn"]:
+    if unopt(et) not in ["int", "float", "bool", "str", "dyn", BIG]:
         self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
     return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {r}"]), self.ctype("vtuple", [et]))
 

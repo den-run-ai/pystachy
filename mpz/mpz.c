@@ -421,12 +421,15 @@ I pys_mpz_hash(void *ap) {
   }
   I r = a->size < 0 ? -(I)h : (I)h; return r == -1 ? -2 : r;
 }
-Str *pys_mpz_str(void *ap) {
-  Mpz *a = ap; I n = zn(a);
+#define DIGITS_LIMIT "ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit"
+/* a's decimal text, or NULL where it has more digits than CPython's default limit, which
+   pys_mpz_str raises for (and runtime.c's repr of a list of ints: digits_deep) */
+static Str *mpz_digits(Mpz *a) {
+  I n = zn(a);
   if (!n) return cstr("0");
   /* Decimal conversion deliberately follows CPython's default 4300-digit limit.
      A value with >= 14286 bits necessarily exceeds it, avoiding huge scratch. */
-  if (pys_mpz_bit_length(a) > 14285) pys_fail("ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit");
+  if (pys_mpz_bit_length(a) > 14285) return NULL;
   /* Base-10^9 digits, least significant first, in one pass per digit from the most
      significant (Knuth 4.4 Method 1b, as CPython's long_to_decimal_string_internal):
      only a quotient carries along a pass, so each step waits on one division. There are
@@ -442,12 +445,17 @@ Str *pys_mpz_str(void *ap) {
   }
   int negative = a->size < 0; I out = negative + 9 * (m - 1);
   for (uint32_t top = dec[m - 1]; top; top /= 10) out++;
-  if (out - negative > 4300) pys_fail("ValueError: Exceeds the limit (4300 digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit");
+  if (out - negative > 4300) return NULL;
   Str *s = pys_alloc_atomic(sizeof(Str) + out + 1); I k = out;
   for (I j = 0; j < m; j++)   /* nine digits each, zero-padded, except the most significant */
     for (uint32_t v = dec[j], d = 0; d < 9 && (j + 1 < m || v); d++) { s->s[--k] = '0' + v % 10; v /= 10; }
   if (negative) s->s[--k] = '-';
   s->len = out; s->chars1 = out + 1; return s;
+}
+Str *pys_mpz_str(void *ap) {
+  Str *s = mpz_digits(ap);
+  if (!s) pys_fail(DIGITS_LIMIT);
+  return s;
 }
 
 #undef ZBITS

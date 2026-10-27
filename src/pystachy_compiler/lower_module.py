@@ -4,7 +4,7 @@ These serializers are the backend boundary for module data, native ABI adapters,
 object dispatch and process/extension entry points. They do not create IR operations.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import fail, dynamic_program
+from src.pystachy_compiler.diagnostics import fail, dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
@@ -191,6 +191,10 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
             offs.append(f"i64 %o{j}")
             cts.append("ptr")
         elif c == "list[float]" or c == "list[c_int64]":
+            if c == "list[c_int64]" and int_lists():
+                # (an item past 64 bits, whose slot holds -2**63: OverflowError, as pys_c_at raises)
+                self.runtime("pys_list_narrow")
+                code.append(f"  call void @pys_list_narrow(ptr %a{j})")
             code.append(f"  %l{j} = getelementptr inbounds {{i64, i64, ptr}}, ptr %a{j}, i64 0, i32 2")  # (List.a: runtime.c's {len, cap, a})
             code.append(f"  %p{j} = load ptr, ptr %l{j}")
             cts.append("ptr")

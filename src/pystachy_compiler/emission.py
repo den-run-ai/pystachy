@@ -2,10 +2,10 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
-from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail
+from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
-from src.pystachy_compiler.specs import BIGOPT, CHECKED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.specs import BIGOPT, CHECKED, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
     identity_abi,
@@ -285,6 +285,11 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     k = self.runtime(name)
     ts = self.rtfns[k].sig
     ll = self.rtfns[k].ll
+    if k in NARROWED and int_lists():
+        # (a list of ints that may hold promoting ints past 64 bits, which it reads as 64-bit ints)
+        for j in range(min(len(args), len(ts) - 1)):
+            if ts[j + 1].startswith("list["):
+                self.rt("pys_list_narrow", "void", [args[j]])
     ok = ret == ll[0] and len(args) == len(ll) - 1
     i = Ins("rt", ts[0], k)
     i.a = []

@@ -1,6 +1,6 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import fail, int_lists
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
@@ -457,8 +457,9 @@ def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
         # its __repr__ where a KeyError names it; a recursive alias's edge, R, lets a value nest
         # past the depth guard of the runtime's descriptor walks)
         f = self.rtfns[i.s]
-        # (and a dynamic value, A, may hold any of these: dynamic.py)
-        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x) else 0)
+        # (and a dynamic value, A, may hold any of these: dynamic.py; a list of ints, Li, may hold one
+        # whose text is past CPython's limit, in a program whose lists hold promoting ints: bigints.py)
+        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x or ("Li" in i.x and int_lists())) else 0)
         u = "O" in i.x or "H" in i.x or "A" in i.x or ("P" in i.x and fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
         return FXALL if f.q and u else fx
     if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":

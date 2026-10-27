@@ -1404,16 +1404,41 @@ Big pys_big_powmod(I alo, void *ahi, I blo, void *bhi, I mlo, void *mhi) {   /* 
   if (m->size < 0 && zn(r)) r = pys_mpz_binop(r, n, 1);   /* the result has the sign of m */
   return big_of(r);
 }
+/* A list of ints holds an item past 64 bits as -2**63 in its slot and the item's Mpz in a
+   companion of kind BIGIDS (the list code's identity companion, which see) */
+enum { BIGIDS = 3 };
+#define NARROW "OverflowError: Python int too large to convert to C long"
+static int big_list(List *l) { return l->ids && (l->ids[0] & 3) == BIGIDS; }   /* may l hold an item past 64 bits */
+static Mpz *lbig(List *l, I i) { return l->a[i] == INT64_MIN && big_list(l) ? (Mpz *)l->ids[i + 1] : NULL; }
+static Big litem(List *l, I i) { Mpz *m = lbig(l, i); Big r = {m ? 0 : l->a[i], m}; return r; }   /* l[i] as a promoting int */
+static int list_has_big(List *l) {   /* does l hold an item past 64 bits */
+  if (big_list(l)) for (I i = 0; i < l->len; i++) if (l->ids[i + 1]) return 1;
+  return 0;
+}
+static void list_narrow(List *l) { if (list_has_big(l)) pys_fail(NARROW); }   /* l's ints for 64-bit code */
+static I mpz_cmp_float(Mpz *m, double d) {   /* m, past 64 bits, against d, exactly and allocating nothing: -1, 0, 1, or 2 for a NaN */
+  if (isnan(d)) return 2;
+  if (isinf(d)) return d > 0 ? -1 : 1;
+  if (fabs(d) < 9223372036854775808.0) return m->size < 0 ? -1 : 1;   /* (|m| >= 2**63 > |d|) */
+  int e; double f = frexp(fabs(d), &e);        /* |d| = f * 2**e, 0.5 <= f < 1: an int of mant << (e - 53) */
+  union { Mpz m; uint64_t words[1 + 18]; } t;  /* (its 30-bit digits: at most 35 below 2**1024) */
+  I sh = e - 53, k = sh / 30, n = 0;
+  unsigned __int128 v = (unsigned __int128)(uint64_t)ldexp(f, 53) << (sh % 30);
+  for (; n < k; n++) t.m.d[n] = 0;
+  for (; v; v >>= 30) t.m.d[n++] = (uint32_t)(v & 0x3FFFFFFF);
+  t.m.size = d < 0 ? -n : n;
+  return pys_mpz_cmp(m, &t.m);
+}
 Big pys_big_sum(List *l, I slo, void *shi) {   /* sum(l, start) of a list of ints: past 64 bits, exactly */
-  I i = 0;
-  if (!shi) {                                  /* 64-bit additions until one overflows */
+  I i = 0, big = big_list(l);
+  if (!shi) {                                  /* 64-bit additions until one overflows or an item is past 64 bits */
     I s = slo, t;
-    for (; i < l->len; i++) { if (__builtin_add_overflow(s, l->a[i], &t)) break; s = t; }
+    for (; i < l->len; i++) { if ((big && lbig(l, i)) || __builtin_add_overflow(s, l->a[i], &t)) break; s = t; }
     if (i == l->len) return big_small(s);
     slo = s;
   }
   Big acc = {slo, shi};
-  for (; i < l->len; i++) acc = pys_big_op(acc.lo, acc.hi, l->a[i], NULL, 0);
+  for (; i < l->len; i++) { Big x = litem(l, i); acc = pys_big_op(acc.lo, acc.hi, x.lo, x.hi, 0); }
   return acc;
 }
 enum { TD_MANT = 53, TD_MIN_EXP = -1021, TD_MAX_EXP = 1024 };   /* <float.h>'s DBL_MANT_DIG, DBL_MIN_EXP, DBL_MAX_EXP */
@@ -2056,6 +2081,10 @@ static const char *recdesc(const char *d) {
    calls it: tools/check_runtime.py gives what reaches it R?, which the compiler makes R where the
    op's descriptor holds an R (Gen.opfx); other descriptors never get here */
 static _Noreturn void rec_deep(const char *m) { pys_fail(m); }
+/* a list's int past 64 bits (BIGIDS) with more digits than CPython's limit for an int's text, in
+   repr_depth: its ValueError, which the compiler's RUNTIME counts as rec_deep's (R?: Gen.opfx makes
+   it R where a descriptor holds a list of ints, in a program whose lists hold promoting ints) */
+static _Noreturn void digits_deep(void) { pys_fail(DIGITS_LIMIT); }
 static const char *utype(I tag, const char *d) {
   d++;
   for (I n = unum(&d); n > 0; n--) { if (unum(&d) == tag) return d; d = skip(d); }
@@ -2156,7 +2185,11 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
     List *l = (List *)v;
     if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
     put(b, "[", 1);
-    for (I i = 0; i < l->len; i++) { if (i) put(b, ", ", 2); repr_depth(b, l->a[i], d, depth); }
+    for (I i = 0; i < l->len; i++) {
+      if (i) put(b, ", ", 2);
+      Mpz *m = lbig(l, i);   /* (an int past 64 bits: BIGIDS) */
+      if (m) { Str *s = mpz_digits(m); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, l->a[i], d, depth);
+    }
     put(b, "]", 1); pys_repr_leave(l); return skip(d);
   }
   case 'D': {
@@ -2246,6 +2279,12 @@ static int list_same_item(List *a, I i, List *b, I j) {
 }
 static int eqv(I a, I b, const char *d);
 static int eqpair(I a, I b, const char *x, const char *y);
+static int eqitem(I a, I b, const char *d);
+static int list_item_eq(List *x, I i, List *y, I j, const char *d) {   /* x[i] == y[j] of lists of one type */
+  Mpz *m = lbig(x, i), *n = lbig(y, j);   /* (ints past 64 bits, BIGIDS: equal to their values only) */
+  if (m || n) return m && n && pys_mpz_cmp(m, n) == 0;
+  return list_same_item(x, i, y, j) || eqitem(x->a[i], y->a[j], d);
+}
 /* Container items use identity before equality (PyObject_RichCompareBool). Keep this
    separate from direct comparison: equal unboxed float bits need not compare equal,
    and an optional scalar's box does not give that scalar Python object identity. */
@@ -2271,7 +2310,7 @@ static int eqv(I a, I b, const char *d) {
                    lengths at every step, and once a list has no item left, compare them */
     List *x = (List *)a, *y = (List *)b; I i = 0;
     if (x->len != y->len) return 0;
-    while (i < x->len && i < y->len && (list_same_item(x, i, y, i) || eqitem(x->a[i], y->a[i], d + 1))) i++;
+    while (i < x->len && i < y->len && list_item_eq(x, i, y, i, d + 1)) i++;
     return (i >= x->len || i >= y->len) && x->len == y->len;
   }
   case 'D': {   /* (as CPython's dict_equal, with the hashes x keeps, where y's are of the same kind) */
@@ -2321,6 +2360,10 @@ static EqValue eqresolve(I v, const char *d) {
   }
   return (EqValue){v, d, edge};
 }
+static int big_eq(Mpz *m, I b, const char *y) {   /* the int m past 64 bits == value b of descriptor y */
+  EqValue r = eqresolve(b, y);
+  return *r.desc == 'f' && mpz_cmp_float(m, dbl(r.value)) == 0;   /* (no 64-bit int or bool equals it) */
+}
 static int same_desc(const char *x, const char *y) {
   size_t n = (size_t)(skip(x) - x);
   return n == (size_t)(skip(y) - y) && !memcmp(x, y, n);
@@ -2357,7 +2400,11 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   if (*x == 'L') {
     List *p = (List *)a, *q = (List *)b;
     if (p->len != q->len) return 0;
-    for (I i = 0; i < p->len; i++) if (!list_same_item(p, i, q, i) && !eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
+    for (I i = 0; i < p->len; i++) {
+      Mpz *m = lbig(p, i), *n = lbig(q, i);   /* (ints past 64 bits: BIGIDS) */
+      if (m || n) { if (m && n ? pys_mpz_cmp(m, n) != 0 : !big_eq(m ? m : n, m ? q->a[i] : p->a[i], m ? y + 1 : x + 1)) return 0; continue; }
+      if (!list_same_item(p, i, q, i) && !eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
+    }
     return 1;
   }
   if (*x == 'D') {
@@ -2404,7 +2451,10 @@ static int opv(I a, I b, const char *d, I op) {
   case 's': return cmpop(pys_str_cmp((Str *)a, (Str *)b), op);
   case 'L': {
     List *x = (List *)a, *y = (List *)b; I i = 0;
-    while (i < x->len && i < y->len && (list_same_item(x, i, y, i) || eqitem(x->a[i], y->a[i], d + 1))) i++;
+    while (i < x->len && i < y->len && list_item_eq(x, i, y, i, d + 1)) i++;
+    if (i < x->len && i < y->len && (lbig(x, i) || lbig(y, i))) {   /* (an int past 64 bits: BIGIDS) */
+      Big p = litem(x, i), q = litem(y, i); return cmpop(pys_big_cmp(p.lo, p.hi, q.lo, q.hi), op);
+    }
     if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
     return cmpop((x->len > y->len) - (x->len < y->len), op);
   }
@@ -2476,6 +2526,7 @@ VTuple *pys_vtuple_from(I *src, I count) {
 }
 VTuple *pys_vtuple_new(List *src) {
   if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
+  list_narrow(src);   /* (a tuple[int, ...] holds 64-bit ints: BIGIDS) */
   return pys_vtuple_from(src->a, src->len);
 }
 /* Immutable widening from int/float/bool to the same scalar | None. The
@@ -2527,8 +2578,8 @@ I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len; 
    the kind of the arrays they copy (atomic_items), so a list keeps its kind for its lifetime,
    and an emptied list keeps it in the sentinel it is left with. */
 static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */
-static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2};
-static I *empty_identity(I kind) { return (kind & 3) == 1 ? empty_identity_int : empty_identity_float; }
+static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2}, empty_identity_big[1] = {3};
+static I *empty_identity(I kind) { return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big; }
 static I empty_atomic[1];              /* the same, for a list whose array was atomic */
 static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, from the page map */
   uintptr_t w = (uintptr_t)a; Seg **m, *s;
@@ -2553,8 +2604,16 @@ List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], 
    a later observation or sharing operation materializes that new object. Pure moves carry
    the null marker with the value. Bit 2 of the companion header marks pending entries.
    Copies must materialize before sharing, so separate reads
-   of copied items cannot create unrelated boxes. */
-static I list_box(I value, I kind) { return (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value))); }
+   of copied items cannot create unrelated boxes.
+   A list of ints of a program that opts in to promoting ints (docs/python-int.md), and not to
+   dynamic Any, keeps the Mpz of an item past 64 bits in a companion of kind BIGIDS instead, the
+   item's slot holding -2**63, as a tuple's does, and the entries of its other items (-2**63 among
+   them) null: list_box makes none, so the code above and below keeps it in step as it is. (BIGIDS,
+   big_list and lbig are with the promoting ints' code.) */
+void pys_list_narrow(List *l) { list_narrow(l); }
+static I list_box(I value, I kind) {
+  return (kind & 3) == BIGIDS ? 0 : (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value)));
+}
 static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
   if (!l->ids) {
     /* Companion allocation limits use the allocator's fatal MemoryError convention. */
@@ -2571,16 +2630,20 @@ void pys_list_identity(List *l, I kind) {
      precompiled JIT runtime as well as AOT. Only missing/dirty storage calls out. */
   if (!l->ids || (l->ids[0] & 4)) list_identity_slow(l, kind);
 }
-static void identity_pair(List *a, List *b) {
+static void identity_pair(List *a, List *b) {   /* before list a takes list b's items */
   if (a->ids || b->ids) {
     I kind = a->ids ? a->ids[0] : b->ids[0];
+    if ((kind & 3) == BIGIDS) {   /* (promoting ints: a needs a companion where b has one) */
+      if (b->ids) pys_list_identity(a, kind);
+      return;
+    }
     pys_list_identity(a, kind); pys_list_identity(b, kind);
   }
 }
 void pys_list_forget_identity(List *l) {
   /* The CPython FFI twin copies every native array element back after a call. Even an
      unchanged numeric payload becomes a fresh Python value there. */
-  if (l->ids) {
+  if (l->ids && !big_list(l)) {
     for (I i = 0; i < l->len; i++) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
     l->ids[0] &= 3;
   }
@@ -2638,7 +2701,7 @@ Dyn *pys_list_get_identity(List *l, I i, I kind) {
 I pys_list_get(List *l, I i) { return AT(l, idx(i, l->len, "IndexError: list index out of range")); }
 void pys_list_set(List *l, I i, I v) {
   i = idx(i, l->len, "IndexError: list assignment index out of range");
-  if (l->ids) { l->ids[i + 1] = 0; l->ids[0] |= 4; }   /* pending fresh identity; no allocation */
+  if (l->ids) { l->ids[i + 1] = 0; if (!big_list(l)) l->ids[0] |= 4; }   /* pending fresh identity; no allocation (an int that fits: BIGIDS) */
   AT(l, i) = v;
 }
 void pys_list_set_identity(List *l, I i, I v, Dyn *id, I kind) {
@@ -2681,9 +2744,45 @@ void pys_list_insert_identity(List *l, I i, I v, Dyn *id, I kind) {
   memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = (I)id;
   memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
 }
+/* An item past 64 bits of a list of ints (BIGIDS, above): its slot holds -2**63, and its entry
+   in the companion, which the first such item makes, its Mpz. Compiled code stores an int that
+   fits as before (the stores above clear its entry), and reads the Mpz where it reads -2**63 */
+static void big_companion(List *l) {
+  if (!l->ids) {
+    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((l->cap + 1) * sizeof(I));
+    ids[0] = BIGIDS; l->ids = ids;
+  } else if (!big_list(l)) pys_fail(NARROW);   /* (one that dynamic code gave identities holds 64-bit ints) */
+}
+void pys_list_set_big(List *l, I i, Mpz *m) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  big_companion(l); l->ids[i + 1] = (I)m; AT(l, i) = INT64_MIN;
+}
+void pys_list_append_big(List *l, Mpz *m) {
+  big_companion(l);
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  l->ids[l->len + 1] = (I)m; AT(l, l->len++) = INT64_MIN;
+}
+void pys_list_insert_big(List *l, I i, Mpz *m) {
+  if (i < 0 && (i += l->len) < 0) i = 0;
+  if (i > l->len) i = l->len;
+  big_companion(l); reserve(l, l->len + 1);
+  memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = (I)m;
+  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = INT64_MIN; l->len++;
+}
+Mpz *pys_list_big_at(List *l, I i) {   /* the Mpz of the item at index i (as pys_list_get takes it) whose slot holds -2**63, or NULL */
+  if (i < 0) i += l->len;
+  return big_list(l) ? (Mpz *)l->ids[i + 1] : NULL;
+}
+Big pys_list_big_pop(List *l, I i) {   /* l.pop(i) of a list of ints, as a promoting int */
+  if (!l->len) pys_fail("IndexError: pop from empty list");
+  i = idx(i, l->len, "IndexError: pop index out of range");
+  Big r = litem(l, i);
+  pys_list_pop(l, i); return r;
+}
 void pys_list_extend(List *l, List *m) {
   identity_pair(l, m); I n = m->len; reserve(l, l->len + n);
-  if (l->ids) memcpy(l->ids + l->len + 1, m->ids + 1, n * 8);
+  if (l->ids) { if (m->ids) memcpy(l->ids + l->len + 1, m->ids + 1, n * 8); else memset(l->ids + l->len + 1, 0, n * 8); }   /* (m's ints fit) */
   memcpy(l->a + l->len, m->a, n * 8); l->len += n;
 }
 List *pys_list_slice(List *l, I lo, I hi) {
@@ -2718,7 +2817,7 @@ void pys_list_set_slice(List *l, I lo, I hi, I st, List *v) {
     if (m != k) failf("ValueError: attempt to assign sequence of size %lld to extended slice of size %lld", (long long)m, (long long)k);
     for (I i = 0; i < k; i++) {
       l->a[lo + i * st] = v->a[i];
-      if (l->ids) l->ids[lo + i * st + 1] = v->ids[i + 1];
+      if (l->ids) l->ids[lo + i * st + 1] = v->ids ? v->ids[i + 1] : 0;   /* (v's ints fit) */
     }
     return;
   }
@@ -2727,7 +2826,7 @@ void pys_list_set_slice(List *l, I lo, I hi, I st, List *v) {
   if (l->ids) {
     memmove(l->ids + lo + m + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
     if (m < k) memset(l->ids + n + m - k + 1, 0, (k - m) * 8);
-    memcpy(l->ids + lo + 1, v->ids + 1, m * 8);
+    if (v->ids) memcpy(l->ids + lo + 1, v->ids + 1, m * 8); else memset(l->ids + lo + 1, 0, m * 8);
   }
   memmove(l->a + lo + m, l->a + lo + k, (n - lo - k) * 8);
   if (m < k) memset(l->a + n + m - k, 0, (k - m) * 8);
@@ -2752,7 +2851,7 @@ void pys_list_del_slice(List *l, I lo, I hi, I st) {
   if (!(l->len = w)) empty(l);
 }
 List *pys_list_add(List *a, List *b) {
-  identity_pair(a, b);
+  if ((a->ids && !big_list(a)) || (b->ids && !big_list(b))) identity_pair(a, b);   /* (identities: the extends carry promoting ints') */
   List *r = list_new(a->len + b->len, atomic_items(a->a) && atomic_items(b->a));
   pys_list_extend(r, a); pys_list_extend(r, b); return r;
 }
@@ -2785,15 +2884,15 @@ List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items a
   }
   r->len = n > 0 ? m * n : 0; return r;
 }
-I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqitem(l->a[i], v, d->s)) return i; return -1; }
+I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i; return -1; }
 I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
-  for (I i = 0; i < l->len; i++) if (eqpair(l->a[i], v, d->s, vd->s)) return i;
+  for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m ? big_eq(m, v, vd->s) : eqpair(l->a[i], v, d->s, vd->s)) return i; }
   return -1;
 }
 static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
   if (st < 0 && (st += l->len) < 0) st = 0;
   if (en < 0 && (en += l->len) < 0) en = 0;
-  for (I j = st; j < en && j < l->len; j++) if (eqitem(l->a[j], v, d)) return j;
+  for (I j = st; j < en && j < l->len; j++) if (!lbig(l, j) && eqitem(l->a[j], v, d)) return j;
   return -1;
 }
 static _Noreturn void not_in_list(I x, const char *xd) {
@@ -2810,11 +2909,38 @@ I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd) {  /* 
   if (i < 0) not_in_list(x, xd->s);
   return i;
 }
-I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += eqitem(l->a[i], v, d->s); return c; }
+I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s); return c; }
 void pys_list_remove(List *l, I v, Str *d) {
   I i = pys_list_find(l, v, d);
   if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
   if (i < l->len) pys_list_del(l, i);              /* an __eq__ that shrank the list past i: CPython deletes nothing */
+}
+/* x in l (op 0: x's first index, or -1), l.count(x) (1), l.index(x, st, en) (2) and l.remove(x) (3)
+   of a list of ints l in a program that opts in to promoting ints, where x is a promoting int
+   ({lo, hi}) or, where isf, a float (of bits lo), which an int past 64 bits may equal: exactly */
+static int big_item_is(List *l, I i, I lo, Mpz *hi, I isf) {
+  Mpz *m = lbig(l, i);
+  if (isf) return m ? pys_big_cmp_float(0, m, dbl(lo)) == 0 : pys_cmp_if(l->a[i], dbl(lo)) == 0;
+  return m || hi ? m && hi && pys_mpz_cmp(m, hi) == 0 : l->a[i] == lo;
+}
+I pys_list_big_find(List *l, I lo, Mpz *hi, I isf, I op, I st, I en) {
+  if (op != 2) { st = 0; en = INT64_MAX; }
+  if (st < 0 && (st += l->len) < 0) st = 0;
+  if (en < 0 && (en += l->len) < 0) en = 0;
+  I c = 0;
+  for (I i = st; i < en && i < l->len; i++) {
+    if (!big_item_is(l, i, lo, hi, isf)) continue;
+    if (op == 1) { c++; continue; }
+    if (op == 3) pys_list_del(l, i);
+    return i;
+  }
+  if (op == 1) return c;
+  if (op == 3) pys_fail("ValueError: list.remove(x): x not in list");
+  if (op == 2) {
+    Str *s = isf ? pys_str_float(dbl(lo)) : pys_big_str(lo, hi);
+    Buf b = {0}; put(&b, "ValueError: ", 12); put(&b, s->s, s->len); put(&b, " is not in list", 16); pys_fail(b.p);
+  }
+  return -1;
 }
 /* Numeric queries retain the query's identity as well as its raw value. This is
    observable for NaNs in membership, count/index/remove and sequence comparison. */
@@ -3064,7 +3190,69 @@ static void sort_undo(void *p) {
 }
 List *pys_list_keyed(List *l, List *keys, I taken);
 void pys_list_unkey(List *l, List *p);
+static I big_cmp_items(const Big *x, const Big *y) { return pys_big_cmp(x->lo, x->hi, y->lo, y->hi); }
+static void big_sift(Big *v, I i, I n) {   /* heapsort's sift of v[i] down the max-heap v[0, n) */
+  for (I c; (c = 2 * i + 1) < n; i = c) {
+    if (c + 1 < n && big_cmp_items(&v[c], &v[c + 1]) < 0) c++;
+    if (big_cmp_items(&v[i], &v[c]) >= 0) return;
+    Big t = v[i]; v[i] = v[c]; v[c] = t;
+  }
+}
+static List *big_ranks(List *k) {   /* k's ints, some past 64 bits (BIGIDS), as their ranks: 64-bit ints in their order */
+  I n = k->len, m = 0;
+  if (n > INT64_MAX / (I)sizeof(Big)) oom();
+  Big *v = pys_alloc(n * sizeof(Big));        /* (scanned: Mpz pointers) */
+  for (I i = 0; i < n; i++) v[i] = litem(k, i);
+  for (I i = n / 2; i--;) big_sift(v, i, n);   /* (an int's comparisons run no code of the program's) */
+  for (I i = n; i-- > 1;) { Big t = v[0]; v[0] = v[i]; v[i] = t; big_sift(v, 0, i); }
+  for (I i = 0; i < n; i++) if (!m || big_cmp_items(&v[i], &v[m - 1])) v[m++] = v[i];
+  List *r = pys_list_new_atomic(n);
+  for (I i = 0; i < n; i++) {
+    Big x = litem(k, i); I lo = 0, hi = m - 1;
+    while (lo < hi) { I mid = lo + (hi - lo) / 2; if (big_cmp_items(&v[mid], &x) < 0) lo = mid + 1; else hi = mid; }
+    r->a[i] = lo;
+  }
+  r->len = n; return r;
+}
+void pys_list_sort_r(List *l, Str *d, I reverse);
+static void big_merge_sort(Mpz **v, Mpz **t, I n) {   /* v[0, n) by value, through t (n slots) */
+  for (I w = 1; w < n; w *= 2) {
+    for (I lo = 0; lo < n; lo += 2 * w) {
+      I mid = lo + w < n ? lo + w : n, hi = lo + 2 * w < n ? lo + 2 * w : n, i = lo, j = mid, k = lo;
+      while (i < mid && j < hi) t[k++] = pys_mpz_cmp(v[j], v[i]) < 0 ? v[j++] : v[i++];
+      while (i < mid) t[k++] = v[i++];
+      while (j < hi) t[k++] = v[j++];
+    }
+    memcpy(v, t, n * sizeof(Mpz *));
+  }
+}
+static void big_sort(List *l, Str *d, I reverse) {
+  /* sort() of a list of ints that holds some past 64 bits (BIGIDS): those that are negative go
+     before every 64-bit int and the others after them, so the 64-bit ints sort as before and
+     only the others are compared as Mpzs. (An int's comparisons run no code of the program's,
+     and equal ints cannot be told apart, so this order is the sort's.) */
+  I n = l->len, k = 0, nb = 0, neg = 0, *ids = l->ids;
+  if (n > INT64_MAX / (I)(2 * sizeof(Mpz *))) oom();
+  Mpz **b = pys_alloc(2 * n * sizeof(Mpz *));   /* (scanned: the Mpzs, then the merge's room) */
+  for (I i = 0; i < n; i++) {
+    Mpz *m = lbig(l, i);
+    if (m) { b[nb++] = m; neg += m->size < 0; } else l->a[k++] = l->a[i];
+  }
+  l->len = k; l->ids = NULL; pys_list_sort_r(l, d, 0); l->len = n; l->ids = ids;
+  big_merge_sort(b, b + nb, nb);
+  memmove(l->a + neg, l->a, k * 8);
+  for (I i = 0; i < n; i++) {
+    Mpz *m = i < neg ? b[i] : i >= neg + k ? b[i - k] : NULL;
+    if (m) l->a[i] = INT64_MIN;
+    ids[i + 1] = (I)m;
+  }
+  if (reverse) { rev(l->a, n); rev(ids + 1, n); }
+}
 void pys_list_sort_r(List *l, Str *d, I reverse) {
+  if (big_list(l) && !list_has_big(l)) {   /* (promoting ints that fit: no companion entry to move) */
+    I *ids = l->ids; l->ids = NULL; pys_list_sort_r(l, d, reverse); l->ids = ids; return;
+  }
+  if (big_list(l)) { big_sort(l, d, reverse); return; }
   if (l->ids) {
     /* Numeric comparisons cannot call user code. Move a record containing the number
        and its box through the same stable timsort, preserving NaN comparison order. */
@@ -3132,6 +3320,7 @@ List *pys_list_take(List *l) {
 }
 List *pys_list_keyed(List *l, List *keys, I taken) {   /* the records of l's items and their keys */
   if (l->ids) pys_list_identity(l, l->ids[0]);
+  if (list_has_big(keys)) keys = big_ranks(keys);   /* (ints past 64 bits: sorted by their ranks) */
   I n = l->len, width = l->ids ? 3 : 2;
   if (l->ids && n > (INT64_MAX - 8) / (width * 8)) oom();
   I *r = pys_alloc(n * width * 8 + 8);
@@ -3160,8 +3349,19 @@ void pys_list_give(List *t) {
 }
 I pys_list_minmax(List *l, Str *d, I max) {   /* keeps the item it compared, whatever the comparison did to l */
   if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
+  list_narrow(l);
   I m = l->a[0];
   for (I i = 1; i < l->len; i++) { I v = l->a[i]; if (opv(v, m, d->s, max ? 2 : 0)) m = v; }   /* item > max / item < min */
+  return m;
+}
+Big pys_list_big_minmax(List *l, I max) {   /* min(l) or max(l) of a list of ints, as a promoting int: the first of equal ones */
+  if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
+  Big m = litem(l, 0);
+  for (I i = 1; i < l->len; i++) {
+    Big v = litem(l, i);
+    I c = v.hi || m.hi ? pys_big_cmp(v.lo, v.hi, m.lo, m.hi) : (v.lo > m.lo) - (v.lo < m.lo);
+    if (max ? c > 0 : c < 0) m = v;
+  }
   return m;
 }
 Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
@@ -3172,7 +3372,7 @@ Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
 }
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
 I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
-I pys_sum_int(List *l, I s) { for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
+I pys_sum_int(List *l, I s) { list_narrow(l); for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
 static double fsum(List *l, I i, double s) {  /* CPython 3.12's compensated (Neumaier) sum of l[i:] */
   double c = 0;
   for (; i < l->len; i++) {
@@ -4168,9 +4368,11 @@ static Dyn *dyn_of(I v, const char *d) {
   failf("TypeError: a value of descriptor %s cannot become an Any value", d);
 }
 List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, of descriptor d */
-  if (src->ids) pys_list_identity(src, src->ids[0]);
+  list_narrow(src);   /* (a dynamic value's int is a 64-bit int: BIGIDS) */
+  int ids = src->ids && !big_list(src);
+  if (ids) pys_list_identity(src, src->ids[0]);
   List *l = pys_list_new(src->len);
-  for (I i = 0; i < src->len; i++) pys_list_append(l, src->ids ? src->ids[i + 1] : (I)dyn_of(src->a[i], d->s));
+  for (I i = 0; i < src->len; i++) pys_list_append(l, ids ? src->ids[i + 1] : (I)dyn_of(src->a[i], d->s));
   return l;
 }
 /* a slice's bound (or, not bound, its step) that is an Any value: None is an omitted one (NONE, a
@@ -5764,6 +5966,7 @@ static int select_fds(List *fds, fd_set *set, int maxfd) {
   return maxfd;
 }
 void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
+  list_narrow(r); list_narrow(w); list_narrow(x);   /* (file descriptors past 64 bits: BIGIDS) */
   if (!blocking) {
     if (isnan(timeout)) pys_fail("ValueError: Invalid value NaN (not a number)");
     if (timeout >= 9223372036.854776 || timeout <= -9223372036.854776)
@@ -5815,10 +6018,11 @@ void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
   for (int k = 0; k < 3; k++) {
     List *src = inputs[k], *dst = pys_list_new_atomic(src->len);
     out[k] = dst;
-    if (src->ids) pys_list_identity(src, src->ids[0]);
+    int ids = src->ids && !big_list(src);   /* (a list of promoting ints' companion holds no identities: BIGIDS) */
+    if (ids) pys_list_identity(src, src->ids[0]);
     for (I i = 0; i < src->len; i++)
       if (FD_ISSET((int)src->a[i], &ready[k])) {
-        if (src->ids) pys_list_append_identity(dst, src->a[i], (Dyn *)src->ids[i + 1], src->ids[0]);
+        if (ids) pys_list_append_identity(dst, src->a[i], (Dyn *)src->ids[i + 1], src->ids[0]);
         else pys_list_append(dst, src->a[i]);
       }
   }
@@ -6373,6 +6577,7 @@ I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), un
 }
 void pys_c_str(Str *s) { if (nul(s)) pys_fail("ValueError: embedded null character"); }   /* a str passed as const char * */
 void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its index k: its items from there */
+  list_narrow(l);   /* (C reads 64-bit ints: BIGIDS) */
   if (k < 0 || k > l->len) {
     char b[112]; snprintf(b, 112, "IndexError: ffi.at() index %lld is out of range for a list of %lld items", (long long)k, (long long)l->len); pys_fail(b);
   }
