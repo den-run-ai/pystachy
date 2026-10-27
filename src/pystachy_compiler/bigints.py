@@ -604,6 +604,67 @@ def gen_big_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
     return v if keep or self.int_policy(self.line) else self.big_narrow(v)
 
 
+def gen_dict_bigkey(self, t: str) -> bool:
+    # does dict type t hold promoting ints as its keys: a dict of int keys, in a program whose lists,
+    # dicts and sets of ints hold them (int_lists; runtime.c's kbig)
+    return is_dict(t) and targs(t)[0] == "int" and int_lists()
+
+
+def gen_key_coerce(self, k: Val, kt: str) -> Val:
+    # k as a key stored into a dict whose keys have type kt (store_key): a promoting int stays one
+    # where the keys are ints and the program's dicts hold such keys (int_lists), which dict_put
+    # stores as it is
+    if k.t == BIG and kt == "int" and int_lists():
+        return k
+    return self.store_key(k, kt)
+
+
+def gen_key_slot(self, k: Val) -> str:
+    # the slot of key k (key_coerce's) for dict_put, made where d[k] = v made it before the value:
+    # none for a promoting int, which dict_put finds by its entry
+    return "" if k.t == BIG else self.to_slot(k)
+
+
+def gen_big_key_entry(self, d: Val, k: Val, fn: str) -> str:
+    # the entry of promoting int k as a key of d, a dict of int keys (dict_bigkey), as fn finds it:
+    # pys_dict_big_find (-1 where d has none), pys_dict_big_entry (KeyError) or pys_dict_big_put
+    # (added with the value 0 where d has none, which its caller stores next)
+    return self.rt(fn, "i64", [f"ptr {d.v}", f"i64 {self.big_lo(k).v}", f"ptr {self.big_hi(k).v}"])
+
+
+def gen_big_key(self, k: Val) -> Val:
+    # the promoting int key k of a lookup (d[k], del d[k], d[k] op= v), or the one int | None k holds:
+    # None is no key of a dict of int keys (KeyError: None, as nonekey raises it)
+    if k.t == BIGOPT:
+        self.guard(self.isnull(k), "KeyError: None")
+        return self.big_unbox(k)
+    return k
+
+
+def gen_dict_put(self, d: Val, k: Val, ks: str, v: Val, kv: list[str]) -> None:
+    # d[k] = v of dict d, of key and value types kv, k and v coerced (key_coerce, list_coerce), ks
+    # k's slot (key_slot): a promoting int key by its entry, which pys_dict_big_put finds or adds
+    if k.t == BIG:
+        self.dict_store(d.v, "", v, kv, self.big_key_entry(d, k, "pys_dict_big_put"))
+    else:
+        self.dict_store(d.v, ks, v, kv)
+
+
+def gen_dict_value(self, d: Val, e: str) -> Val:
+    # the value of entry e of dict d (of a dict of ints, big_dict_value's)
+    if self.dict_int(d.t):
+        return self.big_dict_value(d, e)
+    return self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"]), targs(d.t)[1])
+
+
+def gen_big_dict_key(self, d: Val, e: str) -> Val:
+    # the key of entry e of d, a dict of int keys (dict_bigkey): a promoting int in a module that opts
+    # in, else the 64-bit int, NARROW past 64 bits (big_slot)
+    raw = self.rt("pys_dict_key", "i64", [f"ptr {d.v}", f"i64 {e}"])
+    v = self.big_slot(raw, "pys_dict_big_key", [f"ptr {d.v}", f"i64 {e}"])
+    return v if self.int_policy(self.line) else self.big_narrow(v)
+
+
 def gen_dict_box(self, b: str) -> Val:
     # the slot b of the int | None that get(k) or pop(k, None) of a dict of ints (dict_int) gives,
     # whose box pys_dict_getbox or pys_dict_popbox makes of a value past 64 bits as of a promoting
@@ -965,6 +1026,9 @@ def gen_big_compare(self, op: str, a: Val, b: Val) -> Val:
     if (op == "in" or op == "not in") and a.t == BIG and is_list(b.t) and elem(b.t) == "int" and int_lists():
         # (a list of ints may hold one past 64 bits: exactly)
         return self.num_cmp(">=" if op == "in" else "<", self.big_list_find(b, a, 0, "0", "0"), Val("0", "int"))
+    if (op == "in" or op == "not in") and a.t == BIG and self.dict_bigkey(b.t):
+        # (a dict of int keys may hold one past 64 bits: its entry, exactly)
+        return self.num_cmp(">=" if op == "in" else "<", Val(self.big_key_entry(b, a, "pys_dict_big_find"), "int"), Val("0", "int"))
     if (op == "in" or op == "not in") and a.t == BIG and self.set_int(b.t):
         # (a set of ints may hold one past 64 bits: by CPython's hash, exactly)
         hit = Val(self.rt("pys_set_big_has", "i64", [f"ptr {b.v}", f"i64 {self.big_lo(a).v}", f"ptr {self.big_hi(a).v}"]), "int")

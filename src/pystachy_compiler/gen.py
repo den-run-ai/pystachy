@@ -66,6 +66,14 @@ from src.pystachy_compiler.bigints import (
     gen_list_coerce as bigints_list_coerce,
     gen_dict_int as bigints_dict_int,
     gen_big_dict_value as bigints_big_dict_value,
+    gen_dict_bigkey as bigints_dict_bigkey,
+    gen_key_coerce as bigints_key_coerce,
+    gen_key_slot as bigints_key_slot,
+    gen_big_key_entry as bigints_big_key_entry,
+    gen_dict_put as bigints_dict_put,
+    gen_big_key as bigints_big_key,
+    gen_dict_value as bigints_dict_value,
+    gen_big_dict_key as bigints_big_dict_key,
     gen_dict_box as bigints_dict_box,
     gen_big_dict_method as bigints_big_dict_method,
     gen_big_dict_call as bigints_big_dict_call,
@@ -1620,6 +1628,30 @@ class Gen:
 
     def big_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
         return bigints_big_dict_value(self, d, e, keep)
+
+    def dict_bigkey(self, t: str) -> bool:
+        return bigints_dict_bigkey(self, t)
+
+    def key_coerce(self, k: Val, kt: str) -> Val:
+        return bigints_key_coerce(self, k, kt)
+
+    def key_slot(self, k: Val) -> str:
+        return bigints_key_slot(self, k)
+
+    def big_key_entry(self, d: Val, k: Val, fn: str) -> str:
+        return bigints_big_key_entry(self, d, k, fn)
+
+    def big_key(self, k: Val) -> Val:
+        return bigints_big_key(self, k)
+
+    def dict_put(self, d: Val, k: Val, ks: str, v: Val, kv: list[str]) -> None:
+        bigints_dict_put(self, d, k, ks, v, kv)
+
+    def dict_value(self, d: Val, e: str) -> Val:
+        return bigints_dict_value(self, d, e)
+
+    def big_dict_key(self, d: Val, e: str) -> Val:
+        return bigints_big_dict_key(self, d, e)
 
     def dict_box(self, b: str) -> Val:
         return bigints_dict_box(self, b)

@@ -1,6 +1,6 @@
 # MicroPython's integer tests
 
-`tests/programs/upstream/upstream_micropython_*.py` are 35 of MicroPython's
+`tests/programs/upstream/upstream_micropython_*.py` are 36 of MicroPython's
 [`tests/basics/`](https://github.com/micropython/micropython/tree/a39e77f08d1daf13658ccae99b763003a8218bdf/tests/basics)
 integer tests at commit
 [`a39e77f08d1daf13658ccae99b763003a8218bdf`](https://github.com/micropython/micropython/commit/a39e77f08d1daf13658ccae99b763003a8218bdf)
@@ -17,6 +17,7 @@ project's arbitrary-precision core.
 | [`builtin_abs_intbig.py`](../programs/upstream/upstream_micropython_builtin_abs_intbig.py) | `dc1cf43847f35ec603274991d1e869eacb351be957842dde2a6d0a54b46f7ba2` |
 | [`builtin_bin_intbig.py`](../programs/upstream/upstream_micropython_builtin_bin_intbig.py) | `a629784a05c37598ee998efcc274b88bbc712f6fbb6a452a453cfa490eb31a27` |
 | [`builtin_divmod_intbig.py`](../programs/upstream/upstream_micropython_builtin_divmod_intbig.py) | `fd92bab3feafeaf5c34f047a2d0786a3f8c603f422113107d4e60a65d075e223` |
+| [`builtin_hash_intbig.py`](../programs/upstream/upstream_micropython_builtin_hash_intbig.py) | `c8e26d21f137cc261de3622d2856827d5e8c27ba5358b0f5836816f8a407d900` |
 | [`builtin_hex_intbig.py`](../programs/upstream/upstream_micropython_builtin_hex_intbig.py) | `77e667cdda555584927cc3048679f00d12fade81d6b5f4157ad3808433d4f600` |
 | [`builtin_oct_intbig.py`](../programs/upstream/upstream_micropython_builtin_oct_intbig.py) | `d90146a0ed050bc8029d2ce9f39f53b7e0d81f6b2c043e0377b2402ba9443515` |
 | [`builtin_pow3_intbig.py`](../programs/upstream/upstream_micropython_builtin_pow3_intbig.py) | `18849671d6b6172b313af89c253195e6e89f6e6d5e171f6e48e1fd68ecf73555` |
@@ -56,12 +57,12 @@ project's arbitrary-precision core.
 3.13: the `int*.py` files but `int_big_to_small_int29.py` and `int_bytes_optional_args_cp311.py`
 (MicroPython configurations, with `.exp` files of their own), the `*_intbig.py` files but those of
 `array`, `bytearray`, `bytes`, `memoryview` and `struct`, `builtin_round_int.py` and
-`string_format_modulo_int.py`. The 35 above print what CPython prints, also with the compiler of
-main before #907's list storage. The other 16 stay out; the first problem of each:
+`string_format_modulo_int.py`. The 36 above print what CPython prints: 35 also with the compiler of
+main before #907's list storage, and `builtin_hash_intbig.py` since dict keys hold promoting ints.
+The other 15 stay out; the first problem of each:
 
 | Upstream file | First problem |
 |---|---|
-| `builtin_hash_intbig.py` | A dict key past 64 bits (`{1 << 66: 1}`): dict keys hold 64-bit ints ([boundaries](../../docs/python-int.md#64-bit-boundaries)), `OverflowError`. |
 | `builtin_round_int.py` | A list of tuples whose items are a `bool` or an int (`expected int, got bool \| int`). |
 | `builtin_round_intbig.py` | Tuples in a list hold 64-bit ints ([boundaries](../../docs/python-int.md#64-bit-boundaries)): `OverflowError`. |
 | `int1.py` | `int(x, base)` where `x` is not a `str` is rejected during compilation (CPython raises `TypeError`). |

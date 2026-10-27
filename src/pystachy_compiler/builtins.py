@@ -2046,6 +2046,8 @@ def gen_walk(self, name: str, args: list[Node]) -> Val:
         return Val(self.rt("pys_dict_next", "i64", [f"ptr {o.v}"] + ns), "int")
     if name == "__pys_set_next" and len(ns) == 2:
         return Val(self.rt("pys_set_next", "i64", [f"ptr {o.v}"] + ns), "int")
+    if name == "__pys_dict_key" and len(ns) == 1 and self.dict_bigkey(o.t):
+        return self.big_dict_key(o, ns[0][4:])  # (an int past 64 bits: bigints.py)
     if name == "__pys_dict_key" and len(ns) == 1:
         return self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {o.v}"] + ns), targs(o.t)[0])
     if name == "__pys_dict_val" and len(ns) == 1 and self.dict_int(o.t):

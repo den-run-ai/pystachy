@@ -726,7 +726,7 @@ for _j in range(len(FX)):
 # their dicts too (pys_dict_narrow): dict.items, whose tuples hold 64-bit ints, and the get(), pop()
 # and setdefault() of 64-bit values, which a dict of ints compiles so only for what
 # Gen.big_dict_method leaves (pop() of a key that may be None, or of a bool without a default)
-NARROWED: list[str] = ["dict.fromkeys", "dict.get", "dict.items", "dict.pop", "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float"]
+NARROWED: list[str] = ["dict.get", "dict.items", "dict.pop", "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float"]
 RUNTIME: dict[str, str] = {
     # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
     # the library's scanned wrapper keeps their pointer alive.
@@ -810,7 +810,7 @@ RUNTIME: dict[str, str] = {
     "dict.setdefault": "*V:S,*K,*V|R? A rD wD U?|", "dict.clear": "None:S|wD|",
     "dict.getbox": "*V:S,*K,*V|R? A rD U?|", "dict.popbox": "*V:S,*K,*V|R A I rD wD U?|",
     "dict.copy": "S:S|R A rD U?|", "dict.from": "S:S|R A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
-    "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
+    "dict.items": "list[tuple[K,V]]:S|R A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
     "dict.eq_next": "int:S,int|rD|",
     "dict.eq_find": "int:S,S,int|R? rD U?|",
     "dict.eq_pair_find": "int:S,S,int,%ptr|R A I rD wD U|",
@@ -822,6 +822,12 @@ RUNTIME: dict[str, str] = {
     "dict.set_big": "None:S,*K,int,%ptr|R? A rD wD U?|", "dict.entry_set_big": "None:S,int,int,%ptr|A rD wD|",
     "dict.big_val": "%ptr:S,int|rD|", "dict.big_pop": "int+:S,*K,bool,int,%ptr|R A I rD wD U?|",
     "dict.big_setdefault": "int+:S,*K,int,%ptr|R? A rD wD U?|", "dict.narrow": "None:S|R rD|",
+    # and a dict of int keys whose keys may be past 64 bits (runtime.c's kbig): the entry of a
+    # promoting int key (find: -1 where d has none; entry: KeyError; put: added with the value 0,
+    # which the compiler stores next), del of one, and the Mpz of an entry's key that reads -2**63
+    "dict.big_find": "int:S,int,%ptr|R? rD U?|", "dict.big_entry": "int:S,int,%ptr|R A I rD U?|",
+    "dict.big_put": "int:S,int,%ptr|R? A rD wD U?|", "dict.big_del": "None:S,int,%ptr|R A I rD wD U?|",
+    "dict.big_key": "%ptr:S,int|rD|",
     "dict.find_int_nobox": "int:S,int|rD|",
     "dict.update": "None:S,S|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
     "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",

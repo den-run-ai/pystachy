@@ -1988,9 +1988,10 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.list_store(o, self.list_coerce(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
             kv = targs(unopt(o.t))
-            key = self.to_slot(self.store_key(self.expr(t.kids[1], kv[0]), kv[0]))
+            kc = self.key_coerce(self.expr(t.kids[1], kv[0]), kv[0])
+            ks = self.key_slot(kc)
             o = self.unwrap(o, nosub)
-            self.dict_store(o.v, key, self.list_coerce(v, kv[1]), kv)
+            self.dict_put(o, kc, ks, self.list_coerce(v, kv[1]), kv)
         elif o.t in self.classes:
             # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated (a tuple display k in
             # the frame where __setitem__ only reads it: stack_key)
