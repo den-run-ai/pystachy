@@ -247,6 +247,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "A"  # (a dynamic value's box, walked by its own DynType's descriptor)
     if t == "int" or t == BIG:
         return "i"  # (a promoting int as a container holds it: 64-bit, bigints.py)
+    if t == BIGOPT:
+        return "?J"  # (an int | None of a module that opts in: a box of a promoting int's two words, runtime.c's jbig)
     if t == "float":
         return "f"
     if t == "bool":
@@ -274,7 +276,8 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         a = targs(t)
         if len(a) > 9:
             self.err("tuples are limited to 9 elements")
-        return "T" + str(len(a)) + "".join([self.desc(x, sub) for x in a])
+        # (J: a promoting int item, its slot and its Mpz word past the items, utils.tslots)
+        return "T" + str(len(a)) + "".join(["J" if x == BIG else self.desc(x, sub) for x in a])
     if t == "exc":
         return "E"  # (repr: pys_exc_repr; equality: identity)
     if t == "exctype":
@@ -377,7 +380,7 @@ def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: in
             self.err("tuples are limited to 9 elements")
         out = "T" + str(len(ts))
         for m in ts:
-            out += gen_rec_desc(self, m, use, active, offset + len(out))
+            out += "J" if m == BIG else gen_rec_desc(self, m, use, active, offset + len(out))
         return out
     return gen_plain_desc(self, t, use)  # (not self.desc, which would hand t back here)
 

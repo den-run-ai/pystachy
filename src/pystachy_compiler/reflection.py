@@ -1201,7 +1201,7 @@ def gen_refl_fields_table(self, c: str) -> str:
             if is_union(unopt(ft)) and not self.value_union(ft):
                 self.err(f"vars() of {short(c)}, whose field {fl} is a {typestr(ft)}, is not supported (a union of classes: #487)")
             t.refs.append(self.sconst(fl))
-            t.refs.append(self.sconst(self.desc(ft, "repr")))
+            t.refs.append(self.sconst("J" if ft == BIG else self.desc(ft, "repr")))  # (a promoting int's {lo, hi}: runtime.c's jbig)
             t.items.append(Val(str(ci.fpos[fl]), "int"))
             flag = ci.fflag[fl] if fl in ci.fflag and c + "." + fl not in self.cvars else -1
             t.items.append(Val(str(flag), "int"))
