@@ -34,7 +34,7 @@ BKEY: dict[str, str] = {
     "pys_dict_get": "pys_dict_bkey_get", "pys_dict_getbox": "pys_dict_bkey_getbox", "pys_dict_pop": "pys_dict_bkey_pop",
     "pys_dict_pop_default": "pys_dict_bkey_pop_default", "pys_dict_popbox": "pys_dict_bkey_popbox",
     "pys_dict_setdefault": "pys_dict_bkey_setdefault", "pys_dict_big_pop": "pys_dict_bkey_big_pop",
-    "pys_dict_big_setdefault": "pys_dict_bkey_big_setdefault",
+    "pys_dict_big_setdefault": "pys_dict_bkey_big_setdefault", "pys_dict_find": "pys_dict_big_find",
 }
 # A list of ints of a program whose lists hold promoting ints (int_lists: a module opts in, none to
 # dynamic Any) holds an item past 64 bits as a tuple does: TSLOT_BIG in its slot, and its Mpz in the
@@ -649,8 +649,9 @@ def gen_dict_key_args(self, kx: Val, k: str) -> list[str]:
 
 
 def gen_dict_key_fn(self, fn: str, kx: Val) -> str:
-    # fn, the runtime function of a dict lookup by key kx, or for a promoting int its BKEY twin
-    return BKEY[fn] if kx.t == BIG else fn
+    # fn, the runtime function of a dict lookup by key kx, or for a promoting int its BKEY twin (also
+    # for an int | None one, of a dict of int keys, which is not None there: nonekey, keyed)
+    return BKEY[fn] if kx.t == BIG or kx.t == BIGOPT else fn
 
 
 def gen_big_key(self, k: Val) -> Val:
@@ -710,14 +711,15 @@ def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
     kt = self.dyn_dry(args[0])  # (remembered: a default that is such a call decides it again, dyn_dry)
     dt = self.dyn_dry(args[1]) if len(args) == 2 else ""
     box = (m == "get" and len(args) == 1) or (m == "pop" and dt == "None")
-    if (is_opt(kt) and (box or m != "get")) or kt == "None" or (bool_for_int(kt, kv[0]) and (m == "setdefault" or (m == "pop" and len(args) == 1))):
+    optbig = kt == BIGOPT and m != "setdefault" and not box  # (an int | None key: big_dict_call)
+    if (is_opt(kt) and not optbig and (box or m != "get")) or kt == "None" or (bool_for_int(kt, kv[0]) and (m == "setdefault" or (m == "pop" and len(args) == 1))):
         return Val("", "")
     if len(args) == 2 and not box and dt != "int" and dt != BIG:
         return Val("", "")
     kx = self.expr(args[0], kv[0])
-    if not (kx.t == BIG and self.dict_bigkey(o.t)) and not (is_sopt(kx.t) and bool_for_int(unopt(kx.t), kv[0])):
+    if not ((kx.t == BIG or kx.t == BIGOPT) and self.dict_bigkey(o.t)) and not (is_sopt(kx.t) and bool_for_int(unopt(kx.t), kv[0])):
         kx = self.dkey(kx, kv[0])  # (a bool | None, of get(k, x), finds the int key it equals, as in bmethod: keyed)
-    k = "" if kx.t == BIG else self.to_slot(kx)  # (a promoting int key of a dict of int keys: dict_key_args)
+    k = "" if kx.t == BIG else "0" if kx.t == BIGOPT else self.to_slot(kx)  # (a promoting int key of a dict of int keys: dict_key_args, keyed)
     x = self.key_fx(kv[0])
     if box:
         if len(args) == 2:
@@ -732,7 +734,23 @@ def gen_big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, 
     # o.get(kx, d), o.pop(kx[, d]) or o.setdefault(kx, d) of o, a dict of ints (dict_int), its
     # arguments compiled (k: kx's slot, or "" for a promoting int key, dict_key_args; d: the default
     # as a promoting int, has: one was given; x: the lookup's key_fx), for big_dict_method and for
-    # fill, where such a call types its dict
+    # fill, where such a call types its dict. An int | None key (BIGOPT) of get() finds no entry
+    # where it is None (nonekey), and of pop() raises KeyError: None (big_key) or gives d there
+    if m == "pop" and kx.t == BIGOPT and has:
+        some = self.label()
+        end = self.label()
+        ph = Ins("phi", BIG, "")
+        self.incoming(ph, d.v, self.cur)
+        self.cbr(self.isnull(kx), end, some)
+        self.place(some)
+        kb = self.big_unbox(kx)
+        self.incoming(ph, self.rt(BKEY["pys_dict_big_pop"], BIGLL, [f"ptr {o.v}"] + self.dict_key_args(kb, "") + ["i64 1", f"i64 {self.big_lo(d).v}", f"ptr {self.big_hi(d).v}"], x), self.cur)
+        self.br(end)
+        self.place(end)
+        v = Val(self.phi(ph), BIG)
+        return v if self.int_policy(self.line) else self.big_narrow(v)
+    if m == "pop" and kx.t == BIGOPT:
+        kx = self.big_key(kx)
     if m == "get":
         if kx.t == BIG:
             e = self.big_key_entry(o, kx, "pys_dict_big_find")

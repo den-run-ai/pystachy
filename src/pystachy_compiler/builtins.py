@@ -2231,9 +2231,9 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     if is_dict(o.t) and m == "pop" and len(args) == 2:
         kv = targs(o.t)
         kx = self.expr(args[0], kv[0])
-        if not (kx.t == BIG and self.dict_bigkey(o.t)):
-            kx = self.dkey(kx, kv[0])
-        k = "" if kx.t == BIG else self.to_slot(kx)  # (a promoting int key of a dict of int keys: dict_key_args)
+        if not ((kx.t == BIG or kx.t == BIGOPT) and self.dict_bigkey(o.t)):
+            kx = self.dkey(kx, kv[0])  # (an int | None key of a dict of int keys: nonekey's twin, keyed)
+        k = "" if kx.t == BIG else "0" if kx.t == BIGOPT else self.to_slot(kx)  # (a promoting int key of a dict of int keys: dict_key_args, keyed)
         d = self.big_opt_narrow(self.expr(args[1], kv[1]))  # (a value holds a 64-bit int: bigints.py)
         vt = self.optdefault(d, kv[1])  # (d.pop(k, None): V | None)
         dv = self.to_slot(self.coerce(d, vt))
@@ -2354,6 +2354,11 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             else:
                 v = self.consume(g, pt) if join or key == "list.extend" else self.expr(args[i], want_arg, resultsoft=key in ["list.count", "list.index", "list.remove", "vtuple.count", "vtuple.index"] and i == 0)
             self.stkkey = self.nokey
+            if base == "dict" and i == 0 and v.t == BIGOPT and self.dict_bigkey(o.t) and (m == "get" or m == "pop"):
+                kx = v  # (None is no key, else the promoting int it holds: nonekey's twin, keyed)
+                av.append("i64 0")  # (the key's place, where keyed puts its {lo, m})
+                i += 1
+                continue
             v = self.big_opt_narrow(v)  # (a builtin method's int | None holds a 64-bit int: bigints.py)
             if self.list_id_kind(o.t) != 0 and p == "*T" and v.t in ["int", "float", "bool"]:
                 idquery = v
