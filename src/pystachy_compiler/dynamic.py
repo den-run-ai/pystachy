@@ -2970,10 +2970,11 @@ def gen_dyn_untyped_items(self, ks: list[Node]) -> bool:
 
 
 def gen_dyn_dry(self, e: Node) -> str:
-    # dry(e) of an item of a display that dyn_mixed decides, remembered for the statement being
-    # compiled (gen_stmt forgets them): compiling the display compiles its items again, and each
-    # item that holds a display decides it again, so that without this the work doubled with each
-    # level of nesting (#781). A literal or a name costs no more to compile again
+    # dry(e) of an item of a display that dyn_mixed decides, or of an argument of a dict method
+    # that big_dict_method decides (bigints.py), remembered for the statement being compiled
+    # (gen_stmt forgets them): compiling the display or the call compiles e again, and each e
+    # that holds a display or such a call decides it again, so that without this the work doubled
+    # with each level of nesting (#781). A literal or a name costs no more to compile again
     if e.kind in ["int", "float", "str", "bytes", "True", "False", "None", "name"]:
         return self.dry(e, "")
     j = e.memo - 1

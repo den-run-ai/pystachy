@@ -309,7 +309,9 @@ the first measurements, before the inline paths, in
   nested lists, a field and a function's result.
 - `tests/programs/numbers/python_int_dicts.py`: dicts of ints whose values are past 64 bits: a memo
   table, stores, `get()`, `pop()`, `setdefault()`, `+=`, displays, comprehensions, copies,
-  `update()`, iteration, `values()`, comparisons, nested dicts, a field and bool keys.
+  `update()`, iteration, `values()`, comparisons, nested dicts, a field and bool keys;
+  `python_int_dicts_nested.py`: `get()` calls nested 40 deep, in defaults and in keys, which each
+  decide on their arguments' types once.
 - `tests/programs/numbers/python_int_generators.py`: generators that yield and return ints past 64
   bits, through `for` loops, `next()`, unpacking, `yield from`, `send()`, `throw()`, generator
   expressions, a method and a module that does not opt in (`tests/python_int_modules/fixed_iter.py`).

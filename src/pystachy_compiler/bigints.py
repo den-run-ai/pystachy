@@ -627,8 +627,8 @@ def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
     kv = targs(o.t)
     if not ((m == "get" or m == "pop") and len(args) in [1, 2]) and not (m == "setdefault" and len(args) == 2):
         return Val("", "")
-    kt = self.dry(args[0])
-    dt = self.dry(args[1]) if len(args) == 2 else ""
+    kt = self.dyn_dry(args[0])  # (remembered: a default that is such a call decides it again, dyn_dry)
+    dt = self.dyn_dry(args[1]) if len(args) == 2 else ""
     box = (m == "get" and len(args) == 1) or (m == "pop" and dt == "None")
     if (is_opt(kt) and (box or m != "get")) or kt == "None" or (bool_for_int(kt, kv[0]) and (m == "setdefault" or (m == "pop" and len(args) == 1))):
         return Val("", "")
