@@ -69,6 +69,9 @@ from src.pystachy_compiler.bigints import (
     gen_update_pairs as bigints_update_pairs,
     gen_held_list as bigints_held_list,
     gen_search_hold as bigints_search_hold,
+    gen_held_read as bigints_held_read,
+    gen_held_default as bigints_held_default,
+    gen_held_pair as bigints_held_pair,
     gen_held_narrow as bigints_held_narrow,
     gen_held_value as bigints_held_value,
     gen_dict_int as bigints_dict_int,
@@ -1650,6 +1653,15 @@ class Gen:
 
     def search_hold(self, v: Val, et: str, t: str) -> Val:
         return bigints_search_hold(self, v, et, t)
+
+    def held_read(self, v: Val) -> Val:
+        return bigints_held_read(self, v)
+
+    def held_default(self, v: Val, et: str, vt: str) -> Val:
+        return bigints_held_default(self, v, et, vt)
+
+    def held_pair(self, v: Val) -> Val:
+        return bigints_held_pair(self, v)
 
     def held_narrow(self, v: Val) -> Val:
         return bigints_held_narrow(self, v)

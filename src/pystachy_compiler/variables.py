@@ -1997,7 +1997,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
             kc = self.key_coerce(self.expr(t.kids[1], kv[0]), kv[0])
             ks = self.key_slot(kc)
             o = self.unwrap(o, nosub)
-            self.dict_put(o, kc, ks, self.list_coerce(v, kv[1]), kv)
+            self.dict_put(o, kc, ks, self.list_hold(v, kv[1]), kv)  # (a tuple of ints: held, bigints.py)
         elif o.t in self.classes:
             # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated (a tuple display k in
             # the frame where __setitem__ only reads it: stack_key)

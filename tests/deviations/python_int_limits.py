@@ -6,9 +6,10 @@
 # stored in an int | None in a list, a tuple's int | None item, the union of a bool and an int (a
 # result that is either) or sent to a generator, given to range(), added by sum() among floats, in a
 # NamedTuple that may be None (a parameter) hashed as the tuple of its fields, a list's tuple that
-# set() takes, or whose tuple dict() takes as a value, or a list's item (a tuple's too), a dict's
-# key, a set's element or a generator's value that tuple() or a module that does not opt in (heapq,
-# the iterator of iter()) reads, raises OverflowError, where CPython goes on with the bigger int.
+# set() takes, or whose tuple dict() takes as a key, a dict's tuple that get() gives where it may be
+# None, or a list's item (a tuple's too), a dict's key, a set's element or a generator's value that
+# tuple() or a module that does not opt in (heapq, the iterator of iter()) reads, raises
+# OverflowError, where CPython goes on with the bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected, as in a list of tuples of ints.
 import heapq
@@ -56,9 +57,13 @@ try:
 except OverflowError as e:
     print("set() of a list of tuples:", e)
 try:
-    print(dict([(1, (big, 1))]))
+    print(dict([((big, 1), 1)]))
 except OverflowError as e:
-    print("dict() of pairs of tuples:", e)
+    print("dict() of tuple keys:", e)
+try:
+    print({"k": (big, 1)}.get("k"))
+except OverflowError as e:
+    print("get() of a tuple:", e)
 try:
     print(heapq.heappop(pairs))
 except OverflowError as e:
@@ -119,5 +124,6 @@ for p in enumerate([5], -2 ** 63):
 keys = {p: 1}
 print("tuple identity in a list of keys:", list(keys)[0] == p, list(keys)[0] is p)
 print("tuple identity in a dict's items:", list(keys.items())[0][0] is p, list({1: p}.items())[0][1] is p)
+print("tuple identity in a dict's values:", {1: p}[1] == p, {1: p}[1] is p)
 xs.append(big - 2 ** 63 - 1)
 print(xs, (big - 1) in xs, big in xs, [x * big for x in [0]], 2 ** 62 / 2, hex(big - 2 ** 63 - 1), (2 ** 63 - 1).bit_length())

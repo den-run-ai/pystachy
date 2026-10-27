@@ -704,30 +704,40 @@ def gen_held_narrow(self, v: Val) -> Val:
     return v
 
 
+def items_shape(kv: list[str]) -> str:
+    # the held_shape of the (key, value) tuples of a dict of key and value types kv, for
+    # pys_dict_big_items: J an int key or value, T a key's tuple of ints, which the dict holds as
+    # 64-bit ints, i a value's, which the dict holds as a list holds it (held), and the other items
+    k = "J" if kv[0] == "int" else held_shape(kv[0]) if int_tuple(kv[0]) else "i"
+    return "T2" + k + ("J" if kv[1] == "int" else "i")
+
+
 def gen_big_items(self, o: Val) -> Val:
     # o.items() of dict o, whose (key, value) tuples hold ints (int_tuple), in a program whose lists
     # hold them as tuples of promoting ints (held): pys_dict_big_items makes them in that layout, an
-    # int key or value with its Mpz word from the dict's (as pys_dict_big_popitem's), and a tuple of
-    # ints, which the dict holds as 64-bit ints, as pys_list_hold makes it. Val("", "") for other dicts
+    # int key or value with its Mpz word from the dict's (as pys_dict_big_popitem's), a key's tuple
+    # of ints, which the dict holds as 64-bit ints, as pys_list_hold makes it, and a value's tuple as
+    # the dict holds it (items_shape). Val("", "") for other dicts
     t = self.ctype("tuple", targs(o.t))
     if held(t) == t:
         return Val("", "")
-    return Val(self.rt("pys_dict_big_items", "ptr", [f"ptr {o.v}", f"ptr {self.sconst(held_shape(t))}"]), self.ctype("list", [t]))
+    return Val(self.rt("pys_dict_big_items", "ptr", [f"ptr {o.v}", f"ptr {self.sconst(items_shape(targs(o.t)))}"]), self.ctype("list", [t]))
 
 
 def gen_update_pairs(self, d: str, v: Val, kv: list[str]) -> None:
     # dict d, of key and value types kv, updated by v, a list of (key, value) tuples, one insertion
     # per pair: in a program whose lists hold promoting ints (int_lists), an int key or value as the
-    # promoting int its pair holds (pys_dict_update_pairs_big, held), and a tuple of ints narrowed
-    # first (pys_list_narrow_held: the dict holds 64-bit ints in its tuples)
-    if not int_lists() or "int" not in kv:
-        self.rt("pys_dict_update_pairs", "void", [f"ptr {d}", f"ptr {self.held_narrow(v).v}"], self.key_fx(kv[0]))
-        return
-    shape = held_shape(elem(v.t), "i")
-    if "J" in shape:
+    # promoting int its pair holds (pys_dict_update_pairs_big, held), a value's tuple of ints as it is
+    # (the dict holds it so too), and a key's narrowed first (pys_list_narrow_held: the dict holds
+    # 64-bit ints in its keys' tuples)
+    shape = "T2" + (held_shape(kv[0]) if int_tuple(kv[0]) else "i") + "i"
+    if int_lists() and "J" in shape:
         self.rt("pys_list_narrow_held", "void", [f"ptr {v.v}", f"ptr {self.sconst(shape)}"])
-    ints = [f"i64 {1 if x == 'int' else 0}" for x in kv]
-    self.rt("pys_dict_update_pairs_big", "void", [f"ptr {d}", f"ptr {v.v}"] + ints, self.key_fx(kv[0]))
+    if int_lists() and "int" in kv:
+        ints = [f"i64 {1 if x == 'int' else 0}" for x in kv]
+        self.rt("pys_dict_update_pairs_big", "void", [f"ptr {d}", f"ptr {v.v}"] + ints, self.key_fx(kv[0]))
+    else:
+        self.rt("pys_dict_update_pairs", "void", [f"ptr {d}", f"ptr {v.v}"], self.key_fx(kv[0]))
 
 
 def gen_list_hold(self, v: Val, et: str) -> Val:
@@ -816,10 +826,51 @@ def gen_dict_put(self, d: Val, k: Val, ks: str, v: Val, kv: list[str]) -> None:
 
 
 def gen_dict_value(self, d: Val, e: str) -> Val:
-    # the value of entry e of dict d (of a dict of ints, big_dict_value's)
+    # the value of entry e of dict d (of a dict of ints, big_dict_value's; a tuple of ints, which the
+    # dict holds as a list holds it, as held_value reads it)
     if self.dict_int(d.t):
         return self.big_dict_value(d, e)
-    return self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"]), targs(d.t)[1])
+    return self.held_value(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"]), targs(d.t)[1]))
+
+
+def gen_held_read(self, v: Val) -> Val:
+    # v, a value of a dict that holds its tuples of ints as a list holds them (held), as held_value
+    # reads it; also of one that may be None (get() or pop() with a default that may be None, which
+    # held_default holds so too), which holds 64-bit ints: there the tuple of its 64-bit ints, where
+    # it is not None (NARROW past 64 bits)
+    u = unopt(v.t)
+    if not is_opt(v.t) or held(u) == u:
+        return self.held_value(v)
+    some = self.label()
+    end = self.label()
+    self.cbr(self.isnull(v), end, some)
+    self.place(some)
+    self.big_tuple_narrow(Val(v.v, held(u)))
+    self.br(end)
+    self.place(end)
+    return v
+
+
+def gen_held_default(self, v: Val, et: str, vt: str) -> Val:
+    # v as the default of type et (vt, a dict's value type, or vt | None) that get(), pop() or
+    # setdefault() of a dict of values of type vt gives or stores: a tuple of ints in the layout in
+    # which the dict holds its values (held, search_hold's), else coerced
+    if held(vt) == vt:
+        return self.coerce(v, et)
+    return self.search_hold(v, et, vt)
+
+
+def gen_held_pair(self, v: Val) -> Val:
+    # v, the (key, value) tuple that popitem() of a dict gives (pys_dict_popitem), whose value is a
+    # tuple of ints that the dict holds as a list holds it (held): in a module that opts in that
+    # tuple of promoting ints, elsewhere the tuple of its 64-bit ints (NARROW past 64 bits)
+    kv = targs(v.t)
+    if held(kv[1]) == kv[1]:
+        return v
+    t = "tuple[" + kv[0] + "," + held(kv[1]) + "]"
+    if self.int_policy(self.line):
+        return Val(v.v, t)
+    return self.big_tuple_narrow(Val(v.v, t))
 
 
 def gen_big_dict_key(self, d: Val, e: str) -> Val:
@@ -925,7 +976,7 @@ def gen_big_popitem(self, o: Val) -> Val:
     # in: its (key, value) tuple of promoting ints, which pys_dict_big_popitem makes with the slots
     # of one (utils.tslots); in other modules, bmethod's pys_dict_popitem raises past 64 bits
     kv = targs(o.t)
-    t = self.ctype("tuple", [BIG if kv[0] == "int" else kv[0], BIG if kv[1] == "int" else kv[1]])
+    t = self.ctype("tuple", [BIG if kv[0] == "int" else kv[0], BIG if kv[1] == "int" else held(kv[1])])  # (a value's tuple of ints: held)
     return Val(self.rt("pys_dict_big_popitem", "ptr", [f"ptr {o.v}"], self.key_fx(kv[0])), t)
 
 

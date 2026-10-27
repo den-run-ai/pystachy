@@ -2052,10 +2052,8 @@ def gen_walk(self, name: str, args: list[Node]) -> Val:
         return self.big_dict_key(o, ns[0][4:])  # (an int past 64 bits: bigints.py)
     if name == "__pys_dict_key" and len(ns) == 1:
         return self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {o.v}"] + ns), targs(o.t)[0])
-    if name == "__pys_dict_val" and len(ns) == 1 and self.dict_int(o.t):
-        return self.big_dict_value(o, ns[0][4:])  # (an int past 64 bits: bigints.py)
     if name == "__pys_dict_val" and len(ns) == 1:
-        return self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}"] + ns), targs(o.t)[1])
+        return self.dict_value(o, ns[0][4:])  # (an int past 64 bits, a tuple of ints: bigints.py)
     if name == "__pys_set_key" and len(ns) == 1 and self.set_int(o.t):
         return self.big_set_value(o, ns[0][4:])  # (an int past 64 bits: bigints.py)
     if name == "__pys_set_key" and len(ns) == 1:
@@ -2242,7 +2240,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         k = "" if kx.t == BIG else "0" if kx.t == BIGOPT else self.to_slot(kx)  # (a promoting int key of a dict of int keys: dict_key_args, keyed)
         d = self.big_opt_narrow(self.expr(args[1], kv[1]))  # (a value holds a 64-bit int: bigints.py)
         vt = self.optdefault(d, kv[1])  # (d.pop(k, None): V | None)
-        dv = self.to_slot(self.coerce(d, vt))
+        dv = self.to_slot(self.held_default(d, vt, kv[1]))  # (a tuple of ints as the dict holds it: bigints.py)
         fn = "pys_dict_popbox" if is_sopt(vt) and not is_sopt(kv[1]) else "pys_dict_pop_default"  # (an int's box)
         if kx.t == BIG:
             r = self.rt(self.dict_key_fn(fn, kx), "i64", [f"ptr {o.v}"] + self.dict_key_args(kx, k) + [f"i64 {dv}"], self.key_fx(kv[0]))
@@ -2250,7 +2248,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]))
         if fn == "pys_dict_popbox" and self.dict_int(o.t):
             return self.dict_box(r)  # (a value past 64 bits: bigints.py)
-        return self.from_slot(r, vt)
+        return self.held_read(self.from_slot(r, vt))
     base = o.t
     T = ""
     K = ""
@@ -2439,6 +2437,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 v = self.list_hold(v, T)  # (an item, or the item searched for, of a list of tuples of ints: bigints.py)
             elif base == "list" and p == "*T" and search_type(T, pt) != pt:
                 v = self.search_hold(v, pt, T)  # (the tuple searched for, which may be None: bigints.py)
+            if base == "dict" and p == "*V" and held(V) != V:
+                v = self.held_default(v, pt, V)  # (get()'s and setdefault()'s, a tuple of ints as the dict holds it: bigints.py)
             v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
             if self.list_id_kind(o.t) != 0 and p == "*T":
                 idstore = v
@@ -2509,10 +2509,16 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         return self.dict_box(res)  # (a value past 64 bits: bigints.py)
     if slot and base == "list":
         return self.held_value(self.from_slot(res, rtype))  # (pop() of a list of tuples of ints: bigints.py)
+    if slot and base == "dict":
+        return self.held_read(self.from_slot(res, rtype))  # (get(), pop(), setdefault() of a dict of tuples of ints: bigints.py)
     if slot:
         return self.from_slot(res, rtype)
+    if base == "dict" and m == "values" and held(V) != V:
+        return self.rres(res, rtype)  # (its tuples of ints, which the dict holds as the list does: bigints.held)
     if base == "dict" and (m == "keys" or m == "values" or m == "items"):
         return self.held_list(self.rres(res, rtype))  # (a list of tuples of ints holds them so: bigints.py)
+    if base == "dict" and m == "popitem":
+        return self.held_pair(self.rres(res, rtype))  # (a tuple of ints as the dict holds it: bigints.py)
     return self.rres(res, rtype)
 
 def gen_update(self, o: Val, args: list[Node]) -> Val:
