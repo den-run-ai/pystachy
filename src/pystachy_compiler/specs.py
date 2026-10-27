@@ -836,8 +836,12 @@ RUNTIME: dict[str, str] = {
     "dict.big_find": "int:S,int,%ptr|R? rD U?|", "dict.big_entry": "int:S,int,%ptr|R A I rD U?|",
     "dict.big_put": "int:S,int,%ptr|R? A rD wD U?|", "dict.big_del": "None:S,int,%ptr|R A I rD wD U?|",
     "dict.big_key": "%ptr:S,int|rD|",
-    # popitem() of a dict of ints or of int keys: its tuple of promoting ints (utils.tslots)
-    "dict.big_popitem": "tuple[K,V]:S|R A rD wD|",
+    # popitem() of a dict of ints or of int keys: its tuple of promoting ints (utils.tslots); and
+    # items() and update() of pairs of a dict whose items' tuples a program's lists hold as tuples
+    # of promoting ints (bigints.held), by the layout's descriptor (held_shape) and whether the
+    # key, the value is an int
+    "dict.big_popitem": "tuple[K,V]:S|R A rD wD|", "dict.big_items": "list[tuple[K,V]]:S,%ptr|A rD|",
+    "dict.update_pairs_big": "None:S,list[T],bool,bool|R? A rL rD wD U?|",
     # get(), pop(), setdefault() and their boxes by such a key, as get, getbox, pop, pop_default,
     # popbox, setdefault, big_pop and big_setdefault by a 64-bit key (bigints.py's BKEY)
     "dict.bkey_get": "*V:S,int,%ptr,*V|R? rD U?|", "dict.bkey_getbox": "*V:S,int,%ptr,*V|R? A rD U?|",
