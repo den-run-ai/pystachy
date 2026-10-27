@@ -1385,9 +1385,9 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.ret = ""  # (-> Box: decided by its first return, as an unannotated one is)
     elif d.kids[1].kind != "noann":
         f.ret = self.typeof(d.kids[1])
-    elif cls != "" and d.s == "__len__" and has_value_return(d.kids[2]):
-        # bool is also a legal length; infer it so an explicit obj.__len__()
-        # keeps returning bool while len(obj) converts it to int.
+    elif cls != "" and (d.s == "__len__" or d.s == "__hash__") and has_value_return(d.kids[2]):
+        # bool is also a legal length or hash; infer it so an explicit obj.__len__()
+        # keeps returning bool while len(obj) converts it to int (and so hash()).
         f.generic = True
         f.ret = ""
     elif cls != "" and d.s in ["__str__", "__repr__", "__bool__"] and has_value_return(d.kids[2]):

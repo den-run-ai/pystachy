@@ -112,8 +112,8 @@ infer a missing return annotation from their supported return statements, even w
 parameter is annotated or no arguments are taken. A function without a value return keeps
 its `None` result type; an explicit `-> None` still rejects returning a value.
 Unannotated `__str__` and `__repr__` use their required `str` result type and `__bool__`
-uses `bool`; their bodies are checked against those contracts. An unannotated `__len__`
-infers `int` or `bool`. Constructors keep their `None` result contract.
+uses `bool`; their bodies are checked against those contracts. An unannotated `__len__` or
+`__hash__` infers `int` or `bool`. Constructors keep their `None` result contract.
 There is no implicit `int` to `float`
 conversion in an assignment, argument or return: write `1.0`, or convert explicitly.
 Arithmetic and numeric list searches may mix integers and floats. Equality also compares

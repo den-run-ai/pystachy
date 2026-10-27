@@ -61,7 +61,7 @@ main before #907's list storage. The other 16 stay out; the first problem of eac
 
 | Upstream file | First problem |
 |---|---|
-| `builtin_hash_intbig.py` | An unannotated `__hash__` is rejected (`__hash__ must return int`), with or without the comment. |
+| `builtin_hash_intbig.py` | A dict key past 64 bits (`{1 << 66: 1}`): dict keys hold 64-bit ints ([boundaries](../../docs/python-int.md#64-bit-boundaries)), `OverflowError`. |
 | `builtin_round_int.py` | A list of tuples whose items are a `bool` or an int (`expected int, got bool \| int`). |
 | `builtin_round_intbig.py` | Tuples in a list hold 64-bit ints ([boundaries](../../docs/python-int.md#64-bit-boundaries)): `OverflowError`. |
 | `int1.py` | `int(x, base)` where `x` is not a `str` is rejected during compilation (CPython raises `TypeError`). |
