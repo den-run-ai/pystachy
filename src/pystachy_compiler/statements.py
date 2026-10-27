@@ -153,8 +153,10 @@ def gen_check_special(self, f: FnInfo) -> None:
         pass  # (a template: each instance's return type is checked where it is compiled, see instance)
     elif f.name == "__bool__" and f.ret != "bool":
         f.bad = f"__bool__ should return bool, returned {tname(f.ret)}"  # (CPython's TypeError)
-    elif ret != "" and f.ret != ret and not ((f.name == "__len__" or f.name == "__hash__") and f.ret == "bool"):
-        f.bad = f"{f.name} must return {ret}"  # (a bool is an int to len() and hash())
+    elif ret != "" and f.ret != ret and not ((f.name == "__len__" or f.name == "__hash__") and f.ret == "bool") and not (ret == "int" and f.ret == BIG):
+        # (a bool is an int to len() and hash(); a promoting int, of a module that opts in, is one
+        # that they take as CPython does: big_len, big_hashed)
+        f.bad = f"{f.name} must return {ret}"
     elif f.name == "__format__" and f.ptypes[1] != "str":
         f.bad = "__format__ takes the format spec as a str"
     if f.bad != "" and self.classes[f.cls].mod == "":
@@ -1399,7 +1401,10 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
     return self.arith(op, cur, self.expr(rhs, cur.t), op + "=")
 
 def gen_objlen(self, v: Val) -> Val:
-    r = self.as_int(self.call_fn(self.classes[v.t].methods["__len__"], [v], []))
+    r = self.call_fn(self.classes[v.t].methods["__len__"], [v], [])
+    if r.t == BIG:
+        return self.big_len(r)
+    r = self.as_int(r)
     self.guard(self.num_cmp('<', Val(r.v, "int"), Val('0', "int")).v, "ValueError: __len__() should return >= 0")
     return r
 

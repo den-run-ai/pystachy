@@ -6,6 +6,7 @@ from src.pystachy_compiler.dynamic import comparison_aliases, comparison_propert
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import (
+    BIG,
     SPECIAL,
     SPECSHOW,
     TEMPLATE_BYTES,
@@ -733,7 +734,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     self.function(g, g.node.kids[2].kids)
     self.restore(fr)
     ret = SPECIAL[f.name][SPECIAL[f.name].find(":") + 1 :] if f.cls != "" and f.name in SPECIAL else ""
-    if ret != "" and g.ret != ret and not (f.name == "__len__" and g.ret == "bool"):
+    if ret != "" and g.ret != ret and not (f.name == "__len__" and g.ret == "bool") and not (ret == "int" and g.ret == BIG):
         self.err(f"{f.name} must return {ret}, and {shown(f.cls)}.{f.name}() returns {typestr(g.ret)}")
     self.making.pop()
     self.template_bytes -= size
