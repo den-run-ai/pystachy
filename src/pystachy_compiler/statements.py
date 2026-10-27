@@ -1047,7 +1047,7 @@ def gen_stmt(self, n: Node) -> None:
             if n.s == "set" and self.elem_problem(et) != "":
                 self.err(self.elem_problem(et))
         if n.s == "set":
-            self.rt("pys_set_add", "void", [f"ptr {self.lcs[-1]}", "i64 " + self.to_slot(self.store_elem(v, et))], self.key_fx(et))
+            self.set_store(self.lcs[-1], self.set_coerce(v, et), et)
         elif n.s == "discard":
             self.sdiscard(f"ptr {self.lcs[-1]}", v, et)
         else:
@@ -1923,6 +1923,8 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
         return [Val(j, "dyn")]
     if is_gen(s.t):
         return [self.gen_value(j, gelem(s.t))]  # (j: its promise, gen_next)
+    if self.set_int(s.t):
+        return [self.big_set_value(s, j)]  # (elements past 64 bits: bigints.py)
     if is_set(s.t):
         return [self.from_slot(self.rt("pys_set_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), selem(s.t))]
     if s.t == RANGEC:

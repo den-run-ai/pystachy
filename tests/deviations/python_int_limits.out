@@ -1,9 +1,8 @@
 tuple of a list: Python int too large to convert to C long
-set of a list: Python int too large to convert to C long
 heapq: Python int too large to convert to C long [18446744073709551616, 1, 0]
 tuple in a list: Python int too large to convert to C long
 dict key: Python int too large to convert to C long
-set: Python int too large to convert to C long
+iter() of a set: Python int too large to convert to C long
 items(): Python int too large to convert to C long
 popitem(): Python int too large to convert to C long {'k': 18446744073709551616}
 pop() of a bool key: Python int too large to convert to C long {1: 2, 2: 18446744073709551616}

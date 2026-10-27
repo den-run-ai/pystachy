@@ -2052,6 +2052,8 @@ def gen_walk(self, name: str, args: list[Node]) -> Val:
         return self.big_dict_value(o, ns[0][4:])  # (an int past 64 bits: bigints.py)
     if name == "__pys_dict_val" and len(ns) == 1:
         return self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}"] + ns), targs(o.t)[1])
+    if name == "__pys_set_key" and len(ns) == 1 and self.set_int(o.t):
+        return self.big_set_value(o, ns[0][4:])  # (an int past 64 bits: bigints.py)
     if name == "__pys_set_key" and len(ns) == 1:
         return self.from_slot(self.rt("pys_set_key", "i64", [f"ptr {o.v}"] + ns), selem(o.t))
     self.err(f"name '{name}' is not defined")

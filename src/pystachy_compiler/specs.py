@@ -692,8 +692,8 @@ TEMPLATE_RETAINED = 16777216
 # running out of memory ends the program); U may run user code, and so has every other letter (U?:
 # when the static type, the descriptor of a # parameter or a dict's keys, Ins.x, holds a class; R?:
 # R when Ins.x holds a recursive alias's edge, R<n>:, of which runtime.c's descriptor walks follow
-# at most 512 before raising RecursionError, in rec_deep, or a list or dict of ints, Li or D...i, in a
-# program whose lists and dicts hold promoting ints (int_lists), of which repr raises CPython's
+# at most 512 before raising RecursionError, in rec_deep, or a list, set or dict of ints, in a program
+# whose lists, sets and dicts hold promoting ints (int_lists), of which repr raises CPython's
 # ValueError for one past 4300 digits, in digits_deep: ircheck.big_digits); I
 # does I/O, or uses the process or global runtime state; rL wL, rD wD, rO wO, rG wG, rF wF read or
 # write lists, dicts, objects' fields and flags, globals and their flags, files. Strings and tuples
@@ -726,9 +726,7 @@ for _j in range(len(FX)):
 # their dicts too (pys_dict_narrow): dict.items, whose tuples hold 64-bit ints, and the get(), pop()
 # and setdefault() of 64-bit values, which a dict of ints compiles so only for what
 # Gen.big_dict_method leaves (pop() of a key that may be None, or of a bool without a default)
-NARROWED: list[str] = ["dict.fromkeys", "dict.get", "dict.items", "dict.pop", "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "set.and_list", "set.ge_list", "set.isdisjoint_list",
-                       "set.isub_list", "set.ixor_list", "set.le_list", "set.sub_list", "set.update_list", "set.xor_list",
-                       "sum.int_float"]
+NARROWED: list[str] = ["dict.fromkeys", "dict.get", "dict.items", "dict.pop", "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float"]
 RUNTIME: dict[str, str] = {
     # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
     # the library's scanned wrapper keeps their pointer alive.
@@ -842,6 +840,10 @@ RUNTIME: dict[str, str] = {
     "set.cmp": "int:S,S,int|R? rD U?|", "set.le_list": "bool:S,list[T]|R? A rL rD U?|", "set.ge_list": "bool:S,list[T]|R? rL rD U?|",
     "set.isdisjoint": "bool:S,S|R? rD U?|", "set.isdisjoint_list": "bool:S,list[T]|R? rL rD U?|", "set.next": "int:S,int,int|R rD|",
     "set.key": "*T:S,int|rD|", "set.list": "list[T]:S|A rD|",
+    # a set of ints whose elements may be past 64 bits (bigints.py, runtime.c's sbig)
+    "set.big_add": "None:S,int,%ptr|R? A rD wD U?|", "set.big_has": "bool:S,int,%ptr|R? rD U?|",
+    "set.big_discard": "None:S,int,%ptr|R? rD wD U?|", "set.big_remove": "None:S,int,%ptr|R A I rD wD U?|",
+    "set.big_key": "%ptr:S,int|rD|", "set.big_pop": "int+:S|R rD wD|",
     # Public Unicode operations over UTF-8 storage, separate from runtime.py's raw byte helpers.
     "text.len": "int:str||", "text.chr": "str:int|R A|",
     "text.get": "str:str,int|R A|", "text.at": "str:str,int|R A|",

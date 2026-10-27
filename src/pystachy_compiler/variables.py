@@ -1590,7 +1590,7 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
         v = self.expr(args[0], "")
         self.refine(name, self.ctype("set", [v.t]))
         t = self.qtype(name)
-        self.rt("pys_set_add", "void", [f"ptr {o.v}", "i64 " + self.to_slot(self.store_elem(v, selem(t)))], self.key_fx(selem(t)))
+        self.set_store(o.v, self.set_coerce(v, selem(t)), selem(t))
         return Val("null", "None")
     if is_set(o.t) and m == "update" and len(args) == 1 and args[0].kind == "listcomp" and args[0].s == "gen":
         # (item by item, as smethod's)

@@ -207,10 +207,10 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         self.err(self.elem_problem(et))
     if const:
         self.globs[gi].t = self.ctype("frozenset", [et])
-    items = [self.store_elem(v, et) for v in items]
+    items = [self.set_coerce(v, et) for v in items]
     r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
     for v in items:
-        self.rt("pys_set_add", "void", [f"ptr {r}", "i64 " + self.to_slot(v)], self.key_fx(et))
+        self.set_store(r, v, et)
     if folded or (len(items) > 2 and folds(mk("tuple", "", n.line, n.kids))):
         c = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
         self.rt("pys_set_update_list", "void", [f"ptr {c}", f"ptr {self.rt('pys_set_list', 'ptr', [f'ptr {r}'])}"], self.key_fx(et))
@@ -391,6 +391,9 @@ def gen_sdiscard(self, ov: str, v: Val, et: str) -> None:
     # where the elements are objects, which may be None)
     if v.t == "None" and et not in self.classes:
         return
+    if v.t == BIG and et == "int" and int_lists():
+        self.rt("pys_set_big_discard", "void", [ov, f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}"])  # (bigints.py)
+        return
     if is_opt(v.t) and unopt(v.t) == et:
         l1 = self.label()
         l2 = self.label()
@@ -512,9 +515,12 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
     ov = f"ptr {o.v}"
     kx = self.key_fx(et)  # (Ins.x of the ops that hash or compare elements)
     none = Val("null", "None")
+    if self.set_int(o.t) and m in ["add", "pop", "discard", "remove"]:
+        bm = self.big_set_method(o, m, args)  # (elements past 64 bits: bigints.py)
+        if bm.t != "":
+            return bm
     if m == "add":
-        v = self.store_elem(self.expr(args[0], et), et)
-        self.rt("pys_set_add", "void", [ov, "i64 " + self.to_slot(v)], kx)
+        self.set_store(o.v, self.set_coerce(self.expr(args[0], et), et), et)
         return none
     if m == "discard" or m == "remove":
         v = self.big_opt_narrow(self.expr(args[0], et))  # (an element holds a 64-bit int: bigints.py)
@@ -703,6 +709,7 @@ def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -
     # a later comparison may look up a native key in a differently typed dict.
     # The marker preserves the original slots and records Python's hash/probe
     # scheme from insertion, including deletions; equality never rehashes keys.
+    kt = "int" if kt == BIG else kt  # (a promoting int's container holds ints: bigints.py)
     if dictionary and dynamic_program() and not self.rtmode:
         d = self.hash_desc(kt)
         d = d if "H" in d or "A" in d else "!" + d

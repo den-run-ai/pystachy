@@ -59,6 +59,7 @@ from src.pystachy_compiler.bigints import (
     gen_big_opt_or as bigints_big_opt_or,
     gen_big_status as bigints_big_status,
     gen_big_len as bigints_big_len,
+    gen_big_slot as bigints_big_slot,
     gen_big_list_value as bigints_big_list_value,
     gen_item_type as bigints_item_type,
     gen_big_list_store as bigints_big_list_store,
@@ -69,6 +70,11 @@ from src.pystachy_compiler.bigints import (
     gen_big_dict_method as bigints_big_dict_method,
     gen_big_dict_call as bigints_big_dict_call,
     gen_dict_store as bigints_dict_store,
+    gen_set_int as bigints_set_int,
+    gen_big_set_value as bigints_big_set_value,
+    gen_set_coerce as bigints_set_coerce,
+    gen_set_store as bigints_set_store,
+    gen_big_set_method as bigints_big_set_method,
     gen_big_list_minmax as bigints_big_list_minmax,
     gen_big_list_find as bigints_big_list_find,
     gen_big_list_method as bigints_big_list_method,
@@ -1594,6 +1600,9 @@ class Gen:
     def big_len(self, v: Val) -> Val:
         return bigints_big_len(self, v)
 
+    def big_slot(self, raw: str, fn: str, args: list[str], two: bool = False) -> Val:
+        return bigints_big_slot(self, raw, fn, args, two)
+
     def big_list_value(self, o: Val, i: str, raw: str) -> Val:
         return bigints_big_list_value(self, o, i, raw)
 
@@ -1623,6 +1632,21 @@ class Gen:
 
     def dict_store(self, d: str, key: str, v: Val, kv: list[str], e: str = "") -> None:
         return bigints_dict_store(self, d, key, v, kv, e)
+
+    def set_int(self, t: str) -> bool:
+        return bigints_set_int(self, t)
+
+    def big_set_value(self, s: Val, j: str) -> Val:
+        return bigints_big_set_value(self, s, j)
+
+    def set_coerce(self, v: Val, et: str) -> Val:
+        return bigints_set_coerce(self, v, et)
+
+    def set_store(self, s: str, v: Val, et: str) -> None:
+        bigints_set_store(self, s, v, et)
+
+    def big_set_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return bigints_big_set_method(self, o, m, args)
 
     def big_list_minmax(self, o: Val, maximum: bool) -> Val:
         return bigints_big_list_minmax(self, o, maximum)
