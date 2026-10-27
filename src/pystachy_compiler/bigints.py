@@ -645,6 +645,13 @@ def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
         fn = "pys_dict_getbox" if m == "get" else "pys_dict_popbox"
         return self.dict_box(self.rt(fn, "i64", [f"ptr {o.v}", f"i64 {k}", "i64 0"], x))
     d = self.to_big(self.expr(args[1], "")) if len(args) == 2 else self.big(Val("0", "int"))
+    return self.big_dict_call(o, m, kx, k, d, len(args) == 2, x)
+
+
+def gen_big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, x: str) -> Val:
+    # o.get(kx, d), o.pop(kx[, d]) or o.setdefault(kx, d) of o, a dict of ints (dict_int), its
+    # arguments compiled (k: kx's slot; d: the default as a promoting int, has: one was given; x:
+    # the lookup's key_fx), for big_dict_method and for fill, where such a call types its dict
     if m == "get":
         e = self.nonekey(kx, "-1", "pys_dict_find", [f"ptr {o.v}", f"i64 {k}"], x)  # (a key that is None: none)
         found = self.label()
@@ -658,8 +665,7 @@ def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
         self.place(end)
         v = Val(self.phi(ph), BIG)
     elif m == "pop":
-        has = "1" if len(args) == 2 else "0"
-        v = Val(self.rt("pys_dict_big_pop", BIGLL, [f"ptr {o.v}", f"i64 {k}", f"i64 {has}", f"i64 {self.big_lo(d).v}", f"ptr {self.big_hi(d).v}"], x), BIG)
+        v = Val(self.rt("pys_dict_big_pop", BIGLL, [f"ptr {o.v}", f"i64 {k}", f"i64 {'1' if has else '0'}", f"i64 {self.big_lo(d).v}", f"ptr {self.big_hi(d).v}"], x), BIG)
     else:
         v = Val(self.rt("pys_dict_big_setdefault", BIGLL, [f"ptr {o.v}", f"i64 {k}", f"i64 {self.big_lo(d).v}", f"ptr {self.big_hi(d).v}"], x), BIG)
     return v if self.int_policy(self.line) else self.big_narrow(v)

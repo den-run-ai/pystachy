@@ -25,6 +25,13 @@ counts: dict[str, int] = {}
 for w in ["x", "y", "x"]:
     counts[w] = counts.get(w, 0) + big
 print(counts, sum(counts.values()), sorted(counts.values()))
+tally = {}
+seen = {}
+for w in ["x", "y", "x"]:
+    tally[w] = tally.get(w, 0) + big
+    seen.setdefault(w, -big)
+    seen[w] -= 1
+print(tally, seen)
 print(d.setdefault("z", 3 * big), d.setdefault("z", 0), d.pop("z"), d.pop("q", -1), d.pop("c", 0))
 sq = {k: k ** 30 for k in range(3)}
 print(sq, sq == {0: 0, 1: 1, 2: 2 ** 30}, {1: big} == {1: big}, {1: big} == {1: big + 1}, {1: big} != {1: 0})

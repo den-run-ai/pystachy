@@ -67,6 +67,7 @@ from src.pystachy_compiler.bigints import (
     gen_big_dict_value as bigints_big_dict_value,
     gen_dict_box as bigints_dict_box,
     gen_big_dict_method as bigints_big_dict_method,
+    gen_big_dict_call as bigints_big_dict_call,
     gen_dict_store as bigints_dict_store,
     gen_big_list_minmax as bigints_big_list_minmax,
     gen_big_list_find as bigints_big_list_find,
@@ -1616,6 +1617,9 @@ class Gen:
 
     def big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
         return bigints_big_dict_method(self, o, m, args)
+
+    def big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, x: str) -> Val:
+        return bigints_big_dict_call(self, o, m, kx, k, d, has, x)
 
     def dict_store(self, d: str, key: str, v: Val, kv: list[str], e: str = "") -> None:
         return bigints_dict_store(self, d, key, v, kv, e)
