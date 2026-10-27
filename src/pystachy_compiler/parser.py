@@ -8,6 +8,7 @@ from src.pystachy_compiler.syntax import (
     BINOPS,
     CMPOPS,
     LAMBDAS,
+    NOKIDS,
     Node,
     STARTS,
     as_target,
@@ -890,7 +891,7 @@ class Parser:
                     return True
                 stores.append(nm)
             return False
-        for q in p.kids if k == "pseq" else p.kids[:0]:
+        for q in p.kids if k == "pseq" else NOKIDS:
             if self.pcheck(q, True, stores):
                 return True
         return False

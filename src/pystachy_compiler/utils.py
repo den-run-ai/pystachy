@@ -957,8 +957,7 @@ def stack_keyed(f: FnInfo) -> bool:
 
 def clone(n: Node) -> Node:
     # a copy of tree n (a class method's def, compiled again for a class that inherits it)
-    c = Node(n.kind, n.s, n.line)
-    c.kids = [clone(k) for k in n.kids]
+    c = Node(n.kind, n.s, n.line, [clone(k) for k in n.kids])
     c.chk = n.chk
     c.mchk = n.mchk
     c.depth = n.depth

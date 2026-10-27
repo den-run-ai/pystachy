@@ -671,9 +671,7 @@ def refl_binds_in(n: Node, name: str) -> bool:
 def refl_subst(n: Node, name: str, lit: Node) -> Node:
     # a copy of code n whose reads of name are lit (but in a comprehension that binds name)
     if n.kind == "name" and n.s == name:
-        c = Node(lit.kind, lit.s, n.line)
-        c.kids = lit.kids
-        return c
+        return Node(lit.kind, lit.s, n.line, lit.kids)
     c = Node(n.kind, n.s, n.line)
     c.chk = n.chk
     c.mchk = n.mchk
@@ -685,8 +683,7 @@ def refl_subst(n: Node, name: str, lit: Node) -> Node:
 
 
 def clone_node(n: Node) -> Node:
-    c = Node(n.kind, n.s, n.line)
-    c.kids = [clone_node(k) for k in n.kids]
+    c = Node(n.kind, n.s, n.line, [clone_node(k) for k in n.kids])
     c.chk = n.chk
     c.mchk = n.mchk
     c.depth = n.depth

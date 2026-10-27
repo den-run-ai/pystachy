@@ -177,6 +177,10 @@ def gen_forget(self, body: list[Node], tgt: Node) -> dict[str, str]:
     return dict(self.narrowed)
 
 # ---- tests the static types decide
+# the comparisons of two numbers' order or equality (gen_static)
+ORDERS: dict[str, bool] = {"==": True, "!=": True, "<": True, "<=": True, ">": True, ">=": True}
+
+
 def gen_static(self, n: Node) -> int:
     # 1 or 0 if n is a test whose result the static types decide and that has nothing else to
     # evaluate: isinstance(x, T), x is None and x is not None for a variable x (that is surely
@@ -201,7 +205,7 @@ def gen_static(self, n: Node) -> int:
         return 0 if self.static_type(n) == "tuple[]" else 1  # (*args: the extra arguments)
     if k == "name" and is_kw(self.static_type(n)):
         return 0 if self.static_type(n) == "kw[]" else 1  # (**kwargs: the extra keyword arguments)
-    if k == "cmp" and n.s in "== != < <= > >=".split() and (self.static_len(n.kids[0]) >= 0 or self.static_len(n.kids[1]) >= 0):
+    if k == "cmp" and n.s in ORDERS and (self.static_len(n.kids[0]) >= 0 or self.static_len(n.kids[1]) >= 0):
         # len(args) == 2 for a tuple (*args) or a **kwargs record, whose length its type fixes,
         # against an int constant (one that fits in 64 bits: else the test compiles, to its error)
         a = self.static_len(n.kids[0]) if n.kids[0].kind != "int" else int(n.kids[0].s) if int_fits(n.kids[0].s) else -1
@@ -1156,25 +1160,26 @@ def gen_cvar_stores(self, ns: list[Node]) -> None:
     # method's cls.x is C.x): those of a plain class become class variables (self.cvars), read
     # from their global by C.x and by the objects that have not assigned x themselves
     for n in ns:
-        ts: list[Node] = n.kids[:-1] if n.kind == "assign" else [n.kids[0]] if (n.kind == "augassign" or n.kind == "annassign") and len(n.kids) > 0 else []
-        while len(ts) > 0:
-            t = ts.pop()
-            if t.kind == "tuple" or t.kind == "starred":
-                ts.extend(t.kids)
-            elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes:
-                c = t.kids[0].s
-                if t.s == "__module__" and self.classes[c].exc != "" and self.classes[c].ftypes.get("__module__", "str") == "str":
-                    # (its ExcClass's displayed name changes: exc_set_module; a __module__ its class
-                    # body declares of another type, __module__: int = 1, stays a class variable)
-                    self.xmods[c] = True
-                if not self.is_dc(c) and t.s in self.classes[c].fdefault:
-                    self.cvars[c + "." + t.s] = True
-                    # (and of the exception classes that share it, see cvar)
-                    h = self.default_home(self.classes[c], t.s)
-                    for x in self.classes.values():
-                        related = self.classes[c].tag > 0 and x.tag > 0 and (self.derives(c, x.name) or self.derives(x.name, c))
-                        if t.s in x.ftypes and (related or (t.s in x.fdefault and self.default_home(x, t.s) is h)):
-                            self.cvars[x.name + "." + t.s] = True
+        if n.kind == "assign" or ((n.kind == "augassign" or n.kind == "annassign") and len(n.kids) > 0):  # (no list made at other nodes)
+            ts: list[Node] = n.kids[:-1] if n.kind == "assign" else [n.kids[0]]
+            while len(ts) > 0:
+                t = ts.pop()
+                if t.kind == "tuple" or t.kind == "starred":
+                    ts.extend(t.kids)
+                elif t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s in self.classes:
+                    c = t.kids[0].s
+                    if t.s == "__module__" and self.classes[c].exc != "" and self.classes[c].ftypes.get("__module__", "str") == "str":
+                        # (its ExcClass's displayed name changes: exc_set_module; a __module__ its class
+                        # body declares of another type, __module__: int = 1, stays a class variable)
+                        self.xmods[c] = True
+                    if not self.is_dc(c) and t.s in self.classes[c].fdefault:
+                        self.cvars[c + "." + t.s] = True
+                        # (and of the exception classes that share it, see cvar)
+                        h = self.default_home(self.classes[c], t.s)
+                        for x in self.classes.values():
+                            related = self.classes[c].tag > 0 and x.tag > 0 and (self.derives(c, x.name) or self.derives(x.name, c))
+                            if t.s in x.ftypes and (related or (t.s in x.fdefault and self.default_home(x, t.s) is h)):
+                                self.cvars[x.name + "." + t.s] = True
         self.cvar_stores(n.kids)
 
 def gen_cvar(self, cn: Node, a: str) -> ClassInfo:

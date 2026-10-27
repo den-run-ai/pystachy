@@ -4,11 +4,11 @@ from src.pystachy_compiler.diagnostics import MAXNEST, TOODEEP, fail
 
 
 class Node:
-    def __init__(self, kind: str, s: str, line: int):
+    def __init__(self, kind: str, s: str, line: int, kids: list[Node] | None = None):
         self.kind = kind
         self.s = s
         self.line = line
-        self.kids: list[Node] = []
+        self.kids: list[Node] = kids if kids is not None else []  # (mk's: no list made to replace)
         self.chk = False  # a variable read that may find the variable unassigned
         # An import binding that may be unbound: "<its flag> <name> <L (a local) or G>" (see
         # Loader.import_binds); M checks a source module attribute and I a from-import of it.
@@ -21,9 +21,13 @@ class Node:
         self.memo = 0  # an item of a display: where Gen.dmemo remembers its dry-run type, + 1 (Gen.dyn_dry)
 
 
+# an empty list of nodes for a for loop to run over where a node has no kids to visit (for k in
+# n.kids if ... else NOKIDS), which no code changes: n.kids[:0] made a list at every visit
+NOKIDS: list[Node] = []
+
+
 def mk(kind: str, s: str, line: int, kids: list[Node]) -> Node:
-    n = Node(kind, s, line)
-    n.kids = kids
+    n = Node(kind, s, line, kids)
     for k in kids:
         if k.depth >= n.depth:
             n.depth = k.depth + 1
