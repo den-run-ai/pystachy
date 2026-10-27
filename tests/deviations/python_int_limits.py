@@ -4,12 +4,12 @@
 # keys and values of dicts of ints, sets of ints and generators, but 64-bit storage and the builtins
 # that take an int keep 64-bit ints for now (#907). A value past 64 bits stored in a tuple or an
 # int | None in a list, a tuple's int | None item, the union of a bool and an int (a result that is
-# either) or sent to a generator, given to range() or to a dict's get(), added by sum() among
-# floats, in a NamedTuple that may be None (a parameter) hashed as the tuple of its fields, a dict's
-# key or value that items() or popitem() puts in a tuple, or a list's item, a dict's key, a set's
-# element or a generator's value that tuple() or a module that does not opt in (heapq, the iterator
-# of iter()) reads, raises OverflowError, where CPython goes on with the bigger int; so does pop()
-# of a bool key, which reads a dict's values as 64-bit ints.
+# either) or sent to a generator, given to range() or as an int | None key to a dict's get(), added
+# by sum() among floats, in a NamedTuple that may be None (a parameter) hashed as the tuple of its
+# fields, a dict's key or value that items() or popitem() puts in a tuple, or a list's item, a
+# dict's key, a set's element or a generator's value that tuple() or a module that does not opt in
+# (heapq, the iterator of iter()) reads, raises OverflowError, where CPython goes on with the bigger
+# int; so does pop() of a bool key, which reads a dict's values as 64-bit ints.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected.
 import heapq
@@ -58,9 +58,10 @@ except OverflowError as e:
     print("tuple in a list:", e)
 keyed = {big: "k"}
 try:
-    print(keyed.get(big))
+    some: int | None = big
+    print(keyed.get(some))
 except OverflowError as e:
-    print("get() of a key:", e)
+    print("get() of an int | None key:", e)
 try:
     print(list(keyed.items()))
 except OverflowError as e:

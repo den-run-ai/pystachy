@@ -16,7 +16,7 @@ PREFIX = "src.pystachy_compiler."
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
 analysis.BINDERS
-bigints.BIGOPS bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
+bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
 dynamic.BINDUNDERS dynamic.BUILTIN expressions.ORDERS

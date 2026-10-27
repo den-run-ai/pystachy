@@ -70,6 +70,8 @@ from src.pystachy_compiler.bigints import (
     gen_key_coerce as bigints_key_coerce,
     gen_key_slot as bigints_key_slot,
     gen_big_key_entry as bigints_big_key_entry,
+    gen_dict_key_args as bigints_dict_key_args,
+    gen_dict_key_fn as bigints_dict_key_fn,
     gen_dict_put as bigints_dict_put,
     gen_big_key as bigints_big_key,
     gen_dict_value as bigints_dict_value,
@@ -1640,6 +1642,12 @@ class Gen:
 
     def big_key_entry(self, d: Val, k: Val, fn: str) -> str:
         return bigints_big_key_entry(self, d, k, fn)
+
+    def dict_key_args(self, kx: Val, k: str) -> list[str]:
+        return bigints_dict_key_args(self, kx, k)
+
+    def dict_key_fn(self, fn: str, kx: Val) -> str:
+        return bigints_dict_key_fn(self, fn, kx)
 
     def big_key(self, k: Val) -> Val:
         return bigints_big_key(self, k)

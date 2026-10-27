@@ -724,9 +724,13 @@ for _j in range(len(FX)):
 # nothing for it): a program whose lists may hold promoting ints past 64 bits (int_lists) narrows
 # their lists first (pys_list_narrow, Gen.rt), as other 64-bit storage takes a promoting int, and
 # their dicts too (pys_dict_narrow): dict.items, whose tuples hold 64-bit ints, and the get(), pop()
-# and setdefault() of 64-bit values, which a dict of ints compiles so only for what
-# Gen.big_dict_method leaves (pop() of a key that may be None, or of a bool without a default)
-NARROWED: list[str] = ["dict.get", "dict.items", "dict.pop", "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float"]
+# and setdefault() of 64-bit values (also by a promoting int key: bkey_), which a dict of ints
+# compiles so only for what Gen.big_dict_method leaves (pop() of a key that may be None, or of a
+# bool without a default)
+NARROWED: list[str] = [
+    "dict.bkey_get", "dict.bkey_pop", "dict.bkey_pop_default", "dict.bkey_setdefault", "dict.get", "dict.items", "dict.pop",
+    "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float",
+]
 RUNTIME: dict[str, str] = {
     # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
     # the library's scanned wrapper keeps their pointer alive.
@@ -828,6 +832,13 @@ RUNTIME: dict[str, str] = {
     "dict.big_find": "int:S,int,%ptr|R? rD U?|", "dict.big_entry": "int:S,int,%ptr|R A I rD U?|",
     "dict.big_put": "int:S,int,%ptr|R? A rD wD U?|", "dict.big_del": "None:S,int,%ptr|R A I rD wD U?|",
     "dict.big_key": "%ptr:S,int|rD|",
+    # get(), pop(), setdefault() and their boxes by such a key, as get, getbox, pop, pop_default,
+    # popbox, setdefault, big_pop and big_setdefault by a 64-bit key (bigints.py's BKEY)
+    "dict.bkey_get": "*V:S,int,%ptr,*V|R? rD U?|", "dict.bkey_getbox": "*V:S,int,%ptr,*V|R? A rD U?|",
+    "dict.bkey_pop": "*V:S,int,%ptr|R A I rD wD U?|", "dict.bkey_pop_default": "*V:S,int,%ptr,*V|R A I rD wD U?|",
+    "dict.bkey_popbox": "*V:S,int,%ptr,*V|R A I rD wD U?|", "dict.bkey_setdefault": "*V:S,int,%ptr,*V|R? A rD wD U?|",
+    "dict.bkey_big_pop": "int+:S,int,%ptr,bool,int,%ptr|R A I rD wD U?|",
+    "dict.bkey_big_setdefault": "int+:S,int,%ptr,int,%ptr|R? A rD wD U?|",
     "dict.find_int_nobox": "int:S,int|rD|",
     "dict.update": "None:S,S|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
     "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",
