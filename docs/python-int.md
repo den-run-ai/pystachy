@@ -355,7 +355,8 @@ the first measurements, before the inline paths, in
   `items()`, comparisons, copies, `update()`, `dict.fromkeys()`, sets of the keys, keys of one hash
   and -2\*\*63, nested dicts and `int | None` keys; `python_int_dict_key_methods.py`: their `get()`,
   `pop()` and `setdefault()` with int, str, float and list values, defaults and `KeyError`, and a
-  dict that such a call types.
+  dict that such a call types; `python_int_hash_collisions.py`: probe chains of 120 keys and
+  elements past 64 bits of one CPython hash beside 64-bit ones of the same hash, in dicts and sets.
 - `tests/programs/numbers/python_int_recursion.py`: recursive functions and methods, one with a
   `dict[int, int]` memo; `python_int_forward_ref.py`: quoted annotations that name promoting ints
   ([provenance](../tests/upstream/python-int.md)).
