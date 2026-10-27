@@ -722,14 +722,29 @@ def gen_set_store(self, s: str, v: Val, et: str) -> None:
 def gen_big_set_method(self, o: Val, m: str, args: list[Node]) -> Val:
     # o.m(args) of o, a set of ints whose elements may be past 64 bits (set_int): pop() gives the
     # promoting int (in a module that does not opt in, the 64-bit int, NARROW past 64 bits), and
-    # discard(x) and remove(x) of a promoting int x look for it exactly (pys_set_big_*); Val("", "")
-    # for the rest, which smethod compiles as for 64-bit ints
+    # discard(x) and remove(x) of a promoting int x, or of an int | None x (None is no element:
+    # discard() does nothing, remove() raises KeyError: None), look for it exactly
+    # (pys_set_big_*); Val("", "") for the rest, which smethod compiles as for 64-bit ints
     if m == "pop" and len(args) == 0:
         v = Val(self.rt("pys_set_big_pop", BIGLL, [f"ptr {o.v}"]), BIG)
         return v if self.int_policy(self.line) else self.big_narrow(v)
-    if (m == "discard" or m == "remove") and len(args) == 1 and args[0].kind not in ["kw", "starred", "dstar"] and self.dyn_dry(args[0]) == BIG:
+    if (m == "discard" or m == "remove") and len(args) == 1 and args[0].kind not in ["kw", "starred", "dstar"] and self.dyn_dry(args[0]) in [BIG, BIGOPT]:
         x = self.expr(args[0], "")
-        self.rt("pys_set_big_discard" if m == "discard" else "pys_set_big_remove", "void", [f"ptr {o.v}", f"i64 {self.big_lo(x).v}", f"ptr {self.big_hi(x).v}"])
+        fn = "pys_set_big_discard" if m == "discard" else "pys_set_big_remove"
+        end = ""
+        if x.t == BIGOPT:
+            if m == "remove":
+                self.guard(self.isnull(x), "KeyError: None")
+            else:
+                some = self.label()
+                end = self.label()
+                self.cbr(self.isnull(x), end, some)
+                self.place(some)
+            x = self.big_unbox(x)
+        self.rt(fn, "void", [f"ptr {o.v}", f"i64 {self.big_lo(x).v}", f"ptr {self.big_hi(x).v}"])
+        if end != "":
+            self.br(end)
+            self.place(end)
         return Val("null", "None")
     return Val("", "")
 

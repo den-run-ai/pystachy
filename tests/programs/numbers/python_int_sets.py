@@ -79,6 +79,26 @@ print(popped.pop(), popped.pop(), popped)
 print(18446744073709551616 in {1, 18446744073709551616}, big in {1, 2, 3})
 for x in {18446744073709551616, 1, 2}:
     print(x, x > 2)
+def maybe(x: int) -> int | None:
+    return x if x > 0 else None
+
+
+opt = {2 ** 64, 2 ** 65, 3}
+x = maybe(2 ** 64)
+print(x in opt, maybe(0) in opt)
+opt.discard(x)
+opt.discard(maybe(0))
+opt.remove(maybe(2 ** 65))
+opt.remove(maybe(3))
+try:
+    opt.remove(maybe(0))
+except KeyError as e:
+    print("KeyError:", e)
+try:
+    opt.remove(maybe(2 ** 70))
+except KeyError as e:
+    print("KeyError:", e)
+print(opt, x in opt)
 class Holder:
     def __init__(self) -> None:
         self.items: set[int] = set()
