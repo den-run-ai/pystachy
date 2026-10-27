@@ -2182,6 +2182,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         dm = self.big_dict_method(o, m, args)  # (values past 64 bits: bigints.py)
         if dm.t != "":
             return dm
+    if m == "popitem" and len(args) == 0 and (self.dict_int(o.t) or self.dict_bigkey(o.t)) and self.int_policy(self.line):
+        return self.big_popitem(o)  # (keys and values past 64 bits: bigints.py)
     if is_list(o.t) and m == "sort":
         rev = "0"
         keyv = Val("", "")

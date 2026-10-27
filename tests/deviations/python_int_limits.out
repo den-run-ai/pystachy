@@ -6,7 +6,6 @@ items() of a key: Python int too large to convert to C long
 iter() of a dict: Python int too large to convert to C long
 iter() of a set: Python int too large to convert to C long
 items(): Python int too large to convert to C long
-popitem(): Python int too large to convert to C long {'k': 18446744073709551616}
 pop() of a bool key: Python int too large to convert to C long {1: 2, 2: 18446744073709551616}
 int | None in a list: Python int too large to convert to C long
 int | None in a tuple: Python int too large to convert to C long

@@ -6,10 +6,10 @@
 # int | None in a list, a tuple's int | None item, the union of a bool and an int (a result that is
 # either) or sent to a generator, given to range() or as an int | None key to a dict's get(), added
 # by sum() among floats, in a NamedTuple that may be None (a parameter) hashed as the tuple of its
-# fields, a dict's key or value that items() or popitem() puts in a tuple, or a list's item, a
-# dict's key, a set's element or a generator's value that tuple() or a module that does not opt in
-# (heapq, the iterator of iter()) reads, raises OverflowError, where CPython goes on with the bigger
-# int; so does pop() of a bool key, which reads a dict's values as 64-bit ints.
+# fields, a dict's key or value that items() puts in a tuple, or a list's item, a dict's key, a
+# set's element or a generator's value that tuple() or a module that does not opt in (heapq, the
+# iterator of iter()) reads, raises OverflowError, where CPython goes on with the bigger int; so
+# does pop() of a bool key, which reads a dict's values as 64-bit ints.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected.
 import heapq
@@ -79,10 +79,6 @@ try:
     print(list(vals.items()))
 except OverflowError as e:
     print("items():", e)
-try:
-    print(vals.popitem())
-except OverflowError as e:
-    print("popitem():", e, vals)
 try:
     flagged = {1: 2, 2: big}
     print(flagged.pop(True))

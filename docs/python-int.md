@@ -85,9 +85,10 @@ print(int("123456789012345678901234567890") % 97)  # 52
 - The values of a dict of ints are promoting ints, in a program where a module opts in and none
   opts in to [dynamic `Any`](dynamic-any.md), as a list's items are: item assignment, `+=`,
   displays, comprehensions, `setdefault()`, `update()`, `dict()` and `copy()` store values past
-  64 bits, and in a module that opts in, indexing, `get()`, `pop()`, `setdefault()` and iteration
-  over `values()` and `items()` read them. `values()` makes a list of ints that holds them, and
-  `repr()`, `==` and `!=` take them. A memo table (`memo[n] = fib(n - 1) + fib(n - 2)`) is exact.
+  64 bits, and in a module that opts in, indexing, `get()`, `pop()`, `setdefault()`, `popitem()`
+  and iteration over `values()` and `items()` read them. `values()` makes a list of ints that
+  holds them, and `repr()`, `==` and `!=` take them. A memo table
+  (`memo[n] = fib(n - 1) + fib(n - 2)`) is exact.
 - A set or frozenset of ints holds promoting ints, in a program where a module opts in and none
   opts in to [dynamic `Any`](dynamic-any.md), at CPython's hashes, so that loops, `repr()` and
   `pop()` see CPython's order: displays, comprehensions, `add()`, `update()`, `set()` of a list or
@@ -99,8 +100,8 @@ print(int("123456789012345678901234567890") % 97)  # 52
   comprehensions, item assignment, `op=`, `update()`, copies, `dict.fromkeys()` and `setdefault()`
   store keys past 64 bits; indexing, `in` and `del` find them exactly (also by an `int | None`), so
   do `get()` and `pop()`, and in a module that opts in, iteration over the dict and its `items()`
-  reads them. `keys()` makes a list of ints that holds them, and `repr()`, `==`, `!=` and the sets
-  of a dict's keys take them.
+  and `popitem()` read them. `keys()` makes a list of ints that holds them, and `repr()`, `==`,
+  `!=` and the sets of a dict's keys take them.
 - A generator yields and returns promoting ints, in a program where a module opts in: a `for`
   loop, a comprehension, `next()`, unpacking, `send()` and `throw()` in a module that opts in read
   them, and so do `list()`, `sorted()`, `sum()`, `min()`, `max()`, `in`, `enumerate()`, `zip()`
@@ -216,7 +217,7 @@ for a C `long`), where CPython goes on with the bigger int:
 
 - The keys of dicts of other types than `int`, the items of lists of other types than `int` (a tuple
   or an `int | None` in a list holds 64-bit ints too), the values of dicts of other types than
-  `int` and the tuples that `items()` and `popitem()` make of a dict of ints (or of int keys), an
+  `int` and the tuples that `items()` makes of a dict of ints (or of int keys), an
   `int | None` key given to `get()`, `pop()` or `setdefault()`, the items and values
   of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
   items, unions other than `int | None` (also where a join makes one, as
@@ -356,7 +357,8 @@ the first measurements, before the inline paths, in
   and -2\*\*63, nested dicts and `int | None` keys; `python_int_dict_key_methods.py`: their `get()`,
   `pop()` and `setdefault()` with int, str, float and list values, defaults and `KeyError`, and a
   dict that such a call types; `python_int_hash_collisions.py`: probe chains of 120 keys and
-  elements past 64 bits of one CPython hash beside 64-bit ones of the same hash, in dicts and sets.
+  elements past 64 bits of one CPython hash beside 64-bit ones of the same hash, in dicts and sets;
+  `python_int_dict_popitem.py`: `popitem()` of dicts of ints and of int keys, and its tuple.
 - `tests/programs/numbers/python_int_recursion.py`: recursive functions and methods, one with a
   `dict[int, int]` memo; `python_int_forward_ref.py`: quoted annotations that name promoting ints
   ([provenance](../tests/upstream/python-int.md)).
