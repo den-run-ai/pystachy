@@ -2081,9 +2081,10 @@ static const char *recdesc(const char *d) {
    calls it: tools/check_runtime.py gives what reaches it R?, which the compiler makes R where the
    op's descriptor holds an R (Gen.opfx); other descriptors never get here */
 static _Noreturn void rec_deep(const char *m) { pys_fail(m); }
-/* a list's int past 64 bits (BIGIDS) with more digits than CPython's limit for an int's text, in
-   repr_depth: its ValueError, which the compiler's RUNTIME counts as rec_deep's (R?: Gen.opfx makes
-   it R where a descriptor holds a list of ints, in a program whose lists hold promoting ints) */
+/* a list's int past 64 bits (BIGIDS), or a dict's (dbig), with more digits than CPython's limit for
+   an int's text, in repr_depth: its ValueError, which the compiler's RUNTIME counts as rec_deep's
+   (R?: Gen.opfx makes it R where a descriptor holds a list or dict of ints, in a program whose lists
+   and dicts hold promoting ints) */
 static _Noreturn void digits_deep(void) { pys_fail(DIGITS_LIMIT); }
 static const char *utype(I tag, const char *d) {
   d++;

@@ -99,6 +99,14 @@ class EffectSummaries:
         self.calls = [[c for c in cs] for cs in calls]
 
 
+def big_digits(d: str) -> bool:
+    # may a value of descriptor d hold an int whose repr runtime.c's walks write from its digits, in
+    # a program whose lists and dicts of ints hold promoting ints (int_lists): a list's int (Li) or a
+    # dict's (D, its value: any dict whose descriptor holds an int), whose repr raises CPython's
+    # ValueError past 4300 digits (digits_deep)
+    return "Li" in d or ("D" in d and "i" in d)
+
+
 def has_machine_union_tag(fn: IFn) -> bool:
     # A machine pointer annotation alone says nothing about its source. Recognize
     # union boxes from parameter and result declarations, not narrowed operands.
@@ -459,9 +467,10 @@ def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
         # its __repr__ where a KeyError names it; a recursive alias's edge, R, lets a value nest
         # past the depth guard of the runtime's descriptor walks)
         f = self.rtfns[i.s]
-        # (and a dynamic value, A, may hold any of these: dynamic.py; a list of ints, Li, may hold one
-        # whose text is past CPython's limit, in a program whose lists hold promoting ints: bigints.py)
-        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x or ("Li" in i.x and int_lists())) else 0)
+        # (and a dynamic value, A, may hold any of these: dynamic.py; a list of ints, Li, or a dict of
+        # ints, D...i, may hold one whose text is past CPython's limit, in a program whose lists and
+        # dicts hold promoting ints: bigints.py)
+        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x or (big_digits(i.x) and int_lists())) else 0)
         u = "O" in i.x or "H" in i.x or "A" in i.x or ("P" in i.x and fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
         return FXALL if f.q and u else fx
     if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":

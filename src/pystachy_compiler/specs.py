@@ -692,9 +692,9 @@ TEMPLATE_RETAINED = 16777216
 # running out of memory ends the program); U may run user code, and so has every other letter (U?:
 # when the static type, the descriptor of a # parameter or a dict's keys, Ins.x, holds a class; R?:
 # R when Ins.x holds a recursive alias's edge, R<n>:, of which runtime.c's descriptor walks follow
-# at most 512 before raising RecursionError, in rec_deep, or a list of ints, Li, in a program whose
-# lists hold promoting ints (int_lists), of which repr raises CPython's ValueError for one past 4300
-# digits, in digits_deep); I
+# at most 512 before raising RecursionError, in rec_deep, or a list or dict of ints, Li or D...i, in a
+# program whose lists and dicts hold promoting ints (int_lists), of which repr raises CPython's
+# ValueError for one past 4300 digits, in digits_deep: ircheck.big_digits); I
 # does I/O, or uses the process or global runtime state; rL wL, rD wD, rO wO, rG wG, rF wF read or
 # write lists, dicts, objects' fields and flags, globals and their flags, files. Strings and tuples
 # are immutable, slots are never address-taken, dict keys are ints, strs, objects, or tuples of
