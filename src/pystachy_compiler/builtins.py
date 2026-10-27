@@ -7,6 +7,7 @@ from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.reflection import VARS_USES
+from src.pystachy_compiler.bigints import held
 from src.pystachy_compiler.specs import (
     ARITY,
     BIG,
@@ -904,7 +905,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     elif (name == "min" or name == "max") and len(vals) > 1 and keyv.t != "":
         return self.key_minmax2(vals, keyv, name)
     elif (name == "min" or name == "max") and len(vals) == 1 and is_list(t):
-        d = self.sconst(self.desc(elem(t), ">" if name == "max" else "<"))
+        d = self.sconst(self.desc(held(elem(t)), ">" if name == "max" else "<"))
         return self.list_minmax(v, d, name == "max")
     elif (name == "min" or name == "max") and len(vals) == 1:
         self.err(f"'{tname(t)}' object is not iterable")
@@ -925,7 +926,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if name == "sorted" and keyv.t != "":
             self.key_sort(Val(c, t), keyv, rev, False)
         elif name == "sorted":
-            self.rt("pys_list_sort_r", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(elem(t), '<'))}", f"i64 {rev}"])
+            self.rt("pys_list_sort_r", "void", [f"ptr {c}", f"ptr {self.sconst(self.desc(held(elem(t)), '<'))}", f"i64 {rev}"])
         return self.typed_list(Val(c, t), "" if resultsoft else want)
     elif name == "divmod" and len(vals) == 2 and self.isnum(t) and self.isnum(vals[1].t):
         dn = self.as_int(v)
@@ -948,7 +949,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # comparing keys hashed by their class (key_fx)
         return Val(self.rt("pys_dict_from", "ptr", [f"ptr {v.v}"], self.key_fx(targs(t)[0])), t)
     elif name == "list" and is_dict(t):
-        return self.typed_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]])), "" if resultsoft else want)
+        return self.typed_list(self.held_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]]))), "" if resultsoft else want)
     elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":
         tuple_use = "tuple(), bytes(), " if name == "range" else "tuple() (with scalar or optional scalar items), bytes(), " if name == "reversed" else ""
         self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), {tuple_use}sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()")
@@ -1091,7 +1092,7 @@ def gen_keys_of(self, xs: Val, key: Val) -> Val:
         self.err(f"the key function returns an empty container whose type is not known here ({typestr(k.t)})")
     if self.ctype("list", [k.t]) == "list[dyn]":
         k = self.coerce(k, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-    self.list_store(Val(ks, self.ctype("list", [k.t])), k, "append")
+    self.list_store(Val(ks, self.ctype("list", [k.t])), self.list_hold(k, k.t), "append")  # (a tuple of ints: held, bigints.py)
     self.mstore('int', f"{self.scalar('add', [Val(i, 'int'), Val('1', 'int')])}", ctr)
     self.br(lc)
     self.place(le)
@@ -1104,14 +1105,14 @@ def gen_key_sort(self, xs: Val, key: Val, rev: str, taken: bool) -> None:
     lnone = self.key_none(key, elem(xs.t), "<", "sort()" if taken else "sorted()")
     ks = self.keys_of(xs, key)
     p = self.rt("pys_list_keyed", "ptr", [f"ptr {xs.v}", f"ptr {ks.v}", f"i64 {1 if taken else 0}"])
-    self.rt("pys_list_sort_r", "void", [f"ptr {p}", f"ptr {self.sconst('K' + self.desc(elem(ks.t), '<'))}", f"i64 {rev}"])
+    self.rt("pys_list_sort_r", "void", [f"ptr {p}", f"ptr {self.sconst('K' + self.desc(held(elem(ks.t)), '<'))}", f"i64 {rev}"])
     if not taken:
         self.rt("pys_list_unkey", "void", [f"ptr {xs.v}", f"ptr {p}"])
     if lnone != "":
         lend = self.label()
         self.br(lend)
         self.place(lnone)
-        self.rt("pys_list_sort_r", "void", [f"ptr {xs.v}", f"ptr {self.sconst(self.desc(elem(xs.t), '<'))}", f"i64 {rev}"])
+        self.rt("pys_list_sort_r", "void", [f"ptr {xs.v}", f"ptr {self.sconst(self.desc(held(elem(xs.t)), '<'))}", f"i64 {rev}"])
         self.br(lend)
         self.place(lend)
 
@@ -1184,7 +1185,7 @@ def gen_key_none_join(self, r: Val, lnone: str, xs: Val, vals: list[Val], name: 
     if len(vals) > 0:
         xs = Val(self.rt("pys_list_new", "ptr", [f"i64 {len(vals)}"]), self.ctype("list", [r.t]))
         for v in vals:
-            self.list_store(xs, self.list_coerce(v, r.t), "append")
+            self.list_store(xs, self.list_hold(v, r.t), "append")
     if is_list(xs.t):
         d = self.sconst(self.desc(r.t, ">" if name == "max" else "<"))
         r0 = self.list_minmax(xs, d, name == "max")
@@ -1544,7 +1545,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
         self.mstore(r.stt, self.coerce(result, r.stt, "math.prod() must preserve its start type").v, r.acc)
         return
     if r.collect:
-        self.list_store(Val(self.mload("%ptr", r.acc), self.ctype("list", [r.t])), self.list_coerce(v, r.t), "append")
+        self.list_store(Val(self.mload("%ptr", r.acc), self.ctype("list", [r.t])), self.list_hold(v, r.t), "append")
         return
     if r.name != "sum":
         # the first item is kept; another where it is greater (max) or less (min) than the kept one
@@ -1724,10 +1725,11 @@ def gen_as_list(self, v: Val, name: str) -> Val:
             # (str.join() makes a list of the iterator's items, which calls iter() of it again)
             items = self.obj_iterator(items, "", f"'{tname(items.t)}' object is not iterable")
         return items if is_list(items.t) else self.drain(items)
+    # (a list of tuples of ints holds them as tuples of promoting ints: held_list, bigints.py)
     if is_dict(v.t):
-        return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
+        return self.held_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]])))
     if is_set(v.t):
-        return Val(self.rt("pys_set_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [selem(v.t)]))
+        return self.held_list(Val(self.rt("pys_set_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [selem(v.t)])))
     if is_vtuple(v.t):
         return Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
     if is_tuple(v.t):
@@ -1745,7 +1747,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
             item = self.tget(v, i)
             if self.ctype("list", [et]) == "list[dyn]":
                 item = self.coerce(item, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-            self.list_store(Val(r, self.ctype("list", [et])), self.as_float(item) if et == "float" else item, "append")
+            self.list_store(Val(r, self.ctype("list", [et])), self.as_float(item) if et == "float" else self.list_hold(item, item.t), "append")
         return Val(r, self.ctype("list", [et]))
     if v.t == "str" and (name == "sorted" or name == "min" or name == "max" or name == "join"):
         return Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
@@ -2204,7 +2206,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             self.key_sort(taken, keyv, rev, True)
             self.rt("pys_list_give", "void", [f"ptr {taken.v}"])
             return Val("null", "None")
-        self.rt("pys_list_sort_r", "void", [f"ptr {o.v}", f"ptr {self.sconst(self.desc(elem(o.t), '<'))}", f"i64 {rev}"])
+        self.rt("pys_list_sort_r", "void", [f"ptr {o.v}", f"ptr {self.sconst(self.desc(held(elem(o.t)), '<'))}", f"i64 {rev}"])
         return Val("null", "None")
     if is_dict(o.t) and m == "update":
         return self.update(o, args)
@@ -2306,7 +2308,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             continue
         if p == "#":
             self.exc_eq(dt)
-            av.append(f"ptr {self.sconst(self.desc(dt, '=='))}")  # (count, index, remove)
+            av.append(f"ptr {self.sconst(self.desc(held(dt) if base == 'list' else dt, '=='))}")  # (count, index, remove; a list's tuple of ints: held)
             continue
         dflt = ""
         e = p.find("=")
@@ -2429,6 +2431,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             elif (is_opt(v.t) or v.t == "None") and slot and p == "*T" and (unopt(v.t) == T or (v.t == "None" and T not in self.classes)) and (base == "list" or base == "vtuple") and m != "append" and m != "insert" and self.optional(T) != "" and not self.isnum(T):
                 pt = self.optional(T)  # xs.index(None): found where xs holds None, as == finds it
                 dt = pt
+            if base == "list" and p == "*T" and pt == T and held(T) != T:
+                v = self.list_hold(v, T)  # (an item, or the item searched for, of a list of tuples of ints: bigints.py)
             v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
             if self.list_id_kind(o.t) != 0 and p == "*T":
                 idstore = v
@@ -2497,8 +2501,12 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         res = self.select(numok, Val(res, "int"), Val("0", "int"))
     if fn == "pys_dict_getbox" and self.dict_int(o.t):
         return self.dict_box(res)  # (a value past 64 bits: bigints.py)
+    if slot and base == "list":
+        return self.held_value(self.from_slot(res, rtype))  # (pop() of a list of tuples of ints: bigints.py)
     if slot:
         return self.from_slot(res, rtype)
+    if base == "dict" and (m == "keys" or m == "values" or m == "items"):
+        return self.held_list(self.rres(res, rtype))  # (a list of tuples of ints holds them so: bigints.py)
     return self.rres(res, rtype)
 
 def gen_update(self, o: Val, args: list[Node]) -> Val:
@@ -2532,7 +2540,7 @@ def gen_update(self, o: Val, args: list[Node]) -> Val:
     if x.t != "" and x.t != o.t and x.t != pairs:
         self.err(f"dict.update() of a {typestr(o.t)} takes a dict of its type, a {typestr(pairs)} or keyword arguments, not {typestr(x.t)}")
     if x.t != "":
-        self.rt("pys_dict_update" if x.t == o.t else "pys_dict_update_pairs", "void", [f"ptr {o.v}", f"ptr {x.v}"], self.key_fx(kv[0]))
+        self.rt("pys_dict_update" if x.t == o.t else "pys_dict_update_pairs", "void", [f"ptr {o.v}", f"ptr {x.v if x.t == o.t else self.held_narrow(x).v}"], self.key_fx(kv[0]))
     if kw.t != "":
         self.rt("pys_dict_update", "void", [f"ptr {o.v}", f"ptr {kw.v}"])
     return Val("null", "None")
@@ -2563,9 +2571,9 @@ def gen_isclose(self, args: list[Node]) -> Val:
         v = given[nm] if nm in given else Val(fbits("1e-09") if nm == "rel_tol" else fbits("0.0"), "float")
         if is_opt(v.t) and self.isnum(unopt(v.t)):
             v = self.unwrap(v, "TypeError: must be real number, not NoneType")
-        if not self.isnum(v.t):
+        if not self.isnum(v.t) and v.t != BIG:
             self.err(f"must be real number, not {tname(v.t)} (argument '{nm}' of math.isclose())")
-        fs.append(f"double {self.as_float(v).v}")
+        fs.append(f"double {self.as_float(v).v}")  # (a promoting int's float, as CPython's PyFloat_AsDouble gives it: OverflowError past the float range)
     return self.rres(self.rt("pys_m_isclose", "i64", fs), "bool")
 
 def gen_prod_seq(self, xs: Val, s: Val) -> Val:
@@ -2698,7 +2706,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         v = self.listcomp(mk("listcomp", "", self.line, [mk("name", "__item", self.line, []), item, self.vnode(v)]), "list[tuple[dyn,dyn]]")
         kv = ["dyn", "dyn"]
     d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"])
-    self.rt("pys_dict_update_pairs", "void", [f"ptr {d}", f"ptr {v.v}"], self.key_fx(kv[0]))
+    self.rt("pys_dict_update_pairs", "void", [f"ptr {d}", f"ptr {self.held_narrow(v).v}"], self.key_fx(kv[0]))
     return Val(d, self.ctype("dict", kv))
 
 def gen_tmethod(self, o: Val, m: str, args: list[Node]) -> Val:

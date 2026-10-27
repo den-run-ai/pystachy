@@ -754,6 +754,10 @@ RUNTIME: dict[str, str] = {
     "list.insert_big": "None:S,int,%ptr|R A rL wL|", "list.big_at": "%ptr:S,int|rL|",
     "list.big_pop": "int+:S,int|R rL wL|", "list.big_minmax": "int+:S,bool|R rL|",
     "list.big_find": "int:S,int,%ptr,bool,int,int,int|R A rL wL|", "list.narrow": "None:S|R rL|",
+    # a list of tuples of ints, which such a program's lists hold as tuples of promoting ints
+    # (bigints.held), by the layout's descriptor (held_shape): made of another storage's tuples, and
+    # going into a storage of 64-bit ints
+    "list.hold": "None:S,%ptr|A rL wL|", "list.narrow_held": "None:S,%ptr|R rL|",
     # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of

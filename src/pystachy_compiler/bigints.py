@@ -73,6 +73,36 @@ def big_viewable(a: str, b: str) -> bool:
     return True
 
 
+def int_tuple(t: str) -> bool:
+    # is t a tuple type that holds an int, also in a tuple it holds: one whose ints a list of a
+    # program whose lists hold promoting ints holds as promoting ints (held)
+    return is_tuple(t) and any([x == "int" or int_tuple(x) for x in targs(t)])
+
+
+def big_view(t: str) -> str:
+    # tuple type t with its ints, also those of the tuples it holds, as promoting ints: the layout of
+    # a tuple that a list holds (held), which a tuple of t's 64-bit ints is as it is, unless one of
+    # them is -2**63 (big_tuple_view)
+    if not is_tuple(t):
+        return t
+    return "tuple[" + ",".join([BIG if x == "int" else big_view(x) for x in targs(t)]) + "]"
+
+
+def held(t: str) -> str:
+    # the type as which a list of item type t holds its items: in a program whose lists hold
+    # promoting ints (int_lists), a tuple of ints holds them as promoting ints (big_view), which
+    # every store gives it (list_coerce) and the descriptors of its items say (desc's J); its
+    # reads give a module that opts in the promoting ints, and narrow them in another (held_value)
+    return big_view(t) if int_lists() and int_tuple(t) else t
+
+
+def held_shape(t: str) -> str:
+    # runtime.c's descriptor of the layout of a tuple of ints that a list holds (held), for
+    # pys_list_hold and pys_list_narrow_held: J an int, T a tuple that holds one, i an item they do
+    # not read
+    return "T" + str(len(targs(t))) + "".join(["J" if x == "int" else held_shape(x) if int_tuple(x) else "i" for x in targs(t)])
+
+
 def big_tree(t: str) -> bool:
     # is t a builtin value tree of promoting ints, 64-bit ints, floats, bools, strs and None: a tuple,
     # also of tuples, lists and dicts of them, whose value runtime.c's descriptor walks read as
@@ -577,10 +607,25 @@ def gen_big_list_value(self, o: Val, i: str, raw: str) -> Val:
 
 def gen_item_type(self, t: str) -> str:
     # the type of the item that a read of list type t gives here (list_value): a promoting int, in
-    # a module that opts in, where the program's lists of ints hold them (int_lists)
+    # a module that opts in, where the program's lists of ints hold them (int_lists), and so a
+    # tuple's ints (held)
     if is_list(t) and elem(t) == "int" and int_lists() and self.int_policy(self.line):
         return BIG
+    if is_list(t) and self.int_policy(self.line):
+        return held(elem(t))
     return elem(t)
+
+
+def gen_held_value(self, v: Val) -> Val:
+    # v, an item that a list holds as held(v.t) gives it: as that tuple of promoting ints in a
+    # module that opts in, else as the tuple of its 64-bit ints, which it is where each fits
+    # (NARROW past 64 bits: big_tuple_narrow)
+    h = held(v.t)
+    if h == v.t:
+        return v
+    if self.int_policy(self.line):
+        return Val(v.v, h)
+    return self.big_tuple_narrow(Val(v.v, h))
 
 
 def gen_big_list_store(self, o: Val, v: Val, method: str, index: str) -> None:
@@ -608,6 +653,33 @@ def gen_list_coerce(self, v: Val, et: str) -> Val:
     if v.t == BIG and et == "int" and int_lists():
         return v
     return self.coerce(v, et)
+
+
+def gen_held_list(self, v: Val) -> Val:
+    # list v, which the runtime made of another storage's items: its tuples of ints in the layout
+    # that the program's lists hold them in (held: pys_list_hold copies one that holds -2**63)
+    if is_list(v.t) and held(elem(v.t)) != elem(v.t):
+        self.rt("pys_list_hold", "void", [f"ptr {v.v}", f"ptr {self.sconst(held_shape(elem(v.t)))}"])
+    return v
+
+
+def gen_held_narrow(self, v: Val) -> Val:
+    # list v, whose tuples of ints go into a storage of 64-bit ints (a dict's keys or values, a set's
+    # elements, a tuple's items): NARROW where an int of one is past 64 bits
+    if is_list(v.t) and held(elem(v.t)) != elem(v.t):
+        self.rt("pys_list_narrow_held", "void", [f"ptr {v.v}", f"ptr {self.sconst(held_shape(elem(v.t)))}"])
+    return v
+
+
+def gen_list_hold(self, v: Val, et: str) -> Val:
+    # v as an item of a list of et, held as held(et): a tuple of promoting ints as it is, and a
+    # tuple of 64-bit ints as it is too, but where one of its ints is -2**63 (a new tuple of the
+    # held layout, big_tuple_view), as et; else list_coerce
+    e = et.replace(BIG, "int")  # (a list's item type, as ctype makes it)
+    h = held(e)
+    if h == e:
+        return self.list_coerce(v, et)
+    return Val(self.coerce(v, h).v, e)
 
 
 def gen_dict_int(self, t: str) -> bool:

@@ -63,7 +63,7 @@ def gen_list_value(self, o: Val, i: str, raw: str) -> Val:
     # program's lists of ints may hold promoting ints past 64 bits, an int through big_list_value
     if elem(o.t) == "int" and int_lists():
         return self.big_list_value(o, i, raw)
-    return self.from_slot(raw, elem(o.t))
+    return self.held_value(self.from_slot(raw, elem(o.t)))  # (a tuple of ints: held, bigints.py)
 
 
 def gen_list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
@@ -94,7 +94,7 @@ def gen_list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
         return self.dyn_unbox(Val(b, "dyn"), elem(o.t))
     if elem(o.t) == "int" and int_lists():
         return self.big_list_minmax(o, maximum)
-    return self.from_slot(self.rt("pys_list_minmax", "i64", args), elem(o.t))
+    return self.held_value(self.from_slot(self.rt("pys_list_minmax", "i64", args), elem(o.t)))
 
 
 def gen_list_find(self, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
@@ -324,7 +324,7 @@ def gen_star_display(self, n: Node, want: str) -> Val:
         if lists[i]:
             self.rt("pys_list_extend", "void", [f"ptr {r}", f"ptr {parts[i].v}"])
         else:
-            self.list_store(Val(r, self.ctype("list", [et])), self.list_coerce(parts[i], et), "append")
+            self.list_store(Val(r, self.ctype("list", [et])), self.list_hold(parts[i], et), "append")
     if n.kind == "list":
         return Val(r, self.ctype("list", [et]))
     if unopt(et) not in ["int", "float", "bool", "str", "dyn", BIG]:
@@ -385,7 +385,7 @@ def gen_supdate(self, s: str, v: Val, et: str) -> None:
     elif is_dict(v.t):
         self.rt("pys_set_update_dict", "void", [f"ptr {s}", f"ptr {v.v}"], self.key_fx(et))
     else:
-        self.rt("pys_set_update_list", "void", [f"ptr {s}", f"ptr {v.v}"], self.key_fx(et))
+        self.rt("pys_set_update_list", "void", [f"ptr {s}", f"ptr {self.held_narrow(v).v}"], self.key_fx(et))
 
 def gen_sdiscard(self, ov: str, v: Val, et: str) -> None:
     # set ov (of elements of type et) discards v, which it holds or not; None is no element (but
@@ -460,7 +460,8 @@ def gen_sgen(self, o: Val, m: str, g: Node, arg: IterArg | None) -> Val:
 
 def gen_keys_list(self, v: Val) -> Val:
     # a dict's keys (or v as it is), where CPython iterates over a dict as over any iterable
-    return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]])) if is_dict(v.t) else v
+    # (a list of tuples of ints whose ints go into the set: held_narrow, bigints.py)
+    return self.held_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))) if is_dict(v.t) else self.held_narrow(v)
 
 def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
     # set(), set(it), frozenset(), frozenset(it): a new set (frozenset) of the elements of it,
@@ -597,9 +598,9 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
             # code runs as its items are taken (a generator's, __iter__): CPython's
             # set_copy_and_difference has copied o before
             r = Val(self.rt("pys_set_copy", "ptr", [ov]), o.t)
-            self.rt("pys_set_isub_list", "void", [f"ptr {r.v}", f"ptr {self.stake(o, m, x).v}"], kx)
+            self.rt("pys_set_isub_list", "void", [f"ptr {r.v}", f"ptr {self.held_narrow(self.stake(o, m, x)).v}"], kx)
         else:
-            v = self.stake(o, m, x)
+            v = self.held_narrow(self.stake(o, m, x))
             r = Val(self.rt("pys_set_sub" if is_set(v.t) else "pys_set_sub_dict" if is_dict(v.t) else "pys_set_sub_list", "ptr", [ov, f"ptr {v.v}"], kx), o.t)
         for x in sa[1:]:
             v = self.stake(o, m, x)
@@ -612,7 +613,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         e = mk("cmp", "in" if m == "issuperset" else "not in", g.line, [g.kids[0], self.vnode(o)])
         return self.listcomp(mk("listcomp", "gen", g.line, [e] + g.kids[1:]), "", "all")
     vs = [self.siter(a, et, f"{tn}.{m}()") for a in args]
-    v = vs[0]
+    v = self.held_narrow(vs[0])
     if m == "symmetric_difference":
         return Val(self.rt("pys_set_xor" if is_set(v.t) else "pys_set_xor_dict" if is_dict(v.t) else "pys_set_xor_list", "ptr", [ov, f"ptr {v.v}"], kx), o.t)
     if m == "symmetric_difference_update":
@@ -674,6 +675,7 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
         v = self.coerce(v, "dyn")
     if is_dict(xs.t):
         return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
+    xs = self.held_narrow(xs)  # (its tuples of ints become keys of 64-bit ints: bigints.py)
     return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K, True)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
 
 def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> Val:

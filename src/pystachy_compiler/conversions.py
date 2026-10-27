@@ -5,7 +5,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
-from src.pystachy_compiler.bigints import big_viewable
+from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
     elem,
     is_callable,
@@ -263,7 +263,7 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "?s"  # (always None: a tuple's item)
     sub = use if use == "repr" or use == "==" else "== " + use
     if is_list(t):
-        return "L" + self.desc(elem(t), sub)
+        return "L" + self.desc(held(elem(t)), sub)  # (a tuple of ints as a list holds it: bigints.held)
     if is_vtuple(t):
         return "V" + self.desc(targs(t)[0], sub)
     if is_dict(t):
@@ -369,7 +369,7 @@ def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: in
             out += gen_rec_desc(self, m, use, active, offset + len(out))
         return out
     if is_list(t):
-        return "L" + gen_rec_desc(self, elem(t), use, active, offset + 1)
+        return "L" + gen_rec_desc(self, held(elem(t)), use, active, offset + 1)
     if is_dict(t):
         ts = targs(t)
         out = "D" + gen_rec_desc(self, ts[0], use, active, offset + 1)

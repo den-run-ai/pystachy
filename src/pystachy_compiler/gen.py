@@ -64,6 +64,10 @@ from src.pystachy_compiler.bigints import (
     gen_item_type as bigints_item_type,
     gen_big_list_store as bigints_big_list_store,
     gen_list_coerce as bigints_list_coerce,
+    gen_list_hold as bigints_list_hold,
+    gen_held_list as bigints_held_list,
+    gen_held_narrow as bigints_held_narrow,
+    gen_held_value as bigints_held_value,
     gen_dict_int as bigints_dict_int,
     gen_big_dict_value as bigints_big_dict_value,
     gen_dict_bigkey as bigints_dict_bigkey,
@@ -1625,6 +1629,18 @@ class Gen:
 
     def list_coerce(self, v: Val, et: str) -> Val:
         return bigints_list_coerce(self, v, et)
+
+    def list_hold(self, v: Val, et: str) -> Val:
+        return bigints_list_hold(self, v, et)
+
+    def held_value(self, v: Val) -> Val:
+        return bigints_held_value(self, v)
+
+    def held_list(self, v: Val) -> Val:
+        return bigints_held_list(self, v)
+
+    def held_narrow(self, v: Val) -> Val:
+        return bigints_held_narrow(self, v)
 
     def dict_int(self, t: str) -> bool:
         return bigints_dict_int(self, t)

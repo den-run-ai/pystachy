@@ -1577,6 +1577,8 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
             v = self.coerce(v, elem(self.qtype(name)))  # (into a list of None: T | None)
         elif m != "extend" and self.qtype(name) == "list[dyn]":
             v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
+        if m != "extend":
+            v = self.list_hold(v, v.t)  # (a tuple of ints: held, bigints.py)
         if m == "append":
             self.list_store(Val(o.v, self.qtype(name)), v, "append")
         elif m == "insert":
@@ -1979,7 +1981,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
                 v = self.coerce(v, elem(self.qtype(t.kids[0].s)))  # (into a list of None: T | None)
             elif self.qtype(t.kids[0].s) == "list[dyn]":
                 v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-            self.list_store(Val(o.v, self.qtype(t.kids[0].s)), v, "set", ix.v)
+            self.list_store(Val(o.v, self.qtype(t.kids[0].s)), self.list_hold(v, v.t), "set", ix.v)
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
         nosub = "TypeError: 'NoneType' object does not support item assignment"
@@ -1989,7 +1991,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1])
             o = self.unwrap(o, nosub)
-            self.list_store(o, self.list_coerce(v, elem(o.t)), "set", ix.v)
+            self.list_store(o, self.list_hold(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
             kv = targs(unopt(o.t))
             kc = self.key_coerce(self.expr(t.kids[1], kv[0]), kv[0])

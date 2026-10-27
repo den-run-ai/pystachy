@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, narrows
+from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, held, narrows
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
@@ -979,6 +979,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if et == "" and not soft and self.dyn_policy(n.line) and self.dyn_mixed(n.kids):
             et = "dyn"  # (items of no one type: dynamic values, and the displays among them hold them too)
         items: list[Val] = []
+        kept: dict[int, Val] = {}  # (tuples of promoting ints, which the list holds as they are: held)
         given = et != ""
         jt = ""
         for e in n.kids:
@@ -987,7 +988,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 # A later item may rebind this local before the display stores its
                 # items. Capture its object now, while repeated reads share its slot.
                 v.idfrom = self.dyn_box(v).v
-            if is_tuple(v.t) and BIG in v.t:
+            if is_tuple(v.t) and BIG in v.t and int_lists():
+                kept[len(items)] = v
+                v = Val(v.v, v.t.replace(BIG, "int"))  # (typed as the list's item for what follows: bigints.held)
+            elif is_tuple(v.t) and BIG in v.t:
                 v = self.big_tuple_narrow(v)  # (an item holds 64-bit ints, and is typed so: bigints.py)
             if et == "" and v.t != "None":
                 et = v.t
@@ -1031,7 +1035,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         lty = self.ctype("list", [et])
         if lty == "list[dyn]":
             et = "dyn"  # (where the items are Any values or containers: ctype)
-        items = [self.list_coerce(v, et) for v in items]
+        items = [self.list_hold(kept[i] if i in kept else items[i], et) for i in range(len(items))]
         r = self.rt("pys_list_new_atomic" if atomic_list(lty) else "pys_list_new", "ptr", [f"i64 {len(items)}"])
         for v in items:
             self.list_store(Val(r, lty), v, "append")
@@ -2834,6 +2838,8 @@ def gen_iter_ret(self, e: Node) -> Val:
     if (is_tuple(v.t) and v.t != "tuple[]") or v.t == RANGEC:
         v = self.as_list(v, "iter")  # (of the items, which share one type; a range's numbers)
     last = self.blk.code[-1] if len(self.blk.code) > 0 else Ins("", "", "")
+    if last.op == "rt" and last.s == "list.hold" and len(self.blk.code) > 1:
+        last = self.blk.code[-2]  # (the list of tuples of ints that a dict's view made: bigints.held_list)
     if last.op == "rt" and (last.s == "dict.keys" or last.s == "dict.values" or last.s == "dict.items") and v.v == f"%t{last.r[0]}":
         # (keys() is a list here; CPython's view iterator raises if the dict changes size)
         self.err(f"iter() of a dict's {last.s[5:]}() in {self.curfn.name} is not supported: its iterator raises if the dict changes size; return iter(list(...)) of a copy")
@@ -4482,7 +4488,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             if a.t != elem(b.t) and (is_list(a.t) or is_dict(a.t) or is_tuple(a.t)) and self.numeric_comparable(a.t, elem(b.t)):
                 # A read-only search can compare the two item layouts directly;
                 # coercing the needle would wrongly widen mutable containers.
-                r = self.rt("pys_list_find_pair", "i64", [f"ptr {b.v}", "i64 " + self.to_slot(a), f"ptr {self.sconst(self.desc(elem(b.t), '=='))}", f"ptr {self.sconst(self.desc(a.t, '=='))}"])
+                # (a tuple of promoting ints by its own descriptor, desc's J, which reads it as it is)
+                r = self.rt("pys_list_find_pair", "i64", [f"ptr {b.v}", "i64 " + self.to_slot(a, True), f"ptr {self.sconst(self.desc(held(elem(b.t)), '=='))}", f"ptr {self.sconst(self.desc(a.t, '=='))}"])
                 return self.num_cmp(">=" if op == "in" else "<", Val(r, "int"), Val("0", "int"))
             if a.t == "float" and elem(b.t) == "int" and int_lists():
                 # (an int past 64 bits may equal it: bigints.py)
@@ -4497,9 +4504,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 et = self.union_type([elem(b.t), a.t])
             if a.t == "None" and elem(b.t) not in self.classes and self.optional(elem(b.t)) != "" and not self.isnum(elem(b.t)):
                 et = self.optional(elem(b.t))
-            s = self.to_slot(self.coerce(a, et))
+            s = self.to_slot(self.list_hold(a, et) if et == elem(b.t) else self.coerce(a, et))  # (a tuple of ints as the list holds it: bigints.held)
             self.exc_eq(et)
-            r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(et, '=='))}"])
+            r = self.rt("pys_list_find", "i64", [f"ptr {b.v}", f"i64 {s}", f"ptr {self.sconst(self.desc(held(et) if et == elem(b.t) else et, '=='))}"])
             r = self.scalar('add', [Val(r, 'int'), Val('1', 'int')])
             if ok != "true":
                 r = self.select(ok, Val(r, "int"), Val("0", "int"))
