@@ -12,7 +12,7 @@ from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC
-from src.pystachy_compiler.utils import bool_for_int, elem, is_dict, is_gen, is_list, is_opt, is_set, is_tuple, is_vtuple, selem, targs
+from src.pystachy_compiler.utils import bool_for_int, elem, is_dict, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_vtuple, selem, targs, unopt
 
 # pys_big_op's operation codes (pys_mpz_binop's, then shifts and **)
 BIGOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "//": 3, "%": 4, "&": 5, "|": 6, "^": 7, "<<": 8, ">>": 9, "**": 10}
@@ -634,7 +634,9 @@ def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
         return Val("", "")
     if len(args) == 2 and not box and dt != "int" and dt != BIG:
         return Val("", "")
-    kx = self.dkey(self.expr(args[0], kv[0]), kv[0])
+    kx = self.expr(args[0], kv[0])
+    if not (is_sopt(kx.t) and bool_for_int(unopt(kx.t), kv[0])):
+        kx = self.dkey(kx, kv[0])  # (a bool | None, of get(k, x), finds the int key it equals, as in bmethod: keyed)
     k = self.to_slot(kx)
     x = self.key_fx(kv[0])
     if box:

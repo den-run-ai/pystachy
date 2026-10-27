@@ -75,10 +75,15 @@ print(z.get("p"), z.get("missing"), z.setdefault("q", big), z.setdefault("r", -2
 z.clear()
 z["s"] = big
 print(z, -2 ** 63 in {"t": -2 ** 63}.values())
-# get() and pop() of a key that may be None or is a bool, del, and dicts of floats and bools
+# get() and pop() of a key that may be None (an int or a bool) or is a bool, del, and dicts of
+# floats and bools
 opt: int | None = 1
 nums = {1: big, 2: 3}
 print(nums.get(opt, 0), nums.get(opt), nums.get(opt, None), nums.get(True, None), nums.get(True), nums.get(True, 7))
+bopt: bool | None = True
+bnone: bool | None = None
+bfalse: bool | None = False
+print(nums.get(bopt, 0), nums.get(bopt, -big), nums.get(bnone, 4), nums.get(bnone, -big), nums.get(bfalse, 6))
 print(nums.get("x" == "y", None), nums.pop(True, None), nums, nums.pop(True, 9))
 nums[1] = -big
 del nums[2]
