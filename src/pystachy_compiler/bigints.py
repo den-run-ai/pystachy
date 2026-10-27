@@ -73,6 +73,18 @@ def big_viewable(a: str, b: str) -> bool:
     return True
 
 
+def big_tree(t: str) -> bool:
+    # is t a builtin value tree of promoting ints, 64-bit ints, floats, bools, strs and None: a tuple,
+    # also of tuples, lists and dicts of them, whose value runtime.c's descriptor walks read as
+    # compiled code reads it (desc's J: a tuple's promoting int item, its slot and its Mpz word), and
+    # whose ==, ordering, hash() and repr() run none of the program's code
+    if t == BIG or t in ["int", "float", "bool", "str", "None"]:
+        return True
+    if is_opt(t):
+        return unopt(t) in ["int", "float", "bool", "str"]
+    return (is_tuple(t) or is_vtuple(t) or is_list(t) or is_dict(t)) and all([big_tree(x) for x in targs(t)])
+
+
 def narrowed(ts: list[str]) -> list[str]:
     # the types ts as members of an annotation's container, tuple or union, which hold 64-bit ints
     # (also as an int | None: BIGOPT)

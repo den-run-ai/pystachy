@@ -113,6 +113,8 @@ print(int("123456789012345678901234567890") % 97)  # 52
   `len()` and truth take it as CPython does: a negative one, however large, is a `ValueError`,
   and a positive one past 64 bits an `OverflowError` (`cannot fit 'int' into an index-sized
   integer`). `hash()`, dicts and sets take one past 64 bits as the hash of that int.
+- `vars()` and `__dict__` of an object show the values of its fields that are promoting ints, an
+  `int | None` or tuples of them.
 
 Errors are CPython's: `ZeroDivisionError` for `//` and `%` by zero, `ValueError` for a negative
 shift count, `MemoryError` for a shift or power whose result could not fit in memory. As in
@@ -151,9 +153,16 @@ that pointer only where the item's slot holds -2\*\*63. So a tuple of 64-bit int
 promoting ints as it is, unless it holds -2\*\*63 (a test finds it, and makes a copy); and a tuple
 of promoting ints that fit is the tuple of their 64-bit ints: where 64-bit storage takes it (a
 list's item, a dict's key, a parameter of a module that does not opt in), it is the same tuple,
-once a test has found no item past 64 bits. The runtime reads tuples of 64-bit ints alone, as it reaches them so,
-and the code compiled for `repr()`, comparisons and `hash()` of a tuple of promoting ints reads
-its items one by one.
+once a test has found no item past 64 bits.
+
+`runtime.c`'s walks of a value by its type's descriptor, which print, compare, order and hash
+it, read such an item through its own descriptor, `J`: a promoting int, handed on as its slot and
+its pointer (the pointer read only where the slot holds -2\*\*63), as the box of an `int | None`
+holds them, and as `vars()` reads them from a field's two words. `repr()`, `==`, `!=`, ordering
+and `hash()` of a tuple of promoting ints whose items are ints, floats, bools, strs and None, and
+tuples, lists and dicts of them, go through these walks, as those of a tuple of 64-bit ints do;
+the code compiled for other tuples (holding objects, unions, bytes or sets), and for an ordering
+of tuples of other types or lengths, reads their items one by one.
 
 A list of ints holds an item that fits in its 8-byte slot, as a list of 64-bit ints holds it. An
 item past 64 bits holds -2\*\*63 there, and its pointer in a companion array beside the items,
@@ -375,7 +384,10 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_tuples.py`: tuples of promoting ints: annotated returns,
   unpacking, indexing, slicing, iteration, comparisons with 64-bit tuples, `hash()`, `repr()` and
   formatting, `divmod()`, fields, globals, closures and a NamedTuple, and tuples that fit going
-  into a module that does not opt in (`tests/python_int_modules/fixed_pairs.py`).
+  into a module that does not opt in (`tests/python_int_modules/fixed_pairs.py`);
+  `python_int_tuple_walks.py`: those that `runtime.c`'s walks read (`J`), nested and holding
+  lists and dicts, with -2\*\*63, exactly against floats and 64-bit tuples, past the digits
+  limit, and `vars()` of fields that are promoting ints, `int | None` and such tuples.
 - `tests/programs/numbers/python_int_optional.py`: `int | None` past 64 bits in variables,
   parameters, returns, defaults, fields, class attributes, globals, closures and joins, in each
   spelling, with comparisons, `min()`, `max()`, membership, formatting, `hash()`, truth and

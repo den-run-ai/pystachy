@@ -1411,6 +1411,19 @@ enum { BIGIDS = 3 };
 static int big_list(List *l) { return l->ids && (l->ids[0] & 3) == BIGIDS; }   /* may l hold an item past 64 bits */
 static Mpz *lbig(List *l, I i) { return l->a[i] == INT64_MIN && big_list(l) ? (Mpz *)l->ids[i + 1] : NULL; }
 static Big litem(List *l, I i) { Mpz *m = lbig(l, i); Big r = {m ? 0 : l->a[i], m}; return r; }   /* l[i] as a promoting int */
+/* A promoting int in a descriptor walk (descriptor J) is a pointer to two words, its slot and its
+   Mpz: the value and null where it fits, else -2**63 and the Mpz, as the box of an int | None of a
+   module that opts in holds it (pys_big_box; -2**63 itself has a null Mpz). A fixed tuple holds its
+   promoting int item i of n so: the slot is the item's, and the Mpz word is slot n + i, which such
+   a tuple has wherever the item's slot holds -2**63 (the compiler copies a tuple of 64-bit ints
+   that holds -2**63 where one of promoting ints is expected), so the walks hand them on as titem's
+   two words; pys_refl_vars makes them of a field's {lo, hi} */
+static Big jbig(I v) { const I *w = (const I *)v; Mpz *m = w[0] == INT64_MIN ? (Mpz *)w[1] : NULL; Big r = {m ? 0 : w[0], m}; return r; }
+static I titem(const I *t, I n, I i, const char *e, I *w) {   /* item i of tuple t of n items, of descriptor e: J's in w */
+  if (*e != 'J') return t[i];
+  w[0] = t[i]; w[1] = t[i] == INT64_MIN ? t[n + i] : 0;
+  return (I)w;
+}
 /* and a set of ints holds an element past 64 bits as -2**63 or -2**63 + 1 in its slot, and its Mpz
    in that slot's word of kb (see sets) */
 static Mpz *sbig(Set *s, I j) { return s->keys[j] <= INT64_MIN + 1 && s->kb ? (Mpz *)s->kb[j] : NULL; }
@@ -1998,7 +2011,9 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
    R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
    A a dynamic value's box (see dynamic values), walked by its DynType's descriptor, Z the
-   function a box holds, which compares and hashes by identity.
+   function a box holds, which compares and hashes by identity; J a promoting int (a fixed
+   tuple's item, the box of an int | None of a module that opts in, a field), its two words
+   (jbig).
    skip treats R as a leaf; value operations follow it without changing the slot layout.
    A dict's key kind and a set's element kind (Dict.kind) and their tuples' items have P<id> and
    H<id> where the type is a class: P where no class its objects may be of defines __eq__ or
@@ -2204,6 +2219,12 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
   case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
+  case 'J': {                                       /* a promoting int's two words (jbig) */
+    Big x = jbig(v);
+    if (x.hi) { Str *s = mpz_digits(x.hi); if (!s) digits_deep(); put(b, s->s, s->len); }
+    else { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)x.lo)); }
+    return d;
+  }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
   case 's': if (v) repr_str(b, (Str *)v); else put(b, "None", 4); return d;   /* (see hval) */
@@ -2247,8 +2268,8 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   }
   case 'T': {
     if (!v) { put(b, "None", 4); return skip(d - 1); }
-    int n = *d++ - '0'; I *t = (I *)v; put(b, "(", 1);
-    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr_depth(b, t[i], d, depth); }
+    int n = *d++ - '0'; I *t = (I *)v, w[2]; put(b, "(", 1);
+    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr_depth(b, titem(t, n, i, d, w), d, depth); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
   case 'V': {
@@ -2296,8 +2317,10 @@ Str *pys_refl_vars(ReflRec *r, char *o) {   /* repr(vars(o)): o's assigned field
     if (f->flag >= 0 && !*(unsigned char *)(o + f->flag)) continue;
     if (k++) put(&b, ", ", 2);
     repr_str(&b, f->name); put(&b, ": ", 2);
-    I v = 0;
-    if (f->desc->s[0] == 'b') v = *(unsigned char *)(o + f->off) & 1; else memcpy(&v, o + f->off, 8);
+    I v = 0, w[2];
+    if (f->desc->s[0] == 'b') v = *(unsigned char *)(o + f->off) & 1;
+    else if (f->desc->s[0] == 'J') { memcpy(w, o + f->off, 16); if (w[1]) w[0] = INT64_MIN; v = (I)w; }   /* a promoting int's {lo, hi}: jbig's words */
+    else memcpy(&v, o + f->off, 8);
     repr(&b, v, f->desc->s);
   }
   put(&b, "}", 1);
@@ -2339,6 +2362,7 @@ static int eqv(I a, I b, const char *d) {
   switch (*d) {
   case 'U': return eqpair(a, b, d, d);
   case 'A': return pys_dyn_eq((Dyn *)a, (Dyn *)b);
+  case 'J': { Big x = jbig(a), y = jbig(b); return pys_big_cmp(x.lo, x.hi, y.lo, y.hi) == 0; }
   case 'f': return dbl(a) == dbl(b);
   case 's': return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;   /* (None in a looked-up key, see hval) */
   case 'L': {   /* an __eq__ may change either list: as CPython's list_richcompare, re-read both
@@ -2364,9 +2388,9 @@ static int eqv(I a, I b, const char *d) {
     return 1;
   }
   case 'T': {
-    I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
+    I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
     if (!x || !y) return x == y;
-    for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqitem(x[i], y[i], e)) return 0;
+    for (I i = 0; i < n; i++, e = skip(e)) if (!eqitem(titem(x, n, i, e, wx), titem(y, n, i, e, wy), e)) return 0;
     return 1;
   }
   case 'V': {
@@ -2428,6 +2452,12 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     depth++;
   }
   if (*x == 'n' || *y == 'n') return *x == *y;
+  if (*x == 'J' || *y == 'J') {   /* a promoting int (jbig) and a number, exactly; another type equals it never */
+    Big p = jbig(*x == 'J' ? a : b); I v = *x == 'J' ? b : a; const char *e = *x == 'J' ? y : x;
+    if (*e == 'J') { Big q = jbig(v); return pys_big_cmp(p.lo, p.hi, q.lo, q.hi) == 0; }
+    if (*e == 'f') return (p.hi ? mpz_cmp_float(p.hi, dbl(v)) : pys_cmp_if(p.lo, dbl(v))) == 0;   /* (allocating nothing) */
+    return (*e == 'i' || *e == 'b') && !p.hi && p.lo == v;
+  }
   int nx = *x == 'i' || *x == 'b', ny = *y == 'i' || *y == 'b';
   if (nx && ny) return a == b;
   if (nx && *y == 'f') return pys_cmp_if(a, dbl(b)) == 0;
@@ -2467,10 +2497,10 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     if (!a || !b) return a == b;
     I nx = *x == 'T' ? x[1] - '0' : ((VTuple *)a)->len, ny = *y == 'T' ? y[1] - '0' : ((VTuple *)b)->len;
     if (nx != ny) return 0;
-    I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a;
+    I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a, wx[2], wy[2];
     const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
     for (I i = 0; i < nx; i++) {
-      if (!eqpair_depth(p[i], q[i], ex, ey, depth)) return 0;
+      if (!eqpair_depth(*x == 'T' ? titem(p, nx, i, ex, wx) : p[i], *y == 'T' ? titem(q, ny, i, ey, wy) : q[i], ex, ey, depth)) return 0;
       if (*x == 'T') ex = skip(ex);
       if (*y == 'T') ey = skip(ey);
     }
@@ -2500,9 +2530,13 @@ static int opv(I a, I b, const char *d, I op) {
     if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
     return cmpop((x->len > y->len) - (x->len < y->len), op);
   }
+  case 'J': { Big x = jbig(a), y = jbig(b); return cmpop(pys_big_cmp(x.lo, x.hi, y.lo, y.hi), op); }
   case 'T': {
-    I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
-    for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqitem(x[i], y[i], e)) return opv(x[i], y[i], e, op);
+    I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
+    for (I i = 0; i < n; i++, e = skip(e)) {
+      I p = titem(x, n, i, e, wx), q = titem(y, n, i, e, wy);
+      if (!eqitem(p, q, e)) return opv(p, q, e, op);
+    }
     return cmpop(0, op);
   }
   case 'V': {
@@ -4105,9 +4139,9 @@ static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's 
 }
 static I hitem(I k, const char *d);
 static I htuple(I *t, I n, const char *e, int each) {   /* tuplehash of n items, of descriptors from e on (each), or all e */
-  uint64_t acc = 2870177450012600261ULL;
+  uint64_t acc = 2870177450012600261ULL; I w[2];
   for (I i = 0; i < n; i++) {
-    acc += (uint64_t)hitem(t[i], e) * 14029467366897019727ULL;
+    acc += (uint64_t)hitem(each ? titem(t, n, i, e, w) : t[i], e) * 14029467366897019727ULL;
     acc = acc << 31 | acc >> 33;
     acc *= 11400714785074694791ULL;
     if (each) e = skip(e);
@@ -4130,6 +4164,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'P': case 'C': return hptr(k);   /* (an exception class's class object: by identity, as object's) */
   case 'H': return ohash(k, d);
   case 'A': return pys_dyn_hash((Dyn *)k);
+  case 'J': { Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */
   }
   return hint(k);
 }
@@ -5043,7 +5078,7 @@ static I u8enc(char *o, I c) {
   o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
 }
 static const char *tyname(char d) {
-  return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' ? "type" : "object";
+  return d == 'i' || d == 'J' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' ? "type" : "object";
 }
 /* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
    by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with

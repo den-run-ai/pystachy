@@ -1,6 +1,7 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import none_display, walrus_names
+from src.pystachy_compiler.bigints import big_tree
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
@@ -795,7 +796,7 @@ def gen_hash_desc(self, t: str) -> str:
     if is_opt(t) and t != NONEVAR:
         return "?" + self.hash_desc(unopt(t))
     if is_tuple(t) and len(targs(t)) <= 9:
-        return "T" + str(len(targs(t))) + "".join([self.hash_desc(x) for x in targs(t)])
+        return "T" + str(len(targs(t))) + "".join(["J" if x == BIG else self.hash_desc(x) for x in targs(t)])  # (desc's J)
     return self.desc(t, "==")
 
 def gen_key_fx(self, kt: str) -> str:
@@ -1098,8 +1099,11 @@ def gen_hash_value(self, v: Val) -> Val:
         return self.big_hash(v)  # (CPython's, as hint gives a 64-bit int's: bigints.py)
     if t == BIGOPT:
         return self.big_opt_hash(v)  # (None's, or a promoting int's: bigints.py)
+    if is_tuple(t) and BIG in t and big_tree(t) and self.hashable(t):
+        # (of promoting ints, whose items runtime.c's hitem reads: desc's J)
+        return Val(self.rt("pys_hash", "i64", ["i64 " + self.to_slot(v, True), f"ptr {self.sconst(self.hash_desc(t))}"]), "int")
     if is_tuple(t) and BIG in t:
-        return self.big_tuple_hash(v)  # (of promoting ints: bigints.py)
+        return self.big_tuple_hash(v)  # (of promoting ints, item by item: bigints.py)
     if self.key_class(t):
         return self.obj_hash(v)
     if t == "None":
@@ -1132,8 +1136,11 @@ def gen_repr(self, v: Val) -> Val:
         return self.big_str(v)  # (an int's repr is its str: bigints.py)
     if v.t == BIGOPT:
         return self.big_opt_str(v)  # (None, or a promoting int: bigints.py)
+    if is_tuple(v.t) and BIG in v.t and big_tree(v.t):
+        # (of promoting ints, whose items runtime.c's repr reads: desc's J)
+        return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v, True), f"ptr {self.sconst(self.desc(v.t, 'repr'))}"]), "str")
     if is_tuple(v.t) and BIG in v.t:
-        return self.big_tuple_repr(v)  # (of promoting ints: bigints.py)
+        return self.big_tuple_repr(v)  # (of promoting ints, item by item: bigints.py)
     if self.reference_union(v.t):
         return self.refl_union_str(v, "__repr__")  # (each class's: reflection.py)
     if v.t in self.classes:

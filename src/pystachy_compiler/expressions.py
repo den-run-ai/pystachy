@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.bigints import TSLOT_BIG, narrows
+from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, narrows
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
@@ -4560,11 +4560,23 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if op in ORDOP and is_tuple(a.t) and is_tuple(b.t) and len(targs(a.t)) != len(targs(b.t)):
         return self.tuple_order(op, a, b)  # (of different lengths, which no one tuple type holds)
     if (is_tuple(a.t) and BIG in a.t) or (is_tuple(b.t) and BIG in b.t):
-        # a tuple of promoting ints, which the runtime's comparisons read as 64-bit ints: item by
-        # item here (bigints.py); a tuple[T, ...] holds 64-bit ints, as which the other compares
+        # a tuple of promoting ints: runtime.c's walks read its items (desc's J) where both are
+        # builtin value trees (bigints.big_tree), as they compare tuples of 64-bit ints, and the
+        # others are compared item by item here; a tuple[T, ...] holds 64-bit ints, as which the
+        # other compares
+        tree = big_tree(a.t) and big_tree(b.t)
         if op in ORDOP and is_tuple(a.t) and is_tuple(b.t):
+            if tree and a.t == b.t:
+                r = self.rt("pys_cmpop", "i64", [f"i64 {self.to_slot(a, True)}", f"i64 {self.to_slot(b, True)}", f"ptr {self.sconst(self.desc(a.t, op))}", f"i64 {ORDOP[op]}"])
+                return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
             return self.tuple_order(op, a, b)
         if eq and (is_tuple(a.t) or is_vtuple(a.t)) and (is_tuple(b.t) or is_vtuple(b.t)):
+            if tree and a.t == b.t:
+                r = self.rt("pys_eq", "i64", [f"i64 {self.to_slot(a, True)}", f"i64 {self.to_slot(b, True)}", f"ptr {self.sconst(self.desc(a.t, '=='))}"])
+                return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
+            if tree:
+                r = self.rt("pys_eq_pair", "i64", [f"i64 {self.to_slot(a, True)}", f"i64 {self.to_slot(b, True)}", f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
+                return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
             return self.tuple_pair_eq(op, a, b)
         a = self.big_tuple_narrow(a) if is_tuple(a.t) and BIG in a.t else a
         b = self.big_tuple_narrow(b) if is_tuple(b.t) and BIG in b.t else b

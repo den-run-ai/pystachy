@@ -469,8 +469,8 @@ def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
         f = self.rtfns[i.s]
         # (and a dynamic value, A, may hold any of these: dynamic.py; a list, set or dict of ints may
         # hold one whose text is past CPython's limit, in a program whose lists, sets and dicts hold
-        # promoting ints: big_digits, bigints.py)
-        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x or (big_digits(i.x) and int_lists())) else 0)
+        # promoting ints: big_digits, bigints.py; and so may a promoting int, J, of a tuple or a box)
+        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x or "J" in i.x or (big_digits(i.x) and int_lists())) else 0)
         u = "O" in i.x or "H" in i.x or "A" in i.x or ("P" in i.x and fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
         return FXALL if f.q and u else fx
     if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":
