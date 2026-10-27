@@ -1,20 +1,26 @@
 # pystachy: python-int
 # Documented deviation (docs/python-int.md#64-bit-boundaries): a promoting int is two words in
-# variables, arguments, returns, fields, globals, closures, tuples, int | None and lists of ints,
-# but 64-bit storage and the builtins that take an int keep 64-bit ints for now (#907). A value past
-# 64 bits stored in a dict or set, in a tuple or an int | None in a list, a tuple's int | None item,
-# the union of a bool and an int (a result that is either) or a generator's yield, given to
-# range(), added by sum() among floats, in a NamedTuple that may be None (a parameter) hashed as
-# the tuple of its fields, or a list's item that tuple(), set() or a module that does not opt in
-# (heapq) reads, raises OverflowError, where CPython goes on with the bigger int.
+# variables, arguments, returns, fields, globals, closures, tuples, int | None, lists of ints and
+# generators, but 64-bit storage and the builtins that take an int keep 64-bit ints for now (#907).
+# A value past 64 bits stored in a dict or set, in a tuple or an int | None in a list, a tuple's
+# int | None item, the union of a bool and an int (a result that is either) or sent to a generator,
+# given to range(), added by sum() among floats, in a NamedTuple that may be None (a parameter)
+# hashed as the tuple of its fields, or a list's item or a generator's value that tuple(), set() or
+# a module that does not opt in (heapq) reads, raises OverflowError, where CPython goes on with the
+# bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected.
 import heapq
-from typing import NamedTuple
+from typing import Generator, NamedTuple
 
 
 def gen(n: int):
     yield n
+
+
+def echo() -> Generator[int, int | None, None]:
+    got = yield 0
+    yield got if got is not None else -1
 
 
 def flag_or(c: bool, n: int):
@@ -67,10 +73,15 @@ try:
 except OverflowError as e:
     print("int | None in a tuple:", e)
 try:
-    for v in gen(big):
-        print(v)
+    print(heapq.nlargest(1, gen(big)))
 except OverflowError as e:
-    print("yield:", e)
+    print("generator in heapq:", e)
+try:
+    g = echo()
+    next(g)
+    print(g.send(big))
+except OverflowError as e:
+    print("send:", e)
 try:
     print(flag_or(True, 1), flag_or(False, big))
 except OverflowError as e:

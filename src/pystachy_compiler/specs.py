@@ -625,7 +625,9 @@ IROPS: dict[str, str] = {
 # into it (throw()); a generator that has not started yet is in state new there, so that a
 # send() of a value other than None and a throw() can tell it from one suspended at a yield.
 # Commands: close (a loop that owns it drops it: what closing raises is reported), close()
-# (raised by close()), throw() (raised at the yield)
+# (raised by close()), throw() (raised at the yield). In a program where a module opts in to
+# promoting ints (diagnostics.int_program), nine: also the pointers of the promoting ints it
+# yielded last and returned (null where they fit, docs/python-int.md)
 GENVAL = 0
 GENRET = 1
 GENSTATE = 2
@@ -635,6 +637,9 @@ GENSLOTS = 5
 GENSEND = 5
 GENEXC = 6
 GENSLOTSX = 7
+GENVALP = 7
+GENRETP = 8
+GENSLOTSB = 9
 GENCLEAN = 1
 GENDONE = 2
 GENRUN = 3

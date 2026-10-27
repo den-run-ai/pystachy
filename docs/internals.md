@@ -376,7 +376,10 @@ where a `try`, `with` or `yield from` may handle it, and raises it in the throwe
 there sends what it is sent on to its generator, throws what is thrown into it into its generator
 (closing it for `GeneratorExit`) and suspends again with what that yields, or finishes with its
 value. Programs without `send` and `throw` keep five words and the code they had; only a
-`yield from` whose closing may run code closes its generator as above.
+`yield from` whose closing may run code closes its generator as above. A program where a module
+opts in to [promoting ints](python-int.md) gives its generators nine words: also the pointers of
+the promoting ints yielded last and returned (`specs.GENVALP`, `GENRETP`), which every `yield` of
+an int writes, null where the value fits.
 
 A generator expression that no consumer takes directly becomes an anonymous generator
 function, called with its first iterable (evaluated where it is written) and the values of

@@ -1,9 +1,9 @@
 """Lowering component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
 from src.pystachy_compiler.lower_module import struct_types
-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENSLOTS, GENSLOTSX, GENSTATE, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
@@ -30,7 +30,7 @@ def gen_lower(self, fn: IFn) -> None:
     o.append("entry:")
     self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
     if fn.coro:
-        o.append(f"  %coro.promise = alloca [{GENSLOTSX if self.gproto else GENSLOTS} x i64], align 8")
+        o.append(f"  %coro.promise = alloca [{promise_slots(self.gproto)} x i64], align 8")
         self.coros = True
     for i in fn.slots:
         if i.k == 1:
@@ -360,7 +360,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("coro.begin:")
         o.append(f"  %coro.frame = phi ptr [null, %{self.lowblk}], [%coro.mem, %coro.alloc]")
         o.append("  %coro.hdl = call ptr @llvm.coro.begin(token %coro.id, ptr %coro.frame)")
-        o.append(f"  store [{GENSLOTSX if self.gproto else GENSLOTS} x i64] zeroinitializer, ptr %coro.promise")
+        o.append(f"  store [{promise_slots(self.gproto)} x i64] zeroinitializer, ptr %coro.promise")
         o.append(f"  %coro.name = getelementptr i64, ptr %coro.promise, i64 {GENNAME}")
         o.append(f"  store ptr {i.a[0].v}, ptr %coro.name")
         if self.gproto:
@@ -370,8 +370,12 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("  %coro.first = call i8 @llvm.coro.suspend(token none, i1 false)")
         o.append(f"  switch i8 %coro.first, label %coro.ret [i8 0, label %{i.b[0]} i8 1, label %coro.cleanup]")
     elif op == "gen.yield":
-        # the value in the promise, the state (k: whether closing it here runs code of its), suspend
+        # the value in the promise (and an int's pointer, GENVALP), the state (k: whether closing it
+        # here runs code of its), suspend
         o.append(f"  store i64 {i.a[0].v}, ptr %coro.promise")
+        if len(i.a) > 1:
+            o.append(f"  %t{i.r[0]}.hi = getelementptr i64, ptr %coro.promise, i64 {GENVALP}")
+            o.append(f"  store ptr {i.a[1].v}, ptr %t{i.r[0]}.hi")
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr %coro.promise, i64 {GENSTATE}")
         o.append(f"  store i64 {i.k}, ptr %t{i.r[0]}")
         o.append(f"  %t{i.r[1]} = call i8 @llvm.coro.suspend(token none, i1 false)")
@@ -381,6 +385,9 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr %coro.promise, i64 {GENRET}")
         if len(i.a) > 0:
             o.append(f"  store i64 {i.a[0].v}, ptr %t{i.r[0]}")
+        if len(i.a) > 1:
+            o.append(f"  %t{i.r[0]}.hi = getelementptr i64, ptr %coro.promise, i64 {GENRETP}")
+            o.append(f"  store ptr {i.a[1].v}, ptr %t{i.r[0]}.hi")
         o.append(f"  %t{i.r[1]} = getelementptr i64, ptr %coro.promise, i64 {GENSTATE}")
         o.append(f"  store i64 {GENDONE}, ptr %t{i.r[1]}")
         o.append("  br label %coro.final")
@@ -396,6 +403,11 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         self.gendrops = True
     else:
         fail(f"internal error: no lowering for IR op {op}", 0)
+
+def promise_slots(gproto: bool) -> int:
+    # the i64 slots of a generator's promise (specs.GENSLOTS): seven in a program that uses send()
+    # or throw(), nine where a module opts in to promoting ints
+    return GENSLOTSB if int_program() else GENSLOTSX if gproto else GENSLOTS
 
 def gen_invoke(self, c: str, i: Ins) -> str:
     # the call c of op i, an invoke if the exception passes made it one (Ins.b: [next, landing])

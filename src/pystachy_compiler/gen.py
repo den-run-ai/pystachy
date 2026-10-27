@@ -849,6 +849,12 @@ from src.pystachy_compiler.generators import (
     gen_gen_type as generators_gen_type,
     gen_yield_value as generators_yield_value,
     gen_yield_from_proto as generators_yield_from_proto,
+    gen_gen_keep as generators_gen_keep,
+    gen_gen_slots as generators_gen_slots,
+    gen_gen_words as generators_gen_words,
+    gen_gen_value as generators_gen_value,
+    gen_gen_value_type as generators_gen_value_type,
+    gen_gen_returned as generators_gen_returned,
     gen_gen_stop as generators_gen_stop,
     gen_gen_raised as generators_gen_raised,
     gen_gen_close as generators_gen_close,
@@ -3024,8 +3030,8 @@ class Gen:
     def gen_stream(self, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
         return generators_gen_stream(self, name, v, args, want, resultsoft)
 
-    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "") -> None:
-        return generators_gen_suspend(self, slot, k, sub, thrown)
+    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
+        return generators_gen_suspend(self, slot, k, sub, thrown, hi)
 
     def yield_from_iter(self, what: str) -> None:
         return generators_yield_from_iter(self, what)
@@ -3038,6 +3044,24 @@ class Gen:
 
     def yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) -> Val:
         return generators_yield_from_proto(self, v, t, y, callee)
+
+    def gen_keep(self, w: list[str], ys: str, yh: str) -> None:
+        return generators_gen_keep(self, w, ys, yh)
+
+    def gen_slots(self, v: Val, y: str) -> list[str]:
+        return generators_gen_slots(self, v, y)
+
+    def gen_words(self, p: str, t: str, y: str) -> list[str]:
+        return generators_gen_words(self, p, t, y)
+
+    def gen_value(self, p: str, t: str) -> Val:
+        return generators_gen_value(self, p, t)
+
+    def gen_value_type(self, t: str) -> str:
+        return generators_gen_value_type(self, t)
+
+    def gen_returned(self, h: Val, r: str) -> Val:
+        return generators_gen_returned(self, h, r)
 
     def gen_stop(self) -> None:
         return generators_gen_stop(self)
