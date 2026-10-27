@@ -27,7 +27,7 @@ from src.pystachy_compiler.dynamic import XCMP, comparison_record_write, compari
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import BIG, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
-from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, name_targets, starred_target
+from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
     empty_ann,
@@ -666,7 +666,7 @@ def gen_none_arms(self, name: str) -> str:
     for st in self.nonesites.get(name, []):
         self.none_values(st, name, found)
     for e in found:
-        for x in e.kids[1:] if e.kind == "ifexp" else e.kids if e.kind == "boolop" else e.kids[:0]:
+        for x in e.kids[1:] if e.kind == "ifexp" else e.kids if e.kind == "boolop" else NOKIDS:
             if x.kind != "None" and not empty_display(x) and self.typed_now(x) and not self.calls_open(x, {}):
                 t = self.dry(x)
                 if t != "None" and t != "" and "?" not in t and t != NONEVAR and self.optional(t) != "":

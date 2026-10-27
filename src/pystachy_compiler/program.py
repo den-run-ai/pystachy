@@ -130,8 +130,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             # Clone the declaration only. Its immutable body is shared until the method
             # is needed; declaring and flowing a copy per subclass costs body * subclasses
             # even when no inherited method is called.
-            d = Node(f.orig.kind, f.orig.s, f.orig.line)
-            d.kids = [f.orig.kids[i] if i == 2 else clone(f.orig.kids[i]) for i in range(len(f.orig.kids))]
+            d = Node(f.orig.kind, f.orig.s, f.orig.line, [f.orig.kids[i] if i == 2 else clone(f.orig.kids[i]) for i in range(len(f.orig.kids))])
             g = self.declare_fn(d, ci.name, True)
             g.orig = f.orig
             g.clsuse = True

@@ -15,10 +15,11 @@ PREFIX = "src.pystachy_compiler."
 # These are initialized when modules load, then reviewed as lookup tables. Adding
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
+analysis.BINDERS
 bigints.BIGOPS bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
-dynamic.BINDUNDERS dynamic.BUILTIN
+dynamic.BINDUNDERS dynamic.BUILTIN expressions.ORDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 local_versions.UNVERSIONED parser.ATOMS
@@ -39,7 +40,7 @@ specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS specs.UNICODE_AUDIT
 specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.FX
 specs.FXBIT specs.RUNTIME specs.NARROWED specs.RTDATA specs.RTSYM
 structs.STRUCT_FNS structs.NATIVE_SIZES structs.STANDARD_SIZES
-syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS
+syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS syntax.NOKIDS
 utils.DECRUNS
 """.split())
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.specs import ABCS, ABCSMORE, CALLS, CTYPES, ERRNO, FUTURE, MODATTRS, MODFUNCS, MODULES, NOREF, RANGE_METHODS, RANGE_TAKERS, TYPING
-from src.pystachy_compiler.syntax import Node, comp_names, has_kind, mentions, mk, names_in, starred_target
+from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mentions, mk, names_in, starred_target
 from src.pystachy_compiler.utils import int_fits
 
 
@@ -150,7 +150,7 @@ def none_sites(body: list[Node], out: dict[str, list[Node]]) -> None:
         if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
             continue
         names: dict[str, bool] = {}
-        for t in st.kids[:-1] if st.kind == "assign" else st.kids[:0]:
+        for t in st.kids[:-1] if st.kind == "assign" else NOKIDS:
             for x in t.kids if t.kind == "tuple" or t.kind == "list" else [t]:
                 if x.kind == "name":
                     names[x.s] = True
@@ -235,7 +235,7 @@ def attr_fills(body: list[Node], name: str, out: list[Node]) -> None:
         if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
             continue
         e = st.kids[-1] if st.kind == "assign" else st
-        for t in st.kids[:-1] if st.kind == "assign" else st.kids[:0]:
+        for t in st.kids[:-1] if st.kind == "assign" else NOKIDS:
             if t.kind == "attr" and t.s == name:
                 out.append(t.kids[0])
                 out.append(e)
@@ -499,7 +499,7 @@ def catches_import(st: Node) -> bool:
     for h in st.kids[1:]:
         if h.kind == "except" and h.kids[0].kind == "omit":
             return True
-        for t in (h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]]) if h.kind == "except" else h.kids[:0]:
+        for t in (h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]]) if h.kind == "except" else NOKIDS:
             if t.kind == "name" and (t.s == "ImportError" or t.s == "ModuleNotFoundError" or t.s == "Exception" or t.s == "BaseException"):
                 return True
     return False
@@ -538,7 +538,7 @@ def may_end(n: Node, bare: bool) -> bool:
     # os._exit() or os.abort()
     if n.kind == "raise" and (len(n.kids) == 0 or not bare):
         return True
-    for x in n.kids[:1] if n.kind == "call" and not bare else n.kids[:0]:
+    for x in n.kids[:1] if n.kind == "call" and not bare else NOKIDS:
         if (x.kind == "name" and (x.s == "exit" or x.s == "quit")) or (x.kind == "attr" and (x.s == "exit" or x.s == "_exit" or x.s == "abort")):
             return True
     if n.kind == "def" or n.kind == "class" or n.kind == "subclass":
@@ -589,8 +589,8 @@ def binds(body: list[Node], out: dict[str, bool], special: bool, pkg: str = "", 
 def builtin_try(st: Node) -> bool:
     # an optional import of builtin modules only (try: from typing import TYPE_CHECKING / except
     # ImportError: TYPE_CHECKING = False), whose except clauses never run (Loader.optional())
-    for x in st.kids[0].kids if accel_try(st) else st.kids[:0]:
-        for a in x.kids if x.kind == "import" else x.kids[:0]:
+    for x in st.kids[0].kids if accel_try(st) else NOKIDS:
+        for a in x.kids if x.kind == "import" else NOKIDS:
             if x.s.startswith("from.") or not (builtin_import(x, a) or a.kids[1].s == "typing_extensions"):
                 return False
     return accel_try(st)
@@ -628,13 +628,13 @@ def specials(m: Mod, body: list[Node], top: int, sure: bool = False) -> None:
     # top-level statement with the first that binds each for sure
     for i in range(len(body)):
         st = body[i]
-        for a in st.kids if st.kind == "import" else st.kids[:0]:
+        for a in st.kids if st.kind == "import" else NOKIDS:
             if special_import(st, a):
                 t = a.kids[0].s if st.s == "" else "typing.TYPE_CHECKING"
                 m.spec[a.s] = t if m.spec.get(a.s, t) == t else ""
                 if (top < 0 or sure) and a.s not in m.specat:
                     m.specat[a.s] = i if top < 0 else top
-        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else NOKIDS:
             if kid.kind == "block":
                 specials(m, kid.kids, i if top < 0 else top, top < 0 and kid is st.kids[0] and builtin_try(st))
             elif kid.kind == "except":
@@ -727,7 +727,7 @@ def bound_in(n: Node, out: dict[str, bool]) -> None:
     if n.kind == "walrus" or n.kind == "typealias" or n.kind == "pattern":
         for nm in n.s.split():
             out[nm] = True
-    for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else n.kids[:0]:
+    for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else NOKIDS:
         bound_in(k, out)
 
 
@@ -819,26 +819,33 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
     return count
 
 
+# the kinds of the nodes that may bind a name, which constant_writes counts (targets' and its own)
+BINDERS: dict[str, bool] = {"assign": True, "annassign": True, "augassign": True, "for": True, "compfor": True, "with": True,
+                            "def": True, "class": True, "subclass": True, "except": True, "walrus": True, "typealias": True,
+                            "global": True, "import": True, "del": True}
+
+
 def constant_writes(n: Node, count: dict[str, int]) -> None:
     # Count every binding in the qualified program, including module-attribute stores in other
     # modules. Local bindings with the same spelling as a main-module name conservatively count
     # too. A global declaration or deletion excludes a name even without an accompanying store.
-    names: dict[str, bool] = {}
-    targets(n, names, False)  # (this traversal counts each walrus node itself, once)
-    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "except" or n.kind == "walrus" or n.kind == "typealias":
-        if n.s != "":
-            names[n.s] = True
-    if n.kind == "global" or n.kind == "import":
-        for k in n.kids:
-            names[k.s] = True
-    if n.kind == "del":
-        gone: list[str] = []
-        for k in n.kids:
-            names_in(k, gone)
-        for nm in gone:
-            names[nm] = True
-    for nm in names:
-        count[nm] = count.get(nm, 0) + 1
+    if n.kind in BINDERS:  # (no dict made at the other nodes, which bind none)
+        names: dict[str, bool] = {}
+        targets(n, names, False)  # (this traversal counts each walrus node itself, once)
+        if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "except" or n.kind == "walrus" or n.kind == "typealias":
+            if n.s != "":
+                names[n.s] = True
+        if n.kind == "global" or n.kind == "import":
+            for k in n.kids:
+                names[k.s] = True
+        if n.kind == "del":
+            gone: list[str] = []
+            for k in n.kids:
+                names_in(k, gone)
+            for nm in gone:
+                names[nm] = True
+        for nm in names:
+            count[nm] = count.get(nm, 0) + 1
     for k in n.kids:
         constant_writes(k, count)
 
@@ -1041,7 +1048,7 @@ def object_values(n: Node) -> bool:
 
 def builtins_names(n: Node, out: dict[str, bool]) -> None:
     # the names that an import of the builtins module in n binds (import builtins as b)
-    for a in n.kids if n.kind == "import" and n.s == "" else n.kids[:0]:
+    for a in n.kids if n.kind == "import" and n.s == "" else NOKIDS:
         if a.kids[0].s == "builtins":
             out[a.s] = True
     for k in n.kids:
@@ -1147,12 +1154,12 @@ def local_types(body: list[Node], out: dict[str, Node]) -> None:
         if v.kind == "unary" and v.s == "-":
             v = mk("int", "", v.line, []) if v.kids[0].kind == "True" or v.kids[0].kind == "False" else v.kids[0]  # (-True is -1)
         t = v.kind if v.kind == "int" or v.kind == "float" or v.kind == "str" else "bool" if v.kind == "True" or v.kind == "False" else ""
-        for x in st.kids[:-1] if st.kind == "assign" and t != "" else st.kids[:0]:
+        for x in st.kids[:-1] if st.kind == "assign" and t != "" else NOKIDS:
             if x.kind == "name" and x.s not in out:
                 out[x.s] = mk("name", t, st.line, [])
         if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[0].s not in out:
             out[st.kids[0].s] = st.kids[1]
-        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else NOKIDS:
             if kid.kind == "block":
                 local_types(kid.kids, out)
             elif kid.kind == "except":
@@ -1216,7 +1223,7 @@ def all_imports(body: list[Node], out: list[str]) -> None:
 def imports_user(n: Node) -> bool:
     # does code n (also in its functions and classes) import a module that is not builtin, whose
     # code, or that of the modules it imports, may run there
-    for a in n.kids if n.kind == "import" else n.kids[:0]:
+    for a in n.kids if n.kind == "import" else NOKIDS:
         if n.s.startswith("from.") or not (builtin_import(n, a) or a.kids[1].s == "typing_extensions"):
             return True
     for k in n.kids:
@@ -1322,7 +1329,7 @@ def free_reads(n: Node, bound: dict[str, bool], out: dict[str, bool]) -> None:
         for p in n.kids[0].kids:
             free_reads(p.kids[1], bound, out)
             free_reads(p.kids[0], bound, out)
-        for x in n.kids[1:2] + n.kids[3:] if k == "def" else n.kids[:0]:
+        for x in n.kids[1:2] + n.kids[3:] if k == "def" else NOKIDS:
             if x.kind == "deco":
                 root = x.s[: x.s.find(".")] if "." in x.s else x.s
                 if root not in bound:
@@ -1386,7 +1393,7 @@ def comp_unbound(c: Node, names: list[str]) -> str:
     # only that clause's target or a later one binds, which CPython finds unbound (UnboundLocalError)
     bound: list[str] = []
     nm = target_unbound(c.kids[1], names, bound)
-    for x in c.kids[3:] if len(c.kids) > 3 and (c.kids[3].kind == "compfor" or c.kids[3].kind == "compif") else c.kids[:0]:
+    for x in c.kids[3:] if len(c.kids) > 3 and (c.kids[3].kind == "compfor" or c.kids[3].kind == "compif") else NOKIDS:
         if nm != "":
             break
         out: dict[str, bool] = {}
@@ -1686,7 +1693,7 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
             if nm not in sure:
                 closed[nm] = True
         return
-    for a in n.kids if n.kind == "import" else n.kids[:0]:
+    for a in n.kids if n.kind == "import" else NOKIDS:
         sure[a.s] = True
         if n.s.startswith("from.") or not (builtin_import(n, a) or a.kids[1].s == "typing_extensions"):
             user[a.s] = True
@@ -1705,10 +1712,10 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
             for nm in then:
                 sure[nm] = True
         return
-    for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else n.kids[:0]:
+    for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else NOKIDS:
         import_reads(k, dict(sure) if k.kind == "block" and n.kind != "with" else sure, out, user, closed)
     first = n.kids[0].kids[0] if n.kind == "try" and len(n.kids[0].kids) > 0 else n
-    for a in first.kids if first.kind == "import" else first.kids[:0]:
+    for a in first.kids if first.kind == "import" else NOKIDS:
         # try: import m as x / ... (or from m import x): after the statement, x is bound unless the
         # import raised, which a read of it checks as it runs (Loader.fragile, Gen.modchk)
         sure[a.s] = True
@@ -1837,7 +1844,7 @@ def only_none(body: list[Node], name: str) -> bool:
             continue
         if stmt_binds(st, name) and not (st.kind == "assign" and nonexpr(st.kids[-1]) and assigns(st, name)):
             return False  # (also a, name = None, None)
-        for a in st.kids if st.kind == "import" else st.kids[:0]:
+        for a in st.kids if st.kind == "import" else NOKIDS:
             if a.s == name:
                 return False  # (import m as name, which stmt_binds() leaves out)
         for kid in st.kids:
@@ -1861,7 +1868,7 @@ def bind_count(body: list[Node], name: str) -> int:
             n += 1 if st.kind == "assign" else 2
         if has_kind(st, "walrus"):
             n += 2
-        for a in st.kids if st.kind == "import" else st.kids[:0]:
+        for a in st.kids if st.kind == "import" else NOKIDS:
             n += 2 if a.s == name else 0
         for kid in st.kids:
             if kid.kind == "block":
@@ -1882,10 +1889,10 @@ def binds_other(body: list[Node], name: str) -> bool:
     for st in body:
         if stmt_binds(st, name) or ((st.kind == "def" or st.kind == "class" or st.kind == "subclass") and st.s == name):
             return True
-        for a in st.kids if st.kind == "import" else st.kids[:0]:
+        for a in st.kids if st.kind == "import" else NOKIDS:
             if a.s == name:
                 return True
-        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else NOKIDS:
             if (k.kind == "block" and binds_other(k.kids, name)) or (k.kind == "except" and binds_other(k.kids[1].kids, name)):
                 return True
     return False
@@ -1905,7 +1912,7 @@ def has_finally(body: list[Node]) -> bool:
 def binds_as(body: list[Node], name: str) -> bool:
     # does an except clause in code body bind name (not in the functions and classes it defines)
     for st in body:
-        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else NOKIDS:
             if (k.kind == "block" and binds_as(k.kids, name)) or (k.kind == "except" and (k.s == name or binds_as(k.kids[1].kids, name))):
                 return True
     return False

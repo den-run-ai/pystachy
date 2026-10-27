@@ -24,7 +24,7 @@ from src.pystachy_compiler.specs import (
     exc_derives,
     is_excname,
 )
-from src.pystachy_compiler.syntax import Node, mk
+from src.pystachy_compiler.syntax import NOKIDS, Node, mk
 from src.pystachy_compiler.utils import (
     is_const,
     is_opt,
@@ -124,7 +124,7 @@ def gen_try_(self, n: Node) -> None:
             self.line = h.line
             if h.s != "" and not self.modlevel and h.s in self.gdecl:
                 self.err(f"except ... as {h.s}, of the global '{h.s}', in a function is not supported: the end of the clause deletes the global, as del would")
-            for c in h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]] if h.kids[0].kind == "name" else h.kids[:0]:
+            for c in h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]] if h.kids[0].kind == "name" else NOKIDS:
                 self.modchk(c)  # (read through an import that may have raised)
                 if (c.chk or self.foreign(c.s)) and c.s in self.gflag and c.s in self.classes:
                     # a class whose class statement may not have run yet
