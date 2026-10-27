@@ -524,23 +524,34 @@ def gen_big_status(self, v: Val) -> Val:
     return Val(self.select(self.big_fits([v]), self.big_lo(v), Val("-1", "int")), "int")
 
 
-def gen_big_list_value(self, o: Val, i: str, raw: str) -> Val:
-    # raw, the slot of list[int] o at index i (in range, or negative as pys_list_get takes it), as
-    # the int that the list holds there (int_lists): a promoting int in a module that opts in, else
-    # the 64-bit int, NARROW past 64 bits. The Mpz is read only where the slot holds TSLOT_BIG
+def gen_big_slot(self, raw: str, fn: str, args: list[str], two: bool = False) -> Val:
+    # raw, the slot of a list's int, a dict's value or a set's element, as the promoting int it
+    # holds: past 64 bits, TSLOT_BIG there (two: or -2**63 + 1, a set's, runtime.c's ssent) and the
+    # Mpz that fn(args) reads, which it reads only where the slot holds that (null for -2**63 itself,
+    # or -2**63 + 1)
     rare = self.label()
     end = self.label()
     ph = Ins("phi", BIG, "")
     self.incoming(ph, self.big(Val(raw, "int")).v, self.cur)
-    self.cbr(self.scalar_cmp("eq", Val(raw, "int"), Val(TSLOT_BIG, "int")), rare, end)
+    if two:
+        self.cbr(self.scalar_cmp("sle", Val(raw, "int"), Val("-9223372036854775807", "int")), rare, end)
+    else:
+        self.cbr(self.scalar_cmp("eq", Val(raw, "int"), Val(TSLOT_BIG, "int")), rare, end)
     self.place(rare)
-    w = Val(self.scalar_cast("ptrtoint", Val(self.rt("pys_list_big_at", "ptr", [f"ptr {o.v}", f"i64 {i}"]), "%ptr"), "int"), "int")
+    w = Val(self.scalar_cast("ptrtoint", Val(self.rt(fn, "ptr", args), "%ptr"), "int"), "int")
     small = self.scalar_cmp("eq", w, Val("0", "int"))  # (-2**63 itself)
-    r = self.big(Val(self.select(small, Val(TSLOT_BIG, "int"), Val("0", "int")), "int"), self.scalar_cast("inttoptr", w, "%ptr"))
+    r = self.big(Val(self.select(small, Val(raw if two else TSLOT_BIG, "int"), Val("0", "int")), "int"), self.scalar_cast("inttoptr", w, "%ptr"))
     self.incoming(ph, r.v, self.cur)
     self.br(end)
     self.place(end)
-    v = Val(self.phi(ph), BIG)
+    return Val(self.phi(ph), BIG)
+
+
+def gen_big_list_value(self, o: Val, i: str, raw: str) -> Val:
+    # raw, the slot of list[int] o at index i (in range, or negative as pys_list_get takes it), as
+    # the int that the list holds there (int_lists): a promoting int in a module that opts in, else
+    # the 64-bit int, NARROW past 64 bits (big_slot)
+    v = self.big_slot(raw, "pys_list_big_at", [f"ptr {o.v}", f"i64 {i}"])
     return v if self.int_policy(self.line) else self.big_narrow(v)
 
 
@@ -587,22 +598,9 @@ def gen_dict_int(self, t: str) -> bool:
 
 def gen_big_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
     # the value of entry e of d, a dict of ints (dict_int): a promoting int in a module that opts
-    # in (or keep), else the 64-bit int, NARROW past 64 bits. The Mpz is read only where the slot
-    # holds TSLOT_BIG, as a list's (big_list_value)
+    # in (or keep), else the 64-bit int, NARROW past 64 bits (big_slot)
     raw = self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"])
-    rare = self.label()
-    end = self.label()
-    ph = Ins("phi", BIG, "")
-    self.incoming(ph, self.big(Val(raw, "int")).v, self.cur)
-    self.cbr(self.scalar_cmp("eq", Val(raw, "int"), Val(TSLOT_BIG, "int")), rare, end)
-    self.place(rare)
-    w = Val(self.scalar_cast("ptrtoint", Val(self.rt("pys_dict_big_val", "ptr", [f"ptr {d.v}", f"i64 {e}"]), "%ptr"), "int"), "int")
-    small = self.scalar_cmp("eq", w, Val("0", "int"))  # (-2**63 itself)
-    r = self.big(Val(self.select(small, Val(TSLOT_BIG, "int"), Val("0", "int")), "int"), self.scalar_cast("inttoptr", w, "%ptr"))
-    self.incoming(ph, r.v, self.cur)
-    self.br(end)
-    self.place(end)
-    v = Val(self.phi(ph), BIG)
+    v = self.big_slot(raw, "pys_dict_big_val", [f"ptr {d.v}", f"i64 {e}"])
     return v if keep or self.int_policy(self.line) else self.big_narrow(v)
 
 
@@ -686,6 +684,69 @@ def gen_dict_store(self, d: str, key: str, v: Val, kv: list[str], e: str = "") -
         self.rt("pys_dict_entry_set", "void", [f"ptr {d}", f"i64 {e}", "i64 " + self.to_slot(v)])
     else:
         self.rt("pys_dict_set", "void", [f"ptr {d}", f"i64 {key}", "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
+
+
+def gen_set_int(self, t: str) -> bool:
+    # does set type t hold promoting ints as its elements: a set or frozenset of ints, in a program
+    # whose lists, dicts and sets of ints hold them (int_lists; runtime.c's sbig)
+    return is_set(t) and selem(t) == "int" and int_lists()
+
+
+def gen_big_set_value(self, s: Val, j: str) -> Val:
+    # the element in slot j of s, a set of ints (set_int): a promoting int in a module that opts in,
+    # else the 64-bit int, NARROW past 64 bits (big_slot)
+    raw = self.rt("pys_set_key", "i64", [f"ptr {s.v}", f"i64 {j}"])
+    v = self.big_slot(raw, "pys_set_big_key", [f"ptr {s.v}", f"i64 {j}"], True)
+    return v if self.int_policy(self.line) else self.big_narrow(v)
+
+
+def gen_set_coerce(self, v: Val, et: str) -> Val:
+    # v as an element added to a set of et (store_elem): a promoting int stays one where the set's
+    # elements are ints (et int, or a promoting int's type, whose set ctype makes one of ints) and
+    # the program's sets of ints hold them (int_lists), which set_store adds as it is
+    et = "int" if et == BIG else et
+    if v.t == BIG and et == "int" and int_lists():
+        return v
+    return self.store_elem(v, et)
+
+
+def gen_set_store(self, s: str, v: Val, et: str) -> None:
+    # set s, whose elements have type et, adds v, which set_coerce has made one: a promoting int as
+    # pys_set_big_add adds it, past 64 bits as TSLOT_BIG and its Mpz
+    if v.t == BIG:
+        self.rt("pys_set_big_add", "void", [f"ptr {s}", f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}"])
+        return
+    self.rt("pys_set_add", "void", [f"ptr {s}", "i64 " + self.to_slot(v)], self.key_fx(et))
+
+
+def gen_big_set_method(self, o: Val, m: str, args: list[Node]) -> Val:
+    # o.m(args) of o, a set of ints whose elements may be past 64 bits (set_int): pop() gives the
+    # promoting int (in a module that does not opt in, the 64-bit int, NARROW past 64 bits), and
+    # discard(x) and remove(x) of a promoting int x, or of an int | None x (None is no element:
+    # discard() does nothing, remove() raises KeyError: None), look for it exactly
+    # (pys_set_big_*); Val("", "") for the rest, which smethod compiles as for 64-bit ints
+    if m == "pop" and len(args) == 0:
+        v = Val(self.rt("pys_set_big_pop", BIGLL, [f"ptr {o.v}"]), BIG)
+        return v if self.int_policy(self.line) else self.big_narrow(v)
+    if (m == "discard" or m == "remove") and len(args) == 1 and args[0].kind not in ["kw", "starred", "dstar"] and self.dyn_dry(args[0]) in [BIG, BIGOPT]:
+        x = self.expr(args[0], "")
+        fn = "pys_set_big_discard" if m == "discard" else "pys_set_big_remove"
+        end = ""
+        if x.t == BIGOPT:
+            if m == "remove":
+                self.guard(self.isnull(x), "KeyError: None")
+            else:
+                some = self.label()
+                end = self.label()
+                self.cbr(self.isnull(x), end, some)
+                self.place(some)
+            x = self.big_unbox(x)
+        self.rt(fn, "void", [f"ptr {o.v}", f"i64 {self.big_lo(x).v}", f"ptr {self.big_hi(x).v}"])
+        if end != "":
+            self.br(end)
+            self.place(end)
+        return Val("null", "None")
+    return Val("", "")
 
 
 def gen_big_list_minmax(self, o: Val, maximum: bool) -> Val:
@@ -904,6 +965,10 @@ def gen_big_compare(self, op: str, a: Val, b: Val) -> Val:
     if (op == "in" or op == "not in") and a.t == BIG and is_list(b.t) and elem(b.t) == "int" and int_lists():
         # (a list of ints may hold one past 64 bits: exactly)
         return self.num_cmp(">=" if op == "in" else "<", self.big_list_find(b, a, 0, "0", "0"), Val("0", "int"))
+    if (op == "in" or op == "not in") and a.t == BIG and self.set_int(b.t):
+        # (a set of ints may hold one past 64 bits: by CPython's hash, exactly)
+        hit = Val(self.rt("pys_set_big_has", "i64", [f"ptr {b.v}", f"i64 {self.big_lo(a).v}", f"ptr {self.big_hi(a).v}"]), "int")
+        return self.num_cmp("!=" if op == "in" else "==", hit, Val("0", "int"))
     if (op == "in" or op == "not in") and a.t == BIG and int_items(b.t):
         # an int of 64-bit storage equals a value that fits in 64 bits: its lo (a float item may
         # equal one past 64 bits, so other containers take the value narrowed, as other operands do)

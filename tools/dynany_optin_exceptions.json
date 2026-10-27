@@ -408,6 +408,34 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/numbers/python_int_sets.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_sets.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_sets.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_sets.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_sets_fixed.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_sets_fixed.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_sets_fixed.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_sets_fixed.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/numbers/python_int_special.py",
       "mode": "jit",
       "diagnostic": "tests/programs/numbers/python_int_special.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
