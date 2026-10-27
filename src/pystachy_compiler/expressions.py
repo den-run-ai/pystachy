@@ -1094,7 +1094,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.err(f"cannot infer the type of {'an empty dict' if len(ks) == 0 else 'a dict of None values'}; add a type annotation (d: dict[K, V] = {{}}, or -> dict[K, V] on a function returning the dict)")
         if self.ctype("dict", kv) == "dict[dyn,dyn]":
             kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
-        ks = [self.store_key(x, kv[0]) for x in ks]
+        if kv[0] == BIG:
+            kv[0] = "int"  # (a dict of int keys, which holds promoting ints where the program's dicts do: dict_put)
+        ks = [self.key_coerce(x, kv[0]) for x in ks]
         if kv[1] == BIG:
             kv[1] = "int"  # (a dict of ints, which holds promoting ints where the program's dicts do: dict_store)
         vs = [self.list_coerce(x, kv[1]) for x in vs]
@@ -1102,7 +1104,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.err(self.key_problem(kv[0]))
         r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"])
         for i in range(len(ks)):
-            self.dict_store(r, self.to_slot(ks[i]), vs[i], kv)
+            self.dict_put(Val(r, self.ctype("dict", kv)), ks[i], self.key_slot(ks[i]), vs[i], kv)
         return Val(r, self.ctype("dict", kv))
     if k == "tuple":
         ws = targs(want) if is_tuple(want) else ["dyn"] * len(n.kids) if want == "dyn" else []  # (dynamic items: dynamic.py)
@@ -2600,6 +2602,9 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
         self.stkkey = self.nokey
         if kv[0] == "dyn" and kval.t == "int":
             return self.from_slot(self.int_any_lookup(self.unwrap(o, sub), kval, True), kv[1])
+        if (kval.t == BIG or kval.t == BIGOPT) and self.dict_bigkey(t):
+            o = self.unwrap(o, sub)
+            return self.dict_value(o, self.big_key_entry(o, self.big_key(kval), "pys_dict_big_entry"))  # (a key past 64 bits: bigints.py)
         kx = self.dkey(kval, kv[0])
         o = self.unwrap(o, sub)
         if bool_for_int(kval.t, kv[0]):

@@ -12,8 +12,8 @@ Modules without the comment, including the compiler, `runtime.py` and `lib/`, ke
 64-bit `int` of the [language guide](language.md). The roadmap is #907; this page describes its
 step 3, the compiler-level integer, and the first parts of step 6: tuples, lists, dicts, sets and
 generators. Values past 64 bits stay in variables, arguments, returns, fields, module variables,
-closures, tuples, lists of ints, the values of dicts of ints, sets of ints and the values
-generators yield and return; dict keys and the other containers still hold 64-bit ints
+closures, tuples, lists of ints, the keys and values of dicts of ints, sets of ints and the
+values generators yield and return; the other containers still hold 64-bit ints
 ([boundaries](#64-bit-boundaries)).
 
 ```python
@@ -95,6 +95,11 @@ print(int("123456789012345678901234567890") % 97)  # 52
   `discard()` and `remove()` find them exactly, and in a module that opts in, iteration and `pop()`
   read them. `sorted()`, `min()`, `max()`, `sum()`, `list()`, `repr()`, comparisons and copies
   take every element.
+- The keys of a dict of int keys are promoting ints too, as its values are: displays,
+  comprehensions, item assignment, `op=`, `update()`, copies and `dict.fromkeys()` store keys past
+  64 bits; indexing, `in` and `del` find them exactly (also by an `int | None`), and in a module that
+  opts in, iteration over the dict and its `items()` reads them. `keys()` makes a list of ints that
+  holds them, and `repr()`, `==`, `!=` and the sets of a dict's keys take them.
 - A generator yields and returns promoting ints, in a program where a module opts in: a `for`
   loop, a comprehension, `next()`, unpacking, `send()` and `throw()` in a module that opts in read
   them, and so do `list()`, `sorted()`, `sum()`, `min()`, `max()`, `in`, `enumerate()`, `zip()`
@@ -168,6 +173,14 @@ read of a value compares its slot with -2\*\*63 and reads the pointer only where
 as a list's read does, by the entry it found: a module that opts in gets the promoting int, other
 code the 64-bit int, with `OverflowError` past 64 bits.
 
+A key past 64 bits of a dict of int keys holds -2\*\*63 in its slot too, and its pointer in a
+companion array beside the entries (`Dict.kb`, `kbig`). Its hash is the int keys' hash of
+CPython's hash of it, which no 64-bit key's hash equals but -2\*\*63's could, and that one it
+cannot (the int keys' hash gives each int its own, and CPython's hash is never -2\*\*63): the
+lookups of 64-bit keys never meet such an entry and run as before, and only the lookups of keys
+past 64 bits compare digits. A store of a promoting int key finds or adds its entry and then
+writes the value there, as a store by an entry that a lookup found does.
+
 A set of ints holds an element that fits in its 8-byte slot, as before, and one past 64 bits at
 CPython's hash of its value, with its pointer in a companion array as long as the table, which the
 collector scans and the first such element makes (`runtime.c`'s `Set.kb`, `sbig`). Its slot holds
@@ -200,9 +213,10 @@ These places keep 64-bit ints for now. A value past 64 bits that reaches one rai
 `OverflowError: Python int too large to convert to C long` (CPython's message for an int too big
 for a C `long`), where CPython goes on with the bigger int:
 
-- The keys of dicts, the items of lists of other types than `int` (a tuple
+- The keys of dicts of other types than `int`, the items of lists of other types than `int` (a tuple
   or an `int | None` in a list holds 64-bit ints too), the values of dicts of other types than
-  `int` and the tuples that `items()` and `popitem()` make of a dict of ints, the items and values
+  `int` and the tuples that `items()` and `popitem()` make of a dict of ints (or of int keys), the
+  key of `get()`, `pop()` and `setdefault()`, the items and values
   of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
   items, unions other than `int | None` (also where a join makes one, as
   for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
@@ -213,10 +227,10 @@ for a C `long`), where CPython goes on with the bigger int:
 - An `int` or `int | None` parameter of a function in a module that does not opt in (whose
   unannotated parameters take the promoting int, so arithmetic there promotes too), and the
   parameters and result of a `Callable`.
-- A list's int, a dict's value, a set's element or a generator's value read in a module that does
-  not opt in, such as `lib/`'s `heapq`, `bisect`, `random.shuffle()`, `collections`' `defaultdict`
-  and `Counter` and the iterator that `iter()` gives, and the ints of a list given to `tuple()`,
-  `dict.fromkeys()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`. Of a
+- A list's int, a dict's key or value, a set's element or a generator's value read in a module
+  that does not opt in, such as `lib/`'s `heapq`, `bisect`, `random.shuffle()`, `collections`'
+  `defaultdict` and `Counter` and the iterator that `iter()` gives, and the ints of a list given to
+  `tuple()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`. Of a
   dict of ints that holds a value past 64 bits, `pop()` with a key that may be None, and `pop()`
   of a bool key without a default, read its values as 64-bit ints, and so raise for any such value.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
@@ -335,6 +349,10 @@ the first measurements, before the inline paths, in
   `pop()`, iteration, comparisons, copies, a field, nested containers and -2\*\*63 beside an int
   past 64 bits of its hash; `python_int_sets_fixed.py`: a module that does not opt in
   (`tests/python_int_modules/fixed_sets.py`) finds, adds and reads the elements that fit.
+- `tests/programs/numbers/python_int_dict_keys.py`: dicts whose keys are past 64 bits: displays,
+  comprehensions, stores, lookups and their `KeyError`, `in`, `del`, `op=`, iteration, `keys()`,
+  `items()`, comparisons, copies, `update()`, `dict.fromkeys()`, sets of the keys, keys of one hash
+  and -2\*\*63, nested dicts and `int | None` keys.
 - `tests/programs/numbers/python_int_recursion.py`: recursive functions and methods, one with a
   `dict[int, int]` memo; `python_int_forward_ref.py`: quoted annotations that name promoting ints
   ([provenance](../tests/upstream/python-int.md)).
@@ -367,9 +385,9 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_roots.py`: values whose digits only a module variable, a
   class attribute, a field, a closure cell, a default or a generator's frame holds survive
   collections (the test runner's GC stress collects at every allocation).
-- `tests/programs/upstream/upstream_micropython_*.py`: 35 of MicroPython's integer tests
+- `tests/programs/upstream/upstream_micropython_*.py`: 36 of MicroPython's integer tests
   (arithmetic, bitwise operations, shifts, comparisons, `divmod()`, `pow()`, `abs()`, `bin()`,
-  `hex()`, `oct()`, constant folding and slices past 64 bits), unchanged after a header that opts
+  `hex()`, `oct()`, constant folding, slices and hashes past 64 bits), unchanged after a header that opts
   them in ([provenance and the tests left out](../tests/upstream/micropython.md)).
 - `tests/deviations/python_int_limits.py` and the two rejections above.
 - `tools/test_compiler_state_files.py`: the opt-in follows its file through imports, restarts and

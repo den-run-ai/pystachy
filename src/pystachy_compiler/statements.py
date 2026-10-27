@@ -912,6 +912,12 @@ def gen_stmt(self, n: Node) -> None:
                 # where pys_dict_pop reads a 64-bit one (NARROWED)
                 kt = targs(unopt(o.t))[0]
                 kval = self.expr(dt.kids[1], kt)
+                if (kval.t == BIG or kval.t == BIGOPT) and self.dict_bigkey(unopt(o.t)):
+                    # (a key past 64 bits: bigints.py)
+                    d = self.unwrap(o, nodel)
+                    kb = self.big_key(kval)
+                    self.rt("pys_dict_big_del", "void", [f"ptr {d.v}", f"i64 {self.big_lo(kb).v}", f"ptr {self.big_hi(kb).v}"])
+                    continue
                 kx = self.dkey(kval, kt)
                 key = self.to_slot(kx)
                 o = self.unwrap(o, nodel)
@@ -1034,8 +1040,8 @@ def gen_stmt(self, n: Node) -> None:
                 kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
             elif BIG in kv[0] or BIG in kv[1]:
                 kv = targs(self.lct[-1])  # (a promoting int is an int there, ctype's, which dict_store keeps past 64 bits)
-        ks = self.to_slot(self.store_key(kx, kv[0]))
-        self.dict_store(self.lcs[-1], ks, self.list_coerce(vx, kv[1]), kv)
+        kc = self.key_coerce(kx, kv[0])
+        self.dict_put(Val(self.lcs[-1], self.ctype("dict", kv)), kc, self.key_slot(kc), self.list_coerce(vx, kv[1]), kv)
     elif k == "lcappend":
         et = self.lct[-1]
         v = self.expr(n.kids[0], et, resultsoft=self.lcsoft[-1])
@@ -1258,6 +1264,14 @@ def gen_augassign(self, n: Node) -> None:
             # program: where it deletes k, CPython adds k as the bool it is (store_key rejects it)
             kv = targs(unopt(o.t))
             kval = self.expr(t.kids[1], kv[0])
+            if (kval.t == BIG or kval.t == BIGOPT) and self.dict_bigkey(unopt(o.t)):
+                # a key past 64 bits (bigints.py): its entry for d[k], and again for the store, which
+                # the right operand may have moved or deleted
+                o = self.unwrap(o, sub)
+                kb = self.big_key(kval)
+                cur = self.dict_value(o, self.big_key_entry(o, kb, "pys_dict_big_entry"))
+                self.dict_put(o, kb, "", self.list_coerce(self.inplace(op, cur, n.kids[1]), kv[1]), kv)
+                return
             kx = self.dkey(kval, kv[0])
             key = "" if is_sopt(kx.t) else self.to_slot(kx)
             o = self.unwrap(o, sub)
@@ -1934,7 +1948,7 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     kv = targs(s.t)
     out: list[Val] = []
     if mode != "values":
-        out.append(self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[0]))
+        out.append(self.big_dict_key(s, j) if self.dict_bigkey(s.t) else self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[0]))
     if (mode == "values" or mode == "items") and self.dict_int(s.t):
         out.append(self.big_dict_value(s, j))  # (an int past 64 bits: bigints.py)
     elif mode == "values" or mode == "items":
