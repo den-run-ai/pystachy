@@ -231,9 +231,7 @@ for a C `long`), where CPython goes on with the bigger int:
 - A list's int, a dict's key or value, a set's element or a generator's value read in a module
   that does not opt in, such as `lib/`'s `heapq`, `bisect`, `random.shuffle()`, `collections`'
   `defaultdict` and `Counter` and the iterator that `iter()` gives, and the ints of a list given to
-  `tuple()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`. Of a
-  dict of ints that holds a value past 64 bits, `pop()` of a bool key without a default reads its
-  values as 64-bit ints, and so raises for any such value.
+  `tuple()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
   floats: the ints of an `int | float` list, ints added to a float start, and a start past 64
@@ -358,7 +356,8 @@ the first measurements, before the inline paths, in
   dict that such a call types; `python_int_dict_optional_key_methods.py`: their `get()` and `pop()`
   by an `int | None`; `python_int_hash_collisions.py`: probe chains of 120 keys and
   elements past 64 bits of one CPython hash beside 64-bit ones of the same hash, in dicts and sets;
-  `python_int_dict_popitem.py`: `popitem()` of dicts of ints and of int keys, and its tuple.
+  `python_int_dict_popitem.py`: `popitem()` of dicts of ints and of int keys, and its tuple;
+  `python_int_dict_bool_pop.py`: `pop()` of a bool key of a dict of ints.
 - `tests/programs/numbers/python_int_recursion.py`: recursive functions and methods, one with a
   `dict[int, int]` memo; `python_int_forward_ref.py`: quoted annotations that name promoting ints
   ([provenance](../tests/upstream/python-int.md)).

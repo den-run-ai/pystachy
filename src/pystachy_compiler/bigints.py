@@ -699,10 +699,11 @@ def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
     # o.m(args) of o, a dict of ints whose values may be past 64 bits (dict_int): get(k), get(k, x),
     # pop(k), pop(k, x) and setdefault(k, x) give the promoting int (in a module that does not opt
     # in, the 64-bit int, NARROW past 64 bits), and store or give x, an int, as one; get(k) and
-    # pop(k, None) the box of an int | None (dict_box). Val("", "") for the rest, which bmethod
-    # compiles as for 64-bit values (its 64-bit reads narrow the dict first: NARROWED), but for the
-    # box of an int | None (dict_box): a key that may be None but of get(k, x), and a bool key of
-    # pop(k), whose KeyError names it as the bool it is (bool_find), or of setdefault() (rejected)
+    # pop(k, None) the box of an int | None (dict_box); pop(k) of a bool k raises the KeyError that
+    # names it as the bool it is (bool_find). Val("", "") for the rest, which bmethod compiles as for
+    # 64-bit values (its 64-bit reads narrow the dict first: NARROWED), but for the box of an
+    # int | None (dict_box): a key that may be None but of get(k, x), and a bool key of setdefault()
+    # (rejected)
     if any([a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" for a in args]):
         return Val("", "")
     kv = targs(o.t)
@@ -712,11 +713,12 @@ def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
     dt = self.dyn_dry(args[1]) if len(args) == 2 else ""
     box = (m == "get" and len(args) == 1) or (m == "pop" and dt == "None")
     optbig = kt == BIGOPT and m != "setdefault" and not box  # (an int | None key: big_dict_call)
-    if (is_opt(kt) and not optbig and (box or m != "get")) or kt == "None" or (bool_for_int(kt, kv[0]) and (m == "setdefault" or (m == "pop" and len(args) == 1))):
+    if (is_opt(kt) and not optbig and (box or m != "get")) or kt == "None" or (bool_for_int(kt, kv[0]) and m == "setdefault"):
         return Val("", "")
     if len(args) == 2 and not box and dt != "int" and dt != BIG:
         return Val("", "")
-    kx = self.expr(args[0], kv[0])
+    kb = self.expr(args[0], kv[0])
+    kx = kb
     if not ((kx.t == BIG or kx.t == BIGOPT) and self.dict_bigkey(o.t)) and not (is_sopt(kx.t) and bool_for_int(unopt(kx.t), kv[0])):
         kx = self.dkey(kx, kv[0])  # (a bool | None, of get(k, x), finds the int key it equals, as in bmethod: keyed)
     k = "" if kx.t == BIG else "0" if kx.t == BIGOPT else self.to_slot(kx)  # (a promoting int key of a dict of int keys: dict_key_args, keyed)
@@ -727,6 +729,8 @@ def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
         fn = "pys_dict_getbox" if m == "get" else "pys_dict_popbox"
         return self.dict_box(self.rt(self.dict_key_fn(fn, kx), "i64", [f"ptr {o.v}"] + self.dict_key_args(kx, k) + ["i64 0"], x))
     d = self.to_big(self.expr(args[1], "")) if len(args) == 2 else self.big(Val("0", "int"))
+    if m == "pop" and len(args) == 1 and bool_for_int(kb.t, kv[0]):
+        self.bool_find(o.v, kb, k)
     return self.big_dict_call(o, m, kx, k, d, len(args) == 2, x)
 
 

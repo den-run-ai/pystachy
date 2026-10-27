@@ -8,8 +8,7 @@
 # that may be None (a parameter) hashed as the tuple of its fields, a dict's key or value that
 # items() puts in a tuple, or a list's item, a dict's key, a set's element or a generator's value
 # that tuple() or a module that does not opt in (heapq, the iterator of iter()) reads, raises
-# OverflowError, where CPython goes on with the bigger int; so does pop() of a bool key, which
-# reads a dict's values as 64-bit ints.
+# OverflowError, where CPython goes on with the bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected.
 import heapq
@@ -74,11 +73,6 @@ try:
     print(list(vals.items()))
 except OverflowError as e:
     print("items():", e)
-try:
-    flagged = {1: 2, 2: big}
-    print(flagged.pop(True))
-except OverflowError as e:
-    print("pop() of a bool key:", e, flagged)
 maybe: int | None = big
 try:
     print([maybe])
