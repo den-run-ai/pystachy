@@ -889,13 +889,13 @@ def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
         return self.rt(fn, "i64", av, x)
     if none == "":
         self.guard(self.ptr_cmp('==', k, Val('null', 'None')).v, "KeyError: None")
-        return self.rt(fn, "i64", self.keyed(k, av), x)
+        return self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x)
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
     self.cbr(self.ptr_cmp('==', k, Val('null', 'None')).v, l1, l2)
     self.place(l2)
-    r = self.rt(fn, "i64", self.keyed(k, av), x)
+    r = self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x)
     e2 = self.cur
     self.br(l3)
     self.place(l1)
@@ -908,7 +908,10 @@ def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
 
 def gen_keyed(self, k: Val, av: list[str]) -> list[str]:
     # the arguments av of a dict lookup by key k (av[1]), which is not None here: an int key
-    # that may be None is the int its box holds
+    # that may be None is the int its box holds, and a promoting int's (of a dict of int keys) is its
+    # {lo, m}, which the function's twin takes (bigints.py's dict_key_fn)
+    if k.t == BIGOPT:
+        return [av[0]] + self.dict_key_args(self.big_unbox(k), "") + av[2:]
     if not is_sopt(k.t):
         return av
     return [av[0], "i64 " + self.to_slot(self.deref(k))] + av[2:]

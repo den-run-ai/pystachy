@@ -98,9 +98,9 @@ print(int("123456789012345678901234567890") % 97)  # 52
   take every element.
 - The keys of a dict of int keys are promoting ints too, as its values are: displays,
   comprehensions, item assignment, `op=`, `update()`, copies, `dict.fromkeys()` and `setdefault()`
-  store keys past 64 bits; indexing, `in` and `del` find them exactly (also by an `int | None`), so
-  do `get()` and `pop()`, and in a module that opts in, iteration over the dict and its `items()`
-  and `popitem()` read them. `keys()` makes a list of ints that holds them, and `repr()`, `==`,
+  store keys past 64 bits; indexing, `in`, `del`, `get()` and `pop()` find them exactly (also by an
+  `int | None`), and in a module that opts in, iteration over the dict and its `items()` and
+  `popitem()` read them. `keys()` makes a list of ints that holds them, and `repr()`, `==`,
   `!=` and the sets of a dict's keys take them.
 - A generator yields and returns promoting ints, in a program where a module opts in: a `for`
   loop, a comprehension, `next()`, unpacking, `send()` and `throw()` in a module that opts in read
@@ -217,8 +217,7 @@ for a C `long`), where CPython goes on with the bigger int:
 
 - The keys of dicts of other types than `int`, the items of lists of other types than `int` (a tuple
   or an `int | None` in a list holds 64-bit ints too), the values of dicts of other types than
-  `int` and the tuples that `items()` makes of a dict of ints (or of int keys), an
-  `int | None` key given to `get()`, `pop()` or `setdefault()`, the items and values
+  `int` and the tuples that `items()` makes of a dict of ints (or of int keys), the items and values
   of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
   items, unions other than `int | None` (also where a join makes one, as
   for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
@@ -233,8 +232,8 @@ for a C `long`), where CPython goes on with the bigger int:
   that does not opt in, such as `lib/`'s `heapq`, `bisect`, `random.shuffle()`, `collections`'
   `defaultdict` and `Counter` and the iterator that `iter()` gives, and the ints of a list given to
   `tuple()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`. Of a
-  dict of ints that holds a value past 64 bits, `pop()` with a key that may be None, and `pop()`
-  of a bool key without a default, read its values as 64-bit ints, and so raise for any such value.
+  dict of ints that holds a value past 64 bits, `pop()` of a bool key without a default reads its
+  values as 64-bit ints, and so raises for any such value.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
   floats: the ints of an `int | float` list, ints added to a float start, and a start past 64
@@ -356,7 +355,8 @@ the first measurements, before the inline paths, in
   `items()`, comparisons, copies, `update()`, `dict.fromkeys()`, sets of the keys, keys of one hash
   and -2\*\*63, nested dicts and `int | None` keys; `python_int_dict_key_methods.py`: their `get()`,
   `pop()` and `setdefault()` with int, str, float and list values, defaults and `KeyError`, and a
-  dict that such a call types; `python_int_hash_collisions.py`: probe chains of 120 keys and
+  dict that such a call types; `python_int_dict_optional_key_methods.py`: their `get()` and `pop()`
+  by an `int | None`; `python_int_hash_collisions.py`: probe chains of 120 keys and
   elements past 64 bits of one CPython hash beside 64-bit ones of the same hash, in dicts and sets;
   `python_int_dict_popitem.py`: `popitem()` of dicts of ints and of int keys, and its tuple.
 - `tests/programs/numbers/python_int_recursion.py`: recursive functions and methods, one with a
