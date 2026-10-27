@@ -286,10 +286,13 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     ts = self.rtfns[k].sig
     ll = self.rtfns[k].ll
     if k in NARROWED and int_lists():
-        # (a list of ints that may hold promoting ints past 64 bits, which it reads as 64-bit ints)
+        # (a list of ints that may hold promoting ints past 64 bits, which it reads as 64-bit ints,
+        # and the dict whose values it reads so)
         for j in range(min(len(args), len(ts) - 1)):
             if ts[j + 1].startswith("list["):
                 self.rt("pys_list_narrow", "void", [args[j]])
+            elif ts[j + 1] == "S" and k.startswith("dict."):
+                self.rt("pys_dict_narrow", "void", [args[j]])
     ok = ret == ll[0] and len(args) == len(ll) - 1
     i = Ins("rt", ts[0], k)
     i.a = []

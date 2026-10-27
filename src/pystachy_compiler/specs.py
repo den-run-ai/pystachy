@@ -722,8 +722,11 @@ for _j in range(len(FX)):
 # result too long in join and replace, where CPython raises OverflowError too
 # the runtime functions that take a list's ints as 64-bit ints and do not test them (they raise
 # nothing for it): a program whose lists may hold promoting ints past 64 bits (int_lists) narrows
-# their lists first (pys_list_narrow, Gen.rt), as other 64-bit storage takes a promoting int
-NARROWED: list[str] = ["dict.fromkeys", "m.floats", "m.prod_int", "set.and_list", "set.ge_list", "set.isdisjoint_list",
+# their lists first (pys_list_narrow, Gen.rt), as other 64-bit storage takes a promoting int, and
+# their dicts too (pys_dict_narrow): dict.items, whose tuples hold 64-bit ints, and the get(), pop()
+# and setdefault() of 64-bit values, which a dict of ints compiles so only for what
+# Gen.big_dict_method leaves (pop() of a key that may be None, or of a bool without a default)
+NARROWED: list[str] = ["dict.fromkeys", "dict.get", "dict.items", "dict.pop", "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "set.and_list", "set.ge_list", "set.isdisjoint_list",
                        "set.isub_list", "set.ixor_list", "set.le_list", "set.sub_list", "set.update_list", "set.xor_list",
                        "sum.int_float"]
 RUNTIME: dict[str, str] = {
@@ -815,6 +818,12 @@ RUNTIME: dict[str, str] = {
     "dict.eq_pair_find": "int:S,S,int,%ptr|R A I rD wD U|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
     "dict.find": "int:S,*K|R? rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
+    # a dict of ints whose values may be past 64 bits (int_lists, runtime.c's dbig): a store of a
+    # promoting int, the Mpz of an entry's value that reads -2**63, pop() and setdefault() of
+    # promoting ints, and narrow, which raises OverflowError where a value is past 64 bits
+    "dict.set_big": "None:S,*K,int,%ptr|R? A rD wD U?|", "dict.entry_set_big": "None:S,int,int,%ptr|A rD wD|",
+    "dict.big_val": "%ptr:S,int|rD|", "dict.big_pop": "int+:S,*K,bool,int,%ptr|R A I rD wD U?|",
+    "dict.big_setdefault": "int+:S,*K,int,%ptr|R? A rD wD U?|", "dict.narrow": "None:S|R rD|",
     "dict.find_int_nobox": "int:S,int|rD|",
     "dict.update": "None:S,S|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
     "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",

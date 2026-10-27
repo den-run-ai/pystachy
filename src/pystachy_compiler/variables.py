@@ -1962,7 +1962,8 @@ def gen_assign(self, t: Node, v: Val) -> None:
             elif self.qtype(t.kids[0].s) == "dict[dyn,dyn]":
                 kval = self.store_key(kval, "dyn")  # (a dict of Any containers holds boxes, keys too: ctype)
                 v = self.coerce(v, "dyn")
-            self.rt("pys_dict_set", "void", [f"ptr {o.v}", "i64 " + self.to_slot(kval), "i64 " + self.to_slot(v)], self.key_fx(targs(self.qtype(t.kids[0].s))[0]))
+            ks = self.to_slot(kval)
+            self.dict_store(o.v, ks, v, targs(self.qtype(t.kids[0].s)))
         else:
             ix = self.ival(t.kids[1])
             self.refine(t.kids[0].s, self.ctype("list", [v.t], NONE_ITEM not in o.t))
@@ -1985,7 +1986,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
             kv = targs(unopt(o.t))
             key = self.to_slot(self.store_key(self.expr(t.kids[1], kv[0]), kv[0]))
             o = self.unwrap(o, nosub)
-            self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(self.coerce(v, kv[1]))], self.key_fx(kv[0]))
+            self.dict_store(o.v, key, self.list_coerce(v, kv[1]), kv)
         elif o.t in self.classes:
             # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated (a tuple display k in
             # the frame where __setitem__ only reads it: stack_key)

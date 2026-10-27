@@ -907,7 +907,9 @@ def gen_stmt(self, n: Node) -> None:
                 # del d[k] looks k up as d[k] does (dkey): a key that may be None raises
                 # KeyError: None (nonekey), and a bool deletes the int key it equals. A key
                 # hashed by its class is hashed also where d is empty (pys_dict_del, as CPython's
-                # del, unlike its d.pop(k)); other keys' hashes run no code
+                # del, unlike its d.pop(k)); other keys' hashes run no code. A dict of ints whose
+                # values may be past 64 bits (dict_int) takes pys_dict_del too: it reads no value,
+                # where pys_dict_pop reads a 64-bit one (NARROWED)
                 kt = targs(unopt(o.t))[0]
                 kval = self.expr(dt.kids[1], kt)
                 kx = self.dkey(kval, kt)
@@ -916,7 +918,8 @@ def gen_stmt(self, n: Node) -> None:
                 if bool_for_int(kval.t, kt):
                     self.bool_find(o.v, kval, key)
                 fx = self.key_fx(kt)
-                self.nonekey(kx, "", "pys_dict_del" if "H" in fx or "A" in fx else "pys_dict_pop", [f"ptr {o.v}", "i64 " + key], fx)
+                fn = "pys_dict_del" if "H" in fx or "A" in fx or self.dict_int(o.t) else "pys_dict_pop"
+                self.nonekey(kx, "", fn, [f"ptr {o.v}", "i64 " + key], fx)
             elif o.t in self.classes:
                 # del o[k]: o.__delitem__(k)
                 ik = self.expr(dt.kids[1], self.argtype(o.t, "__delitem__", 1, f"'{tname(o.t)}' object doesn't support item deletion"))
@@ -1029,7 +1032,10 @@ def gen_stmt(self, n: Node) -> None:
             self.lct[-1] = self.ctype("dict", kv)
             if self.lct[-1] == "dict[dyn,dyn]":
                 kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
-        self.rt("pys_dict_set", "void", [f"ptr {self.lcs[-1]}", "i64 " + self.to_slot(self.store_key(kx, kv[0])), "i64 " + self.to_slot(self.coerce(vx, kv[1]))], self.key_fx(kv[0]))
+            elif BIG in kv[0] or BIG in kv[1]:
+                kv = targs(self.lct[-1])  # (a promoting int is an int there, ctype's, which dict_store keeps past 64 bits)
+        ks = self.to_slot(self.store_key(kx, kv[0]))
+        self.dict_store(self.lcs[-1], ks, self.list_coerce(vx, kv[1]), kv)
     elif k == "lcappend":
         et = self.lct[-1]
         v = self.expr(n.kids[0], et, resultsoft=self.lcsoft[-1])
@@ -1257,22 +1263,25 @@ def gen_augassign(self, n: Node) -> None:
             o = self.unwrap(o, sub)
             if bool_for_int(kval.t, kv[0]):
                 e = self.bool_find(o.v, kval, key)
-                cur = self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {e}"]), kv[1])
+                cur = self.big_dict_value(o, e) if self.dict_int(o.t) else self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {e}"]), kv[1])
                 b0 = self.blk
                 x0 = len(b0.code)
                 n0 = len(self.fn.blocks)
-                r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
+                r = self.list_coerce(self.inplace(op, cur, n.kids[1]), kv[1])
                 if self.may_change(b0, x0, n0):
                     self.store_key(kval, kv[0])  # (rejected)
-                self.rt("pys_dict_entry_set", "void", [f"ptr {o.v}", f"i64 {e}", "i64 " + self.to_slot(r)])
+                self.dict_store(o.v, "", r, kv, e)
                 return
             if is_opt(kx.t):
                 self.guard(self.ptr_cmp('==', kx, Val('null', 'None')).v, "KeyError: None")
                 if is_sopt(kx.t):
                     key = self.to_slot(self.deref(kx))  # (an int key is the int its box holds)
-            cur = self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"], self.key_fx(kv[0])), kv[1])
-            r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
-            self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(r)], self.key_fx(kv[0]))
+            if self.dict_int(o.t):
+                cur = self.big_dict_value(o, self.rt("pys_dict_entry", "i64", [f"ptr {o.v}", f"i64 {key}"], self.key_fx(kv[0])))
+            else:
+                cur = self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"], self.key_fx(kv[0])), kv[1])
+            r = self.list_coerce(self.inplace(op, cur, n.kids[1]), kv[1])
+            self.dict_store(o.v, key, r, kv)
         elif o.t in self.classes:
             # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once (a tuple
             # display k in the frame where both only read it: stack_key)
@@ -1924,7 +1933,9 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     out: list[Val] = []
     if mode != "values":
         out.append(self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[0]))
-    if mode == "values" or mode == "items":
+    if (mode == "values" or mode == "items") and self.dict_int(s.t):
+        out.append(self.big_dict_value(s, j))  # (an int past 64 bits: bigints.py)
+    elif mode == "values" or mode == "items":
         out.append(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[1]))
     return out
 
