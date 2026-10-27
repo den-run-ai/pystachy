@@ -2420,7 +2420,10 @@ static int eqv(I a, I b, const char *d) {
   case 'T': {
     I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
     if (!x || !y) return x == y;
-    for (I i = 0; i < n; i++, e = skip(e)) if (!eqitem(titem(x, n, i, e, wx), titem(y, n, i, e, wy), e)) return 0;
+    for (I i = 0; i < n; i++, e = skip(e)) {
+      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) { if (x[i] != y[i]) return 0; continue; }   /* (promoting ints that fit: their slots) */
+      if (!eqitem(titem(x, n, i, e, wx), titem(y, n, i, e, wy), e)) return 0;
+    }
     return 1;
   }
   case 'V': {
@@ -2564,6 +2567,10 @@ static int opv(I a, I b, const char *d, I op) {
   case 'T': {
     I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
     for (I i = 0; i < n; i++, e = skip(e)) {
+      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) {   /* (as eqv's) */
+        if (x[i] != y[i]) return cmpop((x[i] > y[i]) - (x[i] < y[i]), op);
+        continue;
+      }
       I p = titem(x, n, i, e, wx), q = titem(y, n, i, e, wy);
       if (!eqitem(p, q, e)) return opv(p, q, e, op);
     }
