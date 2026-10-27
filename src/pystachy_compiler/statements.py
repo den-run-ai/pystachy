@@ -1913,7 +1913,7 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     if s.t == "dyniter":
         return [Val(j, "dyn")]
     if is_gen(s.t):
-        return [self.from_slot(self.mload('int', j), gelem(s.t))]  # (j: its promise, gen_next)
+        return [self.gen_value(j, gelem(s.t))]  # (j: its promise, gen_next)
     if is_set(s.t):
         return [self.from_slot(self.rt("pys_set_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), selem(s.t))]
     if s.t == RANGEC:

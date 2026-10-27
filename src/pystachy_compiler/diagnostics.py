@@ -75,6 +75,12 @@ def dynamic_program() -> bool:
     return len(DYNFILES) > 0
 
 
+def int_program() -> bool:
+    # does a module of the program opt in to promoting ints (docs/python-int.md): its generators
+    # then hold the pointer of one they yield or return (specs.GENVALP)
+    return len(INTFILES) > 0
+
+
 def int_lists() -> bool:
     # do the program's lists of ints hold promoting ints past 64 bits (docs/python-int.md): a module
     # opts in to them, and none to dynamic Any, whose lists of ints keep identities instead

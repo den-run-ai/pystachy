@@ -10,10 +10,10 @@ In that module, `int` behaves as CPython's: a result that needs more than 64 bit
 bigger int instead of raising `OverflowError`, and a result that fits is a 64-bit value again.
 Modules without the comment, including the compiler, `runtime.py` and `lib/`, keep the checked
 64-bit `int` of the [language guide](language.md). The roadmap is #907; this page describes its
-step 3, the compiler-level integer, and the first parts of step 6, tuples and lists. Values past
-64 bits stay in variables, arguments, returns, fields, module variables, closures, tuples and
-lists of ints; dicts, sets and the other containers still hold 64-bit ints
-([boundaries](#64-bit-boundaries)).
+step 3, the compiler-level integer, and the first parts of step 6: tuples, lists and generators.
+Values past 64 bits stay in variables, arguments, returns, fields, module variables, closures,
+tuples, lists of ints and the values generators yield and return; dicts, sets and the other
+containers still hold 64-bit ints ([boundaries](#64-bit-boundaries)).
 
 ```python
 # pystachy: python-int
@@ -81,6 +81,11 @@ print(int("123456789012345678901234567890") % 97)  # 52
   `remove()` compare exactly (also with floats), and so do `==`, `<` and the other comparisons;
   `sort()`, `sorted()` (by key too), `min()`, `max()`, `sum()`, `repr()`, copies, slices, `+`,
   `*` and `reverse()` take every item.
+- A generator yields and returns promoting ints, in a program where a module opts in: a `for`
+  loop, a comprehension, `next()`, unpacking, `send()` and `throw()` in a module that opts in read
+  them, and so do `list()`, `sorted()`, `sum()`, `min()`, `max()`, `in`, `enumerate()`, `zip()`
+  and the other consumers of a generator; `yield from` passes them on, and its value is the
+  promoting int its generator returns (`Generator[int, None, int]`).
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
 - An object's `__len__` and `__hash__` may return a promoting int, annotated `-> int` or not.
@@ -141,6 +146,12 @@ that opts in. Code of a module that does not opt in reads the item as a 64-bit i
 ints ([boundaries](#64-bit-boundaries)). `runtime.c`'s sorting compares a list that holds an item
 past 64 bits through the ranks of its items, 64-bit ints in their order.
 
+A generator's promise, the words where it leaves the value it yielded last and the one it
+returned, holds an int in one word, as before, and in a program where a module opts in, its
+pointer in a word of its own: null where the value fits, as every `yield` of an int writes it,
+also in a module that does not opt in. Code of a module that opts in reads both words, and
+other code raises `OverflowError` for a pointer.
+
 An `int | None` is a pointer to a box, as one of a 64-bit int is: null for None, else runtime.c's
 box of the value and a null pointer where it fits, and past 64 bits a box of -2\*\*63 and the
 value's pointer, which the collector scans. Every box of a 64-bit int has that null second word,
@@ -161,15 +172,16 @@ for a C `long`), where CPython goes on with the bigger int:
   in a list holds 64-bit ints too), and of lists of ints in a program that opts in to dynamic
   `Any`, a tuple's `int | None` items, unions other than `int | None` (also where a join makes one, as
   for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
-  a variable), and the values a generator yields or receives
+  a variable), and the values sent to a generator (`send()`)
   (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a parameter,
   is hashed, compared, searched, formatted with `%` and unpacked into arguments as the tuple of
   its fields or None, which holds 64-bit ints too.
 - An `int` or `int | None` parameter of a function in a module that does not opt in (whose
   unannotated parameters take the promoting int, so arithmetic there promotes too), and the
   parameters and result of a `Callable`.
-- A list's int read in a module that does not opt in, such as `lib/`'s `heapq`, `bisect` and
-  `random.shuffle()`, and the ints of a list given to `tuple()`, `set()` and the set operations,
+- A list's int or a generator's value read in a module that does not opt in, such as `lib/`'s
+  `heapq`, `bisect` and `random.shuffle()`, and the ints of a list given to `tuple()`, `set()` and
+  the set operations,
   `dict.fromkeys()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
@@ -276,6 +288,9 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_lists.py`: lists of ints past 64 bits: stores, reads,
   searches by promoting ints and floats, sorting, `min()`, `max()`, `sum()`, comparisons, copies,
   nested lists, a field and a function's result.
+- `tests/programs/numbers/python_int_generators.py`: generators that yield and return ints past 64
+  bits, through `for` loops, `next()`, unpacking, `yield from`, `send()`, `throw()`, generator
+  expressions, a method and a module that does not opt in (`tests/python_int_modules/fixed_iter.py`).
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in

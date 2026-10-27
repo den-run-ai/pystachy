@@ -1,6 +1,6 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import fail, int_lists
+from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
@@ -385,7 +385,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # a generator op (docs/internals.md#generators): gen.start ends the entry block of a
     # generator function (IFn.coro) and names it (a str); gen.yield (a %slot, k 0 or 1) and
-    # gen.ret (none, or a %slot) suspend one, gen.promise without an operand is its own promise;
+    # gen.ret (none, or a %slot) suspend one, with the %ptr of a promoting int after the slot in a
+    # program that opts in to them (specs.GENVALP); gen.promise without an operand is its own promise;
     # gen.promise, gen.resume and gen.drop of a handle take a generator
     own = i.op == "gen.start" or i.op == "gen.yield" or i.op == "gen.ret" or (i.op == "gen.promise" and len(i.a) == 0)
     if own and not fn.coro:
@@ -394,9 +395,10 @@ def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
         self.bad_ir(fn, b, f"{i.op} with extra metadata")
     if i.op == "gen.start" and (b is not fn.blocks[0] or len(i.a) != 1 or i.a[0].t != "str" or len(i.b) != 1 or i.t != ""):
         self.bad_ir(fn, b, "gen.start must end the entry block, with the generator's name and its first block")
-    if i.op == "gen.yield" and (len(i.a) != 1 or i.a[0].t != "%slot" or len(i.b) != 1 or i.t != ""):
+    hi = len(i.a) == 2 and i.a[1].t == "%ptr" and int_program()
+    if i.op == "gen.yield" and ((len(i.a) != 1 and not hi) or i.a[0].t != "%slot" or len(i.b) != 1 or i.t != ""):
         self.bad_ir(fn, b, "gen.yield needs the value's slot and the block where it resumes")
-    if i.op == "gen.ret" and (len(i.a) > 1 or (len(i.a) == 1 and i.a[0].t != "%slot") or len(i.b) != 0 or i.t != ""):
+    if i.op == "gen.ret" and ((len(i.a) > 1 and not hi) or (len(i.a) > 0 and i.a[0].t != "%slot") or len(i.b) != 0 or i.t != ""):
         self.bad_ir(fn, b, "gen.ret needs the slot of its value, if any")
     if i.op == "gen.promise" and (i.t != "%ptr" or len(i.a) > 1 or (len(i.a) == 1 and not is_gen(i.a[0].t)) or len(i.b) != 0):
         self.bad_ir(fn, b, "gen.promise needs a generator or none (its own)")
