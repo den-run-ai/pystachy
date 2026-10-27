@@ -36,3 +36,10 @@ records), under the same license:
 The second is original: a module without the comment calls a function of one that opts in
 (`tests/python_int_modules/promoting_module.py`) and computes with, prints and lists the int
 past 64 bits that it returns. Both needed a list of ints that holds one.
+
+[python_int_recursion.py](../programs/numbers/python_int_recursion.py) and
+[python_int_forward_ref.py](../programs/numbers/python_int_forward_ref.py) come from the same
+head, unchanged, with its recordings. Both are original: annotated recursive functions and
+methods (factorials, `gcd()`, mutual recursion and a Fibonacci memo), and quoted annotations
+that name promoting ints. Both needed a dict of ints whose values hold one: the memo is a
+`dict[int, int]`, and the second returns a `dict[str, int]`.
