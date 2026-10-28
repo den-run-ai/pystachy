@@ -385,6 +385,10 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr %coro.promise, i64 {GENRET}")
         if len(i.a) > 0:
             o.append(f"  store i64 {i.a[0].v}, ptr %t{i.r[0]}")
+        elif fn.f.gret == "dyn":
+            # A bare return/fallthrough yields None, a real box in an Any
+            # return channel. The final type may be inferred after this op.
+            o.append(f"  store ptr {self.rtdata('pys_dyn_none_box')}, ptr %t{i.r[0]}")
         if len(i.a) > 1:
             o.append(f"  %t{i.r[0]}.hi = getelementptr i64, ptr %coro.promise, i64 {GENRETP}")
             o.append(f"  store ptr {i.a[1].v}, ptr %t{i.r[0]}.hi")

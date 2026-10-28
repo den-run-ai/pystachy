@@ -1,0 +1,7 @@
+owned cleanup
+outer cleanup
+expected int, got str
+expected int, got str
+retained 42
+borrowed cleanup
+[exit 0]

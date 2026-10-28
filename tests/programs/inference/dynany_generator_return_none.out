@@ -1,0 +1,7 @@
+value None None
+False True True
+[1, 2, 3]
+None other inferred
+True False False
+[1, 2, 3]
+[exit 0]
