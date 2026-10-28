@@ -1,10 +1,12 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends
+from src.pystachy_compiler.bigints import int_replay_state
+from src.pystachy_compiler.diagnostics import Rejoin, int_lists
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, NONEVAR, RTSYM
+from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTSYM
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     RtFn,
@@ -122,6 +124,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     ret = f.ret
     noret = f.noret
     asked = self.dyn_asked(f)
+    before = int_replay_state(self) if int_lists() else None
     self.function_body(f, body)
     while self.dyn_again(f, asked):
         # (an Any value reached storage that its first value typed, in a module that compiles
@@ -130,6 +133,17 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         f.noret = noret
         asked = self.dyn_asked(f)
         self.function_body(f, body)
+    if before is not None and len(self.newhints) > 0 and self.int_again(f, before):
+        f.ret = ret
+        f.noret = noret
+        self.function_body(f, body)
+        if int_replay_state(self) != before or f.ll in self.retseen or f.ll in self.dynseen:
+            raise Rejoin()  # the retry itself discovered a dependent layout or signature
+        prefix = self.fnkey(f) + "|"
+        for name in self.ltype:
+            key = prefix + name
+            if self.ltype[name] == BIG and self.hints.get(key, "") == BIG and self.newhints.get(key, "") == BIG:
+                del self.newhints[key]
     del self.building[f.ll]
     self.selfcls = sel
     self.fn.n = self.n
