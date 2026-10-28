@@ -1,7 +1,7 @@
 # pystachy: dynamic-any
 """Small repeated trace-repair workload; serialization is outside the timed loop.
 
-Run with an iteration count (default 2000, ten records per iteration).
+Run with ROUNDS [BATCHES WARMUPS] (default 2000, ten records per round).
 Compare the first output line and checksum across pristine/adapted/native runs
 before comparing seconds. Zero iterations emits the exact output witness only.
 """
@@ -44,8 +44,10 @@ def weight(value: Any) -> int:
 
 
 rounds = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
-if rounds < 0:
-    raise ValueError("iterations must be nonnegative")
+batches = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+warmups = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+if rounds < 0 or batches < 1 or warmups < 0:
+    raise ValueError("rounds/warmups must be nonnegative and batches positive")
 outputs: list[Any] = []
 per_round = 0
 for source in SOURCES:
@@ -55,14 +57,16 @@ for source in SOURCES:
 print("outputs", json.dumps(outputs, ensure_ascii=True, sort_keys=True))
 print("per_round", per_round)
 
-checksum = 0
-start = perf_counter()
-for _ in range(rounds):
-    for source in SOURCES:
-        checksum += weight(repair_json(source, return_objects=True))
-seconds = perf_counter() - start
-if checksum != rounds * per_round:
-    raise ValueError("repair checksum changed across repeated calls")
-print("records", rounds * len(SOURCES))
-print("checksum", checksum)
-print("seconds", seconds)
+for batch in range(warmups + batches):
+    checksum = 0
+    start = perf_counter()
+    for _ in range(rounds):
+        for source in SOURCES:
+            checksum += weight(repair_json(source, return_objects=True))
+    seconds = perf_counter() - start
+    if checksum != rounds * per_round:
+        raise ValueError("repair checksum changed across repeated calls")
+    if batch >= warmups:
+        print("records", rounds * len(SOURCES))
+        print("checksum", checksum)
+    print("warmup_seconds" if batch < warmups else "seconds", seconds)
