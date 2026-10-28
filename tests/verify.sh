@@ -800,12 +800,12 @@ if [ -n "$(for n in $(plan contracts); do [ "$n" = bootstrap ] || ! want "$n" ||
   # One runtime build per compiler before the lanes, as the steps that ran one after another found it:
   # lanes would otherwise build it at once, and compile-limits' run and build under its CPU limit
   printf 'print("warm")\n' > "$V/lanes/warm.py"
-  { "$V/pystachy2" run "$V/lanes/warm.py"; $PY pystachy.py run "$V/lanes/warm.py"; $PY -m pystachy run "$V/lanes/warm.py"; } > "$V/lanes/warm.log" 2>&1 &
+  { "$V/pystachy2" run "$V/lanes/warm.py"; $PY pystachy.py run "$V/lanes/warm.py"; $PY -m pystachy run "$V/lanes/warm.py"; } > "$V/contracts-warm.log" 2>&1 &
   warmpid=$!
   lane="cpus"; contracts_cpus
   wait "$warmpid"
   for l in a b c; do
-    (lane=$l; "contracts_$l") > "$V/lanes/$l.log" 2>&1 &
+    (lane=$l; "contracts_$l") > "$V/contracts-lane-$l.log" 2>&1 &
     lanepids="$lanepids $!"
   done
   lane="fg"; contracts_fg
@@ -816,7 +816,7 @@ if [ -n "$(for n in $(plan contracts); do [ "$n" = bootstrap ] || ! want "$n" ||
     if [ -f "$V/lanes/$n.result" ] && [ -f "$V/lanes/$n.json" ]; then
       read -r res t log < "$V/lanes/$n.result"
       record "$n" "$res" "$t" "$log" "$(cat "$V/lanes/$n.json")"
-    else  # (its lane ended before the step did: build/verify/lanes/*.log)
+    else  # (its lane ended before the step did: build/verify/contracts-lane-*.log)
       record "$n" fail 0 "$V/$n.log" "$(printf '    {"name": "%s", "result": "fail", "seconds": 0, "log": %s, "lane_ended": true}' "$n" "$(js "build/verify/$n.log")")"
     fi
   done
