@@ -26,8 +26,13 @@ and the full verification matrix were not rerun here.
   - [#151](https://github.com/den-run-ai/pystachy/issues/151) private-name mangling
     remains the most likely silent difference in real libraries. It is a documented deviation.
 - **Performance against alpha.3:**
+  - **A program that never opts in becomes ~11x slower in typed numeric code if it
+    imports `tomllib`** ([#969](https://github.com/den-run-ai/pystachy/issues/969)).
+    Since #886/#887, numeric identity boxes are enabled whole-program whenever any loaded
+    module opts into dynamic `Any`, and `lib/tomllib` and the json_repair port do.
   - Opt-in dynamic-`Any` `json.loads` is 1.56x slower in AOT and 1.75x slower in JIT,
-    and AOT is now slower than CPython. Typed `JSONValue` decoding is unchanged.
+    and AOT is now slower than CPython. The cause is the same. Typed `JSONValue`
+    decoding is unchanged.
   - AOT builds take about 26% longer and hello-world executables are 45% larger, for
     every program, because the runtime grew.
   - No regression was confirmed in other pyperformance loops.
@@ -141,11 +146,20 @@ The other pyperformance loop differences above 10% overlapped after confirmation
 (−19% in perf smoke) are possible improvements, also inconclusive. Opt-in `graph_copy` and
 `fnmatch` loops were 10–28% slower in both perf-smoke runs without separating.
 
-Two regressions need release notes:
+Three regressions need release notes or a fix first:
 
-- **Opt-in dynamic `Any` `json.loads`** builds str-keyed dicts more slowly. Typed
-  `JSONValue` programs are unaffected. CI's perf smoke saw related compile-time and
-  JIT-start increases for opt-in modules (+25–37%) at #886/#887.
+- **Whole-program identity boxing** ([#969](https://github.com/den-run-ai/pystachy/issues/969)).
+  The bisect over first-parent merges with deterministic instruction counts puts 71% of the
+  opt-in `json.loads` slowdown at #886, 15% at #887 and 9% at #893 (`hsh()` no longer
+  inlined into `pys_dict_set`); #964 is not involved. Identity companions are gated on
+  `dynamic_program()` (any loaded module with the pragma), not on the module or the flow.
+  A typed program without the pragma that imports `tomllib` changes `Counter` from
+  `{i64, i64}` to `{i64, i64, ptr, ptr}`, gains 1,153 `pys_dyn_int_box` calls, and its
+  30M-iteration field loop goes from 0.055 s (alpha.3) to 0.62 s.
+- **Opt-in dynamic `Any` `json.loads`** builds str-keyed dicts more slowly for the same
+  reason. Typed `JSONValue` programs that import nothing opt-in are unaffected. CI's perf
+  smoke saw related compile-time and JIT-start increases for opt-in modules (+25–37%)
+  at #886/#887.
 - **Every AOT build and executable grew.** Program IR is unchanged, so the cost comes from
   the larger runtime (`mpz`, promoting-int helpers and identity work) being re-optimized
   for every build ([#706](https://github.com/den-run-ai/pystachy/issues/706)). This affects
