@@ -1,0 +1,5 @@
+eq 1 1
+TypeError: '<' not supported between instances of 'F' and 'F'
+eq 1 2
+False
+[exit 0]

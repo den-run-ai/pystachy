@@ -4141,11 +4141,16 @@ def gen_compare(self, n: Node) -> Val:
         r = self.cmp2(ops[i], a, b)
         if i < len(ops) - 1:
             nx = self.label()
+            if self.term:
+                # (a link that always raises, as one of inherit_cmp's may: the rest of the chain
+                # is dead code, and its edge to the join leaves the block of its own that follows)
+                self.place(self.label())
             self.incoming(ph, "false", self.cur)
             self.cbr(r.v, nx, l3)
             self.place(nx)
         a = b
-    self.incoming(ph, r.v, self.cur)
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)  # (a last link that always raises has no edge to the join)
     self.br(l3)
     self.place(l3)
     self.narrowed = self.forget_walrus(self.narrowed, n.kids[2:])  # (operands that may not run)
