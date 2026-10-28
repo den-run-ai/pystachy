@@ -24,9 +24,18 @@ SUITE_STEPS = {"tests-cpython", "tests-native-0", "tests-native-1",
 # shards their suite has: the name ends in the shard index.
 SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
                  (("tests-native", 2), ("tests-opt-off", 2), ("python-free", 3),
-                  ("ubsan", 3), ("gc-jit", 2), ("gc-aot", 3))
+                  ("ubsan", 3), ("gc-ir", 2), ("gc-jit", 2), ("gc-aot", 3))
                  for index in range(count)}
+# The GC suites run their shards (halves in JIT, thirds in AOT) with program stress alone, compiled by
+# stage 2 unstressed, after the gc-ir halves have shown the stage-2 compiler collecting every
+# GC_COMPILER_INTERVAL allocations to compile every case to the same IR, messages and status. Each
+# runs a sample of its shard end to end with the compiler stressed too, first: the cases at positions
+# GC_SAMPLE_OFFSETS[mode] modulo GC_SAMPLE_EVERY of the shard as shard_cases lists it (tests/verify.sh)
 GC_STEPS = {"gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"}
+GC_IR_STEPS = ("gc-ir-0", "gc-ir-1")
+GC_COMPILER_INTERVAL = 1000
+GC_SAMPLE_EVERY = 16
+GC_SAMPLE_OFFSETS = {"jit": 4, "aot": 12}
 # The halves of tools/scaling.py's check (tests/verify.sh's SCALING_0 and the shapes it leaves)
 SCALING_STEPS = ("scaling-0", "scaling-1")
 # The opt-in sweeps' shards (tests/verify.sh's dynany-optin-I and python-int-optin-I groups)
@@ -168,11 +177,43 @@ def validate_report(report, group, expected):
                     optin["gc_stress"] is not False):
                 raise ValueError(f"{label}: wrong promoting-int shard, modes or GC setting")
         if step["name"] in GC_STEPS:
+            # program stress alone (tests_compiler_interval 0) on the shard's other cases, and its sample
+            # with the compiler's too: as many cases as positions OFFSET modulo EVERY in the shard, all of
+            # them run, and with the others as many as the shard holds
             mode = "jit" if step["name"].startswith("gc-jit") else "aot"
             if (step.get("modes") != [mode] or
-                    integer(step.get("tests_compiler_interval"), f"{label}.tests_compiler_interval", 1) != 1000 or
+                    integer(step.get("tests_compiler_interval"), f"{label}.tests_compiler_interval") != 0 or
                     integer(step.get("tests_interval"), f"{label}.tests_interval", 1) != 1):
                 raise ValueError(f"{label}: wrong GC stress mode or intervals")
+            sample = step.get("stressed_sample")
+            if not isinstance(sample, dict):
+                raise ValueError(f"{label}: missing the sample run with the compiler GC-stressed")
+            offset = GC_SAMPLE_OFFSETS[mode]
+            shard_cases = integer(step.get("shard_cases"), f"{label}.shard_cases", 1)
+            if (integer(sample.get("every"), f"{label}.stressed_sample.every", 1) != GC_SAMPLE_EVERY or
+                    integer(sample.get("offset"), f"{label}.stressed_sample.offset") != offset or
+                    integer(sample.get("cases"), f"{label}.stressed_sample.cases", 1) !=
+                    len(range(offset, shard_cases, GC_SAMPLE_EVERY)) or
+                    integer(step.get("cases"), f"{label}.cases", 1) + sample["cases"] != shard_cases or
+                    integer(sample.get("tests_compiler_interval"), f"{label}.stressed_sample.tests_compiler_interval",
+                            1) != GC_COMPILER_INTERVAL or
+                    integer(sample.get("tests_interval"), f"{label}.stressed_sample.tests_interval", 1) != 1 or
+                    integer(sample.get("passed"), f"{label}.stressed_sample.passed") !=
+                    integer(sample.get("expected"), f"{label}.stressed_sample.expected", 1) or
+                    integer(sample.get("failed"), f"{label}.stressed_sample.failed") != 0 or
+                    sample.get("failures") != []):
+                raise ValueError(f"{label}: the sample must be the shard's cases at positions {offset} modulo "
+                                 f"{GC_SAMPLE_EVERY}, the program-stressed run its others, and the sample must run "
+                                 f"completely with the compiler collecting every {GC_COMPILER_INTERVAL} allocations")
+        if step["name"] in GC_IR_STEPS:
+            if (step.get("ir_identical") is not True or step.get("runtime_identical") is not True or
+                    step.get("reference") != "stage2" or
+                    integer(step.get("compiler_interval"), f"{label}.compiler_interval", 1) != GC_COMPILER_INTERVAL or
+                    integer(step.get("ir_cases"), f"{label}.ir_cases", 1) < 1 or
+                    integer(step.get("check_cases"), f"{label}.check_cases") < 0 or
+                    step.get("check_identical") is not True):
+                raise ValueError(f"{label}: the compiler collecting every {GC_COMPILER_INTERVAL} allocations must "
+                                 "compile its half of the corpus and runtime.py as stage 2 does")
         if step["name"] == "tests-cpython":
             # Every case compiled alike by both compilers, every syntax case checked alike, and the
             # sample's end-to-end checks (counted below as a suite step's)
@@ -280,14 +321,39 @@ def merge_reports(directory, groups, expected_commit=None):
         if sum(shard["expected"] for shard in shards) != suite * runs:
             raise ValueError(f"{what} shards must cover the same full-suite check count as the corpus")
     # The shards of a GC suite, which runs in one mode, make as many as the corpus has in one mode
-    # (sources.mode_checks), and the UBSan thirds, which run in both modes one at a time, twice as many.
+    # (sources.mode_checks), their stressed samples included, and hold as many cases as it does
+    # (sources.corpus_cases); the UBSan thirds, which run in both modes one at a time, twice as many.
     mode_checks = reports[wanted[0]]["sources"]["mode_checks"]
+
+    def checks(group):
+        step = reports[group]["steps"][-1]
+        return step["expected"] + (step["stressed_sample"]["expected"] if step["name"] in GC_STEPS else 0)
     for shards, runs, what in ((("gc-jit-0", "gc-jit-1"), 1, "GC JIT"),
                                (("gc-aot-0", "gc-aot-1", "gc-aot-2"), 1, "GC AOT"),
                                (("ubsan-0", "ubsan-1", "ubsan-2"), 2, "UBSan")):
-        if (all(group in reports for group in shards) and
-                sum(reports[group]["steps"][-1]["expected"] for group in shards) != mode_checks * runs):
+        if not all(group in reports for group in shards):
+            continue
+        if sum(checks(group) for group in shards) != mode_checks * runs:
             raise ValueError(f"{what} shards must cover the same full-suite check count as the corpus")
+        if what.startswith("GC") and (
+                sum(reports[group]["steps"][-1]["shard_cases"] for group in shards) !=
+                integer(reports[wanted[0]]["sources"].get("corpus_cases"), "sources.corpus_cases", 1)):
+            raise ValueError(f"{what} shards must hold every corpus case between them")
+    # The gc-ir halves compile every case of the corpus once with the stressed compiler (by count:
+    # shard_cases's halves are disjoint) and check every syntax case, which the GC suites, compiled
+    # by stage 2 unstressed, rely on: a contract without them cannot drop them either.
+    gc_ir = [step for report in reports.values() for step in report["steps"] if step["name"] in GC_IR_STEPS]
+    gc_suites = [step["name"] for report in reports.values() for step in report["steps"] if step["name"] in GC_STEPS]
+    if gc_ir or gc_suites:
+        sources = reports[wanted[0]]["sources"]
+        if (sorted(step["name"] for step in gc_ir) != list(GC_IR_STEPS) or
+                sum(step["ir_cases"] for step in gc_ir) !=
+                integer(sources.get("corpus_cases"), "sources.corpus_cases", 1) or
+                sum(step["check_cases"] for step in gc_ir) !=
+                integer(sources.get("syntax_cases"), "sources.syntax_cases", 1)):
+            raise ValueError(f"{(gc_suites or ['gc-ir'])[0]}: the gc-ir halves must compile every corpus case "
+                             f"once, and check every syntax case, with the compiler collecting every "
+                             f"{GC_COMPILER_INTERVAL} allocations")
     halves = {step["name"]: step["shapes"] for report in reports.values() for step in report["steps"]
               if step["name"] in SCALING_STEPS}
     if len(halves) == len(SCALING_STEPS):
