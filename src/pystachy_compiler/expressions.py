@@ -81,6 +81,7 @@ from src.pystachy_compiler.utils import (
     targs,
     hislot,
     tname,
+    tslots,
     typestr,
     unopt,
 )
@@ -2424,7 +2425,7 @@ def gen_keep_stack(self, n: Node) -> None:
         self.br(ldone)
         self.place(lnew)
         cp = self.alloc_fixed(t).v
-        for j in range(len(targs(t))):
+        for j in range(tslots(t)):  # (each slot: a promoting int item's Mpz word too, hislot)
             wd = self.mload('int', self.maddr('int', f'{v}', f'{j}'))
             self.mstore('int', wd, self.maddr('int', f'{cp}', f'{j}'))
         self.mstore('%ptr', cp, hs)
