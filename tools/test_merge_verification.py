@@ -192,8 +192,9 @@ def report(group, steps):
                 step["bootstrap_reused"] = True
         if name in merge.SUITE_STEPS:
             step.update(passed=10, failed=0, expected=10, failures=[])
-        if name in ("tests-native-0", "tests-native-1", "tests-opt-off-0", "tests-opt-off-1"):
-            step.update(passed=5, expected=5)   # halves of a 10-check suite
+        if name.startswith(("tests-native-", "tests-opt-off-")):   # thirds of a 10-check suite
+            share = 10 // merge.SHARDED_STEPS[name] + (int(name[-1]) < 10 % merge.SHARDED_STEPS[name])
+            step.update(passed=share, expected=share)
         if name.startswith("tests-native"):
             step.update(compiler="stage2", modes=["jit", "aot"])
         if name == "tests-cpython":   # every case's IR identical, its sample run end to end
@@ -294,8 +295,8 @@ class ContractTests(unittest.TestCase):
                 path.write_text(json.dumps(report(group, steps)))
             result = merge.merge_reports(directory, groups, COMMIT)
             self.assertEqual([step["name"] for step in result["steps"]], groups["all"])
-            for group in ("opt-off-0", "opt-off-1", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
-                          "hosted", "native-0", "native-1", "python-free-0", "python-free-1",
+            for group in ("opt-off-0", "opt-off-1", "opt-off-2", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
+                          "hosted", "native-0", "native-1", "native-2", "python-free-0", "python-free-1",
                           "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
                           "scaling", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2",
                           *(f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS))):
@@ -318,12 +319,12 @@ class ContractTests(unittest.TestCase):
                             self.assertRaisesRegex(ValueError, "same full-suite check count"):
                         merge.merge_reports(directory, groups, COMMIT)
                 path.write_text(original)
-            # opt-off's halves run the corpus once per PYSTACHY_OPT setting, the same settings in both
-            for settings, scale, error in (([["-all", "-inline"]] * 2, 2, None),
-                                           ([["-all", "-inline"]] * 2, 1, "same full-suite check count"),
-                                           ([["-all"], ["-inline"]], 1, "same PYSTACHY_OPT settings"),
-                                           ([[], []], 1, "same PYSTACHY_OPT settings")):
-                for index in (0, 1):
+            # opt-off's thirds run the corpus once per PYSTACHY_OPT setting, the same settings in each
+            for settings, scale, error in (([["-all", "-inline"]] * 3, 2, None),
+                                           ([["-all", "-inline"]] * 3, 1, "same full-suite check count"),
+                                           ([["-all"], ["-all"], ["-inline"]], 1, "same PYSTACHY_OPT settings"),
+                                           ([[], [], []], 1, "same PYSTACHY_OPT settings")):
+                for index in (0, 1, 2):
                     data = report(f"opt-off-{index}", groups[f"opt-off-{index}"])
                     count = data["steps"][-1]["expected"] * scale
                     data["steps"][-1].update(passed=count, expected=count, PYSTACHY_OPT=settings[index])
@@ -334,7 +335,7 @@ class ContractTests(unittest.TestCase):
                     else:
                         with self.assertRaisesRegex(ValueError, error):
                             merge.merge_reports(directory, groups, COMMIT)
-            for index in (0, 1):
+            for index in (0, 1, 2):
                 (directory / f"verification-opt-off-{index}" / "verification.json").write_text(
                     json.dumps(report(f"opt-off-{index}", groups[f"opt-off-{index}"])))
             # the shards of each JIT and AOT suite make the checks of the whole corpus (sources.suite_checks)
@@ -423,7 +424,7 @@ class ContractTests(unittest.TestCase):
                            lambda step: step.update(shard_count=step["shard_count"] + 1),
                            lambda step: step.update(shard_count=str(step["shard_count"])),
                            lambda step: step.pop("shard_count")]
-        for group in ("native-0", "native-1", "opt-off-0", "opt-off-1",
+        for group in ("native-0", "native-1", "native-2", "opt-off-0", "opt-off-1", "opt-off-2",
                       "python-free-0", "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2"):
             mutations[group] = shard_mutations + [lambda step: step.update(passed=step["expected"] - 1),
                                                   lambda step: step.update(failed=1),
@@ -629,8 +630,8 @@ class ContractTests(unittest.TestCase):
     def test_python_int_aggregate_binds_all_shards_to_one_compiler(self):
         names = [f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS)]
         # (with the tests-native suite the shards' --native-suite deferral needs)
-        groups = merge.parse_groups("all bootstrap tests-native-0 tests-native-1 " + " ".join(names) + "\n" +
-                                    "native-0 bootstrap tests-native-0\nnative-1 bootstrap tests-native-1\n" +
+        groups = merge.parse_groups("all bootstrap tests-native-0 tests-native-1 tests-native-2 " + " ".join(names) + "\n" +
+                                    "native-0 bootstrap tests-native-0\nnative-1 bootstrap tests-native-1\nnative-2 bootstrap tests-native-2\n" +
                                     "\n".join(f"{name} bootstrap {name}" for name in names))
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
@@ -662,8 +663,8 @@ class ContractTests(unittest.TestCase):
         # The opt-in sweeps leave expected failures' baselines and AOT checks of byte-identical IR
         # to tests-native (--native-suite): even a contract without its groups cannot drop it.
         names = [f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS)]
-        native = "native-0 bootstrap tests-native-0\nnative-1 bootstrap tests-native-1\n"
-        full = merge.parse_groups("all bootstrap tests-native-0 tests-native-1 " + " ".join(names) + "\n" + native +
+        native = "native-0 bootstrap tests-native-0\nnative-1 bootstrap tests-native-1\nnative-2 bootstrap tests-native-2\n"
+        full = merge.parse_groups("all bootstrap tests-native-0 tests-native-1 tests-native-2 " + " ".join(names) + "\n" + native +
                                   "\n".join(f"{name} bootstrap {name}" for name in names))
         without = merge.parse_groups("all bootstrap " + " ".join(names) + "\n" +
                                      "\n".join(f"{name} bootstrap {name}" for name in names))

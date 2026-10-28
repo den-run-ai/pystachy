@@ -22,14 +22,16 @@ DEFAULTS = {"program": 1000, "rejection": 10}
 # group, its suite step, the modes it reports, and the modes of each tests/run.sh run that makes its checks
 SHARDS = [("native-0", "tests-native-0", ["jit", "aot"], ["jit aot"]),
           ("native-1", "tests-native-1", ["jit", "aot"], ["jit aot"]),
+          ("native-2", "tests-native-2", ["jit", "aot"], ["jit aot"]),
           ("opt-off-0", "tests-opt-off-0", ["jit", "aot"], ["jit aot"]),
           ("opt-off-1", "tests-opt-off-1", ["jit", "aot"], ["jit aot"]),
+          ("opt-off-2", "tests-opt-off-2", ["jit", "aot"], ["jit aot"]),
           ("python-free-0", "python-free-0", None, ["jit aot"]), ("python-free-1", "python-free-1", None, ["jit aot"]),
           ("python-free-2", "python-free-2", None, ["jit aot"]),
           ("ubsan-0", "ubsan-0", ["aot", "jit"], ["aot", "jit"]), ("ubsan-1", "ubsan-1", ["aot", "jit"], ["aot", "jit"]),
           ("ubsan-2", "ubsan-2", ["aot", "jit"], ["aot", "jit"])]
 # how many shards each suite has: the group kind-I runs shard I
-SHARD_COUNTS = {"native": 2, "opt-off": 2, "python-free": 3, "ubsan": 3}
+SHARD_COUNTS = {"native": 3, "opt-off": 3, "python-free": 3, "ubsan": 3}
 # the kinds of program the hosted sample holds the first of (tests/verify.sh's hosted_strata): a source
 # and the sidecar that make one
 STRATA = [("ffi", "import ffi\n", None), ("full", "# fixture\n", ".full"), ("in", "# fixture\n", ".in"),

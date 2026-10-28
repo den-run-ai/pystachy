@@ -388,7 +388,7 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then twenty-seven groups
+A bootstrap job checks compiler and runtime IR fixed points once, then twenty-nine groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
@@ -399,8 +399,8 @@ runner variation:
 | Group | Work after bootstrap |
 |---|---|
 | `hosted` | The CPython-hosted compiler against stage 2 on every corpus case: identical IR, messages and exit status (`tools/irsame.sh`) and `check` results (`tools/irsame.sh --check`); one case in 64 and a program of each hosted-driver path after the IR also run end to end, JIT and AOT. |
-| `native-0`, `native-1` | Two disjoint halves of the native differential suite, JIT and AOT. |
-| `opt-off-0`, `opt-off-1` | Two disjoint halves of the native suite with IR optimizations disabled. |
+| `native-0`, `native-1`, `native-2` | Three disjoint thirds of the native differential suite, JIT and AOT. |
+| `opt-off-0`, `opt-off-1`, `opt-off-2` | Three disjoint thirds of the native suite with IR optimizations disabled. |
 | `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
 | `ubsan-0`, `ubsan-1`, `ubsan-2` | Sanitized compiler/runtime; three disjoint thirds of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
@@ -514,11 +514,12 @@ kind's default, and a stale or malformed entry counts for nothing, so the table 
 but never coverage. Integer weights and the C locale make the shards identical on every runner. A
 weight is a case's time in thousandths of a median program's. The suite steps of `native`,
 `opt-off` and `ubsan` keep their per-case times (`build/verify/*-times.log`, from
-`PYSTACHY_CASE_TIMES`) in each group's artifact; refresh the table from one run's native halves:
+`PYSTACHY_CASE_TIMES`) in each group's artifact; refresh the table from one run's native thirds:
 
 ```sh
 python3 tools/case_weights.py verification-native-0/verify/tests-native-0-times.log \
-  verification-native-1/verify/tests-native-1-times.log
+  verification-native-1/verify/tests-native-1-times.log \
+  verification-native-2/verify/tests-native-2-times.log
 ```
 
 The table comes from the native halves of CI run 40753601291 (`--keep`; they timed every case).
@@ -528,13 +529,14 @@ that run's opt-off halves and UBSan thirds, which it was not made from, the heav
 an even split by 0.2% for halves and 0.4% for thirds, against 0.4% and 1.9% with the first table.
 The runners vary far more: in that run a `znver3` runner took 1.2-1.4 times as long per case as a
 `znver4` one (the native halves took 598 s and 429 s), so a job's time depends mostly on the
-runner it lands on.
+runner it lands on. Since a half took 10.0-10.4 minutes on `znver3` runners in that run, native
+and opt-off run in thirds.
 The CPython-hosted compiler is checked by identity rather than by executing its output again:
 `hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
 exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results
 for every `syntax_*` case (`sources.syntax_cases`; both counted in `tests/corpus.sh`'s corpus), each
 comparison in a worker per CPU. The LLVM tools build the same program from the
-same IR, and `native-0`/`native-1` run every case's stage-2 output in JIT and AOT, so executing
+same IR, and the `native-*` groups run every case's stage-2 output in JIT and AOT, so executing
 the hosted compiler's identical output again added no coverage; it replaced three jobs, whose
 Verify steps took 24.3 minutes together in run 40719438561 (a historical measurement). A sample
 still runs end to end with the hosted compiler, so its driver's `run`, `build` and `check` paths

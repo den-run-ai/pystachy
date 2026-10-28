@@ -9,10 +9,10 @@
 #                  tests-native's JIT and AOT runs execute exactly what it compiles; a sample (shard 0
 #                  of HOSTED_SAMPLE_OF, a program of each hosted_strata kind) runs end to end too, JIT
 #                  and AOT
-#   tests-native-0/-1 tests/run.sh with the stage-2 native compiler, JIT and AOT, each on one of two
-#                  disjoint halves of the corpus (shard_cases)
-#   tests-opt-off-0/-1 tests/run.sh with the stage-2 compiler and every optimization on the IR turned
-#                  off (PYSTACHY_OPT=-all), each on one of two disjoint halves of the corpus
+#   tests-native-0/-1/-2 tests/run.sh with the stage-2 native compiler, JIT and AOT, each on one of
+#                  three disjoint thirds of the corpus (shard_cases)
+#   tests-opt-off-0/-1/-2 tests/run.sh with the stage-2 compiler and every optimization on the IR
+#                  turned off (PYSTACHY_OPT=-all), each on one of three disjoint thirds of the corpus
 #                  (shard_cases): the passes change no output
 #   runtime-cache  tests/cache.sh with both compilers: the cached runtime is used while nothing it is
 #                  built from changes, built again when runtime.c, a file it includes from ryu/ or mpz/,
@@ -123,14 +123,16 @@ plan() {
     bootstrap) echo 'bootstrap' ;;
     # (in the order a run of all records them: the contracts' steps, as their lanes report them, after
     # the opt-in sweeps)
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-native-2 tests-opt-off-0 tests-opt-off-1 tests-opt-off-2 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
-    native) echo 'bootstrap tests-native-0 tests-native-1' ;; # local alias
+    native-2) echo 'bootstrap tests-native-2' ;;
+    native) echo 'bootstrap tests-native-0 tests-native-1 tests-native-2' ;; # local alias
     opt-off-0) echo 'bootstrap tests-opt-off-0' ;;
     opt-off-1) echo 'bootstrap tests-opt-off-1' ;;
-    opt-off) echo 'bootstrap tests-opt-off-0 tests-opt-off-1' ;; # local alias
+    opt-off-2) echo 'bootstrap tests-opt-off-2' ;;
+    opt-off) echo 'bootstrap tests-opt-off-0 tests-opt-off-1 tests-opt-off-2' ;; # local alias
     python-free-0) echo 'bootstrap python-free-0' ;;
     python-free-1) echo 'bootstrap python-free-1' ;;
     python-free-2) echo 'bootstrap python-free-2' ;;
@@ -160,10 +162,10 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-ir|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native-2|native|opt-off-0|opt-off-1|opt-off-2|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-ir|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling; do
+  for g in all bootstrap hosted native-0 native-1 native-2 opt-off-0 opt-off-1 opt-off-2 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
@@ -478,22 +480,22 @@ if want tests-cpython; then
   done < "$V/tests-cpython-strata.log")
   step tests-cpython $r "$s" "$L" ', "compiler": "CPython-hosted", "reference": "stage2", "ir_cases": '"${ir_n:-0}"', "ir_identical": '"$ir_ok"', "check_cases": '"$chk_n"', "check_identical": '"$chk_ok"', "modes": ["jit", "aot"], "sample_index": 0, "sample_count": '"$HOSTED_SAMPLE_OF"', "sample_cases": '"$#"', "sample": ['"${sample#, }"'], "sample_strata": {'"${strata#, }"'}'"$x"
 fi
-for shard in 0 1; do
+for shard in 0 1 2; do
   want tests-native-$shard || continue
   L=$V/tests-native-$shard.log; s=$(now); r=fail
-  shard_cases $shard 2 "$V/tests-native-$shard-cases.log"
+  shard_cases $shard 3 "$V/tests-native-$shard-cases.log"
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-native-$shard-cases.log"
   # An empty shard must not silently invoke run.sh's whole-suite default.
   [ $# != 0 ] || { echo 'empty native shard' > "$L"; step tests-native-$shard fail "$s" "$L" ""; continue; }
   PYSTACHY_CASE_TIMES="$V/tests-native-$shard-times.log" tests/run.sh "$V/pystachy2" "jit aot" "$@" > "$L" 2>&1
   x=$(tests "$(checks "jit aot" "$@")" "$L" 2>> "$L") && r=pass
-  step tests-native-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "shard_index": '"$shard"', "shard_count": 2'"$x"
+  step tests-native-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "shard_index": '"$shard"', "shard_count": 3'"$x"
 done
-for shard in 0 1; do
+for shard in 0 1 2; do
   want tests-opt-off-$shard || continue
   L=$V/tests-opt-off-$shard.log; s=$(now); logs=""; offs=""; nl=0
-  shard_cases $shard 2 "$V/tests-opt-off-$shard-cases.log"
+  shard_cases $shard 3 "$V/tests-opt-off-$shard-cases.log"
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-opt-off-$shard-cases.log"
   # An empty shard must not silently invoke run.sh's whole-suite default.
@@ -506,7 +508,7 @@ for shard in 0 1; do
   done
   for l in $logs; do echo "== $(basename "$l")"; cat "$l"; done > "$L"
   x=$(tests $((nl * $(checks "jit aot" "$@"))) $logs 2>> "$L") && r=pass || r=fail
-  step tests-opt-off-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "PYSTACHY_OPT": ['"${offs#, }"'], "shard_index": '"$shard"', "shard_count": 2'"$x"
+  step tests-opt-off-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "PYSTACHY_OPT": ['"${offs#, }"'], "shard_index": '"$shard"', "shard_count": 3'"$x"
 done
 
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,

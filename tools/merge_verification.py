@@ -16,14 +16,14 @@ import dynany_optin
 import python_int_gate
 
 ROOT = Path(__file__).resolve().parent.parent
-SUITE_STEPS = {"tests-cpython", "tests-native-0", "tests-native-1",
-               "tests-opt-off-0", "tests-opt-off-1", "runtime-cache", "python-free-0", "python-free-1",
-               "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
+SUITE_STEPS = {"tests-cpython", "tests-native-0", "tests-native-1", "tests-native-2",
+               "tests-opt-off-0", "tests-opt-off-1", "tests-opt-off-2", "runtime-cache", "python-free-0",
+               "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
                "gc-aot-2"}
 # Steps that run one of the disjoint shards of the corpus (tests/verify.sh shard_cases), and how many
 # shards their suite has: the name ends in the shard index.
 SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
-                 (("tests-native", 2), ("tests-opt-off", 2), ("python-free", 3),
+                 (("tests-native", 3), ("tests-opt-off", 3), ("python-free", 3),
                   ("ubsan", 3), ("gc-ir", 2), ("gc-jit", 2), ("gc-aot", 3))
                  for index in range(count)}
 # The GC suites run their shards (halves in JIT, thirds in AOT) with program stress alone, compiled by
