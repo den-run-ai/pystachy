@@ -284,14 +284,17 @@ class NumericCallIdentityTests(unittest.TestCase):
         self.assertEqual(body.count("call ptr @pys_dyn_float("), 1)
         self.assertNotIn("br i1", body)
 
-    def test_immutable_numeric_parameter_keeps_incoming_box_directly(self):
+    def test_immutable_numeric_parameter_reuses_incoming_box(self):
+        # A caller passes a new number's companion as null (dyn_id_arg), so the parameter's
+        # slot starts with the incoming companion and its crossing reuses that box, or boxes
+        # the new number once; it never allocates unconditionally.
         for scalar, value in [("int", "1000"), ("float", "1.5")]:
             ir = self.compile("from typing import Any\ndef target(x: " + scalar +
                               ") -> Any:\n    return x\nprint(target(" + value + "))\n")
             body = self.function_ir(ir, "f.target")
-            self.assertIn("ret ptr %aid0", body)
-            self.assertNotIn("@pys_dyn_" + scalar, body)
-            self.assertNotRegex(body, r"load [^\n]*%x\.box(?:gen)?\.")
+            self.assertRegex(body, r"store ptr %aid0, ptr %x\.box\.")
+            self.assertEqual(body.count("call ptr @pys_dyn_" + scalar + "_box("), 1)
+            self.assertNotIn("call ptr @pys_dyn_" + scalar + "(", body)
 
     def test_rebound_numeric_parameter_keeps_slot_provenance(self):
         ir = self.compile("from typing import Any\ndef target(x: int) -> Any:\n"

@@ -3,8 +3,8 @@
 @f.floating: pys_fmod pys_f2i pys_raise
 @f.conditional:
 @f.same:
-@f.observable: pys_dyn_float_box
-@f.dynamic_local: pys_dyn_float_box
+@f.observable: pys_dyn_float_box pys_dyn_float_box pys_dyn_float_box
+@f.dynamic_local: pys_dyn_float_box pys_dyn_float_box pys_dyn_float_box
 @f.dynamic_return: pys_dyn_float_box
 @pys_obj_eq:
 @pys_obj_cmp:
