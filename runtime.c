@@ -4273,7 +4273,7 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    allocates nothing the collector scans. An int's, a float's and a bound method's box is its
    identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
 enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN };
-enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32 };   /* a class's ==, ordering, hash and != run the program's
+enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);
                                                                      the class's comparison methods take a value of any type (dobj) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
@@ -4324,12 +4324,17 @@ static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) 
    when a concrete comparison-operand annotation matches. */
 I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
 /* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
-   type): the same DynType, or both a function's or both a bound method's, as each def's boxes
-   have a DynType of their own, but CPython's type of each is function (or method) */
+   type). Generators, functions and builtin iterators can have distinct storage descriptors
+   for one Python type. Only compiler-owned builtin iterator classes carry DF_ITER: a user
+   class with the same name remains distinct. This does not make their payloads interchangeable. */
 I pys_dyn_same_type(const DynType *a, const DynType *b) {
   if (a == b) return 1;
-  return a && b && ((a->kind == DK_GEN && b->kind == DK_GEN) ||
-                    (a->kind == DK_FUNC && b->kind == DK_FUNC && strcmp(a->name->s, b->name->s) == 0));
+  if (!a || !b) return 0;
+  if (a->kind == DK_GEN && b->kind == DK_GEN) return 1;
+  if (a->kind == DK_FUNC && b->kind == DK_FUNC) return strcmp(a->name->s, b->name->s) == 0;
+  int ai = a->kind == DK_ITER || (a->kind == DK_OBJ && (a->flags & DF_ITER));
+  int bi = b->kind == DK_ITER || (b->kind == DK_OBJ && (b->flags & DF_ITER));
+  return ai && bi && strcmp(a->name->s, b->name->s) == 0;
 }
 /* x as a value of type t, which the compiler expects: its payload (None's is 0) where x has that
    type (pys_dyn_isa), else TypeError, where CPython would not check the annotation

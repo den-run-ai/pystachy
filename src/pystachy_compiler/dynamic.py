@@ -19,7 +19,7 @@ from src.pystachy_compiler.analysis import bind_count, local_names
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import retoken, short
-from src.pystachy_compiler.specs import BIG, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
+from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
 from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, gelem, holds_dyn, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -37,6 +37,7 @@ DF_HASH = 4
 DF_BOXID = 8
 DF_NE = 16
 DF_X = 32
+DF_ITER = 64
 # the comparisons the program's @o.x.<class> runs with any value, by their op codes (+ 1: dyn_xhelper)
 XCMP: list[str] = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
 XOPS: list[str] = ["==", "!=", "<", "<=", ">", ">="]
@@ -162,6 +163,10 @@ def gen_dyn_class_type(self, c: str) -> str:
         if c not in self.hcls:
             self.hcls[c] = True
         flags |= DF_HASH
+    if c.startswith(ITERS + "$"):
+        # Builtin iterator specializations have distinct payload layouts, but
+        # the same Python type as the runtime iterator of that builtin family.
+        flags |= DF_ITER
     dt = Data("dyntype", name)
     # Hooks are attached once an operation needs them (dyn_dispatchers), so
     # merely boxing an object does not compile its unused protocol bodies.

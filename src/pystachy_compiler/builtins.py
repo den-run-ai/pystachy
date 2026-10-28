@@ -1345,8 +1345,8 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     # iterator is made first, then sum's start is evaluated and the accumulators set (at the
     # IterArg's split, once the traversal, compiled first, gave the items' type), then the
     # items are traversed. A sum is runtime.c's (pys_sum_int, pys_sum_float, ...), item by
-    # item; min() and max() compare as max(a, b) does, but those of items other than numbers
-    # and strs collect them for pys_list_minmax, as before
+    # item; min() and max() compare as max(a, b) does, including dynamic values before the
+    # iterator advances again. Other nonscalar typed items collect for pys_list_minmax.
     g = args[0]
     if g.kind != "listcomp":
         item = made_var("__item", g.line)
@@ -1541,7 +1541,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
                 r.comp = self.alloca("float", "")
                 if r.stt == "int" or r.stt == BIG:
                     r.first = self.alloca("bool", "")
-        elif v.t == "int" or v.t == "float" or v.t == "bool" or v.t == "str" or v.t == BIG:
+        elif v.t == "int" or v.t == "float" or v.t == "bool" or v.t == "str" or v.t == BIG or v.t == "dyn":
             r.acc = self.alloca(v.t, "")
             r.first = self.alloca("bool", "")
             if self.list_id_kind(self.ctype("list", [v.t])) != 0:
