@@ -4,7 +4,7 @@ import os
 import sys
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
-from src.pystachy_compiler.diagnostics import Rejoin, fail, shown
+from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
@@ -746,12 +746,14 @@ def gen_program(self, mods: list[Mod]) -> str:
         for q in m.taliases:
             self.taliases[q] = m.taliases[q]
         self.typevars.extend(m.deftps)
+    if dynamic_program() and any(defines(m.body, "__len__") or defines(m.body, "__next__") for m in mods):
+        self.eh = True  # dynamic next and length hints catch protocol exceptions
     if not self.eh and len([m for m in mods if defines(m.body, "__next__")]) > 0:
         # a __next__ method's StopIteration is caught where a loop (or unpacking, in, a consumer)
         # takes the items of an object through its __iter__ (obj_iterator, the only way to an
         # iterator object's), and by next(it, default) (not range's __iter__, which steps through
         # a list)
-        self.eh = len([m for m in mods if (defines(m.body, "__iter__") and m.name != RANGES) or module_reads(m.body, "next")]) > 0
+        self.eh = dynamic_program() or len([m for m in mods if (defines(m.body, "__iter__") and m.name != RANGES) or module_reads(m.body, "next")]) > 0
     for m in mods:
         self.generic_aliases(m.body.kids)
     for m in mods:

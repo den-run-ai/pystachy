@@ -1521,6 +1521,10 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
                 self.gencall = ""
                 v = self.expr(a, "")
                 ownk.append(self.owned_gen(v, a))
+                if fn == "reversed" and v.t == "dyn":
+                    rev = self.dyn_call(self.dyn_dispatcher("reversed", ["dyn"], "dyn", "__reversed__"), [v])
+                    self.for_seq(tgt, [self.iterable(rev)], "", body, "0", hide, arg)
+                    return
                 if fn == "reversed" and v.t == RANGEC:
                     # (a range object's numbers from the last, as reversed(range(...)) takes them)
                     self.notnone(v, "TypeError: 'NoneType' object is not reversible")

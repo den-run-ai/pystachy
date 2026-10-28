@@ -19,9 +19,9 @@ from src.pystachy_compiler.analysis import bind_count, local_names
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import retoken, short
-from src.pystachy_compiler.specs import BIG, JSONANY, METHODS, NONEVAR, RTDATA
+from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
-from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, holds_dyn, is_callable, is_dict, is_fn, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, gelem, holds_dyn, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -30,12 +30,14 @@ DYNINT = "dyn[int]"
 # runtime.c's DynType kinds (DK_*) and the flags of a class's (DF_*)
 DK_OBJ = 8
 DK_FUNC = 9
+DK_GEN = 11
 DF_EQ = 1
 DF_CMP = 2
 DF_HASH = 4
 DF_BOXID = 8
 DF_NE = 16
 DF_X = 32
+DF_ITER = 64
 # the comparisons the program's @o.x.<class> runs with any value, by their op codes (+ 1: dyn_xhelper)
 XCMP: list[str] = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
 XOPS: list[str] = ["==", "!=", "<", "<=", ">", ">="]
@@ -93,6 +95,9 @@ def gen_dyn_boxable(self, t: str) -> str:
         return f"a {typestr(t)} cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a {which} from the start, or copy it)"
     if t.startswith("fn[b:") or t.startswith("fn[d:") or t.startswith("fn[u:"):
         return f"a builtin function or method as an Any value is not supported yet ({typestr(t)})"
+    if is_gen(t):
+        why = self.dyn_boxable(gelem(t))
+        return "" if why == "" else f"a {typestr(t)} cannot become an Any value: its yield channel is not boxable ({why})"
     if is_fn(t) or is_callable(t):
         return ""
     return f"a {typestr(t)} value cannot become an Any value"
@@ -102,6 +107,22 @@ def gen_dyn_type(self, t: str) -> str:
     # the DynType operand of payloads of static type t (a class's: its own, dyn_class_type)
     if t in BUILTIN:
         return self.rtdata(BUILTIN[t])
+    if is_gen(t):
+        # A generator keeps its original coroutine handle and yield channel. Its
+        # DynType selects the reader that boxes each yielded value on demand;
+        # boxing the generator neither resumes it nor copies its frame.
+        if t not in self.dyntypes:
+            name = f"@dt.generator.{len(self.dyntypes)}"
+            self.dyntypes[t] = name
+            dt = Data("dyntype", name)
+            it = self.dyn_dispatcher("iter", [DYN], DYN, "__iter__")
+            nxt = self.dyn_dispatcher("next", [DYN], DYN, "__next__")
+            self.called[it.ll] = True
+            self.called[nxt.ll] = True
+            dt.refs = [self.sconst("G"), self.sconst("generator"), "null", it.ll, nxt.ll]
+            dt.items = [Val(str(DK_GEN), "int"), Val("-1", "int"), Val("0", "int")]
+            self.consts.append(dt)
+        return self.dyntypes[t]
     return self.dyn_class_type(t)
 
 
@@ -142,8 +163,14 @@ def gen_dyn_class_type(self, c: str) -> str:
         if c not in self.hcls:
             self.hcls[c] = True
         flags |= DF_HASH
+    if c.startswith(ITERS + "$"):
+        # Builtin iterator specializations have distinct payload layouts, but
+        # the same Python type as the runtime iterator of that builtin family.
+        flags |= DF_ITER
     dt = Data("dyntype", name)
-    dt.refs = [self.sconst(d), self.sconst(short(c)), base]
+    # Hooks are attached once an operation needs them (dyn_dispatchers), so
+    # merely boxing an object does not compile its unused protocol bodies.
+    dt.refs = [self.sconst(d), self.sconst(short(c)), base, "null", "null", "null"]
     dt.items = [Val(str(DK_OBJ), "int"), Val(str(self.ocls[c]), "int"), Val(str(flags), "int")]
     self.consts.append(dt)
     self.dynclasses.append(c)
@@ -2367,7 +2394,32 @@ def gen_dyn_body(self, key: str) -> None:
         self.dyn_builtin_methods(f, key, o, ps[1:])
     if key.startswith("callv."):
         self.dyn_fn_arms(f, key, o, ps[1:])
+    dyn_generator_arms(self, key, o)
     self.dyn_fallback(f, key, ps)
+
+
+def dyn_generator_arms(self, key: str, o: Val) -> None:
+    # Iteration of boxed coroutine handles. The internal next dispatcher uses
+    # null only for exhaustion; a yielded None is its ordinary non-null box.
+    # All generator state, errors and cleanup stay in the existing resume path.
+    if key != "iter" and key != "next":
+        return
+    typ = Val(self.dyn_typeof(o), "dyntype")
+    for t in [x for x in self.dyntypes if is_gen(x)]:
+        hit = self.label()
+        miss = self.label()
+        self.cbr(self.ptr_cmp("==", typ, Val(self.dyntypes[t], "dyntype")).v, hit, miss)
+        self.place(hit)
+        if key == "iter":
+            self.ret_(o)
+        else:
+            done = self.label()
+            handle = self.dyn_payload(o, t)
+            promise = self.gen_next(handle, done)
+            self.ret_(self.dyn_box(self.gen_value(promise, gelem(t))))
+            self.place(done)
+            self.ret_(Val("null", DYN))
+        self.place(miss)
 
 
 def gen_dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) -> None:
@@ -2472,6 +2524,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         return ci.methods[m].bad == "" and len(ci.methods[m].defaults) >= len(ci.methods[m].params)  # (has.: CPython's lookup finds it)
     if key.startswith("callv."):
         return "__call__" in ci.methods and ci.methods["__call__"].bad == ""
+    if key == "reversed" and c == RANGEC:
+        return True
     if key == "module":
         return True
     if key == "truth":
@@ -2548,9 +2602,30 @@ def gen_dyn_call_args(self, key: str, args: list[Val]) -> list[Node]:
 
 def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val]) -> None:
     # class x.t's case of dispatcher key: its own operation on the object x, then return
+    if key in ["iter", "next", "nextvalue", "reversed"]:
+        protocol_method = "__iter__" if key == "iter" else "__reversed__" if key == "reversed" else "__next__"
+        attempt = f"protocol:{x.t}.{protocol_method}"
+        if attempt in self.xnot:
+            self.raise_("TypeError", self.sconst(f"{short(x.t)}.{protocol_method} through Any is not supported: its body cannot be compiled"))
+            return
+        self.xtry = attempt
+        dyn_iteration_arm(self, f, key, x)
+        self.xtry = ""
+        return
     line = self.line
     xn = self.vnode(x)
     an = self.dyn_call_args(key, args) if key.startswith("call") else [self.vnode(a) for a in args]
+    if key == "hintindex":
+        fm = self.classes[x.t].methods["__index__"]
+        own = 0 if fm.deco != "" else 1
+        if fm.bad == "" and len(fm.defaults) >= len(fm.params) and not self.dyn_takes(fm, own, 0):
+            # An unrelated boxed class must not invalidate another object's
+            # length hint. An active bad signature raises inside the hint's try.
+            self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, 0)))
+            return
+        r = self.expr(mk("call", "", line, [mk("attr", "__index__", line, [xn])]), "")
+        self.ret_(dyn_hint_result(self, r, False))
+        return
     if key.startswith("cmp."):
         receiver = args[0]
         attempt = f"{receiver.t}.{dunder}:concrete:{x.t}"
@@ -2629,16 +2704,144 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         r = Val(self.truth(x), "bool")
     elif key == "str":
         r = self.to_str(x)
-    elif key == "len":
+    elif key == "len" or key == "lengthhint":
+        attempt = f"protocol-hint:{x.t}.__len__" if key == "lengthhint" else f"protocol:{x.t}.__len__"
+        if attempt in self.xnot:
+            self.raise_("TypeError", self.sconst(f"{short(x.t)}.__len__ through Any is not supported: its body cannot be compiled"))
+            return
+        self.xtry = attempt
+        if key == "lengthhint":
+            dyn_length_hint(self, x)
+            self.xtry = ""
+            return
         r = self.objlen(x)
+        self.xtry = ""
     elif key.startswith("iop") and ("__i" + dunder[2:]) in self.classes[x.t].methods:
         r = self.expr(mk("call", "", line, [mk("attr", "__i" + dunder[2:], line, [xn])] + an), "")
     elif key == "contains":
-        r = self.coerce(self.expr(mk("call", "", line, [mk("attr", dunder, line, [xn])] + an), ""), "bool")
+        r = Val(self.truth(self.expr(mk("call", "", line, [mk("attr", dunder, line, [xn])] + an), "")), "bool")
     else:
         r = self.expr(mk("call", "", line, [mk("attr", dunder, line, [xn])] + an), "")
     self.dyn_return(f, r)
 
+
+
+def dyn_iteration_arm(self, f: FnInfo, key: str, x: Val) -> None:
+    # Preserve the original iterator object. Only the internal next callback
+    # catches exhaustion; explicit next(it) retains user StopIteration details.
+    method = "__iter__" if key == "iter" else "__reversed__" if key == "reversed" else "__next__"
+    if x.t == RANGEC and key in ["iter", "reversed"]:
+        rf = self.range_fields(x)
+        raw = self.rt("pys_dyn_range_iter", "ptr", [f"i64 {rf[0]}", f"i64 {rf[1]}", f"i64 {rf[2]}", "i64 " + ("1" if key == "reversed" else "0")])
+        self.ret_(Val(raw, DYN))
+        return
+    fm = self.classes[x.t].methods[method]
+    own = 0 if fm.deco != "" else 1
+    if not self.dyn_takes(fm, own, 0):
+        self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, 0)))
+        return
+    if key == "next":
+        caught = self.stop_catch()
+        r = self.next_in(x, caught)
+        self.place(self.label())
+    else:
+        r = self.expr(mk("call", "", self.line, [mk("attr", method, self.line, [self.vnode(x)])]), "")
+    if key in ["iter", "reversed"] and fm.iters:
+        # Iterator[T] methods may use the existing list-backed lowering. Wrap
+        # that very list, with its native item layout and mutation visibility.
+        r = self.iter_obj("list_iterator", [r])
+    problem = self.dyn_boxable(self.rec_type(r.t))
+    if problem != "":
+        self.raise_("TypeError", self.sconst(f"{short(x.t)}.{method} through Any is not supported: {problem}"))
+    else:
+        r = self.dyn_box(r)
+        if key == "iter":
+            r = Val(self.rt("pys_dyn_iter_check", "ptr", [f"ptr {r.v}"]), DYN)
+        self.ret_(r)
+    if key == "next":
+        stop = self.label()
+        self.stop_landing(caught, stop)
+        self.place(stop)
+        self.ret_(Val("null", DYN))
+
+
+def dyn_length_hint(self, x: Val) -> None:
+    # PyObject_LengthHint ignores TypeError from __len__, but not ValueError
+    # for a negative result or any other user exception. -1 means no hint.
+    caught = self.stop_catch()
+    outer = self.handler
+    self.handler = caught.landing
+    block = self.label()
+    caught.tr.body = block
+    self.place(block)
+    value = self.call_fn(self.classes[x.t].methods["__len__"], [x], [], direct=True)
+    r = dyn_hint_result(self, value, True)
+    self.handler = outer
+    self.ret_(r)
+    e = self.landing(caught.landing, caught.slot, caught.mark)
+    yes = self.label()
+    no = self.label()
+    kinds = ["TypeError"] + [c for c in self.classes if self.classes[c].exc != "" and self.derives(c, "TypeError")]
+    self.cbr(self.exc_match(e, "\x01" + "\x01".join(kinds) + "\x01"), yes, no)
+    self.place(no)
+    self.throw(e)
+    self.place(yes)
+    self.rt("pys_exc_restore", "void", [f"ptr {caught.old}"])
+    caught.tr.exit = yes
+    self.ret_(Val("-1", "int"))
+
+
+def dyn_hint_result(self, value: Val, index: bool) -> Val:
+    # Execute the method before validating its result. Invalid length results
+    # are TypeErrors, which the hint caller declines without losing effects.
+    value = self.unwrap(value, "TypeError: length is not an integer")
+    if is_union(value.t):
+        end = self.label()
+        ph = Ins("phi", "int", "")
+        members = umembers(value.t)
+        if len([m for m in members if m in self.classes]) > 0:
+            # Native reference unions admit None without an opt[] wrapper.
+            # Reject it before reading a tag or calling any __index__ method.
+            self.guard(self.ptr_cmp("==", value, Val("null", "None")).v, "TypeError: length is not an integer")
+        for j in range(len(members)):
+            hit = self.label()
+            miss = self.label() if j + 1 < len(members) else ""
+            if miss == "":
+                self.br(hit)
+            else:
+                self.cbr(self.utest(value, [members[j]], False), hit, miss)
+            self.place(hit)
+            r = dyn_hint_result(self, self.uget(value, members[j]), index)
+            if not self.term:
+                self.incoming(ph, r.v, self.cur)
+                self.br(end)
+            if miss != "":
+                self.place(miss)
+        if len(ph.a) == 0:
+            return Val("undef", "int")
+        self.place(end)
+        return Val(self.phi(ph), "int")
+    if value.t == DYN and index:
+        return self.dyn_call(self.dyn_dispatcher("hintindex", [DYN], "int", "__index__"), [value])
+    if value.t == DYN:
+        self.guard(self.scalar("xor", [Val(self.dyn_test(value, ["int", "bool"]), "bool"), Val("true", "bool")]), "TypeError: length is not an integer")
+        value = self.dyn_payload(value, "int")
+    if index and value.t in self.classes and "__index__" in self.classes[value.t].methods:
+        self.notnone(value, "TypeError: length is not an integer")
+        fm = self.classes[value.t].methods["__index__"]
+        own = 0 if fm.deco != "" else 1
+        if fm.bad == "" and len(fm.defaults) >= len(fm.params) and not self.dyn_takes(fm, own, 0):
+            self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, 0)))
+            return Val("0", "int")
+        return dyn_hint_result(self, self.protocol(value, "__index__", []), False)
+    if value.t == BIG:
+        return self.big_len(value)
+    if value.t not in ["int", "bool"]:
+        self.raise_("TypeError", self.sconst("length is not an integer"))
+        return Val("0", "int")
+    r = self.as_int(value)
+    self.guard(self.num_cmp("<", r, Val("0", "int")).v, "ValueError: __len__() should return >= 0")
+    return r
 
 def gen_dyn_return(self, f: FnInfo, r: Val) -> None:
     # return r from dispatcher f: boxed where it returns dyn (a fresh typed container a builtin
@@ -2774,12 +2977,30 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(Val(self.rt(fn, "ptr", [f"ptr {o.v}", f"ptr {ps[1].v}", f"i64 {n}"]), DYN))
     elif key.startswith("un"):
         self.ret_(Val(self.rt("pys_dyn_unary", "ptr", [f"ptr {o.v}", f"i64 {key[2:]}"]), DYN))
+    elif key == "iter":
+        self.ret_(Val(self.rt("pys_dyn_iter_box", "ptr", [f"ptr {o.v}"]), DYN))
+    elif key == "reversed":
+        self.ret_(Val(self.rt("pys_dyn_reversed", "ptr", [f"ptr {o.v}"]), DYN))
+    elif key == "next" or key == "nextvalue":
+        r = Val(self.rt("pys_dyn_next_box", "ptr", [f"ptr {o.v}"]), DYN)
+        if key == "nextvalue":
+            stop = self.label()
+            more = self.label()
+            self.cbr(self.ptr_cmp("==", r, Val("null", DYN)).v, stop, more)
+            self.place(stop)
+            self.gen_stop()
+            self.place(more)
+        self.ret_(r)
     elif key == "truth":
         self.ret_(self.num_cmp("!=", Val(self.rt("pys_dyn_truth", "i64", [f"ptr {o.v}"]), "int"), Val("0", "int")))
     elif key == "str":
         self.ret_(Val(self.rt("pys_dyn_str", "ptr", [f"ptr {o.v}"]), "str"))
     elif key == "len":
         self.ret_(Val(self.rt("pys_dyn_len", "i64", [f"ptr {o.v}"]), "int"))
+    elif key == "hintindex":
+        self.ret_(dyn_hint_result(self, o, False))
+    elif key == "lengthhint":
+        self.ret_(Val("-1", "int"))
     elif key == "int":
         self.ret_(Val(self.rt("pys_dyn_int_of", "i64", [f"ptr {o.v}"]), "int"))
     elif key == "float":
@@ -2848,7 +3069,23 @@ def gen_dyn_dispatchers(self) -> bool:
     # or a new dispatcher appeared since the last time: True if so. Compiling them may box more
     # classes and function values (get.<a> a bound method), and need more dispatchers, so that
     # program calls this until it is False
-    sig = f"{len(self.dynclasses)} {len(self.dynfns)} {len(self.dynfuncs)}"
+    # Runtime consumers need callbacks even without an explicit iter()/next().
+    # Resolve these after the main walk, using only existing program registries.
+    iterate = any(k in self.rtfns for k in ["dyn.iter", "dyn.list", "dyn.strs", "dyn.unpack", "dyn.update", "dyn.inplace", "dyn.contains"]) or "iter" in self.dynfns
+    advance = iterate or "next" in self.dynfns or "nextvalue" in self.dynfns
+    length = any(k in self.rtfns for k in ["dyn.list", "dyn.strs", "dyn.update", "dyn.inplace"])
+    for c in self.dynclasses:
+        ms = self.classes[c].methods
+        for key in ["iter", "next", "lengthhint"]:
+            needed = iterate if key == "iter" else advance if key == "next" else length
+            method = "__len__" if key == "lengthhint" else "__" + key + "__"
+            if needed and method in ms:
+                f = self.dyn_dispatcher(key, [DYN], "int" if key == "lengthhint" else DYN, method)
+                self.called[f.ll] = True
+                for d in self.consts:
+                    if d.name == self.dyntypes[c]:
+                        d.refs[3 if key == "iter" else 4 if key == "next" else 5] = f.ll
+    sig = f"{len(self.dynclasses)} {len(self.dynfns)} {len(self.dynfuncs)} {len(self.dyntypes)}"
     if sig == self.dynsig:
         return False
     self.dynsig = sig
@@ -3194,8 +3431,9 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     # sum(xs, start) of a list (of a dynamic value's items, or of dynamic values): start + each
     # item in turn, as dynamic additions (dyn_arith), the list's length read at every step as
     # CPython's iterator reads it
-    if xs.t != "list[dyn]" and not is_list(xs.t):
+    if xs.t != DYN and not is_list(xs.t):
         self.err(f"sum() of {typestr(xs.t)} is not supported")
+    it = self.iterable(xs) if xs.t == DYN else xs
     acc = self.alloca(DYN, "")
     ctr = self.alloca("int", "")
     self.mem_store(Val(acc, "*dyn"), self.dyn_box(start))
@@ -3206,9 +3444,15 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
     self.br(head)
     self.place(head)
     i = self.mload("int", ctr)
-    self.cbr(self.num_cmp("<", Val(i, "int"), Val(self.mload("int", xs.v), "int")).v, body, end)
+    item = Val("", DYN)
+    if xs.t == DYN:
+        item = Val(self.rt("pys_dyn_next", "ptr", [f"ptr {it.v}"]), DYN)
+        self.cbr(self.ptr_cmp("!=", item, Val("null", DYN)).v, body, end)
+    else:
+        self.cbr(self.num_cmp("<", Val(i, "int"), Val(self.mload("int", xs.v), "int")).v, body, end)
     self.place(body)
-    item = self.list_item(xs, Val(i, "int"))
+    if xs.t != DYN:
+        item = self.list_item(xs, Val(i, "int"))
     total = self.dyn_arith("+", self.mem_load(Val(acc, "*dyn")), item)
     self.mem_store(Val(acc, "*dyn"), total)
     self.mstore("int", self.scalar("add", [Val(i, "int"), Val("1", "int")]), ctr)

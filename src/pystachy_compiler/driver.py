@@ -77,7 +77,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # types, as if annotated, until no join widens one (at most JOINS passes after the first).
     # Where a comparison method's call with an Any value does not compile, it is compiled again
     # without that call (Gen.xnot: each such pass adds a method, so these passes count toward no
-    # limit)
+    # limit). Unsupported iteration protocol bodies use the same per-method retry
+    # registry, but their replacement arms raise an explicit compatibility error.
     hints: dict[str, str] = {}
     xnot: dict[str, bool] = {}
     lambdas = LAMBDAS[0]

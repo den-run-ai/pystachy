@@ -92,7 +92,7 @@ module that does not opt in. These annotation forms retain inference:
 program (`box: Box[Any] = Box(3)`: a specialization is its constructor call's), `*args: Any` and
 `**kwargs: Any` of an `__init__` (its class is a class template), the parameters of `__exit__`,
 which a `with` statement gives an exception class and an exception (no `Any` value holds one yet),
-and the return of `__iter__` and of a generator, whose objects no `Any` value holds yet either
+and a bare `Any` return annotation on `__iter__` or a generator, which retains its concrete iterator or yield-channel inference
 (`tests/programs/inference/dynany_inferred_annotations.py`, `tests/programs/inference/dynany_exit.py`,
 `tests/programs/inference/dynany_init_varargs.py`, `tests/programs/inference/dynany_iter_any.py`). `Annotated[Any, ...]` is `Any`
 (`tests/programs/inference/dynany_annotated.py`). The items of a display that hold an empty display (or
@@ -347,6 +347,48 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   `TypeError: expected int, got str` where CPython, which does not check annotations, would go
   on: the one kind of runtime error that CPython never raises, a [deviation](#deviations).
 
+## Iteration
+
+An `Any` value can hold a range, a builtin iterator, a user iterator or a generator
+whose yielded values are boxable. `iter()` preserves an iterator's identity and
+`next()` advances its original state; the default is evaluated before advancement.
+A `for` loop, membership fallback, `any()`, `all()` and reductions consume items as
+they arrive. Builtin iterators remain exhausted after their first exhaustion;
+user iterators may resume after raising `StopIteration`. `__contains__` takes
+precedence over iteration. A custom `__iter__` may return an iterator without its
+own `__iter__`, or a generator. `list()` and list extension request the source's
+available `__len__` after obtaining its iterator. Sequence-fast consumers such as
+`str.join()` and dictionary-pair conversion instead request the returned iterator's
+hint. TypeError declines a hint after its effects; negative lengths and other
+exceptions propagate. Inferred length results are checked before allocation, with
+a separate specialization that leaves ordinary typed `len()` rules unchanged.
+
+`reversed()` supports boxed lists, tuples, dictionaries, strings and ranges, and
+objects defining `__reversed__`. Native iterators retain their containers and
+observe mutations as they advance; range iteration uses constant storage even for
+ranges too large to materialize. Generator boxing retains the coroutine handle,
+without advancing or copying it. The original typed alias and the boxed alias
+therefore share advancement, cleanup and yielded mutable values.
+
+This remains a bounded protocol surface: legacy `__getitem__` iteration and the
+`__len__`/`__getitem__` reverse fallback are unsupported, as in typed code.
+`__length_hint__`, generator `send`/`throw`/`close` through `Any`, and generator
+`StopIteration.value` are not added here. A generator yielding aliased typed mutable
+containers cannot box them; use a boxable yield channel such as `list[Any]` from
+the start. `str.join()` and dictionary-pair conversion preserve a `TypeError`
+raised by user `__iter__` rather than replacing its message as CPython does.
+Explicit special-method annotations still follow the typed declaration rules.
+If an iteration or length method's body cannot compile in the supported subset,
+calling it through `Any` raises an explicit unsupported-operation error; merely
+boxing an unrelated instance does not invoke that body.
+
+The differential fixtures `dynany_iteration.py`, `dynany_iter_builtins.py`,
+`dynany_iter_range.py`, `dynany_iter_errors.py`, `dynany_iter_object.py`,
+`dynany_iter_sequence_fast.py`, `dynany_iter_key.py`, `dynany_iter_unused.py` and
+`dynany_generator_*.py` exercise these paths; the separate
+[iteration benchmark](../bench/smoke/README.md)
+checks laziness and checksums before timing.
+
 ## Operations
 
 Arithmetic, comparisons, truth, `is`, `in`, indexing, slicing (of a `str`, list or tuple, with
@@ -355,7 +397,7 @@ receiver tested, the step first; a dict's slice hashes the slice, then raises it
 item assignment and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `abs()`, `hash()`,
 `id()`, `sum()` (also of a generator), `sorted()`, `min()`, `max()`, `list()`, `str.join()`,
 `dict.update()` (of a dict or of pairs, each an iterable of two), f-strings and `format()`,
-iteration, unpacking, augmented assignment, `type(x).__name__`,
+iteration, `iter()`, `next()` (including a default), `reversed()`, unpacking, augmented assignment, `type(x).__name__`,
 `__qualname__` and `__module__`, and `type(x) is C` and `type(x) == type(y)` (exact types: a
 bool's is no int's, and every function's is `function`; a typed `y`'s by the value it holds,
 `NoneType` for a `list[int] | None` that is `None`: `tests/programs/inference/dynany_type_is_value.py`,
@@ -578,9 +620,6 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
   is a correctness gap tracked by #803, not a stable comparison contract
   (`tests/deviations/dynany_cmp_uncompiled_body.py`).
-- An object is not iterable through an `Any` value yet (iteration of objects is under
-  [next steps](#next-steps)): a `for` loop over one, and a pair of `dict.update()` that is one,
-  raise `TypeError` where CPython calls its `__iter__` (`tests/deviations/dynany_iter_object.py`).
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
@@ -634,8 +673,6 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (`tests/programs/inference/dynany_namedtuple.py`), but it is no sequence there: `len()`, indexing and
   iteration raise `TypeError`, and an object of another NamedTuple class compares with it by
   identity (an ordering raises `TypeError`), where CPython compares their fields.
-- An object is not iterable through an `Any` value yet: `for`, `list()` and `in` (where its
-  class has no `__contains__`) raise `TypeError` instead of calling `__iter__`.
 - A static or class method read through an `Any` value without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a
   property's value (`x.p(...)`). A field's value is called as a function value is.
@@ -721,7 +758,8 @@ lines.
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
   builtin functions as values; `type(x)` as a class object.
-- **Protocols**: iteration of objects (`__iter__`), and the
+- **Protocols**: legacy sequence iteration through `__getitem__`, reverse iteration through
+  `__len__`/`__getitem__`, `__length_hint__`, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.
 - **Guarded variants and inline caches** only where measurements justify them (#392): a
   dispatcher with one dominant case is a candidate for a guarded direct call.

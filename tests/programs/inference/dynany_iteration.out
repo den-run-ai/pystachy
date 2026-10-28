@@ -1,0 +1,33 @@
+iter 3
+for 1
+for 2
+for 3
+iter 3
+length 3
+list [1, 2, 3]
+iter 3
+iter 3
+contains True False
+iter 3
+length 3
+sorted [3, 2, 1]
+iter 3
+iter 3
+sum 6 16
+iter 3
+unpack 1 2 3
+iter 3
+iter 3
+any True all True
+iter 3
+1 2 3
+stop done
+default end
+'CountIter' object is not iterable
+contains method 7
+priority True
+yielding ['a', 'b']
+iter 3
+length 3
+extend [[1, 2], 1, 2, 3]
+[exit 0]
