@@ -31,11 +31,21 @@ JIT compilation, startup and execution; they are not steady-state kernel timings
 AOT process times include executable startup. Loop times below come from the
 workloads' own timers.
 
-The source inputs were identical for both revisions. Raw program IR matched byte
-for byte for hello, nbody, spectral and richards. The text control differed only in
-one `ImportError` diagnostic's checkout path to `lib/types.py` and its string-size
-fields; replacing exactly that path and its lengths made the complete IR identical.
-This was a five-workload IR comparison, not a full-corpus `make irsame` run.
+The timing workloads used identical source inputs. A separate complete
+`tools/irsame.sh` corpus comparison checked the fixed-point native baseline against
+the hosted candidate, using each checkout's own library and runtime. All 3,837 cases
+matched IR, diagnostics and exit status after the path normalization below:
+2,052 accepted cases and 1,785 matched rejections. Of these, 3,599 matched raw; the
+remaining 238 differed only in checkout paths (177 IR cases and 61 diagnostic cases).
+
+Normalization replaced the two known `lib/` prefixes. For `lib_gettext.py` and
+`sys_prefix.py`, it also replaced exact whole `sys.prefix` string payloads: the
+compiler exposes its checkout prefix through `driver.py` and `builtins.py`.
+Each changed IR string's array dimensions, length and capacity were validated and
+adjusted by the exact ASCII path-length delta. No instructions, symbols, ordering,
+status or non-path diagnostic content were normalized. No unexplained differences
+remain. The comparison used stock corpus/comparison logic, with extra evidence
+retention and full difference display; it did not share source homes or runtime inputs.
 
 ## Build cost and executable size
 

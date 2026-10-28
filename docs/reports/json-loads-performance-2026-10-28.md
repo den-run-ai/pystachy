@@ -141,3 +141,52 @@ For `json_loads.py`, unoptimized IR grew from 12,672 to 13,603 lines while stati
 do not by themselves prove an allocation or runtime improvement; the timings above supply
 the workload evidence. Full applicable CI, review and the release gate remain separate
 requirements on the eventual release commit.
+
+## Combined-source confirmation
+
+A separate AOT comparison checks the interaction of #972, #974, #975 and #977.
+The candidate was [integration source `85165787`](https://github.com/den-run-ai/pystachy/commit/85165787e39d33040e19203a308c88aaf1791a3e),
+tree `44aad2ee5732ac559c726c8970698ba9fda8c9ad`, exactly matching local `5a4ba853`.
+The baseline binaries came from the #974 integration tree identified above. The
+candidate executables used its CPython-hosted compiler, default optimizations, LLVM
+18.1.3 and a new private runtime cache. This compares generated native execution,
+not compiler startup, JIT startup or build throughput.
+
+The JSON input and 2,000-iteration workload were unchanged. The second input was
+the 30-million-iteration Counter/TOML workload from the
+[identity-scope report](identity-scope-performance-2026-10-28.md), source SHA-256
+`74583cdb90fdf990c6862b4129e8c6573088a2373d9de42e3b4138dfb210781e`.
+The existing #974 Counter binary was verified against its recorded SHA-256
+`44fabdb12c7b1ce605e1a9752351bfa97f0f9225f3273fe550e979ddf1fd4e91`.
+The same shared host, CPU 0 and toolchain were used, with two warmups and seven
+alternating pairs per workload and no other session-owned heavy work. Every warmup
+and measured run matched fresh CPython output. JSON stderr contained only its
+timing line; Counter stderr was empty.
+
+Seconds, median and full observed range:
+
+| Workload and metric | #974 integration | Combined source | Ratio of medians | Median paired ratio |
+|---|---:|---:|---:|---:|
+| JSON internal loop | 0.725933 (0.663655–0.762504) | 0.734527 (0.696677–0.860633) | 1.0118 | 1.0356 |
+| Counter process elapsed time | 0.037106 (0.036223–0.037739) | 0.037503 (0.036326–0.040653) | 1.0107 | 1.0100 |
+
+Counter includes executable startup because its original source has no internal
+timer. The roughly 1% median differences are inconclusive within the observed
+variation. This is bounded evidence against a major interaction slowdown on these
+inputs; it does not clear their previously measured alpha.3 regressions.
+
+| Pair | JSON combined / #974 | Counter combined / #974 |
+|---|---:|---:|
+| 1 | 1.1294 | 0.9809 |
+| 2 | 1.1287 | 1.0276 |
+| 3 | 1.0356 | 1.0045 |
+| 4 | 0.9638 | 1.0772 |
+| 5 | 0.9174 | 1.0100 |
+| 6 | 1.0558 | 1.0353 |
+| 7 | 1.0162 | 1.0072 |
+
+Executable sizes increased: JSON 252,392 to 264,744 bytes (+4.9%); Counter 680,856
+to 693,224 bytes (+1.8%). These deterministic size observations are not attributed
+to a single constituent change. No comparable build-cost series was run. Reproduce
+with the same commands and input bytes above, using `python3.13 pystachy.py build`
+for the integration frontend and the Counter source from the linked report.
