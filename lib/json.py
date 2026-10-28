@@ -417,11 +417,22 @@ class JSONDecoder:
     """Default JSON decoder; custom hooks and strict=False are not supported."""
 
     def decode(self, s: str) -> JSONValue:
-        # loads() diagnoses a leading BOM specially; the decoder reports an invalid value.
-        try:
-            return _parse(_Parser(s, False), False)
-        except UnicodeDecodeError:
-            return _parse(_Parser(s, True), False)
+        # Match JSONDecoder's overridable raw_decode call, including its effects
+        # and exceptions. The base raw_decode handles its own decoding retry;
+        # retrying here could execute a user override twice.
+        n = len(s)
+        idx = 0
+        while idx < n and s[idx] in " \t\n\r":
+            idx += 1
+        value, end = self.raw_decode(s, idx=idx)
+        # CPython's whitespace regex clamps its starting position to the input.
+        # A custom raw_decode may return an offset outside that range.
+        end = min(max(end, 0), n)
+        while end < n and s[end] in " \t\n\r":
+            end += 1
+        if end != n:
+            raise JSONDecodeError("Extra data", s, end)
+        return value
 
     def raw_decode(self, s: str, idx: int = 0) -> tuple[JSONValue, int]:
         return _raw_decode(s, idx)
