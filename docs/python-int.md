@@ -290,7 +290,8 @@ for a C `long`), where CPython goes on with the bigger int:
   `pop()` gives where it may be None (`d.get(k)`), the items and values
   of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
   items, unions other than `int | None` (also where a join makes one, as
-  for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
+  for a location given a `bool` and an int, or a list or dict display of ints and floats, bools
+  or `str`s), the items of a `tuple[int, ...]` (a tuple sliced by
   a variable), and the values sent to a generator (`send()`)
   (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a parameter,
   is hashed, compared, searched, formatted with `%` and unpacked into arguments as the tuple of

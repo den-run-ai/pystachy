@@ -2,10 +2,11 @@
 # The iterators that iter() makes of a list, a tuple, a dict and a set give the ints past 64 bits
 # that they hold, also in tuples: next(), next() with a default, for loops, the builtins that take
 # an iterator, exhaustion, the errors of a dict or a set that changes size, an object whose
-# __iter__ returns iter(), and a module that does not opt in (fixed_iterators).
+# __iter__ returns iter(), and a module that does not opt in (fixed_iterators), also in displays
+# that join them with floats, bools and strs.
 from typing import Iterator
 
-from fixed_iterators import count, drain, first, keys_of, made, pairs_of
+from fixed_iterators import count, drain, first, keys_of, made, mixed, pairs_of
 
 big = 2 ** 64
 low = -2 ** 63
@@ -88,3 +89,5 @@ print(keys_of({(big, 1): "a", (low, 2): "b"}))
 m = made()
 mi = iter(m)
 print(next(mi), next(mi), next(mi, None))
+mixed([5])
+mixed({7: 0})

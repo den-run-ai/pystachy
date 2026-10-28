@@ -35,3 +35,8 @@ def keys_of(d: dict[tuple[int, int], str]) -> list[tuple[int, int]]:
 
 def made() -> list[int]:
     return [-9223372036854775807 - 1, 5]
+
+
+def mixed(c) -> None:
+    # (displays of an iterator's int and a float, a bool or a str, as of a 64-bit int and those)
+    print(sum([next(iter(c)), 2.0]), [next(iter(c)), True], [next(iter(c)), "a"], {1: next(iter(c)), 2: 2.0})
