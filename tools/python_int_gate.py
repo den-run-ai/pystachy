@@ -11,6 +11,7 @@ This makes full, sharded and focused runs observe the same imported-module integ
 --native-suite defers to the same verification run's tests-native steps exactly what
 tools/dynany_optin.py's does: the baseline of an exact expected failure, and the AOT check of a
 program whose opted-in IR and fresh oracle are byte-identical to the original's ("native-ir").
+tests-native never runs with GC stress, so --native-suite is refused with --gc-stress.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -178,8 +179,9 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed, gc_stress=
             if exception is not None and not ok and rejected != b"1\n":
                 diagnostic += f"\nexpected one compiler exit 1 with only its exact diagnostic, recorded {rejected!r}"
             row = {"case": case, "mode": mode, "result": result, "diagnostic": diagnostic}
-            if not ok and native and result == "expected-failure":
-                detail["baseline"] = "tests-native"  # (it runs the unchanged program in this mode)
+            # (tests-native runs the unchanged program in this mode, but never with GC stress)
+            if not ok and native and not gc_stress and result == "expected-failure":
+                detail["baseline"] = "tests-native"
             elif not ok:
                 base_status, base_output = optin.run(["sh", "tests/run.sh", compiler, mode, case], root, env, timeout)
                 base_ok, base_diagnostic = optin.harness_result(base_status, base_output, case)
@@ -278,7 +280,9 @@ def main(argv=None):
     if (args.jobs < 1 or args.shard_count < 1 or not 0 <= args.shard_index < args.shard_count or
             not 0 < args.timeout < float("inf") or len(args.modes) != len(set(args.modes))):
         parser.error("invalid worker/shard/timeout/mode settings")
-    version = ".".join(map(str, sys.version_info[:3]))
+    if args.gc_stress and args.native_suite:
+        parser.error("--native-suite defers to tests-native, which never runs with GC stress: not with --gc-stress")
+    version =".".join(map(str, sys.version_info[:3]))
     if version != (ROOT / ".python-version").read_text().strip():
         parser.error("run with the exact CPython version pinned by .python-version")
     corpus = programs(ROOT)
@@ -325,11 +329,8 @@ def main(argv=None):
                     result = {"case": case, "oracle": False, "results": [],
                               "failure": f"{case}: worker {type(error).__name__}: {error}"}
                 cases.append(result)
-                for row in result["results"]:
-                    if row["result"] != "pass":
-                        print(f"{row['result'].upper()} {row['case']} ({row['mode']}): {row['diagnostic']}", flush=True)
-                if not result["oracle"]:
-                    print("FAIL " + result["failure"], flush=True)
+                for line in optin.progress(result):
+                    print(line, flush=True)
         rows = [row for case in cases for row in case["results"]]
         failures = [case["failure"] for case in cases if not case["oracle"]]
         failures += [f"{row['case']} ({row['mode']}): {row['diagnostic']}" for row in rows if row["result"] == "fail"]

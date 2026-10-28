@@ -1,6 +1,8 @@
 """Fail-closed controls for the maintained dynamic Any opt-in sweep."""
+import contextlib
 import copy
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -280,6 +282,53 @@ class HarnessTests(unittest.TestCase):
             self.assertFalse(result["oracle"])
             self.assertEqual(result["results"], [])
             self.assertEqual(run.call_count, 1)
+
+
+class ProgressTests(unittest.TestCase):
+    CASE = "tests/programs/a/case.py"
+
+    def rows(self, *results):
+        return [{"case": self.CASE, "mode": mode, "result": result, "diagnostic": diagnostic}
+                for mode, result, diagnostic in results]
+
+    def test_native_ir_rows_are_counted_not_listed_as_failures(self):
+        deferred = {"case": self.CASE, "oracle": True,
+                    "results": self.rows(("jit", "pass", ""), ("aot", "native-ir", ""))}
+        self.assertEqual(sweep.progress(deferred), [])
+        failing = {"case": self.CASE, "oracle": True,
+                   "results": self.rows(("jit", "expected-failure", "x.py:1: error: no"), ("aot", "fail", "changed"))}
+        self.assertEqual(sweep.progress(failing), [f"EXPECTED-FAILURE {self.CASE} (jit): x.py:1: error: no",
+                                                   f"FAIL {self.CASE} (aot): changed"])
+        missing = {"case": self.CASE, "oracle": False, "results": [], "failure": f"{self.CASE}: oracle exit 1: x"}
+        self.assertEqual(sweep.progress(missing), [f"FAIL {self.CASE}: oracle exit 1: x"])
+
+    def test_main_prints_only_checks_that_neither_passed_nor_were_deferred(self):
+        cases = ["tests/programs/a/case0.py", "tests/programs/a/case1.py"]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tools").mkdir()
+            (root / "tests/programs/a").mkdir(parents=True)
+            for case in cases:
+                (root / case).write_text("print(1)\n")
+                (root / case).with_suffix(".out").write_text("1\n[exit 0]\n")
+            (root / sweep.MANIFEST).write_text('{"schema":1,"exceptions":[]}\n')
+            (root / ".python-version").write_text(".".join(map(str, sys.version_info[:3])) + "\n")
+
+            def one(case, *args, native=False):
+                second = ("aot", "native-ir", "") if case == cases[0] else ("aot", "fail", "changed")
+                return {"case": case, "oracle": True, "results": [
+                    {"case": case, "mode": mode, "result": result, "diagnostic": diagnostic}
+                    for mode, result, diagnostic in (("jit", "pass", ""), second)]}
+
+            with mock.patch.object(sweep, "ROOT", root), mock.patch.object(sweep, "programs", return_value=cases), \
+                 mock.patch.object(sweep, "one", side_effect=one), mock.patch.object(sweep, "run", return_value=(0, "")), \
+                 contextlib.redirect_stdout(io.StringIO()) as stdout:
+                status = sweep.main(["--compiler", sys.executable, "--report", str(root / "report.json"),
+                                     "--native-suite"])
+        self.assertTrue(status)
+        lines = stdout.getvalue().splitlines()
+        self.assertEqual(lines[:-1], [f"FAIL {cases[1]} (aot): changed"])
+        self.assertIn("1 AOT checks of unchanged IR left to tests-native", lines[-1])
 
 
 class ReportTests(unittest.TestCase):

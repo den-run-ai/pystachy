@@ -318,6 +318,17 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed, oracle=rec
     return {"case": case, "oracle": True, "results": rows}
 
 
+def progress(result):
+    """The lines a case's result adds to the log: one per check that neither passed nor was left to
+    tests-native, as RESULT CASE (MODE): DIAGNOSTIC, and FAIL for a missing oracle. A "native-ir" row
+    is no failure: the summary line counts those."""
+    lines = [f"{row['result'].upper()} {row['case']} ({row['mode']}): {row['diagnostic']}"
+             for row in result["results"] if row["result"] not in ("pass", "native-ir")]
+    if not result["oracle"]:
+        lines.append("FAIL " + result["failure"])
+    return lines
+
+
 def positive_int(value, label, minimum=0):
     if type(value) is not int or value < minimum:
         raise ValueError(f"{label}: expected integer >= {minimum}")
@@ -439,11 +450,8 @@ def main(argv=None):
             for future in futures:
                 result = future.result()
                 cases.append(result)
-                for row in result["results"]:
-                    if row["result"] != "pass":
-                        print(f"{row['result'].upper()} {row['case']} ({row['mode']}): {row['diagnostic']}", flush=True)
-                if not result["oracle"]:
-                    print("FAIL " + result["failure"], flush=True)
+                for line in progress(result):
+                    print(line, flush=True)
         rows = [row for case in cases for row in case["results"]]
         failures = [case["failure"] for case in cases if not case["oracle"]]
         failures += [f"{row['case']} ({row['mode']}): {row['diagnostic']}" for row in rows if row["result"] == "fail"]

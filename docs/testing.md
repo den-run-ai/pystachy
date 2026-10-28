@@ -434,7 +434,10 @@ every unchanged program with the same compiler, JIT and AOT, so the sweeps leave
 baseline rerun of an exact expected failure and the AOT check of a program whose opted-in LLVM IR
 and fresh CPython recording are byte-identical to the original's (`native-ir` rows, about a
 quarter of the corpus). Every JIT check and every other AOT check still runs opted in, and the
-aggregate rejects such reports without a complete stage-2 JIT/AOT `tests-native` suite.
+aggregate rejects such reports without a complete stage-2 JIT/AOT `tests-native` suite. The logs
+list only checks that neither passed nor were left to `tests-native`; the summary line counts the
+latter. `tests-native` never runs with GC stress, so `python_int_gate.py` refuses
+`--native-suite` with `--gc-stress`.
 The promoting-int sweep uses the same isolated-source and CPython-recording contract. Its
 report is checked against the current corpus, reviewed manifest and consumed source hashes,
 and binds the executed native compiler by its SHA-256. The aggregate rejects missing shards,

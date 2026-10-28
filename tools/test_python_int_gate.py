@@ -1,4 +1,6 @@
 """Fail-closed controls for the python-int compatibility release gate."""
+import contextlib
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -282,6 +284,18 @@ class ExecutionTests(unittest.TestCase):
                 self.assertEqual(result["results"][0]["result"], "fail")
                 self.assertEqual(self.baselines, 0 if changes.get("pass_now") else 1)
 
+    def test_gc_stressed_expected_failure_keeps_its_baseline_under_native_suite(self):
+        # tests-native never runs with GC stress, so it cannot stand for a GC-stressed baseline
+        with tempfile.TemporaryDirectory() as tmp:
+            result, evidence = self.run_one(Path(tmp), native=True, gc_stress=True)
+        self.assertEqual(result["results"][0]["result"], "expected-failure")
+        self.assertEqual(self.baselines, 1)
+        self.assertEqual(evidence["modes"][0]["baseline"]["status"], 0)
+        with tempfile.TemporaryDirectory() as tmp:
+            result, _ = self.run_one(Path(tmp), native=True, gc_stress=True, base_ok=False)
+        self.assertEqual(result["results"][0]["result"], "fail")
+        self.assertIn("baseline also fails", result["results"][0]["diagnostic"])
+
     def test_expected_rejection_preserves_same_invocation_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             result, evidence = self.run_one(Path(tmp), gc_stress=True)
@@ -420,6 +434,47 @@ class MainTests(unittest.TestCase):
             self.assertFalse((root / A).read_bytes().startswith(gate.PRAGMA))
             self.assertFalse((root / B).read_bytes().startswith(gate.PRAGMA))
             self.assertFalse(helper.read_bytes().startswith(gate.PRAGMA))
+
+    def test_native_suite_is_refused_with_gc_stress(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture(root)
+            with mock.patch.object(gate, "ROOT", root), mock.patch.object(gate, "one") as one, \
+                 contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit) as stop:
+                gate.main(["--compiler", "true", "--report", str(root / "build/report.json"),
+                           "--gc-stress", "--native-suite"])
+        self.assertEqual(stop.exception.code, 2)
+        self.assertIn("not with --gc-stress", stderr.getvalue())
+        one.assert_not_called()
+
+    def test_native_ir_rows_are_counted_not_listed_as_failures(self):
+        # (each case's rows: A's JIT check passes and its AOT check is left to tests-native; B's
+        # JIT check is an expected failure and its AOT check fails)
+        rows = {A: [("jit", "pass", ""), ("aot", "native-ir", "")],
+                B: [("jit", "expected-failure", DIAGNOSTIC), ("aot", "fail", "changed output")]}
+
+        def one(case, *args, native=False):
+            self.assertTrue(native)
+            return {"case": case, "oracle": True, "results": [
+                {"case": case, "mode": mode, "result": result, "diagnostic": diagnostic}
+                for mode, result, diagnostic in rows[case]]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture(root, [manifest_row(B)])
+            compiler = root / "compiler"
+            compiler.write_text("#!/bin/sh\nexit 0\n")
+            compiler.chmod(0o755)
+            with mock.patch.object(gate, "ROOT", root), mock.patch.object(gate, "one", side_effect=one), \
+                 mock.patch.object(gate.optin, "run", return_value=(0, "")), \
+                 contextlib.redirect_stdout(io.StringIO()) as stdout:
+                status = gate.main(["--compiler", str(compiler), "--report", str(root / "build/report.json"),
+                                    "--native-suite"])
+        self.assertTrue(status)
+        lines = stdout.getvalue().splitlines()
+        # (no line for A: its deferred AOT check is no failure)
+        self.assertEqual(lines[:-1], [f"EXPECTED-FAILURE {B} (jit): {DIAGNOSTIC}", f"FAIL {B} (aot): changed output"])
+        self.assertIn("1 AOT checks of unchanged IR left to tests-native", lines[-1])
 
     def test_complete_success_and_fail_closed_on_incomplete_workers(self):
         with tempfile.TemporaryDirectory() as tmp:
