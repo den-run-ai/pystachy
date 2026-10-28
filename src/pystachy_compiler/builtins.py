@@ -949,7 +949,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # comparing keys hashed by their class (key_fx)
         return Val(self.rt("pys_dict_from", "ptr", [f"ptr {v.v}"], self.key_fx(targs(t)[0])), t)
     elif name == "list" and is_dict(t):
-        return self.typed_list(self.held_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]]))), "" if resultsoft else want)
+        return self.typed_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]])), "" if resultsoft else want)
     elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":
         tuple_use = "tuple(), bytes(), " if name == "range" else "tuple() (with scalar or optional scalar items), bytes(), " if name == "reversed" else ""
         self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), {tuple_use}sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()")
@@ -1725,11 +1725,10 @@ def gen_as_list(self, v: Val, name: str) -> Val:
             # (str.join() makes a list of the iterator's items, which calls iter() of it again)
             items = self.obj_iterator(items, "", f"'{tname(items.t)}' object is not iterable")
         return items if is_list(items.t) else self.drain(items)
-    # (a list of tuples of ints holds them as tuples of promoting ints: held_list, bigints.py)
     if is_dict(v.t):
-        return self.held_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]])))
+        return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
     if is_set(v.t):
-        return self.held_list(Val(self.rt("pys_set_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [selem(v.t)])))
+        return Val(self.rt("pys_set_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [selem(v.t)]))
     if is_vtuple(v.t):
         return Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
     if is_tuple(v.t):
@@ -2048,16 +2047,12 @@ def gen_walk(self, name: str, args: list[Node]) -> Val:
         return Val(self.rt("pys_dict_next", "i64", [f"ptr {o.v}"] + ns), "int")
     if name == "__pys_set_next" and len(ns) == 2:
         return Val(self.rt("pys_set_next", "i64", [f"ptr {o.v}"] + ns), "int")
-    if name == "__pys_dict_key" and len(ns) == 1 and self.dict_bigkey(o.t):
-        return self.big_dict_key(o, ns[0][4:])  # (an int past 64 bits: bigints.py)
     if name == "__pys_dict_key" and len(ns) == 1:
-        return self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {o.v}"] + ns), targs(o.t)[0])
+        return self.dict_key(o, ns[0][4:])  # (an int past 64 bits, a tuple of ints: bigints.py)
     if name == "__pys_dict_val" and len(ns) == 1:
         return self.dict_value(o, ns[0][4:])  # (an int past 64 bits, a tuple of ints: bigints.py)
-    if name == "__pys_set_key" and len(ns) == 1 and self.set_int(o.t):
-        return self.big_set_value(o, ns[0][4:])  # (an int past 64 bits: bigints.py)
     if name == "__pys_set_key" and len(ns) == 1:
-        return self.from_slot(self.rt("pys_set_key", "i64", [f"ptr {o.v}"] + ns), selem(o.t))
+        return self.set_value(o, ns[0][4:])  # (an int past 64 bits, a tuple of ints: bigints.py)
     self.err(f"name '{name}' is not defined")
     return o
 
@@ -2405,6 +2400,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 i += 1
                 continue
             if base == "dict" and i == 0 and is_opt(v.t) and ((unopt(v.t) == K and (m == "get" or m == "pop")) or (bool_for_int(unopt(v.t), K) and is_sopt(v.t) and m == "get")):
+                if held(K) != K:
+                    v = self.key_hold(v, K)  # (a tuple of ints as the dict holds it, where it is not None: bigints.py)
                 kx = v  # (a bool | None gets the int key it equals, raising no KeyError that would name it)
                 pt = v.t
             elif base == "dict" and i == 0 and (m == "get" or m == "pop"):
@@ -2439,6 +2436,8 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 v = self.search_hold(v, pt, T)  # (the tuple searched for, which may be None: bigints.py)
             if base == "dict" and p == "*V" and held(V) != V:
                 v = self.held_default(v, pt, V)  # (get()'s and setdefault()'s, a tuple of ints as the dict holds it: bigints.py)
+            if key == "dict.setdefault" and i == 0 and held(K) != K:
+                v = self.list_hold(v, K)  # (the key it stores, a tuple of ints as the dict holds it: bigints.py)
             v = self.coerce(v, pt, f"argument {i + 1} of {tname(o.t)}.{m}()" if is_opt(v.t) else "")
             if self.list_id_kind(o.t) != 0 and p == "*T":
                 idstore = v
@@ -2513,10 +2512,6 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         return self.held_read(self.from_slot(res, rtype))  # (get(), pop(), setdefault() of a dict of tuples of ints: bigints.py)
     if slot:
         return self.from_slot(res, rtype)
-    if base == "dict" and m == "values" and held(V) != V:
-        return self.rres(res, rtype)  # (its tuples of ints, which the dict holds as the list does: bigints.held)
-    if base == "dict" and (m == "keys" or m == "values" or m == "items"):
-        return self.held_list(self.rres(res, rtype))  # (a list of tuples of ints holds them so: bigints.py)
     if base == "dict" and m == "popitem":
         return self.held_pair(self.rres(res, rtype))  # (a tuple of ints as the dict holds it: bigints.py)
     return self.rres(res, rtype)

@@ -1047,7 +1047,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             kv = ["dyn", "dyn"]  # (keys or values of no one type: dynamic.py)
         ks: list[Val] = []
         vs: list[Val] = []
-        vkept: dict[int, Val] = {}  # (values that are tuples of promoting ints, which the dict holds as they are: held)
+        kkept: dict[int, Val] = {}  # (keys and values that are tuples of promoting ints, which the dict holds as they are: held)
+        vkept: dict[int, Val] = {}
         given = kv[1] != ""
         kgiven = kv[0] != ""
         jt = ""
@@ -1056,7 +1057,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             a = self.expr(n.kids[i], kv[0], returnctx, resultsoft)
             if kv[0] == "dyn" and a.idslot != "":
                 a.idfrom = self.dyn_box(a).v
-            if is_tuple(a.t) and BIG in a.t:
+            if is_tuple(a.t) and BIG in a.t and int_lists():
+                kkept[len(ks)] = a
+                a = Val(a.v, a.t.replace(BIG, "int"))  # (typed as the dict's key for what follows: bigints.held)
+            elif is_tuple(a.t) and BIG in a.t:
                 a = self.big_tuple_narrow(a)  # (keys and values hold 64-bit ints, and are typed so: bigints.py)
             if kv[0] == "":
                 kv[0] = a.t
@@ -1104,7 +1108,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
         if kv[0] == BIG:
             kv[0] = "int"  # (a dict of int keys, which holds promoting ints where the program's dicts do: dict_put)
-        ks = [self.key_coerce(x, kv[0]) for x in ks]
+        ks = [self.key_coerce(kkept[i] if i in kkept else ks[i], kv[0]) for i in range(len(ks))]
         if kv[1] == BIG:
             kv[1] = "int"  # (a dict of ints, which holds promoting ints where the program's dicts do: dict_store)
         vs = [self.list_hold(vkept[i] if i in vkept else vs[i], kv[1]) for i in range(len(vs))]
@@ -2842,8 +2846,6 @@ def gen_iter_ret(self, e: Node) -> Val:
     if (is_tuple(v.t) and v.t != "tuple[]") or v.t == RANGEC:
         v = self.as_list(v, "iter")  # (of the items, which share one type; a range's numbers)
     last = self.blk.code[-1] if len(self.blk.code) > 0 else Ins("", "", "")
-    if last.op == "rt" and last.s == "list.hold" and len(self.blk.code) > 1:
-        last = self.blk.code[-2]  # (the list of tuples of ints that a dict's view made: bigints.held_list)
     if last.op == "rt" and (last.s == "dict.keys" or last.s == "dict.values" or last.s == "dict.items" or last.s == "dict.big_items") and v.v == f"%t{last.r[0]}":
         # (keys() is a list here; CPython's view iterator raises if the dict changes size; big_items:
         # the items() of tuples of promoting ints, bigints.big_items)
