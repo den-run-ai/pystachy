@@ -460,16 +460,16 @@ for byte, the same messages and the same exit status for every case, the same IR
 and the same `check` output and status for every `syntax_*` case. The GC suites then collect at
 **every program allocation** (`PYSTACHY_GC_STRESS_PROGRAM=1`) and run every case of the corpus
 once in each mode, rejection and syntax checks included, compiled by stage 2 unstressed. Each
-suite used to compile every case with the stressed compiler again, in each mode; where the IR is
-the same, the LLVM tools build the same program from it, so that repeated the identity at about
-nine times the frontend's unstressed cost (on a one-in-40 sample of the corpus, the stressed
-frontend took 38% of a GC JIT run and 14% of a GC AOT run). One case in 16 of the corpus in each
-mode still runs end to end with the compiler stressed too: shard I of 32 in `gc-jit-I` and shard
-2 + I in `gc-aot-I`, which lie in half I, so the two modes sample other cases. It runs first, in
-a runtime cache of the GC steps' own (`build/verify/gc-cache`, which each run starts empty), so
-the stressed compiler builds the runtime that the job's GC tests use, and the driver's cache,
-`opt`/`lli` and `clang`/link paths after the IR run under stress; the program-stressed run takes
-the half's other cases.
+suite used to compile every case with the stressed compiler, in each mode; where the IR is the
+same, the LLVM tools build the same program from it, so the second compilation only repeated what
+one identity check shows, at about twelve times the unstressed frontend's cost (on one case in
+ten of the corpus, on one core, the stressed frontend took 62% of a GC JIT run and 28% of a GC
+AOT run). One case in 16 of the corpus in each mode still runs end to end with the compiler
+stressed too: shard I of 32 in `gc-jit-I` and shard 2 + I in `gc-aot-I`, which lie in half I, so
+the two modes sample other cases. It runs first, in a runtime cache of the GC steps' own
+(`build/verify/gc-cache`, which each run starts empty), so the stressed compiler builds the
+runtime that the job's GC tests use, and the driver's cache, `opt`/`lli` and `clang`/link paths
+after the IR run under stress; the program-stressed run takes the half's other cases.
 Self-compilation and the four suites use separate runners and report their own durations.
 The final gate requires all five groups, both execution modes, the intervals (1,000 for `gc-ir`
 and the samples' compiler, 0 for the program-stressed runs' compiler, 1 for every program),
