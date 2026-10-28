@@ -129,7 +129,8 @@ using the verified native compiler in JIT and AOT, both normally and with progra
 every allocation. `--aot --gc-stress` selects the same configurations locally; the aggregate gate
 requires all four modes, 540 cases including 90 parity cases and zero mismatches. This bounded
 check complements the full opt-in corpus sweep, `make dynany-optin`), `make dictprobe`,
-`make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe` and `make jitprobe`.
+`make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe`, `make jitprobe` and
+`make aotprobe` (the runtime's opt-in code that AOT executables keep, by symbol, plain or not).
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 

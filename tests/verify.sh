@@ -85,6 +85,10 @@
 #   jit-dead-code  tools/jitprobe.py: unused functions never reach lli, and a small helper reaches it
 #                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
 #                  execute as in CPython, with both compilers
+#   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
+#                  nothing keeps none of the runtime's code for ints past 64 bits, promoting ints
+#                  and list identities, which its python-int and dynamic-any twins keep; outputs
+#                  as CPython's, with both compilers
 #   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
 #                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
 #                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
@@ -107,7 +111,7 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted-0) echo 'bootstrap tests-cpython-0' ;;
     hosted-1) echo 'bootstrap tests-cpython-1' ;;
     hosted-2) echo 'bootstrap tests-cpython-2' ;;
@@ -140,7 +144,7 @@ plan() {
     dynany-optin) echo 'bootstrap dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3' ;; # local alias
     python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3|python-int-optin-4|python-int-optin-5|python-int-optin-6|python-int-optin-7) echo "bootstrap $1" ;;
     python-int-optin) echo 'bootstrap python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7' ;; # local alias
-    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
+    contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks scaling-0' ;;
     scaling-1) echo 'bootstrap scaling-1' ;;
     scaling) echo 'bootstrap scaling-0 scaling-1' ;; # local alias
@@ -746,6 +750,13 @@ if want jit-dead-code; then
 L=$V/jit-dead-code.log; s=$(now); r=fail
 $PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
 step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
+fi
+
+# ---- AOT dead code: the runtime's opt-in code in the executables, by symbol, without a size threshold
+if want aot-dead-code; then
+L=$V/aot-dead-code.log; s=$(now); r=fail
+$PY tools/aotprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
+step aot-dead-code $r "$s" "$L" ', "opt_in_symbols": 7, "programs": ["plain", "python-int", "dynamic-any"], "compilers": ["CPython-hosted", "stage2"]'
 fi
 
 # ---- Unicode audit: opt-in checks, code-point cache/locality and mutation/GC invalidation

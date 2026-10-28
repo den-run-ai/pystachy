@@ -419,8 +419,15 @@ keeps ORC and its normal code generation. This choice does not change the IR cle
 or inlining pipeline, and does not affect `build` or `ext`.
 
 `build` links the runtime bitcode with the program and applies clang's `-O2` optimization
-pipeline, allowing optimization across that boundary. `ext` builds a shared CPython module
-with its boundary wrappers; see the [FFI guide](ffi.md).
+pipeline, allowing optimization across that boundary. The program's module also defines
+`pys_plain`: 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
+tests it (`opt_in()` in `runtime.c`) only on paths that values of those opt-ins lead to: ints
+past 64 bits in containers, promoting ints and list identity companions. For a plain program
+those paths become traps, and `-O2` drops them and the static code only they reach (the `mpz`
+helpers, the small-int boxes) before optimizing it, so programs that do not opt in neither
+compile nor carry that code; `make aotprobe` checks which symbols each kind of build keeps. The
+JIT tier's precompiled runtime and `ext` keep the runtime's weak definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
+[FFI guide](ffi.md).
 
 Cached runtime artifacts depend on the runtime sources, included Ryu files, compiler,
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private
