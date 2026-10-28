@@ -756,7 +756,7 @@ fi
 if want aot-dead-code; then
 L=$V/aot-dead-code.log; s=$(now); r=fail
 $PY tools/aotprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
-step aot-dead-code $r "$s" "$L" ', "opt_in_symbols": 7, "programs": ["plain", "python-int", "dynamic-any"], "compilers": ["CPython-hosted", "stage2"]'
+step aot-dead-code $r "$s" "$L" ', "opt_in_symbols": 7, "programs": ["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"], "compilers": ["CPython-hosted", "stage2"]'
 fi
 
 # ---- Unicode audit: opt-in checks, code-point cache/locality and mutation/GC invalidation

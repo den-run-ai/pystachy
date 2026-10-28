@@ -8,8 +8,9 @@ that definition. A plain program that appends to, compares, hashes, looks up, fo
 prints lists, dicts, sets and tuples must keep none of the runtime's code for ints past 64 bits,
 promoting ints and list identities (OPT_IN_ONLY: static functions and data that only such values
 reach). The same program opting in to promoting ints (with ints past 64 bits in its containers)
-or to dynamic Any must keep each of them, so that a renamed or inlined symbol fails here rather
-than passes unseen. Every executable prints what CPython prints. The symbols are LLVM 18's on
+or to dynamic Any collectively keep each of them, so that a renamed or inlined symbol fails here
+rather than passes unseen. Wrappers importing those modules check that an imported opt-in also
+keeps the feature paths available. Every executable prints what CPython prints. The symbols are LLVM 18's on
 Linux (CI's); another LLVM may inline differently.
 """
 import argparse
@@ -84,7 +85,8 @@ def main():
     llvm = os.environ.get("PYSTACHY_LLVM", "")
     with tempfile.TemporaryDirectory(prefix="pystachy-aotprobe-") as tmp:
         temp = Path(tmp)
-        sources = {"plain": PROGRAM, "python-int": INT + PROGRAM + BIG, "dynamic-any": DYN + PROGRAM}
+        sources = {"plain": PROGRAM, "python-int": INT + PROGRAM + BIG, "dynamic-any": DYN + PROGRAM,
+                   "python-int-import": "import python_int\n", "dynamic-any-import": "import dynamic_any\n"}
         for name, text in sources.items():
             (temp / f"{name.replace('-', '_')}.py").write_text(text)
         capture = temp / "captured.bc"
@@ -103,7 +105,7 @@ def main():
         wrapper.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog.bc) cp \"$a\" {shlex.quote(str(capture))} ;; esac; done\n"
                            f"exec {shlex.quote(real['clang'])} \"$@\"\n")
         wrapper.chmod(0o755)
-        env = os.environ | {"PYSTACHY_LLVM": str(bindir)}
+        env = os.environ | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_CACHE": str(temp / "cache")}
         for k in ("PYSTACHY_CFLAGS", "PYSTACHY_OPT", "PYSTACHY_PATH", "PYSTACHY_GC", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM"):
             env.pop(k, None)  # (-O0 or other passes would keep what the default build drops)
         expected = {name: run([sys.executable, f"{name.replace('-', '_')}.py"], env, temp) for name in sources}
@@ -128,10 +130,11 @@ def main():
                 kept[name] = symbols(real["llvm-nm"], exe) & set(OPT_IN_ONLY)
             if kept["plain"]:
                 raise RuntimeError(f"{label}: the plain program's executable keeps opt-in runtime code: {sorted(kept['plain'])}")
-            missing = set(OPT_IN_ONLY) - kept["python-int"] - kept["dynamic-any"]
-            if missing:
-                raise RuntimeError(f"{label}: no opt-in program's executable keeps {sorted(missing)}: update OPT_IN_ONLY")
-            print(f"{label}: pys_plain 1, 0, 0; the plain executable keeps none of {len(OPT_IN_ONLY)} opt-in symbols, "
+            for suffix in ("", "-import"):
+                missing = set(OPT_IN_ONLY) - kept["python-int" + suffix] - kept["dynamic-any" + suffix]
+                if missing:
+                    raise RuntimeError(f"{label}: opt-in programs{suffix} do not keep {sorted(missing)}: update OPT_IN_ONLY")
+            print(f"{label}: pys_plain 1, 0, 0, 0, 0; the plain executable keeps none of {len(OPT_IN_ONLY)} opt-in symbols, "
                   f"the python-int one {len(kept['python-int'])} and the dynamic-any one {len(kept['dynamic-any'])}; outputs as CPython's")
     return 0
 
