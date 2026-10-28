@@ -151,6 +151,11 @@ print(int("123456789012345678901234567890") % 97)  # 52
   without a key: their functions read a list's ints, also in its tuples, and a generator's values
   as a module that opts in does (`specs.READ_HELPERS`), and their results are those promoting ints.
   Their own ints, positions and counts, stay 64-bit.
+- `collections.Counter` counts with promoting ints, in every module of the program: its counts,
+  past 64 bits too, are stored, read, added and subtracted (`update()`, `subtract()`, `+`, `-`,
+  `|`, `&` and the others), totalled and ordered by `most_common()` as CPython's are. Its
+  definitions compile as those of a module that opts in do (`specs.INT_HELPERS`); its keys, of its
+  type variable, stay 64-bit ints ([boundaries](#64-bit-boundaries)).
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
 - An object's comparison methods (`__eq__`, `__lt__` and the others, also reflected and a
@@ -312,7 +317,7 @@ for a C `long`), where CPython goes on with the bigger int:
   there promotes too), and the parameters and result of a `Callable`.
 - A list's int (or its tuple's), a dict's key or value, a set's element or a generator's value
   read in a module that does not opt in, such as `lib/`'s `random.shuffle()` and `collections`'
-  `defaultdict` and `Counter`, and the ints of a list given to `tuple()`, `math.prod()`,
+  `defaultdict`, a `Counter`'s keys, and the ints of a list given to `tuple()`, `math.prod()`,
   `math.fsum()`, `sum()` with a float start and `ffi`.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
@@ -467,7 +472,10 @@ the first measurements, before the inline paths, in
   (`tests/python_int_modules/fixed_iterators.py`); `python_int_heapq.py`: `heapq`'s and `bisect`'s
   functions on lists of ints and of tuples of ints past 64 bits and on a generator, with and
   without a key, whose changes every name for the list sees, also of a list that a module that
-  does not opt in hands them (`tests/python_int_modules/fixed_heaps.py`).
+  does not opt in hands them (`tests/python_int_modules/fixed_heaps.py`); `python_int_counter.py`:
+  a `Counter`'s counts past 64 bits and -2\*\*63, stored, read, added, subtracted, totalled, ordered
+  by `most_common()`, combined and compared, also by a module that does not opt in
+  (`tests/python_int_modules/fixed_counter.py`).
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in

@@ -49,7 +49,7 @@ from src.pystachy_compiler.analysis import (
     top_bindings,
     walrus_names,
 )
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, INTFILES, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
@@ -62,6 +62,7 @@ from src.pystachy_compiler.specs import (
     CTYPES,
     GENERICS,
     GLUE,
+    INT_HELPERS,
     ITERS,
     JSONANY,
     MODNAMES,
@@ -297,6 +298,7 @@ class Loader:
         FILES.clear()
         DYNFILES.clear()
         INTFILES.clear()
+        INTSPANS.clear()
         m = Mod("", path, "")
         self.pragmas(src, len(FILES), 1)
         FILES.append(path)
@@ -595,6 +597,8 @@ class Loader:
         self.mods[name] = m
         m.body = self.parse(path)
         del self.parsed[path]  # (m rewrites its tree: the file imported under another name is parsed again)
+        if name in INT_HELPERS and self.in_lib(path):
+            self.int_spans(m.body.kids, INT_HELPERS[name])
         self.prescan(m)
         r: list[Node] = []
         if self.init_raise(m, m.body.kids, r, True):
@@ -618,6 +622,16 @@ class Loader:
                     GLUE[name] = self.public(m)
         self.order.append(m)
         return m
+
+    def int_spans(self, body: list[Node], names: list[str]) -> None:
+        # the lines of the definitions names among the top-level statements body of a module of lib/,
+        # whose ints promote where a module of the program opts in (specs.INT_HELPERS): each from its
+        # first line to the line before the next statement's, or to the last line of its file
+        for i in range(len(body)):
+            st = body[i]
+            if (st.kind == "def" or st.kind == "class" or st.kind == "subclass") and st.s in names:
+                last = body[i + 1].line - 1 if i + 1 < len(body) else (st.line // LINES + 1) * LINES - 1
+                INTSPANS.append([st.line, last])
 
     def in_lib(self, path: str) -> bool:
         # a file of Pystachy's own lib/ (the last directory of the module path)
