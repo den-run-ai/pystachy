@@ -1,5 +1,5 @@
 # pystachy: dynamic-any
-"""Payload-size probes for JSON repair: MODE SIZE ROUNDS (default: comma 1000 20).
+"""Payload-size probes: MODE SIZE ROUNDS [BATCHES WARMUPS] (default: comma 1000 20).
 
 Compare the witness lines across implementations before comparing seconds.
 Size counts repeated fragments, not bytes. Startup, compilation, input creation
@@ -27,10 +27,15 @@ def payload(mode: str, size: int) -> tuple[str, str]:
         return '{"a":"' + value + '",}', value
     if mode == "escaped":
         return '{"a":"' + "x\\n" * size + 'end",}', "x\n" * size + "end"
+    if mode == "escaped-unicode":
+        return '{"a":"' + "é🌲\\n" * size + 'end",}', "é🌲\n" * size + "end"
+    if mode == "sparse":
+        value = "x" * size + "\nend"
+        return '{"a":"' + "x" * size + '\\nend",}', value
     if mode == "logs":
         value = "x," * size
         return '{a: "' + value + '",}', value
-    raise ValueError("mode must be valid, comma, newline, unicode, escaped or logs")
+    raise ValueError("mode must be valid, comma, newline, unicode, escaped, escaped-unicode, sparse or logs")
 
 
 def checked_value(result: Any, expected: str, logging: bool) -> int:
@@ -60,18 +65,21 @@ def checked_value(result: Any, expected: str, logging: bool) -> int:
 mode = sys.argv[1] if len(sys.argv) > 1 else "comma"
 size = int(sys.argv[2]) if len(sys.argv) > 2 else 1000
 rounds = int(sys.argv[3]) if len(sys.argv) > 3 else 20
-if size < 1 or rounds < 0:
-    raise ValueError("size must be positive and rounds nonnegative")
+batches = int(sys.argv[4]) if len(sys.argv) > 4 else 1
+warmups = int(sys.argv[5]) if len(sys.argv) > 5 else 0
+if size < 1 or rounds < 0 or batches < 1 or warmups < 0:
+    raise ValueError("size/batches must be positive and rounds/warmups nonnegative")
 source, expected = payload(mode, size)
 logging = mode == "logs"
 result: Any = repair_json(source, return_objects=True, logging=logging)
 log_count = checked_value(result, expected, logging)
 print("witness", mode, size, len(source), len(expected), log_count)
-start = perf_counter()
-for _ in range(rounds):
-    result = repair_json(source, return_objects=True, logging=logging)
-seconds = perf_counter() - start
-if checked_value(result, expected, logging) != log_count:
-    raise ValueError("repair log count changed across repeated calls")
 print("rounds", rounds)
-print("seconds", seconds)
+for batch in range(warmups + batches):
+    start = perf_counter()
+    for _ in range(rounds):
+        result = repair_json(source, return_objects=True, logging=logging)
+    seconds = perf_counter() - start
+    if checked_value(result, expected, logging) != log_count:
+        raise ValueError("repair log count changed across repeated calls")
+    print("warmup_seconds" if batch < warmups else "seconds", seconds)

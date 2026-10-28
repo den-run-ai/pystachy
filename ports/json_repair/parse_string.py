@@ -14,6 +14,8 @@ INLINE_CONTAINER_CLOSING_DELIMITERS = {"[": "]", "{": "}", "(": ")"}
 # Pystachy port: explicit immutable keys of the fixed delimiter table.
 INLINE_CONTAINER_OPENERS = ("[", "{", "(")
 LOW_SMART_QUOTE_SENTINEL = "\0"
+# Pystachy port: only this bounded tail is copied while accumulating a string.
+STRING_CHUNK_SIZE = 64
 
 
 @dataclass
@@ -22,7 +24,12 @@ class StringParseState:
     doubled_quotes: bool = False
     lstring_delimiter: str = '"'
     rstring_delimiter: str = '"'
-    string_acc: str = ""
+    # Pystachy port: immutable completed chunks plus a bounded writable tail.
+    # Length and last character are code-point metadata, not UTF-8 byte offsets.
+    string_chunks: list[str] = field(default_factory=list)
+    string_tail: str = ""
+    string_length: int = 0
+    string_last: str = ""
     unmatched_delimiter: bool = False
     pending_inline_container: bool = False
     inline_container_stack: list[str] = field(default_factory=list)
@@ -31,6 +38,15 @@ class StringParseState:
     lookahead_cache: dict[str, tuple[int, int | None]] = field(default_factory=dict)
     object_value_unmatched_opening_braces: int = 0
     regex_character_class_start: int | None = None
+    regex_character_class_has_whitespace: bool = False
+
+    @property
+    def string_acc(self) -> str:
+        # An explicit immutable snapshot for finalization and internal inspection.
+        # Scanning must use the cached metadata rather than repeatedly joining.
+        if not self.string_chunks:
+            return self.string_tail
+        return "".join(self.string_chunks + [self.string_tail])
 
 
 def _outer_rstring_delimiter(state: StringParseState) -> str:
@@ -114,17 +130,25 @@ def _append_literal_char(
 
 
 def _append_string_content(state: StringParseState, content: str) -> None:
-    start_index = len(state.string_acc)
-    state.string_acc += content
+    start_index = state.string_length
+    state.string_length += len(content)
     for offset, char in enumerate(content):
+        state.string_tail += char
+        if len(state.string_tail) == STRING_CHUNK_SIZE:
+            state.string_chunks.append(state.string_tail)
+            state.string_tail = ""
+        state.string_last = char
         if char == "{":
             state.object_value_unmatched_opening_braces += 1
         elif char == "}" and state.object_value_unmatched_opening_braces:
             state.object_value_unmatched_opening_braces -= 1
         elif char == "[":
             state.regex_character_class_start = start_index + offset + 1
+            state.regex_character_class_has_whitespace = False
         elif char == "]":
             state.regex_character_class_start = None
+        elif state.regex_character_class_start is not None and char.isspace():
+            state.regex_character_class_has_whitespace = True
 
 
 def _quote_belongs_to_regex_character_class(
@@ -132,18 +156,32 @@ def _quote_belongs_to_regex_character_class(
     state: StringParseState,
 ) -> bool:
     """Return whether the current quote is inside a compact ``[...]`` character class."""
-    start = state.regex_character_class_start
-    if start is None or any(char.isspace() for char in state.string_acc[start:]):
+    if state.regex_character_class_start is None or state.regex_character_class_has_whitespace:
         return False
 
     closing_bracket_idx = self.skip_to_character("]", idx=1)
     return self.get_char_at(closing_bracket_idx) == "]"
 
 
+def _remove_trailing_backslash(state: StringParseState) -> None:
+    # Callers remove only a backslash: no brace/bracket or whitespace metadata
+    # changes. A completed chunk becomes the tail when removal crosses a boundary.
+    if not state.string_tail:
+        state.string_tail = state.string_chunks.pop()
+    state.string_tail = state.string_tail[:-1]
+    state.string_length -= 1
+    if state.string_tail:
+        state.string_last = state.string_tail[-1]
+    elif state.string_chunks:
+        state.string_last = state.string_chunks[-1][-1]
+    else:
+        state.string_last = ""
+
+
 def _replace_last_escape(state: StringParseState, content: str) -> None:
     # Every caller replaces a trailing backslash. Removing it leaves the
     # brace/bracket metadata valid; only the decoded replacement is new.
-    state.string_acc = state.string_acc[:-1]
+    _remove_trailing_backslash(state)
     _append_string_content(state, content)
 
 
@@ -313,8 +351,8 @@ def _normalize_escape_sequence(
         next_char = self.get_char_at()
         while (
             next_char
-            and state.string_acc
-            and state.string_acc[-1] == "\\"
+            and state.string_length
+            and state.string_last == "\\"
             and next_char in [active_rstring_delimiter, "\\"]
         ):
             _replace_last_escape(state, next_char)
@@ -683,7 +721,7 @@ def _scan_string_body(
                     "While parsing a string missing the left delimiter in array context, we found a ] or ,, stopping here",
                 )
                 break
-        if char == "„" and (not state.string_acc or state.string_acc[-1] != "\\"):
+        if char == "„" and (not state.string_length or state.string_last != "\\"):
             _push_low_smart_quote_span(state)
             char = _append_literal_char(self, state, char)
             continue
@@ -702,7 +740,7 @@ def _scan_string_body(
                 )
             )
             and char in INLINE_CONTAINER_OPENERS
-            and (not state.string_acc or state.string_acc[-1] != "\\")
+            and (not state.string_length or state.string_last != "\\")
         ):
             container_end_idx = _skip_inline_container(self, 0)
             if container_end_idx is not None:
@@ -755,7 +793,7 @@ def _scan_string_body(
             not self.stream_stable
             and self.context.current == ContextValues.OBJECT_VALUE
             and char == "}"
-            and (not state.string_acc or state.string_acc[-1] != outer_rstring_delimiter)
+            and (not state.string_length or state.string_last != outer_rstring_delimiter)
         ):
             if state.object_value_unmatched_opening_braces:
                 char = _append_literal_char(self, state, char)
@@ -800,7 +838,7 @@ def _scan_string_body(
             not self.stream_stable
             and char == "]"
             and ContextValues.ARRAY in self.context.context
-            and (not state.string_acc or state.string_acc[-1] != outer_rstring_delimiter)
+            and (not state.string_length or state.string_last != outer_rstring_delimiter)
         ):
             i = self.skip_to_character(outer_rstring_delimiter)
             if not self.get_char_at(i):
@@ -829,10 +867,10 @@ def _scan_string_body(
         self.index += 1
         char = self.get_char_at()
         if char is None:
-            if self.stream_stable and state.string_acc and state.string_acc[-1] == "\\":
-                state.string_acc = state.string_acc[:-1]
+            if self.stream_stable and state.string_length and state.string_last == "\\":
+                _remove_trailing_backslash(state)
             break
-        if state.string_acc and state.string_acc[-1] == "\\":
+        if state.string_length and state.string_last == "\\":
             handled_escape, char = _normalize_escape_sequence(self, state, char)
             if handled_escape:
                 continue
@@ -873,7 +911,7 @@ def _scan_string_body(
             assert char is not None
             char = _append_literal_char(self, state, char)
             continue
-        if char == outer_rstring_delimiter and state.string_acc and state.string_acc[-1] != "\\":
+        if char == outer_rstring_delimiter and state.string_length and state.string_last != "\\":
             assert char is not None
             handled_delimiter, char, should_break = _handle_right_delimiter_candidate(self, state, char)
             if should_break:
@@ -897,19 +935,20 @@ def _finalize_string_result(
         if self.get_char_at() not in [":", ","]:
             return ""
 
+    value = state.string_acc
     if char != outer_rstring_delimiter:
         if not self.stream_stable:
             self.log(
                 "While parsing a string, we missed the closing quote, ignoring",
             )
-            state.string_acc = state.string_acc.rstrip()
+            value = value.rstrip()
     else:
         self.index += 1
 
-    if not self.stream_stable and (state.missing_quotes or (state.string_acc and state.string_acc[-1] == "\n")):
-        state.string_acc = state.string_acc.rstrip()
+    if not self.stream_stable and (state.missing_quotes or (value and value[-1] == "\n")):
+        value = value.rstrip()
 
-    return state.string_acc
+    return value
 
 
 def parse_string(self) -> Any:
