@@ -396,7 +396,7 @@ runner variation:
 
 | Group | Work after bootstrap |
 |---|---|
-| `hosted-0`, `hosted-1`, `hosted-2` | Three disjoint thirds of the CPython-hosted differential suite, JIT and AOT. |
+| `hosted` | The CPython-hosted compiler against stage 2 on every corpus case: identical IR, messages and exit status (`tools/irsame.sh`) and `check` results; one case in 64 also runs end to end, JIT and AOT. |
 | `native-0`, `native-1` | Two disjoint halves of the native differential suite, JIT and AOT. |
 | `opt-off-0`, `opt-off-1` | Two disjoint halves of the native suite with IR optimizations disabled. |
 | `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
@@ -455,14 +455,23 @@ intervals, distinct shard identities and complete counts for every job: the JIT 
 AOT thirds each make as many checks as `tests/verify.sh` counts in the whole corpus in one mode
 (each report's `sources.mode_checks`). `tests/verify.sh gc-stress` still runs all GC checks
 locally with one bootstrap; `gc-jit` runs the two JIT halves and `gc-aot` the three AOT thirds.
-The native and opt-off suites are split the same way, in halves, and the CPython-hosted,
-python-free and UBSan suites in thirds (`tests/verify.sh`'s `shard_cases`). The gate requires each
+The native and opt-off suites are split the same way, in halves, and the python-free and UBSan
+suites in thirds (`tests/verify.sh`'s `shard_cases`). The gate requires each
 shard's identity and complete count, and that the shards together make as many checks as an
 unsharded suite: the JIT and AOT shards as many as `tests/verify.sh` counts in the whole corpus
 (each report's `sources.suite_checks`; opt-off's once per `PYSTACHY_OPT` setting), and the UBSan
 thirds, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
-both of their halves and `hosted` its three thirds, `python-free` rebuilds the compiler once and
+both of their halves, `python-free` rebuilds the compiler once and
 runs its three thirds, and `ubsan` builds the sanitized compiler once and runs its three thirds.
+The CPython-hosted compiler is checked by identity rather than by executing its output again:
+`hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
+exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results
+for every `syntax_*` case (`sources.syntax_cases`). The LLVM tools build the same program from the
+same IR, and `native-0`/`native-1` run every case's stage-2 output in JIT and AOT, so executing
+the hosted compiler's identical output again added no coverage; it replaced three jobs (24.8
+runner-minutes in run 40719438561). Shard 0 of 64 still runs end to end with the hosted compiler,
+so its driver's `run`, `build` and `check` paths execute in this job too, as they do in
+`runtime-cache`, `jit-dead-code`, `unicode-audit`, `compile-limits` and `scaling`.
 The compiler-scaling check is split by shapes: `scaling-0` (in `benchmarks`) checks those of
 `SCALING_0`, about half of the lines the CPython-hosted compiler executes, and `scaling-1` every
 other shape of `tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires

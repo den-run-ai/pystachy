@@ -3,8 +3,12 @@
 # results go to build/verification.json -- per step: name, pass/fail, duration, counts -- with the
 # toolchain versions, git commit and a timestamp. Exit status 0 only if every step passed.
 #   bootstrap      CPython -> stage1 -> stage2 -> stage3 compilers emit identical LLVM IR
-#   tests-cpython-0/-1/-2 tests/run.sh with the CPython-hosted compiler, JIT and AOT, each on one of
-#                  three disjoint thirds of the corpus (see shard_cases), together the whole of it
+#   tests-cpython  the CPython-hosted compiler against stage 2 on every case of the corpus
+#                  (tools/irsame.sh): the same IR (`ir`, `rt` for rtmode_*), messages and exit status,
+#                  byte for byte, and the same `check` output and status for each syntax_*.py, so that
+#                  tests-native's JIT and AOT runs execute exactly what it compiles; one case in
+#                  HOSTED_SAMPLE_OF (shard_cases) also runs end to end with it through tests/run.sh, JIT
+#                  and AOT
 #   tests-native-0/-1 tests/run.sh with the stage-2 native compiler, JIT and AOT, each on one of two
 #                  disjoint halves of the corpus (shard_cases)
 #   tests-opt-off-0/-1 tests/run.sh with the stage-2 compiler and every optimization on the IR turned
@@ -107,11 +111,8 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
-    hosted-0) echo 'bootstrap tests-cpython-0' ;;
-    hosted-1) echo 'bootstrap tests-cpython-1' ;;
-    hosted-2) echo 'bootstrap tests-cpython-2' ;;
-    hosted) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2' ;; # local alias
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
     native) echo 'bootstrap tests-native-0 tests-native-1' ;; # local alias
@@ -147,10 +148,10 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted-0|hosted-1|hosted-2|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3|python-int-optin-4|python-int-optin-5|python-int-optin-6|python-int-optin-7|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3|python-int-optin-4|python-int-optin-5|python-int-optin-6|python-int-optin-7|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all bootstrap hosted-0 hosted-1 hosted-2 native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7 contracts benchmarks scaling-1; do
+  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7 contracts benchmarks scaling-1; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
@@ -324,22 +325,61 @@ if want gc-self && [ -x "$V/pystachy2" ]; then
 fi
 
 # ---- differential tests with both compilers
+# tests-cpython: the CPython-hosted compiler must compile every case of the corpus exactly as stage 2
+# does (tools/irsame.sh: `ir`, or `rt` for rtmode_*, with the IR check on as tests/run.sh has it; the
+# IR byte for byte, every message and the exit status), and `check` each syntax_*.py alike. Where the
+# IR is the same, the LLVM tools build the same program from it, which tests-native runs JIT and AOT
+# for every case: running it again here would add nothing; a rejection's message is the one
+# tests-native checks. One case in HOSTED_SAMPLE_OF (shard 0 of shard_cases) still runs end to end
+# with the hosted compiler, JIT and AOT, so that its driver's run, build and check paths after the IR
+# run in this job too (as they do in runtime-cache, jit-dead-code, unicode-audit and compile-limits).
 # (the CPython-hosted compiler runs as a module, whose bytecode CPython caches, where it compiles a
 # compiler's source again at every start; each module is checked by hash, as an
 # edit within the same second may keep its mtime and size)
-for shard in 0 1 2; do
-  want tests-cpython-$shard || continue
-  L=$V/tests-cpython-$shard.log; s=$(now); r=fail
-  shard_cases $shard 3 "$V/tests-cpython-$shard-cases.log"
+HOSTED_SAMPLE_OF=64
+if want tests-cpython; then
+  L=$V/tests-cpython.log; s=$(now); r=fail; ir_ok=false; ir_n=0; chk_n=0; chk_bad=0; x=""
+  corpus > "$V/tests-cpython-cases.log"
+  shard_cases 0 $HOSTED_SAMPLE_OF "$V/tests-cpython-sample.log"
   set --
-  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-cpython-$shard-cases.log"
-  # An empty shard must not silently invoke run.sh's whole-suite default.
-  [ $# != 0 ] || { echo 'empty CPython-hosted shard' > "$L"; step tests-cpython-$shard fail "$s" "$L" ""; continue; }
-  { $PY -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]' &&
-    tests/run.sh "$PY -m pystachy" "jit aot" "$@"; } > "$L" 2>&1
-  x=$(tests "$(checks "jit aot" "$@")" "$L" 2>> "$L") && r=pass
-  step tests-cpython-$shard $r "$s" "$L" ', "compiler": "CPython-hosted", "modes": ["jit", "aot"], "shard_index": '"$shard"', "shard_count": 3'"$x"
-done
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-cpython-cases.log"
+  cases=$#
+  {
+    $PY -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]' || cases=0
+    # An empty corpus must not silently invoke irsame's or run.sh's whole-corpus default.
+    if [ "$cases" != 0 ]; then
+      echo "== IR, messages and exit status of $cases cases: stage 2, then CPython-hosted (tools/irsame.sh)"
+      PYSTACHY_IRCHECK=1 tools/irsame.sh "$V/pystachy2" "$PY -m pystachy" "$@" > "$V/tests-cpython-ir.log" 2>&1
+      st=$?; cat "$V/tests-cpython-ir.log"
+      ir_n=$(tail -1 "$V/tests-cpython-ir.log" | sed -n 's/^\([0-9]*\) programs identical$/\1/p')
+      [ $st = 0 ] && [ "${ir_n:-0}" = "$cases" ] && ir_ok=true
+      echo "== check of the syntax_*.py cases: stage 2, then CPython-hosted"
+      for f; do
+        case ${f##*/} in syntax_*.py) ;; *) continue ;; esac
+        chk_n=$((chk_n + 1))
+        "$V/pystachy2" check "$f" > "$V/check-native.out" 2>&1; a=$?
+        $PY -m pystachy check "$f" > "$V/check-hosted.out" 2>&1; b=$?
+        if [ $a != $b ] || ! cmp -s "$V/check-native.out" "$V/check-hosted.out"; then
+          chk_bad=$((chk_bad + 1)); echo "CHECK DIFF $f: exit $a -> $b"; diff "$V/check-native.out" "$V/check-hosted.out" | head -6
+        fi
+      done
+      echo "$chk_n checks compared, $chk_bad differ"
+    else
+      echo 'no CPython-hosted cases (an empty corpus, or the compiler did not byte-compile)'
+    fi
+  } > "$L" 2>&1
+  set --
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-cpython-sample.log"
+  if [ $# != 0 ] && [ "$cases" != 0 ]; then
+    tests/run.sh "$PY -m pystachy" "jit aot" "$@" > "$V/tests-cpython-run.log" 2>&1
+    { echo "== end to end, JIT and AOT: the $# cases of shard 0 of $HOSTED_SAMPLE_OF"; cat "$V/tests-cpython-run.log"; } >> "$L"
+    x=$(tests "$(checks "jit aot" "$@")" "$V/tests-cpython-run.log" 2>> "$L") && [ $ir_ok = true ] && [ $chk_bad = 0 ] &&
+      [ $chk_n != 0 ] && r=pass
+  else
+    echo 'empty CPython-hosted sample' >> "$L"
+  fi
+  step tests-cpython $r "$s" "$L" ', "compiler": "CPython-hosted", "reference": "stage2", "ir_cases": '"${ir_n:-0}"', "ir_identical": '"$ir_ok"', "check_cases": '"$chk_n"', "modes": ["jit", "aot"], "sample_index": 0, "sample_count": '"$HOSTED_SAMPLE_OF$x"
+fi
 for shard in 0 1; do
   want tests-native-$shard || continue
   L=$V/tests-native-$shard.log; s=$(now); r=fail
@@ -802,8 +842,13 @@ sources = {str(p): {"lines": p.read_bytes().count(b"\n"),
 # (suite_checks: the checks of the whole corpus in JIT and AOT, which the shards of each such suite
 # make together; mode_checks: its checks in one mode, which the shards of each GC suite make, and
 # the UBSan thirds once in each mode)
+# (corpus_cases and syntax_cases: the cases tests-cpython compiles with both compilers, and those it
+# checks with both)
+cases = [*Path("tests/programs").glob("*/*.py"), *Path("tests/deviations").glob("*.py"),
+         *Path("tests/errors").glob("*/*.py")]
 sources.update(test_programs=len(list(Path("tests/programs").glob("*/*.py"))),
                rejection_tests=len(list(Path("tests/errors").glob("*/*.py"))),
+               corpus_cases=len(cases), syntax_cases=sum(p.name.startswith("syntax_") for p in cases),
                suite_checks=int(os.environ["SUITE_CHECKS"]), mode_checks=int(os.environ["MODE_CHECKS"]))
 print('  "sources": ' + json.dumps(sources, sort_keys=True) + ',')
 PY

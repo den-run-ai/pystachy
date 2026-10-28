@@ -16,20 +16,23 @@ import dynany_optin
 import python_int_gate
 
 ROOT = Path(__file__).resolve().parent.parent
-SUITE_STEPS = {"tests-cpython-0", "tests-cpython-1", "tests-cpython-2", "tests-native-0", "tests-native-1",
+SUITE_STEPS = {"tests-cpython", "tests-native-0", "tests-native-1",
                "tests-opt-off-0", "tests-opt-off-1", "runtime-cache", "python-free-0", "python-free-1",
                "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
                "gc-aot-2"}
 # Steps that run one of the disjoint shards of the corpus (tests/verify.sh shard_cases), and how many
 # shards their suite has: the name ends in the shard index.
 SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
-                 (("tests-cpython", 3), ("tests-native", 2), ("tests-opt-off", 2), ("python-free", 3),
+                 (("tests-native", 2), ("tests-opt-off", 2), ("python-free", 3),
                   ("ubsan", 3), ("gc-jit", 2), ("gc-aot", 3))
                  for index in range(count)}
 GC_STEPS = {"gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"}
 # The halves of tools/scaling.py's check (tests/verify.sh's SCALING_0 and the shapes it leaves)
 SCALING_STEPS = ("scaling-0", "scaling-1")
 PYTHON_INT_SHARDS = 8
+# tests-cpython runs one case in HOSTED_SAMPLE_OF end to end (tests/verify.sh); it compares every
+# case's IR, messages and exit status with stage 2's
+HOSTED_SAMPLE_OF = 64
 
 
 def parse_groups(text):
@@ -150,6 +153,20 @@ def validate_report(report, group, expected):
                     integer(step.get("tests_compiler_interval"), f"{label}.tests_compiler_interval", 1) != 1000 or
                     integer(step.get("tests_interval"), f"{label}.tests_interval", 1) != 1):
                 raise ValueError(f"{label}: wrong GC stress mode or intervals")
+        if step["name"] == "tests-cpython":
+            # Every case compiled alike by both compilers, every syntax case checked alike, and the
+            # sample's end-to-end checks (counted below as a suite step's)
+            sources = report.get("sources") if isinstance(report.get("sources"), dict) else {}
+            if (step.get("ir_identical") is not True or step.get("reference") != "stage2" or
+                    integer(step.get("ir_cases"), f"{label}.ir_cases", 1) !=
+                    integer(sources.get("corpus_cases"), f"{group}.sources.corpus_cases", 1) or
+                    integer(step.get("check_cases"), f"{label}.check_cases", 1) !=
+                    integer(sources.get("syntax_cases"), f"{group}.sources.syntax_cases", 1) or
+                    step.get("modes") != ["jit", "aot"] or
+                    integer(step.get("sample_index"), f"{label}.sample_index") != 0 or
+                    integer(step.get("sample_count"), f"{label}.sample_count", 1) != HOSTED_SAMPLE_OF):
+                raise ValueError(f"{label}: the CPython-hosted compiler must match stage 2 on every case "
+                                 f"and run shard 0 of {HOSTED_SAMPLE_OF} end to end, JIT and AOT")
         if step["name"] in SHARDED_STEPS and (
                 integer(step.get("shard_index"), f"{label}.shard_index") != int(step["name"][-1]) or
                 integer(step.get("shard_count"), f"{label}.shard_count", 1) != SHARDED_STEPS[step["name"]]):
@@ -217,8 +234,7 @@ def merge_reports(directory, groups, expected_commit=None):
     # same in every report: see the identities below), opt-off's once per PYSTACHY_OPT setting. The
     # group kind-I runs shard I of its suite step, of as many as SHARDED_STEPS gives that step.
     suite = reports[wanted[0]]["sources"]["suite_checks"]
-    for kind, prefix, what in (("hosted", "tests-cpython", "CPython-hosted"), ("native", "tests-native", "native"),
-                               ("opt-off", "tests-opt-off", "opt-off"),
+    for kind, prefix, what in (("native", "tests-native", "native"), ("opt-off", "tests-opt-off", "opt-off"),
                                ("python-free", "python-free", "python-free")):
         count = SHARDED_STEPS[f"{prefix}-0"]
         shards = [reports[f"{kind}-{index}"]["steps"][-1] for index in range(count) if f"{kind}-{index}" in reports]

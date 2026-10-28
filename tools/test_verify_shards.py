@@ -14,16 +14,14 @@ CASES = ["tests/programs/x/example.py", "tests/programs/x/syntax_example.py", "t
          "tests/errors/x/example.py", "tests/errors/x/syntax_example.py"]
 # group, its suite step, the modes it reports, the checks of its shard (tests/verify.sh's checks), and
 # how many tests/run.sh runs make them
-SHARDS = [("hosted-0", "tests-cpython-0", ["jit", "aot"], 3, 1), ("hosted-1", "tests-cpython-1", ["jit", "aot"], 5, 1),
-          ("hosted-2", "tests-cpython-2", ["jit", "aot"], 2, 1),
-          ("native-0", "tests-native-0", ["jit", "aot"], 6, 1), ("native-1", "tests-native-1", ["jit", "aot"], 4, 1),
+SHARDS = [("native-0", "tests-native-0", ["jit", "aot"], 6, 1), ("native-1", "tests-native-1", ["jit", "aot"], 4, 1),
           ("opt-off-0", "tests-opt-off-0", ["jit", "aot"], 6, 1), ("opt-off-1", "tests-opt-off-1", ["jit", "aot"], 4, 1),
           ("python-free-0", "python-free-0", None, 3, 1), ("python-free-1", "python-free-1", None, 5, 1),
           ("python-free-2", "python-free-2", None, 2, 1),
           ("ubsan-0", "ubsan-0", ["aot", "jit"], 4, 2), ("ubsan-1", "ubsan-1", ["aot", "jit"], 8, 2),
           ("ubsan-2", "ubsan-2", ["aot", "jit"], 2, 2)]
 # how many shards each suite has: the group kind-I runs shard I
-SHARD_COUNTS = {"hosted": 3, "native": 2, "opt-off": 2, "python-free": 3, "ubsan": 3}
+SHARD_COUNTS = {"native": 2, "opt-off": 2, "python-free": 3, "ubsan": 3}
 # the LLVM tools python-free links into its PATH (doubles: only clang is called)
 LLVM_TOOLS = ("clang", "opt", "lli", "llvm-link", "llvm-as")
 
@@ -34,9 +32,9 @@ class ShardVerificationTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         for name in ("tests", "tests/programs", "tests/programs/x", "tests/deviations", "tests/errors",
-                     "tests/errors/x", "src", "lib", "ryu", "mpz", "bin"):
+                     "tests/errors/x", "src", "lib", "ryu", "mpz", "bin", "tools"):
             (self.root / name).mkdir()
-        for name in ("tests/verify.sh", "tests/corpus.sh"):
+        for name in ("tests/verify.sh", "tests/corpus.sh", "tools/irsame.sh"):
             shutil.copy(ROOT / name, self.root / name)
         for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py",
                      "tests/programs/x/syntax_example.py", "tests/deviations/example.py"):
@@ -54,7 +52,26 @@ if args == ["-"]:
 if args == ["--version"]:
     print("mock compiler")
     sys.exit(0)
-if args[0] == "-c":  # (the hosted step's py_compile of the compiler's modules)
+if args and args[0] == "-c":  # (the hosted step's py_compile of the compiler's modules)
+    sys.exit(0)
+hosted = args[:2] == ["-m", "pystachy"]  # (tests-cpython's: $PY -m pystachy)
+if hosted:
+    args = args[2:]
+if not args:  # (tools/irsame.sh asks the usage whether rt exists)
+    print("usage: pystachy run FILE.py\\n       pystachy rt runtime.py [-o OUT.ll]", file=sys.stderr)
+    sys.exit(2)
+if args[0] in ("ir", "rt", "check") and args[1].startswith("tests/"):  # (a case of the corpus)
+    case = args[1]
+    mode = Path("mock-mode").read_text() if Path("mock-mode").exists() else ""
+    target = {"ir": "tests/programs/x/example.py", "check": "tests/programs/x/syntax_example.py"}.get(args[0])
+    differs = " (hosted)" if hosted and case == target and mode == f"hosted-{args[0]}-differs" else ""
+    if "/errors/" in case:
+        print(f"{case}:1: error: mock rejection", file=sys.stderr)
+        sys.exit(1)
+    if args[0] == "check":
+        print(differs, end="")
+    else:
+        Path(args[args.index("-o") + 1]).write_text(f"IR of {case}{differs}\\n")
     sys.exit(0)
 if args[0] == "pystachy.py":
     args = args[1:]
@@ -164,7 +181,7 @@ esac
             self.assertCountEqual([case for part in parts for case in part], CASES)
 
     def test_local_aliases_run_all_their_shards(self):
-        for group, prefix, total in (("hosted", "tests-cpython", 10), ("native", "tests-native", 10),
+        for group, prefix, total in (("native", "tests-native", 10),
                                      ("opt-off", "tests-opt-off", 10), ("python-free", "python-free", 10),
                                      ("ubsan", "ubsan", 14)):
             steps = [f"{prefix}-{index}" for index in range(SHARD_COUNTS[group])]
@@ -182,6 +199,31 @@ esac
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(report["result"], "fail")
                     self.assertEqual(report["steps"][-1]["result"], "fail")
+
+    def test_hosted_compares_every_case_with_stage2_and_runs_its_sample(self):
+        result, report, logs = self.run_group("hosted")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", "tests-cpython"])
+        step = report["steps"][-1]
+        # every case's IR, messages and status (tools/irsame.sh), both syntax cases' check, and shard 0
+        # of 64 (the first case alone here) end to end, JIT and AOT
+        self.assertEqual((step["ir_cases"], step["ir_identical"], step["check_cases"]), (5, True, 2))
+        self.assertEqual((report["sources"]["corpus_cases"], report["sources"]["syntax_cases"]), (5, 2))
+        self.assertEqual((step["reference"], step["modes"], step["sample_index"], step["sample_count"]),
+                         ("stage2", ["jit", "aot"], 0, 64))
+        self.assertEqual((step["passed"], step["failed"], step["expected"]), (2, 0, 2))
+        self.assertIn("5 programs identical", logs["tests-cpython"])
+        self.assertEqual(self.selected(logs["tests-cpython"]), CASES[:1])
+        for failure in ("hosted-ir-differs", "hosted-check-differs", "suite-failure", "short-suite"):
+            with self.subTest(failure=failure):
+                result, report, logs = self.run_group("hosted", failure)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(report["steps"][-1]["result"], "fail")
+                if failure == "hosted-ir-differs":
+                    self.assertFalse(report["steps"][-1]["ir_identical"])
+                    self.assertIn("DIFF tests/programs/x/example.py", logs["tests-cpython"])
+                if failure == "hosted-check-differs":
+                    self.assertIn("CHECK DIFF tests/programs/x/syntax_example.py", logs["tests-cpython"])
 
     def test_ubsan_shards_need_an_instrumented_runtime(self):
         for group in ("ubsan-0", "ubsan-1", "ubsan-2"):

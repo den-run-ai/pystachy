@@ -68,7 +68,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [hosted-0, hosted-1, hosted-2, native-0, native-1, opt-off-0, opt-off-1, python-free-0,
+        group: [hosted, native-0, native-1, opt-off-0, opt-off-1, python-free-0,
                 python-free-1, python-free-2, ubsan-0, ubsan-1, ubsan-2, gc-self, gc-jit-0, gc-jit-1, gc-aot-0,
                 gc-aot-1, gc-aot-2, runtime-cache, dynany-optin-0, dynany-optin-1, dynany-optin-2,
                 dynany-optin-3, python-int-optin-0, python-int-optin-1, python-int-optin-2, python-int-optin-3,
@@ -92,7 +92,7 @@ jobs:
         # New groups keep the full setup until their dependencies have been checked.
         run: |
           case "$VERIFY_GROUP" in
-            hosted-[012]|native-[01]|opt-off-[01]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[0123]|python-int-optin-[01234567]|contracts|scaling-1)
+            hosted|native-[01]|opt-off-[01]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[0123]|python-int-optin-[01234567]|contracts|scaling-1)
               tools/setup.sh --minimal ;;
             *) tools/setup.sh --verify ;;
           esac
