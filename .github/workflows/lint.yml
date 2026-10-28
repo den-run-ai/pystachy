@@ -96,6 +96,9 @@ jobs:
       - name: Promoting int corpus sweep controls
         run: python3 -m unittest discover -s tools -p test_python_int_optin.py
 
+      - name: Promoting int local retry controls
+        run: python3 -m unittest discover -s tools -p test_python_int_retry.py
+
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py
 
