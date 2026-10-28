@@ -29,7 +29,7 @@ SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
 GC_STEPS = {"gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"}
 # The halves of tools/scaling.py's check (tests/verify.sh's SCALING_0 and the shapes it leaves)
 SCALING_STEPS = ("scaling-0", "scaling-1")
-PYTHON_INT_SHARDS = 8
+PYTHON_INT_SHARDS = 4
 
 
 def parse_groups(text):
@@ -252,13 +252,26 @@ def merge_reports(directory, groups, expected_commit=None):
                    if step["name"].startswith("python-int-optin-")]
     if int_reports:
         if len(int_reports) != PYTHON_INT_SHARDS:
-            raise ValueError("promoting-int compatibility requires all eight shards")
+            raise ValueError(f"promoting-int compatibility requires all {PYTHON_INT_SHARDS} shards")
         if len({report["compiler_sha256"] for report in int_reports}) != 1:
             raise ValueError("promoting-int compiler identity differs between shards")
         expected_pairs = {(case, mode) for case in python_int_gate.programs(ROOT) for mode in ("jit", "aot")}
         pairs = [(row["case"], row["mode"]) for report in int_reports for row in report["results"]]
         if len(pairs) != len(expected_pairs) or set(pairs) != expected_pairs:
             raise ValueError("promoting-int shards must cover every corpus case and mode exactly once")
+    # An opt-in sweep run with --native-suite left the baselines of its exact expected failures and
+    # the AOT checks of byte-identical IR ("native-ir") to tests-native: require its full suite,
+    # JIT and AOT with the stage-2 compiler, whatever shards it runs in.
+    deferring = [step["name"] for report in reports.values() for step in report["steps"]
+                 if (step["name"].startswith("dynany-optin-") and step["optin"]["native_suite"]) or
+                 (step["name"].startswith("python-int-optin-") and step["python_int_optin"]["native_suite"])]
+    if deferring:
+        native = [step for report in reports.values() for step in report["steps"]
+                  if step["name"].startswith("tests-native")]
+        if (not native or sum(step["expected"] for step in native) != suite or
+                any(step.get("compiler") != "stage2" or step.get("modes") != ["jit", "aot"] or
+                    step.get("passed") != step["expected"] or step.get("failed") != 0 for step in native)):
+            raise ValueError(f"{deferring[0]}: defers to tests-native, whose complete stage-2 JIT and AOT suite is missing")
     first = reports[wanted[0]]
     commit = first["git"]["commit"]
     if expected_commit is not None and commit != expected_commit:

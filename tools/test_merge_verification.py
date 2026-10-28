@@ -37,10 +37,10 @@ def optin_report(index):
     return {"schema": 1, "corpus_cases": len(corpus),
             "corpus_sha256": tool.corpus_digest(tool.ROOT, corpus),
             "exceptions_sha256": hashlib.sha256((tool.ROOT / tool.MANIFEST).read_bytes()).hexdigest(),
-            "shard_index": index, "shard_count": 4, "modes": list(tool.MODES),
+            "shard_index": index, "shard_count": 4, "modes": list(tool.MODES), "native_suite": True,
             "cases": selected, "subset": False, "oracle_cases": len(selected),
             "expected_checks": len(rows), "completed_checks": len(rows),
-            "passed_checks": len(rows) - known, "expected_failures": known,
+            "passed_checks": len(rows) - known, "expected_failures": known, "native_ir_checks": 0,
             "failures": [], "results": rows}
 
 
@@ -67,9 +67,9 @@ def python_int_report(index):
             "corpus_cases": len(corpus), "corpus_sha256": tool.optin.corpus_digest(tool.ROOT, corpus),
             "exceptions_sha256": tool.sha256(tool.ROOT / tool.MANIFEST),
             "shard_index": index, "shard_count": merge.PYTHON_INT_SHARDS, "modes": list(tool.MODES),
-            "cases": selected, "subset": False, "oracle_cases": len(selected),
+            "native_suite": True, "cases": selected, "subset": False, "oracle_cases": len(selected),
             "expected_checks": len(rows), "completed_checks": len(rows),
-            "passed_checks": len(rows) - known, "expected_failures": known,
+            "passed_checks": len(rows) - known, "expected_failures": known, "native_ir_checks": 0,
             "failures": [], "results": rows}
 
 
@@ -86,6 +86,8 @@ def report(group, steps):
             step.update(passed=10, failed=0, expected=10, failures=[])
         if name in ("tests-native-0", "tests-native-1", "tests-opt-off-0", "tests-opt-off-1", "gc-jit-0", "gc-jit-1"):
             step.update(passed=5, expected=5)   # halves of a 10-check suite
+        if name.startswith("tests-native"):
+            step.update(compiler="stage2", modes=["jit", "aot"])
         if name in ("tests-cpython-0", "tests-cpython-1", "tests-cpython-2", "python-free-0", "python-free-1",
                     "python-free-2", "gc-aot-0", "gc-aot-1", "gc-aot-2"):
             count = 4 if name.endswith("-0") else 3   # thirds of a 10-check suite
@@ -356,7 +358,7 @@ class ContractTests(unittest.TestCase):
             self.assertEqual(groups[group], ["bootstrap", group])
             valid = report(group, groups[group])
             merge.validate_report(valid, group, groups[group])
-            mutations = [lambda d: d.update(shard_count=4),
+            mutations = [lambda d: d.update(shard_count=8),
                          lambda d: d.update(shard_index=True),
                          lambda d: d.update(modes=["jit"]),
                          lambda d: d.update(subset=True),
@@ -381,11 +383,15 @@ class ContractTests(unittest.TestCase):
 
     def test_python_int_aggregate_binds_all_shards_to_one_compiler(self):
         names = [f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS)]
-        groups = merge.parse_groups("all bootstrap " + " ".join(names) + "\n" +
+        # (with the tests-native suite the shards' --native-suite deferral needs)
+        groups = merge.parse_groups("all bootstrap tests-native-0 tests-native-1 " + " ".join(names) + "\n" +
+                                    "native-0 bootstrap tests-native-0\nnative-1 bootstrap tests-native-1\n" +
                                     "\n".join(f"{name} bootstrap {name}" for name in names))
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
-            for name in names:
+            for name in groups:
+                if name == "all":
+                    continue
                 path = directory / f"verification-{name}" / "verification.json"
                 path.parent.mkdir()
                 path.write_text(json.dumps(report(name, groups[name])))
@@ -404,8 +410,42 @@ class ContractTests(unittest.TestCase):
                 old.unlink()
             path.write_text(json.dumps(report(names[0], groups[names[0]])))
             partial = merge.parse_groups(f"all bootstrap {names[0]}\n{names[0]} bootstrap {names[0]}\n")
-            with self.assertRaisesRegex(ValueError, "all eight shards"):
+            with self.assertRaisesRegex(ValueError, f"all {merge.PYTHON_INT_SHARDS} shards"):
                 merge.merge_reports(directory, partial, COMMIT)
+
+    def test_optin_sweeps_deferring_to_tests_native_require_its_complete_suite(self):
+        # The opt-in sweeps leave expected failures' baselines and AOT checks of byte-identical IR
+        # to tests-native (--native-suite): even a contract without its groups cannot drop it.
+        names = [f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS)]
+        native = "native-0 bootstrap tests-native-0\nnative-1 bootstrap tests-native-1\n"
+        full = merge.parse_groups("all bootstrap tests-native-0 tests-native-1 " + " ".join(names) + "\n" + native +
+                                  "\n".join(f"{name} bootstrap {name}" for name in names))
+        without = merge.parse_groups("all bootstrap " + " ".join(names) + "\n" +
+                                     "\n".join(f"{name} bootstrap {name}" for name in names))
+        for groups, local, error in ((full, False, None), (without, True, None),
+                                     (without, False, "defers to tests-native")):
+            with self.subTest(groups=list(groups), local=local), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp)
+                for name in groups:
+                    if name == "all":
+                        continue
+                    data = report(name, groups[name])
+                    if local and name.startswith("python-int-optin-"):
+                        data["steps"][-1]["python_int_optin"]["native_suite"] = False
+                    path = directory / f"verification-{name}" / "verification.json"
+                    path.parent.mkdir()
+                    path.write_text(json.dumps(data))
+                if error is None:
+                    merge.merge_reports(directory, groups, COMMIT)
+                else:
+                    with self.assertRaisesRegex(ValueError, error):
+                        merge.merge_reports(directory, groups, COMMIT)
+                if groups is full:
+                    data = report("native-1", groups["native-1"])
+                    data["steps"][-1].update(modes=["jit"])
+                    (directory / "verification-native-1" / "verification.json").write_text(json.dumps(data))
+                    with self.assertRaisesRegex(ValueError, "defers to tests-native"):
+                        merge.merge_reports(directory, groups, COMMIT)
 
     def test_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate(self):
         contracts = [CONTRACT.replace("contracts bootstrap check-ir", "contracts bootstrap"),

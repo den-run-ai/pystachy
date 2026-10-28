@@ -50,11 +50,11 @@ def report(root, index=0, count=1):
             "source_sha256": gate.source_digest(root), "corpus_cases": len(corpus),
             "corpus_sha256": gate.optin.corpus_digest(root, corpus),
             "exceptions_sha256": gate.sha256(root / gate.MANIFEST), "shard_index": index, "shard_count": count,
-            "gc_stress": False, "modes": list(gate.MODES), "cases": selected, "subset": False,
-            "oracle_cases": len(selected), "expected_checks": len(rows), "completed_checks": len(rows),
-            "passed_checks": sum(row["result"] == "pass" for row in rows),
+            "gc_stress": False, "modes": list(gate.MODES), "native_suite": False, "cases": selected,
+            "subset": False, "oracle_cases": len(selected), "expected_checks": len(rows),
+            "completed_checks": len(rows), "passed_checks": sum(row["result"] == "pass" for row in rows),
             "expected_failures": sum(row["result"] == "expected-failure" for row in rows),
-            "failures": [], "results": rows}
+            "native_ir_checks": 0, "failures": [], "results": rows}
 
 
 class ManifestTests(unittest.TestCase):
@@ -183,6 +183,19 @@ class ReportTests(unittest.TestCase):
             ):
                 with self.subTest(rows=changed), self.assertRaises(ValueError):
                     gate.validate_report({**good, "results": changed}, root)
+            for field, value in (("native_suite", None), ("native_suite", 0), ("native_ir_checks", 1)):
+                with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                    gate.validate_report({**good, field: value}, root)
+            # B's AOT check may be left to tests-native only by a report that defers to it.
+            deferred = [*good["results"][:-1], {**good["results"][-1], "result": "native-ir"}]
+            native = {**good, "native_suite": True, "results": deferred, "native_ir_checks": 1,
+                      "passed_checks": good["passed_checks"] - 1}
+            gate.validate_report(native, root)
+            for changed in ({"native_suite": False}, {"native_ir_checks": 0},
+                            {"results": [*deferred[:-2], {**deferred[-2], "result": "native-ir"}, deferred[-1]]},
+                            {"results": [{**deferred[0], "result": "native-ir", "diagnostic": ""}, *deferred[1:]]}):
+                with self.subTest(changed=changed), self.assertRaises(ValueError):
+                    gate.validate_report({**native, **changed}, root)
             (root / "tools/new_helper.py").write_text("value = 1\n")
             with self.assertRaisesRegex(ValueError, "identity"):
                 gate.validate_report(good, root)
@@ -217,8 +230,10 @@ class DiagnosticTests(unittest.TestCase):
 
 class ExecutionTests(unittest.TestCase):
     def run_one(self, root, *, native_status=b"1\n", native_out=b"", native_error=None,
-                base_ok=True, oracle_ok=True, pass_now=False, gc_stress=False, absolute_error=False, trace_error=None):
+                base_ok=True, oracle_ok=True, pass_now=False, gc_stress=False, absolute_error=False, trace_error=None,
+                native=False):
         overlay, temp = root / "overlay", root / "work"
+        self.baselines = 0
         overlay.mkdir()
         (overlay / A).parent.mkdir(parents=True)
         (overlay / A).write_text("print(1)\n")
@@ -247,12 +262,25 @@ class ExecutionTests(unittest.TestCase):
                 error = (DIAGNOSTIC + "\n").encode() if native_error is None else native_error
                 trace.with_suffix(".stderr").write_bytes(error if trace_error is None else trace_error)
                 return (0 if pass_now else 1), output
+            self.baselines += 1
             return (0, "selected 1 cases\n1 passed, 0 failed\n") if base_ok else (1, "bad baseline")
 
         with mock.patch.object(gate.optin, "run", side_effect=run):
-            result = gate.one(A, root, overlay, temp, "true", ["jit"], 1, {(A, "jit"): manifest_row()}, gc_stress)
+            result = gate.one(A, root, overlay, temp, "true", ["jit"], 1, {(A, "jit"): manifest_row()}, gc_stress,
+                              native=native)
         evidence = json.loads((temp / Path(A).with_suffix("") / "evidence.json").read_text())
         return result, evidence
+
+    def test_native_suite_defers_only_an_exact_expected_failures_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result, evidence = self.run_one(Path(tmp), native=True, base_ok=False)
+        self.assertEqual(result["results"][0]["result"], "expected-failure")
+        self.assertEqual((self.baselines, evidence["modes"][0]["baseline"]), (0, "tests-native"))
+        for changes in ({"native_status": b"139\n"}, {"pass_now": True}):
+            with self.subTest(changes=changes), tempfile.TemporaryDirectory() as tmp:
+                result, _ = self.run_one(Path(tmp), native=True, **changes)
+                self.assertEqual(result["results"][0]["result"], "fail")
+                self.assertEqual(self.baselines, 0 if changes.get("pass_now") else 1)
 
     def test_expected_rejection_preserves_same_invocation_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -333,7 +361,7 @@ class MainTests(unittest.TestCase):
         compiler.chmod(0o755)
         output = root / "build/report.json"
 
-        def one(case, *args):
+        def one(case, *args, native=False):
             rows = [{"case": case, "mode": mode, "result": "pass", "diagnostic": ""} for mode in gate.MODES]
             result = {"case": case, "oracle": True, "results": rows}
             if change is not None and case == B:
@@ -364,7 +392,7 @@ class MainTests(unittest.TestCase):
             compiler.chmod(0o755)
             observed = []
 
-            def one(case, original, overlay, temp, compiler, modes, timeout, allowed, gc_stress):
+            def one(case, original, overlay, temp, compiler, modes, timeout, allowed, gc_stress, native=False):
                 # Really import the other corpus entry plus an outside-corpus helper.
                 # The ordinary Python oracle ignores pragmas; this probe observes exactly
                 # which file policies the compiled imported annotations will see.
