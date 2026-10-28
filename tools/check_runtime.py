@@ -86,8 +86,10 @@ TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 NO_USER = {"set.copy"}
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise"}
 # the depth guard of runtime.c's descriptor walks (repr_depth, eqpair_depth), which counts only the
-# edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?
-DEEP = {"rec_deep"}
+# edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?;
+# and repr_depth's raise for a list's int past CPython's 4300 digits, which an op whose descriptor
+# holds no list of ints never reaches, nor one of a program whose lists hold no promoting ints (Gen.opfx)
+DEEP = {"rec_deep", "digits_deep"}
 # and those walks, its only callers: R? stands for nothing else
 DEEP_WALKS = {"repr_depth", "eqpair_depth"}
 # what the raise funnels build their exception with: in a program that has a try, a raise allocates
@@ -97,7 +99,7 @@ EXC_MAKERS = {"exc_line", "exc_raise", "exc_exit"}
 # functions that store another's address rather than call it: pys_eh_on the funnels' thrower,
 # pys_unwind_file the unwind action that a landing pad or an uncaught exception runs
 STORES = {"pys_eh_on": "throw_", "pys_unwind_file": "close_with"}
-USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr"}
+USER = {"pys_obj_eq", "pys_obj_cmp", "pys_obj_repr", "dyn_user_iter", "dyn_user_next", "dyn_user_len"}
 # a dynamic value's box in a descriptor walk (A): what its DynType holds decides what the walk
 # runs, an object's helpers among them, so that the compiler gives an op whose descriptor holds
 # an A every effect, as it does for an O (Gen.opfx). The walks of other entries do not look into
@@ -173,8 +175,13 @@ def functions(ll):
     for line in ll.split("\n"):
         m = re.match(r"(define|declare) (.*?)@([\w.]+)\((.*)\)(.*?)(\{)?$", line)
         if m:
-            words = m.group(2).split()
-            result = words[-1] if words else ""
+            head = m.group(2).rstrip()
+            if head.endswith("}"):
+                # (a two-word struct result, which clang prints as { i64, ptr }: as RUNTIME writes it)
+                result = "{" + ", ".join(t.strip() for t in head[head.rfind("{") + 1 : -1].split(",")) + "}"
+            else:
+                words = head.split()
+                result = words[-1] if words else ""
             params = []
             depth = 0
             part = ""

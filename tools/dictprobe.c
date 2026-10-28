@@ -10,7 +10,9 @@
      longest  the most slots that one of those lookups visited
    A last row sweeps the shifts, keys i << s and -(i << s) for every s up to 56 (8000 keys, fewer
    where 2N of them do not fit in 63 bits), and shows each column's worst: a cheap hash can
-   spread i << 46 and still cluster at another shift. It checks the values, the insertion order
+   spread i << 46 and still cluster at another shift. The tuples (i << 64, 0) hold promoting ints
+   past 64 bits (descriptor J, the compiler's bigints.held), whose slots all hold -2**63: they
+   spread only where the hash reads the ints' values. It checks the values, the insertion order
    and the deletions on the way. The counts depend on nothing but the runtime, so they are the
    same on every machine, and the run fails if a pattern averages more than LIMIT slots per
    lookup: a hash that behaved randomly would average at most 1.5 per miss and 2 per lookup
@@ -65,7 +67,7 @@ Str *pys_obj_repr(I c, I a, I b) { (void)c; (void)a; (void)b; return cstr("<obje
 
 static const char *pats[] = {"i", "-i", "i << 46", "i << 32", "i * 1000", "(i // 128) << 32 | i % 128",
   "random", "f\"k{i}\"", "f\"{i:08}\"", "\"x\" * 64 + str(i)", "str(i) + \"x\" * 64", "letter case of i's bits",
-  "objects, by identity", "i << s, -(i << s): s <= 56"};
+  "objects, by identity", "(i << 64, 0): promoting ints", "i << s, -(i << s): s <= 56"};
 #define NPAT (I)(sizeof pats / sizeof *pats - 1)   /* the last one is the sweep's */
 #define MAXN 65536                     /* 2N keys i << 46 fit in 63 bits */
 static List *keys;                     /* the collector's roots */
@@ -235,7 +237,7 @@ static void int_queries(void) {
   /* A colliding user key comes before the integer. The guarded probe must stop
      there without callbacks; the normal fallback observes the original query. */
   DSTR(desc, "O091"); DSTR(name, "IntProbeKey");
-  static const DynType type = {DK_OBJ, (Str *)&desc, (Str *)&name, 91, 0, DF_HASH | DF_X};
+  static const DynType type = {DK_OBJ, (Str *)&desc, (Str *)&name, 91, 0, DF_HASH | DF_X, NULL, NULL, NULL};
   dict = pys_dict_new((I)cstr("A"), 0);
   Dyn *object = pys_dyn_ref(&type, (void *)1);
   pys_dict_set(dict, (I)object, 9);
@@ -424,7 +426,11 @@ static I key(I p, I i) {               /* key i of pattern p; the 2N keys of a p
   case 9: return (I)pys_str(b, snprintf(b, sizeof b, "%s%lld", X64, (long long)i));
   case 10: return (I)pys_str(b, snprintf(b, sizeof b, "%lld%s", (long long)i, X64));
   case 12: { I *o = pys_alloc(24); o[0] = i; return (I)o; }   /* (an object of three fields: P000) */
-  case 13: return sign * (i << shift);
+  case 13: {   /* a tuple of promoting ints (T2Ji, the compiler's bigints.held): past 64 bits, -2**63 and its Mpz in slot 2 */
+    Big b = pys_big_op(i, NULL, 64, NULL, 8); I *t = pys_alloc(24);
+    t[0] = b.hi ? INT64_MIN : b.lo; t[2] = (I)b.hi; return (I)t;
+  }
+  case 14: return sign * (i << shift);
   default: for (int j = 0; j < 20; j++) b[j] = (char)('a' + j - (i >> j & 1) * 32);   /* "aBcD..." */
     return (I)pys_str(b, 20);
   }
@@ -439,7 +445,7 @@ static _Noreturn void bad(I p, I n, const char *what) { fprintf(stderr, "dictpro
 static double run(I p, I n, long long c[4]) {  /* c: slots visited by insert, hit, miss, deleted */
   double t = 1e9;
   for (int r = 0; r < 3; r++) {
-    dict = pys_dict_new(p == 12 ? (I)cstr("P000") : p >= 7 && p < NPAT, 0);
+    dict = pys_dict_new(p == 12 ? (I)cstr("P000") : p == 13 ? (I)cstr("T2Ji") : p >= 7 && p < NPAT, 0);
     dict_slots = 0; double t0 = now();
     for (I i = 0; i < n; i++) pys_dict_set(dict, keys->a[i], i);
     c[0] = dict_slots; dict_slots = 0;

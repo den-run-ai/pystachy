@@ -66,6 +66,10 @@ zs = [1.0, 2.0, 3.0, 4.0]
 cblas_daxpy(2, 1.0, zs, 1, at(zs, 2), 1)  # zs is now [1.0, 2.0, 4.0, 6.0]
 ```
 
+In a program where a module opts in to [promoting ints](python-int.md), a list of ints that
+holds an int past 64 bits raises `OverflowError` before C gets its items, directly or through
+`ffi.at()` (`tests/ffi/c_python_int.py`).
+
 Structs, varargs and callbacks require a C shim with scalar arguments. The
 [ABI reference](reference/ffi.md#c-types-and-conversions) defines ranges, null
 handling, buffers and ownership.

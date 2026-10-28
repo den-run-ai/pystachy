@@ -60,7 +60,8 @@ hashes, license and changes. It has no GMP or embedded-CPython dependency.
 Multiplication follows CPython: schoolbook below 70 30-bit digits (140 for
 squares, which add each cross product once) and Karatsuba above. Long division is
 CPython's Knuth Algorithm D. This is a small portable implementation, not a claim of performance
-parity with CPython or GMP. Text conversion uses CPython's
+parity with CPython or GMP; [bench/integers](../bench/integers/README.md) measures it against CPython
+and PyPy. Text conversion uses CPython's
 algorithms: power-of-two bases parse in linear time, other bases parse a group
 of digits (nine decimal digits) per pass, and decimal output converts to base
 10^9 in one pass per 30-bit digit. Constructing a nonzero value from a native integer allocates a wrapper and a
@@ -71,11 +72,12 @@ Builtin integers retain their existing native arithmetic fast path.
 ## Compatibility boundary
 
 The initial API focuses on exact integer arithmetic. Automatic overflow
-promotion, builtin-int identity and `isinstance(x, int)`, CPython's object ABI,
-mixed floating-point arithmetic/conversion, JSON hooks and a general integer
-index protocol are outside this implementation. Use explicit conversions at
-those boundaries. These limits are intentional and do not establish full
-CPython `int` compatibility.
+promotion of ordinary `int` is the separate opt-in [promoting int](python-int.md),
+which uses this C core for values past 64 bits. Builtin-int identity and
+`isinstance(x, int)`, CPython's object ABI, mixed floating-point
+arithmetic/conversion, JSON hooks and a general integer index protocol are outside
+this implementation. Use explicit conversions at those boundaries. These limits are
+intentional and do not establish full CPython `int` compatibility.
 
 CPython differential tests use an independent wrapper over its builtin `int` in
 `tools/rt_cpython/mpz_oracle.py`. The native execution path uses the C arithmetic core;

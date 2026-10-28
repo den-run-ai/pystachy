@@ -1,0 +1,10 @@
+4300 digits 4305
+parameter ValueError: Exceeds the limit (4300 digits) for inte
+list ValueError: Exceeds the limit (4300 digits) for inte
+dict ValueError: Exceeds the limit (4300 digits) for inte
+str keys ValueError: Exceeds the limit (4300 digits) for inte
+list of dicts ValueError: Exceeds the limit (4300 digits) for inte
+dict of lists ValueError: Exceeds the limit (4300 digits) for inte
+print ValueError: Exceeds the limit (4300 digits) for inte
+{1: 2, 3: 4} [1]
+[exit 0]

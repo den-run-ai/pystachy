@@ -35,13 +35,18 @@ DYNPRAGMA = "# pystachy: dynamic-any"
 def dynamic_pragma(src: str) -> bool:
     # does source src opt in: a comment line DYNPRAGMA (spaces around it allowed) among the
     # comment and blank lines it starts with (after a byte order mark)
+    return leading_pragma(src, DYNPRAGMA)
+
+
+def leading_pragma(src: str, pragma: str) -> bool:
+    # is comment line pragma among the comment and blank lines source src starts with
     at = 3 if src.startswith(chr(239) + chr(187) + chr(191)) else 0
     while at < len(src):
         e = src.find("\n", at)
         ln = (src[at:] if e < 0 else src[at:e]).strip()
         if ln != "" and not ln.startswith("#"):
             return False
-        if ln == DYNPRAGMA:
+        if ln == pragma:
             return True
         at = len(src) if e < 0 else e + 1
     return False
@@ -51,9 +56,50 @@ def dynamic_file(k: int) -> bool:
     return k in DYNFILES
 
 
+# the files of the modules whose ints promote past 64 bits, as CPython's do (docs/python-int.md),
+# by their index in FILES: those whose lines before their first line of code hold INTPRAGMA
+INTFILES: dict[int, bool] = {}
+INTPRAGMA = "# pystachy: python-int"
+
+
+def int_pragma(src: str) -> bool:
+    return leading_pragma(src, INTPRAGMA)
+
+
+def int_file(k: int) -> bool:
+    return k in INTFILES
+
+
+# the lines of lib/'s definitions whose ints promote as those of a module that opts in, where a
+# module of the program does (specs.INT_HELPERS, Gen.int_policy): the first and the last of each,
+# in the numbering of all files' lines (LINES)
+INTSPANS: list[list[int]] = []
+
+
+def int_span(line: int) -> bool:
+    for s in INTSPANS:
+        if s[0] <= line and line <= s[1]:
+            return True
+    return False
+
+
 def dynamic_program() -> bool:
     # does a module of the program opt in, so that values may be dynamic (dyn)
     return len(DYNFILES) > 0
+
+
+def int_program() -> bool:
+    # does a module of the program opt in to promoting ints (docs/python-int.md): its generators
+    # then hold the pointer of one they yield or return (specs.GENVALP)
+    return len(INTFILES) > 0
+
+
+def int_lists() -> bool:
+    # do the program's lists of ints hold promoting ints past 64 bits (docs/python-int.md), and the
+    # values of its dicts of ints and the elements of its sets of ints: a module opts in to them, and
+    # none to dynamic Any, whose lists of ints keep identities instead (runtime.c's BIGIDS). Its
+    # modules then read such an int through a test (Gen.list_value, big_dict_value, big_set_value)
+    return len(INTFILES) > 0 and len(DYNFILES) == 0
 
 
 def shown(s: str) -> str:

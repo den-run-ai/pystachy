@@ -48,3 +48,25 @@ around deep-copy plus checksum processing; the other cases use `perf_counter` wa
 Each result records `loop_clock` so these clocks remain distinguishable. Whole-process
 times still include graph construction and startup. The original `graph` mode retains
 its checksum/construction-nanoseconds/processing-nanoseconds output for historical replay.
+
+The standalone [dynamic iteration driver](../../tools/dynany_iteration_bench.py) exercises
+streaming list, range, object and generator iteration through `Any`. It is separate from
+`dynany_bench.py` so new protocol calls do not prevent an older compiler from building the
+existing graph comparison. Each mode checks the arithmetic checksum and consumed-item
+count. Object and generator producers also count every advance and assert that production
+stays one item ahead of consumption, detecting accidental eager materialization.
+
+```sh
+python3.13 tools/dynany_iteration_bench.py generator 100000
+./pystachy build tools/dynany_iteration_bench.py -o build/dynany_iteration_bench
+build/dynany_iteration_bench object 100000 smoke
+PYSTACHY_GC_STRESS_PROGRAM=1 ./pystachy run tools/dynany_iteration_bench.py generator 20 smoke
+```
+
+Replace `generator` or `object` with `list` or `range` for the other modes. Normal output
+separates construction and processing CPU nanoseconds; `smoke` prints a deterministic
+checksum/count line to stdout and processing CPU seconds to stderr. Use a separate untimed
+`PYSTACHY_GC=stats` run for memory evidence. The maintained unit checks include empty,
+one-item and multi-item inputs plus a negative control for eager production. These modes
+are not default `perf_smoke.py` base/head cases: the baseline does not support all four
+paths, so no before/after speedup or timing threshold is claimed.

@@ -8,6 +8,8 @@ from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
     STR_HEADER_SIZE,
     ABCS,
+    BIG,
+    BIGOPT,
     ABCSMORE,
     ABCSOTHER,
     DUNDER,
@@ -151,8 +153,10 @@ def gen_check_special(self, f: FnInfo) -> None:
         pass  # (a template: each instance's return type is checked where it is compiled, see instance)
     elif f.name == "__bool__" and f.ret != "bool":
         f.bad = f"__bool__ should return bool, returned {tname(f.ret)}"  # (CPython's TypeError)
-    elif ret != "" and f.ret != ret and not ((f.name == "__len__" or f.name == "__hash__") and f.ret == "bool"):
-        f.bad = f"{f.name} must return {ret}"  # (a bool is an int to len() and hash())
+    elif ret != "" and f.ret != ret and not ((f.name == "__len__" or f.name == "__hash__") and f.ret == "bool") and not (ret == "int" and f.ret == BIG):
+        # (a bool is an int to len() and hash(); a promoting int, of a module that opts in, is one
+        # that they take as CPython does: big_len, big_hashed)
+        f.bad = f"{f.name} must return {ret}"
     elif f.name == "__format__" and f.ptypes[1] != "str":
         f.bad = "__format__ takes the format spec as a str"
     if f.bad != "" and self.classes[f.cls].mod == "":
@@ -813,7 +817,9 @@ def gen_stmt(self, n: Node) -> None:
             j = self.join(self.ret, v.t) if self.curfn.infer and v.t != self.ret else self.ret
             if j != self.ret and j != "" and is_opt(j):
                 self.reopt(j)  # a template's function returns T and None (or T | None): T | None
-            if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret):
+            # (a promoting int, or an int | None, where it returns a union that holds a 64-bit int, as of
+            # a bool and an int, is narrowed into it: coerce, bigints.py)
+            if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret) and not (self.ret == "int+" and v.t == "int") and not ((v.t == "int+" or v.t == BIGOPT) and self.uboxes("int", self.ret)):
                 if v.t == "None":
                     self.err(self.nonemix(self.curfn, self.ret))
                 if v.t != "dyn" or not self.dyn_widen("", self.ret):  # (an Any value: compiled again returning Any)
@@ -901,16 +907,25 @@ def gen_stmt(self, n: Node) -> None:
                 # del d[k] looks k up as d[k] does (dkey): a key that may be None raises
                 # KeyError: None (nonekey), and a bool deletes the int key it equals. A key
                 # hashed by its class is hashed also where d is empty (pys_dict_del, as CPython's
-                # del, unlike its d.pop(k)); other keys' hashes run no code
+                # del, unlike its d.pop(k)); other keys' hashes run no code. A dict of ints whose
+                # values may be past 64 bits (dict_int) takes pys_dict_del too: it reads no value,
+                # where pys_dict_pop reads a 64-bit one (NARROWED)
                 kt = targs(unopt(o.t))[0]
                 kval = self.expr(dt.kids[1], kt)
+                if (kval.t == BIG or kval.t == BIGOPT) and self.dict_bigkey(unopt(o.t)):
+                    # (a key past 64 bits: bigints.py)
+                    d = self.unwrap(o, nodel)
+                    kb = self.big_key(kval)
+                    self.rt("pys_dict_big_del", "void", [f"ptr {d.v}", f"i64 {self.big_lo(kb).v}", f"ptr {self.big_hi(kb).v}"])
+                    continue
                 kx = self.dkey(kval, kt)
                 key = self.to_slot(kx)
                 o = self.unwrap(o, nodel)
                 if bool_for_int(kval.t, kt):
                     self.bool_find(o.v, kval, key)
                 fx = self.key_fx(kt)
-                self.nonekey(kx, "", "pys_dict_del" if "H" in fx or "A" in fx else "pys_dict_pop", [f"ptr {o.v}", "i64 " + key], fx)
+                fn = "pys_dict_del" if "H" in fx or "A" in fx or self.dict_int(o.t) else "pys_dict_pop"
+                self.nonekey(kx, "", fn, [f"ptr {o.v}", "i64 " + key], fx)
             elif o.t in self.classes:
                 # del o[k]: o.__delitem__(k)
                 ik = self.expr(dt.kids[1], self.argtype(o.t, "__delitem__", 1, f"'{tname(o.t)}' object doesn't support item deletion"))
@@ -1023,7 +1038,10 @@ def gen_stmt(self, n: Node) -> None:
             self.lct[-1] = self.ctype("dict", kv)
             if self.lct[-1] == "dict[dyn,dyn]":
                 kv = ["dyn", "dyn"]  # (where the values are Any values or containers: ctype)
-        self.rt("pys_dict_set", "void", [f"ptr {self.lcs[-1]}", "i64 " + self.to_slot(self.store_key(kx, kv[0])), "i64 " + self.to_slot(self.coerce(vx, kv[1]))], self.key_fx(kv[0]))
+            elif BIG in kv[0] or BIG in kv[1]:
+                kv = targs(self.lct[-1])  # (a promoting int is an int there, ctype's, which dict_store keeps past 64 bits)
+        kc = self.key_coerce(kx, kv[0])
+        self.dict_put(Val(self.lcs[-1], self.ctype("dict", kv)), kc, self.key_slot(kc), self.list_hold(vx, kv[1]), kv)  # (a tuple of ints: held, bigints.py)
     elif k == "lcappend":
         et = self.lct[-1]
         v = self.expr(n.kids[0], et, resultsoft=self.lcsoft[-1])
@@ -1035,11 +1053,11 @@ def gen_stmt(self, n: Node) -> None:
             if n.s == "set" and self.elem_problem(et) != "":
                 self.err(self.elem_problem(et))
         if n.s == "set":
-            self.rt("pys_set_add", "void", [f"ptr {self.lcs[-1]}", "i64 " + self.to_slot(self.store_elem(v, et))], self.key_fx(et))
+            self.set_store(self.lcs[-1], self.set_coerce(v, et), et)
         elif n.s == "discard":
             self.sdiscard(f"ptr {self.lcs[-1]}", v, et)
         else:
-            self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.coerce(v, et), "append")
+            self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.list_hold(v, et), "append")
     elif k == "defaults" or k == "cdefaults":
         if k == "defaults":
             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != "" else [], {})
@@ -1236,7 +1254,7 @@ def gen_augassign(self, n: Node) -> None:
             i = self.ival(t.kids[1])
             o = self.unwrap(o, sub)
             cur = self.list_item(o, i)
-            r = self.coerce(self.inplace(op, cur, n.kids[1]), et)
+            r = self.list_hold(self.inplace(op, cur, n.kids[1]), et)
             self.list_store(o, r, "set", i.v)
         elif is_dict(unopt(o.t)):
             # d[k] op= v stores k where d[k] has found it: k is looked up as d[k] does (dkey),
@@ -1246,27 +1264,38 @@ def gen_augassign(self, n: Node) -> None:
             # program: where it deletes k, CPython adds k as the bool it is (store_key rejects it)
             kv = targs(unopt(o.t))
             kval = self.expr(t.kids[1], kv[0])
+            if (kval.t == BIG or kval.t == BIGOPT) and self.dict_bigkey(unopt(o.t)):
+                # a key past 64 bits (bigints.py): its entry for d[k], and again for the store, which
+                # the right operand may have moved or deleted
+                o = self.unwrap(o, sub)
+                kb = self.big_key(kval)
+                cur = self.dict_value(o, self.big_key_entry(o, kb, "pys_dict_big_entry"))
+                self.dict_put(o, kb, "", self.list_hold(self.inplace(op, cur, n.kids[1]), kv[1]), kv)
+                return
             kx = self.dkey(kval, kv[0])
             key = "" if is_sopt(kx.t) else self.to_slot(kx)
             o = self.unwrap(o, sub)
             if bool_for_int(kval.t, kv[0]):
                 e = self.bool_find(o.v, kval, key)
-                cur = self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {e}"]), kv[1])
+                cur = self.dict_value(o, e)  # (an int past 64 bits, a tuple of ints: bigints.py)
                 b0 = self.blk
                 x0 = len(b0.code)
                 n0 = len(self.fn.blocks)
-                r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
+                r = self.list_hold(self.inplace(op, cur, n.kids[1]), kv[1])
                 if self.may_change(b0, x0, n0):
                     self.store_key(kval, kv[0])  # (rejected)
-                self.rt("pys_dict_entry_set", "void", [f"ptr {o.v}", f"i64 {e}", "i64 " + self.to_slot(r)])
+                self.dict_store(o.v, "", r, kv, e)
                 return
             if is_opt(kx.t):
                 self.guard(self.ptr_cmp('==', kx, Val('null', 'None')).v, "KeyError: None")
                 if is_sopt(kx.t):
                     key = self.to_slot(self.deref(kx))  # (an int key is the int its box holds)
-            cur = self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"], self.key_fx(kv[0])), kv[1])
-            r = self.coerce(self.inplace(op, cur, n.kids[1]), kv[1])
-            self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(r)], self.key_fx(kv[0]))
+            if self.dict_int(o.t):
+                cur = self.big_dict_value(o, self.rt("pys_dict_entry", "i64", [f"ptr {o.v}", f"i64 {key}"], self.key_fx(kv[0])))
+            else:
+                cur = self.held_value(self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"], self.key_fx(kv[0])), kv[1]))  # (a tuple of ints: bigints.held)
+            r = self.list_hold(self.inplace(op, cur, n.kids[1]), kv[1])
+            self.dict_store(o.v, key, r, kv)
         elif o.t in self.classes:
             # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once (a tuple
             # display k in the frame where both only read it: stack_key)
@@ -1378,7 +1407,7 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
     if op == "**" and cur.t in self.classes:
         if "__ipow__" in self.classes[cur.t].methods:
             b = self.expr(rhs, cur.t)
-            if self.isnum(b.t):
+            if self.isnum(b.t) or b.t == BIG:
                 self.none_operand("**=", cur, b)
                 return self.call_fn(self.classes[cur.t].methods["__ipow__"], [cur], [self.vnode(b)])
             return self.arith(op, cur, b, "**=")  # (retain the object/reflected-power diagnostic)
@@ -1395,7 +1424,10 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
     return self.arith(op, cur, self.expr(rhs, cur.t), op + "=")
 
 def gen_objlen(self, v: Val) -> Val:
-    r = self.as_int(self.call_fn(self.classes[v.t].methods["__len__"], [v], []))
+    r = self.call_fn(self.classes[v.t].methods["__len__"], [v], [])
+    if r.t == BIG:
+        return self.big_len(r)
+    r = self.as_int(r)
     self.guard(self.num_cmp('<', Val(r.v, "int"), Val('0', "int")).v, "ValueError: __len__() should return >= 0")
     return r
 
@@ -1489,6 +1521,10 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
                 self.gencall = ""
                 v = self.expr(a, "")
                 ownk.append(self.owned_gen(v, a))
+                if fn == "reversed" and v.t == "dyn":
+                    rev = self.dyn_call(self.dyn_dispatcher("reversed", ["dyn"], "dyn", "__reversed__"), [v])
+                    self.for_seq(tgt, [self.iterable(rev)], "", body, "0", hide, arg)
+                    return
                 if fn == "reversed" and v.t == RANGEC:
                     # (a range object's numbers from the last, as reversed(range(...)) takes them)
                     self.notnone(v, "TypeError: 'NoneType' object is not reversible")
@@ -1632,6 +1668,10 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
         return v  # (for_seq steps through its numbers)
     if v.t in self.classes:
         return self.obj_iterator(v, msg, f"'{tname(v.t)}' object is not iterable")
+    if is_tuple(v.t) and BIG in targs(v.t) and all(x == "int" or x == BIG for x in targs(v.t)):
+        # (64-bit and promoting ints, as the latter, read from its slots also without tupleiter: a
+        # list holds 64-bit ints, bigints.py)
+        return self.coerce(v, self.ctype("tuple", [BIG for x in targs(v.t)]))
     if is_tuple(v.t) and "tupleiter" in self.opts and all(x == targs(v.t)[0] for x in targs(v.t)):
         return v  # (no list: for_seq reads its slots, as many as its type has)
     if not is_tuple(v.t) or v.t == "tuple[]":
@@ -1882,6 +1922,9 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     if is_vtuple(s.t):
         off = self.scalar('add', [Val(j, 'int'), Val('1', 'int')])
         return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{off}')), targs(s.t)[0])]
+    if is_tuple(s.t) and targs(s.t)[0] == BIG:
+        # (promoting ints: one's slot at j, and where it says so its Mpz word, past the items: bigints.py)
+        return [self.big_item(s, Val(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), "int"), 0, j)]
     if is_tuple(s.t):
         return [self.from_slot(self.mload('int', self.maddr('int', f'{s.v}', f'{j}')), targs(s.t)[0])]
     if s.t == "str":
@@ -1897,19 +1940,18 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     if s.t == "dyniter":
         return [Val(j, "dyn")]
     if is_gen(s.t):
-        return [self.from_slot(self.mload('int', j), gelem(s.t))]  # (j: its promise, gen_next)
+        return [self.gen_value(j, gelem(s.t))]  # (j: its promise, gen_next)
     if is_set(s.t):
-        return [self.from_slot(self.rt("pys_set_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), selem(s.t))]
+        return [self.set_value(s, j)]  # (elements past 64 bits, tuples of ints: bigints.py)
     if s.t == RANGEC:
         # (start + j * step, which wraps: an item of the range fits)
         rf = self.range_fields(s)
         return [Val(self.scalar('add', [Val(rf[0], 'int'), Val(self.scalar('mul', [Val(j, 'int'), Val(rf[2], 'int')]), 'int')]), "int")]
-    kv = targs(s.t)
     out: list[Val] = []
     if mode != "values":
-        out.append(self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[0]))
+        out.append(self.dict_key(s, j))  # (an int past 64 bits, a tuple of ints: bigints.py)
     if mode == "values" or mode == "items":
-        out.append(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[1]))
+        out.append(self.dict_value(s, j))  # (an int past 64 bits, a tuple of ints: bigints.py)
     return out
 
 def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:
@@ -2020,7 +2062,7 @@ def gen_drain(self, it: Val) -> Val:
     lt = self.ctype("list", [v.t])
     if lt == "list[dyn]":
         v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-    self.list_store(Val(res, lt), v, "append")
+    self.list_store(Val(res, lt), self.list_hold(v, v.t), "append")  # (a tuple of ints: held, bigints.py)
     self.br(lc)
     self.stop_landing(c, le)
     self.place(le)

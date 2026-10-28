@@ -1,0 +1,25 @@
+bad iter
+iter iter() returned non-iterator of type 'int'
+bad iter
+list iter() returned non-iterator of type 'int'
+bad iter
+loop iter() returned non-iterator of type 'int'
+arity NeedsArg.__iter__() missing 1 required positional argument: 'x'
+recover iter
+True
+default evaluated
+default
+default evaluated
+2
+stop details pause
+4
+default evaluated
+next failure
+6
+lazy any True 1
+lazy contains True 1
+reversed called
+[9, 7]
+'int' object is not reversible
+'NoneType' object is not reversible
+[exit 0]

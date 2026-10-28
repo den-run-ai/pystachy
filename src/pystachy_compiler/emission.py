@@ -1,10 +1,11 @@
 """Emission component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
-from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail
+from src.pystachy_compiler.bigints import narrows
+from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val
-from src.pystachy_compiler.specs import CHECKED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.specs import BIGOPT, CHECKED, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
     identity_abi,
@@ -22,8 +23,9 @@ from src.pystachy_compiler.utils import (
 
 def gen_err(self, msg: str) -> None:
     if self.xtry != "":
-        # (the call of a comparison method with an Any value, which only @o.x.<class> compiles:
-        # the next pass declines it there, see Gen.xnot)
+        # A comparison specialization may decline on the next pass. An unsupported
+        # iteration protocol instead gets an explicit runtime-error arm; unused
+        # methods must not make an otherwise accepted program fail to compile.
         self.newx[self.xtry] = True
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
@@ -284,6 +286,14 @@ def gen_rt(self, name: str, ret: str, args: list[str], x: str = "") -> str:
     k = self.runtime(name)
     ts = self.rtfns[k].sig
     ll = self.rtfns[k].ll
+    if k in NARROWED and int_lists():
+        # (a list of ints that may hold promoting ints past 64 bits, which it reads as 64-bit ints,
+        # and the dict whose values it reads so)
+        for j in range(min(len(args), len(ts) - 1)):
+            if ts[j + 1].startswith("list["):
+                self.rt("pys_list_narrow", "void", [args[j]])
+            elif ts[j + 1] == "S" and k.startswith("dict."):
+                self.rt("pys_dict_narrow", "void", [args[j]])
     ok = ret == ll[0] and len(args) == len(ll) - 1
     i = Ins("rt", ts[0], k)
     i.a = []
@@ -475,9 +485,11 @@ def gen_unwrap(self, v: Val, msg: str) -> Val:
 
 def gen_deref(self, v: Val) -> Val:
     # an optional value known not to be None, as the value it holds: the same pointer, or an
-    # int's, float's or bool's box read
+    # int's, float's or bool's box read (a promoting int's two words: bigints.py)
     if not is_sopt(v.t):
         return Val(v.v, unopt(v.t)).identity(v)
+    if v.t == BIGOPT:
+        return self.big_unbox(v)
     return self.from_slot(self.mload('int', v.v), unopt(v.t)).identity(v)
 
 def gen_reboxes(self, a: str, b: str) -> bool:
@@ -489,15 +501,21 @@ def gen_reboxes(self, a: str, b: str) -> bool:
     for i in range(len(targs(a))):
         x = targs(a)[i]
         y = targs(b)[i]
+        if x == "int+" and y != "int+":
+            x = "int"  # (coerce narrows a promoting int item first, as 64-bit storage takes it: bigints.py)
         dyn = x != y and ((y == "dyn" and self.dyn_boxable(x) == "") or (x == "dyn" and self.dyn_boxable(y) == ""))
-        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn:
+        big = y == "int+" and x == "int"  # (a promoting int holds it, bigints.py; the other way, coerce tests)
+        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn and not big:
             return False
     return True
 
 def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
     # v as a t, computed at the end of block label (before its terminator), where it reaches a
-    # phi from: an int boxed as an int | None, or an int | None known not to be None unboxed
-    if not self.converts(v.t, t):
+    # phi from: an int boxed as an int | None, an int | None known not to be None unboxed, or a
+    # promoting int narrowed (bigints.py), whose test branches: convedge is then the block the
+    # value reaches the phi from (label where no code does)
+    self.convedge = label
+    if not self.converts(v.t, t) and not narrows(v.t, t):
         return self.coerce(v, t)  # (no code)
     for b in self.fn.blocks:
         if b.label == label:
@@ -507,29 +525,34 @@ def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
 
 def gen_converts(self, a: str, b: str) -> bool:
     # does a value of type a take code to be one of type b (convert_in)
-    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a))
+    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int")
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a
     # union, also as tuple items, and a value as a dynamic one (dynamic.py)
     if b == "dyn":
         return a != "dyn" and self.dyn_boxable(a) == ""
-    return (is_sopt(b) and a == unopt(b)) or self.uboxes(a, b) or self.reboxes(a, b)
+    return (is_sopt(b) and a == unopt(b)) or (b == BIGOPT and a == "int") or self.uboxes(a, b) or self.reboxes(a, b)
 
 def gen_convert_in(self, v: Val, t: str, blk: Blk) -> Val:
-    # v as a t, at the end of block blk, which has ended (see convert_at)
+    # v as a t, at the end of block blk, which has ended (see convert_at): a test the conversion
+    # makes branches, and its end, convedge, is a block of its own, which takes blk's terminator
     here = self.blk
     cur = self.cur
     term = self.term
+    handler = self.handler
     self.blk = blk
     last = blk.code.pop()
     self.cur = blk.label
     self.term = False
+    self.handler = blk.handler  # (a test's raise goes where one in blk would)
     r = self.deref(v) if is_sopt(v.t) and t == unopt(v.t) else self.coerce(v, t)
-    blk.code.append(last)
+    self.blk.code.append(last)
+    self.convedge = self.cur
     self.blk = here
     self.cur = cur
     self.term = term
+    self.handler = handler
     return r
 
 def gen_sconst(self, s: str) -> str:
@@ -562,7 +585,11 @@ def gen_alloca(self, t: str, name: str) -> str:
     if t == "":
         self.err(f"cannot infer the type of '{name}'; add a type annotation")
     if name != "" and name in self.cells and name not in self.compvars:
-        # a variable a closure takes: its cell, which the function allocated as it began
+        # a variable a closure takes: its cell, which the function allocated as it began (an int
+        # of a module whose ints promote is a promoting int there, which a nonlocal write may
+        # need: bigints.py)
+        if t == "int" and self.int_policy(self.line):
+            t = "int+"
         self.ltype[name] = t
         self.lreg[name] = self.cells[name]
         self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t == "dyn" or t in self.classes

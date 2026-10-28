@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     opaque_class,
@@ -158,6 +158,8 @@ def gen_refl_split_class(self, v: Val) -> list[RLeaf]:
 def gen_refl_type_name(self, c: str, what: str) -> str:
     # what type(x).<what> is (__name__, __qualname__ or __module__) for a value of exact type c,
     # or "" where Pystachy does not know it
+    if c == BIG:
+        c = "int"  # (a promoting int's class is int: bigints.py)
     if c == "None" or c in BUILTIN_TYPES or is_list(c) or is_dict(c) or is_tuple(c) or is_vtuple(c) or is_set(c) or is_kw(c):
         b = "NoneType" if c == "None" else "list" if is_list(c) else "dict" if is_dict(c) or is_kw(c) else "tuple" if is_tuple(c) or is_vtuple(c) else c[: c.find("[")] if is_set(c) else c
         return "builtins" if what == "__module__" else b
@@ -458,7 +460,8 @@ def gen_refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) 
         return Val("null", "None")
     ph = Ins("phi", t, "")
     for j in range(len(vals)):
-        self.incoming(ph, self.convert_at(vals[j], t, blocks[j]).v, blocks[j])
+        r = self.convert_at(vals[j], t, blocks[j])
+        self.incoming(ph, r.v, self.convedge)
     r = Val(self.phi(ph), t)
     if numeric_identity(t) and all(v.idfrom != "" or v.t == "None" for v in vals):
         # Field reads snapshot before later operands can change them. Select that
@@ -668,9 +671,7 @@ def refl_binds_in(n: Node, name: str) -> bool:
 def refl_subst(n: Node, name: str, lit: Node) -> Node:
     # a copy of code n whose reads of name are lit (but in a comprehension that binds name)
     if n.kind == "name" and n.s == name:
-        c = Node(lit.kind, lit.s, n.line)
-        c.kids = lit.kids
-        return c
+        return Node(lit.kind, lit.s, n.line, lit.kids)
     c = Node(n.kind, n.s, n.line)
     c.chk = n.chk
     c.mchk = n.mchk
@@ -682,8 +683,7 @@ def refl_subst(n: Node, name: str, lit: Node) -> Node:
 
 
 def clone_node(n: Node) -> Node:
-    c = Node(n.kind, n.s, n.line)
-    c.kids = [clone_node(k) for k in n.kids]
+    c = Node(n.kind, n.s, n.line, [clone_node(k) for k in n.kids])
     c.chk = n.chk
     c.mchk = n.mchk
     c.depth = n.depth
@@ -1201,7 +1201,7 @@ def gen_refl_fields_table(self, c: str) -> str:
             if is_union(unopt(ft)) and not self.value_union(ft):
                 self.err(f"vars() of {short(c)}, whose field {fl} is a {typestr(ft)}, is not supported (a union of classes: #487)")
             t.refs.append(self.sconst(fl))
-            t.refs.append(self.sconst(self.desc(ft, "repr")))
+            t.refs.append(self.sconst("J" if ft == BIG else self.desc(ft, "repr")))  # (a promoting int's {lo, hi}: runtime.c's jbig)
             t.items.append(Val(str(ci.fpos[fl]), "int"))
             flag = ci.fflag[fl] if fl in ci.fflag and c + "." + fl not in self.cvars else -1
             t.items.append(Val(str(flag), "int"))
@@ -1569,8 +1569,8 @@ def gen_refl_dict_copy(self, d: Node) -> Val:
                 self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, go, nxt)
                 self.place(go)
             kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers: ctype)
-            v = self.coerce(self.getfield(ov, self.field(ov, fl), fl), kv[1])
-            self.rt("pys_dict_set", "void", [f"ptr {r.v}", "i64 " + self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
+            v = self.list_hold(self.getfield(ov, self.field(ov, fl), fl), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
+            self.dict_store(r.v, self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), v, kv)
             if nxt != "":
                 self.br(nxt)
                 self.place(nxt)
@@ -1826,7 +1826,7 @@ def gen_refl_dc_type(self, t: str, what: str, seen: list[str]) -> str:
     # dataclass's object a dict (a tuple), recursively into lists, tuples and dicts; scalars and
     # bytes as they are (CPython's _asdict_inner deep-copies them, and deepcopy returns an
     # immutable object itself; other objects it deep-copies, which is not supported)
-    if t in ["int", "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
+    if t in ["int", BIG, BIGOPT, "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
         return t
     if is_opt(t):
         x = self.refl_dc_type(unopt(t), what, seen)
@@ -1868,7 +1868,7 @@ def gen_refl_dc_copy(self, v: Val, what: str, seen: list[str], nonnull: bool = F
     # asdict()'s (astuple()'s) copy of value v (refl_dc_type): new containers throughout, as
     # CPython's _asdict_inner (_astuple_inner) makes them
     t = v.t
-    if t in ["int", "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
+    if t in ["int", BIG, BIGOPT, "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
         return v
     rt = self.refl_dc_type(t, what, seen)
     if is_opt(t) or (t in self.classes and v.v not in self.nn and not nonnull):
@@ -1910,7 +1910,12 @@ def gen_refl_dc_copy(self, v: Val, what: str, seen: list[str], nonnull: bool = F
                 kids: list[Node] = []
                 for j in range(len(fs)):
                     kids.append(mk("str", fs[j], self.line, []))
-                    kids.append(self.vnode(self.coerce(vals[j], targs(vt)[1])))
+                    # A promoting int or tuple needs the dict display's storage conversion,
+                    # which retains it instead of narrowing it before the store.
+                    item = vals[j]
+                    if item.t != BIG and not (is_tuple(item.t) and BIG in item.t):
+                        item = self.coerce(item, targs(vt)[1])
+                    kids.append(self.vnode(item))
                 r = self.expr(mk("dict", "", self.line, kids), vt)
             rvals.append(r)
             rblocks.append(self.cur)

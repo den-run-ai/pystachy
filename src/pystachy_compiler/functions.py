@@ -1,10 +1,12 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends
+from src.pystachy_compiler.bigints import int_replay_state
+from src.pystachy_compiler.diagnostics import Rejoin, int_lists
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, NONEVAR, RTSYM
+from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTSYM
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     RtFn,
@@ -122,6 +124,7 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
     ret = f.ret
     noret = f.noret
     asked = self.dyn_asked(f)
+    before = int_replay_state(self) if int_lists() else None
     self.function_body(f, body)
     while self.dyn_again(f, asked):
         # (an Any value reached storage that its first value typed, in a module that compiles
@@ -130,6 +133,17 @@ def gen_function(self, f: FnInfo, body: list[Node]) -> None:
         f.noret = noret
         asked = self.dyn_asked(f)
         self.function_body(f, body)
+    if before is not None and len(self.newhints) > 0 and self.int_again(f, before):
+        f.ret = ret
+        f.noret = noret
+        self.function_body(f, body)
+        if int_replay_state(self) != before or f.ll in self.retseen or f.ll in self.dynseen:
+            raise Rejoin()  # the retry itself discovered a dependent layout or signature
+        prefix = self.fnkey(f) + "|"
+        for name in self.ltype:
+            key = prefix + name
+            if self.ltype[name] == BIG and self.hints.get(key, "") == BIG and self.newhints.get(key, "") == BIG:
+                del self.newhints[key]
     del self.building[f.ll]
     self.selfcls = sel
     self.fn.n = self.n
@@ -183,11 +197,14 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         # for a numeric binding's box: every closure and nonlocal writer shares it.
         # Like runtime.c's gc_box, request 15 for the 16-byte scanned slot. Only the
         # base and second-word addresses escape; no one-past-cell pointer is made.
+        # A module whose ints promote takes two words for the value (bigints.py): 15 and 23
+        # for the 16- and 24-byte slots, the box's address then in the third word.
+        big = self.int_policy(f.node.line)
         for cv in self.cellvars(f, body):
-            self.cells[cv] = self.rt("pys_alloc", "ptr", ["i64 15" if identity_abi(f) else "i64 8"])
+            self.cells[cv] = self.rt("pys_alloc", "ptr", [("i64 23" if big else "i64 15") if identity_abi(f) else ("i64 15" if big else "i64 8")])
             if identity_abi(f):
                 # Define the address before any branch or loop can first bind the cell.
-                self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '1', True)
+                self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '2' if big else '1', True)
         lf: dict[str, bool] = {}
         for st in body if f.clo < 0 or self.closures[f.clo].name != "<lambda>" else []:
             lambda_flags(st, False, lf)

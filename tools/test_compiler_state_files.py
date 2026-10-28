@@ -19,7 +19,7 @@ class FileStateTests(unittest.TestCase):
     # Preserve the surrounding test process: these tests intentionally leave a
     # completed or rejected compilation's discoveries visible between calls.
     def setUp(self):
-        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, LAMBDAS,
+        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.INTFILES, diagnostics.INTSPANS, LAMBDAS,
                       driver.RENAMED, driver.LIBS, driver.LINKDL, GLUE, SPECSHOW]
         self.saved = [value.copy() for value in self.roots]
         self.source = diagnostics.SRC
@@ -50,21 +50,32 @@ class FileStateTests(unittest.TestCase):
         diagnostics.FILES[:] = ["old-main.py", "old-import.py"]
         diagnostics.DYNFILES.clear()
         diagnostics.DYNFILES.update({0: True, 1: True, 5: True})
+        diagnostics.INTFILES.clear()
+        diagnostics.INTFILES.update({0: True, 1: True, 5: True})
+        diagnostics.INTSPANS[:] = [[1, 9]]
         instance = loader.Loader([])
         program(instance, "plain.py", "print(1)\n")
         self.assertEqual(diagnostics.FILES, ["plain.py"])
         self.assertEqual(diagnostics.DYNFILES, {})
+        self.assertEqual(diagnostics.INTFILES, {})
+        self.assertEqual(diagnostics.INTSPANS, [])
         instance = loader.Loader([])
         program(instance, "dynamic.py", "# pystachy: dynamic-any\nprint(1)\n")
         self.assertEqual(diagnostics.FILES, ["dynamic.py"])
         self.assertEqual(diagnostics.DYNFILES, {0: True})
+        self.assertEqual(diagnostics.INTFILES, {})
+        instance = loader.Loader([])
+        program(instance, "promoting.py", "# pystachy: python-int\nprint(1)\n")
+        self.assertEqual(diagnostics.FILES, ["promoting.py"])
+        self.assertEqual(diagnostics.DYNFILES, {})
+        self.assertEqual(diagnostics.INTFILES, {0: True})
 
     def test_program_replaces_both_tables(self):
         self.file_contract(loader.Loader.program)
 
     def test_each_missing_reset_is_detected(self):
         source = textwrap.dedent(inspect.getsource(loader.Loader.program))
-        for reset in ("FILES.clear()", "DYNFILES.clear()"):
+        for reset in ("FILES.clear()", "DYNFILES.clear()", "INTFILES.clear()", "INTSPANS.clear()"):
             with self.subTest(reset=reset):
                 statement = "    " + reset + "\n"
                 self.assertEqual(source.count(statement), 1)
@@ -109,6 +120,27 @@ class FileStateTests(unittest.TestCase):
             self.assertEqual(failed[0], 1)
             self.assertIn(f"{module}:1: error:", failed[2])
             self.assertEqual(diagnostics.DYNFILES, {})
+
+    def test_import_int_opt_ins_are_reindexed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            module = Path(temp) / "dependency.py"
+            source = "import dependency\nprint(dependency.value)\n"
+            dirs = [temp, str(ROOT / "lib")]
+            for promoting in (True, False, True):
+                module.write_text(("# pystachy: python-int\nvalue = 2 ** 64\n" if promoting else "value = 3\n"))
+                self.assertEqual(self.compile(source, dirs=dirs)[0], 0)
+                self.assertEqual(diagnostics.FILES, ["main.py", str(module)])
+                self.assertEqual(diagnostics.INTFILES, {1: True} if promoting else {})
+            module.write_text("# pystachy: python-int\n# pystachy: dynamic-any\nvalue = 3\n")
+            failed = self.compile(source, dirs=dirs)
+            self.assertEqual(failed[0], 1)
+            self.assertIn("cannot opt in to both dynamic Any and promoting ints", failed[2])
+            # (a program compiled after one that opts in keeps 64-bit ints)
+            self.assertIn("@pys_big_op", self.compile("# pystachy: python-int\nvalue = 2 ** 64\nprint(value)\n")[1])
+            plain = self.compile("value = 2 ** 64\nprint(value)\n")
+            self.assertEqual(plain[0], 0)
+            self.assertNotIn("@pys_big_", plain[1])
+            self.assertEqual(diagnostics.INTFILES, {})
 
     def test_restart_rebuilds_file_indices_and_opt_ins(self):
         original = driver.Gen.program

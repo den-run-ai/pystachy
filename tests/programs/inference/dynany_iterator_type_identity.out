@@ -1,0 +1,46 @@
+list list_iterator list_iterator
+True True False False
+11 11 12 12
+mixed type True True True
+list layouts list_iterator list_iterator
+True True False False
+tuple tuple_iterator tuple_iterator
+True True False False
+tuple layouts tuple_iterator tuple_iterator
+True True False False
+string str_ascii_iterator str_ascii_iterator
+True True False False
+dict dict_keyiterator dict_keyiterator
+True True False False
+dict keys dict_keyiterator dict_keyiterator
+True True False False
+dict key layouts dict_keyiterator dict_keyiterator
+True True False False
+dict value layouts dict_valueiterator dict_valueiterator
+True True False False
+dict item layouts dict_itemiterator dict_itemiterator
+True True False False
+set layouts set_iterator set_iterator
+True True False False
+range range_iterator range_iterator
+True True False False
+reverse range range_iterator range_iterator
+True True False False
+reverse sequence reversed reversed
+True True False False
+forward and reverse list list_iterator list_reverseiterator
+False False True True
+reverse list and dict list_reverseiterator dict_reversekeyiterator
+False False True True
+reverse list and tuple list_reverseiterator reversed
+False False True True
+forward list and tuple list_iterator tuple_iterator
+False False True True
+dict keys and values dict_keyiterator dict_valueiterator
+False False True True
+user name and typed list_iterator list_iterator
+False False True True
+user name and dynamic list_iterator list_iterator
+False False True True
+99
+[exit 0]

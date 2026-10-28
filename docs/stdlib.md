@@ -20,7 +20,7 @@ adaptations, deviations and tests. The [language guide](language.md) explains th
 | Unchanged CPython sources | `bisect`, `colorsys`, `stat` constants and predicates, path-string helpers from `posixpath` / `genericpath`, `curses.ascii`, `this`, `struct`, on a port of `_struct` |
 | Localized CPython ports | `heapq` selection helpers, `difflib.SequenceMatcher`, `getopt`, `gettext` (its import, `NullTranslations`, `textdomain()` and `bindtextdomain()`), `fnmatch`, `textwrap`, `string.Template` / `Formatter`, selected `operator` functions and getters, selected `statistics` operations, `random`, `urllib.parse`, `html`, `keyword`, `token`, `shlex`, `datetime` (without the local time zone), `codecs` (without the codec registry), `warnings` (filters and `catch_warnings()`; `warn()` shows no location), `weakref` (its `ref`, without the weak containers), `contextlib` (`contextmanager`, `closing`, `nullcontext`, `suppress`), `tomllib` (`loads()`, compiled with [dynamic `Any`](dynamic-any.md) values; no binary-file `load()`) and the incremental `html.parser` probe |
 | Larger port | `re`: CPython's Python parser/compiler plus a matcher adapted from its C engine |
-| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper` / `IncrementalNewlineDecoder` (also as `_io`'s), `csv`, `json` (a bounded native prototype for recursive values), `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`, `itertools` (every function, on generators), which CPython builds in, `abc`, and `types` (`MappingProxyType`, a read-only view of a dict, and `GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
+| Subset implementations | `functools.cache` / `lru_cache` / `reduce` / `cmp_to_key` / `partial`, `collections` `deque` / `defaultdict` / `OrderedDict` / `Counter`, `io.StringIO` / `BytesIO` / `TextIOWrapper` / `IncrementalNewlineDecoder` (also as `_io`'s), `csv`, `json` (bounded native recursive values, including default `JSONDecoder` prefix decoding), `_string`'s format parsers, `_pyrandom`, the Mersenne Twister under `random`, `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`, `itertools` (every function, on generators), which CPython builds in, `abc`, and `types` (`MappingProxyType`, a read-only view of a dict, and `GenericAlias`, for `__class_getitem__ = classmethod(GenericAlias)`) |
 
 The non-stdlib [`mpz` module](mpz.md) offers explicit arbitrary-precision integers
 through a subset class and a packed-limb C backend. It does not change ordinary
@@ -121,6 +121,8 @@ still raises an explicit unsupported-operation error (#486), and existing native
 retain their storage types.
 For opt-in code, the [comparison acceptance matrix](dynamic-any.md#operations) distinguishes
 supported mixed-container and object operations from the remaining skipped-body cases.
+The [iteration contract](dynamic-any.md#iteration) covers custom iterators, ranges and
+boxable generators through `Any`; existing module/API coverage in the table is unchanged.
 
 Prioritize a small port when it offers a useful application without requiring a broad dynamic
 feature. Broader inference, generic typing, library coverage and optimizations remain areas of

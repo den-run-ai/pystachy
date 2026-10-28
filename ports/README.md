@@ -10,6 +10,7 @@ support for its complete upstream package or dependencies.
 |---|---|---|
 | [convertdate](convertdate/PORT.md) | 2.5.1 | Arithmetic calendar conversions and selected holidays |
 | [iniconfig](iniconfig/PORT.md) | 2.3.1 | INI parsing and configuration access with conversions |
+| [json_repair](json_repair/PORT.md) | 0.64.1 | In-memory, schema-free repair with dynamic `Any`; signed 64-bit integers |
 | [jdcal](jdcal/PORT.md) | 1.4.1 | Gregorian/Julian ↔ split Julian dates |
 | [ordered-set](ordered_set/PORT.md) | 4.1.0 | Insertion-ordered sets of strings |
 | [pylev](pylev/PORT.md) | 1.4.0 | Edit distances for strings and typed sequences |

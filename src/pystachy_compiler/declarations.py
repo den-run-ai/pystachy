@@ -2,13 +2,16 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
-from src.pystachy_compiler.diagnostics import Rejoin, shown, where
+from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
+from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
     ANYUSE,
+    BIG,
+    BIGOPT,
     CLASSVAR,
     CTYPES,
     EXCATTRS,
@@ -81,6 +84,19 @@ def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
     # In a recursive template, a two-item tuple may double this on every instance.
     # Recursive value aliases have finite self edges in mutable storage. Only
     # fold the exact element/value type; never widen an existing container.
+    # A promoting int is stored as a 64-bit int in every composite (bigints.py: NARROW), but for a
+    # tuple's items and the int | None of one (BIGOPT), whose box holds it; a tuple's int | None is
+    # an opt[int]
+    if base == "tuple":
+        ts = [x.replace(BIGOPT, "opt[int]") for x in ts]
+    elif not (base == "opt" and ts == [BIG]):
+        ts = [x.replace(BIG, "int") for x in ts]
+    if int_lists() and (base == "callable" or "callable[" in "".join(ts)):
+        # (but for a Callable's parameters and result that are ints or int | None, in a program
+        # whose containers hold promoting ints: promoting ints, one signature in every module and
+        # in any type that holds it, which an adapter converts to and from a function's, checked
+        # where it takes a 64-bit int)
+        ts = targs(callable_ints(base + "[" + ",".join(ts) + "]")) if base == "callable" else [callable_ints(x) for x in ts]
     if canon and base == "list" and len(ts) == 1 and any_item(ts[0]):
         # a list of Any values or Any containers is a list[Any], whose items are boxes, and so is a
         # dict's of them a dict[Any, Any], keys boxed too: so it becomes an Any value, and an Any
@@ -153,6 +169,8 @@ def gen_ann(self, n: Node) -> str:
         if s in self.tmpl:
             why = "namedtuple() made it, whose fields each call types" if s in self.cnts else "its __init__ takes a parameter without an annotation"
             return f"!class {shown(s)} is a class template ({why}): each call makes an object of a specialization of its own, which an annotation cannot name here; leave the annotation out"
+        if s == "int" and self.int_policy(n.line):
+            return BIG  # (a promoting int: bigints.py)
         if s == "int" or s == "float" or s == "bool" or s == "str" or s == "bytes" or s in self.classes:
             return s
         if s == "range" and RANGEC in self.classes:
@@ -194,7 +212,7 @@ def gen_ann(self, n: Node) -> str:
     elif k == "binop" and n.s == "|" and n.kids[0].kind == "None":
         return self.opt(self.ann(n.kids[1]), n.kids[1])  # None | T
     elif k == "binop" and n.s == "|":
-        ts: list[str] = [self.ann(x) for x in self.union_members(n, [])]
+        ts: list[str] = narrowed([self.ann(x) for x in self.union_members(n, [])])
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -249,11 +267,12 @@ def gen_ann(self, n: Node) -> str:
         if base == "union" and len([x for x in a if self.pathlike(x)]) > 0:
             return self.path_union(a)
         if base == "tuple" and len(a) == 2 and a[1].kind == "ellipsis":
-            t = self.ann(a[0])
+            t = narrowed([self.ann(a[0])])[0]
             if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
                 return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
             return self.ctype("vtuple", [t])
-        ts = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a]
+        # (a tuple holds promoting ints, tslots, and so does an int | None: Optional[int], Union[int, None])
+        ts = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a] if base == "optional" or base == "union" else narrowed([self.ann(x) for x in a])
         for t in ts:
             if t.startswith("!"):
                 return t
@@ -276,6 +295,7 @@ def gen_ann(self, n: Node) -> str:
                 return us[0]  # Union[T]
             if len(us) == 2 and (us[0] == "None" or us[1] == "None"):
                 return self.opt(us[0] if us[1] == "None" else us[1], [x for x in a if x.kind != "None"][0])  # Union[T, None]
+            us = narrowed(us)  # (a union holds 64-bit ints)
             fam = self.class_family(us)
             return fam if fam != "" else self.union_type(us)
     if self.typing_ref(n) == "Final":
@@ -901,6 +921,8 @@ def gen_optional(self, t: str) -> str:
     # the type of a value that is a t or None, "" if there is none (a dynamic value may be None)
     if t == "dyn":
         return t
+    if t == BIG:
+        return BIGOPT  # (a box of the promoting int: bigints.py)
     if self.rec_type(t) != t:
         return self.rec_fold(self.optional(self.rec_type(t)))
     if t in self.classes or is_opt(t):
@@ -933,6 +955,8 @@ def gen_join(self, a: str, b: str) -> str:
     # make T | None), or "" (a dynamic value and one that boxes: a dynamic value)
     if a == b or self.widens(b, a):
         return a
+    if (a == BIG and b == "int") or (b == BIG and a == "int"):
+        return BIG  # (a promoting int holds both: bigints.py)
     if (a == "dyn" and self.boxes(b, a)) or (b == "dyn" and self.boxes(a, b)):
         return "dyn"
     if self.widens(a, b):
@@ -1018,6 +1042,8 @@ def gen_boxwider(self, a: str, b: str) -> str:
             w = self.optional(x)
         elif w == "" and (is_sopt(x) and y == unopt(x) or x == "None" and self.isnum(y)):
             w = self.optional(y)
+        elif w == "" and ((x == BIG and y == "int") or (y == BIG and x == "int")):
+            w = BIG  # (a promoting int holds both: bigints.py)
         elif w == "":
             w = self.boxwider(x, y)
         if w == "":
@@ -1042,7 +1068,8 @@ def gen_widens(self, a: str, b: str) -> bool:
     if a == b:
         return True
     if is_opt(b):
-        return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b)))  # (an int | None is a box)
+        # (an int | None is a box, also one of a promoting int where the value fits: bigints.py)
+        return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b))) or (b == BIGOPT and a == "opt[int]")
     if is_gen(a) and is_gen(b) and gsend(b) == "None" and gelem(a) == gelem(b):
         return True  # (a generator that takes S from send() as one that next() alone resumes)
     if b in self.classes:
@@ -1364,9 +1391,9 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.ret = ""  # (-> Box: decided by its first return, as an unannotated one is)
     elif d.kids[1].kind != "noann":
         f.ret = self.typeof(d.kids[1])
-    elif cls != "" and d.s == "__len__" and has_value_return(d.kids[2]):
-        # bool is also a legal length; infer it so an explicit obj.__len__()
-        # keeps returning bool while len(obj) converts it to int.
+    elif cls != "" and (d.s == "__len__" or d.s == "__hash__") and has_value_return(d.kids[2]):
+        # bool is also a legal length or hash; infer it so an explicit obj.__len__()
+        # keeps returning bool while len(obj) converts it to int (and so hash()).
         f.generic = True
         f.ret = ""
     elif cls != "" and d.s in ["__str__", "__repr__", "__bool__"] and has_value_return(d.kids[2]):
@@ -1645,7 +1672,7 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
             t = self.guess(st.kids[1], FnInfo("", "", ci.node, ""))
             bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
-            if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt)):
+            if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
             if t == "" and ci.mod == "":
                 self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: T = ...)")
@@ -2198,6 +2225,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return "str"
     if k == "unary" and e.s != "not":
         t = self.guess(e.kids[0], f)
+        if e.s == "-" and (t == "int" or t == "bool") and self.int_policy(e.line):
+            return BIG  # (as unary() computes it in a module whose ints promote: bigints.py)
         # (-True is -1, as unary() computes it; -o is what o.__neg__ returns, unknown as for o + o)
         return "int" if t == "bool" else "" if t in self.classes and UNARY[e.s] in self.classes[t].methods else t
     if k == "name" and e.s in f.params:
@@ -2376,6 +2405,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
     if k == "binop":
         a = self.guess(e.kids[0], f)
         b = self.guess(e.kids[1], f)
+        if (self.isnum(a) or a == BIG) and (self.isnum(b) or b == BIG) and (a == BIG or b == BIG or (a != "float" and b != "float" and e.s in PROMOTES and self.int_policy(e.line))):
+            # (a promoting int, as arith() computes it: bigints.py)
+            return "float" if e.s == "/" or a == "float" or b == "float" else BIG
         if self.isnum(a) and self.isnum(b):
             if e.s == "/" or a == "float" or b == "float":
                 return "float"
@@ -2384,9 +2416,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return a
         if e.s == "+" and a.startswith("tuple[") and b.startswith("tuple["):
             return self.ctype("tuple", targs(a) + targs(b))
-        if e.s == "*" and (is_list(a) or a == "str") and (b == "int" or b == "bool"):
+        if e.s == "*" and (is_list(a) or a == "str") and b in ["int", "bool", BIG]:
             return a  # [n] * n
-        if e.s == "*" and (is_list(b) or b == "str") and (a == "int" or a == "bool"):
+        if e.s == "*" and (is_list(b) or b == "str") and a in ["int", "bool", BIG]:
             return b
     return ""
 
