@@ -107,11 +107,11 @@ def search_type(t: str, et: str) -> str:
     return et
 
 
-def held_shape(t: str) -> str:
+def held_shape(t: str, j: str = "J") -> str:
     # runtime.c's descriptor of the layout of a tuple of ints that a list holds (held), for
-    # pys_list_hold and pys_list_narrow_held: J an int, T a tuple that holds one, i an item they do
-    # not read
-    return "T" + str(len(targs(t))) + "".join(["J" if x == "int" else held_shape(x) if int_tuple(x) else "i" for x in targs(t)])
+    # pys_list_hold and pys_list_narrow_held: J an int (its own ints j: i where the caller reads
+    # them), T a tuple that holds one, i an item they do not read
+    return "T" + str(len(targs(t))) + "".join([j if x == "int" else held_shape(x) if int_tuple(x) else "i" for x in targs(t)])
 
 
 def big_tree(t: str) -> bool:
@@ -702,6 +702,32 @@ def gen_held_narrow(self, v: Val) -> Val:
     if is_list(v.t) and held(elem(v.t)) != elem(v.t):
         self.rt("pys_list_narrow_held", "void", [f"ptr {v.v}", f"ptr {self.sconst(held_shape(elem(v.t)))}"])
     return v
+
+
+def gen_big_items(self, o: Val) -> Val:
+    # o.items() of dict o, whose (key, value) tuples hold ints (int_tuple), in a program whose lists
+    # hold them as tuples of promoting ints (held): pys_dict_big_items makes them in that layout, an
+    # int key or value with its Mpz word from the dict's (as pys_dict_big_popitem's), and a tuple of
+    # ints, which the dict holds as 64-bit ints, as pys_list_hold makes it. Val("", "") for other dicts
+    t = self.ctype("tuple", targs(o.t))
+    if held(t) == t:
+        return Val("", "")
+    return Val(self.rt("pys_dict_big_items", "ptr", [f"ptr {o.v}", f"ptr {self.sconst(held_shape(t))}"]), self.ctype("list", [t]))
+
+
+def gen_update_pairs(self, d: str, v: Val, kv: list[str]) -> None:
+    # dict d, of key and value types kv, updated by v, a list of (key, value) tuples, one insertion
+    # per pair: in a program whose lists hold promoting ints (int_lists), an int key or value as the
+    # promoting int its pair holds (pys_dict_update_pairs_big, held), and a tuple of ints narrowed
+    # first (pys_list_narrow_held: the dict holds 64-bit ints in its tuples)
+    if not int_lists() or "int" not in kv:
+        self.rt("pys_dict_update_pairs", "void", [f"ptr {d}", f"ptr {self.held_narrow(v).v}"], self.key_fx(kv[0]))
+        return
+    shape = held_shape(elem(v.t), "i")
+    if "J" in shape:
+        self.rt("pys_list_narrow_held", "void", [f"ptr {v.v}", f"ptr {self.sconst(shape)}"])
+    ints = [f"i64 {1 if x == 'int' else 0}" for x in kv]
+    self.rt("pys_dict_update_pairs_big", "void", [f"ptr {d}", f"ptr {v.v}"] + ints, self.key_fx(kv[0]))
 
 
 def gen_list_hold(self, v: Val, et: str) -> Val:

@@ -2186,6 +2186,10 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             return dm
     if m == "popitem" and len(args) == 0 and (self.dict_int(o.t) or self.dict_bigkey(o.t)) and self.int_policy(self.line):
         return self.big_popitem(o)  # (keys and values past 64 bits: bigints.py)
+    if m == "items" and len(args) == 0 and is_dict(o.t):
+        bi = self.big_items(o)  # (tuples of promoting ints, as a list holds them: bigints.py)
+        if bi.t != "":
+            return bi
     if is_list(o.t) and m == "sort":
         rev = "0"
         keyv = Val("", "")
@@ -2541,8 +2545,10 @@ def gen_update(self, o: Val, args: list[Node]) -> Val:
         self.err(f"'{tname(x.t)}' object is not iterable")  # (CPython's TypeError)
     if x.t != "" and x.t != o.t and x.t != pairs:
         self.err(f"dict.update() of a {typestr(o.t)} takes a dict of its type, a {typestr(pairs)} or keyword arguments, not {typestr(x.t)}")
-    if x.t != "":
-        self.rt("pys_dict_update" if x.t == o.t else "pys_dict_update_pairs", "void", [f"ptr {o.v}", f"ptr {x.v if x.t == o.t else self.held_narrow(x).v}"], self.key_fx(kv[0]))
+    if x.t == o.t:
+        self.rt("pys_dict_update", "void", [f"ptr {o.v}", f"ptr {x.v}"], self.key_fx(kv[0]))
+    elif x.t != "":
+        self.update_pairs(o.v, x, kv)  # (their promoting ints: bigints.py)
     if kw.t != "":
         self.rt("pys_dict_update", "void", [f"ptr {o.v}", f"ptr {kw.v}"])
     return Val("null", "None")
@@ -2708,7 +2714,7 @@ def gen_dict_pairs(self, v: Val, want: str, found: str = "") -> Val:
         v = self.listcomp(mk("listcomp", "", self.line, [mk("name", "__item", self.line, []), item, self.vnode(v)]), "list[tuple[dyn,dyn]]")
         kv = ["dyn", "dyn"]
     d = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"])
-    self.rt("pys_dict_update_pairs", "void", [f"ptr {d}", f"ptr {self.held_narrow(v).v}"], self.key_fx(kv[0]))
+    self.update_pairs(d, v, kv)  # (their promoting ints: bigints.py)
     return Val(d, self.ctype("dict", kv))
 
 def gen_tmethod(self, o: Val, m: str, args: list[Node]) -> Val:

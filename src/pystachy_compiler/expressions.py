@@ -2840,9 +2840,10 @@ def gen_iter_ret(self, e: Node) -> Val:
     last = self.blk.code[-1] if len(self.blk.code) > 0 else Ins("", "", "")
     if last.op == "rt" and last.s == "list.hold" and len(self.blk.code) > 1:
         last = self.blk.code[-2]  # (the list of tuples of ints that a dict's view made: bigints.held_list)
-    if last.op == "rt" and (last.s == "dict.keys" or last.s == "dict.values" or last.s == "dict.items") and v.v == f"%t{last.r[0]}":
-        # (keys() is a list here; CPython's view iterator raises if the dict changes size)
-        self.err(f"iter() of a dict's {last.s[5:]}() in {self.curfn.name} is not supported: its iterator raises if the dict changes size; return iter(list(...)) of a copy")
+    if last.op == "rt" and (last.s == "dict.keys" or last.s == "dict.values" or last.s == "dict.items" or last.s == "dict.big_items") and v.v == f"%t{last.r[0]}":
+        # (keys() is a list here; CPython's view iterator raises if the dict changes size; big_items:
+        # the items() of tuples of promoting ints, bigints.big_items)
+        self.err(f"iter() of a dict's {'items' if last.s == 'dict.big_items' else last.s[5:]}() in {self.curfn.name} is not supported: its iterator raises if the dict changes size; return iter(list(...)) of a copy")
     if v.t == "str":
         v = Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
     if v.t == "bytes":

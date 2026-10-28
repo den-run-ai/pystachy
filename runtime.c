@@ -3877,14 +3877,22 @@ static I dpop(Dict *d, I k, I dflt, int has) {   /* d.pop(k) (has: d.pop(k, dflt
 }
 I pys_dict_pop(Dict *d, I k) { return dpop(d, k, 0, 0); }
 I pys_dict_pop_default(Dict *d, I k, I dflt) { return dpop(d, k, dflt, 1); }
+/* entry e's (key, value) tuple; big: of promoting ints (bigints.py, utils.tslots), whose key or
+   value past 64 bits holds -2**63 and its Mpz in slot 2 or 3, else of 64-bit ints. (That tuple is
+   one of promoting ints too, where neither slot holds -2**63: only there is an Mpz word read) */
+static inline I *dpair(Dict *d, I e, int big) {
+  I *t;
+  if (big && (d->keys[e] == INT64_MIN || d->vals[e] == INT64_MIN)) { t = pys_alloc(32); t[2] = (I)kbig(d, e); t[3] = (I)dbig(d, e); }
+  else t = pys_alloc(16);
+  t[0] = d->keys[e]; t[1] = d->vals[e];
+  return t;
+}
 /* d.popitem() (dict_popitem_impl): the last entry's (key, value) tuple. The entries end where it
    was, as CPython sets dk_nentries, so the holes before it are not walked again: popping every
    item takes linear time. Its idx slot is found by its position (lookdict_index), not its key,
    and stays deleted, so the entries cut off still fill the table until it is rebuilt (CPython
    does not give dk_usable back): otherwise inserts after pops would use up its empty slots.
-   big: the tuple of promoting ints (bigints.py, utils.tslots), whose key or value past 64 bits
-   holds -2**63 and its Mpz in slot 2 or 3; else a tuple of 64-bit ints. (That tuple is one of
-   promoting ints too, where neither slot holds -2**63: only there is an Mpz word read) */
+   big: the tuple of promoting ints (dpair) */
 static inline __attribute__((always_inline)) I *dpopitem(Dict *d, int big) {
   if (!d->len) pys_fail("KeyError: 'popitem(): dictionary is empty'");
   I e = d->n - 1;
@@ -3893,10 +3901,7 @@ static inline __attribute__((always_inline)) I *dpopitem(Dict *d, int big) {
   uint64_t h = d->hs[e], m = dmask(d), i = h & m, p = h;
   DICT_PROBE();
   while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
-  I *t;
-  if (big && (d->keys[e] == INT64_MIN || d->vals[e] == INT64_MIN)) { t = pys_alloc(32); t[2] = (I)kbig(d, e); t[3] = (I)dbig(d, e); }
-  else t = pys_alloc(16);
-  t[0] = d->keys[e]; t[1] = d->vals[e];
+  I *t = dpair(d, e, big);
   d->idx[i] = -1; d->hs[e] = d->kind & KTAG ? (uint64_t)-1 : 0; d->keys[e] = d->vals[e] = 0; dbig_clear(d, e); kbig_clear(d, e); d->len--; d->cut += d->n - e; d->n = e;
   return t;
 }
@@ -4053,7 +4058,22 @@ List *pys_dict_values(Dict *d) { return col(d, d->vals); }
 List *pys_dict_items(Dict *d) {
   if (dict_has_big_key(d)) pys_fail(NARROW);   /* (a tuple's int is a 64-bit one here: and its values, pys_dict_narrow) */
   List *l = pys_list_new(d->len);
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) { I *t = pys_alloc(16); t[0] = d->keys[e]; t[1] = d->vals[e]; l->a[l->len++] = (I)t; }
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = (I)dpair(d, e, 0);
+  return l;
+}
+/* and those of a dict whose (key, value) tuples a program's lists hold as tuples of promoting ints
+   (the compiler's bigints.held), in that layout, which s describes (bigints.held_shape): J an int
+   key or value, which dpair gives its Mpz word, T a tuple of ints, which the dict holds as 64-bit
+   ints (thold) */
+List *pys_dict_big_items(Dict *d, Str *s) {
+  const char *k = s->s + 2, *v = skip(k);
+  List *l = pys_list_new(d->len);
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) {
+    I *t = dpair(d, e, 1);
+    if (*k == 'T') t[0] = thold(t[0], k);
+    if (*v == 'T') t[1] = thold(t[1], v);
+    l->a[l->len++] = (I)t;
+  }
   return l;
 }
 /* copies, as CPython 3.13 makes them, since their tables decide what a loop that changes the copy
@@ -4103,6 +4123,18 @@ void pys_dict_update(Dict *d, Dict *o) {
 /* d.update(pairs) of a list of (key, value) tuples, and dict.fromkeys(keys, v) of a list: one
    insertion per item, as PyDict_MergeFromSeq2 and _PyDict_FromKeys make them */
 void pys_dict_update_pairs(Dict *d, List *l) { for (I i = 0; i < l->len; i++) { I *t = (I *)l->a[i]; pys_dict_set(d, t[0], t[1]); } }
+/* and of such a list that a program's lists hold as tuples of promoting ints (bigints.held), into a
+   dict of ints or of int keys: kj (vj) says that the key (the value) is an int, whose Mpz past 64
+   bits is in the tuple's slot 2 (3), read where its slot holds -2**63 (dpair's layout) */
+void pys_dict_update_pairs_big(Dict *d, List *l, I kj, I vj) {
+  for (I i = 0; i < l->len; i++) {
+    I *t = (I *)l->a[i];
+    Mpz *k = kj && t[0] == INT64_MIN ? (Mpz *)t[2] : NULL, *m = vj && t[1] == INT64_MIN ? (Mpz *)t[3] : NULL;
+    if (k) { I e = dbput(d, k, hbig(k), t[1]); if (m) { dbig_make(d); d->vb[e] = (I)m; } }
+    else if (m) pys_dict_set_big(d, t[0], 0, m);
+    else pys_dict_set(d, t[0], t[1]);
+  }
+}
 __attribute__((noinline)) static void fromkeys_big(Dict *d, List *l, I v) {   /* of a list of ints that may hold one past 64 bits (BIGIDS: kbig) */
   for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m) dbput(d, m, hbig(m), v); else pys_dict_set(d, l->a[i], v); }
 }

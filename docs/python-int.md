@@ -12,8 +12,9 @@ Modules without the comment, including the compiler, `runtime.py` and `lib/`, ke
 64-bit `int` of the [language guide](language.md). The roadmap is #907; this page describes its
 step 3, the compiler-level integer, and the first parts of step 6: tuples, lists, dicts, sets and
 generators. Values past 64 bits stay in variables, arguments, returns, fields, module variables,
-closures, tuples, lists of ints and of tuples of ints, the keys and values of dicts of ints, sets
-of ints and the values generators yield and return; the other containers still hold 64-bit ints
+closures, tuples, lists of ints and of tuples of ints, the keys and values of dicts of ints (also
+in the tuples of their `items()` and the pairs that `dict()` takes), sets of ints and the values
+generators yield and return; the other containers still hold 64-bit ints
 ([boundaries](#64-bit-boundaries)).
 
 ```python
@@ -94,10 +95,12 @@ print(int("123456789012345678901234567890") % 97)  # 52
 - The values of a dict of ints are promoting ints, in a program where a module opts in and none
   opts in to [dynamic `Any`](dynamic-any.md), as a list's items are: item assignment, `+=`,
   displays, comprehensions, `setdefault()`, `update()`, `dict()` and `copy()` store values past
-  64 bits, and in a module that opts in, indexing, `get()`, `pop()`, `setdefault()`, `popitem()`
-  and iteration over `values()` and `items()` read them. `values()` makes a list of ints that
-  holds them, and `repr()`, `==` and `!=` take them. A memo table
-  (`memo[n] = fib(n - 1) + fib(n - 2)`) is exact.
+  64 bits, also from pairs (`dict()` and `update()` of a list of tuples, `zip()`, `enumerate()`, a
+  generator or another dict's `items()`), and in a module that opts in, indexing, `get()`, `pop()`,
+  `setdefault()`, `popitem()` and iteration over `values()` and `items()` read them. `values()`
+  makes a list of ints that holds them, `items()` a list of tuples that does (`sorted(d.items())`),
+  and `repr()`, `==` and `!=` take them. A memo table (`memo[n] = fib(n - 1) + fib(n - 2)`) is
+  exact.
 - A set or frozenset of ints holds promoting ints, in a program where a module opts in and none
   opts in to [dynamic `Any`](dynamic-any.md), at CPython's hashes, so that loops, `repr()` and
   `pop()` see CPython's order: displays, comprehensions, `add()`, `update()`, `set()` of a list or
@@ -106,11 +109,12 @@ print(int("123456789012345678901234567890") % 97)  # 52
   read them. `sorted()`, `min()`, `max()`, `sum()`, `list()`, `repr()`, comparisons and copies
   take every element.
 - The keys of a dict of int keys are promoting ints too, as its values are: displays,
-  comprehensions, item assignment, `op=`, `update()`, copies, `dict.fromkeys()` and `setdefault()`
-  store keys past 64 bits; indexing, `in`, `del`, `get()` and `pop()` find them exactly (also by an
-  `int | None`), and in a module that opts in, iteration over the dict and its `items()` and
-  `popitem()` read them. `keys()` makes a list of ints that holds them, and `repr()`, `==`,
-  `!=` and the sets of a dict's keys take them.
+  comprehensions, item assignment, `op=`, `update()`, copies, `dict.fromkeys()`, `setdefault()`
+  and `dict()` and `update()` of pairs store keys past 64 bits; indexing, `in`, `del`, `get()` and
+  `pop()` find them exactly (also by an `int | None`), and in a module that opts in, iteration over
+  the dict and its `items()` and `popitem()` read them. `keys()` makes a list of ints that holds
+  them, `items()` a list of tuples that does, and `repr()`, `==`, `!=` and the sets of a dict's keys
+  take them.
 - A generator yields and returns promoting ints, in a program where a module opts in: a `for`
   loop, a comprehension, `next()`, unpacking, `send()` and `throw()` in a module that opts in read
   them, and so do `list()`, `sorted()`, `sum()`, `min()`, `max()`, `in`, `enumerate()`, `zip()`
@@ -191,12 +195,15 @@ item's slot says where to read a pointer the tuple has. Every store gives it tha
 promoting ints as it is, and a tuple of 64-bit ints as it is too, unless one of its ints is
 -2\*\*63, which a new tuple of that layout holds, with a null pointer; a list that `runtime.c`
 makes of a dict's keys, values or items or of a set's elements gets that layout for its tuples
-(`pys_list_hold`). The descriptors of the list's items say `J` for the ints, so that its walks
-read every item's promoting ints (printing, comparisons, searches, sorting), whatever module calls
-them. A read in a module that opts in gives the tuple of promoting ints as it is; in another, the
-tuple of its 64-bit ints, which it is once a test has found no pointer in it (`OverflowError`
-past 64 bits), as a list's int is read there; and so do the runtime functions that take a list's
-tuples into 64-bit storage (`pys_list_narrow_held`).
+(`pys_list_hold`). The tuples of a dict's `items()` are made in it, with an int key's or value's
+pointer from the dict's companion array (`pys_dict_big_items`, as `popitem()` makes its tuple), and
+`dict()` and `update()` of such a list read a pair's int key or value so into the dict
+(`pys_dict_update_pairs_big`). The descriptors of the list's items say `J` for the ints, so that
+its walks read every item's promoting ints (printing, comparisons, searches, sorting), whatever
+module calls them. A read in a module that opts in gives the tuple of promoting ints as it is; in
+another, the tuple of its 64-bit ints, which it is once a test has found no pointer in it
+(`OverflowError` past 64 bits), as a list's int is read there; and so do the runtime functions
+that take a list's tuples into 64-bit storage (`pys_list_narrow_held`).
 
 A dict of ints holds a value that fits in its 8-byte slot, as before, and one past 64 bits as
 -2\*\*63 there, with its pointer in a companion array beside the entries, which the collector
@@ -248,9 +255,9 @@ for a C `long`), where CPython goes on with the bigger int:
 
 - The keys of dicts of other types than `int`, the items of lists of other types than `int` and
   tuples of ints (an `int | None` in a list, also as a tuple's item, holds a 64-bit int), a list's
-  tuple that `set()`, `frozenset()`, `dict()`, `dict.fromkeys()`, `d.update()` or a set's methods
-  take, the values of dicts of other types than
-  `int` and the tuples that `items()` makes of a dict of ints (or of int keys), the items and values
+  tuple that `set()`, `frozenset()`, `dict.fromkeys()` or a set's methods take, the tuple of ints
+  of a pair that `dict()` or `d.update()` takes (`dict([(1, (2 ** 64, 1))])`), the values of dicts
+  of other types than `int`, the items and values
   of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
   items, unions other than `int | None` (also where a join makes one, as
   for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
@@ -393,7 +400,11 @@ the first measurements, before the inline paths, in
   by an `int | None`; `python_int_hash_collisions.py`: probe chains of 120 keys and
   elements past 64 bits of one CPython hash beside 64-bit ones of the same hash, in dicts and sets;
   `python_int_dict_popitem.py`: `popitem()` of dicts of ints and of int keys, and its tuple;
-  `python_int_dict_bool_pop.py`: `pop()` of a bool key of a dict of ints.
+  `python_int_dict_bool_pop.py`: `pop()` of a bool key of a dict of ints;
+  `python_int_dict_items.py`: the tuples of `items()` of dicts of ints and of int keys (also
+  holding tuples of ints), read, sorted, searched and compared, and `dict()` and `update()` of
+  pairs, `zip()`, `enumerate()`, generators and `items()`, also in a module that does not opt in
+  (`tests/python_int_modules/fixed_dict_pairs.py`).
 - `tests/programs/numbers/python_int_recursion.py`: recursive functions and methods, one with a
   `dict[int, int]` memo; `python_int_forward_ref.py`: quoted annotations that name promoting ints
   ([provenance](../tests/upstream/python-int.md)).

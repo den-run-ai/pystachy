@@ -65,6 +65,8 @@ from src.pystachy_compiler.bigints import (
     gen_big_list_store as bigints_big_list_store,
     gen_list_coerce as bigints_list_coerce,
     gen_list_hold as bigints_list_hold,
+    gen_big_items as bigints_big_items,
+    gen_update_pairs as bigints_update_pairs,
     gen_held_list as bigints_held_list,
     gen_search_hold as bigints_search_hold,
     gen_held_narrow as bigints_held_narrow,
@@ -1633,6 +1635,12 @@ class Gen:
 
     def list_hold(self, v: Val, et: str) -> Val:
         return bigints_list_hold(self, v, et)
+
+    def big_items(self, o: Val) -> Val:
+        return bigints_big_items(self, o)
+
+    def update_pairs(self, d: str, v: Val, kv: list[str]) -> None:
+        bigints_update_pairs(self, d, v, kv)
 
     def held_value(self, v: Val) -> Val:
         return bigints_held_value(self, v)
