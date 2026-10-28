@@ -8,12 +8,13 @@
 # display of both), or sent to a generator, given to range(), added by sum() among floats, in a
 # NamedTuple that may be None (a parameter) hashed as the tuple of its fields, a dict's tuple that
 # get() gives where it may be None, or a list's item (a tuple's too), a dict's key, a set's element
-# or a generator's value that tuple() or a module that does not opt in (random) reads, or a
-# Counter's key, raises OverflowError, where CPython goes on with the bigger int.
+# or a generator's value that tuple() or a module that does not opt in (random) reads, or the
+# result of a Callable (a defaultdict's factory), raises OverflowError, where CPython goes on with
+# the bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected, as in a list, a dict or a set of tuples of ints.
 import random
-from collections import Counter
+from collections import defaultdict
 from typing import Generator, NamedTuple
 
 
@@ -48,10 +49,11 @@ try:
     random.shuffle([big, big + 1])
 except OverflowError as e:
     print("random.shuffle():", e)
+factory: defaultdict[str, int] = defaultdict(lambda: big)
 try:
-    print(Counter([big, big]))
+    print(factory["k"])
 except OverflowError as e:
-    print("Counter key:", e)
+    print("defaultdict's factory:", e)
 try:
     print({"k": (big, 1)}.get("k"))
 except OverflowError as e:

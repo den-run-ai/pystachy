@@ -314,9 +314,10 @@ ITERS = "_pystachy_iterators"  # lib's module of the iterator classes iter() mak
 READ_HELPERS: list[str] = [ITERS, "heapq", "bisect"]
 # lib's definitions that compile as if their module opted in to promoting ints, in a program where a
 # module does and none opts in to dynamic Any (bigints.int_policy, Loader.int_spans): Counter, whose
-# counts are ints of its own (its dict's values and its methods' parameters and results), and the
-# key by which most_common() sorts them
-INT_HELPERS: dict[str, list[str]] = {"collections": ["Counter", "_count"]}
+# counts are ints of its own (its dict's values and its methods' parameters and results), the key by
+# which most_common() sorts them, and the function by which it counts an iterable's items, which
+# reads them (a Counter's keys are promoting ints where its type variable binds an int, specialize)
+INT_HELPERS: dict[str, list[str]] = {"collections": ["Counter", "_count", "_count_elements"]}
 TEXTVIEW = "re"  # lib's regex engine, which reads a str whose every byte is a code point in place (__pys_text_bytes)
 RANGES = "_pystachy_range"  # lib's module of the class of range objects, range() as a value (Loader.program)
 RANGEC = "_pystachy_range$range"  # (that class)

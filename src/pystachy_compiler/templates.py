@@ -1,7 +1,7 @@
 """Templates component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
-from src.pystachy_compiler.diagnostics import shown, where
+from src.pystachy_compiler.diagnostics import int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_rebinds, comparison_reserve_fields
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
@@ -45,6 +45,13 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     init = t.methods["__init__"]
     # (an annotated parameter's argument has its type, as call_fn coerces it)
     ts = [init.ptypes[i + 1] if i + 1 < len(init.ptypes) and init.ptypes[i + 1] != "" else ts[i] for i in range(len(ts))]
+    if int_lists() and c in self.tparams:
+        # (in a program where a module opts in to promoting ints, and none to dynamic Any, whose
+        # values cannot hold them, an int that binds a type variable of generic class c, by an
+        # argument or by an annotation in any module, is a promoting int: its specializations for
+        # ints are one class, keyed and laid out so, bigints.py)
+        ts = [promoted(ts[i]) if i + 1 >= len(init.ptypes) or init.ptypes[i + 1] == "" else ts[i] for i in range(len(ts))]
+        given = {x: promoted(given[x]) for x in given}
     doing = c + ("[" if named else "(") + ",".join(ts) + ")"
     doing += "".join([f";{x}={given[x]}" for x in self.tparams.get(c, []) if x in given])
     doing += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])  # (literal_class)
@@ -87,6 +94,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     line = self.line
     if c in self.tparams:
         s.tvars = self.bind(c, ts, given)  # (before its fields, which its type variables may type)
+        if int_lists():
+            s.tvars = {x: promoted(s.tvars[x]) for x in s.tvars}  # (as above: an int that an item binds, list[T] of a list[int])
     if named:
         fi.ptypes = [name] + self.named_params(c, init.node)
     elif c in self.tparams:
@@ -171,6 +180,11 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     self.selfcls = sel
     self.making.pop()
     return name
+
+def promoted(t: str) -> str:
+    # what a type variable bound to t is, in a program whose containers hold promoting ints
+    # (int_lists): a promoting int for an int (specialize), else t
+    return BIG if t == "int" else t
 
 def gen_names_tv(self, a: Node, tvs: list[str]) -> bool:
     # does annotation a (also as a string) mention one of type variables tvs

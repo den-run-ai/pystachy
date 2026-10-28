@@ -386,8 +386,9 @@ above apply to well-formed text (with the surrogate exception described above).
   program where no module opts in to dynamic `Any`, in lists of ints and of tuples of ints, the
   keys and values of dicts of ints and of tuples of ints (also in the tuples of their `items()`
   and the pairs that `dict()` takes), sets of ints and of tuples of ints, the iterators that
-  `iter()` makes of them, the lists that `heapq` and `bisect` change and the counts of
-  `collections.Counter`. Other containers and the
+  `iter()` makes of them, the lists that `heapq` and `bisect` change, the counts of
+  `collections.Counter`, and the specializations of generic classes for ints (their fields,
+  parameters, results and containers of the type variable). Other containers and the
   tuples and `int | None` items they hold, a tuple's `int | None` items, other unions, the values
   sent to a generator, the code of modules that do not opt in (their `int` and `int | None`
   parameters, and their reads of those containers), `Callable` signatures, and builtins and
