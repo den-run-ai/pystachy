@@ -1,0 +1,38 @@
+default [1, false]
+raw 3 ' \t\nnull \r'
+value 42
+calls 1
+raw 0 '\u2003null'
+value 42
+calls 1
+raw 2 ' \né🌲 \tX'
+json error Extra data 6 2 5
+calls 1
+raw 0 'null\u2003'
+json error Extra data 4 1 5
+calls 1
+raw 1 ' x'
+end error -5 Extra data 1
+calls 1
+raw 1 ' x'
+end error 0 Extra data 1
+calls 1
+raw 1 ' x'
+end error 1 Extra data 1
+calls 1
+raw 1 ' x'
+end 2 42
+calls 1
+raw 1 ' x'
+end 3 42
+calls 1
+raw 1 ' x'
+end 8 42
+calls 1
+raising 2
+value error decoder override
+failed calls 1
+raising 2
+unicode error 'ascii' codec can't decode byte 0xff in position 0: decoder override
+failed calls 1
+[exit 0]
