@@ -707,8 +707,8 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   `Any` values yet.
 - Rejected at compile time where an argument is an `Any` value: `divmod()`, `round()`,
   `chr()`, `ord()`, `bin()`, `hex()`, `oct()`, `dict()`, `tuple()` (`tuple(list(x))` works),
-  `reversed()`, `iter()`, `next()`, `getattr()`, `hasattr()`, `setattr()` and `del` of an
-  attribute.
+  `getattr()`, `hasattr()`, `setattr()` and `del` of an attribute. The supported forms of
+  `iter()`, `next()` and `reversed()` are described in [Iteration](#iteration).
 
 ## Measurements
 
