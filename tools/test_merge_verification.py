@@ -154,6 +154,13 @@ class ContractTests(unittest.TestCase):
             self.assertEqual(groups["opt-off-" + shard], ["bootstrap", "tests-opt-off-" + shard])
         self.assertEqual(groups["benchmarks"], ["bootstrap", "benchmarks"])
         self.assertEqual(groups["scaling"], ["bootstrap", "scaling-0", "scaling-1"])
+        # (all lists the steps in the order a run of all records them: the contracts' steps in their
+        # group's order, as the lanes report them, after the opt-in sweeps and before scaling)
+        contracts = groups["contracts"][1:]
+        at = groups["all"].index(contracts[0])
+        self.assertEqual(groups["all"][at:at + len(contracts)], contracts)
+        self.assertTrue(groups["all"][at - 1].startswith("python-int-optin-"))
+        self.assertEqual(groups["all"][at + len(contracts):], groups["scaling"][1:])
         for group in ("all", "contracts"):
             self.assertIn("select-io", groups[group])
             self.assertIn("weakrefs", groups[group])

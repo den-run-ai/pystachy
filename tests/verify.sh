@@ -111,7 +111,9 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    # (in the order a run of all records them: the contracts' steps, as their lanes report them, after
+    # the opt-in sweeps)
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
