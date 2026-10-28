@@ -609,11 +609,14 @@ fi
 done
 
 # The contracts group's steps share no output file and read only the bootstrap's files, so on CI's
-# four CPUs they run side by side (run below, after their definitions): check-ir and rt-abi first, as
-# each uses every CPU itself, then four lanes of about equal CI time (run 40719438561) at once, three
-# of them background jobs and one the shell's own. A background job of a shell without job control
-# starts with SIGINT and SIGQUIT ignored (POSIX), and so would every program it runs: the steps that
-# take SIGINT (ffi's py_sigint and side_sigint, selectprobe's pending SIGINT) are in the shell's lane,
+# four vCPUs (two cores, two threads each) they run side by side, in three phases (run below, after
+# their definitions; lanes of about equal CI time, run 40719438561): check-ir and rt-abi, as each
+# uses every CPU itself; compile-limits, whose compilers must stay under ten CPU seconds (the hosted
+# one takes about eight on CI: a busy sibling thread would add to its CPU time), beside one lane
+# only, so each has a core; then four lanes. In the last two phases the shell runs one lane itself and
+# the others are background jobs: a background job of a shell without job control starts with SIGINT
+# and SIGQUIT ignored (POSIX), and so would every program it runs, so the steps that take SIGINT
+# (ffi's py_sigint and side_sigint, selectprobe's pending SIGINT) are in the shell's lane,
 # contracts_fg. In a lane, step keeps each step's record for the shell, which appends them to the
 # report in the plan's order once every lane has ended: the same steps, results and fields as one
 # after another, each with its own duration.
@@ -625,22 +628,18 @@ $PY tools/re_probe.py > "$L" 2>&1 && r=pass
 step re-probe $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) operations, \([0-9]*\) failed$/, "operations": \1, "failed": \2/p' "$L")"
 fi
 
-# ---- compile limits: small sources must receive bounded source diagnostics, not exhaust memory
-if want compile-limits; then
-L=$V/compile-limits.log; s=$(now); r=fail
-$PY tools/compilelimits.py -c "hosted=$PY pystachy.py" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
-step compile-limits $r "$s" "$L" ', "address_space_mib": 256, "cpu_seconds": 10, "modes": ["ir", "run", "build"]'
+# ---- re-fuzz: lib/re on CPython against CPython's own re, on random patterns and test_re's largest cases
+if want re-fuzz; then
+L=$V/re-fuzz.log; s=$(now); r=fail
+$PY tools/re_fuzz.py > "$L" 2>&1 && r=pass
+step re-fuzz $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) upstream cases and \([0-9]*\) patterns (\([0-9]*\) valid): \([0-9]*\) cases, \([0-9]*\) failed$/, "upstream_cases": \1, "patterns": \2, "valid": \3, "cases": \4, "failed": \5/p' "$L")"
 fi
 
-# ---- list-storage: deterministic capacity and live-byte checks for reachable empty lists, and
-# collection counts for dropped large arrays
-if want list-storage; then
-L=$V/list-storage.log; s=$(now); r=fail
-{ "${LLVM}clang" -O2 -S -emit-llvm tools/listprobe.c -o "$V/listprobe.ll" &&
-  "${LLVM}llvm-link" "$V/rt1.ll" "$V/listprobe.ll" -o "$V/listprobe.bc" &&
-  "${LLVM}clang" -O2 "$V/listprobe.bc" -o "$V/listprobe" -lm &&
-  "$V/listprobe" && PYSTACHY_GC_STRESS=1 "$V/listprobe" && r=pass; } > "$L" 2>&1
-step list-storage $r "$s" "$L" ', "lists": 64, "historical_slots_per_list": 65536, "live_byte_limit": 1048576, "large_object_budget": 4194304'
+# ---- runtime-table: the runtime functions the compiler declares, as runtime.c and runtime.py define them
+if want runtime-table; then
+L=$V/runtime-table.log; s=$(now); r=fail
+$PY tools/check_runtime.py > "$L" 2>&1 && r=pass
+step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries, \([0-9]*\) exception classes: .*$/, "entries": \1, "exception_classes": \2/p' "$L")"
 fi
 
 # ---- inherited ASTs: declaration headers grow linearly; unused method bodies are shared
@@ -648,13 +647,6 @@ if want inherited-ast; then
 L=$V/inherited-ast.log; s=$(now); r=fail
 $PY tools/inheritprobe.py "$V/pystachy2" > "$L" 2>&1 && r=pass
 step inherited-ast $r "$s" "$L" ', "sizes": [80, 160, 320], "native_size": 800, "address_space_mib": 256'
-fi
-
-# ---- streaming: sum(), min() and max() of 10^8 items in 64 MiB, which their list would exceed
-if want streaming; then
-L=$V/streaming.log; s=$(now); r=fail
-$PY tools/streamprobe.py "$V/pystachy2" > "$L" 2>&1 && r=pass
-step streaming $r "$s" "$L" ', "items": 100000000, "address_space_mib": 64'
 fi
 }
 
@@ -668,22 +660,6 @@ L=$V/unicode-audit.log; s=$(now); r=fail
   "${LLVM}clang" -O2 "$V/unicodeprobe.bc" -o "$V/unicodeprobe" -lm &&
   "$V/unicodeprobe" && PYSTACHY_GC_STRESS=1 "$V/unicodeprobe" && r=pass; } > "$L" 2>&1
 step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"], "codepoint_probe_gc_modes": ["normal", "stress"]'
-fi
-
-# ---- re-fuzz: lib/re on CPython against CPython's own re, on random patterns and test_re's largest cases
-if want re-fuzz; then
-L=$V/re-fuzz.log; s=$(now); r=fail
-$PY tools/re_fuzz.py > "$L" 2>&1 && r=pass
-step re-fuzz $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) upstream cases and \([0-9]*\) patterns (\([0-9]*\) valid): \([0-9]*\) cases, \([0-9]*\) failed$/, "upstream_cases": \1, "patterns": \2, "valid": \3, "cases": \4, "failed": \5/p' "$L")"
-fi
-
-# ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
-if want dict-probes; then
-L=$V/dict-probes.log; s=$(now); r=fail
-{ "$V/pystachy2" rt runtime.py -o "$V/dictprobe-rt.ll" && "${LLVM}clang" -O2 -S -emit-llvm tools/dictprobe.c -o "$V/dictprobe.ll" &&
-  "${LLVM}llvm-link" "$V/dictprobe-rt.ll" "$V/dictprobe.ll" -o "$V/dictprobe.bc" && "${LLVM}clang" -O2 "$V/dictprobe.bc" -o "$V/dictprobe" -lm &&
-  "$V/dictprobe" && PYSTACHY_GC_STRESS=1 "$V/dictprobe" --hash-cache && r=pass; } > "$L" 2>&1
-step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"
 fi
 }
 
@@ -703,18 +679,29 @@ if $PY tools/dynany_fuzz.py --compiler "$V/pystachy2" --keep "$V/dynany-fuzz" --
 step dynany-fuzz $r "$s" "$L" "$(tail -1 "$L" | sed -n 's/^\([0-9]*\) programs, \([0-9]*\) cases, \([0-9]*\) parity cases (JIT, AOT, JIT-GC, AOT-GC): \([0-9]*\) mismatches$/, "programs": \1, "cases": \2, "parity_cases": \3, "modes": ["jit", "aot", "jit-gc", "aot-gc"], "program_gc_interval": 1, "mismatches": \4/p')"
 fi
 
-# ---- runtime-table: the runtime functions the compiler declares, as runtime.c and runtime.py define them
-if want runtime-table; then
-L=$V/runtime-table.log; s=$(now); r=fail
-$PY tools/check_runtime.py > "$L" 2>&1 && r=pass
-step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries, \([0-9]*\) exception classes: .*$/, "entries": \1, "exception_classes": \2/p' "$L")"
+# ---- streaming: sum(), min() and max() of 10^8 items in 64 MiB, which their list would exceed
+if want streaming; then
+L=$V/streaming.log; s=$(now); r=fail
+$PY tools/streamprobe.py "$V/pystachy2" > "$L" 2>&1 && r=pass
+step streaming $r "$s" "$L" ', "items": 100000000, "address_space_mib": 64'
 fi
+}
 
+contracts_d() {
 # ---- JIT dead code: inspect the actual execution module, without a timing threshold
 if want jit-dead-code; then
 L=$V/jit-dead-code.log; s=$(now); r=fail
 $PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
 step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
+fi
+
+# ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
+if want dict-probes; then
+L=$V/dict-probes.log; s=$(now); r=fail
+{ "$V/pystachy2" rt runtime.py -o "$V/dictprobe-rt.ll" && "${LLVM}clang" -O2 -S -emit-llvm tools/dictprobe.c -o "$V/dictprobe.ll" &&
+  "${LLVM}llvm-link" "$V/dictprobe-rt.ll" "$V/dictprobe.ll" -o "$V/dictprobe.bc" && "${LLVM}clang" -O2 "$V/dictprobe.bc" -o "$V/dictprobe" -lm &&
+  "$V/dictprobe" && PYSTACHY_GC_STRESS=1 "$V/dictprobe" --hash-cache && r=pass; } > "$L" 2>&1
+step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"
 fi
 
 # ---- container-eq: bounded comparisons for small DAGs with exponentially many logical leaves
@@ -725,6 +712,37 @@ L=$V/container-eq.log; s=$(now); r=fail
   "${LLVM}clang" -O2 "$V/eqprobe.bc" -o "$V/eqprobe" -lm &&
   "$V/eqprobe" && PYSTACHY_GC_STRESS=1 "$V/eqprobe" && r=pass; } > "$L" 2>&1
 step container-eq $r "$s" "$L" ', "shared_levels": 32, "comparison_limit": 64'
+fi
+
+# ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts
+if want file-buffers; then
+L=$V/file-buffers.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/fileprobe.c -o "$V/fileprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/fileprobe.ll" -o "$V/fileprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/fileprobe.bc" -o "$V/fileprobe" -lm &&
+  "$V/fileprobe" && "$V/fileprobe" --lib && PYSTACHY_GC_STRESS=1 "$V/fileprobe" && r=pass; } > "$L" 2>&1
+step file-buffers $r "$s" "$L" ', "dropped_files": 128, "buffer_bytes": 136314880, "outstanding_limit": 41975808'
+fi
+
+# ---- weakrefs: handles do not keep targets alive and are pruned before their storage is reclaimed
+if want weakrefs; then
+L=$V/weakrefs.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/weakrefprobe.c -o "$V/weakrefprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/weakrefprobe.ll" -o "$V/weakrefprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/weakrefprobe.bc" -o "$V/weakrefprobe" -lm &&
+  "$V/weakrefprobe" && PYSTACHY_GC_STRESS=1 "$V/weakrefprobe" && r=pass; } > "$L" 2>&1
+step weakrefs $r "$s" "$L" ', "referents": 2, "churned_handles": 1000'
+fi
+
+# ---- list-storage: deterministic capacity and live-byte checks for reachable empty lists, and
+# collection counts for dropped large arrays
+if want list-storage; then
+L=$V/list-storage.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/listprobe.c -o "$V/listprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/listprobe.ll" -o "$V/listprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/listprobe.bc" -o "$V/listprobe" -lm &&
+  "$V/listprobe" && PYSTACHY_GC_STRESS=1 "$V/listprobe" && r=pass; } > "$L" 2>&1
+step list-storage $r "$s" "$L" ', "lists": 64, "historical_slots_per_list": 65536, "live_byte_limit": 1048576, "large_object_budget": 4194304'
 fi
 }
 
@@ -755,25 +773,14 @@ L=$V/box-slots.log; s=$(now); r=fail
   "$V/boxprobe" && PYSTACHY_GC_STRESS=1 "$V/boxprobe" && r=pass; } > "$L" 2>&1
 step box-slots $r "$s" "$L" ', "box_bytes": 16'
 fi
+}
 
-# ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts
-if want file-buffers; then
-L=$V/file-buffers.log; s=$(now); r=fail
-{ "${LLVM}clang" -O2 -S -emit-llvm tools/fileprobe.c -o "$V/fileprobe.ll" &&
-  "${LLVM}llvm-link" "$V/rt1.ll" "$V/fileprobe.ll" -o "$V/fileprobe.bc" &&
-  "${LLVM}clang" -O2 "$V/fileprobe.bc" -o "$V/fileprobe" -lm &&
-  "$V/fileprobe" && "$V/fileprobe" --lib && PYSTACHY_GC_STRESS=1 "$V/fileprobe" && r=pass; } > "$L" 2>&1
-step file-buffers $r "$s" "$L" ', "dropped_files": 128, "buffer_bytes": 136314880, "outstanding_limit": 41975808'
-fi
-
-# ---- weakrefs: handles do not keep targets alive and are pruned before their storage is reclaimed
-if want weakrefs; then
-L=$V/weakrefs.log; s=$(now); r=fail
-{ "${LLVM}clang" -O2 -S -emit-llvm tools/weakrefprobe.c -o "$V/weakrefprobe.ll" &&
-  "${LLVM}llvm-link" "$V/rt1.ll" "$V/weakrefprobe.ll" -o "$V/weakrefprobe.bc" &&
-  "${LLVM}clang" -O2 "$V/weakrefprobe.bc" -o "$V/weakrefprobe" -lm &&
-  "$V/weakrefprobe" && PYSTACHY_GC_STRESS=1 "$V/weakrefprobe" && r=pass; } > "$L" 2>&1
-step weakrefs $r "$s" "$L" ', "referents": 2, "churned_handles": 1000'
+contracts_limits() {
+# ---- compile limits: small sources must receive bounded source diagnostics, not exhaust memory
+if want compile-limits; then
+L=$V/compile-limits.log; s=$(now); r=fail
+$PY tools/compilelimits.py -c "hosted=$PY pystachy.py" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
+step compile-limits $r "$s" "$L" ', "address_space_mib": 256, "cpu_seconds": 10, "modes": ["ir", "run", "build"]'
 fi
 }
 
@@ -795,6 +802,13 @@ fi
 
 lane=
 lanepids=
+# bg LANE...: run each lane function as a background job, its output in build/verify
+bg() {
+  for l; do
+    (lane=$l; "contracts_$l") > "$V/contracts-lane-$l.log" 2>&1 &
+    lanepids="$lanepids $!"
+  done
+}
 if [ -n "$(for n in $(plan contracts); do [ "$n" = bootstrap ] || ! want "$n" || echo "$n"; done)" ]; then
   rm -rf "$V/lanes"; mkdir -p "$V/lanes"
   # One runtime build per compiler before the lanes, as the steps that ran one after another found it:
@@ -804,11 +818,12 @@ if [ -n "$(for n in $(plan contracts); do [ "$n" = bootstrap ] || ! want "$n" ||
   warmpid=$!
   lane="cpus"; contracts_cpus
   wait "$warmpid"
-  for l in a b c; do
-    (lane=$l; "contracts_$l") > "$V/contracts-lane-$l.log" 2>&1 &
-    lanepids="$lanepids $!"
-  done
+  bg limits
   lane="fg"; contracts_fg
+  for l in $lanepids; do wait "$l"; done
+  lanepids=
+  bg a b c
+  lane="d"; contracts_d
   for l in $lanepids; do wait "$l"; done
   lane=; lanepids=
   for n in $(plan contracts); do

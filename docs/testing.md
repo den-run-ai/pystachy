@@ -469,14 +469,16 @@ half of the lines the CPython-hosted compiler executes, and `scaling-1` every ot
 check every shape once. Both run in the `scaling` group with `tools/scaling.py -j`, one shape per
 CPU (`PYSTACHY_JOBS` if set): `--check` compares counts, which do not depend on the load, so its
 seconds there are informational; measure timings with `-j 1`.
-The `contracts` group runs `check-ir` and `rt-abi`, which use every CPU, first and then its other
-steps in four lanes at once (`tests/verify.sh`'s `contracts_a`, `_b`, `_c` and `_fg`), after one
-runtime build per compiler so that each step finds the warm cache it found when the steps ran one
-after another. A shell's background job starts with SIGINT and SIGQUIT ignored, so the steps whose
-programs take SIGINT (`ffi`, `select-io`) are in the shell's own lane, `contracts_fg`. Each lane
-keeps its steps' records and the shell appends them in the plan's order; a lane that ends before a
-step reports fails that step (`lane_ended`). `tools/test_verify_contracts.py` checks the order,
-the overlap, the SIGINT disposition and both failures. `runtime-cache` runs `tests/cache.sh` for
+The `contracts` group runs its steps in three phases (`tests/verify.sh`'s `contracts_*` lanes), after
+one runtime build per compiler so that each step finds the warm cache it found when the steps ran
+one after another: `check-ir` and `rt-abi`, which use every CPU; `compile-limits` beside one lane
+only, since its compilers must stay under ten CPU seconds (the hosted one takes about eight on CI,
+and a busy sibling thread of CI's two-thread cores would add to that); then four lanes at once. A
+shell's background job starts with SIGINT and SIGQUIT ignored, so the steps whose programs take
+SIGINT (`ffi`, `select-io`) are in the shell's own lane, `contracts_fg`. Each lane keeps its
+steps' records and the shell appends them in the plan's order; a lane that ends before a step
+reports fails that step (`lane_ended`). `tools/test_verify_contracts.py` checks the order, the
+overlap, what runs beside `compile-limits`, the SIGINT disposition and both failures. `runtime-cache` runs `tests/cache.sh` for
 the two compilers at once: each run has its own home, LLVM wrappers and temporary directory.
 The final report job allows ten minutes for artifact downloads and validation.
 

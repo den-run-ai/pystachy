@@ -1,7 +1,8 @@
 """The contracts group's steps run side by side in tests/verify.sh's lanes (deterministic doubles):
-every step is reported once, in the plan's order, with its fields; the lanes really overlap; the
-steps that take SIGINT run in the shell's own lane, where SIGINT is not ignored; a failed step, or a
-lane that ends before its steps report, fails the group instead of shortening its report."""
+every step is reported once, in the plan's order, with its fields; the lanes of each phase really
+overlap, and compile-limits runs beside the SIGINT lane only; the steps that take SIGINT run in the
+shell's own lane, where SIGINT is not ignored; a failed step, or a lane that ends before its steps
+report, fails the group instead of shortening its report."""
 import json
 import os
 from pathlib import Path
@@ -13,8 +14,11 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-# each lane's first step waits for the others' (a barrier): run one after another, they would time out
-BARRIER = ["re_probe", "unicode_audit", "rtcheck", "ffi"]
+# in each phase, each lane's first step waits for the others' (a barrier): run one after another,
+# they would time out
+BARRIERS = [["compilelimits", "ffi"], ["re_probe", "unicode_audit", "rtcheck", "jitprobe"]]
+# what may run while compile-limits does: the shell's lane beside it
+BESIDE_LIMITS = {"compilelimits", "ffi", "selectprobe", "boxprobe"}
 SUMMARY = {
     "check_ir": "the IR check and llvm-as accept the IR of 5 programs",
     "check_runtime": "12 RUNTIME entries, 3 exception classes: ok",
@@ -36,14 +40,20 @@ summary = json.loads(os.environ["MOCK_SUMMARY"]).get(name, "")
 log = Path("mock-log")
 with log.open("a") as f:
     f.write(f"{name} {'ignored' if signal.getsignal(signal.SIGINT) == signal.SIG_IGN else 'default'}\\n")
-if name in BARRIER:
-    Path(f"started-{name}").write_text("")
-    deadline = time.monotonic() + 20
-    while not all(Path(f"started-{n}").exists() for n in BARRIER):
-        if time.monotonic() > deadline:
-            print("the lanes did not overlap")
-            sys.exit(1)
-        time.sleep(0.02)
+if name not in BESIDE_LIMITS and Path("started-compilelimits").exists() and not Path("ended-compilelimits").exists():
+    with Path("beside-limits").open("a") as f:
+        f.write(name + "\\n")
+for barrier in BARRIERS:
+    if name in barrier:
+        Path(f"started-{name}").write_text("")
+        deadline = time.monotonic() + 20
+        while not all(Path(f"started-{n}").exists() for n in barrier):
+            if time.monotonic() > deadline:
+                print("the lanes did not overlap")
+                sys.exit(1)
+            time.sleep(0.02)
+if name == "compilelimits":
+    Path("ended-compilelimits").write_text("")
 if mode == f"fail:{name}":
     print(summary.replace(", 0 failed", ", 1 failed"))
     sys.exit(1)
@@ -66,7 +76,8 @@ class ContractLaneTests(unittest.TestCase):
         for name in ("pystachy.py", "runtime.py", "runtime.c", "tests/programs/x/example.py"):
             (self.root / name).write_text("# fixture\n")
         (self.root / "tests/errors/x/example.py").write_text("# error: mock rejection\n")
-        tool = "import json\nBARRIER = " + repr(BARRIER) + "\n" + TOOL
+        header = f"import json\nBARRIERS = {BARRIERS!r}\nBESIDE_LIMITS = {BESIDE_LIMITS!r}\n"
+        tool = header + TOOL
         compiler = self.root / "bin/compiler"
         compiler.write_text(f"#!{sys.executable}\n" + '''import os
 from pathlib import Path
@@ -95,11 +106,10 @@ else:
         (self.root / "bin/tool.py").write_text(tool)
         for script, name in (("tools/check_ir.sh", "check_ir"), ("tests/ffi/run.sh", "ffi")):
             (self.root / script).write_text(f'#!/bin/sh\nexec "{sys.executable}" "$MOCK_TOOL_SH" {name}\n')
-        (self.root / "bin/tool_sh.py").write_text("import json\nimport sys\nBARRIER = " + repr(BARRIER) + "\n" +
-                                                  "sys.argv[0] = sys.argv[1] + '.sh'\n" + TOOL)
+        (self.root / "bin/tool_sh.py").write_text(header + "import sys\nsys.argv[0] = sys.argv[1] + '.sh'\n" + TOOL)
         # a C probe's double: named by its executable, it prints dict-probes' summary
         (self.root / "bin/probe.py").write_text(
-            "import json\nimport os\nimport sys\nBARRIER = []\nsys.argv[0] = os.path.basename(sys.argv[0]) + '.sh'\n" +
+            header + "import os\nimport sys\nsys.argv[0] = os.path.basename(sys.argv[0]) + '.sh'\n" +
             TOOL.replace('summary = json.loads(os.environ["MOCK_SUMMARY"]).get(name, "")',
                          'summary = "worst average: 1.5 slots per lookup (limit 4.0)"'))
         for tool_name in ("clang", "llvm-link", "opt"):
@@ -160,18 +170,21 @@ else:
         self.assertEqual((steps["dynany-fuzz"]["cases"], steps["dynany-fuzz"]["parity_cases"]), (540, 90))
         self.assertEqual(steps["dict-probes"]["worst_average_slots"], 1.5)
         self.assertEqual(steps["ffi"]["passed"], 3)
-        for name in BARRIER:  # (each met the others: the lanes overlapped)
+        for name in sum(BARRIERS, []):  # (each met the others of its phase: the lanes overlapped)
             self.assertTrue((self.root / f"started-{name}").exists(), name)
+        self.assertFalse((self.root / "beside-limits").exists())  # (only the shell's lane beside it)
         # the steps that take SIGINT run where it is not ignored
         how = self.disposition()
         for name in ("ffi", "selectprobe"):
             self.assertEqual(how[name], {"default"}, name)
 
     def test_a_failed_step_fails_the_group_and_the_others_still_report(self):
-        for failing, step in (("rtcheck", "rtcheck"), ("re_probe", "re-probe"), ("ffi", "ffi"), ("check_ir", "check-ir")):
+        for failing, step in (("rtcheck", "rtcheck"), ("re_probe", "re-probe"), ("ffi", "ffi"), ("check_ir", "check-ir"),
+                              ("compilelimits", "compile-limits")):
             with self.subTest(step=step):
-                for barrier in BARRIER:
-                    (self.root / f"started-{barrier}").unlink(missing_ok=True)
+                for name in sum(BARRIERS, []):
+                    (self.root / f"started-{name}").unlink(missing_ok=True)
+                (self.root / "ended-compilelimits").unlink(missing_ok=True)
                 result, report = self.run_contracts(f"fail:{failing}")
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(report["result"], "fail")
@@ -185,7 +198,7 @@ else:
         self.assertEqual([s["name"] for s in report["steps"]], self.steps)
         ended = [s["name"] for s in report["steps"] if s.get("lane_ended")]
         # (rtcheck's lane, contracts_c: every step of it)
-        self.assertEqual(sorted(ended), sorted(["rtcheck", "dynany-fuzz", "runtime-table", "jit-dead-code", "container-eq"]))
+        self.assertEqual(sorted(ended), sorted(["rtcheck", "dynany-fuzz", "streaming"]))
         self.assertTrue(all(s["result"] == "fail" for s in report["steps"] if s.get("lane_ended")))
         self.assertTrue(all(s["result"] == "pass" for s in report["steps"] if not s.get("lane_ended")))
 
