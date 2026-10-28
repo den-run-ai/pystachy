@@ -1830,7 +1830,9 @@ def gen_lazy_assign(self, n: Node) -> bool:
     if len([st for st in fn.lazywbs if st is n]) > 0:
         x = n.kids[1].s
         t = self.ltype.get(x, "")
-        if x not in fn.lazyflag or x not in self.idbox or (t != "int" and t != "float") or self.plain_field(n.kids[0]) != t:
+        # A barrier can retire a candidate before its first binding. Its flag slot
+        # remains, but later barriers no longer track it: never restart sharing.
+        if x not in fn.lazyobj or x not in fn.lazyflag or x not in self.idbox or (t != "int" and t != "float") or self.plain_field(n.kids[0]) != t:
             return False
         held = fn.scalar_reads
         fn.scalar_reads = True  # (x's number: lazy_store gives the field x's object)
