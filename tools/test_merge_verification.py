@@ -136,17 +136,18 @@ class ContractTests(unittest.TestCase):
 
     def test_real_plan_requires_native_suites_and_every_gc_job(self):
         groups = merge.load_groups()
-        for alias in ("gc-stress", "gc-jit", "gc-aot", "hosted", "ubsan", "native", "opt-off", "python-free", "scaling", "python-int-optin"):
+        for alias in ("gc-stress", "gc-jit", "gc-aot", "hosted", "ubsan", "native", "opt-off", "python-free", "scaling-1", "python-int-optin"):
             self.assertNotIn(alias, groups)  # Compatibility aliases must not duplicate CI work.
         for group in ("gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
-                      "ubsan-2", "python-free-0", "python-free-1", "python-free-2", "runtime-cache", "scaling-1"):
+                      "ubsan-2", "python-free-0", "python-free-1", "python-free-2", "runtime-cache"):
             self.assertEqual(groups[group], ["bootstrap", group])
         for shard in ("0", "1", "2"):
             self.assertEqual(groups["hosted-" + shard], ["bootstrap", "tests-cpython-" + shard])
         for shard in ("0", "1"):
             self.assertEqual(groups["native-" + shard], ["bootstrap", "tests-native-" + shard])
             self.assertEqual(groups["opt-off-" + shard], ["bootstrap", "tests-opt-off-" + shard])
-        self.assertEqual(groups["benchmarks"], ["bootstrap", "benchmarks", "scaling-0"])
+        self.assertEqual(groups["benchmarks"], ["bootstrap", "benchmarks"])
+        self.assertEqual(groups["scaling"], ["bootstrap", "scaling-0", "scaling-1"])
         for group in ("all", "contracts"):
             self.assertIn("select-io", groups[group])
             self.assertIn("weakrefs", groups[group])
@@ -165,7 +166,7 @@ class ContractTests(unittest.TestCase):
             for group in ("opt-off-0", "opt-off-1", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
                           "hosted-0", "hosted-1", "hosted-2", "native-0", "native-1", "python-free-0", "python-free-1",
                           "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
-                          "scaling-1", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2", "dynany-optin-3",
+                          "scaling", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2", "dynany-optin-3",
                           *(f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS))):
                 path = directory / f"verification-{group}" / "verification.json"
                 original = path.read_text()
@@ -227,11 +228,11 @@ class ContractTests(unittest.TestCase):
                         merge.merge_reports(directory, groups, COMMIT)
             merge.merge_reports(directory, groups, COMMIT)
             # scaling-0 and scaling-1 check every shape of tools/scaling.py once
-            path = directory / "verification-scaling-1" / "verification.json"
+            path = directory / "verification-scaling" / "verification.json"
             original = path.read_text()
             shapes = merge.scaling_shapes()
             for wrong in (shapes[1::2][1:], shapes[1::2] + shapes[:1], shapes[1::2] + ["unknown"]):
-                data = report("scaling-1", groups["scaling-1"])
+                data = report("scaling", groups["scaling"])
                 data["steps"][-1].update(shapes=wrong)
                 path.write_text(json.dumps(data))
                 with self.subTest(shapes=wrong), self.assertRaisesRegex(ValueError, "every shape of tools/scaling.py"):
@@ -279,7 +280,7 @@ class ContractTests(unittest.TestCase):
                                 lambda step: step.update(shard_count=2),
                                 lambda step: step.update(shard_count="3"),
                                 lambda step: step.pop("shard_count")]
-        for group in ("benchmarks", "scaling-1"):
+        for group in ("scaling",):
             mutations[group] = [lambda step: step.pop("shapes"),
                                 lambda step: step.update(shapes=[]),
                                 lambda step: step.update(shapes="chain"),
@@ -292,6 +293,14 @@ class ContractTests(unittest.TestCase):
                 mutate(data["steps"][-1])
                 with self.subTest(group=group, mutation=index), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
+        # (scaling-0, the scaling group's first step, too)
+        valid = report("scaling", groups["scaling"])
+        self.assertEqual(valid["steps"][1]["name"], "scaling-0")
+        for index, mutate in enumerate(mutations["scaling"]):
+            data = copy.deepcopy(valid)
+            mutate(data["steps"][1])
+            with self.subTest(step="scaling-0", mutation=index), self.assertRaises(ValueError):
+                merge.validate_report(data, "scaling", groups["scaling"])
 
     def test_dynany_fuzz_requires_full_budget_modes_stress_and_zero_mismatches(self):
         groups = merge.load_groups()

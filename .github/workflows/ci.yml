@@ -73,7 +73,7 @@ jobs:
                 gc-aot-1, gc-aot-2, runtime-cache, dynany-optin-0, dynany-optin-1, dynany-optin-2,
                 dynany-optin-3, python-int-optin-0, python-int-optin-1, python-int-optin-2, python-int-optin-3,
                 python-int-optin-4, python-int-optin-5, python-int-optin-6, python-int-optin-7,
-                contracts, benchmarks, scaling-1]
+                contracts, benchmarks, scaling]
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -92,7 +92,7 @@ jobs:
         # New groups keep the full setup until their dependencies have been checked.
         run: |
           case "$VERIFY_GROUP" in
-            hosted-[012]|native-[01]|opt-off-[01]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[0123]|python-int-optin-[01234567]|contracts|scaling-1)
+            hosted-[012]|native-[01]|opt-off-[01]|python-free-[012]|gc-self|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[0123]|python-int-optin-[01234567]|contracts|scaling)
               tools/setup.sh --minimal ;;
             *) tools/setup.sh --verify ;;
           esac
