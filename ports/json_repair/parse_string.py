@@ -44,6 +44,8 @@ class StringParseState:
     def string_acc(self) -> str:
         # An explicit immutable snapshot for finalization and internal inspection.
         # Scanning must use the cached metadata rather than repeatedly joining.
+        if not self.string_chunks:
+            return self.string_tail
         return "".join(self.string_chunks + [self.string_tail])
 
 
