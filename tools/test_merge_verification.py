@@ -24,7 +24,7 @@ BUNDLE = "d" * 64
 def optin_report(index):
     tool = merge.dynany_optin
     corpus = tool.programs()
-    selected = corpus[index::4]
+    selected = corpus[index::merge.DYNANY_SHARDS]
     allowed = tool.exceptions(tool.ROOT, corpus)
     rows = []
     for case in selected:
@@ -37,7 +37,7 @@ def optin_report(index):
     return {"schema": 1, "corpus_cases": len(corpus),
             "corpus_sha256": tool.corpus_digest(tool.ROOT, corpus),
             "exceptions_sha256": hashlib.sha256((tool.ROOT / tool.MANIFEST).read_bytes()).hexdigest(),
-            "shard_index": index, "shard_count": 4, "modes": list(tool.MODES), "native_suite": True,
+            "shard_index": index, "shard_count": merge.DYNANY_SHARDS, "modes": list(tool.MODES), "native_suite": True,
             "cases": selected, "subset": False, "oracle_cases": len(selected),
             "expected_checks": len(rows), "completed_checks": len(rows),
             "passed_checks": len(rows) - known, "expected_failures": known, "native_ir_checks": 0,
@@ -195,7 +195,7 @@ class ContractTests(unittest.TestCase):
             for group in ("opt-off-0", "opt-off-1", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
                           "hosted", "native-0", "native-1", "python-free-0", "python-free-1",
                           "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
-                          "scaling", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2", "dynany-optin-3",
+                          "scaling", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2",
                           *(f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS))):
                 path = directory / f"verification-{group}" / "verification.json"
                 original = path.read_text()
@@ -402,12 +402,12 @@ class ContractTests(unittest.TestCase):
 
     def test_optin_reports_require_exact_shard_modes_and_complete_evidence(self):
         groups = merge.load_groups()
-        for index in range(4):
+        for index in range(merge.DYNANY_SHARDS):
             group = f"dynany-optin-{index}"
             self.assertEqual(groups[group], ["bootstrap", group])
             valid = report(group, groups[group])
             merge.validate_report(valid, group, groups[group])
-            mutations = [lambda d: d.update(shard_count=3),
+            mutations = [lambda d: d.update(shard_count=merge.DYNANY_SHARDS + 1),
                          lambda d: d.update(shard_index=True),
                          lambda d: d.update(modes=["jit"]),
                          lambda d: d.update(subset=True),

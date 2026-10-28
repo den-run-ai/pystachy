@@ -29,7 +29,9 @@ SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
 GC_STEPS = {"gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"}
 # The halves of tools/scaling.py's check (tests/verify.sh's SCALING_0 and the shapes it leaves)
 SCALING_STEPS = ("scaling-0", "scaling-1")
-PYTHON_INT_SHARDS = 4
+# The opt-in sweeps' shards (tests/verify.sh's dynany-optin-I and python-int-optin-I groups)
+DYNANY_SHARDS = 3
+PYTHON_INT_SHARDS = 3
 # tests-cpython runs one case in HOSTED_SAMPLE_OF end to end (tests/verify.sh); it compares every
 # case's IR, messages and exit status with stage 2's
 HOSTED_SAMPLE_OF = 64
@@ -156,7 +158,7 @@ def validate_report(report, group, expected):
             optin = step.get("optin")
             dynany_optin.validate_report(optin, root=ROOT)
             if (optin["shard_index"] != int(step["name"].rsplit("-", 1)[1]) or
-                    optin["shard_count"] != 4 or optin["modes"] != ["jit", "aot"]):
+                    optin["shard_count"] != DYNANY_SHARDS or optin["modes"] != ["jit", "aot"]):
                 raise ValueError(f"{label}: wrong dynamic Any shard or modes")
         if step["name"].startswith("python-int-optin-"):
             optin = step.get("python_int_optin")

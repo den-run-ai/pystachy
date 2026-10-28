@@ -29,7 +29,7 @@ class PythonIntStageTests(unittest.TestCase):
             wrapper.write_text('''#!/bin/sh
 if [ "$1" = tools/python_int_gate.py ]; then
   [ "$*" = "tools/python_int_gate.py --compiler $V/pystachy2 --modes jit aot $MOCK_NATIVE--jobs 2 \
---shard-index 0 --shard-count 4 --report $V/python-int-optin-0.json --keep $V/python-int-optin-0" ] &&
+--shard-index 0 --shard-count 3 --report $V/python-int-optin-0.json --keep $V/python-int-optin-0" ] &&
     [ "$#" = "$MOCK_ARGS" ] || exit 99
   cp "$MOCK_EVIDENCE" "$V/python-int-optin-0.json"
   exit "$MOCK_STATUS"
