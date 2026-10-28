@@ -521,13 +521,14 @@ python3 tools/case_weights.py verification-native-0/verify/tests-native-0-times.
   verification-native-1/verify/tests-native-1-times.log
 ```
 
-The first table came from the 2-second file times of two CI runs' promoting-int sweeps
-(40719438561 and 40731629369, programs) and a one-core local run of every deviation and
-rejection (rejections take about 1% of a program's time). Judged by the other run's times, the
-heaviest shard exceeds an even split by 0.1-0.2% for halves, 1.0-1.1% for thirds and 0.9-1.3% for
-quarters, against 0.9-1.9%, 2.2-3.1% and 5.0-6.3% by position modulo N. The runners vary far
-more: the same native half took 576 s on a `znver3` runner (run 40731629369) and 408 s on a
-`znver4` one (run 40719438561), so a job's time depends mostly on the runner it lands on.
+The table comes from the native halves of CI run 40753601291 (`--keep`; they timed every case).
+It replaced a first table made from the 2-second file times of the promoting-int sweeps of runs
+40719438561 and 40731629369 and a one-core local run of the deviations and rejections. Judged by
+that run's opt-off halves and UBSan thirds, which it was not made from, the heaviest shard exceeds
+an even split by 0.2% for halves and 0.4% for thirds, against 0.4% and 1.9% with the first table.
+The runners vary far more: in that run a `znver3` runner took 1.2-1.4 times as long per case as a
+`znver4` one (the native halves took 598 s and 429 s), so a job's time depends mostly on the
+runner it lands on.
 The CPython-hosted compiler is checked by identity rather than by executing its output again:
 `hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
 exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results
