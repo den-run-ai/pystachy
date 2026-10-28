@@ -742,6 +742,9 @@ from src.pystachy_compiler.expressions import (
     gen_expr as expressions_expr,
     gen_scalar_read_value as expressions_scalar_read_value,
     gen_scalar_read_index as expressions_scalar_read_index,
+    gen_plain_field as expressions_plain_field,
+    gen_scalar_receiver as expressions_scalar_receiver,
+    gen_seq_index as expressions_seq_index,
     gen_fmt_error as expressions_fmt_error,
     gen_fmt_raise as expressions_fmt_raise,
     gen_format_arg as expressions_format_arg,
@@ -3908,6 +3911,15 @@ class Gen:
 
     def scalar_read_value(self, n: Node) -> bool:
         return expressions_scalar_read_value(self, n)
+
+    def plain_field(self, n: Node) -> str:
+        return expressions_plain_field(self, n)
+
+    def scalar_receiver(self, n: Node) -> str:
+        return expressions_scalar_receiver(self, n)
+
+    def seq_index(self, n: Node, msg: str) -> Val:
+        return expressions_seq_index(self, n, msg)
 
     def list_hint_type(self, a: str, b: str) -> str:
         return expressions_list_hint_type(self, a, b)

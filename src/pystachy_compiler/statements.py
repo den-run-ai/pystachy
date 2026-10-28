@@ -1224,13 +1224,22 @@ def gen_augassign(self, n: Node) -> None:
         self.glue_field(o, t.s)
         p = self.field(o, t.s, False)
         self.frozen(o.t, t.s)
-        cur = self.getfield(o, p, t.s)
-        ci = self.classes[o.t]
-        if ci.slotlimit and t.s not in ci.slots:
-            self.err(f"field '{t.s}' is outside __slots__ of '{short(ci.name)}'")
-        if t.s == "__slots__" and t.s not in ci.fpos:
-            self.err("rebinding __slots__ through an instance is not supported")
-        nv = self.inplace(op, cur, n.kids[1])
+        fn = self.fn
+        held = fn.scalar_reads
+        if not held and dynamic_program() and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.plain_field(t) in ["int", "float", "bool"] and self.scalar_read_value(n.kids[1]):
+            # o.f op= v of a plain numeric field: as for a local (above), the old object
+            # is an arithmetic operand only, and the store keeps the result's provenance
+            fn.scalar_reads = True
+        try:
+            cur = self.getfield(o, p, t.s)
+            ci = self.classes[o.t]
+            if ci.slotlimit and t.s not in ci.slots:
+                self.err(f"field '{t.s}' is outside __slots__ of '{short(ci.name)}'")
+            if t.s == "__slots__" and t.s not in ci.fpos:
+                self.err("rebinding __slots__ through an instance is not supported")
+            nv = self.inplace(op, cur, n.kids[1])
+        finally:
+            fn.scalar_reads = held
         if not self.frozen_store(o, t.s):
             self.setfield(o, p, t.s, nv)
     elif t.kind == "slice":
