@@ -1777,8 +1777,8 @@ class Gen:
     def big_literal(self, text: str) -> Val:
         return bigints_big_literal(self, text)
 
-    def big_binop(self, op: str, a: Val, b: Val) -> Val:
-        return bigints_big_binop(self, op, a, b)
+    def big_binop(self, op: str, a: Val, b: Val, shown: str='') -> Val:
+        return bigints_big_binop(self, op, a, b, shown)
 
     def big_compare(self, op: str, a: Val, b: Val) -> Val:
         return bigints_big_compare(self, op, a, b)

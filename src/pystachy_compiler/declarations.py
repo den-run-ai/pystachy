@@ -1672,7 +1672,7 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
             t = self.guess(st.kids[1], FnInfo("", "", ci.node, ""))
             bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
-            if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt)):
+            if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
             if t == "" and ci.mod == "":
                 self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: T = ...)")
@@ -2416,9 +2416,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return a
         if e.s == "+" and a.startswith("tuple[") and b.startswith("tuple["):
             return self.ctype("tuple", targs(a) + targs(b))
-        if e.s == "*" and (is_list(a) or a == "str") and (b == "int" or b == "bool"):
+        if e.s == "*" and (is_list(a) or a == "str") and b in ["int", "bool", BIG]:
             return a  # [n] * n
-        if e.s == "*" and (is_list(b) or b == "str") and (a == "int" or a == "bool"):
+        if e.s == "*" and (is_list(b) or b == "str") and a in ["int", "bool", BIG]:
             return b
     return ""
 

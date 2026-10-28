@@ -133,14 +133,20 @@ check complements the full opt-in corpus sweep, `make dynany-optin`), `make dict
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 
-`make python-int-optin` runs the program corpus as `make dynany-optin` does, with
-`# pystachy: python-int` instead ([promoting ints](python-int.md)): a fresh pinned-CPython oracle,
-JIT and AOT, and `build/python-int-optin.json`, a report of every check. Promoting ints do not
-cover the whole language yet, so it is no verification gate: a change to them is checked against
-the report of the same command in a checkout of its base, `PYTHON_INT_OPTIN="--compare BASE"`,
-which fails where a check that passes in BASE fails now and lists those newly passing.
-`--modes jit` and `--cases` narrow a run, and `--any-python` records with another patch version
-of the pinned CPython, for a local comparison of two compilers.
+`make python-int-gate` enforces the reviewed promoting-int compatibility baseline across
+`tests/programs/`: a fresh pinned-CPython oracle and both JIT and AOT for each entry module
+with `# pystachy: python-int`. Its manifest, `tools/python_int_optin_exceptions.json`, names
+one case and mode per accepted limitation, with an exact diagnostic, classification, rationale
+and tracking issue. New or changed failures, unexpected passes, failed oracles and missing
+checks fail the gate. Remove an exception when its case starts passing; never add one to
+hide a crash or a wrong result in supported code. `PYTHON_INT_GATE` passes tool options;
+`--shard-index 0 --shard-count 8` selects one CI shard. Reports from `--cases` or a single
+execution mode are useful for investigation but cannot satisfy CI's full-sweep requirement.
+
+`make python-int-optin` retains the exploratory sweep and `PYTHON_INT_OPTIN="--compare BASE"`
+comparison with an earlier report. It can use `--any-python` for local comparisons on another
+patch version, unlike the gate, which requires the pinned interpreter. Exploratory reports
+never substitute for gate evidence. `tools/python_int_optin.py --gate` invokes the gate too.
 
 `build/verification.json` records each stage's result, duration and counts, plus the source
 revision and hashes, toolchain, platform and timestamp. A suite run passes only when its
@@ -380,7 +386,7 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then twenty-seven groups
+A bootstrap job checks compiler and runtime IR fixed points once, then thirty-five groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
@@ -399,6 +405,7 @@ runner variation:
 | `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the full JIT suite, with compiler and program GC stress. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the full AOT suite, with compiler and program GC stress. |
 | `dynany-optin-0` through `dynany-optin-3` | Four disjoint quarters of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
+| `python-int-optin-0` through `python-int-optin-7` | Eight disjoint parts of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
 | `runtime-cache` | The cached runtime's rules with both compilers. |
 | `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress. |
 | `benchmarks` | Benchmark correctness/timings and half of the compiler-scaling shapes; extended correctness checks reuse the verified compiler. |
@@ -421,6 +428,13 @@ case/mode result and complete oracle/check counts. Generated copies and failure 
 the workflow artifacts. Run locally with `make dynany-optin`, or select a shard with
 `DYNANY_OPTIN="--shard-index 0 --shard-count 4"`. This sweep covers normal JIT/AOT execution;
 program GC stress remains covered by the separate generated parity checks and existing corpus.
+The promoting-int sweep uses the same isolated-source and CPython-recording contract. Its
+report is checked against the current corpus, reviewed manifest and consumed source hashes,
+and binds the executed native compiler by its SHA-256. The aggregate rejects missing shards,
+duplicate case/mode pairs and inconsistent compiler identities. Promotion regressions added
+with their explicit pragma are also included in the existing full GC JIT/AOT suites, which
+collect at every program allocation; the normal opt-in sweep does not claim GC-stressed
+execution. Artifacts retain each shard's report and reproduced sources for diagnosis.
 A failed producer blocks its consumers
 and fails the final gate; there is no fallback to an older compiler.
 

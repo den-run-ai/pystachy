@@ -1322,7 +1322,7 @@ def gen_big_literal(self, text: str) -> Val:
     return self.big_parse(Val(self.sconst(text), "str"), Val("0" if digits.startswith("0") and len(digits) > 1 else "10", "int"))
 
 
-def gen_big_binop(self, op: str, a: Val, b: Val) -> Val:
+def gen_big_binop(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     # a op b where an operand is a promoting int, or both are ints of a module that opts in: the
     # result, or Val("", "") where the 64-bit operation is CPython's (% & | ^ >> never overflow,
     # / of two ints gives a float)
@@ -1335,11 +1335,11 @@ def gen_big_binop(self, op: str, a: Val, b: Val) -> Val:
         return self.big_arith(op, a, b)
     if a.t == "float" or b.t == "float":
         # (the int converted to float first, as CPython does; OverflowError past the float range)
-        return self.arith(op, self.as_float(a), self.as_float(b))
+        return self.arith(op, self.as_float(a), self.as_float(b), shown)
     if a.t == BIGOPT or b.t == BIGOPT:
         return Val("", "")  # (an int | None's TypeError for None, or its promoting int: Gen.arith)
     # (another operand: a sequence's repetition count, or an object's operator method, take a 64-bit int)
-    return self.arith(op, self.big_narrow(a), self.big_narrow(b))
+    return self.arith(op, self.big_narrow(a), self.big_narrow(b), shown)
 
 
 def gen_big_compare(self, op: str, a: Val, b: Val) -> Val:

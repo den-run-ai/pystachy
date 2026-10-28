@@ -13,6 +13,7 @@ import subprocess
 import sys
 
 import dynany_optin
+import python_int_gate
 
 ROOT = Path(__file__).resolve().parent.parent
 SUITE_STEPS = {"tests-cpython-0", "tests-cpython-1", "tests-cpython-2", "tests-native-0", "tests-native-1",
@@ -28,6 +29,7 @@ SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
 GC_STEPS = {"gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"}
 # The halves of tools/scaling.py's check (tests/verify.sh's SCALING_0 and the shapes it leaves)
 SCALING_STEPS = ("scaling-0", "scaling-1")
+PYTHON_INT_SHARDS = 8
 
 
 def parse_groups(text):
@@ -135,6 +137,13 @@ def validate_report(report, group, expected):
             if (optin["shard_index"] != int(step["name"].rsplit("-", 1)[1]) or
                     optin["shard_count"] != 4 or optin["modes"] != ["jit", "aot"]):
                 raise ValueError(f"{label}: wrong dynamic Any shard or modes")
+        if step["name"].startswith("python-int-optin-"):
+            optin = step.get("python_int_optin")
+            python_int_gate.validate_report(optin, root=ROOT)
+            if (optin["shard_index"] != int(step["name"].rsplit("-", 1)[1]) or
+                    optin["shard_count"] != PYTHON_INT_SHARDS or optin["modes"] != ["jit", "aot"] or
+                    optin["gc_stress"] is not False):
+                raise ValueError(f"{label}: wrong promoting-int shard, modes or GC setting")
         if step["name"] in GC_STEPS:
             mode = "jit" if step["name"].startswith("gc-jit") else "aot"
             if (step.get("modes") != [mode] or
@@ -239,6 +248,17 @@ def merge_reports(directory, groups, expected_commit=None):
         checked = [shape for name in SCALING_STEPS for shape in halves[name]]
         if sorted(checked) != sorted(scaling_shapes()):
             raise ValueError("scaling-0 and scaling-1 must check every shape of tools/scaling.py, each once")
+    int_reports = [step["python_int_optin"] for report in reports.values() for step in report["steps"]
+                   if step["name"].startswith("python-int-optin-")]
+    if int_reports:
+        if len(int_reports) != PYTHON_INT_SHARDS:
+            raise ValueError("promoting-int compatibility requires all eight shards")
+        if len({report["compiler_sha256"] for report in int_reports}) != 1:
+            raise ValueError("promoting-int compiler identity differs between shards")
+        expected_pairs = {(case, mode) for case in python_int_gate.programs(ROOT) for mode in ("jit", "aot")}
+        pairs = [(row["case"], row["mode"]) for report in int_reports for row in report["results"]]
+        if len(pairs) != len(expected_pairs) or set(pairs) != expected_pairs:
+            raise ValueError("promoting-int shards must cover every corpus case and mode exactly once")
     first = reports[wanted[0]]
     commit = first["git"]["commit"]
     if expected_commit is not None and commit != expected_commit:

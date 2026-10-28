@@ -337,7 +337,11 @@ for a C `long`), where CPython goes on with the bigger int:
   a variable), and the values sent to a generator (`send()`)
   (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a parameter,
   is hashed, compared, searched, formatted with `%` and unpacked into arguments as the tuple of
-  its fields or None, which holds 64-bit ints too.
+  its fields or None, which holds 64-bit ints too. `dataclasses.astuple()` also has this
+  optional-tuple boundary; `dataclasses.asdict()` preserves promoting scalar and fixed-tuple
+  field values when the fields have a supported common dictionary value type. Heterogeneous
+  fields requiring a closed union containing a promoting int are rejected at compile time,
+  including when the particular integer value fits in 64 bits.
 - An `int` or `int | None` parameter of a function in a module that does not opt in, also of a
   class's comparison method and where a `Callable` holds the function (whose unannotated parameters
   take the promoting int, so arithmetic there promotes too), and the ints of the other types that a
@@ -566,6 +570,17 @@ the first measurements, before the inline paths, in
 - `tests/deviations/python_int_limits.py` and the two rejections above.
 - `tools/test_compiler_state_files.py`: the opt-in follows its file through imports, restarts and
   later compilations.
-- `make python-int-optin` (`tools/python_int_optin.py`): every case of `tests/programs` with the
-  comment, against a fresh CPython recording, in JIT and AOT, and compared with an earlier report
-  ([testing](testing.md#make-verify)); `tools/test_python_int_optin.py` tests the tool.
+- `python_int_noreturn.py`, `python_int_unicode_error.py`, `python_int_bytes_hex.py`,
+  `python_int_ipow.py`, `python_int_optional_key.py`, `python_int_dataclass_copy.py`,
+  `python_int_class_inference.py` and `python_int_class_defaults.py`: regressions from the
+  full-corpus opt-in review. Their explicit pragma also exercises the existing GC suites.
+- `make python-int-gate` (`tools/python_int_gate.py`): every case of `tests/programs` with the
+  comment, against a fresh pinned CPython recording, in both JIT and AOT. CI requires eight
+  complete shards. The reviewed manifest permits only exact compiler rejections, classified
+  and linked to their remaining limitation; crashes, runtime errors, changed output, changed
+  diagnostics and obsolete exceptions fail. See the [baseline review](reports/python-int-compatibility-2026-10-28.md)
+  and [gate contract](testing.md#make-verify). This checks the supported experimental surface;
+  it does not establish compatibility for the known rejected programs.
+- `make python-int-optin` retains the exploratory sweep and comparison with an earlier report.
+  Its report is not CI evidence. `tools/test_python_int*.py` and the verification aggregation
+  tests check the gate's negative controls.
