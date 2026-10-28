@@ -23,6 +23,12 @@ sweep on main `5f7ec761`: selected core imports/APIs, newly adapted pyperformanc
 workloads and CPython-derived regression cases. It does not replace the broad audit's
 denominator or advance its latest-evaluated-main checkpoint above.
 
+The [2026-10-28 release-preparation sweep](release-sweep-2026-10-28.md) is also scoped, on
+main `2eb0f36e`. It reran the native import sweep (150/459 with a changed denominator, no
+import lost), the CPython-derived corpus, all port programs, the json_repair replay and
+the package first errors, with no regression found. The stub-assisted sweep and full
+verification were not rerun, so the checkpoint above does not advance.
+
 | Check | Main / changes since baseline | Findings |
 |---|---|---|
 | 2026-10-17 initial audit | `d3fbfc6f`; includes #598, #599 and #603 | 141/476 import programs compile; 46 upstream files excluded by overlay. 501 selected stdlib checks and 62 port checks pass; all 18 adapted benchmark programs match. Detailed evidence is linked from the baseline. |

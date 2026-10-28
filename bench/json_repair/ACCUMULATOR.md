@@ -22,7 +22,7 @@ its known signed-64-bit mismatch is retained without a checker waiver.
 The repeated-prefix bottleneck is removed in the measured native consumer, but
 this remains a **prototype**: the longer-warmed PyPy mixed workload regresses
 **65%**, and CPython's traced peak memory at 8,000 escapes increases **40%**.
-Keep the draft status until those tradeoffs are reviewed. These measurements do
+#966 merged with these tradeoffs recorded; #861 tracks them. These measurements do
 not establish a general engine ranking or linearity of the entire parser.
 
 The baseline integrates main `daeb6e0d` with the unmerged #847 → #848 → #852
