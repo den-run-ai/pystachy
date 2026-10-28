@@ -304,12 +304,43 @@ fi
 # leaving time to write/upload a failed report. timeout forwards TERM to its process group,
 # including the compiler, so cancellation cannot leave the background self-compile running.
 gcpid=
+# jobtree PID...: those of the PIDs that are still this shell's children, and every process below them,
+# from one listing of each process's parent (POSIX ps; without it, the PIDs alone)
+jobtree() {
+  { ps -A -o pid= -o ppid= 2> /dev/null || for p; do echo "$p $$"; done; } | awk -v shell=$$ -v roots="$*" '
+    BEGIN { n = split(roots, r, " "); for (i = 1; i <= n; i++) root[r[i]] = 1 }
+    { parent[$1] = $2 }
+    END {
+      for (p in parent) if ((p in root) && parent[p] == shell) tree[p] = 1
+      do { more = 0; for (p in parent) if (!(p in tree) && (parent[p] in tree)) { tree[p] = 1; more = 1 } } while (more)
+      for (p in tree) print p
+    }'
+}
+# stop_jobs PID...: end these background jobs and every process they started. TERM to a job alone
+# would leave its programs running, and SIGINT reaches none of them (a background job of a shell
+# without job control ignores it, as do the programs it runs), so each process of their trees is
+# stopped while a listing finds one not yet stopped (a stopped process starts no other), then sent
+# TERM and CONT; then the jobs are reaped.
+stop_jobs() {
+  stopped=" "
+  while :; do
+    new=$(jobtree "$@" | while read -r p; do case $stopped in *" $p "*) ;; *) printf '%s ' "$p" ;; esac; done)
+    [ -n "$new" ] || break
+    # shellcheck disable=SC2086 # (a list of PIDs)
+    kill -STOP $new 2> /dev/null
+    stopped="$stopped$new"
+  done
+  # shellcheck disable=SC2086 # (a list of PIDs)
+  [ "$stopped" = " " ] || { kill -TERM $stopped; kill -CONT $stopped; } 2> /dev/null
+  for p; do wait "$p" 2> /dev/null; done
+}
 cancel_gc() {
   if [ -n "$gcpid" ]; then
     kill "$gcpid" 2> /dev/null
     wait "$gcpid" 2> /dev/null
   fi
-  for p in ${lanepids:-} ${cachepid:-}; do kill "$p" 2> /dev/null; done
+  # shellcheck disable=SC2086 # (lists of PIDs)
+  stop_jobs ${warmpid:-} ${lanepids:-} ${cachepid:-}
   exit 130
 }
 trap cancel_gc INT TERM
@@ -870,7 +901,7 @@ if [ -n "$(for n in $(plan contracts); do [ "$n" = bootstrap ] || ! want "$n" ||
   { "$V/pystachy2" run "$V/lanes/warm.py"; $PY pystachy.py run "$V/lanes/warm.py"; $PY -m pystachy run "$V/lanes/warm.py"; } > "$V/contracts-warm.log" 2>&1 &
   warmpid=$!
   lane="cpus"; contracts_cpus
-  wait "$warmpid"
+  wait "$warmpid"; warmpid=
   bg limits
   lane="fg"; contracts_fg
   for l in $lanepids; do wait "$l"; done

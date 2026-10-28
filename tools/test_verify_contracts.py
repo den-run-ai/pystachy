@@ -2,7 +2,9 @@
 every step is reported once, in the plan's order, with its fields; the lanes of each phase really
 overlap, and compile-limits runs beside the SIGINT lane only; the steps that take SIGINT run in the
 shell's own lane, where SIGINT is not ignored; a failed step, or a lane that ends before its steps
-report, fails the group instead of shortening its report."""
+report, fails the group instead of shortening its report; TERM or Ctrl-C ends every process of the
+lanes and of runtime-cache's background run of tests/cache.sh, not the lanes' shells alone."""
+import contextlib
 import json
 import os
 from pathlib import Path
@@ -11,9 +13,10 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT =Path(__file__).resolve().parent.parent
 # in each phase, each lane's first step waits for the others' (a barrier): run one after another,
 # they would time out
 BARRIERS = [["compilelimits", "ffi"], ["re_probe", "unicode_audit", "rtcheck", "jitprobe"]]
@@ -32,6 +35,7 @@ SUMMARY = {
 TOOL = '''import os
 from pathlib import Path
 import signal
+import subprocess
 import sys
 import time
 name = Path(sys.argv[0] if sys.argv[0].endswith((".py", ".sh")) else sys.argv[0]).stem
@@ -54,6 +58,11 @@ for barrier in BARRIERS:
             time.sleep(0.02)
 if name == "compilelimits":
     Path("ended-compilelimits").write_text("")
+if mode.startswith("hang:") and name in mode[len("hang:"):].split(","):
+    # (a tool that does not end, and a program it runs, until a signal ends them)
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
+    Path(f"hanging-{name}").write_text(f"{os.getpid()} {child.pid}\\n")
+    time.sleep(120)
 if mode == f"fail:{name}":
     print(summary.replace(", 0 failed", ", 1 failed"))
     sys.exit(1)
@@ -190,6 +199,84 @@ else:
                 self.assertEqual(report["result"], "fail")
                 self.assertEqual([s["name"] for s in report["steps"]], self.steps)
                 self.assertEqual([s["name"] for s in report["steps"] if s["result"] == "fail"], [step])
+
+    def survivors(self, mark):
+        """The live processes (not zombies) whose environment holds MARK: tests/verify.sh's and every
+        process it started."""
+        found = []
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                environ = (entry / "environ").read_bytes().split(b"\0")
+                state = (entry / "stat").read_text().rsplit(")", 1)[1].split()[0]
+            except (OSError, IndexError):
+                continue
+            if mark in environ and state != "Z":
+                found.append(int(entry.name))
+        return found
+
+    def cancel(self, group, hanging, signum, to_group):
+        """Run GROUP until each tool double of HANGING (in background jobs) runs, with a program of its
+        own, and neither ends; then send SIGNUM to tests/verify.sh, or to its process group as a
+        terminal's Ctrl-C does with TO_GROUP: it exits 130, and no process it started survives it."""
+        if not Path("/proc/self/environ").is_file():
+            self.skipTest("needs /proc to find the processes tests/verify.sh started")
+        (self.root / "mock-mode").write_text("hang:" + ",".join(hanging))
+        mark = f"VERIFY_CANCEL_MARK={os.getpid()}-{signum}-{to_group}-{time.monotonic_ns()}"
+        env = {**self.env, "VERIFY_CANCEL_MARK": mark.split("=", 1)[1]}
+
+        def kill_survivors():
+            for pid in self.survivors(mark.encode()):
+                with contextlib.suppress(OSError):
+                    os.kill(pid, signal.SIGKILL)
+
+        self.addCleanup(kill_survivors)
+        # (files, not pipes, which a surviving process would hold open; SIGINT as a terminal's shell
+        # leaves it, whatever runs this test)
+        with (self.root / "cancel.log").open("w") as log:
+            process = subprocess.Popen(["sh", "tests/verify.sh", group], cwd=self.root, env=env, stdout=log,
+                                       stderr=subprocess.STDOUT, start_new_session=True,
+                                       preexec_fn=lambda: signal.signal(signal.SIGINT, signal.SIG_DFL))
+        self.addCleanup(lambda: process.poll() is not None or process.kill())
+        deadline = time.monotonic() + 60
+        while not all((self.root / f"hanging-{name}").exists() for name in hanging):
+            self.assertIsNone(process.poll(), (self.root / "cancel.log").read_text())
+            self.assertLess(time.monotonic(), deadline, "the hanging doubles did not start")
+            time.sleep(0.05)
+        started = [int(pid) for name in hanging for pid in (self.root / f"hanging-{name}").read_text().split()]
+        self.assertTrue(set(started) <= set(self.survivors(mark.encode())))
+        if to_group:
+            os.killpg(process.pid, signum)
+        else:
+            process.send_signal(signum)
+        self.assertEqual(process.wait(timeout=60), 130, (self.root / "cancel.log").read_text())
+        deadline = time.monotonic() + 10
+        while self.survivors(mark.encode()) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertEqual(self.survivors(mark.encode()), [], "processes tests/verify.sh started survive it")
+
+    def test_cancelling_leaves_no_lane_process_running(self):
+        # (one hanging step in each background lane of the last phase; the shell's own lane ends)
+        for signum, to_group in ((signal.SIGTERM, False), (signal.SIGINT, True)):
+            with self.subTest(signal=signum.name, to_group=to_group):
+                for path in self.root.glob("hanging-*"):
+                    path.unlink()
+                for name in sum(BARRIERS, []):
+                    (self.root / f"started-{name}").unlink(missing_ok=True)
+                self.cancel("contracts", ["re_probe", "unicode_audit", "rtcheck"], signum, to_group)
+
+    def test_cancelling_leaves_no_runtime_cache_process_running(self):
+        # (the native run of tests/cache.sh is the background job; the hosted one ends at once)
+        cache = self.root / "tests/cache.sh"
+        cache.write_text('#!/bin/sh\ncase $1 in\n  */pystachy2)\n'
+                         '    sleep 120 & child=$!\n    echo "$$ $child" > hanging-cache\n    wait ;;\n'
+                         '  *) echo "68 passed, 0 failed" ;;\nesac\n')
+        cache.chmod(0o755)
+        for signum, to_group in ((signal.SIGTERM, False), (signal.SIGINT, True)):
+            with self.subTest(signal=signum.name, to_group=to_group):
+                (self.root / "hanging-cache").unlink(missing_ok=True)
+                self.cancel("runtime-cache", ["cache"], signum, to_group)
 
     def test_a_lane_that_ends_early_fails_its_unreported_steps(self):
         result, report = self.run_contracts("end-lane:rtcheck")

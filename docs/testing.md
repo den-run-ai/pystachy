@@ -496,6 +496,10 @@ steps' records and the shell appends them in the plan's order; a lane that ends 
 reports fails that step (`lane_ended`). `tools/test_verify_contracts.py` checks the order, the
 overlap, what runs beside `compile-limits`, the SIGINT disposition and both failures. `runtime-cache` runs `tests/cache.sh` for
 the two compilers at once: each run has its own home, LLVM wrappers and temporary directory.
+On TERM, or SIGINT as Ctrl-C sends it, `tests/verify.sh` ends every process its background jobs
+started (the lanes and the background `tests/cache.sh` run, `stop_jobs`), not their shells alone,
+whose programs would run on into `build/verify`; `tools/test_verify_contracts.py` checks that none
+survives.
 The final report job allows ten minutes for artifact downloads and validation.
 
 The compiler state controls (`python3 -m unittest discover -s tools -p
