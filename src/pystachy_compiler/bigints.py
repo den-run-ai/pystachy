@@ -271,9 +271,12 @@ def gen_read_policy(self) -> bool:
     # does a read of a container's int here (a list's item, a dict's key or value, a set's element,
     # also in a tuple of ints that one holds, and a generator's value) give it as the promoting int
     # it is: in a module that opts in (int_policy), and in lib's modules that hand a container's
-    # items on as they are (READ_HELPERS: iter()'s iterators, heapq, bisect) where the program's
-    # containers hold promoting ints (int_lists); elsewhere the 64-bit int, NARROW past 64 bits
-    return self.int_policy(self.line) or (int_lists() and self.curfn.mod in READ_HELPERS)
+    # items on as they are (READ_HELPERS: iter()'s iterators, heapq, bisect) and in the methods of a
+    # generic class's specialization for promoting ints (templates.specialize), whose containers of
+    # its type variable's ints hold them, where the program's containers hold promoting ints
+    # (int_lists); elsewhere the 64-bit int, NARROW past 64 bits
+    c = self.curfn.cls
+    return self.int_policy(self.line) or (int_lists() and (self.curfn.mod in READ_HELPERS or (c in self.classes and BIG in self.classes[c].tvars.values())))
 
 
 def gen_big(self, lo: Val, hi: str = "null") -> Val:

@@ -154,8 +154,19 @@ print(int("123456789012345678901234567890") % 97)  # 52
 - `collections.Counter` counts with promoting ints, in every module of the program: its counts,
   past 64 bits too, are stored, read, added and subtracted (`update()`, `subtract()`, `+`, `-`,
   `|`, `&` and the others), totalled and ordered by `most_common()` as CPython's are. Its
-  definitions compile as those of a module that opts in do (`specs.INT_HELPERS`); its keys, of its
-  type variable, stay 64-bit ints ([boundaries](#64-bit-boundaries)).
+  definitions compile as those of a module that opts in do (`specs.INT_HELPERS`); its keys are those
+  of its type variable (below).
+- A generic class's type variable that an int binds, by an annotation (`Box[int]`) or by a call's
+  argument (`Box(1)`, `Box(2 ** 70)`), in any module of a program where a module opts in and none
+  opts in to [dynamic `Any`](dynamic-any.md), is bound to a promoting int: the class's
+  specializations for ints are one class, whose fields, parameters, results and containers of the
+  type variable hold promoting ints, also those of `lib/`'s `deque`, `defaultdict` and
+  `OrderedDict`, a `Counter`'s keys and the results that `functools.cache` and `lru_cache` keep. The
+  methods of such a specialization read the ints of their containers as a module that opts in does
+  (`bigints.read_policy`). A class whose `__init__` leaves a parameter unannotated (a class
+  template, specialized by each call's types) and a generic function keep the ints of their own
+  module, and where a module opts in to dynamic `Any`, whose values do not hold promoting ints, a
+  call's argument binds the type it has (an int that fits, the 64-bit int).
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
 - An object's comparison methods (`__eq__`, `__lt__` and the others, also reflected and a
@@ -314,10 +325,11 @@ for a C `long`), where CPython goes on with the bigger int:
   its fields or None, which holds 64-bit ints too.
 - An `int` or `int | None` parameter of a function in a module that does not opt in, also of a
   class's comparison method (whose unannotated parameters take the promoting int, so arithmetic
-  there promotes too), and the parameters and result of a `Callable`.
+  there promotes too), and the parameters and result of a `Callable`, such as a `defaultdict`'s
+  factory.
 - A list's int (or its tuple's), a dict's key or value, a set's element or a generator's value
-  read in a module that does not opt in, such as `lib/`'s `random.shuffle()` and `collections`'
-  `defaultdict`, a `Counter`'s keys, and the ints of a list given to `tuple()`, `math.prod()`,
+  read in a module that does not opt in, such as `lib/`'s `random.shuffle()` and a generic
+  function of such a module, and the ints of a list given to `tuple()`, `math.prod()`,
   `math.fsum()`, `sum()` with a float start and `ffi`.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
@@ -480,6 +492,16 @@ the first measurements, before the inline paths, in
   a `Counter`'s counts past 64 bits and -2\*\*63, stored, read, added, subtracted, totalled, ordered
   by `most_common()`, combined and compared, also by a module that does not opt in
   (`tests/python_int_modules/fixed_counter.py`).
+- `tests/programs/numbers/python_int_generics.py`: generic classes specialized for ints by
+  annotations and by calls' arguments, as one class, whose fields, parameters, results, dicts and
+  lists of tuples of the type variables hold ints past 64 bits and -2\*\*63, also a class of a
+  module that does not opt in (`tests/python_int_modules/fixed_generics.py`), which makes and
+  changes such objects; `python_int_generic_lib.py`: a `deque[int]`, the values of a
+  `defaultdict[str, int]` and an `OrderedDict[str, int]`, a `Counter`'s keys and the results of
+  `functools.cache` and `lru_cache` past 64 bits;
+  `python_int_generics_dynamic.py`: such a class specialized for ints that fit in a program where
+  another module opts in to dynamic `Any` (`tests/python_int_modules/dynamic_reader.py`), which
+  reads its objects as dynamic values.
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in
