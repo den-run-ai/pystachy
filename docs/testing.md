@@ -133,6 +133,15 @@ check complements the full opt-in corpus sweep, `make dynany-optin`), `make dict
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 
+`make python-int-optin` runs the program corpus as `make dynany-optin` does, with
+`# pystachy: python-int` instead ([promoting ints](python-int.md)): a fresh pinned-CPython oracle,
+JIT and AOT, and `build/python-int-optin.json`, a report of every check. Promoting ints do not
+cover the whole language yet, so it is no verification gate: a change to them is checked against
+the report of the same command in a checkout of its base, `PYTHON_INT_OPTIN="--compare BASE"`,
+which fails where a check that passes in BASE fails now and lists those newly passing.
+`--modes jit` and `--cases` narrow a run, and `--any-python` records with another patch version
+of the pinned CPython, for a local comparison of two compilers.
+
 `build/verification.json` records each stage's result, duration and counts, plus the source
 revision and hashes, toolchain, platform and timestamp. A suite run passes only when its
 `passed`, `failed` and `expected` counts prove every expected case ran. Missing stages or

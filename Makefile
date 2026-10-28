@@ -293,6 +293,13 @@ DYNANY_OPTIN ?=
 dynany-optin: pystachy
 	$(PY) tools/dynany_optin.py --compiler ./pystachy --modes jit aot --report build/dynany-optin.json $(DYNANY_OPTIN)
 
+# Opt the program corpus in to promoting ints the same way (tools/python_int_optin.py): a report of
+# every check, which PYTHON_INT_OPTIN="--compare BASE" compares with an earlier one, BASE, failing
+# where a check that passes there fails now (docs/testing.md)
+PYTHON_INT_OPTIN ?=
+python-int-optin: pystachy
+	$(PY) tools/python_int_optin.py --compiler ./pystachy --modes jit aot --report build/python-int-optin.json $(PYTHON_INT_OPTIN)
+
 # lib/re, run by CPython, must enter its matcher and make contexts no more often than fixed limits
 # allow for textwrap's patterns, with CPython's results (tools/re_probe.py: deterministic counts);
 # RE_PROBE="--time ./pystachy" also times tools/re_bench.py compiled and under CPython
@@ -350,4 +357,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
