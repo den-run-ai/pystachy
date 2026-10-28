@@ -699,18 +699,22 @@ def gen_plain_field(self, n: Node) -> str:
     # no comparison adapter; else "". Never infers a type.
     if n.kind != "attr" or len(n.kids) != 1 or n.kids[0].kind != "name" or n.kids[0].s not in self.ltype:
         return ""
-    c = self.ltype[n.kids[0].s]
+    return self.class_field(self.ltype[n.kids[0].s], n.s)
+
+
+def gen_class_field(self, c: str, f: str) -> str:
+    # plain_field's type of field f of an object of class c, else ""
     if c not in self.classes or c in self.nts or c in self.curfn.cmptypes:
         return ""
     ci = self.classes[c]
-    if ci.exc != "" or n.s not in ci.ftypes or n.s not in ci.fpos or n.s in ci.fextra:
+    if ci.exc != "" or f not in ci.ftypes or f not in ci.fpos or f in ci.fextra:
         return ""
     for sub in self.classes.values():
         if self.derives(sub.name, c):
             ms = self.classes[sub.origin].methods if sub.origin != "" and sub.origin in self.classes else sub.methods
-            if n.s in sub.methods or n.s in ms or "__getattr__" in ms or "__getattribute__" in ms or "__getattr__" in sub.methods or "__getattribute__" in sub.methods:
+            if f in sub.methods or f in ms or "__getattr__" in ms or "__getattribute__" in ms or "__getattr__" in sub.methods or "__getattribute__" in sub.methods:
                 return ""
-    return ci.ftypes[n.s]
+    return ci.ftypes[f]
 
 
 def gen_scalar_receiver(self, n: Node) -> str:

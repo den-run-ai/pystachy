@@ -1268,7 +1268,7 @@ def gen_scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
     for nm in ["int", "float", "bool", "range", "print"]:
         if nm in self.mvars or nm in self.gtypes or nm in self.funcs or nm in self.classes or nm in self.aliases or nm in self.fglobals:
             blocked[nm] = True
-    return ts if all(numeric_statement(n, names, blocked, True, True) for n in body) else []
+    return ts if all(numeric_statement(n, names, blocked, {}, True, True) for n in body) else []
 
 
 def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "", none: str = "", cache: Val | None = None, direct: bool = False, resultsoft: bool = False, typeargs: str = "") -> Val:
@@ -1335,7 +1335,16 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         if f.extern and self.ffi_at(e):
             vals[j] = self.at_arg(e, f, j, offs)
             continue
-        arg = self.expr(e, f.ptypes[j] if f.ptypes[j] != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
+        quiet = identity_abi(f) and not f.generic and f.cls not in self.tmpl and f.scalar_args and f.params[j] not in f.idnames and numeric_identity(f.ptypes[j]) and self.scalar_read_value(e)
+        held = self.fn.scalar_reads
+        if quiet:
+            # (the callee never observes this argument's object: numeric_proof, as its null
+            # companion below says; read it as an operand, without snapshots)
+            self.fn.scalar_reads = True
+        try:
+            arg = self.expr(e, f.ptypes[j] if f.ptypes[j] != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
+        finally:
+            self.fn.scalar_reads = held
         passing = self.fn.idpass
         self.fn.idpass = self.id_move(e)
         try:

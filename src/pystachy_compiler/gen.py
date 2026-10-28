@@ -153,6 +153,7 @@ from src.pystachy_compiler.dynamic import (
     gen_json_any as dynamic_json_any,
     gen_dyn_id_held as dynamic_dyn_id_held,
     gen_lazy_field as dynamic_lazy_field,
+    gen_proven_call as dynamic_proven_call,
     gen_id_move as dynamic_id_move,
     gen_id_stmt as dynamic_id_stmt,
     gen_lazy_fields as dynamic_lazy_fields,
@@ -757,6 +758,7 @@ from src.pystachy_compiler.expressions import (
     gen_scalar_read_value as expressions_scalar_read_value,
     gen_scalar_read_index as expressions_scalar_read_index,
     gen_plain_field as expressions_plain_field,
+    gen_class_field as expressions_class_field,
     gen_scalar_receiver as expressions_scalar_receiver,
     gen_seq_index as expressions_seq_index,
     gen_fmt_error as expressions_fmt_error,
@@ -923,6 +925,7 @@ from src.pystachy_compiler.functions import (
     gen_externtype as functions_externtype,
     gen_function as functions_function,
     gen_function_body as functions_function_body,
+    gen_receiver_fields as functions_receiver_fields,
     gen_numeric_proof as functions_numeric_proof,
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
@@ -3974,6 +3977,15 @@ class Gen:
 
     def plain_field(self, n: Node) -> str:
         return expressions_plain_field(self, n)
+
+    def class_field(self, c: str, f: str) -> str:
+        return expressions_class_field(self, c, f)
+
+    def receiver_fields(self, c: str, me: str, body: list[Node], names: dict[str, bool]) -> dict[str, str]:
+        return functions_receiver_fields(self, c, me, body, names)
+
+    def proven_call(self, e: Node) -> bool:
+        return dynamic_proven_call(self, e)
 
     def scalar_receiver(self, n: Node) -> str:
         return expressions_scalar_receiver(self, n)

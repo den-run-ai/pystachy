@@ -6,36 +6,50 @@ from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, men
 from src.pystachy_compiler.utils import int_fits
 
 
-def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool]) -> bool:
+def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool], own: dict[str, str]) -> bool:
     # A closed scalar expression: nothing can expose a number's object identity or call
     # user code. Names are exclusively numeric parameters/locals; every store is checked
-    # by numeric_statement. Unknown syntax is deliberately outside this proof.
+    # by numeric_statement. Unknown syntax is deliberately outside this proof. In a
+    # method, own names its receiver ("@") and that object's plain fields ("." + field:
+    # their types), which read no code, and the locals that hold one of its bytes or str
+    # fields ("#" + name), which only len() and indexes read
     k = n.kind
     if k in ["int", "float", "True", "False"]:
         return True
     if k == "name":
         return n.s in names
     if k == "walrus":
-        return n.s in names and numeric_value(n.kids[0], names, blocked)
+        return n.s in names and numeric_value(n.kids[0], names, blocked, own)
+    if k == "attr":
+        return len(n.kids) == 1 and n.kids[0].kind == "name" and "@" in own and n.kids[0].s == own["@"] and own.get("." + n.s, "") in ["int", "float", "bool"]
+    if k == "index":
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and own.get("#" + n.kids[0].s, "") == "bytes" and numeric_value(n.kids[1], names, blocked, own)
     if k == "call":
         if len(n.kids) != 2 or n.kids[0].kind != "name":
             return False
         callee = n.kids[0].s
-        return callee in ["int", "float", "bool"] and callee not in names and callee not in blocked and numeric_value(n.kids[1], names, blocked)
+        if callee == "len" and n.kids[1].kind == "name" and ("#" + n.kids[1].s) in own:
+            return callee not in names and callee not in blocked
+        return callee in ["int", "float", "bool"] and callee not in names and callee not in blocked and numeric_value(n.kids[1], names, blocked, own)
     allowed = (k == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~", "not"]) or k == "ifexp" or (k == "boolop" and n.s in ["and", "or"])
     if k == "cmp":
         allowed = all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(","))
-    return allowed and all(numeric_value(x, names, blocked) for x in n.kids)
+    return allowed and all(numeric_value(x, names, blocked, own) for x in n.kids)
 
 
-def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool], noresult: bool = False, annotations: bool = False) -> bool:
+def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool], own: dict[str, str], noresult: bool = False, annotations: bool = False) -> bool:
     # A bounded body whose local numbers only feed scalar operations and the existing
-    # typed numeric return ABI. No globals, containers, callbacks, closures or Any storage.
+    # typed numeric return ABI. No globals, containers, callbacks, closures or Any storage
+    # (but, in a method, its receiver's plain fields and locals holding its bytes or str
+    # fields: numeric_value's own).
     k = n.kind
     if k in ["pass", "break", "continue"]:
         return True
     if k == "block":
-        return all(numeric_statement(x, names, blocked, noresult, annotations) for x in n.kids)
+        return all(numeric_statement(x, names, blocked, own, noresult, annotations) for x in n.kids)
+    if k == "assign" and len(n.kids) == 2 and n.kids[0].kind == "name" and ("#" + n.kids[0].s) in own:
+        v = n.kids[1]
+        return v.kind == "attr" and len(v.kids) == 1 and v.kids[0].kind == "name" and v.kids[0].s == own["@"] and own.get("." + v.s, "") == own["#" + n.kids[0].s]
     if noresult and k == "return":
         return len(n.kids) == 0 or (len(n.kids) == 1 and n.kids[0].kind == "None")
     if noresult and k == "expr" and len(n.kids) == 1:
@@ -43,9 +57,9 @@ def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool],
         if value.kind == "call" and len(value.kids) > 0 and value.kids[0].kind == "name" and value.kids[0].s == "print":
             # Builtin print consumes scalar values without exposing their objects.
             # Keyword/expanded arguments, shadowed calls and other values fail closed.
-            return "print" not in names and "print" not in blocked and all(x.kind == "str" or numeric_value(x, names, blocked) for x in value.kids[1:])
+            return "print" not in names and "print" not in blocked and all(x.kind == "str" or numeric_value(x, names, blocked, own) for x in value.kids[1:])
     if k in ["return", "expr"]:
-        return len(n.kids) == 1 and numeric_value(n.kids[0], names, blocked)
+        return len(n.kids) == 1 and numeric_value(n.kids[0], names, blocked, own)
     if annotations and k == "annassign":
         ann = n.kids[1]
         parts = [ann]
@@ -56,18 +70,18 @@ def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool],
                 parts.extend(a.kids)
             elif a.kind != "name" or a.s not in ["int", "float", "bool"] or a.s in blocked:
                 valid = False
-        return valid and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s in names and numeric_value(n.kids[2], names, blocked)
+        return valid and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s in names and numeric_value(n.kids[2], names, blocked, own)
     if k in ["assign", "augassign"]:
         if len(n.kids) != 2 or n.kids[0].kind != "name" or n.kids[0].s not in names:
             return False
-        return (k == "assign" or n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) and numeric_value(n.kids[1], names, blocked)
+        return (k == "assign" or n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) and numeric_value(n.kids[1], names, blocked, own)
     if k in ["if", "while"]:
-        return numeric_value(n.kids[0], names, blocked) and all(numeric_statement(x, names, blocked, noresult, annotations) for x in n.kids[1:])
+        return numeric_value(n.kids[0], names, blocked, own) and all(numeric_statement(x, names, blocked, own, noresult, annotations) for x in n.kids[1:])
     if k == "for":
         it = n.kids[1]
         if n.kids[0].kind != "name" or n.kids[0].s not in names or it.kind != "call" or it.kids[0].kind != "name" or it.kids[0].s != "range":
             return False
-        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked, noresult, annotations) for x in n.kids[2:])
+        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked, own) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked, own, noresult, annotations) for x in n.kids[2:])
     return False
 
 

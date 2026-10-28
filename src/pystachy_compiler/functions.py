@@ -1,6 +1,6 @@
 """Functions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends
+from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.bigints import int_replay_state
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
@@ -155,27 +155,66 @@ def gen_numeric_proof(self, f: FnInfo, body: list[Node]) -> None:
     f.idnames = {}
     scalar_none = f.ret == "None" or (f.infer and f.ret == "")
     scalar_return = not f.infer and f.ret in ["int", "float", "bool"] and f.node.kind == "def" and len(f.node.kids) == 3 and all(p.kids[0].kind != "noann" for p in f.node.kids[0].kids)
-    if not self.rtmode and identity_abi(f) and (scalar_none or scalar_return or (not f.infer and numeric_identity(f.ret))) and f.node.kind == "def" and len(f.node.kids) == 3 and f.clo < 0 and not f.gen and f.vararg < 0 and f.kwarg < 0 and all(t in ["int", "float", "bool"] for t in f.ptypes):
+    # A method's receiver (own: numeric_value) may read its plain fields; its numeric
+    # parameters' proof is the same. The receiver itself is no numeric name.
+    first = 1 if takes_self(f) and len(f.ptypes) > 0 and f.ptypes[0] in self.classes and not f.generic else 0
+    if not self.rtmode and identity_abi(f) and (scalar_none or scalar_return or (not f.infer and numeric_identity(f.ret))) and f.node.kind == "def" and len(f.node.kids) == 3 and f.clo < 0 and not f.gen and f.vararg < 0 and f.kwarg < 0 and all(t in ["int", "float", "bool"] for t in f.ptypes[first:]):
         names: dict[str, bool] = {}
         local_names(body, names)
+        own: dict[str, str] = {}
+        if first == 1:
+            if f.params[0] in names:
+                return
+            own = self.receiver_fields(f.ptypes[0], f.params[0], body, names)
         # Reading a concrete numeric global cannot expose an argument's identity.
         # Global writes and callbacks remain outside numeric_statement's proof, and
         # a returned global still snapshots its own box through the normal read path.
         for global_name in self.gtypes:
             if self.gtypes[global_name] in ["int", "float", "bool"]:
                 names[global_name] = True
-        for p in f.params:
+        for p in f.params[first:]:
             names[p] = True
         blocked: dict[str, bool] = {}
-        for nm in ["int", "float", "bool", "range", "print"]:
+        for nm in ["int", "float", "bool", "range", "print", "len"]:
             if nm in self.mvars or nm in self.gtypes or nm in self.funcs or nm in self.classes or nm in self.aliases or nm in self.fglobals:
                 blocked[nm] = True
         # This belongs to the fresh IFn, so dynamic widening/restarts recompute it and
         # nested function compilation saves/restores it with the existing Frame.
-        f.scalar_only = (scalar_none or scalar_return) and all(numeric_statement(n, names, blocked, scalar_none) for n in body)
-        f.scalar_args = f.scalar_only or all(numeric_statement(n, names, blocked, scalar_none, True) for n in body)
+        f.scalar_only = (scalar_none or scalar_return) and all(numeric_statement(n, names, blocked, own, scalar_none) for n in body)
+        f.scalar_args = f.scalar_only or all(numeric_statement(n, names, blocked, own, scalar_none, True) for n in body)
     if f.scalar_args and not scalar_none:
         f.idnames = numeric_return_names(body)
+
+
+def gen_receiver_fields(self, c: str, me: str, body: list[Node], names: dict[str, bool]) -> dict[str, str]:
+    # numeric_value's own for a method of class c whose receiver is me: me ("@"), the plain
+    # fields of c (class_field: "." + field, its type), and the locals that body binds only to
+    # one of me's bytes or str fields, x = me.f ("#" + x, which leave names)
+    own: dict[str, str] = {"@": me}
+    for fld in self.classes[c].ftypes:
+        t = self.class_field(c, fld)
+        if t != "":
+            own["." + fld] = t
+    seqs: dict[str, str] = {}
+    other: dict[str, bool] = {}
+    pending = [x for x in body]
+    while len(pending) > 0:
+        st = pending.pop()
+        if st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name" and st.kids[1].kind == "attr" and len(st.kids[1].kids) == 1 and st.kids[1].kids[0].kind == "name" and st.kids[1].kids[0].s == me and own.get("." + st.kids[1].s, "") in ["bytes", "str"]:
+            x = st.kids[0].s
+            t = own["." + st.kids[1].s]
+            if seqs.get(x, t) != t:
+                other[x] = True
+            seqs[x] = t
+        else:
+            targets(st, other, True)
+        if st.kind != "def" and st.kind != "lambda" and st.kind != "class" and st.kind != "subclass":
+            pending.extend(st.kids)
+    for x in seqs:
+        if x not in other and x != me:
+            own["#" + x] = seqs[x]
+            names.pop(x, False)
+    return own
 
 
 def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:

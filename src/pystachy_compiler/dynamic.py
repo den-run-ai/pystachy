@@ -1642,11 +1642,40 @@ def gen_lazy_value(self, e: Node) -> bool:
     if k == "index" and len(e.kids) == 2:
         t = self.scalar_receiver(e.kids[0])
         return (t == "bytes" or t == "str" or is_list(t)) and self.scalar_read_index(e.kids[1])
+    if k == "call" and self.proven_call(e):
+        return True
     if k == "call" and len(e.kids) == 2 and e.kids[0].kind == "name" and e.kids[0].s == "len" and e.kids[1].kind == "name":
         callee = "len"
         t = self.qtype(e.kids[1].s)
         return (t == "str" or t == "bytes" or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t)) and callee not in self.assigned and callee not in self.aliases and callee not in self.fglobals and callee not in self.gtypes and not self.bound(callee)
     return self.lazy_test(e)
+
+
+def gen_proven_call(self, e: Node) -> bool:
+    # is e a call, with inert positional arguments (lazy_value), of one known method of a local's
+    # class (no subclass dispatch) or module function whose body the numeric proof closes
+    # (FnInfo.scalar_args): it runs no other code, stores no field and observes no unreturned
+    # argument's object (numeric_proof)
+    c = e.kids[0]
+    args = e.kids[1:]
+    if len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
+        return False
+    f: FnInfo | None = None
+    if c.kind == "attr" and len(c.kids) == 1 and c.kids[0].kind == "name" and c.kids[0].s in self.ltype and self.ltype[c.kids[0].s] in self.classes:
+        ci = self.classes[self.ltype[c.kids[0].s]]
+        if c.s not in ci.methods or ci.tag != 0 or ci.name in self.tmpl or c.s in ci.ftypes:
+            return False
+        f = ci.methods[c.s]
+        if not takes_self(f) or len(args) + 1 != len(f.params):
+            return False
+    elif c.kind == "name" and c.s in self.funcs and c.s not in self.ltype and c.s not in self.assigned and c.s not in self.gtypes and c.s not in self.aliases and not self.bound(c.s):
+        f = self.funcs[c.s]
+        if f.cls != "" or len(args) != len(f.params):
+            return False
+    if f is None or f.generic or f.infer or not identity_abi(f) or f.node.kind != "def" or len(f.node.kids) != 3:
+        return False
+    self.numeric_proof(f, f.node.kids[2].kids)
+    return f.scalar_args and all(self.lazy_value(a) for a in args)
 
 
 def gen_lazy_inert(self, n: Node) -> bool:
@@ -1660,7 +1689,7 @@ def gen_lazy_inert(self, n: Node) -> bool:
     if k == "return":
         return len(n.kids) == 0 or self.lazy_value(n.kids[0])
     if k == "expr":
-        return n.kids[0].kind == "str" or n.kids[0].kind == "ellipsis"
+        return n.kids[0].kind == "str" or n.kids[0].kind == "ellipsis" or (n.kids[0].kind == "call" and self.lazy_value(n.kids[0]))
     if (k == "assign" and len(n.kids) == 2 and (n.s == "" or n.s == "local-retype")) or (k == "annassign" and len(n.kids) == 3):
         t = n.kids[0]
         return (t.kind == "name" or self.plain_field(t) != "") and self.lazy_value(n.kids[-1])
