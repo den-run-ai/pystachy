@@ -411,6 +411,10 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_calls.py`: functions, defaults, keyword arguments, methods,
   fields, globals, closures, lambdas and modules with and without the comment
   (`tests/python_int_modules/`).
+- `tests/programs/numbers/python_int_varargs.py`: the `*args` tuple of a call, past 64 bits and
+  -2\*\*63, which a function returns or keeps as a dict's key, a set's element or a list's item,
+  also in a module without the comment (`tests/python_int_modules/fixed_varargs.py`), the keys of
+  a `functools.cache` and the arguments that a `functools.partial` keeps.
 - `tests/programs/numbers/python_int_bounds.py`: the inline paths of `//`, `%`, `<<` and `>>` at
   their edges, results that always fit, and shifts past memory.
 - `tests/programs/numbers/python_int_builtins.py`: `bit_length()`, `bit_count()`, `bin()`, `hex()`,
