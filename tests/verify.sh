@@ -142,16 +142,15 @@ plan() {
     python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3) echo "bootstrap $1" ;;
     python-int-optin) echo 'bootstrap python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3' ;; # local alias
     contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
-    benchmarks) echo 'bootstrap benchmarks scaling-0' ;;
-    scaling-1) echo 'bootstrap scaling-1' ;;
-    scaling) echo 'bootstrap scaling-0 scaling-1' ;; # local alias
+    benchmarks) echo 'bootstrap benchmarks' ;;
+    scaling) echo 'bootstrap scaling-0 scaling-1' ;;
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 contracts benchmarks scaling-1; do
+  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 contracts benchmarks scaling; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
@@ -188,13 +187,23 @@ lines() { wc -l < "$1" | tr -d ' '; }
 sha() { sha256sum "$1" | cut -c1-64; }
 same() { cmp -s "$1" "$2" && echo true || echo false; }
 start=$(now); nsteps=0; nfail=0
-# step NAME pass|fail START LOG [JSON fields]: append one step to the report
+# step NAME pass|fail START LOG [JSON fields]: append one step to the report (in a lane of the
+# contracts' steps, below, keep it in build/verify/lanes for the shell to append)
 step() {
   t=$(secs "$3" "$(now)")
+  rec=$(printf '    {"name": "%s", "result": "%s", "seconds": %s, "log": %s%s}' "$1" "$2" "$t" "$(js "${4#"$ROOT"/}")" "$5")
+  if [ -n "${lane:-}" ]; then
+    printf '%s\n' "$rec" > "$V/lanes/$1.json" && printf '%s %s %s\n' "$2" "$t" "$4" > "$V/lanes/$1.result"
+    return
+  fi
+  record "$1" "$2" "$t" "$4" "$rec"
+}
+# record NAME pass|fail SECONDS LOG RECORD: append a step's JSON record to the report
+record() {
   [ $nsteps = 0 ] || printf ',\n' >> "$V/steps.json"
-  printf '    {"name": "%s", "result": "%s", "seconds": %s, "log": %s%s}' "$1" "$2" "$t" "$(js "${4#"$ROOT"/}")" "$5" >> "$V/steps.json"
+  printf '%s' "$5" >> "$V/steps.json"
   nsteps=$((nsteps + 1))
-  printf '%-14s %s  %8ss  %s\n' "$1" "$2" "$t" "${4#"$ROOT"/}"
+  printf '%-14s %s  %8ss  %s\n' "$1" "$2" "$3" "${4#"$ROOT"/}"
   [ "$2" = pass ] || { nfail=$((nfail + 1)); tail -15 "$4" | sed 's/^/    | /'; }
 }
 # checks MODES [FILE...]: checks tests/run.sh makes of these files (default: whole suite) in MODES,
@@ -300,6 +309,7 @@ cancel_gc() {
     kill "$gcpid" 2> /dev/null
     wait "$gcpid" 2> /dev/null
   fi
+  for p in ${lanepids:-} ${cachepid:-}; do kill "$p" 2> /dev/null; done
   exit 130
 }
 trap cancel_gc INT TERM
@@ -413,10 +423,15 @@ done
 # ---- runtime-cache: the cached runtime's rules, each compiler with a private home (tests/cache.sh,
 # whose checks are 66 with the native compiler and 68 with CPython's, including mpz/component edits and,
 # on Linux, which verification runs on, the JIT tier's shared library)
+# Each run has its own home, LLVM wrappers and directory ($TMPDIR/pystachy-cache.PID) and builds the
+# runtime in one process at a time, so the two run side by side (the native one as a background job:
+# neither sends SIGINT, which a background job would ignore)
 if want runtime-cache; then
 L=$V/runtime-cache.log; s=$(now)
-PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1
+PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1 &
+cachepid=$!
 tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
+wait "$cachepid"; cachepid=
 for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
 x=$(tests $((66 + 68)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
 step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
@@ -516,20 +531,6 @@ for shard in 0 1 2; do
 done
 fi
 
-# ---- check-ir: the IR of every program of the corpus passes the IR check and is valid LLVM
-if want check-ir; then
-L=$V/check-ir.log; s=$(now); r=fail
-tools/check_ir.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
-step check-ir $r "$s" "$L" "$(sed -n 's/^the IR check and llvm-as accept the IR of \([0-9]*\) programs.*$/, "programs": \1/p' "$L")"
-fi
-
-# ---- runtime-table: the runtime functions the compiler declares, as runtime.c and runtime.py define them
-if want runtime-table; then
-L=$V/runtime-table.log; s=$(now); r=fail
-$PY tools/check_runtime.py > "$L" 2>&1 && r=pass
-step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries, \([0-9]*\) exception classes: .*$/, "entries": \1, "exception_classes": \2/p' "$L")"
-fi
-
 # ---- gc-self: fixed-point identity under compiler GC stress
 if want gc-self; then
 L=$V/gc-self-check.log; s=$(now); r=fail
@@ -587,28 +588,6 @@ for b in bench/*.py; do
     "${x:+,}" "$k" $i "$(secs "$t0" "$t1")" "$(secs "$t1" "$t2")" "$(secs "$t2" "$t3")" "$(secs "$t3" "$t4")")"
 done
 step benchmarks $r "$s" "$L" ", \"programs\": $n, \"identical\": $ok, \"timings\": [$x]"
-fi
-
-# ---- rtcheck: runtime.py on CPython against CPython's own str methods and math functions
-if want rtcheck; then
-L=$V/rtcheck.log; s=$(now); r=fail
-$PY tools/rtcheck.py > "$L" 2>&1 && r=pass
-step rtcheck $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) cases, \([0-9]*\) failed$/, "cases": \1, "failed": \2/p' "$L")"
-fi
-
-# ---- re-fuzz: lib/re on CPython against CPython's own re, on random patterns and test_re's largest cases
-if want re-fuzz; then
-L=$V/re-fuzz.log; s=$(now); r=fail
-$PY tools/re_fuzz.py > "$L" 2>&1 && r=pass
-step re-fuzz $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) upstream cases and \([0-9]*\) patterns (\([0-9]*\) valid): \([0-9]*\) cases, \([0-9]*\) failed$/, "upstream_cases": \1, "patterns": \2, "valid": \3, "cases": \4, "failed": \5/p' "$L")"
-fi
-
-# ---- dynany-fuzz: seeded differential and typed/Any parity, JIT/AOT and program GC stress
-if want dynany-fuzz; then
-L=$V/dynany-fuzz.log; s=$(now); r=fail
-if $PY tools/dynany_fuzz.py --compiler "$V/pystachy2" --keep "$V/dynany-fuzz" --aot --gc-stress 3 150 > "$L" 2>&1 &&
-    [ "$(tail -1 "$L")" = '3 programs, 540 cases, 90 parity cases (JIT, AOT, JIT-GC, AOT-GC): 0 mismatches' ]; then r=pass; fi
-step dynany-fuzz $r "$s" "$L" "$(tail -1 "$L" | sed -n 's/^\([0-9]*\) programs, \([0-9]*\) cases, \([0-9]*\) parity cases (JIT, AOT, JIT-GC, AOT-GC): \([0-9]*\) mismatches$/, "programs": \1, "cases": \2, "parity_cases": \3, "modes": ["jit", "aot", "jit-gc", "aot-gc"], "program_gc_interval": 1, "mismatches": \4/p')"
 fi
 
 # ---- dynany-optin: full program corpus opts into dynamic Any in four disjoint shards
@@ -682,18 +661,38 @@ step "$intoptin_name" "$r" "$s" "$L" "$intoptin_fields"
 fi
 done
 
+# The contracts group's steps share no output file and read only the bootstrap's files, so on CI's
+# four vCPUs (two cores, two threads each) they run side by side, in three phases (run below, after
+# their definitions; lanes of about equal CI time, run 40719438561): check-ir and rt-abi, as each
+# uses every CPU itself; compile-limits, whose compilers must stay under ten CPU seconds (the hosted
+# one takes about eight on CI: a busy sibling thread would add to its CPU time), beside one lane
+# only, so each has a core; then four lanes. In the last two phases the shell runs one lane itself and
+# the others are background jobs: a background job of a shell without job control starts with SIGINT
+# and SIGQUIT ignored (POSIX), and so would every program it runs, so the steps that take SIGINT
+# (ffi's py_sigint and side_sigint, selectprobe's pending SIGINT) are in the shell's lane,
+# contracts_fg. In a lane, step keeps each step's record for the shell, which appends them to the
+# report in the plan's order once every lane has ended: the same steps, results and fields as one
+# after another, each with its own duration.
 # ---- re-probe: lib/re's matcher entries and contexts for textwrap's patterns, against fixed limits
+contracts_a() {
 if want re-probe; then
 L=$V/re-probe.log; s=$(now); r=fail
 $PY tools/re_probe.py > "$L" 2>&1 && r=pass
 step re-probe $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) operations, \([0-9]*\) failed$/, "operations": \1, "failed": \2/p' "$L")"
 fi
 
-# ---- rt-abi: one signature per runtime function across runtime.py, runtime.c and the corpus
-if want rt-abi; then
-L=$V/rt-abi.log; s=$(now); r=fail
-$PY tools/rtabi.py "$V/pystachy2" > "$L" 2>&1 && r=pass
-step rt-abi $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) functions of runtime.py, \([0-9]*\) uses in runtime.c and \([0-9]*\) programs, \([0-9]*\) mismatches$/, "functions": \1, "uses": \2, "programs": \3, "mismatches": \4/p' "$L")"
+# ---- re-fuzz: lib/re on CPython against CPython's own re, on random patterns and test_re's largest cases
+if want re-fuzz; then
+L=$V/re-fuzz.log; s=$(now); r=fail
+$PY tools/re_fuzz.py > "$L" 2>&1 && r=pass
+step re-fuzz $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) upstream cases and \([0-9]*\) patterns (\([0-9]*\) valid): \([0-9]*\) cases, \([0-9]*\) failed$/, "upstream_cases": \1, "patterns": \2, "valid": \3, "cases": \4, "failed": \5/p' "$L")"
+fi
+
+# ---- runtime-table: the runtime functions the compiler declares, as runtime.c and runtime.py define them
+if want runtime-table; then
+L=$V/runtime-table.log; s=$(now); r=fail
+$PY tools/check_runtime.py > "$L" 2>&1 && r=pass
+step runtime-table $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) RUNTIME entries, \([0-9]*\) exception classes: .*$/, "entries": \1, "exception_classes": \2/p' "$L")"
 fi
 
 # ---- inherited ASTs: declaration headers grow linearly; unused method bodies are shared
@@ -702,6 +701,36 @@ L=$V/inherited-ast.log; s=$(now); r=fail
 $PY tools/inheritprobe.py "$V/pystachy2" > "$L" 2>&1 && r=pass
 step inherited-ast $r "$s" "$L" ', "sizes": [80, 160, 320], "native_size": 800, "address_space_mib": 256'
 fi
+}
+
+contracts_b() {
+# ---- Unicode audit: opt-in checks, code-point cache/locality and mutation/GC invalidation
+if want unicode-audit; then
+L=$V/unicode-audit.log; s=$(now); r=fail
+{ $PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" &&
+  "${LLVM}clang" -O2 -S -emit-llvm tools/unicodeprobe.c -o "$V/unicodeprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt2.ll" "$V/unicodeprobe.ll" -o "$V/unicodeprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/unicodeprobe.bc" -o "$V/unicodeprobe" -lm &&
+  "$V/unicodeprobe" && PYSTACHY_GC_STRESS=1 "$V/unicodeprobe" && r=pass; } > "$L" 2>&1
+step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"], "codepoint_probe_gc_modes": ["normal", "stress"]'
+fi
+}
+
+contracts_c() {
+# ---- rtcheck: runtime.py on CPython against CPython's own str methods and math functions
+if want rtcheck; then
+L=$V/rtcheck.log; s=$(now); r=fail
+$PY tools/rtcheck.py > "$L" 2>&1 && r=pass
+step rtcheck $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) cases, \([0-9]*\) failed$/, "cases": \1, "failed": \2/p' "$L")"
+fi
+
+# ---- dynany-fuzz: seeded differential and typed/Any parity, JIT/AOT and program GC stress
+if want dynany-fuzz; then
+L=$V/dynany-fuzz.log; s=$(now); r=fail
+if $PY tools/dynany_fuzz.py --compiler "$V/pystachy2" --keep "$V/dynany-fuzz" --aot --gc-stress 3 150 > "$L" 2>&1 &&
+    [ "$(tail -1 "$L")" = '3 programs, 540 cases, 90 parity cases (JIT, AOT, JIT-GC, AOT-GC): 0 mismatches' ]; then r=pass; fi
+step dynany-fuzz $r "$s" "$L" "$(tail -1 "$L" | sed -n 's/^\([0-9]*\) programs, \([0-9]*\) cases, \([0-9]*\) parity cases (JIT, AOT, JIT-GC, AOT-GC): \([0-9]*\) mismatches$/, "programs": \1, "cases": \2, "parity_cases": \3, "modes": ["jit", "aot", "jit-gc", "aot-gc"], "program_gc_interval": 1, "mismatches": \4/p')"
+fi
 
 # ---- streaming: sum(), min() and max() of 10^8 items in 64 MiB, which their list would exceed
 if want streaming; then
@@ -709,23 +738,23 @@ L=$V/streaming.log; s=$(now); r=fail
 $PY tools/streamprobe.py "$V/pystachy2" > "$L" 2>&1 && r=pass
 step streaming $r "$s" "$L" ', "items": 100000000, "address_space_mib": 64'
 fi
+}
 
-# ---- ffi: C functions, CPython embedded, extension modules (docs/ffi.md)
-if want ffi; then
-L=$V/ffi.log; s=$(now); r=fail
-PY=$PY tests/ffi/run.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
-step ffi $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) passed, \([0-9]*\) failed.*$/, "passed": \1, "failed": \2/p' "$L")"
+contracts_d() {
+# ---- JIT dead code: inspect the actual execution module, without a timing threshold
+if want jit-dead-code; then
+L=$V/jit-dead-code.log; s=$(now); r=fail
+$PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
+step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
 fi
 
-# ---- list-storage: deterministic capacity and live-byte checks for reachable empty lists, and
-# collection counts for dropped large arrays
-if want list-storage; then
-L=$V/list-storage.log; s=$(now); r=fail
-{ "${LLVM}clang" -O2 -S -emit-llvm tools/listprobe.c -o "$V/listprobe.ll" &&
-  "${LLVM}llvm-link" "$V/rt1.ll" "$V/listprobe.ll" -o "$V/listprobe.bc" &&
-  "${LLVM}clang" -O2 "$V/listprobe.bc" -o "$V/listprobe" -lm &&
-  "$V/listprobe" && PYSTACHY_GC_STRESS=1 "$V/listprobe" && r=pass; } > "$L" 2>&1
-step list-storage $r "$s" "$L" ', "lists": 64, "historical_slots_per_list": 65536, "live_byte_limit": 1048576, "large_object_budget": 4194304'
+# ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
+if want dict-probes; then
+L=$V/dict-probes.log; s=$(now); r=fail
+{ "$V/pystachy2" rt runtime.py -o "$V/dictprobe-rt.ll" && "${LLVM}clang" -O2 -S -emit-llvm tools/dictprobe.c -o "$V/dictprobe.ll" &&
+  "${LLVM}llvm-link" "$V/dictprobe-rt.ll" "$V/dictprobe.ll" -o "$V/dictprobe.bc" && "${LLVM}clang" -O2 "$V/dictprobe.bc" -o "$V/dictprobe" -lm &&
+  "$V/dictprobe" && PYSTACHY_GC_STRESS=1 "$V/dictprobe" --hash-cache && r=pass; } > "$L" 2>&1
+step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"
 fi
 
 # ---- container-eq: bounded comparisons for small DAGs with exponentially many logical leaves
@@ -738,6 +767,16 @@ L=$V/container-eq.log; s=$(now); r=fail
 step container-eq $r "$s" "$L" ', "shared_levels": 32, "comparison_limit": 64'
 fi
 
+# ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts
+if want file-buffers; then
+L=$V/file-buffers.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/fileprobe.c -o "$V/fileprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/fileprobe.ll" -o "$V/fileprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/fileprobe.bc" -o "$V/fileprobe" -lm &&
+  "$V/fileprobe" && "$V/fileprobe" --lib && PYSTACHY_GC_STRESS=1 "$V/fileprobe" && r=pass; } > "$L" 2>&1
+step file-buffers $r "$s" "$L" ', "dropped_files": 128, "buffer_bytes": 136314880, "outstanding_limit": 41975808'
+fi
+
 # ---- weakrefs: handles do not keep targets alive and are pruned before their storage is reclaimed
 if want weakrefs; then
 L=$V/weakrefs.log; s=$(now); r=fail
@@ -748,24 +787,24 @@ L=$V/weakrefs.log; s=$(now); r=fail
 step weakrefs $r "$s" "$L" ', "referents": 2, "churned_handles": 1000'
 fi
 
-# ---- box-slots: boxes take 16-byte slots; a payload pointer keeps a box, one past its end does not
-if want box-slots; then
-L=$V/box-slots.log; s=$(now); r=fail
-{ "${LLVM}clang" -O2 -S -emit-llvm tools/boxprobe.c -o "$V/boxprobe.ll" &&
-  "${LLVM}llvm-link" "$V/rt1.ll" "$V/boxprobe.ll" -o "$V/boxprobe.bc" &&
-  "${LLVM}clang" -O2 "$V/boxprobe.bc" -o "$V/boxprobe" -lm &&
-  "$V/boxprobe" && PYSTACHY_GC_STRESS=1 "$V/boxprobe" && r=pass; } > "$L" 2>&1
-step box-slots $r "$s" "$L" ', "box_bytes": 16'
+# ---- list-storage: deterministic capacity and live-byte checks for reachable empty lists, and
+# collection counts for dropped large arrays
+if want list-storage; then
+L=$V/list-storage.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/listprobe.c -o "$V/listprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/listprobe.ll" -o "$V/listprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/listprobe.bc" -o "$V/listprobe" -lm &&
+  "$V/listprobe" && PYSTACHY_GC_STRESS=1 "$V/listprobe" && r=pass; } > "$L" 2>&1
+step list-storage $r "$s" "$L" ', "lists": 64, "historical_slots_per_list": 65536, "live_byte_limit": 1048576, "large_object_budget": 4194304'
 fi
+}
 
-# ---- file-buffers: dropped files' buffers run collections; opens, closes and the exit balance the counts
-if want file-buffers; then
-L=$V/file-buffers.log; s=$(now); r=fail
-{ "${LLVM}clang" -O2 -S -emit-llvm tools/fileprobe.c -o "$V/fileprobe.ll" &&
-  "${LLVM}llvm-link" "$V/rt1.ll" "$V/fileprobe.ll" -o "$V/fileprobe.bc" &&
-  "${LLVM}clang" -O2 "$V/fileprobe.bc" -o "$V/fileprobe" -lm &&
-  "$V/fileprobe" && "$V/fileprobe" --lib && PYSTACHY_GC_STRESS=1 "$V/fileprobe" && r=pass; } > "$L" 2>&1
-step file-buffers $r "$s" "$L" ', "dropped_files": 128, "buffer_bytes": 136314880, "outstanding_limit": 41975808'
+contracts_fg() {
+# ---- ffi: C functions, CPython embedded, extension modules (docs/ffi.md)
+if want ffi; then
+L=$V/ffi.log; s=$(now); r=fail
+PY=$PY tests/ffi/run.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
+step ffi $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) passed, \([0-9]*\) failed.*$/, "passed": \1, "failed": \2/p' "$L")"
 fi
 
 # ---- select-io: real descriptors, signal interruptions and readiness loops
@@ -778,38 +817,77 @@ L=$V/select-io.log; s=$(now); r=fail
 step select-io $r "$s" "$L" ''
 fi
 
-# ---- dict-probes: table slots per dict lookup for colliding keys, sequential keys the control
-if want dict-probes; then
-L=$V/dict-probes.log; s=$(now); r=fail
-{ "$V/pystachy2" rt runtime.py -o "$V/dictprobe-rt.ll" && "${LLVM}clang" -O2 -S -emit-llvm tools/dictprobe.c -o "$V/dictprobe.ll" &&
-  "${LLVM}llvm-link" "$V/dictprobe-rt.ll" "$V/dictprobe.ll" -o "$V/dictprobe.bc" && "${LLVM}clang" -O2 "$V/dictprobe.bc" -o "$V/dictprobe" -lm &&
-  "$V/dictprobe" && PYSTACHY_GC_STRESS=1 "$V/dictprobe" --hash-cache && r=pass; } > "$L" 2>&1
-step dict-probes $r "$s" "$L" "$(sed -n 's/^worst average: \([0-9.]*\) slots per lookup (limit \([0-9.]*\))$/, "worst_average_slots": \1, "limit": \2/p' "$L")"
+# ---- box-slots: boxes take 16-byte slots; a payload pointer keeps a box, one past its end does not
+if want box-slots; then
+L=$V/box-slots.log; s=$(now); r=fail
+{ "${LLVM}clang" -O2 -S -emit-llvm tools/boxprobe.c -o "$V/boxprobe.ll" &&
+  "${LLVM}llvm-link" "$V/rt1.ll" "$V/boxprobe.ll" -o "$V/boxprobe.bc" &&
+  "${LLVM}clang" -O2 "$V/boxprobe.bc" -o "$V/boxprobe" -lm &&
+  "$V/boxprobe" && PYSTACHY_GC_STRESS=1 "$V/boxprobe" && r=pass; } > "$L" 2>&1
+step box-slots $r "$s" "$L" ', "box_bytes": 16'
 fi
+}
 
+contracts_limits() {
 # ---- compile limits: small sources must receive bounded source diagnostics, not exhaust memory
 if want compile-limits; then
 L=$V/compile-limits.log; s=$(now); r=fail
 $PY tools/compilelimits.py -c "hosted=$PY pystachy.py" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
 step compile-limits $r "$s" "$L" ', "address_space_mib": 256, "cpu_seconds": 10, "modes": ["ir", "run", "build"]'
 fi
+}
 
-# ---- JIT dead code: inspect the actual execution module, without a timing threshold
-if want jit-dead-code; then
-L=$V/jit-dead-code.log; s=$(now); r=fail
-$PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
-step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
+contracts_cpus() {
+# ---- check-ir: the IR of every program of the corpus passes the IR check and is valid LLVM
+if want check-ir; then
+L=$V/check-ir.log; s=$(now); r=fail
+tools/check_ir.sh "$V/pystachy2" > "$L" 2>&1 && r=pass
+step check-ir $r "$s" "$L" "$(sed -n 's/^the IR check and llvm-as accept the IR of \([0-9]*\) programs.*$/, "programs": \1/p' "$L")"
 fi
 
-# ---- Unicode audit: opt-in checks, code-point cache/locality and mutation/GC invalidation
-if want unicode-audit; then
-L=$V/unicode-audit.log; s=$(now); r=fail
-{ $PY tools/unicode_audit.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" &&
-  "${LLVM}clang" -O2 -S -emit-llvm tools/unicodeprobe.c -o "$V/unicodeprobe.ll" &&
-  "${LLVM}llvm-link" "$V/rt2.ll" "$V/unicodeprobe.ll" -o "$V/unicodeprobe.bc" &&
-  "${LLVM}clang" -O2 "$V/unicodeprobe.bc" -o "$V/unicodeprobe" -lm &&
-  "$V/unicodeprobe" && PYSTACHY_GC_STRESS=1 "$V/unicodeprobe" && r=pass; } > "$L" 2>&1
-step unicode-audit $r "$s" "$L" ', "compilers": ["CPython-hosted", "stage2"], "codepoint_probe_gc_modes": ["normal", "stress"]'
+# ---- rt-abi: one signature per runtime function across runtime.py, runtime.c and the corpus
+if want rt-abi; then
+L=$V/rt-abi.log; s=$(now); r=fail
+$PY tools/rtabi.py "$V/pystachy2" > "$L" 2>&1 && r=pass
+step rt-abi $r "$s" "$L" "$(sed -n 's/^\([0-9]*\) functions of runtime.py, \([0-9]*\) uses in runtime.c and \([0-9]*\) programs, \([0-9]*\) mismatches$/, "functions": \1, "uses": \2, "programs": \3, "mismatches": \4/p' "$L")"
+fi
+}
+
+lane=
+lanepids=
+# bg LANE...: run each lane function as a background job, its output in build/verify
+bg() {
+  for l; do
+    (lane=$l; "contracts_$l") > "$V/contracts-lane-$l.log" 2>&1 &
+    lanepids="$lanepids $!"
+  done
+}
+if [ -n "$(for n in $(plan contracts); do [ "$n" = bootstrap ] || ! want "$n" || echo "$n"; done)" ]; then
+  rm -rf "$V/lanes"; mkdir -p "$V/lanes"
+  # One runtime build per compiler before the lanes, as the steps that ran one after another found it:
+  # lanes would otherwise build it at once, and compile-limits' run and build under its CPU limit
+  printf 'print("warm")\n' > "$V/lanes/warm.py"
+  { "$V/pystachy2" run "$V/lanes/warm.py"; $PY pystachy.py run "$V/lanes/warm.py"; $PY -m pystachy run "$V/lanes/warm.py"; } > "$V/contracts-warm.log" 2>&1 &
+  warmpid=$!
+  lane="cpus"; contracts_cpus
+  wait "$warmpid"
+  bg limits
+  lane="fg"; contracts_fg
+  for l in $lanepids; do wait "$l"; done
+  lanepids=
+  bg a b c
+  lane="d"; contracts_d
+  for l in $lanepids; do wait "$l"; done
+  lane=; lanepids=
+  for n in $(plan contracts); do
+    [ "$n" != bootstrap ] && want "$n" || continue
+    if [ -f "$V/lanes/$n.result" ] && [ -f "$V/lanes/$n.json" ]; then
+      read -r res t log < "$V/lanes/$n.result"
+      record "$n" "$res" "$t" "$log" "$(cat "$V/lanes/$n.json")"
+    else  # (its lane ended before the step did: build/verify/contracts-lane-*.log)
+      record "$n" fail 0 "$V/$n.log" "$(printf '    {"name": "%s", "result": "fail", "seconds": 0, "log": %s, "lane_ended": true}' "$n" "$(js "build/verify/$n.log")")"
+    fi
+  done
 fi
 
 # ---- scaling: compile time grows linearly with generated programs (counts need Python 3.12+)
@@ -820,7 +898,9 @@ for shard in 0 1; do
   want scaling-$shard || continue
   L=$V/scaling-$shard.log; s=$(now); r=fail
   sel=-s; [ $shard = 0 ] || sel=-x
-  $PY tools/scaling.py --check --ops "$sel" "$SCALING_0" -n 500,1000 -r 1 -c "hosted=$PY pystachy.py" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
+  # (-j: shapes side by side, one per CPU; --check compares counts, which do not depend on the load)
+  $PY tools/scaling.py --check --ops "$sel" "$SCALING_0" -n 500,1000 -r 1 -j "${PYSTACHY_JOBS:-0}" \
+    -c "hosted=$PY pystachy.py" -c "native=$V/pystachy2" > "$L" 2>&1 && r=pass
   # (the shapes the table shows, in its order)
   shapes=$(sed -n 's/^| \([a-z]*\) | 500 | .*$/"\1"/p' "$L" | paste -sd, -)
   step scaling-$shard $r "$s" "$L" ', "sizes": [500, 1000], "shapes": ['"$shapes"']'
