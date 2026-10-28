@@ -202,7 +202,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         big = self.int_policy(f.node.line)
         for cv in self.cellvars(f, body):
             self.cells[cv] = self.rt("pys_alloc", "ptr", [("i64 23" if big else "i64 15") if identity_abi(f) else ("i64 15" if big else "i64 8")])
-            if identity_abi(f):
+            if identity_abi(f) and self.fn_identity(f):
                 # Define the address before any branch or loop can first bind the cell.
                 self.idbox[cv] = self.maddr('%ptr', self.cells[cv], '2' if big else '1', True)
         lf: dict[str, bool] = {}
@@ -260,7 +260,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             a = self.maddr('%ptr', env, f'{i}', True)
             self.lreg[c.caps[i]] = self.mload('%ptr', a)
             self.ltype[c.caps[i]] = c.ctypes[i]
-            if numeric_identity(c.ctypes[i]) and identity_abi(f):
+            if numeric_identity(c.ctypes[i]) and identity_abi(f) and self.fn_identity(f):
                 self.idbox[c.caps[i]] = self.maddr('%ptr', self.lreg[c.caps[i]], '1', True)
         for j in range(len(c.iflags)):
             a = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + j}', True)

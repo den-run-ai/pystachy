@@ -2787,7 +2787,8 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     ci = self.classes[o.t]
     r = ""
     bad = ""
-    box = self.fgep(o, ci.fbox[name]) if name in ci.fbox and numeric_identity(p.t) else ""
+    self.identity_field(ci, p.t, False)  # (dynamic.py)
+    box = self.fgep(o, ci.fbox[name]) if name in ci.fbox and numeric_identity(p.t) and self.idhere() else ""
     if name == "__slots__" and name not in ci.fpos:
         if ci.exc != "":
             # Exceptions use their runtime class identity rather than ordinary
@@ -2904,6 +2905,7 @@ def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
     was = self.join_at("field" if name in self.field_root(ci, name).fguess else "", self.field_key(ci, name), p.t)
     cv = self.coerce(v, p.t, what)
     self.join_at(was[0], was[1], was[2])
+    self.identity_field(ci, p.t, True)  # (dynamic.py)
     self.mem_store(Val(p.v, "*" + p.t), cv)
     if name in ci.fbox and (numeric_identity(p.t) or p.t == NONEVAR):
         self.dyn_id_store(self.fgep(o, ci.fbox[name]), v, p.t)

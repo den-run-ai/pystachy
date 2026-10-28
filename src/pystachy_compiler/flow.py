@@ -13,7 +13,7 @@ from src.pystachy_compiler.analysis import (
     name_nodes,
     scope_binds,
 )
-from src.pystachy_compiler.diagnostics import dynamic_program, shown
+from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.syntax import Node, mentions, mk
@@ -541,8 +541,9 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
             if not checked and f not in fl.unsafe and ci.name + "." + f not in self.cvars:
                 ci.fsure[f] = True  # (only hasattr tests its flag: no read finds it unassigned)
     # Identity boxes follow flags so subclasses can embed this complete prefix. A
-    # provisional None field reserves a slot: later inference can make it numeric.
-    if dynamic_program():
+    # provisional None field reserves a slot: later inference can make it numeric. Not where
+    # the class's module does not track identity (Gen.identity_modules): no companions there.
+    if self.class_identity(ci):
         for f in ci.fields:
             if not f.startswith(" ") and f not in ci.fbox and (numeric_identity(ci.ftypes[f]) or ci.ftypes[f] == NONEVAR):
                 ci.fbox[f] = len(ci.fields) + ci.nflag + ci.nbox

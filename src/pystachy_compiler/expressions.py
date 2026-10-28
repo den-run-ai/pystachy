@@ -794,7 +794,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "binop":
         scalar_fn = self.fn
         scalar_held = scalar_fn.scalar_reads
-        if not scalar_held and dynamic_program() and self.scalar_read_value(n):
+        if not scalar_held and self.idhere() and self.scalar_read_value(n):
             scalar_fn.scalar_reads = True
         try:
             if n.s == "&" and (wraps(n.kids[0]) or wraps(n.kids[1])) and not self.int_policy(n.line):
@@ -810,7 +810,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "cmp":
         scalar_fn = self.fn
         scalar_held = scalar_fn.scalar_reads
-        if not scalar_held and dynamic_program() and self.scalar_read_value(n):
+        if not scalar_held and self.idhere() and self.scalar_read_value(n):
             scalar_fn.scalar_reads = True
         try:
             return self.compare(n)
@@ -1167,12 +1167,13 @@ def gen_class_attr(self, cn: Node, a: str) -> Val:
     if ci.name in self.nts and a == "_field_defaults":
         return self.nt_defaults(ci.name)
     t = ci.ftypes[a]
-    identity = numeric_identity(t) and dynamic_program()
+    identity = numeric_identity(t) and self.class_identity(ci)
+    self.identity_field(ci, t, False)  # (dynamic.py)
     if is_const(ci.fdefault[a]) and cn.s + "." + a not in self.cvars and not identity:
         return self.coerce(self.expr(ci.fdefault[a], t), t)
     self.class_default(ci, a)
     v = Val(self.mload(t, ci.fglob[a]), t)
-    if identity:
+    if identity and self.idhere():
         self.dyn_id_read(v, ci.fglob[a] + ".box")
     return v
 
@@ -1225,8 +1226,9 @@ def gen_cvar(self, cn: Node, a: str) -> ClassInfo:
 def gen_class_store(self, ci: ClassInfo, a: str, v: Val) -> None:
     # C.a = v through the class: its class variable's global
     self.class_default(ci, a)
+    self.identity_field(ci, ci.ftypes[a], True)  # (dynamic.py)
     self.mstore(ci.ftypes[a], self.coerce(v, ci.ftypes[a]).v, ci.fglob[a])
-    if numeric_identity(ci.ftypes[a]) and dynamic_program():
+    if numeric_identity(ci.ftypes[a]) and self.class_identity(ci):
         self.dyn_id_store(ci.fglob[a] + ".box", v, ci.ftypes[a])
 
 def gen_no_class_attr(self, c: str, a: str) -> None:
@@ -2957,7 +2959,7 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
 def gen_numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> Val:
     # Select provenance with the payload. Existing bindings retain their lazy slots;
     # a fresh arithmetic arm gets an empty slot, so selecting it does not allocate.
-    if not dynamic_program() or not numeric_identity(result.t) or not any(v.idfrom != "" or v.idslot != "" or (v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256)))) for v in values):
+    if not self.idhere() or not numeric_identity(result.t) or not any(v.idfrom != "" or v.idslot != "" or (v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256)))) for v in values):
         return result
     if all(v.idfrom != "" for v in values):
         identity = Ins("phi", "dyn", "")
@@ -3075,7 +3077,7 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
     if t == "None":
         return Val("null", "None")  # (None either way)
     result = Val(self.phi(ph), t)
-    if not dynamic_program() or not numeric_identity(t):
+    if not self.idhere() or not numeric_identity(t):
         return result
     values = [a] if e1 != "" else []
     edges = [e1] if e1 != "" else []
@@ -3161,7 +3163,7 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False)
     self.br(l3)
     self.place(l3)
     result = Val(self.phi(ph), rt)
-    if not dynamic_program() or not numeric_identity(rt):
+    if not self.idhere() or not numeric_identity(rt):
         return result
     return self.numeric_phi(result, [a, b] if e2 != "" else [a], [e1, e2] if e2 != "" else [e1])
 

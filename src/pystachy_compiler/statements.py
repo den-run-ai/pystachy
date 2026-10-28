@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
-from src.pystachy_compiler.diagnostics import dynamic_program, shown
+from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
@@ -246,7 +246,7 @@ def gen_early_default(self, f: FnInfo, j: int) -> None:
     f.dtypes[j] = t
     f.dglob[j] = f"@d.{f.ll[1:]}.{f.params[j]}"
     self.global_var(f.dglob[j], t)
-    if dynamic_program() and numeric_identity(t):
+    if self.fn_identity(f) and numeric_identity(t):
         self.global_var(f.dglob[j] + ".box", "dyn")
 
 def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
@@ -257,7 +257,7 @@ def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
     if fl not in h.fglob:
         h.fglob[fl] = f"@d.c.{h.name}.{fl}"
         self.global_var(h.fglob[fl], h.ftypes[fl])
-        if numeric_identity(h.ftypes[fl]) and dynamic_program():
+        if numeric_identity(h.ftypes[fl]) and self.class_identity(h):
             self.global_var(h.fglob[fl] + ".box", "dyn")
         self.pending[h.fglob[fl]] = True
     ci.fglob[fl] = h.fglob[fl]
@@ -267,7 +267,7 @@ def gen_hoist(self, f: FnInfo) -> None:
     for j in range(len(f.params)):
         d = f.defaults[j]
         early = f"{f.ll}.{j}" in self.pending
-        if (f.dglob[j] == "" or early) and (not is_const(d) or identity_default(d)):
+        if (f.dglob[j] == "" or early) and (not is_const(d) or (identity_default(d) and self.fn_identity(f))):
             t = f.ptypes[j] if f.bad == "" else ""  # (an unsupported annotation is no type)
             self.line = d.line
             bad = self.default_problem(d, t) if f.mod != "" else ""
@@ -284,7 +284,7 @@ def gen_hoist(self, f: FnInfo) -> None:
                 if f.dglob[j] != "=None":
                     value = self.coerce(v, f.dtypes[j])
                     self.mstore(f.dtypes[j], value.v, f.dglob[j])
-                    if dynamic_program() and numeric_identity(f.dtypes[j]):
+                    if self.fn_identity(f) and numeric_identity(f.dtypes[j]):
                         self.mstore("dyn", self.dyn_box(value).v, f.dglob[j] + ".box")
                 continue
             if v.t == "None" and t == "":
@@ -293,7 +293,7 @@ def gen_hoist(self, f: FnInfo) -> None:
             f.dtypes[j] = v.t
             value = self.coerce(v, t) if t != "" else v
             f.dglob[j] = self.hidden(f"@d.{f.ll[1:]}.{f.params[j]}", value)
-            if dynamic_program() and numeric_identity(value.t):
+            if self.fn_identity(f) and numeric_identity(value.t):
                 self.hidden(f.dglob[j] + ".box", self.dyn_box(value))
 
 def gen_default_problem(self, e: Node, t: str) -> str:
@@ -359,7 +359,7 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
                 later = later if later != "" or m not in self.classes[t].methods else f"class {shown(ci.name)} is not supported: {why}"
             # Numeric class defaults need their defining module's object too, including
             # literals read from another module. class_default owns the shared GC root.
-            cv = fl == "__slots__" or ci.name + "." + fl in self.cvars or (numeric_identity(t) and dynamic_program())
+            cv = fl == "__slots__" or ci.name + "." + fl in self.cvars or (numeric_identity(t) and self.class_identity(ci))
             if (cv or not is_const(st.kids[2])) and (fl not in ci.fglob or ci.fglob[fl] in self.pending):
                 self.class_store(ci, fl, self.expr(st.kids[2], t))
                 self.pending.pop(ci.fglob[fl], False)
@@ -450,7 +450,7 @@ def gen_leave(self, depth: int) -> bool:
     # over (its own return, break, continue or raise), so that the caller's is not compiled
     here = self.handler
     cv = self.carried
-    if len(self.exits) > depth and identity_abi(self.curfn) and numeric_identity(cv.t):
+    if len(self.exits) > depth and identity_abi(self.curfn) and self.idhere() and numeric_identity(cv.t):
         captured = Val(cv.v, cv.t).identity(cv)
         captured.idfrom = self.dyn_box(cv).v
         cv = captured

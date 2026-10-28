@@ -723,6 +723,7 @@ def gen_abc_class(self, c: str) -> bool:
 
 def gen_program(self, mods: list[Mod]) -> str:
     self.opts = optimizations()
+    self.identity_modules(mods)  # (which modules' code tracks numeric identity: dynamic.py)
     # (lib's modules of range objects and of object()'s bind no global of another module: the
     # names they bind do not keep a global of the program from being constant)
     own = [m for m in mods if m.name != RANGES and m.name != OBJECTS]

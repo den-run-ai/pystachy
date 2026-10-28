@@ -2542,6 +2542,8 @@ class Loader:
                 checks.append(f"?{src.name} {x}" if k.startswith("a:") else f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
                 if not mine:
                     names.append(a.s)
+        for sub in inits.kids:
+            m.deps[sub.s] = True  # (whose code m's may read: Gen.identity_modules)
         at.append(len(inits.kids))
         cat.append(len(copies))
         binds: list[Node] = []  # (a from-import's copies, and the bound nodes of its names that have flags, in order)

@@ -170,6 +170,18 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_none_first as dynamic_dyn_none_first,
     gen_dyn_payload as dynamic_dyn_payload,
     gen_dyn_policy as dynamic_dyn_policy,
+    gen_class_identity as dynamic_class_identity,
+    gen_fn_home as dynamic_fn_home,
+    gen_fn_identity as dynamic_fn_identity,
+    gen_global_identity as dynamic_global_identity,
+    gen_idhere as dynamic_idhere,
+    gen_identity_box as dynamic_identity_box,
+    gen_identity_call as dynamic_identity_call,
+    gen_identity_event as dynamic_identity_event,
+    gen_identity_field as dynamic_identity_field,
+    gen_identity_free as dynamic_identity_free,
+    gen_identity_global as dynamic_identity_global,
+    gen_identity_modules as dynamic_identity_modules,
     gen_dyn_proven_int as dynamic_dyn_proven_int,
     gen_dyn_reflected as dynamic_dyn_reflected,
     gen_dyn_repr as dynamic_dyn_repr,
@@ -1280,6 +1292,14 @@ class Gen:
         # object (dyn_box, #797)
         self.idbox: dict[str, str] = {}
         self.gidbox: dict[str, str] = {}
+        # the modules whose code does not track numeric identity (identity_modules): fixed for a
+        # pass, as the program's modules are; idfull: the driver's, every module tracks it (a
+        # crossing found on an earlier pass, idevent: identity_event); idsplit: the classes that
+        # an object of a class whose code does not track it may be of (identity_box)
+        self.idoff: dict[str, bool] = {}
+        self.idfull = False
+        self.idevent = ""
+        self.idsplit: dict[str, bool] = {}
         # the number of stores into each such slot (a new binding) that the compiler has emitted in
         # the function being compiled: a value read before one crosses with the box its slot held
         # at the read (dyn_id_held). It only grows there, and speculative compilation (dry) does not
@@ -1792,6 +1812,42 @@ class Gen:
     # ---- dynamic values (dynamic.py)
     def dyn_policy(self, line: int) -> bool:
         return dynamic_dyn_policy(self, line)
+
+    def identity_modules(self, mods: list[Mod]) -> None:
+        dynamic_identity_modules(self, mods)
+
+    def fn_home(self, f: FnInfo) -> str:
+        return dynamic_fn_home(self, f)
+
+    def fn_identity(self, f: FnInfo) -> bool:
+        return dynamic_fn_identity(self, f)
+
+    def idhere(self) -> bool:
+        return dynamic_idhere(self)
+
+    def class_identity(self, ci: ClassInfo) -> bool:
+        return dynamic_class_identity(self, ci)
+
+    def global_identity(self, name: str) -> bool:
+        return dynamic_global_identity(self, name)
+
+    def identity_event(self, why: str) -> None:
+        dynamic_identity_event(self, why)
+
+    def identity_free(self, t: str) -> bool:
+        return dynamic_identity_free(self, t)
+
+    def identity_call(self, f: FnInfo) -> None:
+        dynamic_identity_call(self, f)
+
+    def identity_global(self, name: str, t: str, store: bool) -> None:
+        dynamic_identity_global(self, name, t, store)
+
+    def identity_field(self, ci: ClassInfo, t: str, store: bool) -> None:
+        dynamic_identity_field(self, ci, t, store)
+
+    def identity_box(self, v: Val, t: str) -> None:
+        dynamic_identity_box(self, v, t)
 
     def rtdata(self, sym: str) -> str:
         return dynamic_rtdata(self, sym)

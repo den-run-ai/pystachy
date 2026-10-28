@@ -15,11 +15,12 @@ the program's classes, functions the compiler writes once every class that is bo
 (dyn_dispatchers): each tests the box's DynType for those classes and calls the class's own code.
 """
 from __future__ import annotations
-from src.pystachy_compiler.analysis import bind_count, local_names
-from src.pystachy_compiler.diagnostics import LINES, dynamic_file
+from src.pystachy_compiler.analysis import bind_count, local_names, module_reads, object_values, range_values
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, LINES, Rejoin, dynamic_file, dynamic_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
-from src.pystachy_compiler.names import retoken, short
-from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
+from src.pystachy_compiler.module import Mod
+from src.pystachy_compiler.names import owner, retoken, short
+from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, OBJECTS, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
 from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, gelem, holds_dyn, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -56,6 +57,167 @@ BUILTIN: dict[str, str] = {"None": "pys_dyntype_none", "bool": "pys_dyntype_bool
 def gen_dyn_policy(self, line: int) -> bool:
     # does the module of source line line compile Any as dyn
     return dynamic_file(line // LINES)
+
+
+def gen_identity_modules(self, mods: list[Mod]) -> None:
+    # The modules whose code tracks numeric identity in a program that uses dynamic Any
+    # (docs/dynamic-any.md#identity-scope): those that opt in, lib's dynamic json module,
+    # each module they import (their code may hold its numbers), and lib's range, object and
+    # iterator modules where such a module uses them. The others (idoff) keep their classes'
+    # layouts and their functions' code: no box slots, companions or snapshots. Their values
+    # reach tracking code only through the crossings identity_call, identity_global,
+    # identity_field and identity_box check; one that could carry a number's identity makes
+    # the driver compile the program again with every module tracking (idfull), as before.
+    self.idoff = {}
+    if self.rtmode or self.idfull or not dynamic_program():
+        return
+    dyn: dict[str, bool] = {}
+    for k in DYNFILES:
+        dyn[FILES[k][2:] if FILES[k].startswith("./") else FILES[k]] = True
+    on: dict[str, bool] = {}
+    for m in mods:
+        p = m.path[2:] if m.path.startswith("./") else m.path
+        if (m.name == "" and 0 in DYNFILES) or (m.name != "" and p in dyn) or m.name == JSONANY:
+            on[m.name] = True
+    byname: dict[str, Mod] = {}
+    for m in mods:
+        byname[m.name] = m
+    grown = True
+    while grown:
+        grown = False
+        for m in mods:
+            if m.name in on:
+                for d in m.deps:
+                    if d not in on and d in byname:
+                        on[d] = True
+                        grown = True
+        for m in mods:
+            if m.name in on:
+                # (lib's modules that no import names, loaded for the code that uses them: Loader.program)
+                implied = [(RANGES, range_values(m.body, 0) and module_reads(m.body, "range")), (OBJECTS, object_values(m.body) and module_reads(m.body, "object")), (ITERS, module_reads(m.body, "iter"))]
+                for x in implied:
+                    if x[1] and x[0] in byname and x[0] not in on:
+                        on[x[0]] = True
+                        grown = True
+    for m in mods:
+        if m.name not in on:
+            self.idoff[m.name] = True
+
+
+def gen_fn_home(self, f: FnInfo) -> str:
+    # the module whose identity policy f's code follows (identity_modules): its class's, else that
+    # of the code that made a closure, generator expression or Callable adapter (FnInfo.home), else
+    # its own; "?" for the compiler's shared helpers (comparison, hash, exception-making and
+    # dynamic dispatchers), which track identity in every program that uses dynamic Any, as all
+    # code did before identity_modules
+    if f.cls in self.classes:
+        return self.classes[f.cls].mod
+    if f.home != "-":
+        return f.home
+    if f.ll.startswith("@o.") or f.ll.startswith("@x.") or f.ll.startswith("@dyn."):
+        return "?"
+    return f.mod
+
+
+def gen_fn_identity(self, f: FnInfo) -> bool:
+    # does f's code track numeric identity: box slots of its numeric bindings, the boxes of its
+    # arguments and result, its defaults' (the ABI, identity_abi, is the whole program's)
+    return dynamic_program() and (len(self.idoff) == 0 or self.fn_home(f) not in self.idoff)
+
+
+def gen_idhere(self) -> bool:
+    # does the code being compiled track numeric identity (fn_identity)
+    return self.fn_identity(self.curfn)
+
+
+def gen_class_identity(self, ci: ClassInfo) -> bool:
+    # do class ci's numeric fields and class attributes have companion boxes
+    return dynamic_program() and ci.mod not in self.idoff
+
+
+def gen_global_identity(self, name: str) -> bool:
+    # does module variable name have a companion box
+    return dynamic_program() and owner(name) not in self.idoff
+
+
+def gen_identity_event(self, why: str) -> None:
+    # a crossing between code that tracks numeric identity and code that does not, which could
+    # carry a number's identity (identity_modules): the next pass tracks it everywhere
+    self.idevent = why
+    raise Rejoin()
+
+
+def gen_identity_free(self, t: str) -> bool:
+    # do values of type t hold no number and no object of the program's classes (Any values
+    # keep their own boxes), so that they cross between tracking code and other code as they are
+    u = unopt(t)
+    if u in ["str", "bytes", "bool", "None", DYN, DYNINT, NONEVAR]:
+        return True
+    if is_union(u):
+        return all(self.identity_free(m) for m in umembers(u))
+    if is_list(u) or is_dict(u) or is_set(u) or is_tuple(u) or is_vtuple(u) or is_callable(u):
+        return all(self.identity_free(x) for x in targs(u))
+    return False
+
+
+def gen_identity_call(self, f: FnInfo) -> None:
+    # a call of f from code of the other side of identity_modules' split: from code that does
+    # not track identity, f may take only what holds no number (identity_free) and give back that
+    # or a number (whose object the caller drops); code that tracks identity calls none of the
+    # other's functions (it imports none of their modules: a function value would have crossed)
+    if len(self.idoff) == 0 or f.extern or f.export or f.pyexport:
+        return
+    home = self.fn_home(f)
+    here = self.fn_home(self.curfn)
+    if home == "?" or here == "?" or (home in self.idoff) == (here in self.idoff):
+        return
+    if here in self.idoff and all(self.identity_free(t) for t in f.ptypes) and (self.identity_free(f.ret) or numeric_identity(f.ret)):
+        return
+    self.identity_event(f"call of {f.name}()")
+
+
+def gen_identity_global(self, name: str, t: str, store: bool) -> None:
+    # a module variable's read or store across identity_modules' split: code that does not track
+    # identity may read a number of a module that does, or store what holds none
+    if len(self.idoff) == 0:
+        return
+    here = self.fn_home(self.curfn)
+    if here == "?" or (owner(name) in self.idoff) == (here in self.idoff):
+        return
+    if here in self.idoff and (self.identity_free(t) or (not store and numeric_identity(t))):
+        return
+    self.identity_event(f"module variable {name}")
+
+
+def gen_identity_field(self, ci: ClassInfo, t: str, store: bool) -> None:
+    # a field's or class attribute's read or store across identity_modules' split, as identity_global's
+    if len(self.idoff) == 0:
+        return
+    here = self.fn_home(self.curfn)
+    if here == "?" or (ci.mod in self.idoff) == (here in self.idoff):
+        return
+    if here in self.idoff and (self.identity_free(t) or (not store and numeric_identity(t))):
+        return
+    self.identity_event(f"attribute of {ci.name}")
+
+
+def gen_identity_box(self, v: Val, t: str) -> None:
+    # v, of type t, made a dyn value (dyn_box), where a module does not track identity: a number
+    # of such code is a new object only where it is (an arithmetic result is not known here),
+    # and an object of a class whose code does not track identity, or of any class there, would
+    # carry its fields' numbers
+    here = self.fn_home(self.curfn)
+    if t in self.classes:
+        if t not in self.idsplit:
+            self.idsplit[t] = any(c.mod in self.idoff for c in self.classes.values() if c.name == t or self.derives(c.name, t))
+        if self.idsplit[t] or (here != "?" and here in self.idoff):
+            self.identity_event(f"{t} object as an Any value")
+    if here == "?" or here not in self.idoff:
+        return
+    if (t == "int" or t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit:
+        self.identity_event("number as an Any value")
+    if is_fn(t) or (is_callable(t) and not self.identity_free(t)):
+        self.identity_event("function as an Any value")
 
 
 def gen_rtdata(self, sym: str) -> str:
@@ -1166,6 +1328,8 @@ def gen_dyn_box(self, v: Val) -> Val:
     t = self.rec_type(v.t)
     if t == DYN:
         return v
+    if len(self.idoff) > 0:
+        self.identity_box(v, t)  # (where a module's code does not track numeric identity)
     if t == "None" or t == NONEVAR or (is_opt(t) and v.v == "null"):
         # A known None can have its parameter's optional type after coercion. Do not
         # emit a union tag or payload read of literal null, even in a dead branch.
