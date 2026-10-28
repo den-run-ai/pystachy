@@ -3645,8 +3645,12 @@ static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? 
    CPython's hash is never -2**63, so no 64-bit key's lookup meets an entry of a key past 64 bits
    (whose slot holds -2**63): only dbfind finds them */
 static uint64_t hbig(Mpz *m) { return hint1(pys_mpz_hash(m)); }
+/* the hash of key k of a table of kind > 1: an opt-in table of native scalar keys ('!') takes
+   CPython's hash out of line (hcls), which keeps this small enough to inline into the lookups of
+   tuple and Any keys (dhfind, dpfind), as hkey alone was before '!' */
+static inline uint64_t hobj(I kind, I k) { const char *d = kraw(kind); return *d == '!' ? hcls(k, d + 1) : hkey(k, d); }
 static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple or object key's descriptor */
-  return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? (*kraw(d->kind) == '!' ? (uint64_t)hitem(k, kdesc(d->kind)) : hkey(k, kdesc(d->kind))) : hint1(k);
+  return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? hobj(d->kind, k) : hint1(k);
 }
 /* items i of tuples x and y of n items, promoting ints (J) one of whose slots holds -2**63: equal,
    by their two words (titem); a call of its own, which keeps keq small */
@@ -3729,7 +3733,7 @@ __attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) { r
 /* dfind of key k, which it hashes (hsh) into *hp first: one test of the kind for both */
 static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp, I *free) {
   if (d->kind == 1) return dfindi(d, k, *hp = hstrd((Str *)k), free);
-  if (d->kind > 1) return dfind(d, k, *hp = hsh(d, k), free);
+  if (d->kind > 1) return dfind(d, k, *hp = hobj(d->kind, k), free);
   return dfindi(d, k, *hp = hint1(k), free);
 }
 /* the idx slot of key m, an int past 64 bits whose hash is h (hbig), or -1, and *free as dlook's:
@@ -3873,7 +3877,7 @@ static I dtake(Dict *d, I i) {                       /* the value of the entry i
    them apart (kind > 1): the compiler calls pys_dict_pop for del of other keys */
 static inline __attribute__((always_inline)) I dpfind(Dict *d, I k) {
   if (d->kind == 1) return dfindi(d, k, hstrd((Str *)k), 0);
-  if (d->kind > 1) return d->len ? dfind(d, k, hsh(d, k), 0) : -1;
+  if (d->kind > 1) return d->len ? dfind(d, k, hobj(d->kind, k), 0) : -1;
   return dfindi(d, k, hint1(k), 0);
 }
 static I dpop(Dict *d, I k, I dflt, int has) {   /* d.pop(k) (has: d.pop(k, dflt)) */
@@ -4187,7 +4191,7 @@ static I hint(I v) {                                 /* long_hash */
   h = v < 0 ? -h : h;
   return h == -1 ? -2 : h;
 }
-static I hstr(Str *s) { Dict t = {.kind = 1}; I h = (I)hsh(&t, (I)s); return h == -1 ? -2 : h; }
+static I hstr(Str *s) { I h = (I)hstrd(s); return h == -1 ? -2 : h; }   /* (hsh's for kind 1) */
 static I hptr(I p) { uint64_t y = (uint64_t)p; y = y >> 4 | y << 60; return (I)y == -1 ? -2 : (I)y; }   /* _Py_HashPointer */
 static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's is 0, as a float here has no identity */
   /* v is m * 2**e for an int m of 53 bits: m * 2**e modulo 2**61 - 1 (where 2**61 is 1), with
