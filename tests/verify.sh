@@ -6,8 +6,8 @@
 #   tests-cpython  the CPython-hosted compiler against stage 2 on every case of the corpus
 #                  (tools/irsame.sh): the same IR (`ir`, `rt` for rtmode_*), messages and exit status,
 #                  byte for byte, and the same `check` output and status for each syntax_*.py, so that
-#                  tests-native's JIT and AOT runs execute exactly what it compiles; one case in
-#                  HOSTED_SAMPLE_OF (shard_cases) also runs end to end with it through tests/run.sh, JIT
+#                  tests-native's JIT and AOT runs execute exactly what it compiles; a sample (shard 0
+#                  of HOSTED_SAMPLE_OF, a program of each hosted_strata kind) runs end to end too, JIT
 #                  and AOT
 #   tests-native-0/-1 tests/run.sh with the stage-2 native compiler, JIT and AOT, each on one of two
 #                  disjoint halves of the corpus (shard_cases)
@@ -370,20 +370,50 @@ fi
 # ---- differential tests with both compilers
 # tests-cpython: the CPython-hosted compiler must compile every case of the corpus exactly as stage 2
 # does (tools/irsame.sh: `ir`, or `rt` for rtmode_*, with the IR check on as tests/run.sh has it; the
-# IR byte for byte, every message and the exit status), and `check` each syntax_*.py alike. Where the
+# IR byte for byte, every message and the exit status), and `check` each syntax_*.py alike
+# (tools/irsame.sh --check), each comparison in a worker per CPU. Where the
 # IR is the same, the LLVM tools build the same program from it, which tests-native runs JIT and AOT
 # for every case: running it again here would add nothing; a rejection's message is the one
-# tests-native checks. One case in HOSTED_SAMPLE_OF (shard 0 of shard_cases) still runs end to end
-# with the hosted compiler, JIT and AOT, so that its driver's run, build and check paths after the IR
-# run in this job too (as they do in runtime-cache, jit-dead-code, unicode-audit and compile-limits).
+# tests-native checks. A sample still runs end to end with the hosted compiler, JIT and AOT, so that
+# its driver's run, build and check paths after the IR run in this job too (as they do in
+# runtime-cache, jit-dead-code, unicode-audit and compile-limits): the cases of shard 0 of
+# HOSTED_SAMPLE_OF (shard_cases), and the first program of each kind that hosted_strata names.
 # (the CPython-hosted compiler runs as a module, whose bytecode CPython caches, where it compiles a
 # compiler's source again at every start; each module is checked by hash, as an
 # edit within the same second may keep its mtime and size)
 HOSTED_SAMPLE_OF=64
+# hosted_strata CASES: KIND CASE for each kind of program whose run takes the hosted driver past the IR
+# along a path of its own, CASE the first program of that kind in the list CASES (none if there is
+# none): sigint, one that sends itself SIGINT (of tests/run.sh's SIG cases); full, one with NAME.full
+# (stdout /dev/full); in, one with NAME.in (stdin); path, one with NAME.path (PYSTACHY_PATH); ffi, one
+# that imports a module named ffi (the driver's own, unless the program's path holds one).
+# tools/merge_verification.py's HOSTED_STRATA tests the kinds alike.
+hosted_strata() {
+  list=$1
+  set --
+  while IFS= read -r f; do case $f in tests/programs/*) set -- "$@" "$f" ;; esac; done < "$list"
+  for kind in sigint full in path ffi; do
+    first=
+    [ $# = 0 ] || first=$(
+      case $kind in
+        sigint) grep -l 'kill -INT' "$@" ;;
+        ffi) grep -lE '^(import|from) ffi( |$)' "$@" ;;
+        *) for f; do [ ! -f "${f%.py}.$kind" ] || printf '%s\n' "$f"; done ;;
+      esac | sed -n 1p)
+    printf '%s %s\n' "$kind" "${first:-none}"
+  done
+}
 if want tests-cpython; then
-  L=$V/tests-cpython.log; s=$(now); r=fail; ir_ok=false; ir_n=0; chk_n=0; chk_bad=0; x=""
-  corpus > "$V/tests-cpython-cases.log"
-  shard_cases 0 $HOSTED_SAMPLE_OF "$V/tests-cpython-sample.log"
+  L=$V/tests-cpython.log; s=$(now); r=fail; ir_ok=false; ir_n=0; chk_ok=false; x=""
+  # (in C order, in which the strata's programs are the first of their kind)
+  (LC_ALL=C; export LC_ALL; corpus) > "$V/tests-cpython-cases.log"
+  hosted_strata "$V/tests-cpython-cases.log" > "$V/tests-cpython-strata.log"
+  shard_cases 0 $HOSTED_SAMPLE_OF "$V/tests-cpython-shard.log"
+  # the sample: shard 0's cases and the strata's programs, once each, in the corpus's order
+  sed 's/^[a-z]* //' "$V/tests-cpython-strata.log" | cat "$V/tests-cpython-shard.log" - > "$V/tests-cpython-want.log"
+  grep -Fx -f "$V/tests-cpython-want.log" "$V/tests-cpython-cases.log" > "$V/tests-cpython-sample.log"
+  grep '/syntax_[^/]*\.py$' "$V/tests-cpython-cases.log" > "$V/tests-cpython-syntax.log"
+  chk_n=$(lines "$V/tests-cpython-syntax.log")
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-cpython-cases.log"
   cases=$#
@@ -396,32 +426,42 @@ if want tests-cpython; then
       st=$?; cat "$V/tests-cpython-ir.log"
       ir_n=$(tail -1 "$V/tests-cpython-ir.log" | sed -n 's/^\([0-9]*\) programs identical$/\1/p')
       [ $st = 0 ] && [ "${ir_n:-0}" = "$cases" ] && ir_ok=true
-      echo "== check of the syntax_*.py cases: stage 2, then CPython-hosted"
-      for f; do
-        case ${f##*/} in syntax_*.py) ;; *) continue ;; esac
-        chk_n=$((chk_n + 1))
-        "$V/pystachy2" check "$f" > "$V/check-native.out" 2>&1; a=$?
-        $PY -m pystachy check "$f" > "$V/check-hosted.out" 2>&1; b=$?
-        if [ $a != $b ] || ! cmp -s "$V/check-native.out" "$V/check-hosted.out"; then
-          chk_bad=$((chk_bad + 1)); echo "CHECK DIFF $f: exit $a -> $b"; diff "$V/check-native.out" "$V/check-hosted.out" | head -6
-        fi
-      done
-      echo "$chk_n checks compared, $chk_bad differ"
+      set --
+      while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-cpython-syntax.log"
+      if [ $# != 0 ]; then
+        echo "== check of the $# syntax_*.py cases: stage 2, then CPython-hosted (tools/irsame.sh --check)"
+        tools/irsame.sh --check "$V/pystachy2" "$PY -m pystachy" "$@" > "$V/tests-cpython-check.log" 2>&1
+        st=$?; cat "$V/tests-cpython-check.log"
+        n=$(tail -1 "$V/tests-cpython-check.log" | sed -n 's/^\([0-9]*\) programs identical$/\1/p')
+        [ $st = 0 ] && [ "${n:-0}" = "$chk_n" ] && chk_ok=true
+      else
+        echo 'no syntax_*.py case to check'
+      fi
     else
       echo 'no CPython-hosted cases (an empty corpus, or the compiler did not byte-compile)'
     fi
   } > "$L" 2>&1
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-cpython-sample.log"
+  {
+    echo "== end to end, JIT and AOT: the $# cases of shard 0 of $HOSTED_SAMPLE_OF and the first program of each kind"
+    sed 's/^/  /' "$V/tests-cpython-strata.log"
+  } >> "$L"
+  strata_ok=true
+  ! grep -q ' none$' "$V/tests-cpython-strata.log" || { strata_ok=false; echo 'a kind without a program' >> "$L"; }
   if [ $# != 0 ] && [ "$cases" != 0 ]; then
     tests/run.sh "$PY -m pystachy" "jit aot" "$@" > "$V/tests-cpython-run.log" 2>&1
-    { echo "== end to end, JIT and AOT: the $# cases of shard 0 of $HOSTED_SAMPLE_OF"; cat "$V/tests-cpython-run.log"; } >> "$L"
-    x=$(tests "$(checks "jit aot" "$@")" "$V/tests-cpython-run.log" 2>> "$L") && [ $ir_ok = true ] && [ $chk_bad = 0 ] &&
-      [ $chk_n != 0 ] && r=pass
+    cat "$V/tests-cpython-run.log" >> "$L"
+    x=$(tests "$(checks "jit aot" "$@")" "$V/tests-cpython-run.log" 2>> "$L") && [ $ir_ok = true ] && [ $chk_ok = true ] &&
+      [ "$chk_n" != 0 ] && [ $strata_ok = true ] && r=pass
   else
     echo 'empty CPython-hosted sample' >> "$L"
   fi
-  step tests-cpython $r "$s" "$L" ', "compiler": "CPython-hosted", "reference": "stage2", "ir_cases": '"${ir_n:-0}"', "ir_identical": '"$ir_ok"', "check_cases": '"$chk_n"', "modes": ["jit", "aot"], "sample_index": 0, "sample_count": '"$HOSTED_SAMPLE_OF$x"
+  sample=$(for f; do printf ', %s' "$(js "$f")"; done)
+  strata=$(while read -r k f; do
+    if [ "$f" = none ]; then printf ', "%s": null' "$k"; else printf ', "%s": %s' "$k" "$(js "$f")"; fi
+  done < "$V/tests-cpython-strata.log")
+  step tests-cpython $r "$s" "$L" ', "compiler": "CPython-hosted", "reference": "stage2", "ir_cases": '"${ir_n:-0}"', "ir_identical": '"$ir_ok"', "check_cases": '"$chk_n"', "check_identical": '"$chk_ok"', "modes": ["jit", "aot"], "sample_index": 0, "sample_count": '"$HOSTED_SAMPLE_OF"', "sample_cases": '"$#"', "sample": ['"${sample#, }"'], "sample_strata": {'"${strata#, }"'}'"$x"
 fi
 for shard in 0 1; do
   want tests-native-$shard || continue
@@ -956,7 +996,8 @@ ver() { "$@" 2>&1 | head -1; }
     "$(js "$("${LLVM}opt" --version 2>&1 | sed -n 's/^ *Host CPU: //p')")"
   printf '  "toolchain": {"python": %s, "clang": %s, "llvm": %s, "llvm_dir": %s},\n' "$(js "$(ver $PY --version)")" \
     "$(js "$(ver "${LLVM}clang" --version)")" "$(js "$(ver "${LLVM}opt" --version)")" "$(js "${PYSTACHY_LLVM:-PATH}")"
-  SUITE_CHECKS=$ALL MODE_CHECKS=$(checks jit) $PY - <<'PY'
+  corpus > "$V/report-corpus.list"
+  SUITE_CHECKS=$ALL MODE_CHECKS=$(checks jit) CORPUS_LIST=$V/report-corpus.list $PY - <<'PY'
 import hashlib
 import json
 import os
@@ -969,11 +1010,10 @@ sources = {str(p): {"lines": p.read_bytes().count(b"\n"),
 # make together; mode_checks: its checks in one mode, which the shards of each GC suite make, and
 # the UBSan thirds once in each mode)
 # (corpus_cases and syntax_cases: the cases tests-cpython compiles with both compilers, and those it
-# checks with both)
-cases = [*Path("tests/programs").glob("*/*.py"), *Path("tests/deviations").glob("*.py"),
-         *Path("tests/errors").glob("*/*.py")]
-sources.update(test_programs=len(list(Path("tests/programs").glob("*/*.py"))),
-               rejection_tests=len(list(Path("tests/errors").glob("*/*.py"))),
+# checks with both; all of them counted in tests/corpus.sh's corpus)
+cases = [Path(p) for p in Path(os.environ["CORPUS_LIST"]).read_text().splitlines()]
+sources.update(test_programs=sum(p.parts[:2] == ("tests", "programs") for p in cases),
+               rejection_tests=sum(p.parts[:2] == ("tests", "errors") for p in cases),
                corpus_cases=len(cases), syntax_cases=sum(p.name.startswith("syntax_") for p in cases),
                suite_checks=int(os.environ["SUITE_CHECKS"]), mode_checks=int(os.environ["MODE_CHECKS"]))
 print('  "sources": ' + json.dumps(sources, sort_keys=True) + ',')

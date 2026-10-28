@@ -33,6 +33,24 @@ PYTHON_INT_SHARDS = 4
 # tests-cpython runs one case in HOSTED_SAMPLE_OF end to end (tests/verify.sh); it compares every
 # case's IR, messages and exit status with stage 2's
 HOSTED_SAMPLE_OF = 64
+# The kinds of program whose run takes the CPython-hosted driver past the IR along a path of its own
+# (tests/verify.sh's hosted_strata, which names the same kinds and tests them alike), of which
+# tests-cpython also runs one each end to end: a test of a program's path in the checkout
+HOSTED_STRATA = {
+    "sigint": lambda path: b"kill -INT" in path.read_bytes(),   # (it sends itself SIGINT)
+    "full": lambda path: path.with_suffix(".full").is_file(),   # (stdout /dev/full)
+    "in": lambda path: path.with_suffix(".in").is_file(),       # (stdin)
+    "path": lambda path: path.with_suffix(".path").is_file(),   # (PYSTACHY_PATH)
+    "ffi": lambda path: re.search(rb"(?m)^(import|from) ffi( |$)", path.read_bytes()) is not None,
+}
+
+
+def hosted_stratum(kind, case, root=ROOT):
+    """Is CASE a program of the corpus, in ROOT, of the hosted driver's path KIND (HOSTED_STRATA)?"""
+    if not isinstance(case, str) or not re.fullmatch(r"tests/programs/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.py", case):
+        return False
+    path = root / case
+    return path.is_file() and path.with_suffix(".out").is_file() and HOSTED_STRATA[kind](path)
 
 
 def parse_groups(text):
@@ -164,9 +182,19 @@ def validate_report(report, group, expected):
                     integer(sources.get("syntax_cases"), f"{group}.sources.syntax_cases", 1) or
                     step.get("modes") != ["jit", "aot"] or
                     integer(step.get("sample_index"), f"{label}.sample_index") != 0 or
-                    integer(step.get("sample_count"), f"{label}.sample_count", 1) != HOSTED_SAMPLE_OF):
+                    integer(step.get("sample_count"), f"{label}.sample_count", 1) != HOSTED_SAMPLE_OF or
+                    step.get("check_identical") is not True):
                 raise ValueError(f"{label}: the CPython-hosted compiler must match stage 2 on every case "
                                  f"and run shard 0 of {HOSTED_SAMPLE_OF} end to end, JIT and AOT")
+            # (the sample, whose checks the step's count holds, includes a program of each kind)
+            sample, strata = step.get("sample"), step.get("sample_strata")
+            if (not isinstance(sample, list) or not all(isinstance(case, str) for case in sample) or
+                    len(set(sample)) != len(sample) or
+                    integer(step.get("sample_cases"), f"{label}.sample_cases", 1) != len(sample) or
+                    not isinstance(strata, dict) or set(strata) != set(HOSTED_STRATA) or
+                    not all(case in sample and hosted_stratum(kind, case) for kind, case in strata.items())):
+                raise ValueError(f"{label}: the end-to-end sample must hold a program of each kind "
+                                 f"{', '.join(HOSTED_STRATA)} of this checkout's corpus")
         if step["name"] in SHARDED_STEPS and (
                 integer(step.get("shard_index"), f"{label}.shard_index") != int(step["name"][-1]) or
                 integer(step.get("shard_count"), f"{label}.shard_count", 1) != SHARDED_STEPS[step["name"]]):

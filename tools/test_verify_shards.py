@@ -22,6 +22,10 @@ SHARDS = [("native-0", "tests-native-0", ["jit", "aot"], 6, 1), ("native-1", "te
           ("ubsan-2", "ubsan-2", ["aot", "jit"], 2, 2)]
 # how many shards each suite has: the group kind-I runs shard I
 SHARD_COUNTS = {"native": 2, "opt-off": 2, "python-free": 3, "ubsan": 3}
+# the kinds of program the hosted sample holds the first of (tests/verify.sh's hosted_strata): a source
+# and the sidecar that make one
+STRATA = [("ffi", "import ffi\n", None), ("full", "# fixture\n", ".full"), ("in", "# fixture\n", ".in"),
+          ("path", "# fixture\n", ".path"), ("sigint", "import os\nos.system('kill -INT $PPID')\n", None)]
 # the LLVM tools python-free links into its PATH (doubles: only clang is called)
 LLVM_TOOLS = ("clang", "opt", "lli", "llvm-link", "llvm-as")
 
@@ -120,7 +124,7 @@ checks=0
 for file; do
   echo "selected: $file"
   case "$file" in
-    tests/programs/x/example.py|tests/deviations/example.py) checks=$((checks + m)) ;;
+    tests/programs/x/example.py|tests/deviations/example.py|tests/programs/[as]/*.py) checks=$((checks + m)) ;;
     tests/programs/x/syntax_example.py) checks=$((checks + m + 1)) ;;
     tests/errors/x/example.py) checks=$((checks + 1)) ;;
     tests/errors/x/syntax_example.py) checks=$((checks + 2)) ;;
@@ -200,20 +204,53 @@ esac
                     self.assertEqual(report["result"], "fail")
                     self.assertEqual(report["steps"][-1]["result"], "fail")
 
+    def add_strata(self, *omit):
+        """Programs of each kind the hosted sample holds one of (tests/verify.sh's hosted_strata), but
+        those of the kinds OMIT, and one more of each, later in C order; a plain program first."""
+        shutil.copy(ROOT / "tests/prepare_path.sh", self.root / "tests/prepare_path.sh")
+        (self.root / "tests/programs/a").mkdir(exist_ok=True)
+        (self.root / "tests/programs/s").mkdir(exist_ok=True)
+        (self.root / "tests/programs/a/plain.py").write_text("# fixture\n")
+        for prefix in ("", "z"):
+            for kind, source, sidecar in STRATA:
+                if kind not in omit:
+                    case = self.root / "tests/programs/s" / f"{prefix}{kind}.py"
+                    case.write_text(source)
+                    if sidecar:
+                        case.with_suffix(sidecar).write_text("tests\n")
+        # (a rejection of every kind is none's program: it never runs)
+        decoy = self.root / "tests/errors/x/decoy.py"
+        decoy.write_text("# error: mock rejection\nimport ffi  # kill -INT\n")
+        for sidecar in (".full", ".in", ".path"):
+            decoy.with_suffix(sidecar).write_text("tests\n")
+
     def test_hosted_compares_every_case_with_stage2_and_runs_its_sample(self):
+        self.add_strata()
         result, report, logs = self.run_group("hosted")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", "tests-cpython"])
         step = report["steps"][-1]
-        # every case's IR, messages and status (tools/irsame.sh), both syntax cases' check, and shard 0
-        # of 64 (the first case alone here) end to end, JIT and AOT
-        self.assertEqual((step["ir_cases"], step["ir_identical"], step["check_cases"]), (5, True, 2))
-        self.assertEqual((report["sources"]["corpus_cases"], report["sources"]["syntax_cases"]), (5, 2))
+        # every case's IR, messages and status (tools/irsame.sh), both syntax cases' check (tools/irsame.sh
+        # --check), and end to end, JIT and AOT, shard 0 of 64 (the plain program alone here) and the
+        # first program of each kind
+        cases = 5 + 1 + 2 * len(STRATA) + 1
+        self.assertEqual((step["ir_cases"], step["ir_identical"], step["check_cases"], step["check_identical"]),
+                         (cases, True, 2, True))
+        self.assertEqual((report["sources"]["corpus_cases"], report["sources"]["syntax_cases"]), (cases, 2))
+        self.assertEqual((report["sources"]["test_programs"], report["sources"]["rejection_tests"]), (cases - 4, 3))
         self.assertEqual((step["reference"], step["modes"], step["sample_index"], step["sample_count"]),
                          ("stage2", ["jit", "aot"], 0, 64))
-        self.assertEqual((step["passed"], step["failed"], step["expected"]), (2, 0, 2))
-        self.assertIn("5 programs identical", logs["tests-cpython"])
-        self.assertEqual(self.selected(logs["tests-cpython"]), CASES[:1])
+        strata = {kind: f"tests/programs/s/{kind}.py" for kind, _, _ in STRATA}
+        sample = ["tests/programs/a/plain.py", *sorted(strata.values())]
+        self.assertEqual(step["sample_strata"], strata)
+        self.assertEqual((step["sample"], step["sample_cases"]), (sample, len(sample)))
+        self.assertEqual((step["passed"], step["failed"], step["expected"]), (2 * len(sample), 0, 2 * len(sample)))
+        self.assertIn(f"{cases} programs identical", logs["tests-cpython"])
+        self.assertIn("== check of the 2 syntax_*.py cases: stage 2, then CPython-hosted (tools/irsame.sh --check)\n"
+                      "2 programs identical", logs["tests-cpython"])
+        for kind, case in strata.items():
+            self.assertIn(f"  {kind} {case}\n", logs["tests-cpython"])
+        self.assertEqual(self.selected(logs["tests-cpython"]), sample)
         for failure in ("hosted-ir-differs", "hosted-check-differs", "suite-failure", "short-suite"):
             with self.subTest(failure=failure):
                 result, report, logs = self.run_group("hosted", failure)
@@ -223,7 +260,23 @@ esac
                     self.assertFalse(report["steps"][-1]["ir_identical"])
                     self.assertIn("DIFF tests/programs/x/example.py", logs["tests-cpython"])
                 if failure == "hosted-check-differs":
-                    self.assertIn("CHECK DIFF tests/programs/x/syntax_example.py", logs["tests-cpython"])
+                    self.assertFalse(report["steps"][-1]["check_identical"])
+                    check = logs["tests-cpython"].split("(tools/irsame.sh --check)\n", 1)[1]
+                    self.assertTrue(check.startswith("DIFF tests/programs/x/syntax_example.py\n"), check)
+
+    def test_hosted_fails_without_a_program_of_each_kind(self):
+        for kind, _, _ in STRATA:
+            with self.subTest(kind=kind):
+                shutil.rmtree(self.root / "tests/programs/s", ignore_errors=True)
+                self.add_strata(kind)
+                result, report, logs = self.run_group("hosted")
+                self.assertNotEqual(result.returncode, 0)
+                step = report["steps"][-1]
+                self.assertEqual(step["result"], "fail")
+                self.assertIsNone(step["sample_strata"][kind])
+                self.assertIn(f"  {kind} none\n", logs["tests-cpython"])
+                # (the other kinds still run, and pass: only the missing kind fails the step)
+                self.assertEqual((step["passed"], step["failed"]), (step["expected"], 0))
 
     def test_ubsan_shards_need_an_instrumented_runtime(self):
         for group in ("ubsan-0", "ubsan-1", "ubsan-2"):

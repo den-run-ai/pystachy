@@ -396,7 +396,7 @@ runner variation:
 
 | Group | Work after bootstrap |
 |---|---|
-| `hosted` | The CPython-hosted compiler against stage 2 on every corpus case: identical IR, messages and exit status (`tools/irsame.sh`) and `check` results; one case in 64 also runs end to end, JIT and AOT. |
+| `hosted` | The CPython-hosted compiler against stage 2 on every corpus case: identical IR, messages and exit status (`tools/irsame.sh`) and `check` results (`tools/irsame.sh --check`); one case in 64 and a program of each hosted-driver path after the IR also run end to end, JIT and AOT. |
 | `native-0`, `native-1` | Two disjoint halves of the native differential suite, JIT and AOT. |
 | `opt-off-0`, `opt-off-1` | Two disjoint halves of the native suite with IR optimizations disabled. |
 | `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
@@ -476,12 +476,20 @@ runs its three thirds, and `ubsan` builds the sanitized compiler once and runs i
 The CPython-hosted compiler is checked by identity rather than by executing its output again:
 `hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
 exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results
-for every `syntax_*` case (`sources.syntax_cases`). The LLVM tools build the same program from the
+for every `syntax_*` case (`sources.syntax_cases`; both counted in `tests/corpus.sh`'s corpus), each
+comparison in a worker per CPU. The LLVM tools build the same program from the
 same IR, and `native-0`/`native-1` run every case's stage-2 output in JIT and AOT, so executing
-the hosted compiler's identical output again added no coverage; it replaced three jobs (24.8
-runner-minutes in run 40719438561). Shard 0 of 64 still runs end to end with the hosted compiler,
-so its driver's `run`, `build` and `check` paths execute in this job too, as they do in
-`runtime-cache`, `jit-dead-code`, `unicode-audit`, `compile-limits` and `scaling`.
+the hosted compiler's identical output again added no coverage; it replaced three jobs, whose
+Verify steps took 24.3 minutes together in run 40719438561 (a historical measurement). A sample
+still runs end to end with the hosted compiler, so its driver's `run`, `build` and `check` paths
+execute in this job too, as they do in `runtime-cache`, `jit-dead-code`, `unicode-audit`,
+`compile-limits` and `scaling`: shard 0 of 64, and the first program in C order of each kind whose
+run takes the hosted driver past the IR along a path of its own (`tests/verify.sh`'s
+`hosted_strata`): one that sends itself SIGINT, one with `NAME.full`, one with `NAME.in`, one with
+`NAME.path`, and one that imports a module named `ffi`. The step reports the sample and the
+program of each kind, and fails if a kind has none; the gate requires every kind, each a program
+of the checkout's corpus of that kind and in the sample. The maintainer accepted this identity
+check with its stratified end-to-end sample on 2026-10-28.
 The compiler-scaling check is split by shapes: `scaling-0` checks those of `SCALING_0`, about
 half of the lines the CPython-hosted compiler executes, and `scaling-1` every other shape of
 `tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires the two to

@@ -7,7 +7,7 @@
 #   tests/deviations/NAME.py      a documented deviation, with its hand-written NAME.out
 #   tests/errors/AREA/NAME.py     a rejection, its expected message in its first line, NAME.path beside
 #                                 it where it imports one of the helper packages in tests/
-# tools/rtabi.py and tests/verify.sh's report find them with the same patterns in Python.
+# tools/rtabi.py finds them with the same patterns in Python.
 # Each area is a directory of cases on one subject; the helper packages that cases import (mods/,
 # loader/, emods/...) lie directly in tests/, which a case's NAME.path names for them.
 

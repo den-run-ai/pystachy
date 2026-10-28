@@ -44,6 +44,21 @@ def optin_report(index):
             "failures": [], "results": rows}
 
 
+@lru_cache(maxsize=1)
+def hosted_strata():
+    """The first program of the checkout's corpus of each kind tests-cpython samples (merge.HOSTED_STRATA)."""
+    programs = merge.dynany_optin.programs()
+    return {kind: next(case for case in programs if merge.hosted_stratum(kind, case))
+            for kind in merge.HOSTED_STRATA}
+
+
+def hosted_sample(step, *cases, strata=None):
+    """Make CASES tests-cpython's sample, and STRATA its strata if given."""
+    step.update(sample=list(cases), sample_cases=len(cases))
+    if strata is not None:
+        step.update(sample_strata=strata)
+
+
 COMPILER_BYTES = b"verified test compiler\n"
 
 
@@ -89,8 +104,9 @@ def report(group, steps):
         if name.startswith("tests-native"):
             step.update(compiler="stage2", modes=["jit", "aot"])
         if name == "tests-cpython":   # every case's IR identical, its sample run end to end
-            step.update(reference="stage2", ir_identical=True, ir_cases=5, check_cases=2, modes=["jit", "aot"],
-                        sample_index=0, sample_count=merge.HOSTED_SAMPLE_OF)
+            step.update(reference="stage2", ir_identical=True, ir_cases=5, check_cases=2, check_identical=True,
+                        modes=["jit", "aot"], sample_index=0, sample_count=merge.HOSTED_SAMPLE_OF)
+            hosted_sample(step, *sorted(set(hosted_strata().values())), strata=dict(hosted_strata()))
         if name in ("python-free-0", "python-free-1", "python-free-2", "gc-aot-0", "gc-aot-1", "gc-aot-2"):
             count = 4 if name.endswith("-0") else 3   # thirds of a 10-check suite
             step.update(passed=count, expected=count)
@@ -295,7 +311,28 @@ class ContractTests(unittest.TestCase):
                                lambda step: step.pop("sample_count"),
                                lambda step: step.update(passed=step["expected"] - 1),
                                lambda step: step.update(failed=1),
-                               lambda step: step.pop("expected")]
+                               lambda step: step.pop("expected"),
+                               lambda step: step.update(check_identical=False),
+                               lambda step: step.pop("check_identical"),
+                               # its sample: a program of each kind, which it holds, once each
+                               lambda step: step.pop("sample_strata"),
+                               lambda step: step.pop("sample"),
+                               lambda step: step.update(sample_cases=step["sample_cases"] + 1),
+                               lambda step: step["sample_strata"].pop("sigint"),
+                               lambda step: step["sample_strata"].update(sigint=None),
+                               lambda step: step["sample_strata"].update(extra=step["sample"][0]),
+                               lambda step: hosted_sample(step, *step["sample"], step["sample"][0]),
+                               lambda step: hosted_sample(step, *(case for case in step["sample"]
+                                                                  if case != step["sample_strata"]["ffi"])),
+                               # (a program of another kind, a rejection, a missing or an outside file)
+                               lambda step: step["sample_strata"].update(
+                                   full=next(case for case in step["sample"] if not merge.hosted_stratum("full", case))),
+                               lambda step: hosted_sample(step, *step["sample"], "tests/errors/syntax/x.py", strata={
+                                   **step["sample_strata"], "path": "tests/errors/syntax/x.py"}),
+                               lambda step: hosted_sample(step, *step["sample"], "tests/programs/x/missing.py", strata={
+                                   **step["sample_strata"], "in": "tests/programs/x/missing.py"}),
+                               lambda step: hosted_sample(step, *step["sample"], "tests/programs/../../x.py", strata={
+                                   **step["sample_strata"], "in": "tests/programs/../../x.py"})]
         for group in ("gc-aot-0", "gc-aot-1", "gc-aot-2"):
             mutations[group] = [lambda step: step.update(tests_compiler_interval=1001),
                                 lambda step: step.update(tests_interval=2),
