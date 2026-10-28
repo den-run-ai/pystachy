@@ -2,8 +2,6 @@ tuple of a list: Python int too large to convert to C long
 heapq: Python int too large to convert to C long [18446744073709551616, 1, 0]
 get() of a tuple: Python int too large to convert to C long
 tuple in a list in heapq: Python int too large to convert to C long
-iter() of a dict: Python int too large to convert to C long
-iter() of a set: Python int too large to convert to C long
 int | None in a list: Python int too large to convert to C long
 int | None in a tuple: Python int too large to convert to C long
 generator in heapq: Python int too large to convert to C long

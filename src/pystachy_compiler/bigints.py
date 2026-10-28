@@ -11,7 +11,7 @@ from src.pystachy_compiler.analysis import first_use, local_names
 from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
-from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC
+from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC, READ_HELPERS
 from src.pystachy_compiler.utils import bool_for_int, elem, is_dict, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_vtuple, lookable, selem, targs, unopt
 
 # pys_big_op's operation codes (pys_mpz_binop's, then shifts and **)
@@ -263,6 +263,15 @@ def numeric_reads(n: Node, ctx: str, name: str, nums: list[str], calls: list[str
 def gen_int_policy(self, line: int) -> bool:
     # does the module of source line line promote its ints (# pystachy: python-int)
     return int_file(line // LINES)
+
+
+def gen_read_policy(self) -> bool:
+    # does a read of a container's int here (a list's item, a dict's key or value, a set's element,
+    # also in a tuple of ints that one holds) give it as the promoting int it is: in a module that
+    # opts in (int_policy), and in lib's modules that hand a container's items on as they are
+    # (READ_HELPERS: iter()'s iterators) where the program's containers hold promoting ints
+    # (int_lists); elsewhere the 64-bit int, NARROW past 64 bits
+    return self.int_policy(self.line) or (int_lists() and self.curfn.mod in READ_HELPERS)
 
 
 def gen_big(self, lo: Val, hi: str = "null") -> Val:
@@ -607,16 +616,16 @@ def gen_big_list_value(self, o: Val, i: str, raw: str) -> Val:
     # the int that the list holds there (int_lists): a promoting int in a module that opts in, else
     # the 64-bit int, NARROW past 64 bits (big_slot)
     v = self.big_slot(raw, "pys_list_big_at", [f"ptr {o.v}", f"i64 {i}"])
-    return v if self.int_policy(self.line) else self.big_narrow(v)
+    return v if self.read_policy() else self.big_narrow(v)
 
 
 def gen_item_type(self, t: str) -> str:
     # the type of the item that a read of list type t gives here (list_value): a promoting int, in
     # a module that opts in, where the program's lists of ints hold them (int_lists), and so a
     # tuple's ints (held)
-    if is_list(t) and elem(t) == "int" and int_lists() and self.int_policy(self.line):
+    if is_list(t) and elem(t) == "int" and int_lists() and self.read_policy():
         return BIG
-    if is_list(t) and self.int_policy(self.line):
+    if is_list(t) and self.read_policy():
         return held(elem(t))
     return elem(t)
 
@@ -628,7 +637,7 @@ def gen_held_value(self, v: Val) -> Val:
     h = held(v.t)
     if h == v.t:
         return v
-    if self.int_policy(self.line):
+    if self.read_policy():
         return Val(v.v, h)
     return self.big_tuple_narrow(Val(v.v, h))
 
@@ -749,7 +758,7 @@ def gen_big_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
     # in (or keep), else the 64-bit int, NARROW past 64 bits (big_slot)
     raw = self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"])
     v = self.big_slot(raw, "pys_dict_big_val", [f"ptr {d.v}", f"i64 {e}"])
-    return v if keep or self.int_policy(self.line) else self.big_narrow(v)
+    return v if keep or self.read_policy() else self.big_narrow(v)
 
 
 def gen_dict_bigkey(self, t: str) -> bool:
@@ -855,7 +864,7 @@ def gen_held_pair(self, v: Val) -> Val:
     if held(kv[0]) == kv[0] and held(kv[1]) == kv[1]:
         return v
     t = "tuple[" + held(kv[0]) + "," + held(kv[1]) + "]"
-    if self.int_policy(self.line):
+    if self.read_policy():
         return Val(v.v, t)
     return self.big_tuple_narrow(Val(v.v, t))
 
@@ -865,7 +874,7 @@ def gen_big_dict_key(self, d: Val, e: str) -> Val:
     # in, else the 64-bit int, NARROW past 64 bits (big_slot)
     raw = self.rt("pys_dict_key", "i64", [f"ptr {d.v}", f"i64 {e}"])
     v = self.big_slot(raw, "pys_dict_big_key", [f"ptr {d.v}", f"i64 {e}"])
-    return v if self.int_policy(self.line) else self.big_narrow(v)
+    return v if self.read_policy() else self.big_narrow(v)
 
 
 def gen_dict_box(self, b: str) -> Val:
@@ -873,7 +882,7 @@ def gen_dict_box(self, b: str) -> Val:
     # whose box pys_dict_getbox or pys_dict_popbox makes of a value past 64 bits as of a promoting
     # int (pys_big_box): that int | None in a module that opts in, else narrowed
     v = Val(self.from_slot(b, "opt[int]").v, BIGOPT)
-    return v if self.int_policy(self.line) else self.big_opt_narrow(v)
+    return v if self.read_policy() else self.big_opt_narrow(v)
 
 
 def gen_big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
@@ -933,7 +942,7 @@ def gen_big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, 
         self.br(end)
         self.place(end)
         v = Val(self.phi(ph), BIG)
-        return v if self.int_policy(self.line) else self.big_narrow(v)
+        return v if self.read_policy() else self.big_narrow(v)
     if m == "pop" and kx.t == BIGOPT:
         kx = self.big_key(kx)
     if m == "get":
@@ -955,7 +964,7 @@ def gen_big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, 
         v = Val(self.rt(self.dict_key_fn("pys_dict_big_pop", kx), BIGLL, [f"ptr {o.v}"] + self.dict_key_args(kx, k) + [f"i64 {'1' if has else '0'}", f"i64 {self.big_lo(d).v}", f"ptr {self.big_hi(d).v}"], x), BIG)
     else:
         v = Val(self.rt(self.dict_key_fn("pys_dict_big_setdefault", kx), BIGLL, [f"ptr {o.v}"] + self.dict_key_args(kx, k) + [f"i64 {self.big_lo(d).v}", f"ptr {self.big_hi(d).v}"], x), BIG)
-    return v if self.int_policy(self.line) else self.big_narrow(v)
+    return v if self.read_policy() else self.big_narrow(v)
 
 
 def gen_big_popitem(self, o: Val) -> Val:
@@ -995,7 +1004,7 @@ def gen_big_set_value(self, s: Val, j: str) -> Val:
     # else the 64-bit int, NARROW past 64 bits (big_slot)
     raw = self.rt("pys_set_key", "i64", [f"ptr {s.v}", f"i64 {j}"])
     v = self.big_slot(raw, "pys_set_big_key", [f"ptr {s.v}", f"i64 {j}"], True)
-    return v if self.int_policy(self.line) else self.big_narrow(v)
+    return v if self.read_policy() else self.big_narrow(v)
 
 
 def gen_set_value(self, s: Val, j: str) -> Val:
@@ -1033,7 +1042,7 @@ def gen_big_set_method(self, o: Val, m: str, args: list[Node]) -> Val:
     # (pys_set_big_*); Val("", "") for the rest, which smethod compiles as for 64-bit ints
     if m == "pop" and len(args) == 0:
         v = Val(self.rt("pys_set_big_pop", BIGLL, [f"ptr {o.v}"]), BIG)
-        return v if self.int_policy(self.line) else self.big_narrow(v)
+        return v if self.read_policy() else self.big_narrow(v)
     if (m == "discard" or m == "remove") and len(args) == 1 and args[0].kind not in ["kw", "starred", "dstar"] and self.dyn_dry(args[0]) in [BIG, BIGOPT]:
         x = self.expr(args[0], "")
         fn = "pys_set_big_discard" if m == "discard" else "pys_set_big_remove"
@@ -1059,7 +1068,7 @@ def gen_big_list_minmax(self, o: Val, maximum: bool) -> Val:
     # min() or max() of list[int] o (int_lists): the promoting int, narrowed in a module that does not
     # opt in
     v = Val(self.rt("pys_list_big_minmax", BIGLL, [f"ptr {o.v}", f"i64 {1 if maximum else 0}"]), BIG)
-    return v if self.int_policy(self.line) else self.big_narrow(v)
+    return v if self.read_policy() else self.big_narrow(v)
 
 
 def gen_big_list_find(self, o: Val, x: Val, op: int, st: str, en: str) -> Val:
@@ -1086,7 +1095,7 @@ def gen_big_list_method(self, o: Val, m: str, args: list[Node]) -> Val:
     if m == "pop" and len(args) <= 1 and (len(args) == 0 or self.dry(args[0]) in ints):
         i = self.as_int(self.expr(args[0], "")) if len(args) == 1 else Val("-1", "int")
         v = Val(self.rt("pys_list_big_pop", BIGLL, [f"ptr {o.v}", f"i64 {i.v}"]), BIG)
-        return v if self.int_policy(self.line) else self.big_narrow(v)
+        return v if self.read_policy() else self.big_narrow(v)
     if ((m == "append" and len(args) == 1) or (m == "insert" and len(args) == 2 and self.dry(args[0]) in ints)) and self.dry(args[-1]) == BIG:
         i = self.as_int(self.expr(args[0], "")) if m == "insert" else Val("", "")
         self.list_store(o, self.expr(args[-1], ""), m, i.v)

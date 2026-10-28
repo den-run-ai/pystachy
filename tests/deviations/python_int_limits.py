@@ -8,8 +8,7 @@
 # range(), added by sum() among floats, in a NamedTuple that may be None (a parameter) hashed as the
 # tuple of its fields, a dict's tuple that get() gives where it may be None, or a list's item (a
 # tuple's too), a dict's key, a set's element or a generator's value that tuple() or a module that
-# does not opt in (heapq, the iterator of iter()) reads, raises OverflowError, where CPython goes on
-# with the bigger int.
+# does not opt in (heapq) reads, raises OverflowError, where CPython goes on with the bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected, as in a list, a dict or a set of tuples of ints.
 import heapq
@@ -60,15 +59,6 @@ try:
     print(heapq.heappop(pairs))
 except OverflowError as e:
     print("tuple in a list in heapq:", e)
-keyed = {big: "k"}
-try:
-    print(next(iter(keyed)))
-except OverflowError as e:
-    print("iter() of a dict:", e)
-try:
-    print(next(iter({big})))
-except OverflowError as e:
-    print("iter() of a set:", e)
 maybe: int | None = big
 try:
     print([maybe])
