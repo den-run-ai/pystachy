@@ -8,7 +8,7 @@ that fits, so equal values have one representation. See docs/python-int.md.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import first_use, local_names
-from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists
+from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists, int_span
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC, READ_HELPERS
@@ -261,8 +261,10 @@ def numeric_reads(n: Node, ctx: str, name: str, nums: list[str], calls: list[str
 
 
 def gen_int_policy(self, line: int) -> bool:
-    # does the module of source line line promote its ints (# pystachy: python-int)
-    return int_file(line // LINES)
+    # does the module of source line line promote its ints (# pystachy: python-int), or the
+    # definition of lib/ that holds it, where a module of the program opts in (int_lists and
+    # int_span: specs.INT_HELPERS)
+    return int_file(line // LINES) or (int_lists() and int_span(line))
 
 
 def gen_read_policy(self) -> bool:

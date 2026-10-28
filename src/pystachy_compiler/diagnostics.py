@@ -70,6 +70,19 @@ def int_file(k: int) -> bool:
     return k in INTFILES
 
 
+# the lines of lib/'s definitions whose ints promote as those of a module that opts in, where a
+# module of the program does (specs.INT_HELPERS, Gen.int_policy): the first and the last of each,
+# in the numbering of all files' lines (LINES)
+INTSPANS: list[list[int]] = []
+
+
+def int_span(line: int) -> bool:
+    for s in INTSPANS:
+        if s[0] <= line and line <= s[1]:
+            return True
+    return False
+
+
 def dynamic_program() -> bool:
     # does a module of the program opt in, so that values may be dynamic (dyn)
     return len(DYNFILES) > 0
