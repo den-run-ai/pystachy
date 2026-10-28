@@ -42,6 +42,10 @@ exposed the additional mixed-storage boundary above. Its separate JIT/AOT manife
 bring the reviewed baseline to 256 rejected programs; they must satisfy the same exact
 compiler-exit and raw-stream checks as every other entry.
 
+Integrating main `14678f89` adds nine JSON-repair/decoder programs. Four explicitly opt
+into dynamic Any and add eight verified conflict checks; the other five pass both JIT
+and AOT under promotion. The updated manifest therefore contains 260 rejected programs.
+
 ## Remaining rejected surface
 
 The manifest is [tools/python_int_optin_exceptions.json](../../tools/python_int_optin_exceptions.json).
