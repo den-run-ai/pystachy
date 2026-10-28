@@ -100,6 +100,7 @@ s.discard((7, 7))
 s.remove((LOW, 0))
 print(sorted(s), len(s), (BIG, 1) in s, (BIG, 2) in s, (5, BIG * BIG) in s)
 print({(BIG, 1)}, frozenset({(LOW, BIG)}), {((BIG, 2), "n")}, repr({(BIG, 3)}))
+print({(1, 2), (3, 4), (5, 6), (7, BIG), (BIG, 8), (LOW, 9)}, list({(i, i + 1) for i in range(12)}))
 try:
     s.remove((BIG, 2))
 except KeyError as e:

@@ -4186,7 +4186,9 @@ static I hitem(I k, const char *d);
 static I htuple(I *t, I n, const char *e, int each) {   /* tuplehash of n items, of descriptors from e on (each), or all e */
   uint64_t acc = 2870177450012600261ULL; I w[2];
   for (I i = 0; i < n; i++) {
-    acc += (uint64_t)hitem(each ? titem(t, n, i, e, w) : t[i], e) * 14029467366897019727ULL;
+    /* (an int item's hash, and a promoting int's that fits, in place: hitem's) */
+    I x = t[i], h = each && (*e == 'i' || (*e == 'J' && x != INT64_MIN)) ? hint(x) : hitem(each ? titem(t, n, i, e, w) : x, e);
+    acc += (uint64_t)h * 14029467366897019727ULL;
     acc = acc << 31 | acc >> 33;
     acc *= 11400714785074694791ULL;
     if (each) e = skip(e);
