@@ -1,0 +1,1110 @@
+{
+  "description": "Native validation and paired timings for incremental json_repair escape metadata",
+  "date": "2026-10-22",
+  "source_context": {
+    "baseline": {
+      "commit": "563ed6d50dce29d82b47cb53089f99e06af79491",
+      "tree": "498b3ac680a1360fd2e738405821eef50b9e6939",
+      "git_status_at_measurement": "",
+      "source_sha256": {
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "9f5d1aa764950dc00a9e22fc6ea968bbd55a90617000609c64193fcd6732dd4a",
+        "runtime.py": "427907a36fc36d7d13de4e787c9b7f1a61cd2bfe7505cebc0af8b40cd715e780",
+        "ports/json_repair/parse_string.py": "00bb098ce06b0fb7e84fe1bde419fb5ca9262730185919e72b2921a1af475141",
+        "bench/json_repair/scaling.py": "694df25b0dd91ad2d4e14dfd0e1e09293e4e4ea59f82f59cd28ae2d1d89a1ad2",
+        "bench/json_repair/bench.py": "2a645fcc44d8a22f1205ab1d4e8dcc61f24294c1dc80c07cba65295a6d48f89b",
+        "tests/upstream/json_repair/replay.py": "2f65eb7ccace0df2271326d86a3c0ddf68849ceea401567336d0856f5e3694fa",
+        "tools/json_repair_parity.py": "1383c17163f55917ab011799cd42c9b32dd41dae7e1e5a75fab235f6a042c4ff"
+      },
+      "compiler_runtime_library_manifest_sha256": "361b0ba4fbad40c507e3e17c2ac849cb4bee910853273d156d37fd0e491362f1"
+    },
+    "candidate": {
+      "commit": "0b5e3ec61bd110f983895323f8496b3b79f57b85",
+      "tree": "e7cbc7dac83fd6a1afdd0a052d172f42f6108929",
+      "git_status_at_measurement": "",
+      "source_sha256": {
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "9f5d1aa764950dc00a9e22fc6ea968bbd55a90617000609c64193fcd6732dd4a",
+        "runtime.py": "427907a36fc36d7d13de4e787c9b7f1a61cd2bfe7505cebc0af8b40cd715e780",
+        "ports/json_repair/parse_string.py": "0a79302fb1daa1b642b94386fce4462570bb4738eada50358d7f019509629260",
+        "bench/json_repair/scaling.py": "694df25b0dd91ad2d4e14dfd0e1e09293e4e4ea59f82f59cd28ae2d1d89a1ad2",
+        "bench/json_repair/bench.py": "2a645fcc44d8a22f1205ab1d4e8dcc61f24294c1dc80c07cba65295a6d48f89b",
+        "tests/upstream/json_repair/replay.py": "2f65eb7ccace0df2271326d86a3c0ddf68849ceea401567336d0856f5e3694fa",
+        "tools/json_repair_parity.py": "1383c17163f55917ab011799cd42c9b32dd41dae7e1e5a75fab235f6a042c4ff",
+        "tests/programs/apps/port_json_repair_escape.py": "88c580685b353060dbc6d0039a507146a228e44a0b46d8d370c46abd540709c1"
+      },
+      "compiler_runtime_library_manifest_sha256": "361b0ba4fbad40c507e3e17c2ac849cb4bee910853273d156d37fd0e491362f1"
+    }
+  },
+  "toolchain": {
+    "llvm": "Ubuntu LLVM 18.1.3",
+    "bootstrap_python": "CPython 3.13.16",
+    "runner_python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "compiler_sha256": "ca996cfcd6df869806fbb9bc1c246fd46c639a6121a2d501466849cd609cb4a2",
+    "bootstrap": "make PY=/root/.local/bin/python3.13; PYSTACHY_JOBS=2",
+    "fixed_point_ir_lines": {
+      "compiler": 665141,
+      "runtime": 18709
+    },
+    "installation": "Official Ubuntu noble packages extracted privately; InRelease signature and package SHA256 verified"
+  },
+  "host": {
+    "os": "Linux-6.18.55-x86_64-with-glibc2.39",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "cpu_affinity": 0,
+    "shared": true,
+    "no_concurrent_local_build_or_test_work": true
+  },
+  "method": {
+    "samples_per_variant": 7,
+    "order": "Alternate baseline/candidate and candidate/baseline for successive sample pairs; all invocations run sequentially on one allowed CPU.",
+    "timing_scope": "Benchmark-reported in-process repair loop; input creation, full result checks, startup, compilation and linking excluded. Separate wall_seconds includes process overhead.",
+    "mixed_scope": "2000 iterations of ten records; timed loop includes weight/checksum work",
+    "witness_scope": "All non-timing stdout lines compared exactly across every variant/sample. Scaling executable separately checks the full payload before and after timing; mix emits all ten repaired records and verifies its checksum.",
+    "environment": "Inherited PYSTACHY_* and PYTHONPATH removed; explicit LLVM path, matching private library path, PYSTACHY_PATH=ports and variant-specific PYSTACHY_HOME. Default optimization and GC. No GC stats/stress during timings.",
+    "compiler": "Same freshly bootstrapped executable for both variants; compiler/runtime/lib sources identical",
+    "aot_build": "In each checkout: PYSTACHY_HOME=\"$PWD\" PYSTACHY_PATH=ports \"$COMPILER\" build bench/json_repair/scaling.py -o \"$VARIANT-scaling\"; similarly bench.py and replay.py",
+    "jit_run": "In each checkout: taskset -c \"$CPU\" env PYSTACHY_HOME=\"$PWD\" PYSTACHY_PATH=ports \"$COMPILER\" run bench/json_repair/scaling.py escaped 2000 1; similarly 4000 and bench.py 2000",
+    "aot_run": "taskset -c \"$CPU\" \"$VARIANT-scaling\" MODE SIZE ROUNDS; taskset -c \"$CPU\" \"$VARIANT-mix\" 2000",
+    "outliers": "All seven samples retained, including first samples; no filtering"
+  },
+  "binary_sha256": {
+    "baseline-mix": "c1568e8c430ae9f3cc2944ed6ec296b4f1b7a52a513cf76c7694ab46199add38",
+    "baseline-scaling": "7de81f494835e47ca2f1b07a6c34640d0f8316c865fedae84a1b2ab2302c7651",
+    "candidate-mix": "4e9e4ad3fd412ae8b3fd11ae8655c2d99935b51245678ae041f5737d189f4e2e",
+    "candidate-scaling": "4d00f117a1f00c1fe919d490e1ddaa824681db1ae92372eaefd76473563126d3"
+  },
+  "validation": {
+    "focused_cases": [
+      "tests/programs/apps/port_json_repair.py",
+      "tests/programs/apps/port_json_repair_scan.py",
+      "tests/programs/apps/port_json_repair_escape.py",
+      "tests/programs/library/json_raw_decode.py",
+      "tests/programs/inference/dynany_json_raw_decode.py"
+    ],
+    "focused_command": "tests/run.sh \"$COMPILER\" \"jit aot\" <focused_cases>; repeat with PYSTACHY_GC_STRESS_PROGRAM=1",
+    "focused_normal": {
+      "selected_cases": 5,
+      "passed_executions": 10,
+      "failed_executions": 0
+    },
+    "focused_gc_every_allocation": {
+      "selected_cases": 5,
+      "passed_executions": 10,
+      "failed_executions": 0
+    },
+    "replay_command": "python3.13 tools/json_repair_parity.py --write-inputs inputs.jsonl; run replay.py inputs.jsonl in each mode; python3.13 tools/json_repair_parity.py output.jsonl --report report.json",
+    "gc_environment": "AOT replay: PYSTACHY_GC_STRESS=1; JIT replay: PYSTACHY_GC_STRESS_PROGRAM=1",
+    "replays": {
+      "baseline-aot": {
+        "cases": 645,
+        "matched": 644,
+        "checker_exit_code": 1,
+        "problem_ids": [
+          59
+        ],
+        "actual_error": {
+          "error": "OverflowError",
+          "message": "JSON integer exceeds signed 64-bit range"
+        },
+        "stdout_sha256": "733d4336c7749188e27749b88166ddcc8e895261a75821e468d470360ba60e66"
+      },
+      "candidate-aot": {
+        "cases": 645,
+        "matched": 644,
+        "checker_exit_code": 1,
+        "problem_ids": [
+          59
+        ],
+        "actual_error": {
+          "error": "OverflowError",
+          "message": "JSON integer exceeds signed 64-bit range"
+        },
+        "stdout_sha256": "733d4336c7749188e27749b88166ddcc8e895261a75821e468d470360ba60e66"
+      },
+      "candidate-jit": {
+        "cases": 645,
+        "matched": 644,
+        "checker_exit_code": 1,
+        "problem_ids": [
+          59
+        ],
+        "actual_error": {
+          "error": "OverflowError",
+          "message": "JSON integer exceeds signed 64-bit range"
+        },
+        "stdout_sha256": "733d4336c7749188e27749b88166ddcc8e895261a75821e468d470360ba60e66"
+      },
+      "candidate-aot-gc": {
+        "cases": 645,
+        "matched": 644,
+        "checker_exit_code": 1,
+        "problem_ids": [
+          59
+        ],
+        "actual_error": {
+          "error": "OverflowError",
+          "message": "JSON integer exceeds signed 64-bit range"
+        },
+        "stdout_sha256": "733d4336c7749188e27749b88166ddcc8e895261a75821e468d470360ba60e66"
+      },
+      "candidate-jit-gc": {
+        "cases": 645,
+        "matched": 644,
+        "checker_exit_code": 1,
+        "problem_ids": [
+          59
+        ],
+        "actual_error": {
+          "error": "OverflowError",
+          "message": "JSON integer exceeds signed 64-bit range"
+        },
+        "stdout_sha256": "733d4336c7749188e27749b88166ddcc8e895261a75821e468d470360ba60e66"
+      }
+    },
+    "known_failure": "Case 59: JSON integer 12345678901234567890 exceeds signed 64-bit range. Checker remains failing with exit 1; no waiver or fixture change.",
+    "full_local_verify": "Not rerun; focused native checks and full port replay only. Hosted CI tracked separately in PR."
+  },
+  "aot": [
+    {
+      "id": "escaped-500",
+      "binary": "scaling",
+      "args": [
+        "escaped",
+        "500",
+        "1"
+      ],
+      "rounds": 1,
+      "witness": [
+        "witness escaped 500 1512 1003 0",
+        "rounds 1"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.0717715470091207,
+          0.010523742996156216,
+          0.009721226000692695,
+          0.007859595003537834,
+          0.007757943996693939,
+          0.008857259002979845,
+          0.008906181989004835
+        ],
+        "candidate": [
+          0.0008367169939447194,
+          0.004459756994037889,
+          0.001115298000513576,
+          0.0009563229978084564,
+          0.000828874995931983,
+          0.0009030450019054115,
+          0.0007532829913543537
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.08939617300347891,
+          0.02373488200828433,
+          0.023687762004556134,
+          0.019860700995195657,
+          0.019412348003243096,
+          0.01985671000147704,
+          0.023232003004522994
+        ],
+        "candidate": [
+          0.004455980000784621,
+          0.010685386005206965,
+          0.005043884011683986,
+          0.0039760450017638505,
+          0.004634939003153704,
+          0.003992269994341768,
+          0.004501743009313941
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.008906181989004835,
+        "candidate": 0.0009030450019054115
+      },
+      "baseline_over_candidate": 9.862389991875183,
+      "first_pair": "baseline"
+    },
+    {
+      "id": "escaped-1000",
+      "binary": "scaling",
+      "args": [
+        "escaped",
+        "1000",
+        "1"
+      ],
+      "rounds": 1,
+      "witness": [
+        "witness escaped 1000 3012 2003 0",
+        "rounds 1"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.034809543009032495,
+          0.032780715002445504,
+          0.04094527001143433,
+          0.031448275010916404,
+          0.034859596999012865,
+          0.032339922996470705,
+          0.02906291000545025
+        ],
+        "candidate": [
+          0.0026071530010085553,
+          0.003128423006273806,
+          0.002148404993931763,
+          0.0024472369987051934,
+          0.0021361270046327263,
+          0.0035753429983742535,
+          0.002040755993220955
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.07844792799733113,
+          0.06778516499616671,
+          0.07560930799809285,
+          0.07086204299412202,
+          0.06935730400437023,
+          0.06899568298831582,
+          0.06137240400130395
+        ],
+        "candidate": [
+          0.00814654900750611,
+          0.008302054004161619,
+          0.006911453994689509,
+          0.008626177994301543,
+          0.00844567600870505,
+          0.009826060995692387,
+          0.0071746879984857515
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.032780715002445504,
+        "candidate": 0.0024472369987051934
+      },
+      "baseline_over_candidate": 13.394989949804382,
+      "first_pair": "candidate"
+    },
+    {
+      "id": "escaped-2000",
+      "binary": "scaling",
+      "args": [
+        "escaped",
+        "2000",
+        "1"
+      ],
+      "rounds": 1,
+      "witness": [
+        "witness escaped 2000 6012 4003 0",
+        "rounds 1"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.12605899800837506,
+          0.12672452798869926,
+          0.11431487300433218,
+          0.13285935399471782,
+          0.13842185799148865,
+          0.15479162101109978,
+          0.1509860980004305
+        ],
+        "candidate": [
+          0.0072108769963961095,
+          0.007067084006848745,
+          0.008297521999338642,
+          0.007633079992956482,
+          0.010378588005551137,
+          0.010187396008404903,
+          0.010260512994136661
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.2622391159966355,
+          0.2491097720048856,
+          0.23771936500270385,
+          0.2601917349966243,
+          0.2625277179904515,
+          0.3133443660044577,
+          0.3092544870014535
+        ],
+        "candidate": [
+          0.01914479299739469,
+          0.017722421005601063,
+          0.022084277006797493,
+          0.018632466002600268,
+          0.027888355005416088,
+          0.027150319001520984,
+          0.025100974991801195
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.13285935399471782,
+        "candidate": 0.008297521999338642
+      },
+      "baseline_over_candidate": 16.011931514650694,
+      "first_pair": "baseline"
+    },
+    {
+      "id": "escaped-4000",
+      "binary": "scaling",
+      "args": [
+        "escaped",
+        "4000",
+        "1"
+      ],
+      "rounds": 1,
+      "witness": [
+        "witness escaped 4000 12012 8003 0",
+        "rounds 1"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.569966711991583,
+          0.5820791830046801,
+          0.5480350669968175,
+          0.5522750989912311,
+          0.619500656001037,
+          0.5938584969990188,
+          0.5090976290084654
+        ],
+        "candidate": [
+          0.022237714001676068,
+          0.022845756000606343,
+          0.016929652003454976,
+          0.01503055500506889,
+          0.016967757997917943,
+          0.022114453997346573,
+          0.022474907003925182
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          1.1691150719998404,
+          1.1675469869951485,
+          1.1000815279985545,
+          1.116139600999304,
+          1.1607377249893034,
+          1.3035162470041541,
+          1.1094426140043652
+        ],
+        "candidate": [
+          0.05973781801003497,
+          0.05916994600556791,
+          0.0582403830048861,
+          0.049653707013931125,
+          0.04980199199053459,
+          0.06008319999091327,
+          0.06082287398749031
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.569966711991583,
+        "candidate": 0.022114453997346573
+      },
+      "baseline_over_candidate": 25.773492398228374,
+      "first_pair": "candidate"
+    },
+    {
+      "id": "escaped-8000",
+      "binary": "scaling",
+      "args": [
+        "escaped",
+        "8000",
+        "1"
+      ],
+      "rounds": 1,
+      "witness": [
+        "witness escaped 8000 24012 16003 0",
+        "rounds 1"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          1.9469996990083018,
+          2.0261738229892217,
+          2.2183767719980096,
+          1.9084720649989322,
+          2.125991184002487,
+          1.913721422009985,
+          1.9370921930094482
+        ],
+        "candidate": [
+          0.02976299199508503,
+          0.035456002995488234,
+          0.029894029998104088,
+          0.028990223989239894,
+          0.043209103008848615,
+          0.03473899100208655,
+          0.031494253998971544
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          3.9507019440061413,
+          4.151854483992793,
+          4.08445031500014,
+          3.911356868004077,
+          4.051011978997849,
+          3.740320618991973,
+          3.740573285991559
+        ],
+        "candidate": [
+          0.07291863799036946,
+          0.08641882799565792,
+          0.07445182200171985,
+          0.09380521399725694,
+          0.09740053200221155,
+          0.08696200999838766,
+          0.07547759500448592
+        ]
+      },
+      "median_seconds": {
+        "baseline": 1.9469996990083018,
+        "candidate": 0.031494253998971544
+      },
+      "baseline_over_candidate": 61.82079115358255,
+      "first_pair": "baseline"
+    },
+    {
+      "id": "valid",
+      "binary": "scaling",
+      "args": [
+        "valid",
+        "4000",
+        "100"
+      ],
+      "rounds": 100,
+      "witness": [
+        "witness valid 4000 8008 8000 0",
+        "rounds 100"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.0016441800107713789,
+          0.0019344689935678616,
+          0.002865824004402384,
+          0.0016505290113855153,
+          0.002044552005827427,
+          0.0015267069975379854,
+          0.0016114409954752773
+        ],
+        "candidate": [
+          0.0017871210002340376,
+          0.001494989002821967,
+          0.0017464510019635782,
+          0.0016884549986571074,
+          0.0019880379986716434,
+          0.0019096319883828983,
+          0.0015124649944482371
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.004480817005969584,
+          0.00396499500493519,
+          0.007560477999504656,
+          0.004408534994581714,
+          0.0050568939914228395,
+          0.004128631000639871,
+          0.0034629870060598478
+        ],
+        "candidate": [
+          0.01627628800633829,
+          0.00426226899435278,
+          0.0048201829922618344,
+          0.004003251000540331,
+          0.005895687994780019,
+          0.004348496993770823,
+          0.003998959989985451
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.0016505290113855153,
+        "candidate": 0.0017464510019635782
+      },
+      "baseline_over_candidate": 0.9450760482428563,
+      "first_pair": "candidate"
+    },
+    {
+      "id": "comma",
+      "binary": "scaling",
+      "args": [
+        "comma",
+        "2000",
+        "5"
+      ],
+      "rounds": 5,
+      "witness": [
+        "witness comma 2000 4013 4000 0",
+        "rounds 5"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.034498884007916786,
+          0.04370753299735952,
+          0.037677792002796195,
+          0.04167557599430438,
+          0.03879071101255249,
+          0.04446517300675623,
+          0.03642896100063808
+        ],
+        "candidate": [
+          0.03432730100757908,
+          0.0342287350067636,
+          0.036416738003026694,
+          0.034760021007969044,
+          0.03799698399961926,
+          0.03555088400025852,
+          0.0355629819969181
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.04709447799541522,
+          0.056370406004134566,
+          0.05091037800593767,
+          0.05401250199065544,
+          0.05500968599517364,
+          0.05991041800007224,
+          0.05088044799049385
+        ],
+        "candidate": [
+          0.04683761901105754,
+          0.04700619699724484,
+          0.04863587600993924,
+          0.04793702899769414,
+          0.052050208003493026,
+          0.04968571299104951,
+          0.04682358799618669
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.03879071101255249,
+        "candidate": 0.03555088400025852
+      },
+      "baseline_over_candidate": 1.0911321083399899,
+      "first_pair": "baseline"
+    },
+    {
+      "id": "newline",
+      "binary": "scaling",
+      "args": [
+        "newline",
+        "2000",
+        "10"
+      ],
+      "rounds": 10,
+      "witness": [
+        "witness newline 2000 10011 10003 0",
+        "rounds 10"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.10464977599622216,
+          0.10080330300843343,
+          0.11265370600449387,
+          0.10491563900723122,
+          0.11733418100629933,
+          0.1526448899967363,
+          0.11829714399937075
+        ],
+        "candidate": [
+          0.10162094500265084,
+          0.10476946299604606,
+          0.10385854600463063,
+          0.1055458000046201,
+          0.10567167001136113,
+          0.13142664199403953,
+          0.09988005000923295
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.1360991380061023,
+          0.1253834430099232,
+          0.13663304300280288,
+          0.12984558200696483,
+          0.141600828996161,
+          0.1833870830014348,
+          0.14291777499602176
+        ],
+        "candidate": [
+          0.12438621999172028,
+          0.12935062099131756,
+          0.12802965799346566,
+          0.13084164400061127,
+          0.12877692699839827,
+          0.16149041301105171,
+          0.13071415899321437
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.11265370600449387,
+        "candidate": 0.10476946299604606
+      },
+      "baseline_over_candidate": 1.075253253982464,
+      "first_pair": "candidate"
+    },
+    {
+      "id": "unicode",
+      "binary": "scaling",
+      "args": [
+        "unicode",
+        "4000",
+        "100"
+      ],
+      "rounds": 100,
+      "witness": [
+        "witness unicode 4000 12009 12000 0",
+        "rounds 100"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.08544984499167185,
+          0.07711886199831497,
+          0.07389416600926779,
+          0.07405205999384634,
+          0.0734733050048817,
+          0.07280543800152373,
+          0.07462105099693872
+        ],
+        "candidate": [
+          0.07404740300262347,
+          0.07586508900567424,
+          0.07411087700165808,
+          0.07547345099737868,
+          0.07278984399454203,
+          0.07272749199182726,
+          0.07568173800245859
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.09140064900566358,
+          0.08283061299880501,
+          0.07911118799529504,
+          0.07959081500303,
+          0.07830485500744544,
+          0.07850014399446081,
+          0.07932954000716563
+        ],
+        "candidate": [
+          0.07942781400925014,
+          0.082475548988441,
+          0.0793153090053238,
+          0.08095341899024788,
+          0.07816810299118515,
+          0.07786444399971515,
+          0.0806742560089333
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.07405205999384634,
+        "candidate": 0.07411087700165808
+      },
+      "baseline_over_candidate": 0.999206364703923,
+      "first_pair": "baseline"
+    },
+    {
+      "id": "logs",
+      "binary": "scaling",
+      "args": [
+        "logs",
+        "2000",
+        "20"
+      ],
+      "rounds": 20,
+      "witness": [
+        "witness logs 2000 4008 4000 3",
+        "rounds 20"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.001574637004523538,
+          0.001563661004183814,
+          0.0015068470092955977,
+          0.0016511610010638833,
+          0.0017796800093492493,
+          0.0017907470028148964,
+          0.0015850919880904257
+        ],
+        "candidate": [
+          0.0015145079960348085,
+          0.0015012280055088922,
+          0.0014265179925132543,
+          0.0016650110046612099,
+          0.0015057459968375042,
+          0.0016362879978260025,
+          0.0014580550050595775
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.0040417529962724075,
+          0.0038994130009086803,
+          0.003413975005969405,
+          0.004325852991314605,
+          0.004196903013507836,
+          0.004063334999955259,
+          0.003398353001102805
+        ],
+        "candidate": [
+          0.004087672001332976,
+          0.004024276990094222,
+          0.003632357998867519,
+          0.004659134996472858,
+          0.003808367997407913,
+          0.0041816000011749566,
+          0.0034519519977038726
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.0015850919880904257,
+        "candidate": 0.0015057459968375042
+      },
+      "baseline_over_candidate": 1.0526954688370886,
+      "first_pair": "candidate"
+    },
+    {
+      "id": "mix",
+      "binary": "mix",
+      "args": [
+        "2000"
+      ],
+      "rounds": 2000,
+      "witness": [
+        "outputs [{\"ok\": true, \"role\": \"assistant\", \"tool_calls\": [{\"arguments\": {\"limit\": 3, \"query\": \"redwoods\"}, \"id\": \"c1\", \"name\": \"search\"}]}, {\"call_id\": \"c1\", \"items\": [{\"name\": \"trail\", \"score\": 0.75}], \"ok\": true, \"role\": \"tool\"}, {\"answer\": null, \"ok\": false, \"retries\": 2, \"role\": \"assistant\"}, {\"events\": [{\"type\": \"start\"}, {\"ms\": 1.5, \"type\": \"finish\"}], \"step\": 3}, {\"ok\": true, \"payload\": {\"weights\": [1, 0.5, false, null]}, \"step\": 4}, {\"code\": \"def f(x):\\n    return x + 1\\n\", \"ok\": true, \"path\": \"src/main.py\", \"role\": \"assistant\"}, {\"code\": \"def f(x):\\n    return x + 1\", \"ok\": true, \"role\": \"assistant\"}, {\"arguments\": \"{\\\"query\\\":\\\"redwoods\\\",}\", \"name\": \"search\", \"ok\": true}, {\"ok\": \"fal\"}, {\"events\": [{\"x\": 1}, {\"x\": 2}], \"ok\": false, \"step\": 6}]",
+        "per_round 616",
+        "records 20000",
+        "checksum 1232000"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.22681824000028428,
+          0.23605161499290261,
+          0.23462110999389552,
+          0.25540666200686246,
+          0.2502730859996518,
+          0.2086115609999979,
+          0.21854740400158335
+        ],
+        "candidate": [
+          0.23565050300385337,
+          0.22926151999854483,
+          0.23987205998855643,
+          0.23887010899488814,
+          0.2419704450003337,
+          0.21870381500048097,
+          0.2271077549958136
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.23197279800660908,
+          0.24059180601034313,
+          0.2396217809873633,
+          0.2604535760037834,
+          0.2557075579970842,
+          0.2124934469902655,
+          0.2227230689895805
+        ],
+        "candidate": [
+          0.24001118799787946,
+          0.23372764101077337,
+          0.2438343050016556,
+          0.2441705719975289,
+          0.24654683799599297,
+          0.222625035996316,
+          0.2311480669886805
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.23462110999389552,
+        "candidate": 0.23565050300385337
+      },
+      "baseline_over_candidate": 0.9956316961057323,
+      "first_pair": "baseline"
+    }
+  ],
+  "jit": [
+    {
+      "id": "escaped-2000",
+      "binary": "scaling",
+      "args": [
+        "escaped",
+        "2000",
+        "1"
+      ],
+      "rounds": 1,
+      "witness": [
+        "witness escaped 2000 6012 4003 0",
+        "rounds 1"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.12311579201195855,
+          0.13401416799752042,
+          0.15369019100035075,
+          0.13759733800543472,
+          0.12288994700065814,
+          0.1416848079970805,
+          0.11420951801119372
+        ],
+        "candidate": [
+          0.007403812007396482,
+          0.010407970999949612,
+          0.007575142997666262,
+          0.0079877529933583,
+          0.009014761992148124,
+          0.008579909001127817,
+          0.008050995995290577
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          4.345288329990581,
+          0.9897007740073605,
+          1.0058431810030015,
+          1.0815709549933672,
+          0.9273075219971361,
+          0.9837227649986744,
+          0.9386337180039845
+        ],
+        "candidate": [
+          0.6297976089990698,
+          0.6789547090011183,
+          0.7418261139973765,
+          0.8237203829921782,
+          0.7596629499894334,
+          0.7916226849920349,
+          0.7316046009946149
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.13401416799752042,
+        "candidate": 0.008050995995290577
+      },
+      "baseline_over_candidate": 16.64566322923423,
+      "first_pair": "baseline"
+    },
+    {
+      "id": "escaped-4000",
+      "binary": "scaling",
+      "args": [
+        "escaped",
+        "4000",
+        "1"
+      ],
+      "rounds": 1,
+      "witness": [
+        "witness escaped 4000 12012 8003 0",
+        "rounds 1"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.4586037890112493,
+          0.46623314800672233,
+          0.5869386770064011,
+          0.4311015929997666,
+          0.44534995799767785,
+          0.44115557000623085,
+          0.4281061130022863
+        ],
+        "candidate": [
+          0.014982257009251043,
+          0.01590704300906509,
+          0.014325810989248566,
+          0.015768249999382533,
+          0.01709291699808091,
+          0.015057761003845371,
+          0.014956611004890874
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          1.6334915349871153,
+          1.6894720459968084,
+          1.9802147379959933,
+          1.6320236339961411,
+          1.6494308310066117,
+          1.5152637900027912,
+          1.6210632719885325
+        ],
+        "candidate": [
+          0.7548857210058486,
+          0.7707907709991559,
+          0.7605111759912688,
+          0.7617619110096712,
+          0.6954918470000848,
+          0.6710905000072671,
+          0.6937142789975042
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.44534995799767785,
+        "candidate": 0.015057761003845371
+      },
+      "baseline_over_candidate": 29.57610748928388,
+      "first_pair": "baseline"
+    },
+    {
+      "id": "mix",
+      "binary": "mix",
+      "args": [
+        "2000"
+      ],
+      "rounds": 2000,
+      "witness": [
+        "outputs [{\"ok\": true, \"role\": \"assistant\", \"tool_calls\": [{\"arguments\": {\"limit\": 3, \"query\": \"redwoods\"}, \"id\": \"c1\", \"name\": \"search\"}]}, {\"call_id\": \"c1\", \"items\": [{\"name\": \"trail\", \"score\": 0.75}], \"ok\": true, \"role\": \"tool\"}, {\"answer\": null, \"ok\": false, \"retries\": 2, \"role\": \"assistant\"}, {\"events\": [{\"type\": \"start\"}, {\"ms\": 1.5, \"type\": \"finish\"}], \"step\": 3}, {\"ok\": true, \"payload\": {\"weights\": [1, 0.5, false, null]}, \"step\": 4}, {\"code\": \"def f(x):\\n    return x + 1\\n\", \"ok\": true, \"path\": \"src/main.py\", \"role\": \"assistant\"}, {\"code\": \"def f(x):\\n    return x + 1\", \"ok\": true, \"role\": \"assistant\"}, {\"arguments\": \"{\\\"query\\\":\\\"redwoods\\\",}\", \"name\": \"search\", \"ok\": true}, {\"ok\": \"fal\"}, {\"events\": [{\"x\": 1}, {\"x\": 2}], \"ok\": false, \"step\": 6}]",
+        "per_round 616",
+        "records 20000",
+        "checksum 1232000"
+      ],
+      "samples_seconds": {
+        "baseline": [
+          0.24016941200534347,
+          0.24673003700445406,
+          0.25114834000123665,
+          0.2797217140032444,
+          0.3435954760061577,
+          0.24820976599585265,
+          0.2555876469996292
+        ],
+        "candidate": [
+          0.26224276900757104,
+          0.2698256839939859,
+          0.27661485799762886,
+          0.23866013200313319,
+          0.24238520899962168,
+          0.24973954599408899,
+          0.2583007260109298
+        ]
+      },
+      "wall_seconds_including_startup": {
+        "baseline": [
+          0.9159731050021946,
+          1.0499979890009854,
+          0.9271267309959512,
+          0.9498747359903064,
+          1.113356722999015,
+          0.9324635480006691,
+          0.9835198009968735
+        ],
+        "candidate": [
+          1.0122125099878758,
+          1.0086839059949853,
+          0.9905421029980062,
+          0.955972160998499,
+          0.942071545010549,
+          0.9351047910022317,
+          0.9286712239991175
+        ]
+      },
+      "median_seconds": {
+        "baseline": 0.25114834000123665,
+        "candidate": 0.2583007260109298
+      },
+      "baseline_over_candidate": 0.972309849375373,
+      "first_pair": "baseline"
+    }
+  ],
+  "gc_stats_separate_from_timings": {
+    "scope": "Whole process, including input creation and pre/post-timing validation; not allocation-byte totals",
+    "rows": [
+      {
+        "variant": "baseline",
+        "workload": "scaling",
+        "args": [
+          "escaped",
+          "8000",
+          "1"
+        ],
+        "stdout": "witness escaped 8000 24012 16003 0\nrounds 1\nseconds 2.07110446599836\n",
+        "stderr": "gc: 92 collections, 16.5 ms; heap peak 45.6 MiB; live 0.1 MiB at the last\n"
+      },
+      {
+        "variant": "candidate",
+        "workload": "scaling",
+        "args": [
+          "escaped",
+          "8000",
+          "1"
+        ],
+        "stdout": "witness escaped 8000 24012 16003 0\nrounds 1\nseconds 0.028862211998784915\n",
+        "stderr": "gc: 92 collections, 5.4 ms; heap peak 45.6 MiB; live 0.1 MiB at the last\n"
+      },
+      {
+        "variant": "baseline",
+        "workload": "mix",
+        "args": [
+          "2000"
+        ],
+        "stdout": "outputs [{\"ok\": true, \"role\": \"assistant\", \"tool_calls\": [{\"arguments\": {\"limit\": 3, \"query\": \"redwoods\"}, \"id\": \"c1\", \"name\": \"search\"}]}, {\"call_id\": \"c1\", \"items\": [{\"name\": \"trail\", \"score\": 0.75}], \"ok\": true, \"role\": \"tool\"}, {\"answer\": null, \"ok\": false, \"retries\": 2, \"role\": \"assistant\"}, {\"events\": [{\"type\": \"start\"}, {\"ms\": 1.5, \"type\": \"finish\"}], \"step\": 3}, {\"ok\": true, \"payload\": {\"weights\": [1, 0.5, false, null]}, \"step\": 4}, {\"code\": \"def f(x):\\n    return x + 1\\n\", \"ok\": true, \"path\": \"src/main.py\", \"role\": \"assistant\"}, {\"code\": \"def f(x):\\n    return x + 1\", \"ok\": true, \"role\": \"assistant\"}, {\"arguments\": \"{\\\"query\\\":\\\"redwoods\\\",}\", \"name\": \"search\", \"ok\": true}, {\"ok\": \"fal\"}, {\"events\": [{\"x\": 1}, {\"x\": 2}], \"ok\": false, \"step\": 6}]\nper_round 616\nrecords 20000\nchecksum 1232000\nseconds 0.2686615919956239\n",
+        "stderr": "gc: 5 collections, 2.2 ms; heap peak 34.1 MiB; live 0.0 MiB at the last\n"
+      },
+      {
+        "variant": "candidate",
+        "workload": "mix",
+        "args": [
+          "2000"
+        ],
+        "stdout": "outputs [{\"ok\": true, \"role\": \"assistant\", \"tool_calls\": [{\"arguments\": {\"limit\": 3, \"query\": \"redwoods\"}, \"id\": \"c1\", \"name\": \"search\"}]}, {\"call_id\": \"c1\", \"items\": [{\"name\": \"trail\", \"score\": 0.75}], \"ok\": true, \"role\": \"tool\"}, {\"answer\": null, \"ok\": false, \"retries\": 2, \"role\": \"assistant\"}, {\"events\": [{\"type\": \"start\"}, {\"ms\": 1.5, \"type\": \"finish\"}], \"step\": 3}, {\"ok\": true, \"payload\": {\"weights\": [1, 0.5, false, null]}, \"step\": 4}, {\"code\": \"def f(x):\\n    return x + 1\\n\", \"ok\": true, \"path\": \"src/main.py\", \"role\": \"assistant\"}, {\"code\": \"def f(x):\\n    return x + 1\", \"ok\": true, \"role\": \"assistant\"}, {\"arguments\": \"{\\\"query\\\":\\\"redwoods\\\",}\", \"name\": \"search\", \"ok\": true}, {\"ok\": \"fal\"}, {\"events\": [{\"x\": 1}, {\"x\": 2}], \"ok\": false, \"step\": 6}]\nper_round 616\nrecords 20000\nchecksum 1232000\nseconds 0.25218010699609295\n",
+        "stderr": "gc: 5 collections, 1.6 ms; heap peak 34.1 MiB; live 0.0 MiB at the last\n"
+      }
+    ]
+  },
+  "candidate_only_residual_scaling": {
+    "mode": "candidate AOT only",
+    "samples": 3,
+    "cpu": 0,
+    "rows": [
+      {
+        "size": 8000,
+        "samples_seconds": [
+          0.029916621002485044,
+          0.036110975008341484,
+          0.03042810599436052
+        ],
+        "median_seconds": 0.03042810599436052,
+        "witness": [
+          "witness escaped 8000 24012 16003 0",
+          "rounds 1"
+        ]
+      },
+      {
+        "size": 16000,
+        "samples_seconds": [
+          0.07048358999600168,
+          0.07273046500631608,
+          0.0668044439953519
+        ],
+        "median_seconds": 0.07048358999600168,
+        "witness": [
+          "witness escaped 16000 48012 32003 0",
+          "rounds 1"
+        ]
+      },
+      {
+        "size": 32000,
+        "samples_seconds": [
+          0.20907517700106837,
+          0.25881401100195944,
+          0.25659021000319626
+        ],
+        "median_seconds": 0.25659021000319626,
+        "witness": [
+          "witness escaped 32000 96012 64003 0",
+          "rounds 1"
+        ]
+      }
+    ]
+  },
+  "interpretation": [
+    "Escaped synthetic AOT probe improves 9.9-61.8x over 500-8000 fragments; 16.0-61.8x for 2000-8000.",
+    "Escaped JIT probe improves 16.6x at 2000 fragments and 29.6x at 4000, excluding compilation/startup.",
+    "Mixed AOT and JIT sample ranges overlap; no general throughput gain is established.",
+    "Metadata rescanning is removed, but growing immutable-string concatenation/slicing remains. End-to-end linear scaling is not established.",
+    "GC collection counts and heap peaks are unchanged in the two whole-process probes. These are not allocation-byte measurements."
+  ]
+}

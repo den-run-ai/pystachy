@@ -103,14 +103,14 @@ def exceptions(root, cases):
     return result
 
 
-def opt_in(source):
+def opt_in(source, pragma=PRAGMA):
     """Preserve a BOM and either of Python's first-two-line encoding-cookie positions."""
     bom = b"\xef\xbb\xbf" if source.startswith(b"\xef\xbb\xbf") else b""
     body = source[len(bom):]
     lines = body.splitlines(keepends=True)
     for line in body.split(b"\n"):
         stripped = line.strip()
-        if stripped == PRAGMA.strip():
+        if stripped == pragma.strip():
             return source
         if stripped and not stripped.startswith(b"#"):
             break
@@ -121,10 +121,10 @@ def opt_in(source):
     before = b"".join(lines[:at])
     if before and not before.endswith(b"\n"):
         before += b"\n"
-    return bom + before + PRAGMA + b"".join(lines[at:])
+    return bom + before + pragma + b"".join(lines[at:])
 
 
-def prepare_tree(root, target, cases):
+def prepare_tree(root, target, cases, pragma=PRAGMA):
     target.mkdir(parents=True)
     # Cases read examples and import ports through repository-relative paths. Keep those
     # paths, while giving every writable test/recording an independent copy.
@@ -136,7 +136,7 @@ def prepare_tree(root, target, cases):
         path = target / case
         if not path.resolve().is_relative_to((target / "tests").resolve()):
             raise ValueError(f"selected source symlink leaves the temporary tests tree: {case}")
-        path.write_bytes(opt_in(path.read_bytes()))
+        path.write_bytes(opt_in(path.read_bytes(), pragma))
 
 
 def environment(root, temp):
@@ -229,7 +229,7 @@ def recorded(status, output, case, overlay):
             re.search(br"\[exit [0-9]+\]\n\Z", path.read_bytes()) is not None)
 
 
-def one(case, root, overlay, temp, compiler, modes, timeout, allowed):
+def one(case, root, overlay, temp, compiler, modes, timeout, allowed, oracle=recorded):
     case_temp = temp / Path(case).stem
     case_temp.mkdir()
     env = environment(root, case_temp)
@@ -237,7 +237,7 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed):
     for suffix in (".out", ".err"):
         (overlay / case).with_suffix(suffix).unlink(missing_ok=True)
     status, output = run(["sh", "tests/record.sh", case], overlay, env, timeout)
-    if not recorded(status, output, case, overlay):
+    if not oracle(status, output, case, overlay):
         return {"case": case, "oracle": False, "results": [],
                 "failure": f"{case}: oracle exit {status}: {output.strip()}"}
     rows = []

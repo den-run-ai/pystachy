@@ -7,7 +7,7 @@ from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.reflection import VARS_USES
-from src.pystachy_compiler.bigints import held, search_type
+from src.pystachy_compiler.bigints import held, narrow_type, search_type
 from src.pystachy_compiler.specs import (
     ARITY,
     BIG,
@@ -673,8 +673,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         bv = self.big_builtin(name, vals) if len(kws) == 0 else Val("", "")  # (promoting ints: bigints.py)
         if bv.t != "":
             return bv
-        if not ((name == "min" or name == "max") and BIGOPT in [v.t for v in vals]):
-            vals = [self.big_narrow(v) for v in vals]  # (but min() and max() of an int | None compare them as they are)
+        if not ((name == "min" or name == "max") and (keyv.t != "" or BIGOPT in [v.t for v in vals])):
+            vals = [self.big_narrow(v) for v in vals]  # (keyed min/max and int | None compare their values as they are)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
         return self.dyn_sum(self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
@@ -739,7 +739,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         bv = self.big_builtin(name, vals) if len(kws) == 0 else Val("", "")  # (an int | None's promoting int, unwrapped: bigints.py)
         if bv.t != "":
             return bv
-        if not ((name == "min" or name == "max") and BIGOPT in [v.t for v in vals]):
+        if not ((name == "min" or name == "max") and (keyv.t != "" or BIGOPT in [v.t for v in vals])):
             vals = [self.big_narrow(v) for v in vals]
     if name not in ["str", "repr", "ascii", "hash", "bool", "min", "max"]:
         vals = [self.big_opt_narrow(v) for v in vals]  # (the others take an int | None's 64-bit int: bigints.py)
@@ -1036,7 +1036,7 @@ def gen_key_free(self, t: str, use: str) -> bool:
     # function or **kwargs, nor an object, inside a container or not)
     if is_union(unopt(t)):
         return use == "==" and self.ueq_type(t)
-    if t == "int" or t == "float" or t == "bool" or t == "str" or t == "bytes" or t == "None" or t == "exc":
+    if t == "int" or t == BIG or t == "float" or t == "bool" or t == "str" or t == "bytes" or t == "None" or t == "exc":
         return True
     if is_opt(t) and t != NONEVAR:
         return self.key_free(unopt(t), use)
@@ -1188,7 +1188,7 @@ def gen_key_none_join(self, r: Val, lnone: str, xs: Val, vals: list[Val], name: 
             self.list_store(xs, self.list_hold(v, r.t), "append")
     if is_list(xs.t):
         d = self.sconst(self.desc(r.t, ">" if name == "max" else "<"))
-        r0 = self.list_minmax(xs, d, name == "max")
+        r0 = self.coerce(self.list_minmax(xs, d, name == "max"), r.t)
     else:
         item = made_var("__item", self.line)  # (made: it iterates the iterator itself, as min(o) does)
         r0 = self.coerce(self.reduce(name, [mk("listcomp", "gen", self.line, [item, item, self.vnode(xs)])], ""), r.t)
@@ -1732,7 +1732,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
     if is_vtuple(v.t):
         return Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
     if is_tuple(v.t):
-        ts = [x.replace(BIG, "int") for x in targs(v.t)]  # (a list holds 64-bit ints: bigints.py)
+        ts = [narrow_type(x) for x in targs(v.t)]  # (a list holds 64-bit ints: bigints.py)
         et = ts[0] if len(ts) > 0 else "str" if name == "join" else "int"  # (the empty tuple: no item to type)
         if any(x != et for x in ts):
             if (name == "math.fsum" or name == "math.dist") and all(self.isnum(x) for x in ts):
@@ -1866,9 +1866,15 @@ def gen_bytes_method(self, o: Val, m: str, args: list[Node]) -> Val:
         a = args[given[1]]
         per = self.expr(a.kids[0] if a.kind == "kw" else a, "int")
         pt = unopt(per.t) if is_opt(per.t) else per.t
-        if pt != "int" and pt != "bool":
+        if pt != "int" and pt != "bool" and pt != BIG:
             self.err(f"'{tname(pt)}' object cannot be interpreted as an integer")
-        per = self.as_int(self.unwrap(per, "TypeError: 'NoneType' object cannot be interpreted as an integer"))
+        per = self.unwrap(per, "TypeError: 'NoneType' object cannot be interpreted as an integer")
+        if per.t == BIG:
+            self.guard(self.scalar("xor", [Val(self.big_fits([per]), "bool"), Val("true", "bool")]),
+                       "OverflowError: Python int too large to convert to C int")
+            per = self.big_lo(per)
+        else:
+            per = self.as_int(per)
     sep = self.unwrap(sep, "TypeError: object of type 'NoneType' has no len()")
     return Val(self.rt("pys_bytes_hex_sep", "ptr", [f"ptr {o.v}", f"ptr {sep.v}", f"i64 {chars}", f"i64 {per.v}"]), "str")
 

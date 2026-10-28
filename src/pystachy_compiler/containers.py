@@ -1,7 +1,7 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import none_display, walrus_names
-from src.pystachy_compiler.bigints import big_tree, held
+from src.pystachy_compiler.bigints import big_tree, held, narrow_type
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
@@ -710,7 +710,7 @@ def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -
     # a later comparison may look up a native key in a differently typed dict.
     # The marker preserves the original slots and records Python's hash/probe
     # scheme from insertion, including deletions; equality never rehashes keys.
-    kt = "int" if kt == BIG else held(kt.replace(BIG, "int"))  # (a promoting int's container holds ints, a tuple of them as a list holds it: bigints.py)
+    kt = "int" if kt == BIG else held(narrow_type(kt))  # (a promoting int's container holds ints, a tuple of them as a list holds it: bigints.py)
     if dictionary and dynamic_program() and not self.rtmode:
         d = self.hash_desc(kt)
         d = d if "H" in d or "A" in d else "!" + d
@@ -745,7 +745,7 @@ def gen_key_items(self, t: str) -> bool:
 def gen_key_problem(self, t: str) -> str:
     # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
     # (hashed by their types at run time: TypeError: unhashable type)
-    t = t.replace(BIG, "int")  # (a promoting int, also a tuple's, is a key as a 64-bit int: bigints.py)
+    t = narrow_type(t)  # (a promoting int, also a tuple's, is a key as a 64-bit int: bigints.py)
     if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
         return ""
     if t in self.nts:
@@ -817,8 +817,8 @@ def gen_dkey(self, k: Val, kt: str) -> Val:
     # a key to look up in a dict whose keys have type kt: one that may be None stays optional
     # (see nonekey), and a bool or a tuple with what CPython finds as such a key (lookable) is one
     # (a tuple of ints in the layout in which the dict holds it, key_hold: bigints.held)
-    if (is_tuple(k.t) or (is_opt(k.t) and unopt(k.t) == kt)) and held(kt.replace(BIG, "int")) != kt.replace(BIG, "int"):
-        return self.key_hold(k, kt.replace(BIG, "int"))
+    if (is_tuple(k.t) or (is_opt(k.t) and unopt(k.t) == kt)) and held(narrow_type(kt)) != narrow_type(kt):
+        return self.key_hold(k, narrow_type(kt))
     if is_tuple(k.t) and BIG in k.t and BIG not in kt:
         k = self.big_tuple_narrow(k)  # (a key holds 64-bit ints: bigints.py)
     k = self.big_opt_narrow(k)  # (and an int | None the box of one)
@@ -877,14 +877,14 @@ def gen_store_key(self, k: Val, kt: str) -> Val:
     # looks up, pops and deletes the int key it equals: dkey)
     if bool_for_int(k.t, kt):
         self.err(f"a {typestr(k.t)} key is stored into a dict with {typestr(kt)} keys, where CPython keeps a key it adds as the bool it is (True, not 1): convert the bool with int()")
-    return self.list_hold(k, kt) if held(kt.replace(BIG, "int")) != kt.replace(BIG, "int") else self.coerce(k, kt)  # (a tuple of ints as the dict holds it: bigints.held)
+    return self.list_hold(k, kt) if held(narrow_type(kt)) != narrow_type(kt) else self.coerce(k, kt)  # (a tuple of ints as the dict holds it: bigints.held)
 
 def gen_store_elem(self, k: Val, et: str) -> Val:
     # k as an element added to a set whose elements have type et (s.add(k), a display, a
     # comprehension): as store_key, a bool is rejected where the elements are ints
     if bool_for_int(k.t, et):
         self.err(f"a {typestr(k.t)} element is added to a set of {typestr(et)} elements, where CPython keeps an element it adds as the bool it is (True, not 1): convert the bool with int()")
-    return self.list_hold(k, et) if held(et.replace(BIG, "int")) != et.replace(BIG, "int") else self.coerce(k, et)  # (a tuple of ints as the set holds it: bigints.held)
+    return self.list_hold(k, et) if held(narrow_type(et)) != narrow_type(et) else self.coerce(k, et)  # (a tuple of ints as the set holds it: bigints.held)
 
 def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
     # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys); a key that

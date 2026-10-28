@@ -60,6 +60,7 @@ def smoke(compiler, no_build_isolation):
                 for package in ports.iterdir() if (package / "__init__.py").is_file()
                 for path in package.rglob("*") if path.is_file()
                 and (path.suffix == ".py" or path.name.startswith("LICENSE")
+                     or path.name == "py.typed"
                      or (path.name.startswith("PORT") and path.suffix == ".md"))}
     environment = dict(os.environ)
     for name in ("PYTHONPATH", "PYTHONHOME", "PYSTACHY_PATH"):
@@ -121,14 +122,33 @@ def smoke(compiler, no_build_isolation):
         binaries = [work / "demo", work / "demo-cli"]
         for source, binary in zip((consumer, console), binaries):
             execute([*compiler, "build", str(source), "-o", str(binary)], work, current)
+        repair_consumer = work / "repair.py"
+        repair_consumer.write_text(
+            '# pystachy: dynamic-any\n'
+            'from typing import Any\n'
+            'from json_repair import loads, repair_json\n'
+            'value: Any = loads(\'{answer: [true, null, 3,],}\')\n'
+            'value["answer"].append(False)\n'
+            'print(repair_json("{answer: 42,}"))\n'
+            'print(value["answer"])\n', encoding="utf-8")
+        repair_expected = '{"answer": 42}\n[True, None, 3, False]\n'
+        for command in ([sys.executable, "-S", str(repair_consumer)],
+                        [*compiler, "run", str(repair_consumer)]):
+            if execute(command, work, current) != repair_expected:
+                raise RuntimeError("installed json_repair output differs")
+        repair_binary = work / "repair"
+        execute([*compiler, "build", str(repair_consumer), "-o", str(repair_binary)], work, current)
         # Remove every installed source and the entry point. The AOT executable
         # must not need the compiler, LLVM, Python or an import path at runtime.
         shutil.rmtree(target)
         consumer.unlink()
+        repair_consumer.unlink()
         standalone = dict(environment, PATH="", PYTHONPATH="", PYSTACHY_PATH="")
         for binary in binaries:
             if execute([str(binary)], work, standalone) != EXPECTED:
                 raise RuntimeError("standalone AOT output differs from CPython")
+        if execute([str(repair_binary)], work, standalone) != repair_expected:
+            raise RuntimeError("standalone json_repair output differs from CPython")
         print("offline hashed dependency sync: CPython library/module/CLI, JIT and standalone AOT match")
 
         requirements.write_text("pystachy-demo==0.1.0\npystachy-ports==999.0\n", encoding="utf-8")

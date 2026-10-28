@@ -1,0 +1,36 @@
+index one
+read 20
+index one
+read 20
+index one
+read b
+bad index
+TypeError: __index__ returned non-int (type float)
+ValueError: index failed
+TypeError: list indices must be integers or slices, not float
+TypeError: 'int' object is not subscriptable
+lookup Index
+read original key
+read key
+index one
+[10, 25, 30, 40]
+index one
+[10, 30, 40]
+index step
+index start
+index stop
+slice [10, 40]
+index zero step
+ValueError: slice step cannot be zero
+bad index
+TypeError: __index__ returned non-int (type float)
+TypeError: 'int' object is not subscriptable
+index typed bound
+[6, 7]
+read replaced1
+['replaced1']
+index one
+immutable: 'tuple' object does not support item assignment
+index one
+immutable: 'tuple' object doesn't support item deletion
+[exit 0]

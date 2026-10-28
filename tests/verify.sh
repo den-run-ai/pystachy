@@ -45,6 +45,8 @@
 #                  parity cases; JIT/AOT, normal and program GC-stressed (sources kept on failure)
 #   dynany-optin-0/-1/-2/-3 tests/programs corpus with dynamic Any enabled, fresh CPython
 #                  oracle and JIT/AOT; four disjoint shards, exact reviewed exceptions only
+#   python-int-optin-0 through -7 tests/programs corpus with promoting ints enabled, fresh
+#                  CPython oracle and JIT/AOT; eight disjoint shards, reviewed exceptions only
 #   re-probe       tools/re_probe.py: lib/re, run by CPython, enters its matcher and makes contexts no
 #                  more often than fixed limits allow for textwrap's patterns (deterministic counts),
 #                  with the results of CPython's re
@@ -105,7 +107,7 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython-0 tests-cpython-1 tests-cpython-2 tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted-0) echo 'bootstrap tests-cpython-0' ;;
     hosted-1) echo 'bootstrap tests-cpython-1' ;;
     hosted-2) echo 'bootstrap tests-cpython-2' ;;
@@ -136,6 +138,8 @@ plan() {
     runtime-cache) echo 'bootstrap runtime-cache' ;;
     dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3) echo "bootstrap $1" ;;
     dynany-optin) echo 'bootstrap dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3' ;; # local alias
+    python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3|python-int-optin-4|python-int-optin-5|python-int-optin-6|python-int-optin-7) echo "bootstrap $1" ;;
+    python-int-optin) echo 'bootstrap python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7' ;; # local alias
     contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks scaling-0' ;;
     scaling-1) echo 'bootstrap scaling-1' ;;
@@ -143,10 +147,10 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted-0|hosted-1|hosted-2|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3|dynany-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted-0|hosted-1|hosted-2|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3|python-int-optin-4|python-int-optin-5|python-int-optin-6|python-int-optin-7|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all bootstrap hosted-0 hosted-1 hosted-2 native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 contracts benchmarks scaling-1; do
+  for g in all bootstrap hosted-0 hosted-1 hosted-2 native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 python-int-optin-4 python-int-optin-5 python-int-optin-6 python-int-optin-7 contracts benchmarks scaling-1; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
@@ -591,6 +595,37 @@ PYOPTIN
   ); then r=pass; fi
 fi
 step "$optin_name" "$r" "$s" "$L" "$optin_fields"
+fi
+done
+
+# ---- python-int-optin: full program corpus opts into promoting ints in eight disjoint shards
+for intoptin_index in 0 1 2 3 4 5 6 7; do
+intoptin_name=python-int-optin-$intoptin_index
+if want "$intoptin_name"; then
+L=$V/$intoptin_name.log; s=$(now); r=fail; intoptin_fields=
+if $PY tools/python_int_gate.py --compiler "$V/pystachy2" --modes jit aot \
+    --jobs "${PYSTACHY_JOBS:-2}" --shard-index "$intoptin_index" --shard-count 8 \
+    --report "$V/$intoptin_name.json" --keep "$V/$intoptin_name" > "$L" 2>&1; then
+  if intoptin_fields=$($PY - "$V/$intoptin_name.json" "$intoptin_index" "$V/pystachy2" <<'PYINTOPTIN'
+import hashlib
+import json
+from pathlib import Path
+import sys
+sys.path.insert(0, "tools")
+import python_int_gate
+from merge_verification import unique_object, invalid_constant
+with open(sys.argv[1]) as stream:
+    report = json.load(stream, object_pairs_hook=unique_object, parse_constant=invalid_constant)
+python_int_gate.validate_report(report)
+if (report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != 8 or
+        report["modes"] != ["jit", "aot"] or report["gc_stress"] is not False or
+        report["compiler_sha256"] != hashlib.sha256(Path(sys.argv[3]).read_bytes()).hexdigest()):
+    raise ValueError("promoting-int sweep: wrong shard, modes, GC setting or compiler identity")
+print(', "python_int_optin": ' + json.dumps(report, sort_keys=True))
+PYINTOPTIN
+  ); then r=pass; fi
+fi
+step "$intoptin_name" "$r" "$s" "$L" "$intoptin_fields"
 fi
 done
 

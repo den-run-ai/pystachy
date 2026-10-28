@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrows, search_type
+from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
@@ -81,6 +81,7 @@ from src.pystachy_compiler.utils import (
     targs,
     hislot,
     tname,
+    tslots,
     typestr,
     unopt,
 )
@@ -994,7 +995,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 v.idfrom = self.dyn_box(v).v
             if is_tuple(v.t) and BIG in v.t and int_lists():
                 kept[len(items)] = v
-                v = Val(v.v, v.t.replace(BIG, "int"))  # (typed as the list's item for what follows: bigints.held)
+                v = Val(v.v, narrow_type(v.t))  # (typed as the list's item for what follows: bigints.held)
             elif is_tuple(v.t) and BIG in v.t:
                 v = self.big_tuple_narrow(v)  # (an item holds 64-bit ints, and is typed so: bigints.py)
             if et == "" and v.t != "None":
@@ -1063,7 +1064,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 a.idfrom = self.dyn_box(a).v
             if is_tuple(a.t) and BIG in a.t and int_lists():
                 kkept[len(ks)] = a
-                a = Val(a.v, a.t.replace(BIG, "int"))  # (typed as the dict's key for what follows: bigints.held)
+                a = Val(a.v, narrow_type(a.t))  # (typed as the dict's key for what follows: bigints.held)
             elif is_tuple(a.t) and BIG in a.t:
                 a = self.big_tuple_narrow(a)  # (keys and values hold 64-bit ints, and are typed so: bigints.py)
             if kv[0] == "":
@@ -1073,7 +1074,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 b.idfrom = self.dyn_box(b).v
             if is_tuple(b.t) and BIG in b.t and int_lists():
                 vkept[len(vs)] = b
-                b = Val(b.v, b.t.replace(BIG, "int"))  # (typed as the dict's value for what follows: bigints.held)
+                b = Val(b.v, narrow_type(b.t))  # (typed as the dict's value for what follows: bigints.held)
             elif is_tuple(b.t) and BIG in b.t:
                 b = self.big_tuple_narrow(b)
             if kv[1] == "" and b.t != "None":
@@ -2424,7 +2425,7 @@ def gen_keep_stack(self, n: Node) -> None:
         self.br(ldone)
         self.place(lnew)
         cp = self.alloc_fixed(t).v
-        for j in range(len(targs(t))):
+        for j in range(tslots(t)):  # (each slot: a promoting int item's Mpz word too, hislot)
             wd = self.mload('int', self.maddr('int', f'{v}', f'{j}'))
             self.mstore('int', wd, self.maddr('int', f'{cp}', f'{j}'))
         self.mstore('%ptr', cp, hs)
@@ -3337,6 +3338,8 @@ def gen_cmp_method(self, t: str, m: str, other: str) -> str:
         return m  # (a method that cannot be compiled: the call reports why; see desc. A template takes any operand)
     if f.bad == "" and len(f.params) == 2 and f.ptypes[1] == "dyn" and self.dyn_boxable(other) == "":
         return m  # (an Any parameter, in a module that compiles Any so: the operand boxed, dynamic.py)
+    if f.bad == "" and len(f.params) == 2 and ((other == "int" and (f.ptypes[1] == BIG or f.ptypes[1] == BIGOPT)) or (other == BIG and self.widens("int", f.ptypes[1]))):
+        return m  # (an int as a promoting int, and a promoting int as a 64-bit int, NARROW past 64 bits: as a call converts them, bigints.py)
     return ""
 
 def gen_exc_kinds(self, t: str) -> list[str]:
@@ -3922,7 +3925,7 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     if a.t == "dyn" or b.t == "dyn":
         return self.dyn_arith(op, a, b, shown == op + "=")  # (a dynamic value's, in place where shown is op=: dynamic.py)
     if a.t == BIG or b.t == BIG or ((a.t == "int" or a.t == "bool") and (b.t == "int" or b.t == "bool") and self.int_policy(self.line)):
-        pr = self.big_binop(op, a, b)  # (promoting ints: bigints.py)
+        pr = self.big_binop(op, a, b, shown)  # (promoting ints: bigints.py)
         if pr.t != "":
             return pr
     if is_union(unopt(a.t)) or is_union(unopt(b.t)):
@@ -4240,9 +4243,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         # it holds: bigints.py)
         a = self.big_opt_narrow(a)
         b = self.big_opt_narrow(b)
-    if (a.t == BIG or b.t == BIG) and not ((op == "in" or op == "not in") and (is_tuple(b.t) or (unopt(b.t) in self.classes and unopt(b.t) != RANGEC) or is_gen(b.t))):
+    if (a.t == BIG or b.t == BIG) and not ((op == "in" or op == "not in") and (is_tuple(b.t) or (unopt(b.t) in self.classes and unopt(b.t) != RANGEC) or is_gen(b.t))) and not (op in ICMP and (a.t in self.classes or b.t in self.classes)):
         # (promoting ints: bigints.py, a range's arithmetic too; the items of a tuple, an object or a
-        # generator are compared below, and __contains__ takes x as its parameter does)
+        # generator are compared below, and __contains__ takes x as its parameter does, as an
+        # object's comparison methods do: cmp_method)
         return self.big_compare(op, a, b)
     if op in ["==", "!="] and a.t != b.t and self.dyn_policy(self.line) and self.wider(a.t, b.t) == "" and not (self.ueq_type(a.t) and self.ueq_type(b.t)) and self.container_pair_type(a.t, b.t):
         return self.container_pair_eq(op, a, b)
@@ -4626,8 +4630,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
         r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
-    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else a.t
-    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else b.t
+    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else a.t
+    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else b.t
     self.err(f"cannot compare {x} {op} {y}")
     return a
 

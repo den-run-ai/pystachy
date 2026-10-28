@@ -44,6 +44,35 @@ def optin_report(index):
             "failures": [], "results": rows}
 
 
+COMPILER_BYTES = b"verified test compiler\n"
+
+
+def python_int_report(index):
+    tool = merge.python_int_gate
+    corpus = tool.programs()
+    selected = corpus[index::merge.PYTHON_INT_SHARDS]
+    allowed = tool.exceptions(tool.ROOT, corpus)
+    rows = []
+    for case in selected:
+        for mode in tool.MODES:
+            exception = allowed.get((case, mode))
+            rows.append({"case": case, "mode": mode,
+                         "result": "expected-failure" if exception else "pass",
+                         "diagnostic": exception["diagnostic"] if exception else ""})
+    known = sum(row["result"] == "expected-failure" for row in rows)
+    return {"schema": 1, "kind": "python-int-gate", "pragma": tool.PRAGMA.decode().strip(),
+            "python": (tool.ROOT / ".python-version").read_text().strip(),
+            "compiler_sha256": hashlib.sha256(COMPILER_BYTES).hexdigest(),
+            "source_sha256": tool.source_digest(tool.ROOT), "gc_stress": False,
+            "corpus_cases": len(corpus), "corpus_sha256": tool.optin.corpus_digest(tool.ROOT, corpus),
+            "exceptions_sha256": tool.sha256(tool.ROOT / tool.MANIFEST),
+            "shard_index": index, "shard_count": merge.PYTHON_INT_SHARDS, "modes": list(tool.MODES),
+            "cases": selected, "subset": False, "oracle_cases": len(selected),
+            "expected_checks": len(rows), "completed_checks": len(rows),
+            "passed_checks": len(rows) - known, "expected_failures": known,
+            "failures": [], "results": rows}
+
+
 def report(group, steps):
     checks = []
     for name in steps:
@@ -73,6 +102,8 @@ def report(group, steps):
                         program_gc_interval=1, mismatches=0)
         if name.startswith("dynany-optin-"):
             step["optin"] = copy.deepcopy(optin_report(int(name[-1])))
+        if name.startswith("python-int-optin-"):
+            step["python_int_optin"] = copy.deepcopy(python_int_report(int(name[-1])))
         if name in merge.GC_STEPS:
             step.update(tests_compiler_interval=1000, tests_interval=1,
                         modes=["jit" if name.startswith("gc-jit") else "aot"])
@@ -90,9 +121,22 @@ def report(group, steps):
 
 
 class ContractTests(unittest.TestCase):
+    def setUp(self):
+        # The gate's own tests cover filesystem hashing. These aggregate controls vary the
+        # reported digest, without rescanning the complete checkout for every mutation.
+        corpus = merge.dynany_optin.programs()
+        digest = merge.dynany_optin.corpus_digest(merge.ROOT, corpus)
+        for module, name, value in ((merge.python_int_gate, "source_digest", "e" * 64),
+                                    (merge.python_int_gate, "programs", corpus),
+                                    (merge.dynany_optin, "programs", corpus),
+                                    (merge.dynany_optin, "corpus_digest", digest)):
+            patch = mock.patch.object(module, name, return_value=value)
+            patch.start()
+            self.addCleanup(patch.stop)
+
     def test_real_plan_requires_native_suites_and_every_gc_job(self):
         groups = merge.load_groups()
-        for alias in ("gc-stress", "gc-jit", "gc-aot", "hosted", "ubsan", "native", "opt-off", "python-free", "scaling"):
+        for alias in ("gc-stress", "gc-jit", "gc-aot", "hosted", "ubsan", "native", "opt-off", "python-free", "scaling", "python-int-optin"):
             self.assertNotIn(alias, groups)  # Compatibility aliases must not duplicate CI work.
         for group in ("gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
                       "ubsan-2", "python-free-0", "python-free-1", "python-free-2", "runtime-cache", "scaling-1"):
@@ -121,7 +165,8 @@ class ContractTests(unittest.TestCase):
             for group in ("opt-off-0", "opt-off-1", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
                           "hosted-0", "hosted-1", "hosted-2", "native-0", "native-1", "python-free-0", "python-free-1",
                           "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
-                          "scaling-1", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2", "dynany-optin-3"):
+                          "scaling-1", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2", "dynany-optin-3",
+                          *(f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS))):
                 path = directory / f"verification-{group}" / "verification.json"
                 original = path.read_text()
                 path.unlink()
@@ -303,6 +348,64 @@ class ContractTests(unittest.TestCase):
                 mutate(data["steps"][-1]["optin"])
                 with self.subTest(group=group, mutation=mutate), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
+
+    def test_python_int_reports_require_exact_modes_shards_and_source_identity(self):
+        groups = merge.load_groups()
+        for index in range(merge.PYTHON_INT_SHARDS):
+            group = f"python-int-optin-{index}"
+            self.assertEqual(groups[group], ["bootstrap", group])
+            valid = report(group, groups[group])
+            merge.validate_report(valid, group, groups[group])
+            mutations = [lambda d: d.update(shard_count=4),
+                         lambda d: d.update(shard_index=True),
+                         lambda d: d.update(modes=["jit"]),
+                         lambda d: d.update(subset=True),
+                         lambda d: d.update(gc_stress=True),
+                         lambda d: d.update(python="3.13.0"),
+                         lambda d: d.update(kind="exploratory-sweep"),
+                         lambda d: d.update(compiler_sha256=""),
+                         lambda d: d.update(source_sha256="0" * 64),
+                         lambda d: d.update(oracle_cases=d["oracle_cases"] - 1),
+                         lambda d: d.update(completed_checks=d["completed_checks"] - 1),
+                         lambda d: d.update(corpus_sha256="0" * 64),
+                         lambda d: d.update(exceptions_sha256="0" * 64),
+                         lambda d: d["cases"].pop(),
+                         lambda d: d["results"].pop(),
+                         lambda d: d["results"][0].update(mode="aot"),
+                         lambda d: d.update(failures=["incomplete"])]
+            for mutate in mutations:
+                data = copy.deepcopy(valid)
+                mutate(data["steps"][-1]["python_int_optin"])
+                with self.subTest(group=group, mutation=mutate), self.assertRaises(ValueError):
+                    merge.validate_report(data, group, groups[group])
+
+    def test_python_int_aggregate_binds_all_shards_to_one_compiler(self):
+        names = [f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS)]
+        groups = merge.parse_groups("all bootstrap " + " ".join(names) + "\n" +
+                                    "\n".join(f"{name} bootstrap {name}" for name in names))
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            for name in names:
+                path = directory / f"verification-{name}" / "verification.json"
+                path.parent.mkdir()
+                path.write_text(json.dumps(report(name, groups[name])))
+            merge.merge_reports(directory, groups, COMMIT)
+            path = directory / f"verification-{names[0]}" / "verification.json"
+            changed = report(names[0], groups[names[0]])
+            changed["steps"][-1]["python_int_optin"]["compiler_sha256"] = "f" * 64
+            path.write_text(json.dumps(changed))
+            with self.assertRaisesRegex(ValueError, "compiler identity differs"):
+                merge.merge_reports(directory, groups, COMMIT)
+            path.unlink()
+            with self.assertRaisesRegex(ValueError, "missing report groups"):
+                merge.merge_reports(directory, groups, COMMIT)
+            # Even a weakened contract that lists only one otherwise-valid shard fails.
+            for old in directory.glob("verification-*/verification.json"):
+                old.unlink()
+            path.write_text(json.dumps(report(names[0], groups[names[0]])))
+            partial = merge.parse_groups(f"all bootstrap {names[0]}\n{names[0]} bootstrap {names[0]}\n")
+            with self.assertRaisesRegex(ValueError, "all eight shards"):
+                merge.merge_reports(directory, partial, COMMIT)
 
     def test_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate(self):
         contracts = [CONTRACT.replace("contracts bootstrap check-ir", "contracts bootstrap"),

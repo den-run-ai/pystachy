@@ -386,10 +386,14 @@ above apply to well-formed text (with the surrogate exception described above).
   program where no module opts in to dynamic `Any`, in lists of ints and of tuples of ints, the
   keys and values of dicts of ints and of tuples of ints (also in the tuples of their `items()`
   and the pairs that `dict()` takes), sets of ints and of tuples of ints, the iterators that
-  `iter()` makes of them and the lists that `heapq` and `bisect` change. Other containers and the
+  `iter()` makes of them, the lists that `heapq` and `bisect` change, the counts of
+  `collections.Counter`, the specializations of generic classes for ints (their fields,
+  parameters, results and containers of the type variable), and the `int` and `int | None`
+  parameters and results of `Callable`s. Other containers and the
   tuples and `int | None` items they hold, a tuple's `int | None` items, other unions, the values
   sent to a generator, the code of modules that do not opt in (their `int` and `int | None`
-  parameters, and their reads of those containers), `Callable` signatures, and builtins and
+  parameters, also through a `Callable`, and their reads of those containers), the ints of the
+  other types in `Callable` signatures, and builtins and
   methods that take an int (`range()`, indexing, `math` functions, `sum()`'s ints among floats)
   keep 64-bit ints: a value past 64 bits raises `OverflowError` there, where CPython goes on
   (`tests/deviations/python_int_limits.py`).

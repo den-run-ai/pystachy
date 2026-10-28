@@ -1,0 +1,74 @@
+  eq 3
+  eq 3
+  eq 3
+  eq 4
+  eq 3
+True True True True True
+  eq 1180591620717411303424
+  eq 1180591620717411303424
+  eq 1180591620717411303424
+  eq -1180591620717411303424
+False True False False
+  lt 7
+  lt 3
+  ge 1
+  lt 1180591620717411303424
+  ge 1180591620717411303424
+True False True True False
+  lt 7
+  ge 3
+  lt 1180591620717411303424
+  ge -1180591620717411303424
+True True True True
+  Base.eq 1
+  Sub.eq 1
+  Base.eq 1180591620717411303424
+  Sub.eq 1180591620717411303424
+True False False True
+  eq 1
+  eq 3
+  eq 1
+  eq 3
+  eq 1
+  eq 1180591620717411303424
+  eq 1
+  eq 2
+True True False True
+  eq 3
+  eq 3
+  eq 1180591620717411303424
+  Sub.eq 1180591620717411303424
+  Base.eq 1
+True True False True True
+  eq 1
+  eq 3
+  eq 1
+  eq 1180591620717411303424
+  eq 1
+  eq 2
+  eq 3
+  eq 1180591620717411303424
+  eq 3
+1 0 2 1
+  eq 1
+  eq 1180591620717411303424
+ValueError: tuple.index(x): x not in tuple
+False True
+  eq 3
+  eq 1180591620717411303424
+True False
+False False False True False True
+  Fixed.eq 3
+  Fixed.eq 3
+  Fixed.eq 1
+  Fixed.eq 3
+  Fixed.eq 3
+  Fixed.eq 1
+  Fixed.eq 3
+True True True True 1
+  FixedOrder.lt 7
+  FixedOrder.ge 3
+  FixedOrder.lt 7
+  FixedOrder.ge 3
+True True True True
+[exit 0]

@@ -365,6 +365,19 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
 
+`int()` and `float()` call a boxed object's `__int__` and `__float__`, respectively,
+falling back to `__index__` only when that method is absent. Return values are checked
+before use, and exceptions propagate without trying the fallback. Builtin list, tuple and
+str indexing and slice bounds call a boxed index object's `__index__`; list assignment and
+deletion do too. Dictionary keys and user-defined `__getitem__` arguments retain the original
+object. Slice conversion preserves receiver validation and step/start/stop ordering
+(`tests/programs/inference/dynany_numeric_protocols.py`,
+`tests/programs/inference/dynany_index_protocol.py`). These conversions keep the existing
+signed-64-bit dynamic integer representation; typed object conversions remain unsupported.
+An imported promoting-int method's integer result narrows at that existing boundary.
+Invalid typed-container or `None` members of a union result raise only when returned
+(`dynany_numeric_union_protocol.py`, `dynany_numeric_promoted_protocol.py`).
+
 `abs()` calls a boxed object's `__abs__` method, including inherited methods. Builtin bools
 give ints, nonnegative ints keep their identity, and floats give new float objects with a
 nonnegative sign. The [signed-64-bit integer limit](language/compatibility.md#numbers) still
@@ -622,9 +635,7 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   iteration raise `TypeError`, and an object of another NamedTuple class compares with it by
   identity (an ordering raises `TypeError`), where CPython compares their fields.
 - An object is not iterable through an `Any` value yet: `for`, `list()` and `in` (where its
-  class has no `__contains__`) raise `TypeError` instead of calling `__iter__`. `int()` and
-  `float()` of an object raise `TypeError` instead of calling `__int__`, `__index__` or
-  `__float__`.
+  class has no `__contains__`) raise `TypeError` instead of calling `__iter__`.
 - A static or class method read through an `Any` value without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a
   property's value (`x.p(...)`). A field's value is called as a function value is.
@@ -710,7 +721,7 @@ lines.
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
   builtin functions as values; `type(x)` as a class object.
-- **Protocols**: iteration of objects (`__iter__`), `__int__`/`__index__`/`__float__`, and the
+- **Protocols**: iteration of objects (`__iter__`), and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.
 - **Guarded variants and inline caches** only where measurements justify them (#392): a
   dispatcher with one dominant case is a candidate for a guarded direct call.
