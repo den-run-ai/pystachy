@@ -694,17 +694,17 @@ def gen_gen_words(self, p: str, t: str, y: str) -> list[str]:
 def gen_gen_value(self, p: str, t: str) -> Val:
     # the value in the promise at p of a generator that yields t: where t is an int in a program
     # where a module opts in, the promoting int of its slot and pointer (GENVALP), narrowed in a
-    # module that does not opt in (gen_value_type)
+    # module that does not opt in but for lib's READ_HELPERS (bigints.read_policy, gen_value_type)
     s = self.mload("int", p)
     if t != "int" or not int_program():
         return self.from_slot(s, t)
     v = self.big(Val(s, "int"), self.mload("%ptr", self.maddr("int", p, str(GENVALP))))
-    return v if self.int_policy(self.line) else self.big_narrow(v)
+    return v if self.read_policy() else self.big_narrow(v)
 
 
 def gen_gen_value_type(self, t: str) -> str:
     # the type of the value that gen_value reads of a generator that yields t, here
-    return BIG if t == "int" and int_program() and self.int_policy(self.line) else t
+    return BIG if t == "int" and int_program() and self.read_policy() else t
 
 
 def gen_gen_returned(self, h: Val, r: str) -> Val:

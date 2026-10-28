@@ -267,10 +267,10 @@ def gen_int_policy(self, line: int) -> bool:
 
 def gen_read_policy(self) -> bool:
     # does a read of a container's int here (a list's item, a dict's key or value, a set's element,
-    # also in a tuple of ints that one holds) give it as the promoting int it is: in a module that
-    # opts in (int_policy), and in lib's modules that hand a container's items on as they are
-    # (READ_HELPERS: iter()'s iterators) where the program's containers hold promoting ints
-    # (int_lists); elsewhere the 64-bit int, NARROW past 64 bits
+    # also in a tuple of ints that one holds, and a generator's value) give it as the promoting int
+    # it is: in a module that opts in (int_policy), and in lib's modules that hand a container's
+    # items on as they are (READ_HELPERS: iter()'s iterators, heapq, bisect) where the program's
+    # containers hold promoting ints (int_lists); elsewhere the 64-bit int, NARROW past 64 bits
     return self.int_policy(self.line) or (int_lists() and self.curfn.mod in READ_HELPERS)
 
 

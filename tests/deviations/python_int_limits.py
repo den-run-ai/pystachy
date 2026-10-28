@@ -8,16 +8,12 @@
 # display of both), or sent to a generator, given to range(), added by sum() among floats, in a
 # NamedTuple that may be None (a parameter) hashed as the tuple of its fields, a dict's tuple that
 # get() gives where it may be None, or a list's item (a tuple's too), a dict's key, a set's element
-# or a generator's value that tuple() or a module that does not opt in (heapq) reads, raises
+# or a generator's value that tuple() or a module that does not opt in (random) reads, raises
 # OverflowError, where CPython goes on with the bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected, as in a list, a dict or a set of tuples of ints.
-import heapq
+import random
 from typing import Generator, NamedTuple
-
-
-def gen(n: int):
-    yield n
 
 
 def echo() -> Generator[int, int | None, None]:
@@ -48,18 +44,13 @@ try:
 except OverflowError as e:
     print("tuple of a list:", e)
 try:
-    heapq.heappush(ys, 0)
+    random.shuffle([big, big + 1])
 except OverflowError as e:
-    print("heapq:", e, ys)
-pairs = [(big, 1)]
+    print("random.shuffle():", e)
 try:
     print({"k": (big, 1)}.get("k"))
 except OverflowError as e:
     print("get() of a tuple:", e)
-try:
-    print(heapq.heappop(pairs))
-except OverflowError as e:
-    print("tuple in a list in heapq:", e)
 maybe: int | None = big
 try:
     print([maybe])
@@ -73,10 +64,6 @@ try:
     print([big, 0.5])
 except OverflowError as e:
     print("int and float in a list display:", e)
-try:
-    print(heapq.nlargest(1, gen(big)))
-except OverflowError as e:
-    print("generator in heapq:", e)
 try:
     g = echo()
     next(g)
