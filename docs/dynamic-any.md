@@ -258,7 +258,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   list producers establish one object per item before any sharing. This allocates a companion
   pointer per capacity slot and materializes numeric boxes; graphs without dynamic `Any`
   allocate no companion arrays, and code that does not [track identity](#identity-scope)
-  uses the plain list operations, which keep an existing companion consistent. Proven numeric arithmetic and comparisons can read only the
+  uses the plain list operations, which keep an existing companion consistent. Proven
+  numeric arithmetic and comparisons can read only the
   raw payload: their numeric-list receivers must be plain names and their integer indices
   must be inert expressions. Reads that escape through assignments, returns, identity tests,
   dynamic operands or callbacks still retain their item objects. Foreign C list calls follow
@@ -309,9 +310,10 @@ no box slots, take no snapshots and allocate no boxes for their calls. Typically
 is the main program that does not opt in but imports `tomllib` or the json_repair port.
 
 Values cross from that code into tracking code only where they cannot carry a number's
-identity: it may pass strings, bools, `None`, `Any` values (which keep their boxes),
-numeric literals, and containers and `Callable` values of these; it may receive these and
-plain numbers, and read numbers from the variables and objects of tracking modules. Any other
+identity: it may pass strings, bools, `None`, `Any` values (which keep their boxes), and
+containers and `Callable` values of these, make `Any` values of these and of numeric
+literals, receive these and plain numbers, and read numbers from the variables and objects
+of tracking modules. Any other
 crossing compiles the program again from the start with every module tracking identity, which
 gives the same IR as before this split: one of its numbers or objects made an `Any` value, a
 call of a tracking module's function, constructor or method that takes or gives back anything
