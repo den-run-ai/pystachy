@@ -142,7 +142,7 @@ one case and mode per accepted limitation, with an exact diagnostic, classificat
 and tracking issue. New or changed failures, unexpected passes, failed oracles and missing
 checks fail the gate. Remove an exception when its case starts passing; never add one to
 hide a crash or a wrong result in supported code. `PYTHON_INT_GATE` passes tool options;
-`--shard-index 0 --shard-count 4` selects one CI shard. Reports from `--cases` or a single
+`--shard-index 0 --shard-count 2` selects one CI shard. Reports from `--cases` or a single
 execution mode are useful for investigation but cannot satisfy CI's full-sweep requirement.
 
 `make python-int-optin` retains the exploratory sweep and `PYTHON_INT_OPTIN="--compare BASE"`
@@ -388,7 +388,7 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then thirty-five groups
+A bootstrap job checks compiler and runtime IR fixed points once, then twenty-five groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
@@ -406,8 +406,8 @@ runner variation:
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
 | `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the full JIT suite, with compiler and program GC stress. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the full AOT suite, with compiler and program GC stress. |
-| `dynany-optin-0` through `dynany-optin-3` | Four disjoint quarters of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
-| `python-int-optin-0` through `python-int-optin-3` | Four disjoint quarters of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
+| `dynany-optin-0`, `dynany-optin-1` | Two disjoint halves of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
+| `python-int-optin-0`, `python-int-optin-1` | Two disjoint halves of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
 | `runtime-cache` | The cached runtime's rules with both compilers. |
 | `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress. |
 | `benchmarks` | Benchmark correctness/timings and half of the compiler-scaling shapes; extended correctness checks reuse the verified compiler. |
@@ -428,7 +428,7 @@ signatures; unexpected passes require removing stale exceptions, and new failure
 The report gate verifies the full corpus and exception hashes, exact shard membership, every
 case/mode result and complete oracle/check counts. Generated copies and failure logs remain in
 the workflow artifacts. Run locally with `make dynany-optin`, or select a shard with
-`DYNANY_OPTIN="--shard-index 0 --shard-count 4"`. This sweep covers normal JIT/AOT execution;
+`DYNANY_OPTIN="--shard-index 0 --shard-count 2"`. This sweep covers normal JIT/AOT execution;
 program GC stress remains covered by the separate generated parity checks and existing corpus.
 Both sweeps run a program on every CPU; AOT builds are about 80% of their time. In CI, and in
 `tests/verify.sh all`, they pass `--native-suite`: the same run's `tests-native` steps execute

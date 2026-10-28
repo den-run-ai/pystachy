@@ -28,7 +28,7 @@ class DynanyOptinStageTests(unittest.TestCase):
             wrapper.write_text('''#!/bin/sh
 if [ "$1" = tools/dynany_optin.py ]; then
   [ "$*" = "tools/dynany_optin.py --compiler $V/pystachy2 --modes jit aot $MOCK_NATIVE--jobs 2 \
---shard-index 0 --shard-count 4 --report $V/dynany-optin-0.json --keep $V/dynany-optin-0" ] &&
+--shard-index 0 --shard-count 2 --report $V/dynany-optin-0.json --keep $V/dynany-optin-0" ] &&
     [ "$#" = "$MOCK_ARGS" ] || exit 99
   cp "$MOCK_EVIDENCE" "$V/dynany-optin-0.json"
   exit "$MOCK_STATUS"

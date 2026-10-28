@@ -47,10 +47,10 @@
 #                  strs and on Pystachy's UTF-8 ones, and so do test_re's cases too big for gc-stress
 #   dynany-fuzz    tools/dynany_fuzz.py: 3 seeded programs, each with 150 random + 30 typed/Any
 #                  parity cases; JIT/AOT, normal and program GC-stressed (sources kept on failure)
-#   dynany-optin-0/-1/-2/-3 tests/programs corpus with dynamic Any enabled, fresh CPython
-#                  oracle and JIT/AOT; four disjoint shards, exact reviewed exceptions only
-#   python-int-optin-0/-1/-2/-3 tests/programs corpus with promoting ints enabled, fresh
-#                  CPython oracle and JIT/AOT; four disjoint shards, reviewed exceptions only
+#   dynany-optin-0/-1 tests/programs corpus with dynamic Any enabled, fresh CPython
+#                  oracle and JIT/AOT; two disjoint halves, exact reviewed exceptions only
+#   python-int-optin-0/-1 tests/programs corpus with promoting ints enabled, fresh
+#                  CPython oracle and JIT/AOT; two disjoint halves, reviewed exceptions only
 #   re-probe       tools/re_probe.py: lib/re, run by CPython, enters its matcher and makes contexts no
 #                  more often than fixed limits allow for textwrap's patterns (deterministic counts),
 #                  with the results of CPython's re
@@ -115,7 +115,7 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
@@ -141,10 +141,10 @@ plan() {
     gc-aot) echo 'bootstrap gc-aot-0 gc-aot-1 gc-aot-2' ;;
     gc-stress) echo 'bootstrap gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
     runtime-cache) echo 'bootstrap runtime-cache' ;;
-    dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3) echo "bootstrap $1" ;;
-    dynany-optin) echo 'bootstrap dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3' ;; # local alias
-    python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3) echo "bootstrap $1" ;;
-    python-int-optin) echo 'bootstrap python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3' ;; # local alias
+    dynany-optin-0|dynany-optin-1) echo "bootstrap $1" ;;
+    dynany-optin) echo 'bootstrap dynany-optin-0 dynany-optin-1' ;; # local alias
+    python-int-optin-0|python-int-optin-1) echo "bootstrap $1" ;;
+    python-int-optin) echo 'bootstrap python-int-optin-0 python-int-optin-1' ;; # local alias
     contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks scaling-0' ;;
     scaling-1) echo 'bootstrap scaling-1' ;;
@@ -152,10 +152,10 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin-3|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin-3|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 dynany-optin-3 python-int-optin-0 python-int-optin-1 python-int-optin-2 python-int-optin-3 contracts benchmarks scaling-1; do
+  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 contracts benchmarks scaling-1; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
@@ -622,12 +622,12 @@ if $PY tools/dynany_fuzz.py --compiler "$V/pystachy2" --keep "$V/dynany-fuzz" --
 step dynany-fuzz $r "$s" "$L" "$(tail -1 "$L" | sed -n 's/^\([0-9]*\) programs, \([0-9]*\) cases, \([0-9]*\) parity cases (JIT, AOT, JIT-GC, AOT-GC): \([0-9]*\) mismatches$/, "programs": \1, "cases": \2, "parity_cases": \3, "modes": ["jit", "aot", "jit-gc", "aot-gc"], "program_gc_interval": 1, "mismatches": \4/p')"
 fi
 
-# ---- dynany-optin: full program corpus opts into dynamic Any in four disjoint shards
+# ---- dynany-optin: full program corpus opts into dynamic Any in two disjoint halves
 # Every CPU runs a program (AOT builds are most of the time). A CI group (whose aggregate requires
 # every group) or a run of all of them also runs tests-native, which executes the unchanged corpus
 # with this compiler: --native-suite leaves to it the baseline of an exact expected failure and the
 # AOT check of a program whose opted-in IR and fresh oracle are byte-identical to the original's.
-for optin_index in 0 1 2 3; do
+for optin_index in 0 1; do
 optin_name=dynany-optin-$optin_index
 if want "$optin_name"; then
 L=$V/$optin_name.log; s=$(now); r=fail; optin_fields=
@@ -635,7 +635,7 @@ optin_jobs=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null
 case $optin_jobs in '' | *[!0-9]* | 0) optin_jobs=1 ;; esac
 optin_native=; [ -z "${VERIFY_BOOTSTRAP_DIR:-}" ] && [ "$GROUP" != all ] || optin_native=--native-suite
 if $PY tools/dynany_optin.py --compiler "$V/pystachy2" --modes jit aot ${optin_native:+"$optin_native"} \
-    --jobs "$optin_jobs" --shard-index "$optin_index" --shard-count 4 \
+    --jobs "$optin_jobs" --shard-index "$optin_index" --shard-count 2 \
     --report "$V/$optin_name.json" --keep "$V/$optin_name" > "$L" 2>&1; then
   if optin_fields=$($PY - "$V/$optin_name.json" "$optin_index" "$optin_native" <<'PYOPTIN'
 import json
@@ -646,7 +646,7 @@ from merge_verification import unique_object, invalid_constant
 with open(sys.argv[1]) as stream:
     report = json.load(stream, object_pairs_hook=unique_object, parse_constant=invalid_constant)
 dynany_optin.validate_report(report)
-if (report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != 4 or report["modes"] != ["jit", "aot"] or
+if (report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != 2 or report["modes"] != ["jit", "aot"] or
         report["native_suite"] is not (sys.argv[3] == "--native-suite")):
     raise ValueError("dynamic Any sweep: wrong shard, execution modes or tests-native deferral")
 print(', "optin": ' + json.dumps(report, sort_keys=True))
@@ -657,9 +657,9 @@ step "$optin_name" "$r" "$s" "$L" "$optin_fields"
 fi
 done
 
-# ---- python-int-optin: full program corpus opts into promoting ints in four disjoint shards
+# ---- python-int-optin: full program corpus opts into promoting ints in two disjoint halves
 # (every CPU, and --native-suite in CI and all, as dynany-optin above)
-for intoptin_index in 0 1 2 3; do
+for intoptin_index in 0 1; do
 intoptin_name=python-int-optin-$intoptin_index
 if want "$intoptin_name"; then
 L=$V/$intoptin_name.log; s=$(now); r=fail; intoptin_fields=
@@ -667,7 +667,7 @@ intoptin_jobs=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/n
 case $intoptin_jobs in '' | *[!0-9]* | 0) intoptin_jobs=1 ;; esac
 intoptin_native=; [ -z "${VERIFY_BOOTSTRAP_DIR:-}" ] && [ "$GROUP" != all ] || intoptin_native=--native-suite
 if $PY tools/python_int_gate.py --compiler "$V/pystachy2" --modes jit aot ${intoptin_native:+"$intoptin_native"} \
-    --jobs "$intoptin_jobs" --shard-index "$intoptin_index" --shard-count 4 \
+    --jobs "$intoptin_jobs" --shard-index "$intoptin_index" --shard-count 2 \
     --report "$V/$intoptin_name.json" --keep "$V/$intoptin_name" > "$L" 2>&1; then
   if intoptin_fields=$($PY - "$V/$intoptin_name.json" "$intoptin_index" "$V/pystachy2" "$intoptin_native" <<'PYINTOPTIN'
 import hashlib
@@ -680,7 +680,7 @@ from merge_verification import unique_object, invalid_constant
 with open(sys.argv[1]) as stream:
     report = json.load(stream, object_pairs_hook=unique_object, parse_constant=invalid_constant)
 python_int_gate.validate_report(report)
-if (report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != 4 or
+if (report["shard_index"] != int(sys.argv[2]) or report["shard_count"] != 2 or
         report["modes"] != ["jit", "aot"] or report["gc_stress"] is not False or
         report["native_suite"] is not (sys.argv[4] == "--native-suite") or
         report["compiler_sha256"] != hashlib.sha256(Path(sys.argv[3]).read_bytes()).hexdigest()):
