@@ -388,7 +388,7 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then twenty-five groups
+A bootstrap job checks compiler and runtime IR fixed points once, then twenty-four groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
@@ -401,7 +401,7 @@ runner variation:
 | `hosted` | The CPython-hosted compiler against stage 2 on every corpus case: identical IR, messages and exit status (`tools/irsame.sh`) and `check` results; one case in 64 also runs end to end, JIT and AOT. |
 | `native-0`, `native-1` | Two disjoint halves of the native differential suite, JIT and AOT. |
 | `opt-off-0`, `opt-off-1` | Two disjoint halves of the native suite with IR optimizations disabled. |
-| `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
+| `python-free-0`, `python-free-1` | Rebuild with no Python on `PATH`; two disjoint halves of the suite with that compiler. |
 | `ubsan-0`, `ubsan-1`, `ubsan-2` | Sanitized compiler/runtime; three disjoint thirds of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
 | `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the full JIT suite, with compiler and program GC stress. |
@@ -463,14 +463,14 @@ intervals, distinct shard identities and complete counts for every job: the JIT 
 AOT thirds each make as many checks as `tests/verify.sh` counts in the whole corpus in one mode
 (each report's `sources.mode_checks`). `tests/verify.sh gc-stress` still runs all GC checks
 locally with one bootstrap; `gc-jit` runs the two JIT halves and `gc-aot` the three AOT thirds.
-The native and opt-off suites are split the same way, in halves, and the python-free and UBSan
-suites in thirds (`tests/verify.sh`'s `shard_cases`). The gate requires each
+The native, opt-off and python-free suites are split the same way, in halves, and the UBSan
+suite in thirds (`tests/verify.sh`'s `shard_cases`). The gate requires each
 shard's identity and complete count, and that the shards together make as many checks as an
 unsharded suite: the JIT and AOT shards as many as `tests/verify.sh` counts in the whole corpus
 (each report's `sources.suite_checks`; opt-off's once per `PYSTACHY_OPT` setting), and the UBSan
 thirds, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
 both of their halves, `python-free` rebuilds the compiler once and
-runs its three thirds, and `ubsan` builds the sanitized compiler once and runs its three thirds.
+runs its two halves, and `ubsan` builds the sanitized compiler once and runs its three thirds.
 
 Every such suite is sharded by `tests/corpus.sh`'s `corpus_shard` (`tools/shard_cases.sh` for the
 coverage and variant workflows): the cases are taken heaviest first by their weight in

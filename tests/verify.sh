@@ -20,10 +20,10 @@
 #                  set back, or one made while it is built), keyed by the flags too, never left by a
 #                  failed build; ext's glue cached beside it; a run's own runtime while a tool is not
 #                  settled; PATH's rules
-#   python-free-0/-1/-2 PATH holds only symlinks to the LLVM tools, the linker and the POSIX tools
+#   python-free-0/-1 PATH holds only symlinks to the LLVM tools, the linker and the POSIX tools
 #                  that the driver and tests/run.sh call (no python3): the native compiler rebuilds
 #                  its runtime and itself, reproduces the same IR and passes the tests of the shard's
-#                  third of the corpus
+#                  half of the corpus
 #   ubsan-0/-1/-2  PYSTACHY_CFLAGS="$UBSAN" (private PYSTACHY_HOME, so a fresh runtime cache): the
 #                  compiler built that way reproduces the IR, and every test of the shard's third of the
 #                  corpus passes AOT-built with it and JIT-run on the sanitized runtime (lli gets the
@@ -115,7 +115,7 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
@@ -125,8 +125,7 @@ plan() {
     opt-off) echo 'bootstrap tests-opt-off-0 tests-opt-off-1' ;; # local alias
     python-free-0) echo 'bootstrap python-free-0' ;;
     python-free-1) echo 'bootstrap python-free-1' ;;
-    python-free-2) echo 'bootstrap python-free-2' ;;
-    python-free) echo 'bootstrap python-free-0 python-free-1 python-free-2' ;; # local alias (one rebuild for the three thirds)
+    python-free) echo 'bootstrap python-free-0 python-free-1' ;; # local alias (one rebuild for the two halves)
     ubsan-0) echo 'bootstrap ubsan-0' ;;
     ubsan-1) echo 'bootstrap ubsan-1' ;;
     ubsan-2) echo 'bootstrap ubsan-2' ;;
@@ -152,10 +151,10 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 contracts benchmarks scaling-1; do
+  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 contracts benchmarks scaling-1; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
@@ -432,8 +431,8 @@ step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x
 fi
 
 # ---- python-free: the native compiler and the tests with only LLVM + POSIX tools on PATH
-# The compiler is rebuilt once; each shard runs its third of the corpus with it.
-if want python-free-0 || want python-free-1 || want python-free-2; then
+# The compiler is rebuilt once; each shard runs its half of the corpus with it.
+if want python-free-0 || want python-free-1; then
 pfs=$(now); PB=$V/python-free-build.log; built=0; py=true
 NP=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-path.XXXXXX")
 tool() { # tool NAME [DIR]: symlink NAME into $NP, from DIR if given, else from $PATH
@@ -461,11 +460,11 @@ nopy() { env -i PATH="$NP" TMPDIR="${TMPDIR:-/tmp}" PYSTACHY_HOME="$V/home" ${PY
     echo "rebuilt compiler emits the rt1 IR of runtime.py" && built=1
 } > "$PB" 2>&1
 pft=$(ls "$NP" | while read -r t; do printf '"%s", ' "$t"; done | sed 's/, $//')
-for shard in 0 1 2; do
+for shard in 0 1; do
   want python-free-$shard || continue
   # (the first shard's time includes the rebuild)
   L=$V/python-free-$shard.log; s=${pfs:-$(now)}; pfs=; r=fail; suite_ok=0
-  shard_cases $shard 3 "$V/python-free-$shard-cases.log"
+  shard_cases $shard 2 "$V/python-free-$shard-cases.log"
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/python-free-$shard-cases.log"
   {
@@ -478,7 +477,7 @@ for shard in 0 1 2; do
   } > "$L" 2>&1
   x=""
   [ $# = 0 ] || x=$(tests "$(checks "jit aot" "$@")" "$L" 2>> "$L") && [ $suite_ok = 1 ] && r=pass
-  step python-free-$shard $r "$s" "$L" "$(printf ', "python_on_path": %s, "path_tools": [%s], "ir_identical": %s, "shard_index": %s, "shard_count": 3' \
+  step python-free-$shard $r "$s" "$L" "$(printf ', "python_on_path": %s, "path_tools": [%s], "ir_identical": %s, "shard_index": %s, "shard_count": 2' \
     "$py" "$pft" "$(same "$V/stage1.ll" "$V/stage-nopy.ll")" "$shard")$x"
 done
 rm -rf "$NP"

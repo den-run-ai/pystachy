@@ -84,14 +84,15 @@ def report(group, steps):
                 step["bootstrap_reused"] = True
         if name in merge.SUITE_STEPS:
             step.update(passed=10, failed=0, expected=10, failures=[])
-        if name in ("tests-native-0", "tests-native-1", "tests-opt-off-0", "tests-opt-off-1", "gc-jit-0", "gc-jit-1"):
+        if name in ("tests-native-0", "tests-native-1", "tests-opt-off-0", "tests-opt-off-1", "gc-jit-0", "gc-jit-1",
+                    "python-free-0", "python-free-1"):
             step.update(passed=5, expected=5)   # halves of a 10-check suite
         if name.startswith("tests-native"):
             step.update(compiler="stage2", modes=["jit", "aot"])
         if name == "tests-cpython":   # every case's IR identical, its sample run end to end
             step.update(reference="stage2", ir_identical=True, ir_cases=5, check_cases=2, modes=["jit", "aot"],
                         sample_index=0, sample_count=merge.HOSTED_SAMPLE_OF)
-        if name in ("python-free-0", "python-free-1", "python-free-2", "gc-aot-0", "gc-aot-1", "gc-aot-2"):
+        if name in ("gc-aot-0", "gc-aot-1", "gc-aot-2"):
             count = 4 if name.endswith("-0") else 3   # thirds of a 10-check suite
             step.update(passed=count, expected=count)
         if name in ("ubsan-0", "ubsan-1", "ubsan-2"):
@@ -144,7 +145,7 @@ class ContractTests(unittest.TestCase):
         for alias in ("gc-stress", "gc-jit", "gc-aot", "ubsan", "native", "opt-off", "python-free", "scaling", "python-int-optin"):
             self.assertNotIn(alias, groups)  # Compatibility aliases must not duplicate CI work.
         for group in ("gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
-                      "ubsan-2", "python-free-0", "python-free-1", "python-free-2", "runtime-cache", "scaling-1"):
+                      "ubsan-2", "python-free-0", "python-free-1", "runtime-cache", "scaling-1"):
             self.assertEqual(groups[group], ["bootstrap", group])
         self.assertEqual(groups["hosted"], ["bootstrap", "tests-cpython"])  # one job: the IR oracle and its sample
         for shard in ("0", "1", "2"):
@@ -170,7 +171,7 @@ class ContractTests(unittest.TestCase):
             self.assertEqual([step["name"] for step in result["steps"]], groups["all"])
             for group in ("opt-off-0", "opt-off-1", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
                           "hosted", "native-0", "native-1", "python-free-0", "python-free-1",
-                          "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
+                          "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
                           "scaling-1", *(f"dynany-optin-{index}" for index in range(merge.DYNANY_SHARDS)),
                           *(f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS))):
                 path = directory / f"verification-{group}" / "verification.json"
@@ -179,8 +180,8 @@ class ContractTests(unittest.TestCase):
                 with self.subTest(missing=group), self.assertRaisesRegex(ValueError, f"missing report groups.*{group}"):
                     merge.merge_reports(directory, groups, COMMIT)
                 path.write_text(original)
-            for group in ("gc-aot-0", "gc-aot-2", "native-0", "opt-off-1", "python-free-1",
-                          "python-free-2", "ubsan-0"):
+            for group in ("gc-aot-0", "gc-aot-2", "native-0", "opt-off-1", "python-free-0",
+                          "python-free-1", "ubsan-0"):
                 path = directory / f"verification-{group}" / "verification.json"
                 original = path.read_text()
                 for delta in (-1, 1):
@@ -267,7 +268,7 @@ class ContractTests(unittest.TestCase):
                            lambda step: step.update(shard_count=str(step["shard_count"])),
                            lambda step: step.pop("shard_count")]
         for group in ("native-0", "native-1", "opt-off-0", "opt-off-1",
-                      "python-free-0", "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2"):
+                      "python-free-0", "python-free-1", "ubsan-0", "ubsan-1", "ubsan-2"):
             mutations[group] = shard_mutations + [lambda step: step.update(passed=step["expected"] - 1),
                                                   lambda step: step.update(failed=1),
                                                   lambda step: step.pop("expected")]
