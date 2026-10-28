@@ -25,9 +25,13 @@ and the full verification matrix were not rerun here.
     and returns the list. This is a wrong result, and it is not yet documented as a deviation.
   - [#151](https://github.com/den-run-ai/pystachy/issues/151) private-name mangling
     remains the most likely silent difference in real libraries. It is a documented deviation.
-- **Performance:** see [Performance](#performance). Experimental dynamic-`Any` modules
-  compile 25–37% slower than at the CI perf reference, since the #858 identity series.
-  Programs that do not opt in are not affected.
+- **Performance against alpha.3:**
+  - Opt-in dynamic-`Any` `json.loads` is 1.56x slower in AOT and 1.75x slower in JIT,
+    and AOT is now slower than CPython. Typed `JSONValue` decoding is unchanged.
+  - AOT builds take about 26% longer and hello-world executables are 45% larger, for
+    every program, because the runtime grew.
+  - No regression was confirmed in other pyperformance loops.
+  - See [Performance](#performance).
 - **New coverage:** two CPython 3.13.16 test adaptations were added to the corpus:
   23 `test_shlex` methods and the str halves of eight `test_posixpath` methods.
   See the [core-sweep guide](../../tests/upstream/core-sweep.md).
@@ -39,12 +43,11 @@ and the full verification matrix were not rerun here.
 | Main | `2eb0f36ec3de4632b6fa378884bcf36d68de8e3c` (#968), with last release `v0.1.0-alpha.3` = `f5a09d42` |
 | Native compiler | Three-stage fixed point, 748,732 compiler IR lines, SHA-256 `29db3a81c9d99e7378370e7720e544cd1cebd5111b72f749508fe9087cfa4c84` |
 | Toolchain | LLVM/clang 18.1.3, Linux x86-64, 4 shared vCPUs |
-| CPython oracle | Ubuntu CPython **3.13.17** for probes and sweeps. New recordings used CPython **3.13.16** (python-build-standalone via uv 0.13.4), as `.python-version` requires. |
+| CPython oracle | Ubuntu CPython **3.13.17** for the import, API, corpus and port sweeps. New recordings, `make port-check` and all timings used CPython **3.13.16** (python-build-standalone via uv 0.13.4), as `.python-version` requires. |
 | Isolation | Private `PYSTACHY_CACHE` per sweep, at most two concurrent jobs. Timing ran alone afterwards. |
 
 The 3.13.17 oracle is a disclosed difference from the pinned interpreter. Checked-in
 `.out` recordings remain the 3.13.16 reference, and `tests/run.sh` compared against them.
-`make port-check` refuses any interpreter except 3.13.16 by design.
 
 ## Standard library
 
@@ -94,8 +97,7 @@ unescape table (about 350 assertions) needs only run-time `%` formats. The `bise
 
 | Check | Result |
 |---|---|
-| Port acceptance unit tests | 15/15 |
-| Hosted upstream suites (relaxed to 3.13.17 in a scratch copy) | `fnmatch` 17/17, `textwrap` 66/66 |
+| `make port-check` on CPython 3.13.16 | Unit tests 15/15; hosted upstream `fnmatch` 17/17 and `textwrap` 66/66 |
 | Native port programs (14 ports, 33 cases), JIT and AOT | **66 passed**, 0 failed; also 70/70 under per-allocation GC |
 | json_repair replay | Port on CPython 645/645. Native AOT, JIT and both under GC stress each **644/645**. |
 | Package probes, compile-only | 23/27 run, every archive hash verified. 2 compile (sgp4, and now jdcal), 4 first errors advanced, 17 unchanged, **0 regressed** |
@@ -113,7 +115,43 @@ has not been submitted.
 
 ## Performance
 
-PENDING
+This comparison pairs v0.1.0-alpha.3 with main on one host. Both stage-1 compilers were
+built by the same procedure. Runs were pinned to one CPU and interleaved, with
+CPython 3.13.16 as the control. The host is shared and four-core, so a difference
+counts as confirmed only when its main/alpha.3/main ranges separate. Everything else
+is inconclusive.
+
+| Workload | alpha.3 | main | Verdict |
+|---|---:|---:|---|
+| pyperformance smoke, all 22 programs | — | JIT and AOT output identical to CPython | Pass |
+| pyperformance `json_loads` AOT loop, median s (opt-in dynamic `Any`) | 1.374 (n=6) | 2.148 (n=9) | **1.56x slower**, confirmed; now slower than CPython (1.58–1.64 s) |
+| pyperformance `json_loads` JIT loop, median s | 1.480 | 2.587 | **1.75x slower**, confirmed |
+| `json.loads` of a 32-key str object, 100k loads, AOT s (opt-in) | 0.71–0.80 | 0.91–1.15 | ~1.35x slower, ranges separate |
+| Same document through typed `JSONValue` (no opt-in), AOT s | 0.67–0.76 | 0.64–0.80 | Unchanged |
+| AOT build of richards (identical 6,457-line program IR), s | 1.79–1.94 | 2.07–2.32 | **+26%**, confirmed |
+| `bench/smoke/text.py` build (opt-in), s | 8.6–9.9 | 12.3–13.7 | **+41–45%**, confirmed twice |
+| Hello-world executable size, bytes | 28,648 | 41,408 | **+45%** |
+| Compiler IR lines / stage-1 binary bytes | 675,209 / 4,148,808 | 748,732 / 4,468,288 | +10.9% / +7.7% |
+| json_repair port AOT, s per 20,000 records | — | 0.250 | 4.4x faster than pristine 0.64.1 on CPython (1.107 s); witnesses exact |
+| json_repair escaped strings, 2k→8k fragments, ms | — | 13–23 → 47–59 | Linear; the #966 fix is present (pre-#966: 26 → 173) |
+
+The other pyperformance loop differences above 10% overlapped after confirmation:
+`barnes_hut`, `chaos`, `float`, `richards`, `scimark`, `spectral_norm`, `nbody`,
+`raytrace`, `regex_v8` and `json_dumps`. `regex_dna` (0.67–0.80x) and `regex_effbot` AOT
+(−19% in perf smoke) are possible improvements, also inconclusive. Opt-in `graph_copy` and
+`fnmatch` loops were 10–28% slower in both perf-smoke runs without separating.
+
+Two regressions need release notes:
+
+- **Opt-in dynamic `Any` `json.loads`** builds str-keyed dicts more slowly. Typed
+  `JSONValue` programs are unaffected. CI's perf smoke saw related compile-time and
+  JIT-start increases for opt-in modules (+25–37%) at #886/#887.
+- **Every AOT build and executable grew.** Program IR is unchanged, so the cost comes from
+  the larger runtime (`mpz`, promoting-int helpers and identity work) being re-optimized
+  for every build ([#706](https://github.com/den-run-ai/pystachy/issues/706)). This affects
+  programs that do not opt in.
+
+Cached JIT reuse, peak memory and GC-stressed timings were not measured here.
 
 ## Pull requests and issues
 
