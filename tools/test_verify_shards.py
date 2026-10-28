@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 
+import merge_verification
 from test_verify_case_weights import reference_shards
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -274,6 +275,8 @@ esac
         sample = ["tests/programs/a/plain.py", *sorted(strata.values())]
         self.assertEqual(step["sample_strata"], strata)
         self.assertEqual((step["sample"], step["sample_cases"]), (sample, len(sample)))
+        # (the final gate draws the same sample from the checkout)
+        self.assertEqual(merge_verification.hosted_sample(step["sample_strata"], self.root), sample)
         self.assertEqual((step["passed"], step["failed"], step["expected"]), (2 * len(sample), 0, 2 * len(sample)))
         self.assertIn(f"{cases} programs identical", logs["tests-cpython"])
         self.assertIn("== check of the 2 syntax_*.py cases: stage 2, then CPython-hosted (tools/irsame.sh --check)\n"

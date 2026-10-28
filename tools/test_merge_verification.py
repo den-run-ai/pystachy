@@ -5,7 +5,9 @@ import io
 from functools import lru_cache
 import hashlib
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -145,6 +147,21 @@ def hosted_strata():
             for kind in merge.HOSTED_STRATA}
 
 
+@lru_cache(maxsize=1)
+def hosted_corpus():
+    """The checkout's corpus as tests/verify.sh lists it for tests-cpython: tests/corpus.sh's, in C order."""
+    return subprocess.run(["sh", "-c", ". tests/corpus.sh; corpus"], cwd=merge.ROOT, env={**os.environ, "LC_ALL": "C"},
+                          check=True, capture_output=True, text=True).stdout.splitlines()
+
+
+def hosted_cases(index=0):
+    """tests-cpython's sample as tests/verify.sh draws it from the checkout's corpus, if from shard INDEX
+    of HOSTED_SAMPLE_OF (sample_cases), with the first program of each kind, in the corpus's order."""
+    strata = set(hosted_strata().values())
+    return [case for position, case in enumerate(hosted_corpus())
+            if position % merge.HOSTED_SAMPLE_OF == index or case in strata]
+
+
 def hosted_sample(step, *cases, strata=None):
     """Make CASES tests-cpython's sample, and STRATA its strata if given."""
     step.update(sample=list(cases), sample_cases=len(cases))
@@ -201,7 +218,7 @@ def report(group, steps):
             step.update(reference="stage2", ir_identical=True, ir_cases=CORPUS_CASES, check_cases=SYNTAX_CASES,
                         check_identical=True, modes=["jit", "aot"], sample_index=0,
                         sample_count=merge.HOSTED_SAMPLE_OF)
-            hosted_sample(step, *sorted(set(hosted_strata().values())), strata=dict(hosted_strata()))
+            hosted_sample(step, *hosted_cases(), strata=dict(hosted_strata()))
         if name in ("python-free-0", "python-free-1", "python-free-2"):
             count = 4 if name.endswith("-0") else 3   # thirds of a 10-check suite
             step.update(passed=count, expected=count)
@@ -458,6 +475,17 @@ class ContractTests(unittest.TestCase):
                                lambda step: hosted_sample(step, *step["sample"], step["sample"][0]),
                                lambda step: hosted_sample(step, *(case for case in step["sample"]
                                                                   if case != step["sample_strata"]["ffi"])),
+                               # (the strata alone, padded with junk or with other cases, out of order, or a
+                               # case of shard 0 lost or one of another shard added)
+                               lambda step: hosted_sample(step, *(case for case in step["sample"]
+                                                                  if case in step["sample_strata"].values())),
+                               lambda step: hosted_sample(step, *(
+                                   case if case in step["sample_strata"].values() else f"tests/programs/x/junk{index}.py"
+                                   for index, case in enumerate(step["sample"]))),
+                               lambda step: hosted_sample(step, *hosted_cases(1)),
+                               lambda step: hosted_sample(step, *reversed(step["sample"])),
+                               lambda step: hosted_sample(step, *step["sample"][1:]),
+                               lambda step: hosted_sample(step, *step["sample"], hosted_corpus()[-1]),
                                # (a program of another kind, a rejection, a missing or an outside file)
                                lambda step: step["sample_strata"].update(
                                    full=next(case for case in step["sample"] if not merge.hosted_stratum("full", case))),

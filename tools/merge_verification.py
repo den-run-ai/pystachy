@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import importlib.util
 import json
 import math
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -41,8 +42,9 @@ SCALING_STEPS = ("scaling-0", "scaling-1")
 # The opt-in sweeps' shards (tests/verify.sh's dynany-optin-I and python-int-optin-I groups)
 DYNANY_SHARDS = 3
 PYTHON_INT_SHARDS = 3
-# tests-cpython runs one case in HOSTED_SAMPLE_OF end to end (tests/verify.sh); it compares every
-# case's IR, messages and exit status with stage 2's
+# tests-cpython runs one case in HOSTED_SAMPLE_OF end to end (tests/verify.sh's sample_cases: those at
+# positions 0 modulo HOSTED_SAMPLE_OF of the corpus in C order); it compares every case's IR, messages
+# and exit status with stage 2's
 HOSTED_SAMPLE_OF = 64
 # The kinds of program whose run takes the CPython-hosted driver past the IR along a path of its own
 # (tests/verify.sh's hosted_strata, which names the same kinds and tests them alike), of which
@@ -62,6 +64,19 @@ def hosted_stratum(kind, case, root=ROOT):
         return False
     path = root / case
     return path.is_file() and path.with_suffix(".out").is_file() and HOSTED_STRATA[kind](path)
+
+
+def hosted_sample(strata, root=ROOT):
+    """tests-cpython's end-to-end sample in ROOT (tests/verify.sh): the cases at positions 0 modulo
+    HOSTED_SAMPLE_OF of tests/corpus.sh's corpus, listed in C order as verify.sh lists it, and the
+    programs STRATA names, once each, in the corpus's order."""
+    cases = subprocess.run(["sh", "-c", ". tests/corpus.sh; LC_ALL=C; export LC_ALL; corpus"], cwd=root,
+                           env={**os.environ, "LC_ALL": "C"}, check=True, capture_output=True, text=True,
+                           timeout=60).stdout.splitlines()
+    if not cases:
+        raise ValueError(f"{root}: no case in the corpus")
+    wanted = set(cases[::HOSTED_SAMPLE_OF]) | set(strata.values())
+    return [case for case in cases if case in wanted]
 
 
 def parse_groups(text):
@@ -238,6 +253,11 @@ def validate_report(report, group, expected):
                     not all(case in sample and hosted_stratum(kind, case) for kind, case in strata.items())):
                 raise ValueError(f"{label}: the end-to-end sample must hold a program of each kind "
                                  f"{', '.join(HOSTED_STRATA)} of this checkout's corpus")
+            # (and the rest of it: this checkout's cases of shard 0 of HOSTED_SAMPLE_OF, in the corpus's order)
+            if sample != hosted_sample(strata):
+                raise ValueError(f"{label}: the end-to-end sample must be this checkout's cases at positions 0 "
+                                 f"modulo {HOSTED_SAMPLE_OF} of its corpus in C order and the program of each "
+                                 "kind, once each, in the corpus's order")
         if step["name"] in SHARDED_STEPS and (
                 integer(step.get("shard_index"), f"{label}.shard_index") != int(step["name"][-1]) or
                 integer(step.get("shard_count"), f"{label}.shard_count", 1) != SHARDED_STEPS[step["name"]]):

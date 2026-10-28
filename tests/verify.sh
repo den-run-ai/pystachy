@@ -343,7 +343,7 @@ jobtree() {
 stop_jobs() {
   stopped=" "
   while :; do
-    new=$(jobtree "$@" | while read -r p; do case $stopped in *" $p "*) ;; *) printf '%s ' "$p" ;; esac; done)
+    new=$(jobtree "$@" | while read -r p; do case $stopped in (*" $p "*) ;; (*) printf '%s ' "$p" ;; esac; done)
     [ -n "$new" ] || break
     # shellcheck disable=SC2086 # (a list of PIDs)
     kill -STOP $new 2> /dev/null
@@ -353,6 +353,15 @@ stop_jobs() {
   [ "$stopped" = " " ] || { kill -TERM $stopped; kill -CONT $stopped; } 2> /dev/null
   for p; do wait "$p" 2> /dev/null; done
 }
+# bgjobs: 1 where ps lists this shell's processes, as jobtree needs to find what a job started; without
+# it the background jobs below (runtime-cache's native run, the contracts' runtime builds and lanes) run
+# in the foreground instead, one after another, as every other step does, which a Ctrl-C reaches
+bgjobs=
+if ps -A -o pid= -o ppid= 2> /dev/null | awk -v shell=$$ '$1 == shell { found = 1 } END { exit !found }'; then
+  bgjobs=1
+else
+  echo 'verify: ps lists no processes here: the steps that run side by side run one after another'
+fi
 cancel_gc() {
   if [ -n "$gcpid" ]; then
     kill "$gcpid" 2> /dev/null
@@ -413,9 +422,9 @@ hosted_strata() {
     first=
     [ $# = 0 ] || first=$(
       case $kind in
-        sigint) grep -l 'kill -INT' "$@" ;;
-        ffi) grep -lE '^(import|from) ffi( |$)' "$@" ;;
-        *) for f; do [ ! -f "${f%.py}.$kind" ] || printf '%s\n' "$f"; done ;;
+        (sigint) grep -l 'kill -INT' "$@" ;;
+        (ffi) grep -lE '^(import|from) ffi( |$)' "$@" ;;
+        (*) for f; do [ ! -f "${f%.py}.$kind" ] || printf '%s\n' "$f"; done ;;
       esac | sed -n 1p)
     printf '%s %s\n' "$kind" "${first:-none}"
   done
@@ -516,13 +525,17 @@ done
 # on Linux, which verification runs on, the JIT tier's shared library)
 # Each run has its own home, LLVM wrappers and directory ($TMPDIR/pystachy-cache.PID) and builds the
 # runtime in one process at a time, so the two run side by side (the native one as a background job:
-# neither sends SIGINT, which a background job would ignore)
+# neither sends SIGINT, which a background job would ignore; one after another without bgjobs)
 if want runtime-cache; then
 L=$V/runtime-cache.log; s=$(now)
-PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1 &
-cachepid=$!
+if [ -n "$bgjobs" ]; then
+  PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1 &
+  cachepid=$!
+else
+  PY=$PY tests/cache.sh "$V/pystachy2" > "$V/cache-native.log" 2>&1
+fi
 tests/cache.sh "$PY -m pystachy" > "$V/cache-cpython.log" 2>&1
-wait "$cachepid"; cachepid=
+[ -z "${cachepid:-}" ] || wait "$cachepid"; cachepid=
 for l in native cpython; do echo "== $l"; cat "$V/cache-$l.log"; done > "$L"
 x=$(tests $((66 + 68)) "$V/cache-native.log" "$V/cache-cpython.log" 2>> "$L") && r=pass || r=fail
 step runtime-cache $r "$s" "$L" ', "compilers": ["stage2", "CPython-hosted"]'"$x"
@@ -851,7 +864,8 @@ done
 # (ffi's py_sigint and side_sigint, selectprobe's pending SIGINT) are in the shell's lane,
 # contracts_fg. In a lane, step keeps each step's record for the shell, which appends them to the
 # report in the plan's order once every lane has ended: the same steps, results and fields as one
-# after another, each with its own duration.
+# after another, each with its own duration. Without bgjobs (no ps to list what a job starts), the
+# lanes and the runtime builds before them run in the foreground, one after another.
 # ---- re-probe: lib/re's matcher entries and contexts for textwrap's patterns, against fixed limits
 contracts_a() {
 if want re-probe; then
@@ -1034,11 +1048,16 @@ fi
 
 lane=
 lanepids=
-# bg LANE...: run each lane function as a background job, its output in build/verify
+# bg LANE...: run each lane function as a background job (to its end without bgjobs), its output in
+# build/verify
 bg() {
   for l; do
-    (lane=$l; "contracts_$l") > "$V/contracts-lane-$l.log" 2>&1 &
-    lanepids="$lanepids $!"
+    if [ -n "$bgjobs" ]; then
+      (lane=$l; "contracts_$l") > "$V/contracts-lane-$l.log" 2>&1 &
+      lanepids="$lanepids $!"
+    else
+      (lane=$l; "contracts_$l") > "$V/contracts-lane-$l.log" 2>&1
+    fi
   done
 }
 if [ -n "$(for n in $(plan contracts); do [ "$n" = bootstrap ] || ! want "$n" || echo "$n"; done)" ]; then
@@ -1046,10 +1065,15 @@ if [ -n "$(for n in $(plan contracts); do [ "$n" = bootstrap ] || ! want "$n" ||
   # One runtime build per compiler before the lanes, as the steps that ran one after another found it:
   # lanes would otherwise build it at once, and compile-limits' run and build under its CPU limit
   printf 'print("warm")\n' > "$V/lanes/warm.py"
-  { "$V/pystachy2" run "$V/lanes/warm.py"; $PY pystachy.py run "$V/lanes/warm.py"; $PY -m pystachy run "$V/lanes/warm.py"; } > "$V/contracts-warm.log" 2>&1 &
-  warmpid=$!
+  warm() { "$V/pystachy2" run "$V/lanes/warm.py"; $PY pystachy.py run "$V/lanes/warm.py"; $PY -m pystachy run "$V/lanes/warm.py"; }
+  if [ -n "$bgjobs" ]; then
+    warm > "$V/contracts-warm.log" 2>&1 &
+    warmpid=$!
+  else
+    warm > "$V/contracts-warm.log" 2>&1
+  fi
   lane="cpus"; contracts_cpus
-  wait "$warmpid"; warmpid=
+  [ -z "${warmpid:-}" ] || wait "$warmpid"; warmpid=
   bg limits
   lane="fg"; contracts_fg
   for l in $lanepids; do wait "$l"; done

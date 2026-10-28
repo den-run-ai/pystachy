@@ -3,7 +3,8 @@ every step is reported once, in the plan's order, with its fields; the lanes of 
 overlap, and compile-limits runs beside the SIGINT lane only; the steps that take SIGINT run in the
 shell's own lane, where SIGINT is not ignored; a failed step, or a lane that ends before its steps
 report, fails the group instead of shortening its report; TERM or Ctrl-C ends every process of the
-lanes and of runtime-cache's background run of tests/cache.sh, not the lanes' shells alone."""
+lanes and of runtime-cache's background run of tests/cache.sh, not the lanes' shells alone; where ps
+lists no process, the lanes run in the foreground, one after another, where Ctrl-C ends them."""
 import contextlib
 import json
 import os
@@ -47,7 +48,7 @@ with log.open("a") as f:
 if name not in BESIDE_LIMITS and Path("started-compilelimits").exists() and not Path("ended-compilelimits").exists():
     with Path("beside-limits").open("a") as f:
         f.write(name + "\\n")
-for barrier in BARRIERS:
+for barrier in [] if os.environ.get("MOCK_SERIAL") else BARRIERS:   # (MOCK_SERIAL: one after another)
     if name in barrier:
         Path(f"started-{name}").write_text("")
         deadline = time.monotonic() + 20
@@ -277,6 +278,24 @@ else:
             with self.subTest(signal=signum.name, to_group=to_group):
                 (self.root / "hanging-cache").unlink(missing_ok=True)
                 self.cancel("runtime-cache", ["cache"], signum, to_group)
+
+    def test_without_ps_the_lanes_run_one_after_another_in_the_foreground(self):
+        # (a ps that lists no process: stop_jobs could not find what a background job started)
+        ps = self.root / "bin/ps"
+        ps.write_text("#!/bin/sh\nexit 1\n")
+        ps.chmod(0o755)
+        self.env["MOCK_SERIAL"] = "1"
+        result, report = self.run_contracts()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("ps lists no processes", result.stdout)
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual([step["name"] for step in report["steps"]], self.steps)
+        # (every step where SIGINT is not ignored, those of the background lanes too: no background job)
+        how = self.disposition()
+        self.assertLessEqual({"compilelimits", "re_probe", "unicode_audit", "rtcheck"}, set(how))
+        self.assertEqual(set().union(*how.values()), {"default"})
+        # (and a Ctrl-C ends a lane's programs)
+        self.cancel("contracts", ["rtcheck"], signal.SIGINT, True)
 
     def test_a_lane_that_ends_early_fails_its_unreported_steps(self):
         result, report = self.run_contracts("end-lane:rtcheck")
