@@ -116,7 +116,7 @@ every program allocation. It also runs the contract checks below.
 
 | Area | Checks |
 |---|---|
-| Compiler and IR | Valid typed/LLVM IR, runtime ABI and effects, bounded specialization failures, linear compilation, inherited-AST storage and hierarchy comparison code, JIT dead-code removal and inlining. |
+| Compiler and IR | Valid typed/LLVM IR, runtime ABI and effects, bounded specialization failures, linear compilation, inherited-AST storage and hierarchy comparison code, JIT dead-code removal and inlining, AOT opt-in code retention. |
 | Runtime | CPython comparisons for subset runtime functions; dictionary probes and string-hash caching; list storage, shared-container comparisons, file-buffer accounting and streaming consumers. |
 | Libraries and interoperability | Regex differential fuzzing and deterministic matcher budgets; FFI calls, embedded CPython and extension modules; runtime build-cache rules. |
 | Benchmarks | CPython-equivalent output plus advisory timings. |
@@ -131,7 +131,8 @@ using the verified native compiler in JIT and AOT, both normally and with progra
 every allocation. `--aot --gc-stress` selects the same configurations locally; the aggregate gate
 requires all four modes, 540 cases including 90 parity cases and zero mismatches. This bounded
 check complements the full opt-in corpus sweep, `make dynany-optin`), `make dictprobe`,
-`make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe` and `make jitprobe`.
+`make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe`, `make jitprobe` and
+`make aotprobe` (the runtime's opt-in code that AOT executables keep, by symbol, plain or not).
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 
@@ -388,7 +389,7 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then twenty-nine groups
+A bootstrap job checks compiler and runtime IR fixed points once, then thirty groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
@@ -560,7 +561,8 @@ The `contracts` group runs its steps in three phases (`tests/verify.sh`'s `contr
 one runtime build per compiler so that each step finds the warm cache it found when the steps ran
 one after another: `check-ir` and `rt-abi`, which use every CPU; `compile-limits` beside one lane
 only, since its compilers must stay under ten CPU seconds (the hosted one takes about eight on CI,
-and a busy sibling thread of CI's two-thread cores would add to that); then four lanes at once. A
+and a busy sibling thread of CI's two-thread cores would add to that); then four lanes at once.
+`contracts_d` runs `aot-dead-code` after `jit-dead-code`; both report through the aggregate gate. A
 shell's background job starts with SIGINT and SIGQUIT ignored, so the steps whose programs take
 SIGINT (`ffi`, `select-io`) are in the shell's own lane, `contracts_fg`. Each lane keeps its
 steps' records and the shell appends them in the plan's order; a lane that ends before a step

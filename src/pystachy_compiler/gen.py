@@ -152,7 +152,22 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_hash as dynamic_dyn_hash,
     gen_json_any as dynamic_json_any,
     gen_dyn_id_held as dynamic_dyn_id_held,
+    gen_lazy_field as dynamic_lazy_field,
+    gen_proven_call as dynamic_proven_call,
+    gen_id_move as dynamic_id_move,
+    gen_id_stmt as dynamic_id_stmt,
+    gen_lazy_fields as dynamic_lazy_fields,
+    gen_lazy_test as dynamic_lazy_test,
+    gen_lazy_value as dynamic_lazy_value,
+    gen_lazy_inert as dynamic_lazy_inert,
+    gen_lazy_barrier as dynamic_lazy_barrier,
+    gen_lazy_resolve as dynamic_lazy_resolve,
+    gen_lazy_store as dynamic_lazy_store,
+    gen_lazy_assign as dynamic_lazy_assign,
+    gen_lazy_while as dynamic_lazy_while,
     gen_dyn_id_read as dynamic_dyn_id_read,
+    gen_dyn_id_fresh as dynamic_dyn_id_fresh,
+    gen_dyn_id_arg as dynamic_dyn_id_arg,
     gen_dyn_id_store as dynamic_dyn_id_store,
     gen_dyn_identity as dynamic_dyn_identity,
     gen_dyn_int as dynamic_dyn_int,
@@ -742,6 +757,10 @@ from src.pystachy_compiler.expressions import (
     gen_expr as expressions_expr,
     gen_scalar_read_value as expressions_scalar_read_value,
     gen_scalar_read_index as expressions_scalar_read_index,
+    gen_plain_field as expressions_plain_field,
+    gen_class_field as expressions_class_field,
+    gen_scalar_receiver as expressions_scalar_receiver,
+    gen_seq_index as expressions_seq_index,
     gen_fmt_error as expressions_fmt_error,
     gen_fmt_raise as expressions_fmt_raise,
     gen_format_arg as expressions_format_arg,
@@ -906,6 +925,7 @@ from src.pystachy_compiler.functions import (
     gen_externtype as functions_externtype,
     gen_function as functions_function,
     gen_function_body as functions_function_body,
+    gen_receiver_fields as functions_receiver_fields,
     gen_numeric_proof as functions_numeric_proof,
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
@@ -1060,6 +1080,7 @@ from src.pystachy_compiler.statements import (
     gen_stop_classes as statements_stop_classes,
     gen_drain as statements_drain,
     gen_stmt as statements_stmt,
+    gen_stmt_main as statements_stmt_main,
     gen_stmts as statements_stmts,
     gen_str_append as statements_str_append,
     gen_unhashable as statements_unhashable,
@@ -1823,8 +1844,50 @@ class Gen:
     def dyn_id_held(self, v: Val) -> Val:
         return dynamic_dyn_id_held(self, v)
 
+    def lazy_field(self, o: str, f: str, line: int) -> str:
+        return dynamic_lazy_field(self, o, f, line)
+
+    def id_move(self, e: Node) -> bool:
+        return dynamic_id_move(self, e)
+
+    def id_stmt(self, n: Node) -> None:
+        return dynamic_id_stmt(self, n)
+
+    def lazy_fields(self, f: FnInfo, body: list[Node]) -> None:
+        return dynamic_lazy_fields(self, f, body)
+
+    def lazy_test(self, e: Node) -> bool:
+        return dynamic_lazy_test(self, e)
+
+    def lazy_value(self, e: Node) -> bool:
+        return dynamic_lazy_value(self, e)
+
+    def lazy_inert(self, n: Node) -> bool:
+        return dynamic_lazy_inert(self, n)
+
+    def lazy_barrier(self, n: Node) -> None:
+        return dynamic_lazy_barrier(self, n)
+
+    def lazy_resolve(self, x: str) -> None:
+        return dynamic_lazy_resolve(self, x)
+
+    def lazy_store(self, o: Val, box: str, name: str) -> bool:
+        return dynamic_lazy_store(self, o, box, name)
+
+    def lazy_assign(self, n: Node) -> bool:
+        return dynamic_lazy_assign(self, n)
+
+    def lazy_while(self, n: Node) -> None:
+        return dynamic_lazy_while(self, n)
+
     def dyn_id_read(self, v: Val, slot: str) -> None:
         return dynamic_dyn_id_read(self, v, slot)
+
+    def dyn_id_fresh(self, v: Val) -> bool:
+        return dynamic_dyn_id_fresh(self, v)
+
+    def dyn_id_arg(self, v: Val) -> Val:
+        return dynamic_dyn_id_arg(self, v)
 
     def dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         return dynamic_dyn_id_store(self, slot, v, t)
@@ -3762,6 +3825,9 @@ class Gen:
     def stmt(self, n: Node) -> None:
         return statements_stmt(self, n)
 
+    def stmt_main(self, n: Node) -> None:
+        return statements_stmt_main(self, n)
+
     def nonemix(self, f: FnInfo, t: str) -> str:
         return statements_nonemix(self, f, t)
 
@@ -3908,6 +3974,24 @@ class Gen:
 
     def scalar_read_value(self, n: Node) -> bool:
         return expressions_scalar_read_value(self, n)
+
+    def plain_field(self, n: Node) -> str:
+        return expressions_plain_field(self, n)
+
+    def class_field(self, c: str, f: str) -> str:
+        return expressions_class_field(self, c, f)
+
+    def receiver_fields(self, c: str, me: str, body: list[Node], names: dict[str, bool]) -> dict[str, str]:
+        return functions_receiver_fields(self, c, me, body, names)
+
+    def proven_call(self, e: Node) -> bool:
+        return dynamic_proven_call(self, e)
+
+    def scalar_receiver(self, n: Node) -> str:
+        return expressions_scalar_receiver(self, n)
+
+    def seq_index(self, n: Node, msg: str) -> Val:
+        return expressions_seq_index(self, n, msg)
 
     def list_hint_type(self, a: str, b: str) -> str:
         return expressions_list_hint_type(self, a, b)

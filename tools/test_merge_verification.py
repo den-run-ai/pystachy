@@ -232,6 +232,9 @@ def report(group, steps):
         if name == "dynany-fuzz":
             step.update(programs=3, cases=540, parity_cases=90, modes=["jit", "aot", "jit-gc", "aot-gc"],
                         program_gc_interval=1, mismatches=0)
+        if name == "aot-dead-code":
+            step.update(opt_in_symbols=7, programs=["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"],
+                        compilers=["CPython-hosted", "stage2"])
         if name.startswith("dynany-optin-"):
             step["optin"] = copy.deepcopy(optin_report(int(name[-1])))
         if name.startswith("python-int-optin-"):
@@ -579,6 +582,23 @@ class ContractTests(unittest.TestCase):
             for missing in (False, True):
                 data = copy.deepcopy(valid)
                 step = next(s for s in data["steps"] if s["name"] == "dynany-fuzz")
+                if missing:
+                    del step[key]
+                else:
+                    step[key] = wrong
+                with self.subTest(key=key, value=wrong, missing=missing), self.assertRaises(ValueError):
+                    merge.validate_report(data, "contracts", groups["contracts"])
+
+    def test_aot_probe_requires_symbol_controls_imports_and_both_compilers(self):
+        groups = merge.load_groups()
+        valid = report("contracts", groups["contracts"])
+        merge.validate_report(valid, "contracts", groups["contracts"])
+        for key, wrong in (("opt_in_symbols", 0), ("opt_in_symbols", True),
+                           ("programs", ["plain", "python-int", "dynamic-any"]),
+                           ("compilers", ["CPython-hosted"]), ("compilers", ["stage2"])):
+            for missing in (False, True):
+                data = copy.deepcopy(valid)
+                step = next(s for s in data["steps"] if s["name"] == "aot-dead-code")
                 if missing:
                     del step[key]
                 else:

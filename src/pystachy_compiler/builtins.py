@@ -1727,7 +1727,30 @@ def gen_as_list(self, v: Val, name: str) -> Val:
         items = self.obj_iterator(v, "TypeError: can only join an iterable" if name == "join" else "TypeError: 'NoneType' object is not iterable",
                                   "can only join an iterable" if name == "join" else f"'{tname(v.t)}' object is not iterable")
         if (name == "list" or name == "sorted" or name == "extend" or name == "tuple") and "__len__" in self.classes[v.t].methods:
-            self.objlen(v)  # (a length hint: CPython's list() calls __len__ once __iter__ has run)
+            # A length hint follows __iter__, but its TypeError means that the size
+            # is unknown. Catch only the hint; iterator errors must still propagate.
+            c = self.stop_catch()
+            outer = self.handler
+            self.handler = c.landing
+            block = self.label()
+            c.tr.body = block
+            self.place(block)
+            self.objlen(v)
+            self.handler = outer
+            done = self.label()
+            self.br(done)
+            e = self.landing(c.landing, c.slot, c.mark)
+            yes = self.label()
+            no = self.label()
+            kinds = ["TypeError"] + [k for k in self.classes if self.classes[k].exc != "" and self.derives(k, "TypeError")]
+            self.cbr(self.exc_match(e, "\x01" + "\x01".join(kinds) + "\x01"), yes, no)
+            self.place(no)
+            self.throw(e)
+            self.place(yes)
+            self.rt("pys_exc_restore", "void", [f"ptr {c.old}"])
+            self.br(done)
+            c.tr.exit = done
+            self.place(done)
         if is_gen(items.t):
             return self.gen_list(items, "")  # (an __iter__ that yields: its generator's items)
         if name == "join" and not is_list(items.t):

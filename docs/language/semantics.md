@@ -339,6 +339,9 @@ the iterator's own `__iter__`, as CPython 3.13 does. `any()`, `all()`, `sum()`, 
 `max()` and `in` take items as they come; `list()`, `tuple()`, `sorted()`, `str.join()` and
 `set()` take them all first. `list()`, `tuple()`, `sorted()` and `list.extend()` call the
 iterable's `__len__`, if present, as a length hint; a slice assignment does not, as in CPython.
+These consumers ignore `TypeError` (including subclasses) from that optional hint, but
+preserve other exceptions and a negative length's `ValueError`. Direct `len()` calls and
+exceptions from iteration still propagate normally.
 
 An `__iter__` annotated `-> Iterator[T]` or `-> Iterable[T]` whose returns are all `iter(xs)`
 of a list, tuple, string or object with such an `__iter__` keeps a faster form: a loop
