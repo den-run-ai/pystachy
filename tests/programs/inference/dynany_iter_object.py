@@ -1,7 +1,3 @@
-# Documented deviation (docs/dynamic-any.md): in a module that compiles typing.Any as dynamic
-# values, an object is not iterable through an Any value yet (its __iter__ is not called), so a
-# for loop over one, and a pair of dict.update() that is one, raise TypeError where CPython
-# iterates the object (here it would print k, v and {'k': 'v'}).
 # pystachy: dynamic-any
 from typing import Any
 

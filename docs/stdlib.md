@@ -121,6 +121,8 @@ still raises an explicit unsupported-operation error (#486), and existing native
 retain their storage types.
 For opt-in code, the [comparison acceptance matrix](dynamic-any.md#operations) distinguishes
 supported mixed-container and object operations from the remaining skipped-body cases.
+The [iteration contract](dynamic-any.md#iteration) covers custom iterators, ranges and
+boxable generators through `Any`; existing module/API coverage in the table is unchanged.
 
 Prioritize a small port when it offers a useful application without requiring a broad dynamic
 feature. Broader inference, generic typing, library coverage and optimizations remain areas of

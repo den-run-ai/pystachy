@@ -2028,8 +2028,9 @@ I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
 typedef struct DynType DynType;   /* (see dynamic values) */
-struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; };
-typedef struct { const DynType *t; I v; } Dyn;
+typedef struct Dyn Dyn;
+struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; Dyn *(*iter)(Dyn *); Dyn *(*next)(Dyn *); I (*len)(Dyn *); };
+struct Dyn { const DynType *t; I v; };
 _Static_assert(sizeof(Dyn) == 16, "a dynamic value's box is gc_box's 16 bytes");
 typedef struct DynIter DynIter;
 I pys_dyn_eq(Dyn *a, Dyn *b);
@@ -2042,6 +2043,7 @@ static int dyn_keyeq(Dyn *a, Dyn *b);
 static uint64_t hdyn(Dyn *x);
 DynIter *pys_dyn_iter(Dyn *o);
 Dyn *pys_dyn_next(DynIter *it);
+static I dyn_user_len(Dyn *o);
 static I ocls(const char *d) {   /* three digits, then those of an id of 1000 or more */
   I c = (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0';
   for (d += 3; *d >= '0' && *d <= '9'; d++) c = c * 10 + *d - '0';
@@ -2221,6 +2223,8 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   }
   case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
   case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
+  case 'G': put(b, "<generator object>", 18); return d;
+  case 'Q': put(b, "<iterator object>", 17); return d;
   case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'J': {                                       /* a promoting int's two words (jbig) */
@@ -4250,7 +4254,7 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    makes each int literal's), and the other numbers' boxes atomic, so that boxing a number
    allocates nothing the collector scans. An int's, a float's and a bound method's box is its
    identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
-enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC };
+enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN };
 enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);
                                                                      the class's comparison methods take a value of any type (dobj) */
@@ -4259,7 +4263,7 @@ DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_float, "f");
 DSTR(dd_list, "LA"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
 DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
 DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
-#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
+#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0, 0, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
 DTYPE(pys_dyntype_none, DK_NONE, dd_none, dn_none); DTYPE(pys_dyntype_bool, DK_BOOL, dd_bool, dn_bool);
 DTYPE(pys_dyntype_int, DK_INT, dd_int, dn_int); DTYPE(pys_dyntype_float, DK_FLOAT, dd_float, dn_float);
 DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
@@ -4306,7 +4310,8 @@ I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ
    have a DynType of their own, but CPython's type of each is function (or method) */
 I pys_dyn_same_type(const DynType *a, const DynType *b) {
   if (a == b) return 1;
-  return a && b && a->kind == DK_FUNC && b->kind == DK_FUNC && strcmp(a->name->s, b->name->s) == 0;
+  return a && b && ((a->kind == DK_GEN && b->kind == DK_GEN) ||
+                    (a->kind == DK_FUNC && b->kind == DK_FUNC && strcmp(a->name->s, b->name->s) == 0));
 }
 /* x as a value of type t, which the compiler expects: its payload (None's is 0) where x has that
    type (pys_dyn_isa), else TypeError, where CPython would not check the annotation
@@ -4427,7 +4432,7 @@ I pys_dyn_hash(Dyn *x) {
   case DK_STR: return hstr((Str *)x->v);
   case DK_TUPLE: return htuple(((VTuple *)x->v)->a, ((VTuple *)x->v)->len, "A", 0);
   case DK_OBJ: return x->t->flags & DF_HASH ? pys_obj_eq(-1 - x->t->cls, x->v, 0) : hptr(x->v);
-  case DK_FUNC: return hptr(x->v);
+  case DK_FUNC: case DK_ITER: case DK_GEN: return hptr(x->v);
   }
   failf("TypeError: unhashable type: '%s'", DNAME(x));
 }
@@ -4541,12 +4546,10 @@ Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
   if (DKIND(a) == DK_LIST && op == 0) {
     if (DKIND(b) == DK_LIST) { pys_list_extend((List *)a->v, (List *)b->v); return a; }
     if (DKIND(b) == DK_TUPLE) { VTuple *t = (VTuple *)b->v; for (I i = 0; i < t->len; i++) pys_list_append((List *)a->v, t->a[i]); return a; }
-    if (DKIND(b) == DK_DICT || DKIND(b) == DK_STR) {   /* (list += iterable: its items, a dict's keys, a str's characters) */
-      DynIter *it = pys_dyn_iter(b);
-      for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append((List *)a->v, (I)x);
-      return a;
-    }
-    failf("TypeError: '%s' object is not iterable", DNAME(b));
+    DynIter *it = pys_dyn_iter(b);   /* list += iterable: consume each item before requesting the next */
+    if (b->t->len && dyn_user_len(b) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");   /* hint after __iter__, before any item */
+    for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append((List *)a->v, (I)x);
+    return a;
   }
   if (DKIND(a) == DK_LIST && op == 2) {
     if (!dnum(b)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(b));
@@ -4620,35 +4623,133 @@ I pys_dyn_contains(Dyn *o, Dyn *k) {   /* k in o */
     if (DKIND(k) != DK_STR) failf("TypeError: 'in <string>' requires string as left operand, not %s", DNAME(k));
     return pys_str_contains((Str *)o->v, (Str *)k->v);
   }
-  failf("TypeError: argument of type '%s' is not iterable", DNAME(o));
+  if (DKIND(o) != DK_ITER && !o->t->iter) failf("TypeError: argument of type '%s' is not iterable", DNAME(o));
+  DynIter *it = pys_dyn_iter(o);
+  for (Dyn *v; (v = pys_dyn_next(it));) if (dyn_eqitem(v, k)) return 1;
+  return 0;
 }
-/* an iterator over a list's items, a tuple's, a dict's keys or a str's characters: i is the next
-   item's index (a str's byte, a dict's entry), used and count what a dict's loop checks (see
-   pys_dict_next). A list's length is read at every step, as CPython's list iterator reads it */
-struct DynIter { Dyn *o; I i, used, count; };
-DynIter *pys_dyn_iter(Dyn *o) {
-  int k = DKIND(o);
-  if (k != DK_LIST && k != DK_DICT && k != DK_TUPLE && k != DK_STR) failf("TypeError: '%s' object is not iterable", DNAME(o));
-  DynIter *it = pys_alloc(sizeof(DynIter)); it->o = o;
-  if (k == DK_DICT) it->used = ((Dict *)o->v)->len;
+/* Builtin iterators retain the original container and read its live items. Exhaustion is
+   sticky, and releases that container. A custom iterator can recover after StopIteration;
+   its callback therefore receives every next() call, even after it returned null. */
+struct DynIter { Dyn *o; I i, used, count, step; uint64_t left; int reverse, range, done; };
+DSTR(dd_iter, "Q");
+DSTR(dn_listiter, "list_iterator"); DSTR(dn_tupleiter, "tuple_iterator");
+DSTR(dn_dictiter, "dict_keyiterator"); DSTR(dn_striter, "str_ascii_iterator");
+DSTR(dn_listrev, "list_reverseiterator"); DSTR(dn_dictrev, "dict_reversekeyiterator");
+DSTR(dn_reverse, "reversed"); DSTR(dn_rangeiter, "range_iterator");
+/* GC_NO_ROOT(dt_listiter, dt_tupleiter, dt_dictiter, dt_striter, dt_listrev, dt_dictrev,
+   dt_reverse, dt_rangeiter): immutable iterator descriptors reference only static strings. */
+DTYPE(dt_listiter, DK_ITER, dd_iter, dn_listiter); DTYPE(dt_tupleiter, DK_ITER, dd_iter, dn_tupleiter);
+DTYPE(dt_dictiter, DK_ITER, dd_iter, dn_dictiter); DTYPE(dt_striter, DK_ITER, dd_iter, dn_striter);
+DTYPE(dt_listrev, DK_ITER, dd_iter, dn_listrev); DTYPE(dt_dictrev, DK_ITER, dd_iter, dn_dictrev);
+DTYPE(dt_reverse, DK_ITER, dd_iter, dn_reverse); DTYPE(dt_rangeiter, DK_ITER, dd_iter, dn_rangeiter);
+/* These wrappers are user-code boundaries, also tracked by check_runtime.py. */
+static Dyn *dyn_user_iter(Dyn *o) { return o->t->iter(o); }
+static Dyn *dyn_user_next(Dyn *o) { return o->t->next(o); }
+static I dyn_user_len(Dyn *o) { return o->t->len(o); }
+static int dyn_builtin_iterable(Dyn *o) {
+  I k = DKIND(o);
+  return k == DK_LIST || k == DK_TUPLE || k == DK_DICT || k == DK_STR;
+}
+static int dyn_iterable(Dyn *o) { return dyn_builtin_iterable(o) || DKIND(o) == DK_ITER || o->t->iter; }
+Dyn *pys_dyn_iter_check(Dyn *o) {
+  if (DKIND(o) != DK_ITER && !o->t->next) failf("TypeError: iter() returned non-iterator of type '%s'", DNAME(o));
+  return o;
+}
+static DynIter *dyn_builtin_iter(Dyn *o, int reverse) {
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->o = o; it->reverse = reverse;
+  I k = DKIND(o);
+  if (k == DK_DICT) {
+    Dict *d = (Dict *)o->v;
+    it->used = d->len;
+    if (reverse) it->i = d->n - 1;
+  } else if (reverse) {
+    it->i = k == DK_LIST ? ((List *)o->v)->len - 1 : k == DK_TUPLE ? ((VTuple *)o->v)->len - 1 : ((Str *)o->v)->len;
+  }
   return it;
 }
+Dyn *pys_dyn_iter_box(Dyn *o) {
+  if (DKIND(o) == DK_ITER) return o;
+  if (dyn_builtin_iterable(o)) {
+    const DynType *t = DKIND(o) == DK_LIST ? &dt_listiter : DKIND(o) == DK_TUPLE ? &dt_tupleiter : DKIND(o) == DK_DICT ? &dt_dictiter : &dt_striter;
+    return pys_dyn_ref(t, dyn_builtin_iter(o, 0));
+  }
+  if (o->t->iter) return pys_dyn_iter_check(dyn_user_iter(o));
+  failf("TypeError: '%s' object is not iterable", DNAME(o));
+}
+DynIter *pys_dyn_iter(Dyn *o) {
+  if (DKIND(o) == DK_ITER) return (DynIter *)o->v;
+  if (dyn_builtin_iterable(o)) return dyn_builtin_iter(o, 0);
+  o = pys_dyn_iter_box(o);
+  if (DKIND(o) == DK_ITER) return (DynIter *)o->v;
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->o = o;
+  return it;
+}
+Dyn *pys_dyn_next_box(Dyn *o) {
+  if (DKIND(o) == DK_ITER) return pys_dyn_next((DynIter *)o->v);
+  if (o->t->next) return dyn_user_next(o);
+  failf("TypeError: '%s' object is not an iterator", DNAME(o));
+}
 Dyn *pys_dyn_next(DynIter *it) {   /* the next item, or null at the end */
+  if (it->done) return 0;
+  if (it->range) {
+    if (!it->left) { it->done = 1; return 0; }
+    I v = it->i; it->left--;
+    it->i = (I)((uint64_t)it->i + (uint64_t)it->step);
+    return pys_dyn_int(v);
+  }
   Dyn *o = it->o;
+  if (o->t->next) return dyn_user_next(o);
   switch (DKIND(o)) {
-  case DK_LIST: { List *l = (List *)o->v; return it->i < l->len ? (Dyn *)l->a[it->i++] : 0; }
-  case DK_TUPLE: { VTuple *t = (VTuple *)o->v; return it->i < t->len ? (Dyn *)t->a[it->i++] : 0; }
+  case DK_LIST: {
+    List *l = (List *)o->v;
+    if (it->i >= 0 && it->i < l->len) {
+      Dyn *v = (Dyn *)l->a[it->i]; it->i += it->reverse ? -1 : 1; return v;
+    }
+    break;
+  }
+  case DK_TUPLE: {
+    VTuple *t = (VTuple *)o->v;
+    if (it->i >= 0 && it->i < t->len) {
+      Dyn *v = (Dyn *)t->a[it->i]; it->i += it->reverse ? -1 : 1; return v;
+    }
+    break;
+  }
   case DK_DICT: {
-    Dict *d = (Dict *)o->v; I e = pys_dict_next(d, it->i, it->used, it->count);
-    if (e < 0) return 0;
-    it->i = e + 1; it->count++;
+    Dict *d = (Dict *)o->v;
+    if (it->used != d->len) it->used = -1;   /* a size error stays an error even if the size is restored */
+    I e = it->reverse ? pys_dict_prev(d, it->i, it->used, it->count) : pys_dict_next(d, it->i, it->used, it->count);
+    if (e < 0) break;
+    it->i = e + (it->reverse ? -1 : 1); it->count++;
     return (Dyn *)d->keys[e];
   }
+  case DK_STR: {
+    Str *s = (Str *)o->v;
+    if (it->reverse) {
+      if (it->i <= 0) break;
+      it->i = pys_text_prev(s, it->i);
+      return dstr(pys_text_at(s, it->i));
+    }
+    if (it->i >= s->len) break;
+    Str *c = pys_text_at(s, it->i); it->i = pys_text_next(s, it->i);
+    return dstr(c);
   }
-  Str *s = (Str *)o->v;
-  if (it->i >= s->len) return 0;
-  Str *c = pys_text_at(s, it->i); it->i = pys_text_next(s, it->i);
-  return dstr(c);
+  default: return pys_dyn_next_box(o);
+  }
+  it->done = 1; it->o = 0;
+  return 0;
+}
+Dyn *pys_dyn_reversed(Dyn *o) {
+  if (!dyn_builtin_iterable(o)) failf("TypeError: '%s' object is not reversible", DNAME(o));
+  const DynType *t = DKIND(o) == DK_LIST ? &dt_listrev : DKIND(o) == DK_DICT ? &dt_dictrev : &dt_reverse;
+  return pys_dyn_ref(t, dyn_builtin_iter(o, 1));
+}
+Dyn *pys_dyn_range_iter(I start, I stop, I step, I reverse) {
+  uint64_t n = (uint64_t)pys_range_len(start, stop, step);
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->range = 1; it->left = n;
+  it->i = reverse && n ? (I)((uint64_t)start + (n - 1) * (uint64_t)step) : start;
+  it->step = reverse ? (I)(-(uint64_t)step) : step;
+  return pys_dyn_ref(&dt_rangeiter, it);
 }
 /* the box of slot v of descriptor d, of a fresh result that a builtin method gave (a str's split, a
    dict's items): a number, a str, a box, None or a value, a tuple of these (made one of boxes) */
@@ -4711,38 +4812,44 @@ Dyn *pys_dyn_slice(Dyn *o, Dyn *lo, Dyn *hi, Dyn *st) {
 List *pys_dyn_list(Dyn *o);
 void pys_dyn_update(Dict *d, Dyn *x) {
   if (DKIND(x) == DK_DICT) { pys_dict_update(d, (Dict *)x->v); return; }
-  if (DKIND(x) != DK_LIST && DKIND(x) != DK_TUPLE && DKIND(x) != DK_STR) failf("TypeError: '%s' object is not iterable", DNAME(x));
   DynIter *it = pys_dyn_iter(x);
   I n = 0;
   for (Dyn *e; (e = pys_dyn_next(it)); n++) {
-    int k = DKIND(e);
-    if (k != DK_LIST && k != DK_TUPLE && k != DK_STR && k != DK_DICT) failf("TypeError: cannot convert dictionary update sequence element #%lld to a sequence", (long long)n);
-    List *kv = pys_dyn_list(e);
+    if (!dyn_iterable(e)) failf("TypeError: cannot convert dictionary update sequence element #%lld to a sequence", (long long)n);
+    /* PySequence_Fast uses a builtin list/tuple directly; otherwise it materializes the
+       iterator, calling that iterator's __iter__ and length hint, not the original pair's. */
+    List *kv = pys_dyn_list(DKIND(e) == DK_LIST || DKIND(e) == DK_TUPLE ? e : pys_dyn_iter_box(e));
     if (kv->len != 2) failf("ValueError: dictionary update sequence element #%lld has length %lld; 2 is required", (long long)n, (long long)kv->len);
     pys_dict_set(d, kv->a[0], kv->a[1]);
   }
 }
 /* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
 List *pys_dyn_list(Dyn *o) {
-  List *l = pys_list_new(DKIND(o) == DK_LIST ? ((List *)o->v)->len : 0);
-  DynIter *it = pys_dyn_iter(o);
+  DynIter *it = pys_dyn_iter(o);   /* __iter__ and its validation precede __len__'s hint */
+  I cap = o->t->len ? dyn_user_len(o) : DKIND(o) == DK_LIST ? ((List *)o->v)->len : 0;
+  if (cap < 0) cap = 0;   /* TypeError in a length hint is declined, unlike a negative __len__ */
+  if (cap > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
+  List *l = pys_list_new(cap);
   for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(l, (I)x);
   return l;
 }
 List *pys_dyn_strs(Dyn *o) {
-  if (DKIND(o) != DK_LIST && DKIND(o) != DK_DICT && DKIND(o) != DK_TUPLE && DKIND(o) != DK_STR) pys_fail("TypeError: can only join an iterable");
-  List *l = pys_list_new(0);
-  DynIter *it = pys_dyn_iter(o);
-  for (Dyn *x; (x = pys_dyn_next(it));) {
-    if (DKIND(x) != DK_STR) failf("TypeError: sequence item %lld: expected str instance, %s found", (long long)l->len, DNAME(x));
-    pys_list_append(l, x->v);
+  if (!dyn_iterable(o)) pys_fail("TypeError: can only join an iterable");
+  /* PySequence_Fast first obtains an iterator, then materializes that iterator. The
+     second __iter__ and length hint belong to the iterator, not the original iterable.
+     Builtin lists/tuples need no protocol calls. Validate items only after consumption;
+     the private fresh list's scanned slots can then hold the strings themselves. */
+  List *l = pys_dyn_list(DKIND(o) == DK_LIST || DKIND(o) == DK_TUPLE ? o : pys_dyn_iter_box(o));
+  for (I i = 0; i < l->len; i++) {
+    Dyn *x = (Dyn *)l->a[i];
+    if (DKIND(x) != DK_STR) failf("TypeError: sequence item %lld: expected str instance, %s found", (long long)i, DNAME(x));
+    l->a[i] = x->v;
   }
   return l;
 }
 /* a, b = o: o's items, which must be n, all taken before the first is stored (CPython's unpack_iterable) */
 VTuple *pys_dyn_unpack(Dyn *o, I n) {
-  if (DKIND(o) != DK_LIST && DKIND(o) != DK_DICT && DKIND(o) != DK_TUPLE && DKIND(o) != DK_STR)
-    failf("TypeError: cannot unpack non-iterable %s object", DNAME(o));
+  if (!dyn_iterable(o)) failf("TypeError: cannot unpack non-iterable %s object", DNAME(o));
   VTuple *t = pys_alloc(sizeof(VTuple) + n * sizeof(I)); t->len = n;
   DynIter *it = pys_dyn_iter(o); I k = 0;
   for (Dyn *x; (x = pys_dyn_next(it));) {
@@ -5137,7 +5244,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
   const char *ds = desc->s;
   if (*ds == 'A') {   /* (a dynamic value: its own; an object's or a function's with a spec: object.__format__'s error) */
     Dyn *x = (Dyn *)v;
-    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
+    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC || DKIND(x) == DK_ITER || DKIND(x) == DK_GEN) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
     v = x->v; ds = x->t->desc->s;
   }
   if (*ds == '?') {                            /* None or a value */

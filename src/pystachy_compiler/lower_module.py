@@ -117,12 +117,16 @@ def lower_data(d: Data) -> str:
         es: list[str] = ["{ptr, i64} {ptr " + d.refs[j] + ", i64 " + d.items[j].v + "}" for j in range(len(d.refs))]
         return f"{d.name} = internal constant [{len(es)} x {{ptr, i64}}] [{', '.join(es)}], align 8"
     if d.kind == "dyntype":
-        # a class's DynType (dynamic.py): kind, descriptor, name, O<id>, base's DynType, flags, as
+        # a class's DynType (dynamic.py): kind, descriptor, name, O<id>, base's DynType, flags,
+        # and optional iter/next/len callbacks, as
         # runtime.c's struct DynType lays them out. Internal, and its address is the class's
         # identity to a dynamic value's box: never merged
         r = d.refs
+        it = r[3] if len(r) > 3 else "null"
+        nxt = r[4] if len(r) > 4 else "null"
+        length = r[5] if len(r) > 5 else "null"
         return (f"{d.name} = internal constant {DYNTYPE_LL} {{i64 {d.items[0].v}, ptr {r[0]}, ptr {r[1]}, "
-                f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}}}, align 8")
+                f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}, ptr {it}, ptr {nxt}, ptr {length}}}, align 8")
     if d.kind == "dynbox":
         # a constant dynamic value (dynamic.py): its DynType and, as its payload, the address of its
         # last ref: a def's own DynType, or a str constant

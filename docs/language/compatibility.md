@@ -344,6 +344,10 @@ above apply to well-formed text (with the surrogate exception described above).
 
 ### Dynamic `Any` (opt-in prototype)
 
+- Boxed ranges, builtin iterators, user `__iter__`/`__next__` and generators with
+  boxable yields support lazy iteration and `next()` with a default. See the
+  [bounded iteration contract](../dynamic-any.md#iteration) for remaining protocol limits.
+
 - In a module whose leading comments hold `# pystachy: dynamic-any`, `Any` values are
   runtime-typed boxes ([dynamic `Any`](../dynamic-any.md)). A concrete annotation, or storage
   that keeps its first type, that receives an `Any` value of another type raises `TypeError`

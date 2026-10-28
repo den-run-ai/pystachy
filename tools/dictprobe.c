@@ -237,7 +237,7 @@ static void int_queries(void) {
   /* A colliding user key comes before the integer. The guarded probe must stop
      there without callbacks; the normal fallback observes the original query. */
   DSTR(desc, "O091"); DSTR(name, "IntProbeKey");
-  static const DynType type = {DK_OBJ, (Str *)&desc, (Str *)&name, 91, 0, DF_HASH | DF_X};
+  static const DynType type = {DK_OBJ, (Str *)&desc, (Str *)&name, 91, 0, DF_HASH | DF_X, NULL, NULL, NULL};
   dict = pys_dict_new((I)cstr("A"), 0);
   Dyn *object = pys_dyn_ref(&type, (void *)1);
   pys_dict_set(dict, (I)object, 9);

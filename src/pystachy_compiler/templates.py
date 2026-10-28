@@ -621,6 +621,10 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
             cmptypes[ts[1]] = cmpfields
     readkey = "".join(" missing " + a + "=" + cmptypes[a] for a in sorted(cmptypes))
     readkey += " runtime-errors" if cmpops else ""
+    # Length hints validate the method's result at runtime, after its effects.
+    # Keep that specialization separate from typed len(), which requires int.
+    raw_hint = f.name == "__len__" and self.curfn.name == "dyn.lengthhint" and self.xtry.startswith("protocol-hint:")
+    readkey += " length-hint" if raw_hint else ""
     key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "") + readkey
     if cmpfields != "":
         key += " fields " + cmpfields  # never reuse the ordinary typed call's specialization
@@ -733,7 +737,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     self.lenient = False
     self.function(g, g.node.kids[2].kids)
     self.restore(fr)
-    ret = SPECIAL[f.name][SPECIAL[f.name].find(":") + 1 :] if f.cls != "" and f.name in SPECIAL else ""
+    ret = SPECIAL[f.name][SPECIAL[f.name].find(":") + 1 :] if f.cls != "" and f.name in SPECIAL and not raw_hint else ""
     if ret != "" and g.ret != ret and not ((f.name == "__len__" or f.name == "__hash__") and g.ret == "bool") and not (ret == "int" and g.ret == BIG):
         self.err(f"{f.name} must return {ret}, and {shown(f.cls)}.{f.name}() returns {typestr(g.ret)}")
     self.making.pop()

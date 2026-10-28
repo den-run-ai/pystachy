@@ -23,8 +23,9 @@ from src.pystachy_compiler.utils import (
 
 def gen_err(self, msg: str) -> None:
     if self.xtry != "":
-        # (the call of a comparison method with an Any value, which only @o.x.<class> compiles:
-        # the next pass declines it there, see Gen.xnot)
+        # A comparison specialization may decline on the next pass. An unsupported
+        # iteration protocol instead gets an explicit runtime-error arm; unused
+        # methods must not make an otherwise accepted program fail to compile.
         self.newx[self.xtry] = True
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
