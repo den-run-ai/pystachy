@@ -1041,7 +1041,7 @@ def gen_stmt(self, n: Node) -> None:
             elif BIG in kv[0] or BIG in kv[1]:
                 kv = targs(self.lct[-1])  # (a promoting int is an int there, ctype's, which dict_store keeps past 64 bits)
         kc = self.key_coerce(kx, kv[0])
-        self.dict_put(Val(self.lcs[-1], self.ctype("dict", kv)), kc, self.key_slot(kc), self.list_coerce(vx, kv[1]), kv)
+        self.dict_put(Val(self.lcs[-1], self.ctype("dict", kv)), kc, self.key_slot(kc), self.list_hold(vx, kv[1]), kv)  # (a tuple of ints: held, bigints.py)
     elif k == "lcappend":
         et = self.lct[-1]
         v = self.expr(n.kids[0], et, resultsoft=self.lcsoft[-1])
@@ -1270,18 +1270,18 @@ def gen_augassign(self, n: Node) -> None:
                 o = self.unwrap(o, sub)
                 kb = self.big_key(kval)
                 cur = self.dict_value(o, self.big_key_entry(o, kb, "pys_dict_big_entry"))
-                self.dict_put(o, kb, "", self.list_coerce(self.inplace(op, cur, n.kids[1]), kv[1]), kv)
+                self.dict_put(o, kb, "", self.list_hold(self.inplace(op, cur, n.kids[1]), kv[1]), kv)
                 return
             kx = self.dkey(kval, kv[0])
             key = "" if is_sopt(kx.t) else self.to_slot(kx)
             o = self.unwrap(o, sub)
             if bool_for_int(kval.t, kv[0]):
                 e = self.bool_find(o.v, kval, key)
-                cur = self.big_dict_value(o, e) if self.dict_int(o.t) else self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {e}"]), kv[1])
+                cur = self.dict_value(o, e)  # (an int past 64 bits, a tuple of ints: bigints.py)
                 b0 = self.blk
                 x0 = len(b0.code)
                 n0 = len(self.fn.blocks)
-                r = self.list_coerce(self.inplace(op, cur, n.kids[1]), kv[1])
+                r = self.list_hold(self.inplace(op, cur, n.kids[1]), kv[1])
                 if self.may_change(b0, x0, n0):
                     self.store_key(kval, kv[0])  # (rejected)
                 self.dict_store(o.v, "", r, kv, e)
@@ -1293,8 +1293,8 @@ def gen_augassign(self, n: Node) -> None:
             if self.dict_int(o.t):
                 cur = self.big_dict_value(o, self.rt("pys_dict_entry", "i64", [f"ptr {o.v}", f"i64 {key}"], self.key_fx(kv[0])))
             else:
-                cur = self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"], self.key_fx(kv[0])), kv[1])
-            r = self.list_coerce(self.inplace(op, cur, n.kids[1]), kv[1])
+                cur = self.held_value(self.from_slot(self.rt("pys_dict_getitem", "i64", [f"ptr {o.v}", f"i64 {key}"], self.key_fx(kv[0])), kv[1]))  # (a tuple of ints: bigints.held)
+            r = self.list_hold(self.inplace(op, cur, n.kids[1]), kv[1])
             self.dict_store(o.v, key, r, kv)
         elif o.t in self.classes:
             # o[k] op= v: o.__setitem__(k, o.__getitem__(k) op v), k evaluated once (a tuple
@@ -1949,10 +1949,8 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
     out: list[Val] = []
     if mode != "values":
         out.append(self.big_dict_key(s, j) if self.dict_bigkey(s.t) else self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[0]))
-    if (mode == "values" or mode == "items") and self.dict_int(s.t):
-        out.append(self.big_dict_value(s, j))  # (an int past 64 bits: bigints.py)
-    elif mode == "values" or mode == "items":
-        out.append(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[1]))
+    if mode == "values" or mode == "items":
+        out.append(self.dict_value(s, j))  # (an int past 64 bits, a tuple of ints: bigints.py)
     return out
 
 def gen_seq_start(self, s: Val, mode: str, made: SeqStart) -> None:

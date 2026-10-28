@@ -1,7 +1,7 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import none_display, walrus_names
-from src.pystachy_compiler.bigints import big_tree
+from src.pystachy_compiler.bigints import big_tree, held
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
@@ -662,8 +662,8 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
     if v.t == "None" and self.optional(V) != V:
         self.err(f"dict.fromkeys(keys{', None' if len(args) == 2 else ''}) needs values that can be None ({OPTTYPES}), not {typestr(V)}: give a value")
     V = v.t if V == "" else V
-    v = self.coerce(v, V)
     t = self.ctype("dict", [K, V])
+    v = self.list_hold(v, targs(t)[1]) if held(targs(t)[1]) != targs(t)[1] else self.coerce(v, V)  # (a tuple of ints as the dict holds it: bigints.held)
     if t == "dict[dyn,dyn]" and (K != "dyn" or V != "dyn"):
         # (a dict of Any containers holds boxes, keys too, ctype: the keys and the value boxed first)
         if is_dict(xs.t):

@@ -1569,8 +1569,8 @@ def gen_refl_dict_copy(self, d: Node) -> Val:
                 self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, go, nxt)
                 self.place(go)
             kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers: ctype)
-            v = self.coerce(self.getfield(ov, self.field(ov, fl), fl), kv[1])
-            self.rt("pys_dict_set", "void", [f"ptr {r.v}", "i64 " + self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
+            v = self.list_hold(self.getfield(ov, self.field(ov, fl), fl), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
+            self.dict_store(r.v, self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), v, kv)
             if nxt != "":
                 self.br(nxt)
                 self.place(nxt)

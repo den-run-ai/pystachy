@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, held, narrows, search_type
+from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
@@ -1047,6 +1047,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             kv = ["dyn", "dyn"]  # (keys or values of no one type: dynamic.py)
         ks: list[Val] = []
         vs: list[Val] = []
+        vkept: dict[int, Val] = {}  # (values that are tuples of promoting ints, which the dict holds as they are: held)
         given = kv[1] != ""
         kgiven = kv[0] != ""
         jt = ""
@@ -1062,7 +1063,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             b = self.expr(n.kids[i + 1], kv[1], returnctx, resultsoft)
             if kv[1] == "dyn" and b.idslot != "":
                 b.idfrom = self.dyn_box(b).v
-            if is_tuple(b.t) and BIG in b.t:
+            if is_tuple(b.t) and BIG in b.t and int_lists():
+                vkept[len(vs)] = b
+                b = Val(b.v, b.t.replace(BIG, "int"))  # (typed as the dict's value for what follows: bigints.held)
+            elif is_tuple(b.t) and BIG in b.t:
                 b = self.big_tuple_narrow(b)
             if kv[1] == "" and b.t != "None":
                 kv[1] = b.t
@@ -1103,7 +1107,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         ks = [self.key_coerce(x, kv[0]) for x in ks]
         if kv[1] == BIG:
             kv[1] = "int"  # (a dict of ints, which holds promoting ints where the program's dicts do: dict_store)
-        vs = [self.list_coerce(x, kv[1]) for x in vs]
+        vs = [self.list_hold(vkept[i] if i in vkept else vs[i], kv[1]) for i in range(len(vs))]
         if self.key_problem(kv[0]) != "":
             self.err(self.key_problem(kv[0]))
         r = self.rt("pys_dict_new_atomic" if atomic_dict(self.ctype("dict", kv)) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ks)}"])
@@ -1117,8 +1121,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             v = self.expr(n.kids[i], ws[i] if i < len(ws) else "", returnctx, resultsoft)
             if i < len(ws) and v.t != ws[i] and self.widens(v.t, ws[i]):
                 v = Val(v.v, ws[i])  # (None as an object, T as T | None)
-            elif i < len(ws) and self.converts(v.t, ws[i]) and not is_sopt(v.t):
-                v = self.coerce(v, ws[i])  # (an int as an int | None: its box)
+            elif i < len(ws) and self.converts(v.t, ws[i]) and not is_sopt(v.t) and not (int_lists() and big_viewable(v.t, ws[i])):
+                v = self.coerce(v, ws[i])  # (an int as an int | None: its box; a tuple of promoting ints stays one, as its int items do: bigints.held)
             elif i < len(ws) and is_fn(v.t) and is_callable(unopt(ws[i])):
                 v = self.coerce(v, ws[i])  # (a function where a Callable is expected: made one)
             vals.append(v)
@@ -2215,7 +2219,7 @@ def gen_dict_merge(self, n: Node, want: str) -> Val:
                 kv = targs(r.t)
                 key = self.store_key(self.expr(x, kv[0]), kv[0])
                 ks = self.to_slot(key)
-                self.dict_store(r.v, ks, self.list_coerce(self.expr(n.kids[i + 1], kv[1]), kv[1]), kv)
+                self.dict_store(r.v, ks, self.list_hold(self.expr(n.kids[i + 1], kv[1]), kv[1]), kv)
             elif kw and x.kind != "str":
                 self.err("a key of a dict display with ** of a **kwargs record must be a str literal")
             elif kw:
@@ -2245,7 +2249,7 @@ def gen_dict_merge(self, n: Node, want: str) -> Val:
                 r = Val(self.rt("pys_dict_new_atomic" if atomic_dict(v.t) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", "i64 0"]), v.t)
                 for j in range(0, len(pairs), 2):
                     ks = self.to_slot(self.store_key(pairs[j], kv[0]))
-                    self.dict_store(r.v, ks, self.list_coerce(pairs[j + 1], kv[1]), kv)
+                    self.dict_store(r.v, ks, self.list_hold(pairs[j + 1], kv[1]), kv)
             self.rt("pys_dict_update", "void", [f"ptr {r.v}", f"ptr {v.v}"], self.key_fx(targs(r.t)[0]))
         else:
             self.err(f"** of a {typestr(v.t)} in a dict display is not supported: of a function's **kwargs (with str keys), or of dicts of one type, it is")
@@ -2615,10 +2619,10 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
             key = self.to_slot(kx)
             if self.dict_int(t):
                 return self.big_dict_value(o, self.bool_find(o.v, kval, key))  # (an int past 64 bits: bigints.py)
-            return self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {self.bool_find(o.v, kval, key)}"]), kv[1])
+            return self.held_value(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {self.bool_find(o.v, kval, key)}"]), kv[1]))
         if self.dict_int(t):
             return self.big_dict_value(o, self.nonekey(kx, "", "pys_dict_entry", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0])))
-        return self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0])), kv[1])
+        return self.held_value(self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0])), kv[1]))  # (a tuple of ints: bigints.held)
     if is_tuple(t) or t in self.nts:
         ts = targs(t) if is_tuple(t) else self.classes[t].fields  # (a NamedTuple's fields)
         c = self.const_of(n.kids[1], {}, True) if self.lit_context() else None
@@ -4787,7 +4791,7 @@ def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
     e = Val(self.rt("pys_dict_eq_next", "i64", [f"ptr {a.v}", f"i64 {self.mload('int', index)}"]), "int")
     self.cbr(self.num_cmp(">=", e, Val("0", "int")).v, item, finish)
     self.place(item)
-    x = self.big_dict_value(a, e.v) if self.dict_int(a.t) else self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {a.v}", f"i64 {e.v}"]), ax[1])
+    x = self.dict_value(a, e.v)  # (an int past 64 bits, a tuple of ints: bigints.py)
     if ax[0] == bx[0]:
         match = Val(self.rt("pys_dict_eq_find", "i64", [f"ptr {b.v}", f"ptr {a.v}", f"i64 {e.v}"], self.key_fx(ax[0])), "int")
     else:
@@ -4802,7 +4806,7 @@ def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
         match = Val(self.rt("pys_dict_eq_pair_find", "i64", [f"ptr {b.v}", f"ptr {a.v}", f"i64 {e.v}", f"ptr {f.ll}"]), "int")
     self.cbr(self.num_cmp(">=", match, Val("0", "int")).v, compare, miss)
     self.place(compare)
-    y = self.big_dict_value(b, match.v) if self.dict_int(b.t) else self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {b.v}", f"i64 {match.v}"]), bx[1])
+    y = self.dict_value(b, match.v)
     self.pair_item_eq(x, y, step)
     self.br(miss)
     self.place(step)
