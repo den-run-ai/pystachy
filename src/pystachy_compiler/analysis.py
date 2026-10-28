@@ -6,36 +6,50 @@ from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, men
 from src.pystachy_compiler.utils import int_fits
 
 
-def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool]) -> bool:
+def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool], own: dict[str, str]) -> bool:
     # A closed scalar expression: nothing can expose a number's object identity or call
     # user code. Names are exclusively numeric parameters/locals; every store is checked
-    # by numeric_statement. Unknown syntax is deliberately outside this proof.
+    # by numeric_statement. Unknown syntax is deliberately outside this proof. In a
+    # method, own names its receiver ("@") and that object's plain fields ("." + field:
+    # their types), which read no code, and the locals that hold one of its bytes or str
+    # fields ("#" + name), which only len() and indexes read
     k = n.kind
     if k in ["int", "float", "True", "False"]:
         return True
     if k == "name":
         return n.s in names
     if k == "walrus":
-        return n.s in names and numeric_value(n.kids[0], names, blocked)
+        return n.s in names and numeric_value(n.kids[0], names, blocked, own)
+    if k == "attr":
+        return len(n.kids) == 1 and n.kids[0].kind == "name" and "@" in own and n.kids[0].s == own["@"] and own.get("." + n.s, "") in ["int", "float", "bool"]
+    if k == "index":
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and own.get("#" + n.kids[0].s, "") == "bytes" and numeric_value(n.kids[1], names, blocked, own)
     if k == "call":
         if len(n.kids) != 2 or n.kids[0].kind != "name":
             return False
         callee = n.kids[0].s
-        return callee in ["int", "float", "bool"] and callee not in names and callee not in blocked and numeric_value(n.kids[1], names, blocked)
+        if callee == "len" and n.kids[1].kind == "name" and ("#" + n.kids[1].s) in own:
+            return callee not in names and callee not in blocked
+        return callee in ["int", "float", "bool"] and callee not in names and callee not in blocked and numeric_value(n.kids[1], names, blocked, own)
     allowed = (k == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~", "not"]) or k == "ifexp" or (k == "boolop" and n.s in ["and", "or"])
     if k == "cmp":
         allowed = all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(","))
-    return allowed and all(numeric_value(x, names, blocked) for x in n.kids)
+    return allowed and all(numeric_value(x, names, blocked, own) for x in n.kids)
 
 
-def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool], noresult: bool = False, annotations: bool = False) -> bool:
+def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool], own: dict[str, str], noresult: bool = False, annotations: bool = False) -> bool:
     # A bounded body whose local numbers only feed scalar operations and the existing
-    # typed numeric return ABI. No globals, containers, callbacks, closures or Any storage.
+    # typed numeric return ABI. No globals, containers, callbacks, closures or Any storage
+    # (but, in a method, its receiver's plain fields and locals holding its bytes or str
+    # fields: numeric_value's own).
     k = n.kind
     if k in ["pass", "break", "continue"]:
         return True
     if k == "block":
-        return all(numeric_statement(x, names, blocked, noresult, annotations) for x in n.kids)
+        return all(numeric_statement(x, names, blocked, own, noresult, annotations) for x in n.kids)
+    if k == "assign" and len(n.kids) == 2 and n.kids[0].kind == "name" and ("#" + n.kids[0].s) in own:
+        v = n.kids[1]
+        return v.kind == "attr" and len(v.kids) == 1 and v.kids[0].kind == "name" and v.kids[0].s == own["@"] and own.get("." + v.s, "") == own["#" + n.kids[0].s]
     if noresult and k == "return":
         return len(n.kids) == 0 or (len(n.kids) == 1 and n.kids[0].kind == "None")
     if noresult and k == "expr" and len(n.kids) == 1:
@@ -43,9 +57,9 @@ def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool],
         if value.kind == "call" and len(value.kids) > 0 and value.kids[0].kind == "name" and value.kids[0].s == "print":
             # Builtin print consumes scalar values without exposing their objects.
             # Keyword/expanded arguments, shadowed calls and other values fail closed.
-            return "print" not in names and "print" not in blocked and all(x.kind == "str" or numeric_value(x, names, blocked) for x in value.kids[1:])
+            return "print" not in names and "print" not in blocked and all(x.kind == "str" or numeric_value(x, names, blocked, own) for x in value.kids[1:])
     if k in ["return", "expr"]:
-        return len(n.kids) == 1 and numeric_value(n.kids[0], names, blocked)
+        return len(n.kids) == 1 and numeric_value(n.kids[0], names, blocked, own)
     if annotations and k == "annassign":
         ann = n.kids[1]
         parts = [ann]
@@ -56,18 +70,18 @@ def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool],
                 parts.extend(a.kids)
             elif a.kind != "name" or a.s not in ["int", "float", "bool"] or a.s in blocked:
                 valid = False
-        return valid and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s in names and numeric_value(n.kids[2], names, blocked)
+        return valid and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s in names and numeric_value(n.kids[2], names, blocked, own)
     if k in ["assign", "augassign"]:
         if len(n.kids) != 2 or n.kids[0].kind != "name" or n.kids[0].s not in names:
             return False
-        return (k == "assign" or n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) and numeric_value(n.kids[1], names, blocked)
+        return (k == "assign" or n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) and numeric_value(n.kids[1], names, blocked, own)
     if k in ["if", "while"]:
-        return numeric_value(n.kids[0], names, blocked) and all(numeric_statement(x, names, blocked, noresult, annotations) for x in n.kids[1:])
+        return numeric_value(n.kids[0], names, blocked, own) and all(numeric_statement(x, names, blocked, own, noresult, annotations) for x in n.kids[1:])
     if k == "for":
         it = n.kids[1]
         if n.kids[0].kind != "name" or n.kids[0].s not in names or it.kind != "call" or it.kids[0].kind != "name" or it.kids[0].s != "range":
             return False
-        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked, noresult, annotations) for x in n.kids[2:])
+        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked, own) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked, own, noresult, annotations) for x in n.kids[2:])
     return False
 
 
@@ -1983,3 +1997,111 @@ def shows_items(n: Node, name: str) -> bool:
         if shows_items(k, name):
             return True
     return False
+
+
+# Lazy numeric field locals (Gen.lazy_fields): a local x that reads a plain numeric field,
+# x = o.f, may share the field's object without a box until identity is observed.
+
+
+def lazy_sites(body: list[Node], reads: list[Node], wbs: list[Node]) -> None:
+    # the statements x = o.f (reads) and o.f = x (write-backs) of names x and o, in body and
+    # the blocks of its if and while statements, not those of for, with and try statements or
+    # of the functions and classes it defines
+    for st in body:
+        if st.kind == "assign" and len(st.kids) == 2:
+            t = st.kids[0]
+            v = st.kids[1]
+            if t.kind == "name" and v.kind == "attr" and len(v.kids) == 1 and v.kids[0].kind == "name":
+                reads.append(st)
+            elif t.kind == "attr" and len(t.kids) == 1 and t.kids[0].kind == "name" and v.kind == "name":
+                wbs.append(st)
+        elif st.kind == "if" or st.kind == "while":
+            for kid in st.kids[1:]:
+                if kid.kind == "block":
+                    lazy_sites(kid.kids, reads, wbs)
+
+
+def name_bits(n: Node, bits: dict[str, int]) -> int:
+    # the bits of the names of bits that code n mentions anywhere, read or bound
+    m = 0
+    pending = [n]
+    while len(pending) > 0:
+        x = pending.pop()
+        if x.kind == "name" and x.s in bits:
+            m = m | bits[x.s]
+        pending.extend(x.kids)
+    return m
+
+
+def lazy_targets(t: Node, bits: dict[str, int], acc: list[int]) -> None:
+    # an assignment target's bits: acc[0] those it binds, acc[1] those its other parts read
+    if t.kind == "name":
+        if t.s in bits:
+            acc[0] = acc[0] | bits[t.s]
+    elif t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
+        for k in t.kids:
+            lazy_targets(k, bits, acc)
+    else:
+        acc[1] = acc[1] | name_bits(t, bits)
+
+
+def lazy_block(body: list[Node], bits: dict[str, int], out: int, brk: int, cont: int, lines: dict[int, list[Node]], masks: dict[int, list[int]], record: bool) -> int:
+    # the bits of the names live where body starts: read before they are assigned again on some
+    # path, out after body, brk at a break and cont at a continue (of the innermost loop). With
+    # record, each statement's own (lazy_stmt) are kept by its line: lines and masks
+    live = out
+    i = len(body) - 1
+    while i >= 0:
+        live = lazy_stmt(body[i], bits, live, brk, cont, lines, masks, record)
+        i -= 1
+    return live
+
+
+def lazy_stmt(n: Node, bits: dict[str, int], out: int, brk: int, cont: int, lines: dict[int, list[Node]], masks: dict[int, list[int]], record: bool) -> int:
+    # lazy_block for statement n. Assignments, if and while statements, returns, raises, breaks
+    # and continues are followed; any other statement keeps every name it mentions live, and
+    # every name live after it or where a break or continue in it goes. Recorded for n: the
+    # names live where it starts, then those live after it (masks[line][2j], [2j + 1])
+    k = n.kind
+    live = 0
+    if k == "block":
+        live = lazy_block(n.kids, bits, out, brk, cont, lines, masks, record)
+    elif (k == "assign" and len(n.kids) >= 2) or (k == "annassign" and len(n.kids) == 3):
+        acc = [0, 0]
+        for t in n.kids[:-1] if k == "assign" else [n.kids[0]]:
+            lazy_targets(t, bits, acc)
+        live = name_bits(n.kids[-1], bits) | acc[1] | (out & ~acc[0])
+    elif k == "if" and len(n.kids) == 3:
+        live = name_bits(n.kids[0], bits) | lazy_stmt(n.kids[1], bits, out, brk, cont, lines, masks, record) | lazy_stmt(n.kids[2], bits, out, brk, cont, lines, masks, record)
+    elif k == "while" and (len(n.kids) == 2 or len(n.kids) == 3):
+        after = out
+        if len(n.kids) == 3:
+            after = lazy_stmt(n.kids[2], bits, out, brk, cont, lines, masks, record)  # (else: where the test fails)
+        test = name_bits(n.kids[0], bits)
+        head = test | after
+        while True:
+            again = test | after | lazy_stmt(n.kids[1], bits, head, out, head, lines, masks, False)
+            if again == head:
+                break
+            head = again
+        if record:
+            lazy_stmt(n.kids[1], bits, head, out, head, lines, masks, True)
+        live = head
+    elif k == "return" or k == "raise":
+        live = name_bits(n, bits)
+    elif k == "break":
+        live = brk
+    elif k == "continue":
+        live = cont
+    elif k == "pass":
+        live = out
+    else:
+        live = out | name_bits(n, bits) | brk | cont
+    if record:
+        if n.line not in lines:
+            lines[n.line] = []
+            masks[n.line] = []
+        lines[n.line].append(n)
+        masks[n.line].append(live)
+        masks[n.line].append(out)
+    return live

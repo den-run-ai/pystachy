@@ -7,6 +7,11 @@ from python_int_optin.py are deliberately not release/verification evidence.
 Every corpus entry module opts in in every overlay, including entries outside the execution
 shard or --cases selection. Imported support modules outside the corpus retain their policy.
 This makes full, sharded and focused runs observe the same imported-module integer layouts.
+
+--native-suite defers to the same verification run's tests-native steps exactly what
+tools/dynany_optin.py's does: the baseline of an exact expected failure, and the AOT check of a
+program whose opted-in IR and fresh oracle are byte-identical to the original's ("native-ir").
+tests-native never runs with GC stress, so --native-suite is refused with --gc-stress.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -130,7 +135,7 @@ def normalize_diagnostic(diagnostic, root):
     return diagnostic
 
 
-def one(case, root, overlay, temp, compiler, modes, timeout, allowed, gc_stress=False):
+def one(case, root, overlay, temp, compiler, modes, timeout, allowed, gc_stress=False, native=False):
     # Case-relative directories also prevent same-stem programs from sharing traces.
     case_temp = temp / Path(case).with_suffix("")
     case_temp.mkdir(parents=True)
@@ -146,7 +151,14 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed, gc_stress=
                   "failure": f"{case}: oracle exit {status}: {output.strip()}"}
     else:
         rows = []
+        # (tests-native runs without GC stress: a GC-stressed run executes every check)
+        same = (optin.native_ir(case, root, overlay, compiler, env, case_temp, timeout, modes, allowed)
+                if native and not gc_stress else None)
+        evidence["native_ir_sha256"] = same
         for mode in modes:
+            if mode == "aot" and same is not None:
+                rows.append({"case": case, "mode": mode, "result": "native-ir", "diagnostic": ""})
+                continue
             exception = allowed.get((case, mode))
             # Only a reviewed compiler rejection may redirect compiler streams. An
             # ordinary JIT case may deliberately write to /dev/full or receive SIGINT.
@@ -167,7 +179,10 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed, gc_stress=
             if exception is not None and not ok and rejected != b"1\n":
                 diagnostic += f"\nexpected one compiler exit 1 with only its exact diagnostic, recorded {rejected!r}"
             row = {"case": case, "mode": mode, "result": result, "diagnostic": diagnostic}
-            if not ok:
+            # (tests-native runs the unchanged program in this mode, but never with GC stress)
+            if not ok and native and not gc_stress and result == "expected-failure":
+                detail["baseline"] = "tests-native"
+            elif not ok:
                 base_status, base_output = optin.run(["sh", "tests/run.sh", compiler, mode, case], root, env, timeout)
                 base_ok, base_diagnostic = optin.harness_result(base_status, base_output, case)
                 detail["baseline"] = {"status": base_status, "output": base_output}
@@ -205,6 +220,9 @@ def validate_report(report, root=ROOT):
         raise ValueError("python-int report does not cover exactly its full corpus shard")
     if report.get("modes") != list(MODES) or report.get("gc_stress") is not False:
         raise ValueError("python-int report must execute normal-GC JIT and AOT")
+    native = report.get("native_suite")
+    if type(native) is not bool:
+        raise ValueError("python-int report must state whether it defers to tests-native")
     if report.get("python") != (root / ".python-version").read_text().strip():
         raise ValueError("python-int oracle version differs from pinned CPython")
     if not isinstance(report.get("compiler_sha256"), str) or not SHA256.fullmatch(report["compiler_sha256"]):
@@ -221,14 +239,16 @@ def validate_report(report, root=ROOT):
     rows = report.get("results")
     if not isinstance(rows, list) or len(rows) != len(expected) or report.get("failures") != []:
         raise ValueError("python-int results missing or contain failures")
-    passed = known = 0
+    passed = known = same = 0
     for row, (case, mode) in zip(rows, expected):
         if not isinstance(row, dict) or set(row) != {"case", "mode", "result", "diagnostic"}:
             raise ValueError("invalid python-int result row")
         if (row["case"], row["mode"]) != (case, mode):
             raise ValueError("python-int case/mode missing, duplicated or reordered")
         exception = allowed.get((case, mode))
-        if exception is None:
+        if exception is None and native and mode == "aot" and row["result"] == "native-ir" and row["diagnostic"] == "":
+            same += 1
+        elif exception is None:
             if row["result"] != "pass" or row["diagnostic"] != "":
                 raise ValueError(f"unexpected python-int failure: {case} ({mode})")
             passed += 1
@@ -237,7 +257,8 @@ def validate_report(report, root=ROOT):
                 raise ValueError(f"changed or obsolete python-int exception: {case} ({mode})")
             known += 1
     if (optin.positive_int(report.get("passed_checks"), "passed_checks") != passed or
-            optin.positive_int(report.get("expected_failures"), "expected_failures") != known):
+            optin.positive_int(report.get("expected_failures"), "expected_failures") != known or
+            optin.positive_int(report.get("native_ir_checks"), "native_ir_checks") != same):
         raise ValueError("python-int result counts disagree")
 
 
@@ -253,11 +274,15 @@ def main(argv=None):
     parser.add_argument("--keep", type=Path)
     parser.add_argument("--cases", nargs="+")
     parser.add_argument("--gc-stress", action="store_true")
+    parser.add_argument("--native-suite", action="store_true",
+                        help="defer to the same verification run's tests-native steps (see above)")
     args = parser.parse_args(argv)
     if (args.jobs < 1 or args.shard_count < 1 or not 0 <= args.shard_index < args.shard_count or
             not 0 < args.timeout < float("inf") or len(args.modes) != len(set(args.modes))):
         parser.error("invalid worker/shard/timeout/mode settings")
-    version = ".".join(map(str, sys.version_info[:3]))
+    if args.gc_stress and args.native_suite:
+        parser.error("--native-suite defers to tests-native, which never runs with GC stress: not with --gc-stress")
+    version =".".join(map(str, sys.version_info[:3]))
     if version != (ROOT / ".python-version").read_text().strip():
         parser.error("run with the exact CPython version pinned by .python-version")
     corpus = programs(ROOT)
@@ -294,7 +319,8 @@ def main(argv=None):
             parser.error(f"compiler/runtime warmup failed (exit {status}): {output}")
         with ThreadPoolExecutor(max_workers=args.jobs) as pool:
             futures = [pool.submit(one, case, ROOT, overlay, work, compiler, args.modes,
-                                   args.timeout, allowed, args.gc_stress) for case in selected]
+                                   args.timeout, allowed, args.gc_stress, native=args.native_suite)
+                       for case in selected]
             cases = []
             for case, future in zip(selected, futures):
                 try:
@@ -303,11 +329,8 @@ def main(argv=None):
                     result = {"case": case, "oracle": False, "results": [],
                               "failure": f"{case}: worker {type(error).__name__}: {error}"}
                 cases.append(result)
-                for row in result["results"]:
-                    if row["result"] != "pass":
-                        print(f"{row['result'].upper()} {row['case']} ({row['mode']}): {row['diagnostic']}", flush=True)
-                if not result["oracle"]:
-                    print("FAIL " + result["failure"], flush=True)
+                for line in optin.progress(result):
+                    print(line, flush=True)
         rows = [row for case in cases for row in case["results"]]
         failures = [case["failure"] for case in cases if not case["oracle"]]
         failures += [f"{row['case']} ({row['mode']}): {row['diagnostic']}" for row in rows if row["result"] == "fail"]
@@ -321,11 +344,12 @@ def main(argv=None):
         report = {"schema": 1, "kind": "python-int-gate", "pragma": PRAGMA.decode().strip(), "python": version,
                   "compiler": compiler, **identities, "corpus_cases": len(corpus),
                   "shard_index": args.shard_index, "shard_count": args.shard_count, "gc_stress": args.gc_stress,
-                  "modes": args.modes, "cases": selected, "subset": args.cases is not None,
-                  "oracle_cases": sum(case["oracle"] for case in cases),
+                  "modes": args.modes, "native_suite": args.native_suite, "cases": selected,
+                  "subset": args.cases is not None, "oracle_cases": sum(case["oracle"] for case in cases),
                   "expected_checks": len(selected) * len(args.modes), "completed_checks": len(rows),
                   "passed_checks": sum(row["result"] == "pass" for row in rows),
                   "expected_failures": sum(row["result"] == "expected-failure" for row in rows),
+                  "native_ir_checks": sum(row["result"] == "native-ir" for row in rows),
                   "failures": failures, "results": rows}
         if args.cases is None and args.modes == list(MODES) and not args.gc_stress and not failures:
             try:
@@ -339,6 +363,7 @@ def main(argv=None):
             shutil.copytree(overlay / "tests", args.keep / "tests", symlinks=True)
             shutil.copytree(work, args.keep / "evidence", symlinks=True, ignore=shutil.ignore_patterns("cache"))
     print(f"{len(selected)} programs, {report['completed_checks']} checks: {report['passed_checks']} passed, "
+          f"{report['native_ir_checks']} AOT checks of unchanged IR left to tests-native, "
           f"{report['expected_failures']} expected failures, {len(failures)} failures")
     return bool(failures)
 

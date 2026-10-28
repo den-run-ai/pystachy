@@ -656,10 +656,12 @@ def gen_scalar_read_value(self, n: Node) -> bool:
         return True
     if k == "name":
         return self.qtype(n.s) in ["int", "float", "bool"]
+    if k == "attr":
+        return self.plain_field(n) in ["int", "float", "bool"]
     if k == "index":
-        # Reading a known numeric list runs no user protocol. Keep the receiver
-        # a plain name: attributes and calls can evaluate user code before indexing.
-        return len(n.kids) == 2 and n.kids[0].kind == "name" and self.qtype(n.kids[0].s) in ["list[int]", "list[float]"] and self.scalar_read_index(n.kids[1])
+        # Reading a known numeric list or bytes runs no user protocol. Keep the receiver
+        # a plain name or plain field: other attributes and calls can run user code first.
+        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "list[float]", "bytes"] and self.scalar_read_index(n.kids[1])
     if k == "cmp":
         return all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(",")) and all(self.scalar_read_value(x) for x in n.kids)
     if k == "call":
@@ -678,14 +680,64 @@ def gen_scalar_read_index(self, n: Node) -> bool:
         return True
     if k == "name":
         return self.qtype(n.s) in ["int", "bool"]
+    if k == "attr":
+        return self.plain_field(n) in ["int", "bool"]
     if k == "index":
-        return len(n.kids) == 2 and n.kids[0].kind == "name" and self.qtype(n.kids[0].s) == "list[int]" and self.scalar_read_index(n.kids[1])
+        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "bytes"] and self.scalar_read_index(n.kids[1])
     if k == "cmp" or (k == "unary" and n.s == "not"):
         return self.scalar_read_value(n)
     if k == "call":
         return len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s in ["int", "bool"] and self.scalar_read_value(n)
     allowed = (k == "binop" and n.s in ["+", "-", "*", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~"])
     return allowed and all(self.scalar_read_index(x) for x in n.kids)
+
+
+def gen_plain_field(self, n: Node) -> str:
+    # The declared type of o.f, n, where o is a local or parameter of a class whose objects
+    # keep f as a plain instance field: reading it runs no code of the program (no property,
+    # method, __getattr__ or __getattribute__ in the class, its template or a subclass) and
+    # no comparison adapter; else "". Never infers a type.
+    if n.kind != "attr" or len(n.kids) != 1 or n.kids[0].kind != "name" or n.kids[0].s not in self.ltype:
+        return ""
+    return self.class_field(self.ltype[n.kids[0].s], n.s)
+
+
+def gen_class_field(self, c: str, f: str) -> str:
+    # plain_field's type of field f of an object of class c, else ""
+    if c not in self.classes or c in self.nts or c in self.curfn.cmptypes:
+        return ""
+    ci = self.classes[c]
+    if ci.exc != "" or f not in ci.ftypes or f not in ci.fpos or f in ci.fextra:
+        return ""
+    for sub in self.classes.values():
+        if self.derives(sub.name, c):
+            ms = self.classes[sub.origin].methods if sub.origin != "" and sub.origin in self.classes else sub.methods
+            if f in sub.methods or f in ms or "__getattr__" in ms or "__getattribute__" in ms or "__getattr__" in sub.methods or "__getattribute__" in sub.methods:
+                return ""
+    return ci.ftypes[f]
+
+
+def gen_scalar_receiver(self, n: Node) -> str:
+    # The type of a sequence that a proven scalar read may index: a plain name, or a plain
+    # field of one (plain_field), whose read runs no code of the program; else ""
+    if n.kind == "name":
+        return self.qtype(n.s)
+    return self.plain_field(n)
+
+
+def gen_seq_index(self, n: Node, msg: str) -> Val:
+    # The index n of a builtin sequence (bytes, str, list, Any tuple), which reads it as a
+    # number only: a proven scalar index tree (scalar_read_index) publishes no operand's
+    # object, as an arithmetic operand does not, so its variable and field reads need no
+    # identity snapshot. The sequence's own item read keeps its identity (list_read).
+    fn = self.fn
+    held = fn.scalar_reads
+    if not held and dynamic_program() and n.kind != "int" and self.scalar_read_index(n):
+        fn.scalar_reads = True
+    try:
+        return self.ival(n, msg)
+    finally:
+        fn.scalar_reads = held
 
 
 def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
@@ -2598,15 +2650,15 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
         o = self.kw_dict(o)  # (another key: looked up in the dict CPython makes)
         t = o.t
     if is_vtuple(t):
-        i = self.ival(n.kids[1], "TypeError: tuple indices must be integers or slices, not NoneType")
+        i = self.seq_index(n.kids[1], "TypeError: tuple indices must be integers or slices, not NoneType")
         o = self.unwrap(o, sub)
         return self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), targs(t)[0])
     if t == "bytes":
-        i = self.ival(n.kids[1], "TypeError: byte indices must be integers or slices, not NoneType")
+        i = self.seq_index(n.kids[1], "TypeError: byte indices must be integers or slices, not NoneType")
         o = self.unwrap(o, sub)
         return self.bytes_read(o, i)
     if is_list(t) or t == "str":
-        i = self.ival(n.kids[1], "TypeError: list indices must be integers or slices, not NoneType" if is_list(t) else "TypeError: string indices must be integers, not 'NoneType'")
+        i = self.seq_index(n.kids[1], "TypeError: list indices must be integers or slices, not NoneType" if is_list(t) else "TypeError: string indices must be integers, not 'NoneType'")
         o = self.unwrap(o, sub)
         if t == "str":
             return Val(self.rt("pys_str_get", "ptr", [f"ptr {o.v}", f"i64 {i.v}"]), "str")

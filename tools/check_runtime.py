@@ -115,12 +115,13 @@ BUG_ONLY = ("IndexError: string index out of range", "IndexError: compare out of
             "ValueError: byte must be in range(0, 256)", "ZeroDivisionError: integer division or modulo by zero",
             "ValueError: negative shift count", "OverflowError: cannot convert float infinity to integer",
             "ValueError: cannot convert float NaN to integer", "ValueError: math domain error")
-# the end of the program (R and N stand for it; running out of memory, oom, for A) and the
-# allocator (A), which I does not look into; gc_seg and gc_find read its page map for the
+# the end of the program (R and N stand for it; running out of memory, oom, for A; opt_in_trap
+# for a compiler bug, which no program reaches: runtime.c's opt_in) and the allocator (A), which I
+# does not look into; gc_seg and gc_find read its page map for the
 # header of the object that holds a str (pys_str_iadd's: its room, which a collection may
 # trim, and the mark that its copy writes), which no str's value depends on; atomic_items
 # reads the kind of a list's item array (scanned or not), which is fixed when the array is made
-END = RAISES | {"oom"}
+END = RAISES | {"oom", "opt_in_trap"}
 ALLOC = {"gc_slow", "pys_alloc", "pys_alloc_atomic", "gc_seg", "gc_find", "atomic_items"}
 # a collection, which A stands for: the allocator's (gc_slow), or pys_track's for the Python object
 # it counts as allocated
@@ -735,9 +736,9 @@ def main():
     named.update(pys.IRT.values())
     named.update(pys.FRT.values())
     named.update(f"llvm.{op}.with.overflow.i64" for op in pys.CHECKED.values())
-    # (not the pys_obj_ functions, which the program defines, nor the names of the compiler's
-    # own builtins, __pys_*, of which Gen.builtin calls two by their names without __)
-    named.update(s for s in re.findall(r"(?<!_)pys_[a-z0-9_]*[a-z0-9](?![\w{])", src) if not s.startswith("pys_obj_") and s not in pys.RTDATA)
+    # (not the pys_obj_ functions and pys_plain, which the program defines, nor the names of the
+    # compiler's own builtins, __pys_*, of which Gen.builtin calls two by their names without __)
+    named.update(s for s in re.findall(r"(?<!_)pys_[a-z0-9_]*[a-z0-9](?![\w{])", src) if not s.startswith("pys_obj_") and s != "pys_plain" and s not in pys.RTDATA)
     named.update(["pys_repr_enter", "pys_repr_leave"])
     named.update(f"pys_file_{a}" for a in ("closed", "name", "mode"))
     named.add("llvm.frameaddress.p0")

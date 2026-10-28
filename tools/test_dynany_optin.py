@@ -1,6 +1,8 @@
 """Fail-closed controls for the maintained dynamic Any opt-in sweep."""
+import contextlib
 import copy
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -217,12 +219,118 @@ class HarnessTests(unittest.TestCase):
             self.assertEqual(result["results"][0]["result"], "fail")
             self.assertIn("baseline also fails", result["results"][0]["diagnostic"])
 
+    def native_one(self, root, *, base_ir, optin_ir, oracle=b"1\n[exit 0]\n", allowed=None, jit_ok=True):
+        """one() with --native-suite: returns its result and the commands it ran."""
+        case = self.case
+        overlay, temp = root / "overlay", root / "work"
+        for tree, text in ((root, base_ir), (overlay, optin_ir)):
+            (tree / case).parent.mkdir(parents=True)
+            (tree / case).write_text("print(1)\n")
+            (tree / case).with_suffix(".ll").write_bytes(text)
+        (root / case).with_suffix(".out").write_bytes(b"1\n[exit 0]\n")
+        temp.mkdir()
+        commands = []
+
+        def mocked_run(command, cwd, env, timeout):
+            commands.append((command[1], Path(cwd)))
+            if command[1] == "tests/record.sh":
+                (overlay / case).with_suffix(".out").write_bytes(oracle)
+                return 0, "sample: [exit 0]\n"
+            if command[1] == "ir":
+                Path(command[-1]).write_bytes((Path(cwd) / case).with_suffix(".ll").read_bytes())
+                return 0, ""
+            if command[3] == "jit" and not jit_ok:
+                return 1, f"FAIL sample (jit)\n{case}:2: error: x\nselected 1 cases\n0 passed, 1 failed\n"
+            return 0, "selected 1 cases\n1 passed, 0 failed\n"
+        with mock.patch.object(sweep, "run", side_effect=mocked_run):
+            result = sweep.one(case, root, overlay, temp, "compiler", ["jit", "aot"], 5, allowed or {}, native=True)
+        return result, commands
+
+    def test_native_suite_skips_only_aot_of_byte_identical_ir_and_oracle(self):
+        overlay = lambda root: root / "overlay"  # noqa: E731
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result, commands = self.native_one(root, base_ir=b"same", optin_ir=b"same")
+            self.assertEqual([row["result"] for row in result["results"]], ["pass", "native-ir"])
+            self.assertEqual([c for c in commands if c[0] == "tests/run.sh"], [("tests/run.sh", overlay(root))])
+        for changes in ({"optin_ir": b"other"}, {"oracle": b"2\n[exit 0]\n"},
+                        {"allowed": {(self.case, "aot"): {"diagnostic": self.case + ":2: error: x"}}}):
+            with self.subTest(changes=changes), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                result, commands = self.native_one(root, **{"base_ir": b"same", "optin_ir": b"same", **changes})
+                self.assertNotIn("native-ir", [row["result"] for row in result["results"]])
+                self.assertIn(("tests/run.sh", overlay(root)), commands[-1:])
+
+    def test_native_suite_defers_only_the_baseline_of_an_exact_expected_failure(self):
+        diagnostic = self.case + ":2: error: x"
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(sweep, "rejection_status", return_value=b"1\n"):
+            root = Path(tmp)
+            result, commands = self.native_one(root, base_ir=b"a", optin_ir=b"b", jit_ok=False,
+                                               allowed={(self.case, "jit"): {"diagnostic": diagnostic}})
+            self.assertEqual(result["results"][0]["result"], "expected-failure")
+            # (the exact diagnostic stays, for the report's check against the manifest)
+            self.assertEqual(result["results"][0]["diagnostic"], diagnostic)
+            self.assertNotIn(("tests/run.sh", root), commands)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            result, commands = self.native_one(root, base_ir=b"a", optin_ir=b"b", jit_ok=False)
+            self.assertEqual(result["results"][0]["result"], "fail")
+            self.assertIn(("tests/run.sh", root), commands)  # (a real failure keeps its diagnostic baseline)
+
     def test_oracle_failure_does_not_run_compiler(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sweep, "run", return_value=(124, "timeout")) as run:
             result = sweep.one(self.case, Path(tmp), Path(tmp), Path(tmp), "compiler", ["jit"], 5, {})
             self.assertFalse(result["oracle"])
             self.assertEqual(result["results"], [])
             self.assertEqual(run.call_count, 1)
+
+
+class ProgressTests(unittest.TestCase):
+    CASE = "tests/programs/a/case.py"
+
+    def rows(self, *results):
+        return [{"case": self.CASE, "mode": mode, "result": result, "diagnostic": diagnostic}
+                for mode, result, diagnostic in results]
+
+    def test_native_ir_rows_are_counted_not_listed_as_failures(self):
+        deferred = {"case": self.CASE, "oracle": True,
+                    "results": self.rows(("jit", "pass", ""), ("aot", "native-ir", ""))}
+        self.assertEqual(sweep.progress(deferred), [])
+        failing = {"case": self.CASE, "oracle": True,
+                   "results": self.rows(("jit", "expected-failure", "x.py:1: error: no"), ("aot", "fail", "changed"))}
+        self.assertEqual(sweep.progress(failing), [f"EXPECTED-FAILURE {self.CASE} (jit): x.py:1: error: no",
+                                                   f"FAIL {self.CASE} (aot): changed"])
+        missing = {"case": self.CASE, "oracle": False, "results": [], "failure": f"{self.CASE}: oracle exit 1: x"}
+        self.assertEqual(sweep.progress(missing), [f"FAIL {self.CASE}: oracle exit 1: x"])
+
+    def test_main_prints_only_checks_that_neither_passed_nor_were_deferred(self):
+        cases = ["tests/programs/a/case0.py", "tests/programs/a/case1.py"]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tools").mkdir()
+            (root / "tests/programs/a").mkdir(parents=True)
+            for case in cases:
+                (root / case).write_text("print(1)\n")
+                (root / case).with_suffix(".out").write_text("1\n[exit 0]\n")
+            (root / sweep.MANIFEST).write_text('{"schema":1,"exceptions":[]}\n')
+            (root / ".python-version").write_text(".".join(map(str, sys.version_info[:3])) + "\n")
+
+            def one(case, *args, native=False):
+                second = ("aot", "native-ir", "") if case == cases[0] else ("aot", "fail", "changed")
+                return {"case": case, "oracle": True, "results": [
+                    {"case": case, "mode": mode, "result": result, "diagnostic": diagnostic}
+                    for mode, result, diagnostic in (("jit", "pass", ""), second)]}
+
+            with mock.patch.object(sweep, "ROOT", root), mock.patch.object(sweep, "programs", return_value=cases), \
+                 mock.patch.object(sweep, "one", side_effect=one), mock.patch.object(sweep, "run", return_value=(0, "")), \
+                 contextlib.redirect_stdout(io.StringIO()) as stdout:
+                status = sweep.main(["--compiler", sys.executable, "--report", str(root / "report.json"),
+                                     "--native-suite"])
+        self.assertTrue(status)
+        lines = stdout.getvalue().splitlines()
+        self.assertEqual(lines[:-1], [f"FAIL {cases[1]} (aot): changed"])
+        self.assertIn("1 AOT checks of unchanged IR left to tests-native", lines[-1])
 
 
 class ReportTests(unittest.TestCase):
@@ -242,9 +350,10 @@ class ReportTests(unittest.TestCase):
         selected = self.paths[1::2]
         self.report = {"schema": 1, "corpus_cases": 4, "corpus_sha256": sweep.corpus_digest(self.root, self.paths),
                        "exceptions_sha256": hashlib.sha256(self.manifest.read_bytes()).hexdigest(),
-                       "shard_index": 1, "shard_count": 2, "modes": ["jit", "aot"], "cases": selected, "subset": False,
+                       "shard_index": 1, "shard_count": 2, "modes": ["jit", "aot"], "native_suite": False,
+                       "cases": selected, "subset": False,
                        "oracle_cases": 2, "expected_checks": 4, "completed_checks": 4, "passed_checks": 4,
-                       "expected_failures": 0, "failures": [], "results": [
+                       "expected_failures": 0, "native_ir_checks": 0, "failures": [], "results": [
                            {"case": case, "mode": mode, "result": "pass", "diagnostic": ""}
                            for case in selected for mode in sweep.MODES]}
 
@@ -271,11 +380,34 @@ class ReportTests(unittest.TestCase):
             with self.subTest(report=report), self.assertRaises(ValueError):
                 sweep.validate_report(report, self.root)
         for key in ("schema", "shard_index", "shard_count", "corpus_cases", "oracle_cases", "expected_checks",
-                    "completed_checks", "passed_checks", "expected_failures"):
+                    "completed_checks", "passed_checks", "expected_failures", "native_ir_checks"):
             report = copy.deepcopy(self.report)
             report[key] = True
             with self.subTest(key=key), self.assertRaises(ValueError):
                 sweep.validate_report(report, self.root)
+
+    def test_native_ir_rows_only_for_aot_checks_deferred_to_tests_native(self):
+        deferred = copy.deepcopy(self.report)
+        deferred["native_suite"] = True
+        deferred["results"][1].update(result="native-ir")
+        deferred.update(passed_checks=3, native_ir_checks=1)
+        sweep.validate_report(deferred, self.root)
+        mutations = [lambda r: r.update(native_suite=False), lambda r: r.update(native_suite=1),
+                     lambda r: r.pop("native_suite"), lambda r: r.update(native_ir_checks=0),
+                     lambda r: r.update(passed_checks=4), lambda r: r["results"][1].update(diagnostic="x"),
+                     lambda r: r["results"][0].update(result="native-ir")]
+        for mutate in mutations:
+            report = copy.deepcopy(deferred)
+            mutate(report)
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                sweep.validate_report(report, self.root)
+        # An AOT exception is never satisfied by unchanged IR: the rejection must be observed.
+        entry = {"case": self.paths[1], "mode": "aot", "diagnostic": self.paths[1] + ":1: error: x",
+                 "reason": "r", "issue": "https://github.com/den-run-ai/pystachy/issues/1"}
+        self.manifest.write_text(json.dumps({"schema": 1, "exceptions": [entry]}))
+        deferred["exceptions_sha256"] = hashlib.sha256(self.manifest.read_bytes()).hexdigest()
+        with self.assertRaises(ValueError):
+            sweep.validate_report(deferred, self.root)
 
     def test_inputs_changed_during_execution_fail(self):
         digest = self.report["corpus_sha256"]

@@ -575,7 +575,7 @@ the first measurements, before the inline paths, in
   `python_int_class_inference.py` and `python_int_class_defaults.py`: regressions from the
   full-corpus opt-in review. Their explicit pragma also exercises the existing GC suites.
 - `make python-int-gate` (`tools/python_int_gate.py`): every case of `tests/programs` with the
-  comment, against a fresh pinned CPython recording, in both JIT and AOT. CI requires eight
+  comment, against a fresh pinned CPython recording, in both JIT and AOT. CI requires three
   complete shards. The reviewed manifest permits only exact compiler rejections, classified
   and linked to their remaining limitation; crashes, runtime errors, changed output, changed
   diagnostics and obsolete exceptions fail. See the [baseline review](reports/python-int-compatibility-2026-10-28.md)

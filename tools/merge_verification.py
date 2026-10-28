@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import importlib.util
 import json
 import math
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -16,20 +17,66 @@ import dynany_optin
 import python_int_gate
 
 ROOT = Path(__file__).resolve().parent.parent
-SUITE_STEPS = {"tests-cpython-0", "tests-cpython-1", "tests-cpython-2", "tests-native-0", "tests-native-1",
-               "tests-opt-off-0", "tests-opt-off-1", "runtime-cache", "python-free-0", "python-free-1",
-               "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
+SUITE_STEPS = {"tests-cpython", "tests-native-0", "tests-native-1", "tests-native-2",
+               "tests-opt-off-0", "tests-opt-off-1", "tests-opt-off-2", "runtime-cache", "python-free-0",
+               "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
                "gc-aot-2"}
 # Steps that run one of the disjoint shards of the corpus (tests/verify.sh shard_cases), and how many
 # shards their suite has: the name ends in the shard index.
 SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
-                 (("tests-cpython", 3), ("tests-native", 2), ("tests-opt-off", 2), ("python-free", 3),
-                  ("ubsan", 3), ("gc-jit", 2), ("gc-aot", 3))
+                 (("tests-native", 3), ("tests-opt-off", 3), ("python-free", 3),
+                  ("ubsan", 4), ("gc-ir", 2), ("gc-jit", 2), ("gc-aot", 3))
                  for index in range(count)}
+# The GC suites run their shards (halves in JIT, thirds in AOT) with program stress alone, compiled by
+# stage 2 unstressed, after the gc-ir halves have shown the stage-2 compiler collecting every
+# GC_COMPILER_INTERVAL allocations to compile every case to the same IR, messages and status. Each
+# runs a sample of its shard end to end with the compiler stressed too, first: the cases at positions
+# GC_SAMPLE_OFFSETS[mode] modulo GC_SAMPLE_EVERY of the shard as shard_cases lists it (tests/verify.sh)
 GC_STEPS = {"gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"}
+GC_IR_STEPS = ("gc-ir-0", "gc-ir-1")
+GC_COMPILER_INTERVAL = 1000
+GC_SAMPLE_EVERY = 16
+GC_SAMPLE_OFFSETS = {"jit": 4, "aot": 12}
 # The halves of tools/scaling.py's check (tests/verify.sh's SCALING_0 and the shapes it leaves)
 SCALING_STEPS = ("scaling-0", "scaling-1")
-PYTHON_INT_SHARDS = 8
+# The opt-in sweeps' shards (tests/verify.sh's dynany-optin-I and python-int-optin-I groups)
+DYNANY_SHARDS = 3
+PYTHON_INT_SHARDS = 3
+# tests-cpython runs one case in HOSTED_SAMPLE_OF end to end (tests/verify.sh's sample_cases: those at
+# positions 0 modulo HOSTED_SAMPLE_OF of the corpus in C order); it compares every case's IR, messages
+# and exit status with stage 2's
+HOSTED_SAMPLE_OF = 64
+# The kinds of program whose run takes the CPython-hosted driver past the IR along a path of its own
+# (tests/verify.sh's hosted_strata, which names the same kinds and tests them alike), of which
+# tests-cpython also runs one each end to end: a test of a program's path in the checkout
+HOSTED_STRATA = {
+    "sigint": lambda path: b"kill -INT" in path.read_bytes(),   # (it sends itself SIGINT)
+    "full": lambda path: path.with_suffix(".full").is_file(),   # (stdout /dev/full)
+    "in": lambda path: path.with_suffix(".in").is_file(),       # (stdin)
+    "path": lambda path: path.with_suffix(".path").is_file(),   # (PYSTACHY_PATH)
+    "ffi": lambda path: re.search(rb"(?m)^(import|from) ffi( |$)", path.read_bytes()) is not None,
+}
+
+
+def hosted_stratum(kind, case, root=ROOT):
+    """Is CASE a program of the corpus, in ROOT, of the hosted driver's path KIND (HOSTED_STRATA)?"""
+    if not isinstance(case, str) or not re.fullmatch(r"tests/programs/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.py", case):
+        return False
+    path = root / case
+    return path.is_file() and path.with_suffix(".out").is_file() and HOSTED_STRATA[kind](path)
+
+
+def hosted_sample(strata, root=ROOT):
+    """tests-cpython's end-to-end sample in ROOT (tests/verify.sh): the cases at positions 0 modulo
+    HOSTED_SAMPLE_OF of tests/corpus.sh's corpus, listed in C order as verify.sh lists it, and the
+    programs STRATA names, once each, in the corpus's order."""
+    cases = subprocess.run(["sh", "-c", ". tests/corpus.sh; LC_ALL=C; export LC_ALL; corpus"], cwd=root,
+                           env={**os.environ, "LC_ALL": "C"}, check=True, capture_output=True, text=True,
+                           timeout=60).stdout.splitlines()
+    if not cases:
+        raise ValueError(f"{root}: no case in the corpus")
+    wanted = set(cases[::HOSTED_SAMPLE_OF]) | set(strata.values())
+    return [case for case in cases if case in wanted]
 
 
 def parse_groups(text):
@@ -131,11 +178,16 @@ def validate_report(report, group, expected):
                     integer(step.get("program_gc_interval"), f"{label}.program_gc_interval") != 1 or
                     integer(step.get("mismatches"), f"{label}.mismatches") != 0):
                 raise ValueError(f"{label}: expected 3 programs, 540 cases including 90 parity cases, JIT/AOT with program GC stress, and no mismatches")
+        if step["name"] == "aot-dead-code":
+            if (integer(step.get("opt_in_symbols"), f"{label}.opt_in_symbols") != 7 or
+                    step.get("programs") != ["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"] or
+                    step.get("compilers") != ["CPython-hosted", "stage2"]):
+                raise ValueError(f"{label}: expected 7 symbol controls, plain/direct/imported opt-ins, and both compilers")
         if step["name"].startswith("dynany-optin-"):
             optin = step.get("optin")
             dynany_optin.validate_report(optin, root=ROOT)
             if (optin["shard_index"] != int(step["name"].rsplit("-", 1)[1]) or
-                    optin["shard_count"] != 4 or optin["modes"] != ["jit", "aot"]):
+                    optin["shard_count"] != DYNANY_SHARDS or optin["modes"] != ["jit", "aot"]):
                 raise ValueError(f"{label}: wrong dynamic Any shard or modes")
         if step["name"].startswith("python-int-optin-"):
             optin = step.get("python_int_optin")
@@ -145,11 +197,72 @@ def validate_report(report, group, expected):
                     optin["gc_stress"] is not False):
                 raise ValueError(f"{label}: wrong promoting-int shard, modes or GC setting")
         if step["name"] in GC_STEPS:
+            # program stress alone (tests_compiler_interval 0) on the shard's other cases, and its sample
+            # with the compiler's too: as many cases as positions OFFSET modulo EVERY in the shard, all of
+            # them run, and with the others as many as the shard holds
             mode = "jit" if step["name"].startswith("gc-jit") else "aot"
             if (step.get("modes") != [mode] or
-                    integer(step.get("tests_compiler_interval"), f"{label}.tests_compiler_interval", 1) != 1000 or
+                    integer(step.get("tests_compiler_interval"), f"{label}.tests_compiler_interval") != 0 or
                     integer(step.get("tests_interval"), f"{label}.tests_interval", 1) != 1):
                 raise ValueError(f"{label}: wrong GC stress mode or intervals")
+            sample = step.get("stressed_sample")
+            if not isinstance(sample, dict):
+                raise ValueError(f"{label}: missing the sample run with the compiler GC-stressed")
+            offset = GC_SAMPLE_OFFSETS[mode]
+            shard_cases = integer(step.get("shard_cases"), f"{label}.shard_cases", 1)
+            if (integer(sample.get("every"), f"{label}.stressed_sample.every", 1) != GC_SAMPLE_EVERY or
+                    integer(sample.get("offset"), f"{label}.stressed_sample.offset") != offset or
+                    integer(sample.get("cases"), f"{label}.stressed_sample.cases", 1) !=
+                    len(range(offset, shard_cases, GC_SAMPLE_EVERY)) or
+                    integer(step.get("cases"), f"{label}.cases", 1) + sample["cases"] != shard_cases or
+                    integer(sample.get("tests_compiler_interval"), f"{label}.stressed_sample.tests_compiler_interval",
+                            1) != GC_COMPILER_INTERVAL or
+                    integer(sample.get("tests_interval"), f"{label}.stressed_sample.tests_interval", 1) != 1 or
+                    integer(sample.get("passed"), f"{label}.stressed_sample.passed") !=
+                    integer(sample.get("expected"), f"{label}.stressed_sample.expected", 1) or
+                    integer(sample.get("failed"), f"{label}.stressed_sample.failed") != 0 or
+                    sample.get("failures") != []):
+                raise ValueError(f"{label}: the sample must be the shard's cases at positions {offset} modulo "
+                                 f"{GC_SAMPLE_EVERY}, the program-stressed run its others, and the sample must run "
+                                 f"completely with the compiler collecting every {GC_COMPILER_INTERVAL} allocations")
+        if step["name"] in GC_IR_STEPS:
+            if (step.get("ir_identical") is not True or step.get("runtime_identical") is not True or
+                    step.get("reference") != "stage2" or
+                    integer(step.get("compiler_interval"), f"{label}.compiler_interval", 1) != GC_COMPILER_INTERVAL or
+                    integer(step.get("ir_cases"), f"{label}.ir_cases", 1) < 1 or
+                    integer(step.get("check_cases"), f"{label}.check_cases") < 0 or
+                    step.get("check_identical") is not True):
+                raise ValueError(f"{label}: the compiler collecting every {GC_COMPILER_INTERVAL} allocations must "
+                                 "compile its half of the corpus and runtime.py as stage 2 does")
+        if step["name"] == "tests-cpython":
+            # Every case compiled alike by both compilers, every syntax case checked alike, and the
+            # sample's end-to-end checks (counted below as a suite step's)
+            sources = report.get("sources") if isinstance(report.get("sources"), dict) else {}
+            if (step.get("ir_identical") is not True or step.get("reference") != "stage2" or
+                    integer(step.get("ir_cases"), f"{label}.ir_cases", 1) !=
+                    integer(sources.get("corpus_cases"), f"{group}.sources.corpus_cases", 1) or
+                    integer(step.get("check_cases"), f"{label}.check_cases", 1) !=
+                    integer(sources.get("syntax_cases"), f"{group}.sources.syntax_cases", 1) or
+                    step.get("modes") != ["jit", "aot"] or
+                    integer(step.get("sample_index"), f"{label}.sample_index") != 0 or
+                    integer(step.get("sample_count"), f"{label}.sample_count", 1) != HOSTED_SAMPLE_OF or
+                    step.get("check_identical") is not True):
+                raise ValueError(f"{label}: the CPython-hosted compiler must match stage 2 on every case "
+                                 f"and run shard 0 of {HOSTED_SAMPLE_OF} end to end, JIT and AOT")
+            # (the sample, whose checks the step's count holds, includes a program of each kind)
+            sample, strata = step.get("sample"), step.get("sample_strata")
+            if (not isinstance(sample, list) or not all(isinstance(case, str) for case in sample) or
+                    len(set(sample)) != len(sample) or
+                    integer(step.get("sample_cases"), f"{label}.sample_cases", 1) != len(sample) or
+                    not isinstance(strata, dict) or set(strata) != set(HOSTED_STRATA) or
+                    not all(case in sample and hosted_stratum(kind, case) for kind, case in strata.items())):
+                raise ValueError(f"{label}: the end-to-end sample must hold a program of each kind "
+                                 f"{', '.join(HOSTED_STRATA)} of this checkout's corpus")
+            # (and the rest of it: this checkout's cases of shard 0 of HOSTED_SAMPLE_OF, in the corpus's order)
+            if sample != hosted_sample(strata):
+                raise ValueError(f"{label}: the end-to-end sample must be this checkout's cases at positions 0 "
+                                 f"modulo {HOSTED_SAMPLE_OF} of its corpus in C order and the program of each "
+                                 "kind, once each, in the corpus's order")
         if step["name"] in SHARDED_STEPS and (
                 integer(step.get("shard_index"), f"{label}.shard_index") != int(step["name"][-1]) or
                 integer(step.get("shard_count"), f"{label}.shard_count", 1) != SHARDED_STEPS[step["name"]]):
@@ -217,8 +330,7 @@ def merge_reports(directory, groups, expected_commit=None):
     # same in every report: see the identities below), opt-off's once per PYSTACHY_OPT setting. The
     # group kind-I runs shard I of its suite step, of as many as SHARDED_STEPS gives that step.
     suite = reports[wanted[0]]["sources"]["suite_checks"]
-    for kind, prefix, what in (("hosted", "tests-cpython", "CPython-hosted"), ("native", "tests-native", "native"),
-                               ("opt-off", "tests-opt-off", "opt-off"),
+    for kind, prefix, what in (("native", "tests-native", "native"), ("opt-off", "tests-opt-off", "opt-off"),
                                ("python-free", "python-free", "python-free")):
         count = SHARDED_STEPS[f"{prefix}-0"]
         shards = [reports[f"{kind}-{index}"]["steps"][-1] for index in range(count) if f"{kind}-{index}" in reports]
@@ -234,14 +346,39 @@ def merge_reports(directory, groups, expected_commit=None):
         if sum(shard["expected"] for shard in shards) != suite * runs:
             raise ValueError(f"{what} shards must cover the same full-suite check count as the corpus")
     # The shards of a GC suite, which runs in one mode, make as many as the corpus has in one mode
-    # (sources.mode_checks), and the UBSan thirds, which run in both modes one at a time, twice as many.
+    # (sources.mode_checks), their stressed samples included, and hold as many cases as it does
+    # (sources.corpus_cases); the UBSan quarters, which run in both modes one at a time, twice as many.
     mode_checks = reports[wanted[0]]["sources"]["mode_checks"]
+
+    def checks(group):
+        step = reports[group]["steps"][-1]
+        return step["expected"] + (step["stressed_sample"]["expected"] if step["name"] in GC_STEPS else 0)
     for shards, runs, what in ((("gc-jit-0", "gc-jit-1"), 1, "GC JIT"),
                                (("gc-aot-0", "gc-aot-1", "gc-aot-2"), 1, "GC AOT"),
-                               (("ubsan-0", "ubsan-1", "ubsan-2"), 2, "UBSan")):
-        if (all(group in reports for group in shards) and
-                sum(reports[group]["steps"][-1]["expected"] for group in shards) != mode_checks * runs):
+                               (("ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"), 2, "UBSan")):
+        if not all(group in reports for group in shards):
+            continue
+        if sum(checks(group) for group in shards) != mode_checks * runs:
             raise ValueError(f"{what} shards must cover the same full-suite check count as the corpus")
+        if what.startswith("GC") and (
+                sum(reports[group]["steps"][-1]["shard_cases"] for group in shards) !=
+                integer(reports[wanted[0]]["sources"].get("corpus_cases"), "sources.corpus_cases", 1)):
+            raise ValueError(f"{what} shards must hold every corpus case between them")
+    # The gc-ir halves compile every case of the corpus once with the stressed compiler (by count:
+    # shard_cases's halves are disjoint) and check every syntax case, which the GC suites, compiled
+    # by stage 2 unstressed, rely on: a contract without them cannot drop them either.
+    gc_ir = [step for report in reports.values() for step in report["steps"] if step["name"] in GC_IR_STEPS]
+    gc_suites = [step["name"] for report in reports.values() for step in report["steps"] if step["name"] in GC_STEPS]
+    if gc_ir or gc_suites:
+        sources = reports[wanted[0]]["sources"]
+        if (sorted(step["name"] for step in gc_ir) != list(GC_IR_STEPS) or
+                sum(step["ir_cases"] for step in gc_ir) !=
+                integer(sources.get("corpus_cases"), "sources.corpus_cases", 1) or
+                sum(step["check_cases"] for step in gc_ir) !=
+                integer(sources.get("syntax_cases"), "sources.syntax_cases", 1)):
+            raise ValueError(f"{(gc_suites or ['gc-ir'])[0]}: the gc-ir halves must compile every corpus case "
+                             f"once, and check every syntax case, with the compiler collecting every "
+                             f"{GC_COMPILER_INTERVAL} allocations")
     halves = {step["name"]: step["shapes"] for report in reports.values() for step in report["steps"]
               if step["name"] in SCALING_STEPS}
     if len(halves) == len(SCALING_STEPS):
@@ -252,13 +389,26 @@ def merge_reports(directory, groups, expected_commit=None):
                    if step["name"].startswith("python-int-optin-")]
     if int_reports:
         if len(int_reports) != PYTHON_INT_SHARDS:
-            raise ValueError("promoting-int compatibility requires all eight shards")
+            raise ValueError(f"promoting-int compatibility requires all {PYTHON_INT_SHARDS} shards")
         if len({report["compiler_sha256"] for report in int_reports}) != 1:
             raise ValueError("promoting-int compiler identity differs between shards")
         expected_pairs = {(case, mode) for case in python_int_gate.programs(ROOT) for mode in ("jit", "aot")}
         pairs = [(row["case"], row["mode"]) for report in int_reports for row in report["results"]]
         if len(pairs) != len(expected_pairs) or set(pairs) != expected_pairs:
             raise ValueError("promoting-int shards must cover every corpus case and mode exactly once")
+    # An opt-in sweep run with --native-suite left the baselines of its exact expected failures and
+    # the AOT checks of byte-identical IR ("native-ir") to tests-native: require its full suite,
+    # JIT and AOT with the stage-2 compiler, whatever shards it runs in.
+    deferring = [step["name"] for report in reports.values() for step in report["steps"]
+                 if (step["name"].startswith("dynany-optin-") and step["optin"]["native_suite"]) or
+                 (step["name"].startswith("python-int-optin-") and step["python_int_optin"]["native_suite"])]
+    if deferring:
+        native = [step for report in reports.values() for step in report["steps"]
+                  if step["name"].startswith("tests-native")]
+        if (not native or sum(step["expected"] for step in native) != suite or
+                any(step.get("compiler") != "stage2" or step.get("modes") != ["jit", "aot"] or
+                    step.get("passed") != step["expected"] or step.get("failed") != 0 for step in native)):
+            raise ValueError(f"{deferring[0]}: defers to tests-native, whose complete stage-2 JIT and AOT suite is missing")
     first = reports[wanted[0]]
     commit = first["git"]["commit"]
     if expected_commit is not None and commit != expected_commit:
