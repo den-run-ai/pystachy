@@ -1,0 +1,9 @@
+7
+__int__ returned non-int (type list)
+1.25
+MixedFloat.__float__ returned non-float (type list)
+1
+__index__ returned non-int (type NoneType)
+1.0
+__index__ returned non-int (type NoneType)
+[exit 0]

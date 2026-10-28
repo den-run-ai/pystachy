@@ -1407,7 +1407,7 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
     if op == "**" and cur.t in self.classes:
         if "__ipow__" in self.classes[cur.t].methods:
             b = self.expr(rhs, cur.t)
-            if self.isnum(b.t):
+            if self.isnum(b.t) or b.t == BIG:
                 self.none_operand("**=", cur, b)
                 return self.call_fn(self.classes[cur.t].methods["__ipow__"], [cur], [self.vnode(b)])
             return self.arith(op, cur, b, "**=")  # (retain the object/reflected-power diagnostic)

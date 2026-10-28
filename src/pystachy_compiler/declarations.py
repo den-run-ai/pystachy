@@ -2,8 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
-from src.pystachy_compiler.bigints import PROMOTES, narrowed
-from src.pystachy_compiler.diagnostics import Rejoin, shown, where
+from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
+from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
@@ -91,6 +91,12 @@ def gen_ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
         ts = [x.replace(BIGOPT, "opt[int]") for x in ts]
     elif not (base == "opt" and ts == [BIG]):
         ts = [x.replace(BIG, "int") for x in ts]
+    if int_lists() and (base == "callable" or "callable[" in "".join(ts)):
+        # (but for a Callable's parameters and result that are ints or int | None, in a program
+        # whose containers hold promoting ints: promoting ints, one signature in every module and
+        # in any type that holds it, which an adapter converts to and from a function's, checked
+        # where it takes a 64-bit int)
+        ts = targs(callable_ints(base + "[" + ",".join(ts) + "]")) if base == "callable" else [callable_ints(x) for x in ts]
     if canon and base == "list" and len(ts) == 1 and any_item(ts[0]):
         # a list of Any values or Any containers is a list[Any], whose items are boxes, and so is a
         # dict's of them a dict[Any, Any], keys boxed too: so it becomes an Any value, and an Any
@@ -1666,7 +1672,7 @@ def gen_declare_fields(self, ci: ClassInfo) -> None:
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
             t = self.guess(st.kids[1], FnInfo("", "", ci.node, ""))
             bt = self.classes[ci.base].ftypes.get(st.kids[0].s, "") if ci.base in self.classes else ""
-            if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt)):
+            if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
             if t == "" and ci.mod == "":
                 self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: T = ...)")
@@ -2410,9 +2416,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return a
         if e.s == "+" and a.startswith("tuple[") and b.startswith("tuple["):
             return self.ctype("tuple", targs(a) + targs(b))
-        if e.s == "*" and (is_list(a) or a == "str") and (b == "int" or b == "bool"):
+        if e.s == "*" and (is_list(a) or a == "str") and b in ["int", "bool", BIG]:
             return a  # [n] * n
-        if e.s == "*" and (is_list(b) or b == "str") and (a == "int" or a == "bool"):
+        if e.s == "*" and (is_list(b) or b == "str") and a in ["int", "bool", BIG]:
             return b
     return ""
 

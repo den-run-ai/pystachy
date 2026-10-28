@@ -2158,11 +2158,86 @@ def gen_dyn_contains(self, o: Val, k: Val) -> Val:
 
 
 def gen_dyn_int(self, v: Val) -> Val:
-    return Val(self.rt("pys_dyn_int_of", "i64", [f"ptr {v.v}"]), "int")
+    return self.dyn_call(self.dyn_dispatcher("int", [DYN], "int", "__int__"), [v])
 
 
 def gen_dyn_float(self, v: Val) -> Val:
-    return Val(self.rt("pys_dyn_float_of", "double", [f"ptr {v.v}"]), "float")
+    return self.dyn_call(self.dyn_dispatcher("float", [DYN], "float", "__float__"), [v])
+
+
+def index_value(self, v: Val) -> Val:
+    # Keep non-index values unchanged: the consumer supplies its own error, and a
+    # dict or user-defined __getitem__ must receive the original key instead.
+    return self.dyn_call(self.dyn_dispatcher("index", [DYN], DYN, "__index__"), [v])
+
+
+def numeric_result(self, r: Val, method: str, owner: str) -> Val:
+    # Protocol results are checked, not converted: __float__ returning an int is
+    # an error, and __int__/__index__ must not recursively convert another object.
+    want = "float" if method == "__float__" else "int"
+    name = short(owner) + "." + method if method == "__float__" else method
+    allowed = ["float"] if want == "float" else ["int", "bool"]
+    r = self.unwrap(r, f"TypeError: {name} returned non-{want} (type NoneType)")
+    if is_union(r.t):
+        # Invalid typed-container members must raise only when selected. Boxing
+        # the whole union would reject otherwise valid numeric return paths.
+        ms = umembers(r.t)
+        if len([m for m in ms if m in self.classes]) > 0:
+            self.guard(self.ptr_cmp("==", r, Val("null", "None")).v, f"TypeError: {name} returned non-{want} (type NoneType)")
+        end = self.label()
+        ph = Ins("phi", want, "")
+        for j in range(len(ms)):
+            hit = self.label()
+            miss = self.label() if j + 1 < len(ms) else ""
+            if miss == "":
+                self.br(hit)
+            else:
+                self.cbr(self.utest(r, [ms[j]], False), hit, miss)
+            self.place(hit)
+            value = numeric_result(self, self.uget(r, ms[j]), method, owner)
+            if not self.term:
+                self.incoming(ph, value.v, self.cur)
+                self.br(end)
+            if miss != "":
+                self.place(miss)
+        if len(ph.a) == 0:
+            return Val("undef", want)
+        self.place(end)
+        return Val(self.phi(ph), want)
+    if r.t == DYN:
+        good = self.label()
+        bad = self.label()
+        self.cbr(self.dyn_test(r, allowed), good, bad)
+        self.place(bad)
+        msg = self.concat([Val(self.sconst(f"{name} returned non-{want} (type "), "str"), self.dyn_type_name(r), Val(self.sconst(")"), "str")])
+        self.raise_("TypeError", msg.v)
+        self.place(good)
+        return self.dyn_payload(r, want)
+    if want == "int" and r.t == BIG:
+        # An imported promoting-int method meets the existing 64-bit Any
+        # boundary here, just as an int+ flowing into dynamic storage does.
+        return self.as_int(r)
+    if r.t not in allowed:
+        self.notnone(r, f"TypeError: {name} returned non-{want} (type NoneType)")
+        self.raise_("TypeError", self.sconst(f"{name} returned non-{want} (type {tname(r.t)})"))
+        return Val("0.0" if want == "float" else "0", want)
+    return r if want == "float" else self.as_int(r)
+
+
+def sequence_index(self, o: Val, k: Val) -> Val:
+    # Only builtin sequences convert their index; a dict keeps its key. CPython
+    # converts tuple/str indices even before rejecting assignment or deletion.
+    hit = self.label()
+    end = self.label()
+    ph = Ins("phi", DYN, "")
+    self.incoming(ph, k.v, self.cur)
+    self.cbr(self.dyn_test(o, ["list[dyn]", "vtuple[dyn]", "str"]), hit, end)
+    self.place(hit)
+    converted = index_value(self, k)
+    self.incoming(ph, converted.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), DYN)
 
 
 def gen_dyn_type_module(self, v: Val) -> Val:
@@ -2174,6 +2249,11 @@ def gen_dyn_bound(self, v: Val, bound: bool) -> str:
     # a typed sequence's slice's bound (or, not bound, its step) that is an Any value (slice_dyn):
     # an int's or a bool's value, None as an omitted one, else CPython's TypeError; a given bound of
     # -2**63 is -2**63 + 1, as slice_bound clamps it (runtime.c's dbound for an Any value's slice)
+    return index_bound(self, index_value(self, v), bound)
+
+
+def index_bound(self, v: Val, bound: bool) -> str:
+    # Validate an already-converted bound without calling its protocol again.
     none = self.dyn_test(v, ["None"])
     ok = self.scalar("or", [Val(none, "bool"), Val(self.dyn_test(v, ["int", "bool"]), "bool")])
     self.guard(self.scalar("xor", [Val(ok, "bool"), Val("true", "bool")]), "TypeError: slice indices must be integers or None or have an __index__ method")
@@ -2447,6 +2527,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         return "__bool__" in ci.methods or "__len__" in ci.methods
     if key == "str":
         return "__str__" in ci.methods or "__repr__" in ci.methods
+    if key == "int" or key == "float":
+        return dunder in ci.methods or "__index__" in ci.methods
     if key.startswith("iop"):
         return ("__i" + dunder[2:]) in ci.methods or dunder in ci.methods
     return dunder in ci.methods
@@ -2557,14 +2639,22 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         self.xtry = ""
         self.ret_(Val(self.select(condition, Val("1", "int"), Val("0", "int")), "int"))
         return
-    if key == "un3":
+    if key == "int" or key == "float":
+        if dunder not in self.classes[x.t].methods:
+            dunder = "__index__"
+    if key in ["un3", "int", "float", "index"]:
         fm = self.classes[x.t].methods[dunder]
         own = 0 if fm.deco != "" else 1
         if fm.bad == "" and len(fm.defaults) >= len(fm.params) and not self.dyn_takes(fm, own, len(an)):
-            # A boxed class's abs signature must fail only if this arm is selected,
+            # A boxed class's protocol signature fails only if this arm is selected,
             # after the operand has been evaluated, as an ordinary dynamic call does.
             self.raise_("TypeError", self.sconst(self.dyn_arity(fm, own, len(an))))
             return
+    if key in ["int", "float", "index"]:
+        r = numeric_result(self, self.expr(mk("call", "", line, [mk("attr", dunder, line, [xn])]), ""), dunder, x.t)
+        if not self.term:
+            self.dyn_return(f, self.as_float(r) if key == "float" else r)
+        return
     if key.startswith("get."):
         r = self.expr(mk("attr", key[4:], line, [xn]), "")
     elif key.startswith("set."):
@@ -2906,9 +2996,30 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(dyn_hint_result(self, o, False))
     elif key == "lengthhint":
         self.ret_(Val("-1", "int"))
+    elif key == "int":
+        self.ret_(Val(self.rt("pys_dyn_int_of", "i64", [f"ptr {o.v}"]), "int"))
+    elif key == "float":
+        self.ret_(Val(self.rt("pys_dyn_float_of", "double", [f"ptr {o.v}"]), "float"))
+    elif key == "index":
+        self.ret_(o)
     elif key == "module":
         self.ret_(Val(self.sconst("builtins"), "str"))
     elif key == "slice":
+        hit = self.label()
+        rest = self.label()
+        self.cbr(self.dyn_test(o, ["list[dyn]", "vtuple[dyn]", "str"]), hit, rest)
+        self.place(hit)
+        # All expressions were evaluated by the caller. Convert the step first,
+        # reject zero before either bound, then convert start and stop in order.
+        step = index_value(self, ps[3])
+        st = Val(index_bound(self, step, False), "int")
+        self.guard(self.num_cmp("==", st, Val("0", "int")).v, "ValueError: slice step cannot be zero")
+        lo = index_value(self, ps[1])
+        index_bound(self, lo, True)
+        hi = index_value(self, ps[2])
+        index_bound(self, hi, True)
+        self.ret_(Val(self.rt("pys_dyn_slice", "ptr", [f"ptr {o.v}", f"ptr {lo.v}", f"ptr {hi.v}", f"ptr {step.v}"]), DYN))
+        self.place(rest)
         self.ret_(Val(self.rt("pys_dyn_slice", "ptr", [f"ptr {o.v}", f"ptr {ps[1].v}", f"ptr {ps[2].v}", f"ptr {ps[3].v}"]), DYN))
     elif key == "format":
         # str() for an empty spec, as object.__format__ and the builtin types' give; else a number's
@@ -2921,12 +3032,15 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.place(some)
         self.ret_(Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(o), f"ptr {self.sconst('A')}", f"ptr {ps[1].v}"]), "str"))
     elif key == "getitem":
-        self.ret_(Val(self.rt("pys_dyn_getitem", "ptr", [f"ptr {o.v}", f"ptr {ps[1].v}"]), DYN))
+        k = sequence_index(self, o, ps[1])
+        self.ret_(Val(self.rt("pys_dyn_getitem", "ptr", [f"ptr {o.v}", f"ptr {k.v}"]), DYN))
     elif key == "setitem":
-        self.rt("pys_dyn_setitem", "void", [f"ptr {o.v}", f"ptr {ps[1].v}", f"ptr {ps[2].v}"])
+        k = sequence_index(self, o, ps[1])
+        self.rt("pys_dyn_setitem", "void", [f"ptr {o.v}", f"ptr {k.v}", f"ptr {ps[2].v}"])
         self.ret_(Val("null", "None"))
     elif key == "delitem":
-        self.rt("pys_dyn_delitem", "void", [f"ptr {o.v}", f"ptr {ps[1].v}"])
+        k = sequence_index(self, o, ps[1])
+        self.rt("pys_dyn_delitem", "void", [f"ptr {o.v}", f"ptr {k.v}"])
         self.ret_(Val("null", "None"))
     elif key == "contains":
         self.ret_(self.num_cmp("!=", Val(self.rt("pys_dyn_contains", "i64", [f"ptr {o.v}", f"ptr {ps[1].v}"]), "int"), Val("0", "int")))
@@ -3343,18 +3457,19 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
 
 
 def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
-    # json.loads() or json.dumps() (name: json$loads, json$dumps) in a module that compiles Any as
+    # json.loads(), json.dumps(), or the native _raw_decode adapter in an opt-in module:
     # dyn: lib's function of Any values (JSONANY, which the loader adds to a program that has such
     # a module and json) where the document is Any values, so that loads() decodes it into Any's
     # containers and dumps() encodes those as the objects they are, with no copy (#779); else
-    # None, json's own function of JSONValue. loads() where its result becomes Any storage (want
+    # None, json's own function of JSONValue. _raw_decode explicitly requests Any storage;
+    # loads() where its result becomes Any storage (want
     # holds Any values); dumps() where its argument does, or is a list, dict or tuple display or a
     # list or dict comprehension, which is then Any's
     q = JSONANY + "$" + name[name.find("$") + 1 :]
     if q not in self.funcs:
         return None
-    if name == "json$loads":
-        if not holds_dyn(want):
+    if name == "json$loads" or name == "json$_raw_decode":
+        if name == "json$loads" and not holds_dyn(want):
             return None
         self.add(Ins("init", "", JSONANY))  # (its module's code, as an import runs it: nothing imports it)
         return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)

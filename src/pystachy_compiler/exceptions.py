@@ -775,15 +775,24 @@ def gen_unicode_error(self, name: str, vals: list[Val]) -> list[str]:
     want = ["str", "bytes" if dec else "str", "int", "int", "str"]
     for i in range(5):
         # (CPython's TypeErrors)
-        if (vals[i].t if vals[i].t != "bool" else "int") == want[i]:
+        if ("int" if vals[i].t == "bool" or vals[i].t == BIG else vals[i].t) == want[i]:
             continue
         if i == 1 and dec:
             self.err(f"a bytes-like object is required, not '{tname(vals[i].t)}'")
         if i == 2 or i == 3:
             self.err(f"'{tname(vals[i].t)}' object cannot be interpreted as an integer")
         self.err(f"argument {i + 1} must be {want[i]}, not {tname(vals[i].t)}")
+    bounds: list[Val] = []
+    for i in [2, 3]:
+        v = vals[i]
+        if v.t == BIG:
+            self.guard(self.scalar("xor", [Val(self.big_fits([v]), "bool"), Val("true", "bool")]),
+                       "OverflowError: Python int too large to convert to C ssize_t")
+            bounds.append(self.big_lo(v))
+        else:
+            bounds.append(self.as_int(v))
     msg = self.rt("pys_unicode_error_str", "ptr", [f"i64 {1 if dec else 0}", f"ptr {vals[0].v}", f"ptr {vals[1].v}",
-                                                   f"i64 {self.as_int(vals[2]).v}", f"i64 {self.as_int(vals[3]).v}", f"ptr {vals[4].v}"])
+                                                   f"i64 {bounds[0].v}", f"i64 {bounds[1].v}", f"ptr {vals[4].v}"])
     args = self.rt("pys_str_slice", "ptr", [f"ptr {self.repr(self.tuple_(vals)).v}", "i64 1", "i64 -1"])
     return [msg, args]
 

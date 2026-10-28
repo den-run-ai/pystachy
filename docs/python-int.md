@@ -39,6 +39,12 @@ print(int("123456789012345678901234567890") % 97)  # 52
   variable) is a promoting int, and so is a location without an annotation that receives one:
   the function is compiled again with it promoting, as a [join](language/typing.md) widens
   other types. A literal that fits is a 64-bit int until it meets one.
+  Ordinary functions whose unannotated locals widen from 64-bit to promoting ints can retry
+  just their own body once, including locals receiving a `Callable` or generic class result
+  in a module without the comment. This avoids reloading and compiling unrelated code.
+  Other pending joins, captured locals, generators, recursive return inference and newly
+  materialized dependencies retain the whole-program retry. The retry changes no integer
+  policy or annotated boundary; `tools/test_python_int_retry.py` checks its pass counts.
 - A `bool` stays a `bool`, as in a module that does not opt in: one returned or stored as an
   `int` (a variable, a field, a tuple's item), or given by a conditional expression, `and`, `or`,
   `min()` or `max()` that may give an int is rejected during compilation (CPython keeps the
@@ -151,6 +157,31 @@ print(int("123456789012345678901234567890") % 97)  # 52
   without a key: their functions read a list's ints, also in its tuples, and a generator's values
   as a module that opts in does (`specs.READ_HELPERS`), and their results are those promoting ints.
   Their own ints, positions and counts, stay 64-bit.
+- `collections.Counter` counts with promoting ints, in every module of the program: its counts,
+  past 64 bits too, are stored, read, added and subtracted (`update()`, `subtract()`, `+`, `-`,
+  `|`, `&` and the others), totalled and ordered by `most_common()` as CPython's are. Its
+  definitions compile as those of a module that opts in do (`specs.INT_HELPERS`); its keys are those
+  of its type variable (below).
+- A generic class's type variable that an int binds, by an annotation (`Box[int]`) or by a call's
+  argument (`Box(1)`, `Box(2 ** 70)`), in any module of a program where a module opts in and none
+  opts in to [dynamic `Any`](dynamic-any.md), is bound to a promoting int: the class's
+  specializations for ints are one class, whose fields, parameters, results and containers of the
+  type variable hold promoting ints, also those of `lib/`'s `deque`, `defaultdict` and
+  `OrderedDict`, a `Counter`'s keys and the results that `functools.cache` and `lru_cache` keep. The
+  methods of such a specialization read the ints of their containers as a module that opts in does
+  (`bigints.read_policy`). A class whose `__init__` leaves a parameter unannotated (a class
+  template, specialized by each call's types) and a generic function keep the ints of their own
+  module, and where a module opts in to dynamic `Any`, whose values do not hold promoting ints, a
+  call's argument binds the type it has (an int that fits, the 64-bit int).
+- A `Callable`'s `int` and `int | None` parameters and result are promoting ints, in every module of
+  a program where a module opts in and none opts in to [dynamic `Any`](dynamic-any.md): one
+  signature, as `Callable[[int], int]`, for lambdas, closures, bound methods (also through a base
+  class whose subclasses override them), defs and builtins, also in fields, tuples, lists, dicts and
+  a `defaultdict`'s factory. Its adapter converts them to and from those of the function it holds
+  (`calls.adapter`): a function of a module that does not opt in takes its `int` parameters as
+  64-bit ints, `OverflowError` past 64 bits ([boundaries](#64-bit-boundaries)), and its result
+  promotes. The ints of the other types that a `Callable` takes or returns, such as a
+  `tuple[int, int]`, stay 64-bit.
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
 - An object's comparison methods (`__eq__`, `__lt__` and the others, also reflected and a
@@ -306,13 +337,18 @@ for a C `long`), where CPython goes on with the bigger int:
   a variable), and the values sent to a generator (`send()`)
   (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a parameter,
   is hashed, compared, searched, formatted with `%` and unpacked into arguments as the tuple of
-  its fields or None, which holds 64-bit ints too.
+  its fields or None, which holds 64-bit ints too. `dataclasses.astuple()` also has this
+  optional-tuple boundary; `dataclasses.asdict()` preserves promoting scalar and fixed-tuple
+  field values when the fields have a supported common dictionary value type. Heterogeneous
+  fields requiring a closed union containing a promoting int are rejected at compile time,
+  including when the particular integer value fits in 64 bits.
 - An `int` or `int | None` parameter of a function in a module that does not opt in, also of a
-  class's comparison method (whose unannotated parameters take the promoting int, so arithmetic
-  there promotes too), and the parameters and result of a `Callable`.
+  class's comparison method and where a `Callable` holds the function (whose unannotated parameters
+  take the promoting int, so arithmetic there promotes too), and the ints of the other types that a
+  `Callable` takes or returns (a `tuple[int, int]` parameter).
 - A list's int (or its tuple's), a dict's key or value, a set's element or a generator's value
-  read in a module that does not opt in, such as `lib/`'s `random.shuffle()` and `collections`'
-  `defaultdict` and `Counter`, and the ints of a list given to `tuple()`, `math.prod()`,
+  read in a module that does not opt in, such as `lib/`'s `random.shuffle()` and a generic
+  function of such a module, and the ints of a list given to `tuple()`, `math.prod()`,
   `math.fsum()`, `sum()` with a float start and `ffi`.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
@@ -406,6 +442,10 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_calls.py`: functions, defaults, keyword arguments, methods,
   fields, globals, closures, lambdas and modules with and without the comment
   (`tests/python_int_modules/`).
+- `tests/programs/numbers/python_int_varargs.py`: the `*args` tuple of a call, past 64 bits and
+  -2\*\*63, which a function returns or keeps as a dict's key, a set's element or a list's item,
+  also in a module without the comment (`tests/python_int_modules/fixed_varargs.py`), the keys of
+  a `functools.cache` and the arguments that a `functools.partial` keeps.
 - `tests/programs/numbers/python_int_bounds.py`: the inline paths of `//`, `%`, `<<` and `>>` at
   their edges, results that always fit, and shifts past memory.
 - `tests/programs/numbers/python_int_builtins.py`: `bit_length()`, `bit_count()`, `bin()`, `hex()`,
@@ -467,7 +507,27 @@ the first measurements, before the inline paths, in
   (`tests/python_int_modules/fixed_iterators.py`); `python_int_heapq.py`: `heapq`'s and `bisect`'s
   functions on lists of ints and of tuples of ints past 64 bits and on a generator, with and
   without a key, whose changes every name for the list sees, also of a list that a module that
-  does not opt in hands them (`tests/python_int_modules/fixed_heaps.py`).
+  does not opt in hands them (`tests/python_int_modules/fixed_heaps.py`); `python_int_counter.py`:
+  a `Counter`'s counts past 64 bits and -2\*\*63, stored, read, added, subtracted, totalled, ordered
+  by `most_common()`, combined and compared, also by a module that does not opt in
+  (`tests/python_int_modules/fixed_counter.py`).
+- `tests/programs/numbers/python_int_generics.py`: generic classes specialized for ints by
+  annotations and by calls' arguments, as one class, whose fields, parameters, results, dicts and
+  lists of tuples of the type variables hold ints past 64 bits and -2\*\*63, also a class of a
+  module that does not opt in (`tests/python_int_modules/fixed_generics.py`), which makes and
+  changes such objects; `python_int_generic_lib.py`: a `deque[int]`, the values of a
+  `defaultdict[str, int]` and an `OrderedDict[str, int]`, a `Counter`'s keys and the results of
+  `functools.cache` and `lru_cache` past 64 bits;
+  `python_int_generics_dynamic.py`: such a class specialized for ints that fit in a program where
+  another module opts in to dynamic `Any` (`tests/python_int_modules/dynamic_reader.py`), which
+  reads its objects as dynamic values.
+- `tests/programs/numbers/python_int_callables.py`: lambdas, closures, bound methods (also of a
+  class hierarchy), defs and builtins as `Callable`s of ints past 64 bits and -2\*\*63, in
+  variables, fields, tuples, lists and dicts, a generic function's, a sort key and a `defaultdict`'s
+  factory;
+  `python_int_callables_fixed.py`: the `Callable`s that a module without the comment takes, keeps
+  and calls, and its methods and functions as `Callable`s
+  (`tests/python_int_modules/fixed_callables.py`).
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in
@@ -510,3 +570,17 @@ the first measurements, before the inline paths, in
 - `tests/deviations/python_int_limits.py` and the two rejections above.
 - `tools/test_compiler_state_files.py`: the opt-in follows its file through imports, restarts and
   later compilations.
+- `python_int_noreturn.py`, `python_int_unicode_error.py`, `python_int_bytes_hex.py`,
+  `python_int_ipow.py`, `python_int_optional_key.py`, `python_int_dataclass_copy.py`,
+  `python_int_class_inference.py` and `python_int_class_defaults.py`: regressions from the
+  full-corpus opt-in review. Their explicit pragma also exercises the existing GC suites.
+- `make python-int-gate` (`tools/python_int_gate.py`): every case of `tests/programs` with the
+  comment, against a fresh pinned CPython recording, in both JIT and AOT. CI requires eight
+  complete shards. The reviewed manifest permits only exact compiler rejections, classified
+  and linked to their remaining limitation; crashes, runtime errors, changed output, changed
+  diagnostics and obsolete exceptions fail. See the [baseline review](reports/python-int-compatibility-2026-10-28.md)
+  and [gate contract](testing.md#make-verify). This checks the supported experimental surface;
+  it does not establish compatibility for the known rejected programs.
+- `make python-int-optin` retains the exploratory sweep and comparison with an earlier report.
+  Its report is not CI evidence. `tools/test_python_int*.py` and the verification aggregation
+  tests check the gate's negative controls.

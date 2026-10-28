@@ -138,6 +138,7 @@ static TextHint text_hints[64];
 #define CHUNK 65536                    /* small-object chunk */
 #define ARENA 16                       /* chunks per calloc'd arena */
 #define SMALL 8200                     /* largest size class */
+#define MQ 16                          /* ranges marking prefetches before it scans them (a power of two) */
 #define NK 80                          /* free lists: 40 classes x {scanned, atomic} */
 #define GC_MIN ((I)32 << 20)           /* least allocation between collections */
 #define BIG_MIN ((I)4 << 20)           /* least pointer-free large-object allocation between them */
@@ -180,6 +181,9 @@ static I **gc_roots, gc_nroots;        /* addresses of the program's pointer-typ
 /* GC_NO_ROOT(mstk): temporary collector work stack, consumed during marking. */
 static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges */
 static I msp, mcap;
+/* the (address, bytes) ranges that left the mark stack, prefetched, which marking scans next:
+   static, so that no collection's stack scan finds an earlier one's (collect) */
+static uintptr_t mq[2 * MQ];
 /* GC_ROOT(ch1): cached single-byte strings retained for later reads. */
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 /* GC_ROOT(args): command-line argument list retained by the runtime. */
@@ -339,10 +343,24 @@ __attribute__((noinline)) static void collect(void) {
   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
   if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
   mark_roots();
-  while (msp) {                        /* trace; big arrays in 4 KiB slices keep the stack short */
-    I n = (I)mstk[msp - 1]; const W *p = (const W *)mstk[msp - 2];
-    if (n > 4096) { mstk[msp - 2] = (uintptr_t)(p + 512); mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
-    else msp -= 2;
+  /* trace; big arrays in 4 KiB slices keep the stack short. A range off the stack waits in mq,
+     its first 128 bytes prefetched, while the MQ - 1 before it are scanned: the cache misses of
+     reading the objects, most of what collecting a big heap costs, overlap. The same objects are
+     marked */
+  unsigned qh = 0, qc = 0;
+  while (msp || qc) {
+    if (msp && qc < MQ) {
+      I n = (I)mstk[msp - 1]; const W *p = (const W *)mstk[msp - 2];
+      if (n > 4096) { mstk[msp - 2] = (uintptr_t)(p + 512); mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
+      else msp -= 2;
+      __builtin_prefetch(p);
+      if (n > 64) __builtin_prefetch(p + 8);
+      unsigned t = 2 * ((qh + qc++) & (MQ - 1));
+      mq[t] = (uintptr_t)p; mq[t + 1] = (uintptr_t)n;
+      continue;
+    }
+    const W *p = (const W *)mq[2 * qh]; I n = (I)mq[2 * qh + 1];
+    qh = (qh + 1) & (MQ - 1); qc--;
     scan(p, p + n / 8);
   }
   weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */

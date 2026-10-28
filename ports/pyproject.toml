@@ -21,6 +21,9 @@ packages = [
     "convertdate.data",
     "iniconfig",
     "jdcal",
+    "json_repair",
+    "json_repair.parse_string_helpers",
+    "json_repair.utils",
     "ordered_set",
     "pylev",
     "qrcode",
@@ -34,4 +37,4 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"*" = ["LICENSE", "PORT.md", "PORT_REFERENCE.md"]
+"*" = ["LICENSE", "PORT.md", "PORT_REFERENCE.md", "py.typed"]

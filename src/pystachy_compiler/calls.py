@@ -1,7 +1,9 @@
 """Calls component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
+from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
+from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
@@ -104,7 +106,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             vals = [self.expr(a.kids[0] if a.kind == "kw" else a, "") for a in args[1:]]
             self.wrap_names(w, args[1:], vals, "update_wrapper")
             return w
-        if (f.s == "json$loads" or f.s == "json$dumps") and self.dyn_policy(n.line) and self.lib_fn(f, f.s):
+        if (f.s == "json$loads" or f.s == "json$dumps" or f.s == "json$_raw_decode") and self.dyn_policy(n.line) and self.lib_fn(f, f.s):
             r = self.json_any(f.s, args, want, resultsoft)  # (of Any values: #779)
             if r is not None:
                 return r
@@ -464,10 +466,12 @@ def gen_adapter(self, ft: str, t: str) -> str:
             for ci in self.classes.values():
                 if ci.tag != 0 and self.derives(ci.name, family) and method in ci.methods:
                     member = ci.methods[method]
-                    if member.ret == "" or not self.widens(member.ret, signature[0]):
+                    # (an int and a promoting int convert, as the call does: a 64-bit method's
+                    # with a Callable's, in a program whose Callables take promoting ints, ctype)
+                    if member.ret == "" or not (self.widens(member.ret, signature[0]) or converts(member.ret, signature[0])):
                         fits = False
                     for j in range(1, len(signature)):
-                        if j >= len(member.ptypes) or (member.ptypes[j] != "" and not self.widens(signature[j], member.ptypes[j])):
+                        if j >= len(member.ptypes) or (member.ptypes[j] != "" and not (self.widens(signature[j], member.ptypes[j]) or converts(signature[j], member.ptypes[j]))):
                             fits = False
             if fits:
                 ft = f"fn[m:{family}.{method}]"
@@ -528,7 +532,9 @@ def gen_pat_arg(self, v: Val, a: Node) -> Val:
     c = self.callable_pat(a)
     if a.kind == "str":
         a = self.parse_expr(a.s)
-    ps = [self.vtype(x) for x in a.kids[1].kids[0].kids]
+    # (the parameters as the Callable takes them, which may be promoting ints where the annotation's
+    # module has 64-bit ints, or 64-bit ints where its are promoting ones: ctype)
+    ps = targs(self.ctype("callable", ["None"] + [self.vtype(x) for x in a.kids[1].kids[0].kids]))[1:]
     if is_callable(v.t):
         r = targs(v.t)[0]
         if targs(v.t)[1:] != ps:
@@ -573,7 +579,11 @@ def gen_adapter_ret(self, ft: str, ps: list[str]) -> str:
     self.restore(fr)
     self.making.pop()
     self.adrets[key] = f.ret
-    self.adapters[ft + " " + self.ctype("callable", [f.ret] + ps)] = ll
+    t = self.ctype("callable", [f.ret] + ps)
+    if targs(t) == [f.ret] + ps:
+        # (the adapter of that Callable, where it takes and returns what this one does: not where
+        # it returns a promoting int for this one's 64-bit int, ctype, which adapter compiles)
+        self.adapters[ft + " " + t] = ll
     return f.ret
 
 def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
@@ -1424,7 +1434,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         vals[0] = self.new_obj(sc)
         pre[0] = vals[0]
         f = self.classes[sc].methods["__init__"]
-    if f.generic:
+    if f.generic or (not resultsoft and fresh_yield_context(f, want)):
         nnp: list[str] = []
         for j in range(np):
             if vals[j].t in self.classes and vals[j].v in self.nn and self.dispatches(f, f.params[j]):
@@ -1455,7 +1465,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         self.add(c)
         self.unreachable()
         t = want if want != "" and "?" not in want else "None"
-        return Val("0" if t == "int" else fbits("0.0") if t == "float" else "false" if t == "bool" else "null", t)
+        # A promoting int is an aggregate, so the unreachable placeholder cannot be null.
+        return Val("undef" if t == BIG else "0" if t == "int" else fbits("0.0") if t == "float" else "false" if t == "bool" else "null", t)
     if f.ret == "None":
         self.add(c)
         v = Val("null", "None")

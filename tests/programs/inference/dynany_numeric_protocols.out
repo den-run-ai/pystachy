@@ -1,0 +1,52 @@
+int method
+int: 7
+float method
+float: 2.5
+index fallback
+int: 4
+index fallback
+float: 4.0
+child index
+int: 5
+child index
+float: 5.0
+bad int
+TypeError: __int__ returned non-int (type str)
+index fallback
+float: 4.0
+index fallback
+int: 4
+bad float
+TypeError: BadFloat.__float__ returned non-float (type int)
+bad index
+TypeError: __index__ returned non-int (type float)
+bad index
+TypeError: __index__ returned non-int (type float)
+dynamic int
+int: 13
+dynamic float
+TypeError: DynamicResult.__float__ returned non-float (type int)
+dynamic int
+TypeError: __int__ returned non-int (type float)
+dynamic float
+float: 1.25
+dynamic int
+TypeError: __int__ returned non-int (type str)
+dynamic float
+TypeError: DynamicResult.__float__ returned non-float (type str)
+ValueError: int failed
+ValueError: float failed
+TypeError: WrongArity.__int__() missing 1 required positional argument: 'extra'
+TypeError: float() argument must be a string or a real number, not 'WrongArity'
+container result
+TypeError: __int__ returned non-int (type list)
+TypeError: float() argument must be a string or a real number, not 'BadContainer'
+int: 17
+float: 17.0
+int: 3
+float: 3.5
+int: 24
+float: 24.0
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+TypeError: float() argument must be a string or a real number, not 'NoneType'
+[exit 0]

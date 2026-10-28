@@ -1,0 +1,7 @@
+raw 3 ' \t\nnull'
+direct 42 1
+raw 2 ' \rnull'
+unbound 42 2
+raw 0 ''
+empty 42 3
+[exit 0]
