@@ -153,6 +153,12 @@ print(int("123456789012345678901234567890") % 97)  # 52
   Their own ints, positions and counts, stay 64-bit.
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
+- An object's comparison methods (`__eq__`, `__lt__` and the others, also reflected and a
+  subclass's) take an int as their parameter does: one annotated `int` in a module that opts in
+  takes a 64-bit int as the promoting int it is and one past 64 bits as it is, where the object is
+  compared with an int and where `x in t`, `t.count(x)` and `t.index(x)` compare a tuple's items
+  with `x`; one of a module that does not opt in takes it as a 64-bit int
+  ([boundaries](#64-bit-boundaries)). `object()` and a `range` equal no int, also past 64 bits.
 - An object's `__len__` and `__hash__` may return a promoting int, annotated `-> int` or not.
   `len()` and truth take it as CPython does: a negative one, however large, is a `ValueError`,
   and a positive one past 64 bits an `OverflowError` (`cannot fit 'int' into an index-sized
@@ -301,9 +307,9 @@ for a C `long`), where CPython goes on with the bigger int:
   (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a parameter,
   is hashed, compared, searched, formatted with `%` and unpacked into arguments as the tuple of
   its fields or None, which holds 64-bit ints too.
-- An `int` or `int | None` parameter of a function in a module that does not opt in (whose
-  unannotated parameters take the promoting int, so arithmetic there promotes too), and the
-  parameters and result of a `Callable`.
+- An `int` or `int | None` parameter of a function in a module that does not opt in, also of a
+  class's comparison method (whose unannotated parameters take the promoting int, so arithmetic
+  there promotes too), and the parameters and result of a `Callable`.
 - A list's int (or its tuple's), a dict's key or value, a set's element or a generator's value
   read in a module that does not opt in, such as `lib/`'s `random.shuffle()` and `collections`'
   `defaultdict` and `Counter`, and the ints of a list given to `tuple()`, `math.prod()`,
@@ -390,7 +396,11 @@ the first measurements, before the inline paths, in
   edges, demotion, augmented assignment and mixed `bool` operands.
 - `tests/programs/numbers/python_int_compare.py`: comparisons with ints, bools and floats,
   `isinstance`, `and`/`or`, membership (also in objects, iterators, generators and NamedTuples)
-  and `int` methods.
+  and `int` methods; `python_int_object_compare.py`: objects whose comparison methods take an int
+  (also reflected, a subclass's and a class of a module that does not opt in,
+  `tests/python_int_modules/fixed_compare.py`) compared with ints and searched for in tuples of
+  them, and objects without the methods; `tests/errors/numbers/python_int_compare_object.py`: an
+  int compared with an object whose class has no `__eq__`, rejected as with 64-bit ints.
 - `tests/programs/numbers/python_int_text.py`: literals, `int()` of text and floats, `float()`,
   `str()`, `hash()` and their errors.
 - `tests/programs/numbers/python_int_calls.py`: functions, defaults, keyword arguments, methods,

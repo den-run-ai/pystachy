@@ -3337,6 +3337,8 @@ def gen_cmp_method(self, t: str, m: str, other: str) -> str:
         return m  # (a method that cannot be compiled: the call reports why; see desc. A template takes any operand)
     if f.bad == "" and len(f.params) == 2 and f.ptypes[1] == "dyn" and self.dyn_boxable(other) == "":
         return m  # (an Any parameter, in a module that compiles Any so: the operand boxed, dynamic.py)
+    if f.bad == "" and len(f.params) == 2 and ((other == "int" and (f.ptypes[1] == BIG or f.ptypes[1] == BIGOPT)) or (other == BIG and self.widens("int", f.ptypes[1]))):
+        return m  # (an int as a promoting int, and a promoting int as a 64-bit int, NARROW past 64 bits: as a call converts them, bigints.py)
     return ""
 
 def gen_exc_kinds(self, t: str) -> list[str]:
@@ -4240,9 +4242,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         # it holds: bigints.py)
         a = self.big_opt_narrow(a)
         b = self.big_opt_narrow(b)
-    if (a.t == BIG or b.t == BIG) and not ((op == "in" or op == "not in") and (is_tuple(b.t) or (unopt(b.t) in self.classes and unopt(b.t) != RANGEC) or is_gen(b.t))):
+    if (a.t == BIG or b.t == BIG) and not ((op == "in" or op == "not in") and (is_tuple(b.t) or (unopt(b.t) in self.classes and unopt(b.t) != RANGEC) or is_gen(b.t))) and not (op in ICMP and (a.t in self.classes or b.t in self.classes)):
         # (promoting ints: bigints.py, a range's arithmetic too; the items of a tuple, an object or a
-        # generator are compared below, and __contains__ takes x as its parameter does)
+        # generator are compared below, and __contains__ takes x as its parameter does, as an
+        # object's comparison methods do: cmp_method)
         return self.big_compare(op, a, b)
     if op in ["==", "!="] and a.t != b.t and self.dyn_policy(self.line) and self.wider(a.t, b.t) == "" and not (self.ueq_type(a.t) and self.ueq_type(b.t)) and self.container_pair_type(a.t, b.t):
         return self.container_pair_eq(op, a, b)
@@ -4626,8 +4629,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
         r = self.rt("pys_cmpop", "i64", [f"i64 {sa}", f"i64 {sb}", d, f"i64 {ORDOP[op]}"])
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
-    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else a.t
-    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else b.t
+    x = "an exception" if a.t == "exc" else "object" if a.t == OBJECTC else "int" if a.t == BIG else a.t
+    y = "an exception" if b.t == "exc" else "object" if b.t == OBJECTC else "int" if b.t == BIG else b.t
     self.err(f"cannot compare {x} {op} {y}")
     return a
 

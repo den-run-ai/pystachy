@@ -478,6 +478,20 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/numbers/python_int_object_compare.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_object_compare.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_object_compare.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_object_compare.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/numbers/python_int_optional.py",
       "mode": "jit",
       "diagnostic": "tests/programs/numbers/python_int_optional.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
