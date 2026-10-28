@@ -1,0 +1,63 @@
+iter 0
+len 0
+list [2, 1]
+iter 0
+len 0
+sorted [1, 2]
+iter 0
+len 0
+extend [0, 2, 1]
+iter 1
+len 1
+list [2, 1]
+iter 1
+len 1
+sorted [1, 2]
+iter 1
+len 1
+extend [0, 2, 1]
+iter 2
+len 2
+list [2, 1]
+iter 2
+len 2
+sorted [1, 2]
+iter 2
+len 2
+extend [0, 2, 1]
+iter 3
+len 3
+ValueError length failed
+iter 3
+len 3
+ValueError length failed
+iter 3
+len 3
+ValueError length failed
+iter 4
+len 4
+ValueError __len__() should return >= 0
+iter 4
+len 4
+ValueError __len__() should return >= 0
+iter 4
+len 4
+ValueError __len__() should return >= 0
+iter 5
+TypeError iter failed
+iter 5
+TypeError iter failed
+iter 5
+TypeError iter failed
+len 1
+direct TypeError unknown length
+len 2
+direct UnknownLength unknown subclass
+iter 2
+len 2
+[2, 1]
+restored outer
+iteration next failed
+iteration next failed
+iteration next failed
+[exit 0]
