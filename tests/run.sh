@@ -23,6 +23,9 @@
 # no other worker has claimed (mkdir is atomic); the report lists them in the same order whatever
 # the number of workers. Worker 0 runs in this shell and is the only one to take the cases about
 # SIGINT: the other workers are asynchronous jobs, which start with SIGINT ignored.
+# PYSTACHY_CASE_TIMES=FILE appends a line "MILLISECONDS CASE" for each case, in the report's order: the
+# wall-clock time its worker took (needs GNU date's %N; tools/case_weights.py turns such files into the
+# weights that balance tests/corpus.sh's shards).
 # usage: tests/run.sh [COMPILER [MODES [FILE...]]]   (default: ./pystachy "jit aot" and every case;
 #        e.g. "python3 pystachy.py", or tests/run.sh ./pystachy jit tests/programs/strings/str_*.py
 #        tests/errors/syntax/x.py; FILEs are relative to the repository root)
@@ -60,6 +63,12 @@ export PYSTACHY_IRCHECK="${PYSTACHY_IRCHECK:-1}"
 JOBS=${PYSTACHY_JOBS:-$( (nproc || getconf _NPROCESSORS_ONLN) 2> /dev/null)}
 case $JOBS in '' | *[!0-9]* | 0) JOBS=1 ;; esac
 XENV=${PYSTACHY_GC_STRESS_PROGRAM:+env PYSTACHY_GC_STRESS=$PYSTACHY_GC_STRESS_PROGRAM}  # (an AOT program's)
+TIMES=${PYSTACHY_CASE_TIMES:-}
+if [ -n "$TIMES" ]; then
+  case $(date +%s%N) in
+    '' | *[!0-9]*) echo "tests/run.sh: no case times (PYSTACHY_CASE_TIMES needs date +%s%N, GNU date's)" >&2; TIMES= ;;
+  esac
+fi
 # Ctrl-C or TERM: name the cases that were running (on fd 4, this script's stdout), stop the workers
 trap 'for f in "$T"/now.*; do [ -f "$f" ] && echo "INTERRUPTED while running $(cat "$f")" >&4; done; kill $pids 2> /dev/null; exit 130' INT TERM
 exec 3> /dev/full 4>&1
@@ -154,6 +163,7 @@ worker() {
     if [ ! -d "$T/c.$i" ]; then
       case $SIG in *" $t "*) [ "$k" = 0 ] ;; *) true ;; esac && mkdir "$T/c.$i" 2> /dev/null && {
         pass=0; fail=0; echo "$t" > "$T/now.$k"
+        [ -z "$TIMES" ] || t0=$(date +%s%N)
         {
           case $t in
             tests/deviations/*) deviation "$t" ;;
@@ -161,6 +171,7 @@ worker() {
             *) program "$t" ;;
           esac
         } > "$T/$i.log" 2>&1
+        [ -z "$TIMES" ] || echo $((($(date +%s%N) - t0) / 1000000)) > "$T/$i.ms"
         echo "$pass $fail" > "$T/$i.n"
       }
     fi
@@ -183,6 +194,7 @@ for t; do
     cat "$T/$i.log"
     read -r p f < "$T/$i.n"
     pass=$((pass + p)); fail=$((fail + f))
+    if [ -n "$TIMES" ] && [ -f "$T/$i.ms" ] && read -r ms < "$T/$i.ms"; then printf '%s %s\n' "$ms" "$t" >> "$TIMES"; fi
   else
     fail=$((fail + 1)); echo "FAIL $t: no result (its worker died)"
   fi

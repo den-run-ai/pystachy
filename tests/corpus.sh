@@ -20,6 +20,39 @@ corpus() {
   return 0
 }
 
+# corpus_shard I N [WEIGHTS]: the cases of shard I of N (0 <= I < N), one a line, heaviest first, so
+# that tests/run.sh's workers do not end on a long case. The cases are taken in order of their weight
+# in WEIGHTS (default tests/case_weights.txt, which tools/case_weights.py writes from measured times),
+# heaviest first and then in C order, and each joins the shard whose weight is least so far (the first
+# of equals): greedy longest-processing-time. Every case of corpus joins exactly one shard, whatever
+# WEIGHTS holds: a case it lacks weighs its kind's default ("default program W" for programs and
+# deviations, "default rejection W"; 1000 without one), and a malformed line, a weight of more than
+# nine digits or a path outside the corpus counts for nothing, so a stale or missing table costs
+# balance, never coverage. Integers and the C locale give the same shards on every runner.
+corpus_shard() {
+  (
+    export LC_ALL=C
+    corpus | awk -v table="${3:-tests/case_weights.txt}" '
+      function weight(x) { return x ~ /^[0-9]+$/ && length(x) <= 9 }
+      BEGIN {
+        def["program"] = 1000; def["rejection"] = 1000
+        while ((getline line < table) > 0) {
+          n = split(line, f, " ")
+          if (n == 3 && f[1] == "default" && (f[2] in def) && weight(f[3])) def[f[2]] = f[3] + 0
+          else if (n == 2 && weight(f[1])) w[f[2]] = f[1] + 0
+        }
+      }
+      { print (($0 in w) ? w[$0] : def[$0 ~ /^tests\/errors\// ? "rejection" : "program"]), $0 }' |
+      sort -k1,1nr -k2 |
+      awk -v shard="$1" -v shards="$2" '
+        BEGIN { for (s = 0; s < shards; s++) load[s] = 0 }
+        { least = 0
+          for (s = 1; s < shards; s++) if (load[s] < load[least]) least = s
+          load[least] += $1
+          if (least == shard) print substr($0, index($0, " ") + 1) }'
+  )
+}
+
 # corpus_strays: the files no pattern of corpus finds, which no run would test: a program,
 # rejection or sidecar directly in tests/, tests/programs/ or tests/errors/ (where the flat layout
 # before kept them), or in a directory below an area's

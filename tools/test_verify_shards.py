@@ -9,19 +9,41 @@ import sys
 import tempfile
 import unittest
 
+from test_verify_case_weights import reference_shards
+
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ["tests/programs/x/example.py", "tests/programs/x/syntax_example.py", "tests/deviations/example.py",
          "tests/errors/x/example.py", "tests/errors/x/syntax_example.py"]
-# group, its suite step, the modes it reports, the checks of its shard (tests/verify.sh's checks), and
-# how many tests/run.sh runs make them
-SHARDS = [("native-0", "tests-native-0", ["jit", "aot"], 6, 1), ("native-1", "tests-native-1", ["jit", "aot"], 4, 1),
-          ("opt-off-0", "tests-opt-off-0", ["jit", "aot"], 6, 1), ("opt-off-1", "tests-opt-off-1", ["jit", "aot"], 4, 1),
-          ("python-free-0", "python-free-0", None, 3, 1), ("python-free-1", "python-free-1", None, 5, 1),
-          ("python-free-2", "python-free-2", None, 2, 1),
-          ("ubsan-0", "ubsan-0", ["aot", "jit"], 4, 2), ("ubsan-1", "ubsan-1", ["aot", "jit"], 8, 2),
-          ("ubsan-2", "ubsan-2", ["aot", "jit"], 2, 2)]
+# the fixture's tests/case_weights.txt (tests/errors/x/syntax_example.py takes the rejections' default),
+# by which tests/corpus.sh's corpus_shard balances the shards
+WEIGHTS = {"tests/programs/x/example.py": 5000, "tests/programs/x/syntax_example.py": 3000,
+           "tests/deviations/example.py": 2000, "tests/errors/x/example.py": 10}
+DEFAULTS = {"program": 1000, "rejection": 10}
+# group, its suite step, the modes it reports, and the modes of each tests/run.sh run that makes its checks
+SHARDS = [("native-0", "tests-native-0", ["jit", "aot"], ["jit aot"]),
+          ("native-1", "tests-native-1", ["jit", "aot"], ["jit aot"]),
+          ("opt-off-0", "tests-opt-off-0", ["jit", "aot"], ["jit aot"]),
+          ("opt-off-1", "tests-opt-off-1", ["jit", "aot"], ["jit aot"]),
+          ("python-free-0", "python-free-0", None, ["jit aot"]), ("python-free-1", "python-free-1", None, ["jit aot"]),
+          ("python-free-2", "python-free-2", None, ["jit aot"]),
+          ("ubsan-0", "ubsan-0", ["aot", "jit"], ["aot", "jit"]), ("ubsan-1", "ubsan-1", ["aot", "jit"], ["aot", "jit"]),
+          ("ubsan-2", "ubsan-2", ["aot", "jit"], ["aot", "jit"])]
 # how many shards each suite has: the group kind-I runs shard I
 SHARD_COUNTS = {"native": 2, "opt-off": 2, "python-free": 3, "ubsan": 3}
+
+
+def checks(cases, modes):
+    """tests/verify.sh's checks of these fixture cases in a tests/run.sh run of these modes."""
+    total = 0
+    for case in cases:
+        total += 1 if "/errors/" in case else len(modes.split())
+        total += case.endswith("syntax_example.py")   # (both syntax cases have a check of their own)
+    return total
+
+
+def shard(kind, index):
+    """The fixture cases of shard INDEX of KIND's suite, heaviest first."""
+    return reference_shards(CASES, WEIGHTS, DEFAULTS, SHARD_COUNTS[kind])[0][index]
 # the LLVM tools python-free links into its PATH (doubles: only clang is called)
 LLVM_TOOLS = ("clang", "opt", "lli", "llvm-link", "llvm-as")
 
@@ -40,6 +62,8 @@ class ShardVerificationTests(unittest.TestCase):
                      "tests/programs/x/syntax_example.py", "tests/deviations/example.py"):
             (self.root / name).write_text("# fixture\n")
         (self.root / "tests/errors/x/example.py").write_text("# error: mock rejection\n")
+        (self.root / "tests/case_weights.txt").write_text(
+            "".join(f"{weight} {case}\n" for case, weight in WEIGHTS.items()) + "default rejection 10\n")
         (self.root / "tests/errors/x/syntax_example.py").write_text("# error: syntax_example.py: mock syntax\n")
         compiler = self.root / "bin/compiler"
         compiler.write_text(f"#!{sys.executable}\n" + '''import os
@@ -152,19 +176,23 @@ esac
 
     def test_each_shard_runs_its_share_of_the_corpus(self):
         observed = {}
-        for group, name, modes, count, runs in SHARDS:
+        for group, name, modes, runs in SHARDS:
             with self.subTest(group=group):
                 result, report, logs = self.run_group(group)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(report["result"], "pass")
                 self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", name])
                 step = report["steps"][-1]
+                kind, index = group.rsplit("-", 1)[0], int(group[-1])
+                cases = shard(kind, index)
+                count = sum(checks(cases, run) for run in runs)
                 self.assertEqual((step["passed"], step["failed"], step["expected"]), (count, 0, count))
                 if modes:
                     self.assertEqual(step["modes"], modes)
-                index, shards = int(group[-1]), SHARD_COUNTS[group.rsplit("-", 1)[0]]
+                shards = SHARD_COUNTS[kind]
                 self.assertEqual((step["shard_index"], step["shard_count"]), (index, shards))
-                self.assertEqual(self.selected(logs[name]), CASES[index::shards] * runs)
+                # (heaviest first: the order tests/run.sh's workers take them in)
+                self.assertEqual(self.selected(logs[name]), cases * len(runs))
                 if group.startswith(("ubsan", "python-free")):
                     self.assertTrue(step["ir_identical"])
                 if group.startswith("python-free"):
@@ -174,7 +202,7 @@ esac
                 if group.startswith("opt-off"):
                     self.assertEqual(step["PYSTACHY_OPT"], ["-all"])
                 self.assertEqual(report["sources"]["suite_checks"], 10)  # (CASES's checks in JIT and AOT)
-                observed[group] = CASES[index::shards]
+                observed[group] = cases
         for kind, shards in SHARD_COUNTS.items():
             parts = [observed[f"{kind}-{index}"] for index in range(shards)]
             self.assertEqual(sum(map(len, parts)), len(set().union(*parts)))  # disjoint
@@ -192,7 +220,7 @@ esac
                 self.assertEqual(sum(step["expected"] for step in report["steps"][1:]), total)
 
     def test_failed_and_incomplete_shards_cannot_pass(self):
-        for group, _, _, _, _ in SHARDS:
+        for group, _, _, _ in SHARDS:
             for failure in ("suite-failure", "short-suite"):
                 with self.subTest(group=group, failure=failure):
                     result, report, _ = self.run_group(group, failure)
