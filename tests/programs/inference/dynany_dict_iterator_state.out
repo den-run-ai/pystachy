@@ -1,0 +1,34 @@
+dynamic keys a
+b
+dictionary keys changed during iteration
+done
+done
+keys a
+b
+dictionary keys changed during iteration
+done
+done
+values 1
+2
+dictionary keys changed during iteration
+done
+done
+items ('a', 1)
+('b', 2)
+dictionary keys changed during iteration
+done
+done
+reverse keys 29 12
+22
+dictionary keys changed during iteration
+done
+done
+size change False a
+dictionary changed size during iteration
+dictionary changed size during iteration
+dictionary changed size during iteration
+size change True b
+dictionary changed size during iteration
+dictionary changed size during iteration
+dictionary changed size during iteration
+[exit 0]

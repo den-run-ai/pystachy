@@ -4741,8 +4741,15 @@ Dyn *pys_dyn_next(DynIter *it) {   /* the next item, or null at the end */
   case DK_DICT: {
     Dict *d = (Dict *)o->v;
     if (it->used != d->len) it->used = -1;   /* a size error stays an error even if the size is restored */
-    I e = it->reverse ? pys_dict_prev(d, it->i, it->used, it->count) : pys_dict_next(d, it->i, it->used, it->count);
+    /* A size error stays live, but a keys-changed error exhausts the iterator.
+       Check the count here, after locating an entry, so both directions can
+       release their source before raising, as CPython does. */
+    I e = it->reverse ? pys_dict_prev(d, it->i, it->used, -1) : pys_dict_next(d, it->i, it->used, -1);
     if (e < 0) break;
+    if (it->count >= it->used) {
+      it->done = 1; it->o = 0;
+      pys_fail("RuntimeError: dictionary keys changed during iteration");
+    }
     it->i = e + (it->reverse ? -1 : 1); it->count++;
     return (Dyn *)d->keys[e];
   }
