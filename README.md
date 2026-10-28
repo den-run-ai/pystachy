@@ -171,6 +171,8 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
   finite missing-field writes, known helper calls and escapes, operand rebinding, inferred
   getters and nested container comparisons with user callbacks. They preserve effects,
   native storage and aliases within the [comparison acceptance matrix](docs/dynamic-any.md#operations).
+  [Iteration through Any](docs/dynamic-any.md#iteration) supports custom iterators,
+  ranges and boxable generators, with lazy advancement and preserved aliases.
   Numeric identity still has limitations at some typed storage boundaries. Read the
   [dynamic contract and deviations](docs/dynamic-any.md#deviations) before enabling it.
 - Ordinary integers are checked 64-bit values; overflow raises `OverflowError`. A module that

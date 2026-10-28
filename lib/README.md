@@ -11,6 +11,9 @@ Ports using dynamic `Any` also inherit its [comparison boundaries](../docs/dynam
 including supported helper/alias flows, inferred getters, operand rebinding and nested
 container callbacks. Finite literal missing-field writes preserve native aliases; late-field
 reflection and incompatible writes to existing native fields remain explicit limits.
+Its [iteration surface](../docs/dynamic-any.md#iteration) also covers custom iterators,
+ranges and boxable generators. This protocol support alone does not establish additional
+whole-module compatibility.
 
 Imports search builtin modules first, then the program's directory,
 `PYSTACHY_PATH`, and `lib/`. See [module rules](../docs/language/modules.md).

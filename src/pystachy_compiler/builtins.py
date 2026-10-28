@@ -623,7 +623,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             first = self.rt("pys_file_readline", "ptr", [f"ptr {v0.v}"])
             return self.num_cmp('!=', Val(self.mload('int', first), "int"), Val('0', "int"))
         kv = [kvals[j] for j in range(len(kws)) if kws[j].s == "key" and kvals[j].t != "None"]
-        if (self.iter_object(v0.t) or (v0.t == RANGEC and len(kv) == 0)) and (name == "any" or name == "all" or name == "sum" or name == "min" or name == "max") and not (len(kv) > 0 and name != "sum" and self.classes[v0.t].methods["__iter__"].gen):
+        if (self.iter_object(v0.t) or v0.t == "dyn" or (v0.t == RANGEC and len(kv) == 0)) and (name == "any" or name == "all" or name == "sum" or name == "min" or name == "max") and not (len(kv) > 0 and name != "sum" and v0.t != "dyn" and self.classes[v0.t].methods["__iter__"].gen):
             # an object whose __iter__ returns an iterator object, or a range object: its items as
             # they come, as CPython takes them (any() and all() stop at the deciding one)
             if len(kv) > 0 and name != "sum":
@@ -676,7 +676,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if not ((name == "min" or name == "max") and (keyv.t != "" or BIGOPT in [v.t for v in vals])):
             vals = [self.big_narrow(v) for v in vals]  # (keyed min/max and int | None compare their values as they are)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
-        return self.dyn_sum(self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
+        return self.dyn_sum(vals[0] if vals[0].t == "dyn" else self.as_list(vals[0], name), vals[1] if len(vals) == 2 else Val("0", "int"))
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
         self.err(f"{name}() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
     if name == "sum" and len(vals) == 2 and (self.iter_object(vals[0].t) or is_gen(vals[0].t)) and (vals[1].t == "int" or vals[1].t == "float"):
@@ -950,6 +950,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val(self.rt("pys_dict_from", "ptr", [f"ptr {v.v}"], self.key_fx(targs(t)[0])), t)
     elif name == "list" and is_dict(t):
         return self.typed_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(t)[0]])), "" if resultsoft else want)
+    elif name == "reversed" and t == "dyn":
+        return self.dyn_call(self.dyn_dispatcher("reversed", ["dyn"], "dyn", "__reversed__"), [v])
     elif name == "range" or name == "enumerate" or name == "zip" or name == "reversed":
         tuple_use = "tuple(), bytes(), " if name == "range" else "tuple() (with scalar or optional scalar items), bytes(), " if name == "reversed" else ""
         self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), {tuple_use}sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()")
@@ -1233,17 +1235,23 @@ def gen_key_minmax2(self, vals: list[Val], key: Val, name: str) -> Val:
 def gen_key_minmax_next(self, o: Val, key: Val, name: str) -> Val:
     # min(o, key=...) and max(...) of an object whose __iter__ returns an iterator object: each
     # item from __next__, its key computed and compared as it comes (key_minmax)
-    lnone = self.key_none(key, self.next_type(o.t), ">" if name == "max" else "<", f"{name}()")
-    it = self.obj_iterator(o, "TypeError: 'NoneType' object is not iterable", f"'{tname(o.t)}' object is not iterable")
-    c = self.stop_catch()
+    lnone = self.key_none(key, "dyn" if o.t == "dyn" else self.next_type(o.t), ">" if name == "max" else "<", f"{name}()")
+    it = self.iterable(o) if o.t == "dyn" else self.obj_iterator(o, "TypeError: 'NoneType' object is not iterable", f"'{tname(o.t)}' object is not iterable")
+    c = self.stop_catch() if o.t != "dyn" else None
     first = self.alloca("bool", "")
     self.mstore('bool', 'true', first)
     lc = self.label()
     le = self.label()
     self.fn.loops.append(Loop("while", lc, lc, lc, le))
     self.place(lc)
-    item = self.next_in(it, c)
-    self.place(self.label())
+    if c is not None:
+        item = self.next_in(it, c)
+        self.place(self.label())
+    else:
+        item = Val(self.rt("pys_dyn_next", "ptr", [f"ptr {it.v}"]), "dyn")
+        more = self.label()
+        self.cbr(self.ptr_cmp("==", item, Val("null", "dyn")).v, le, more)
+        self.place(more)
     k = self.call_key(key, item)
     if "?" in k.t or k.t == "None":
         self.err(f"comparing the keys of {name}() is not supported: its key function returns {typestr(k.t)}")
@@ -1263,7 +1271,8 @@ def gen_key_minmax_next(self, o: Val, key: Val, name: str) -> Val:
     self.mstore(k.t, k.v, bk)
     self.mstore('bool', 'false', first)
     self.br(lc)
-    self.stop_landing(c, le)
+    if c is not None:
+        self.stop_landing(c, le)
     self.place(le)
     self.guard(self.mload('bool', first), f"ValueError: {name}() iterable argument is empty")
     result = Val(self.mload(item.t, best), item.t)
@@ -1336,8 +1345,8 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     # iterator is made first, then sum's start is evaluated and the accumulators set (at the
     # IterArg's split, once the traversal, compiled first, gave the items' type), then the
     # items are traversed. A sum is runtime.c's (pys_sum_int, pys_sum_float, ...), item by
-    # item; min() and max() compare as max(a, b) does, but those of items other than numbers
-    # and strs collect them for pys_list_minmax, as before
+    # item; min() and max() compare as max(a, b) does, including dynamic values before the
+    # iterator advances again. Other nonscalar typed items collect for pys_list_minmax.
     g = args[0]
     if g.kind != "listcomp":
         item = made_var("__item", g.line)
@@ -1532,7 +1541,7 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
                 r.comp = self.alloca("float", "")
                 if r.stt == "int" or r.stt == BIG:
                     r.first = self.alloca("bool", "")
-        elif v.t == "int" or v.t == "float" or v.t == "bool" or v.t == "str" or v.t == BIG:
+        elif v.t == "int" or v.t == "float" or v.t == "bool" or v.t == "str" or v.t == BIG or v.t == "dyn":
             r.acc = self.alloca(v.t, "")
             r.first = self.alloca("bool", "")
             if self.list_id_kind(self.ctype("list", [v.t])) != 0:
@@ -1904,6 +1913,13 @@ def gen_next_(self, args: list[Node], want: str) -> Val:
     if len(args) == 0 or len(args) > 2:
         self.err(f"next expected {'at least 1 argument' if len(args) == 0 else 'at most 2 arguments'}, got {len(args)}")
     it = self.expr(args[0], "")
+    if it.t == "dyn":
+        dv = self.dyn_box(self.expr(args[1], "dyn")) if len(args) == 2 else Val("", "")
+        key = "next" if len(args) == 2 else "nextvalue"
+        r = self.dyn_call(self.dyn_dispatcher(key, ["dyn"], "dyn", "__next__"), [it])
+        if len(args) == 2:
+            return Val(self.select(self.ptr_cmp("==", r, Val("null", "dyn")).v, dv, r), "dyn")
+        return r
     if is_gen(unopt(it.t)):
         # (a generator's next item: gen_next_value)
         it = self.unwrap(it, "TypeError: 'NoneType' object is not an iterator")
@@ -1991,6 +2007,8 @@ def gen_iter_(self, args: list[Node]) -> Val:
         self.raise_("TypeError", self.sconst("'NoneType' object is not iterable"))
         return Val("null", "None")
     v = self.unwrap(v, "TypeError: 'NoneType' object is not iterable")
+    if v.t == "dyn":
+        return self.dyn_call(self.dyn_dispatcher("iter", ["dyn"], "dyn", "__iter__"), [v])
     if is_gen(v.t):
         return v  # (a generator is its own iterator)
     if v.t == "file":

@@ -1,0 +1,77 @@
+generator False
+yield first
+yield second
+comparison '<' not supported between instances of 'str' and 'int'
+late effect
+resume error late failure
+end done
+object False
+next first
+next second
+comparison '<' not supported between instances of 'str' and 'int'
+late effect
+resume error late failure
+end done
+generator True
+yield first
+yield second
+comparison '>' not supported between instances of 'str' and 'int'
+late effect
+resume error late failure
+end done
+object True
+next first
+next second
+comparison '>' not supported between instances of 'str' and 'int'
+late effect
+resume error late failure
+end done
+candidate first
+candidate second
+less equal first
+candidate third
+less small first
+candidate end
+minimum identity True
+candidate first
+candidate second
+greater equal first
+candidate third
+greater large first
+candidate end
+maximum identity True
+candidate first
+candidate second
+less equal first
+candidate third
+less first first
+candidate end
+tie identity True
+candidate first
+candidate second
+greater equal first
+candidate third
+greater first first
+candidate end
+tie identity True
+empty min() iterable argument is empty
+singleton None
+empty max() iterable argument is empty
+singleton None
+argument first
+argument second
+argument third
+arguments comparison '<' not supported between instances of 'str' and 'int'
+argument first
+argument second
+argument failure
+arguments exception argument failed
+argument first
+argument second
+argument third
+arguments comparison '>' not supported between instances of 'str' and 'int'
+argument first
+argument second
+argument failure
+arguments exception argument failed
+[exit 0]
