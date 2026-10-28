@@ -14,9 +14,9 @@ step 3, the compiler-level integer, and the first parts of step 6: tuples, lists
 generators. Values past 64 bits stay in variables, arguments, returns, fields, module variables,
 closures, tuples, lists of ints and of tuples of ints, the keys and values of dicts of ints and of
 tuples of ints (also in the tuples of their `items()` and the pairs that `dict()` takes), sets of
-ints and of tuples of ints, the iterators that `iter()` makes of those containers and the values
-generators yield and return; the other containers still hold 64-bit ints
-([boundaries](#64-bit-boundaries)).
+ints and of tuples of ints, the iterators that `iter()` makes of those containers, the lists that
+`heapq` and `bisect` change and the values generators yield and return; the other containers still
+hold 64-bit ints ([boundaries](#64-bit-boundaries)).
 
 ```python
 # pystachy: python-int
@@ -146,6 +146,11 @@ print(int("123456789012345678901234567890") % 97)  # 52
   or set changes size, as CPython's does. Its class (`lib/_pystachy_iterators.py`) reads the
   container's ints as a module that opts in does (`specs.READ_HELPERS`), while its own ints, such
   as its position, stay 64-bit.
+- `heapq` and `bisect` keep the promoting ints of the lists they change in place, which every name
+  for such a list sees, and `nsmallest()` and `nlargest()` those of a generator too, with and
+  without a key: their functions read a list's ints, also in its tuples, and a generator's values
+  as a module that opts in does (`specs.READ_HELPERS`), and their results are those promoting ints.
+  Their own ints, positions and counts, stay 64-bit.
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
 - An object's `__len__` and `__hash__` may return a promoting int, annotated `-> int` or not.
@@ -300,9 +305,9 @@ for a C `long`), where CPython goes on with the bigger int:
   unannotated parameters take the promoting int, so arithmetic there promotes too), and the
   parameters and result of a `Callable`.
 - A list's int (or its tuple's), a dict's key or value, a set's element or a generator's value
-  read in a module that does not opt in, such as `lib/`'s `heapq`, `bisect`, `random.shuffle()`,
-  `collections`' `defaultdict` and `Counter`, and the ints of a list given to `tuple()`,
-  `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`.
+  read in a module that does not opt in, such as `lib/`'s `random.shuffle()` and `collections`'
+  `defaultdict` and `Counter`, and the ints of a list given to `tuple()`, `math.prod()`,
+  `math.fsum()`, `sum()` with a float start and `ffi`.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
   floats: the ints of an `int | float` list, ints added to a float start, and a start past 64
@@ -449,7 +454,10 @@ the first measurements, before the inline paths, in
   dicts and their views, and sets, of ints and of tuples of ints past 64 bits, through `next()`
   (also with a default), `for` loops and the builtins that take an iterator, their exhaustion and
   `RuntimeError`, an object whose `__iter__` returns `iter()`, and a module that does not opt in
-  (`tests/python_int_modules/fixed_iterators.py`).
+  (`tests/python_int_modules/fixed_iterators.py`); `python_int_heapq.py`: `heapq`'s and `bisect`'s
+  functions on lists of ints and of tuples of ints past 64 bits and on a generator, with and
+  without a key, whose changes every name for the list sees, also of a list that a module that
+  does not opt in hands them (`tests/python_int_modules/fixed_heaps.py`).
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in

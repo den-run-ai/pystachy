@@ -309,9 +309,9 @@ ABCSOTHER = "collections.abc.NAME is not supported: Pystachy's collections.abc (
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
 ITERS = "_pystachy_iterators"  # lib's module of the iterator classes iter() makes objects of (Loader.program)
 # lib's modules that hand a container's items on as they are: their reads of a list's, a dict's or a
-# set's ints, and of its tuples of ints, give promoting ints in a program whose containers hold them
-# (bigints.read_policy), though their own ints stay 64-bit
-READ_HELPERS: list[str] = [ITERS]
+# set's ints, and of its tuples of ints, and of a generator's values, give promoting ints in a program
+# whose containers hold them (bigints.read_policy), though their own ints stay 64-bit
+READ_HELPERS: list[str] = [ITERS, "heapq", "bisect"]
 TEXTVIEW = "re"  # lib's regex engine, which reads a str whose every byte is a code point in place (__pys_text_bytes)
 RANGES = "_pystachy_range"  # lib's module of the class of range objects, range() as a value (Loader.program)
 RANGEC = "_pystachy_range$range"  # (that class)
