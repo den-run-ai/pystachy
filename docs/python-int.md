@@ -522,3 +522,6 @@ the first measurements, before the inline paths, in
 - `tests/deviations/python_int_limits.py` and the two rejections above.
 - `tools/test_compiler_state_files.py`: the opt-in follows its file through imports, restarts and
   later compilations.
+- `make python-int-optin` (`tools/python_int_optin.py`): every case of `tests/programs` with the
+  comment, against a fresh CPython recording, in JIT and AOT, and compared with an earlier report
+  ([testing](testing.md#make-verify)); `tools/test_python_int_optin.py` tests the tool.
