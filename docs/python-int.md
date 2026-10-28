@@ -94,21 +94,21 @@ print(int("123456789012345678901234567890") % 97)  # 52
   dict's keys, values and items and a set's elements make (`list(d)`, `d.items()`, `sorted(s)`).
 - The values of a dict of ints are promoting ints, in a program where a module opts in and none
   opts in to [dynamic `Any`](dynamic-any.md), as a list's items are: item assignment, `+=`,
-  displays, comprehensions, `setdefault()`, `update()`, `dict()` and `copy()` store values past
-  64 bits, also from pairs (`dict()` and `update()` of a list of tuples, `zip()`, `enumerate()`, a
-  generator or another dict's `items()`), and in a module that opts in, indexing, `get()`, `pop()`,
-  `setdefault()`, `popitem()` and iteration over `values()` and `items()` read them. `values()`
-  makes a list of ints that holds them, `items()` a list of tuples that does (`sorted(d.items())`),
-  and `repr()`, `==` and `!=` take them. A memo table (`memo[n] = fib(n - 1) + fib(n - 2)`) is
-  exact.
+  displays, comprehensions, `setdefault()`, `update()`, `dict()`, `copy()`, a NamedTuple's
+  `_asdict()` and `dict(vars(o))` store values past 64 bits, also from pairs (`dict()` and
+  `update()` of a list of tuples, `zip()`, `enumerate()`, a generator or another dict's
+  `items()`), and in a module that opts in, indexing, `get()`, `pop()`, `setdefault()`,
+  `popitem()` and iteration over `values()` and `items()` read them. `values()` makes a list of
+  ints that holds them, `items()` a list of tuples that does (`sorted(d.items())`), and `repr()`,
+  `==` and `!=` take them. A memo table (`memo[n] = fib(n - 1) + fib(n - 2)`) is exact.
 - The values of a dict of tuples of ints (also of tuples that hold them, as
   `dict[str, tuple[int, int]]`) hold promoting ints too, in the same programs, as a list's tuples
   do: displays, comprehensions, item assignment, `setdefault()`, `update()`, `dict()` of pairs,
-  `dict.fromkeys()` and copies store them as they are, also from a module that does not opt in,
-  and so do the defaults of `get()`, `pop()` and `setdefault()`; in a module that opts in,
-  indexing, unpacking, `get()`, `pop()`, `setdefault()`, `popitem()` and iteration over
-  `values()` and `items()` read them as tuples of promoting ints, and `values()`, `items()`,
-  sorting, searches, `repr()`, `==` and `!=` take them.
+  `dict.fromkeys()`, `_asdict()`, `dict(vars(o))` and copies store them as they are, also from a
+  module that does not opt in, and so do the defaults of `get()`, `pop()` and `setdefault()`; in a
+  module that opts in, indexing, unpacking, `get()`, `pop()`, `setdefault()`, `popitem()` and
+  iteration over `values()` and `items()` read them as tuples of promoting ints, and `values()`,
+  `items()`, sorting, searches, `repr()`, `==` and `!=` take them.
 - A set or frozenset of ints holds promoting ints, in a program where a module opts in and none
   opts in to [dynamic `Any`](dynamic-any.md), at CPython's hashes, so that loops, `repr()` and
   `pop()` see CPython's order: displays, comprehensions, `add()`, `update()`, `set()` of a list or
@@ -419,7 +419,9 @@ the first measurements, before the inline paths, in
   (`tests/python_int_modules/fixed_dict_pairs.py`); `python_int_dict_values.py`: dicts of tuples of
   ints past 64 bits, their stores, reads, defaults, `popitem()`, sorting, searches, comparisons,
   nested tuples, int keys, -2\*\*63 and a module that does not opt in
-  (`tests/python_int_modules/fixed_dict_values.py`).
+  (`tests/python_int_modules/fixed_dict_values.py`); `python_int_field_dicts.py`: the dicts of
+  `_asdict()` and `dict(vars(o))` of tuple and int fields, of a module that does not opt in
+  (`tests/python_int_modules/fixed_field_dicts.py`, holding -2\*\*63) and past 64 bits.
 - `tests/programs/numbers/python_int_recursion.py`: recursive functions and methods, one with a
   `dict[int, int]` memo; `python_int_forward_ref.py`: quoted annotations that name promoting ints
   ([provenance](../tests/upstream/python-int.md)).

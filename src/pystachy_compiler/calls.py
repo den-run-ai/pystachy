@@ -1082,8 +1082,8 @@ def gen_asdict(self, o: Val, args: list[Node]) -> Val:
     kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers, which a dict of them holds as boxes, keys too: ctype)
     r = self.rt("pys_dict_new_atomic" if atomic_dict(dt) else "pys_dict_new", "ptr", [f"i64 {self.key_kind(kv[0], True)}", f"i64 {len(ci.fields)}"])
     for fl in ci.fields:
-        v = self.coerce(self.getfield(o, self.field(o, fl), fl), kv[1])
-        self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
+        v = self.list_hold(self.getfield(o, self.field(o, fl), fl), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
+        self.dict_store(r, self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), v, kv)
     return Val(r, dt)
 
 def gen_init_result(self, v: Val) -> None:
