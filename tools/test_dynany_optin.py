@@ -269,6 +269,8 @@ class HarnessTests(unittest.TestCase):
             result, commands = self.native_one(root, base_ir=b"a", optin_ir=b"b", jit_ok=False,
                                                allowed={(self.case, "jit"): {"diagnostic": diagnostic}})
             self.assertEqual(result["results"][0]["result"], "expected-failure")
+            # (the exact diagnostic stays, for the report's check against the manifest)
+            self.assertEqual(result["results"][0]["diagnostic"], diagnostic)
             self.assertNotIn(("tests/run.sh", root), commands)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

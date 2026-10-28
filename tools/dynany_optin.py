@@ -306,7 +306,9 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed, oracle=rec
             diagnostic += f"\nexpected one compiler exit 1 with only its exact diagnostic, recorded {rejected!r}"
         row = {"case": case, "mode": mode, "result": result, "diagnostic": diagnostic}
         # (with --native-suite, tests-native runs the unchanged program in this mode)
-        if not ok and not (native and result == "expected-failure"):
+        if not ok and native and result == "expected-failure":
+            pass
+        elif not ok:
             baseline_status, baseline_output = run(["sh", "tests/run.sh", compiler, mode, case], root, env, timeout)
             baseline_ok, baseline_diagnostic = harness_result(baseline_status, baseline_output, case)
             if not baseline_ok:
