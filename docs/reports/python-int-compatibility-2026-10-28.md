@@ -1,8 +1,9 @@
 # Promoting-int compatibility baseline review
 
 The experimental `# pystachy: python-int` mode is checked across the differential program
-corpus by `make python-int-gate`. Every entry module receives the pragma, while its imports
-retain their own policy. Fresh CPython recordings account for the inserted source line.
+corpus by `make python-int-gate`. Every corpus entry module receives the pragma in every
+shard, including entries imported by another case; support modules outside the corpus retain
+their own policy. Fresh CPython recordings account for the inserted source line.
 The gate executes JIT and AOT and checks the original program on every opt-in failure.
 
 ## Baseline and classification
@@ -16,6 +17,8 @@ reported 266 failing checks. These are not 266 independent language defects:
 - Ten entry programs exposed integration bugs addressed by this change: dataclass copying,
   repeated-field inference, inherited class attributes, in-place power, optional sorting
   keys, never-returning calls, Unicode exception positions and byte-hex separator grouping.
+  Nine now pass. The heterogeneous `reflect_dataclasses.py` case advances past its scalar
+  copying blocker to a safe rejection of its unsupported mixed dictionary value union.
 - 33 other programs reach known inference, union, callable, identity or dynamic-storage
   limitations. They are retained as individual exact compiler-rejection entries, not
   counted as successful promotion coverage.
@@ -32,6 +35,12 @@ from different oracle environments are not interchangeable. The checked-in manif
 reviewed expected behavior; a successful gate run must still observe every entry in each
 execution mode. Reports retain exact counts and identities rather than relying on this
 dated narrative.
+
+The full post-fix native JIT/AOT sweep completed all 3,654 checks for 1,827 programs:
+3,142 passed, 510 matched existing rejections and the two `reflect_dataclasses.py` checks
+exposed the additional mixed-storage boundary above. Its separate JIT/AOT manifest entries
+bring the reviewed baseline to 256 rejected programs; they must satisfy the same exact
+compiler-exit and raw-stream checks as every other entry.
 
 ## Remaining rejected surface
 

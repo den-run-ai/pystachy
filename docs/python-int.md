@@ -333,7 +333,9 @@ for a C `long`), where CPython goes on with the bigger int:
   is hashed, compared, searched, formatted with `%` and unpacked into arguments as the tuple of
   its fields or None, which holds 64-bit ints too. `dataclasses.astuple()` also has this
   optional-tuple boundary; `dataclasses.asdict()` preserves promoting scalar and fixed-tuple
-  field values in its dictionary storage.
+  field values when the fields have a supported common dictionary value type. Heterogeneous
+  fields requiring a closed union containing a promoting int are rejected at compile time,
+  including when the particular integer value fits in 64 bits.
 - An `int` or `int | None` parameter of a function in a module that does not opt in, also of a
   class's comparison method and where a `Callable` holds the function (whose unannotated parameters
   take the promoting int, so arithmetic there promotes too), and the ints of the other types that a

@@ -345,6 +345,54 @@ class MainTests(unittest.TestCase):
             status = gate.main(["--compiler", str(compiler), "--report", str(output)])
         return status, json.loads(output.read_text())
 
+    def test_cross_case_imports_have_identical_policy_in_full_sharded_and_focused_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture(root)
+            helper = root / "tests/helpers/fixed.py"
+            helper.parent.mkdir()
+            policy = 'Path(__file__).read_bytes().startswith(b"# pystachy: python-int\\n")'
+            helper.write_text("from pathlib import Path\nactive = " + policy + "\n")
+            (root / B).write_text("from pathlib import Path\nactive = " + policy + "\n"
+                                 "if __name__ == '__main__':\n    print(active)\n")
+            (root / A).write_text(
+                "from pathlib import Path\nimport sys\nimport b\n"
+                "sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'helpers'))\n"
+                "import fixed\nprint(" + policy + ", b.active, fixed.active)\n")
+            compiler = root / "compiler"
+            compiler.write_text("#!/bin/sh\nexit 0\n")
+            compiler.chmod(0o755)
+            observed = []
+
+            def one(case, original, overlay, temp, compiler, modes, timeout, allowed, gc_stress):
+                # Really import the other corpus entry plus an outside-corpus helper.
+                # The ordinary Python oracle ignores pragmas; this probe observes exactly
+                # which file policies the compiled imported annotations will see.
+                execution = subprocess.run([sys.executable, str(overlay / case)], capture_output=True,
+                                           text=True, check=True, timeout=5)
+                observed.append((case, execution.stdout))
+                expected = "True True False\n" if case == A else "True\n"
+                return {"case": case, "oracle": True, "results": [
+                    {"case": case, "mode": mode,
+                     "result": "pass" if execution.stdout == expected else "fail",
+                     "diagnostic": "" if execution.stdout == expected else "import policy changed"}
+                    for mode in modes]}
+
+            for extra, expected_cases in (([], [A, B]), (["--shard-index", "0", "--shard-count", "2"], [A]),
+                                          (["--shard-index", "1", "--shard-count", "2"], [B]),
+                                          (["--cases", A], [A])):
+                with self.subTest(extra=extra), mock.patch.object(gate, "ROOT", root), \
+                     mock.patch.object(gate, "one", side_effect=one), \
+                     mock.patch.object(gate.optin, "run", return_value=(0, "")), mock.patch("sys.stdout"):
+                    observed.clear()
+                    status = gate.main(["--compiler", str(compiler), "--report", str(root / "build/report.json"),
+                                        *extra])
+                    self.assertFalse(status)
+                    self.assertEqual(sorted(case for case, _ in observed), expected_cases)
+            self.assertFalse((root / A).read_bytes().startswith(gate.PRAGMA))
+            self.assertFalse((root / B).read_bytes().startswith(gate.PRAGMA))
+            self.assertFalse(helper.read_bytes().startswith(gate.PRAGMA))
+
     def test_complete_success_and_fail_closed_on_incomplete_workers(self):
         with tempfile.TemporaryDirectory() as tmp:
             status, result = self.execute(tmp)

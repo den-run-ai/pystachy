@@ -3842,6 +3842,22 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/reflection/reflect_dataclasses.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/reflection/reflect_dataclasses.py:58: error: asdict() of Item: str and int have no common type (int in a closed union is not supported (use scalar, list/dict or native class/file types))",
+      "reason": "Heterogeneous dataclass asdict fields (str, promoting int and float) require a closed dictionary value union that cannot represent promoting ints, even when the particular integer fits in 64 bits. Homogeneous promoting-int copies are supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/reflection/reflect_dataclasses.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/reflection/reflect_dataclasses.py:58: error: asdict() of Item: str and int have no common type (int in a closed union is not supported (use scalar, list/dict or native class/file types))",
+      "reason": "Heterogeneous dataclass asdict fields (str, promoting int and float) require a closed dictionary value union that cannot represent promoting ints, even when the particular integer fits in 64 bits. Homogeneous promoting-int copies are supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/reflection/reflect_getattr_default.py",
       "mode": "jit",
       "category": "unsupported-storage",

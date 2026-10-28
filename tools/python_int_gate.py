@@ -3,6 +3,10 @@
 Only exact compiler rejections can be excepted. A timeout, crash, changed output, changed
 error, failed baseline or oracle, and an obsolete exception all fail. Exploratory reports
 from python_int_optin.py are deliberately not release/verification evidence.
+
+Every corpus entry module opts in in every overlay, including entries outside the execution
+shard or --cases selection. Imported support modules outside the corpus retain their policy.
+This makes full, sharded and focused runs observe the same imported-module integer layouts.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -279,7 +283,7 @@ def main(argv=None):
     with tempfile.TemporaryDirectory(prefix="pystachy-intgate-") as tmp:
         temp = Path(tmp)
         overlay, work = temp / "tree", temp / "work"
-        optin.prepare_tree(ROOT, overlay, selected, PRAGMA)
+        optin.prepare_tree(ROOT, overlay, corpus, PRAGMA)
         work.mkdir()
         warm = work / "warm"
         warm.mkdir()
