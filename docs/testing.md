@@ -406,10 +406,10 @@ runner variation:
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the full AOT suite, with compiler and program GC stress. |
 | `dynany-optin-0` through `dynany-optin-3` | Four disjoint quarters of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-7` | Eight disjoint parts of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
-| `runtime-cache` | The cached runtime's rules with both compilers. |
-| `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress. |
-| `benchmarks` | Benchmark correctness/timings and half of the compiler-scaling shapes; extended correctness checks reuse the verified compiler. |
-| `scaling-1` | The other compiler-scaling shapes. |
+| `runtime-cache` | The cached runtime's rules with both compilers, the two runs side by side. |
+| `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress; independent steps run side by side. |
+| `benchmarks` | Benchmark correctness/timings; extended correctness checks reuse the verified compiler. |
+| `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
 
 A failed group leaves the others running. The required check remains
 `make verify (Linux x86-64, LLVM 18, Python 3.13)`. Its report gate requires every group to
@@ -463,10 +463,21 @@ unsharded suite: the JIT and AOT shards as many as `tests/verify.sh` counts in t
 thirds, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
 both of their halves and `hosted` its three thirds, `python-free` rebuilds the compiler once and
 runs its three thirds, and `ubsan` builds the sanitized compiler once and runs its three thirds.
-The compiler-scaling check is split by shapes: `scaling-0` (in `benchmarks`) checks those of
-`SCALING_0`, about half of the lines the CPython-hosted compiler executes, and `scaling-1` every
-other shape of `tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires
-the two to check every shape once. Locally, `scaling` runs both.
+The compiler-scaling check is split by shapes: `scaling-0` checks those of `SCALING_0`, about
+half of the lines the CPython-hosted compiler executes, and `scaling-1` every other shape of
+`tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires the two to
+check every shape once. Both run in the `scaling` group with `tools/scaling.py -j`, one shape per
+CPU (`PYSTACHY_JOBS` if set): `--check` compares counts, which do not depend on the load, so its
+seconds there are informational; measure timings with `-j 1`.
+The `contracts` group runs `check-ir` and `rt-abi`, which use every CPU, first and then its other
+steps in four lanes at once (`tests/verify.sh`'s `contracts_a`, `_b`, `_c` and `_fg`), after one
+runtime build per compiler so that each step finds the warm cache it found when the steps ran one
+after another. A shell's background job starts with SIGINT and SIGQUIT ignored, so the steps whose
+programs take SIGINT (`ffi`, `select-io`) are in the shell's own lane, `contracts_fg`. Each lane
+keeps its steps' records and the shell appends them in the plan's order; a lane that ends before a
+step reports fails that step (`lane_ended`). `tools/test_verify_contracts.py` checks the order,
+the overlap, the SIGINT disposition and both failures. `runtime-cache` runs `tests/cache.sh` for
+the two compilers at once: each run has its own home, LLVM wrappers and temporary directory.
 The final report job allows ten minutes for artifact downloads and validation.
 
 The compiler state controls (`python3 -m unittest discover -s tools -p
