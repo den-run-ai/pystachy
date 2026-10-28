@@ -25,10 +25,9 @@ SHARDS = [("native-0", "tests-native-0", ["jit", "aot"], ["jit aot"]),
           ("opt-off-0", "tests-opt-off-0", ["jit", "aot"], ["jit aot"]),
           ("opt-off-1", "tests-opt-off-1", ["jit", "aot"], ["jit aot"]),
           ("python-free-0", "python-free-0", None, ["jit aot"]), ("python-free-1", "python-free-1", None, ["jit aot"]),
-          ("ubsan-0", "ubsan-0", ["aot", "jit"], ["aot", "jit"]), ("ubsan-1", "ubsan-1", ["aot", "jit"], ["aot", "jit"]),
-          ("ubsan-2", "ubsan-2", ["aot", "jit"], ["aot", "jit"])]
+          ("ubsan-0", "ubsan-0", ["aot", "jit"], ["aot", "jit"]), ("ubsan-1", "ubsan-1", ["aot", "jit"], ["aot", "jit"])]
 # how many shards each suite has: the group kind-I runs shard I
-SHARD_COUNTS = {"native": 2, "opt-off": 2, "python-free": 2, "ubsan": 3}
+SHARD_COUNTS = {"native": 2, "opt-off": 2, "python-free": 2, "ubsan": 2}
 
 
 def checks(cases, modes):
@@ -253,7 +252,7 @@ esac
                     self.assertIn("CHECK DIFF tests/programs/x/syntax_example.py", logs["tests-cpython"])
 
     def test_ubsan_shards_need_an_instrumented_runtime(self):
-        for group in ("ubsan-0", "ubsan-1", "ubsan-2"):
+        for group in ("ubsan-0", "ubsan-1"):
             with self.subTest(group=group):
                 result, report, logs = self.run_group(group, "plain-runtime")
                 self.assertNotEqual(result.returncode, 0)

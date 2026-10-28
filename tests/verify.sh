@@ -24,8 +24,8 @@
 #                  that the driver and tests/run.sh call (no python3): the native compiler rebuilds
 #                  its runtime and itself, reproduces the same IR and passes the tests of the shard's
 #                  half of the corpus
-#   ubsan-0/-1/-2  PYSTACHY_CFLAGS="$UBSAN" (private PYSTACHY_HOME, so a fresh runtime cache): the
-#                  compiler built that way reproduces the IR, and every test of the shard's third of the
+#   ubsan-0/-1     PYSTACHY_CFLAGS="$UBSAN" (private PYSTACHY_HOME, so a fresh runtime cache): the
+#                  compiler built that way reproduces the IR, and every test of the shard's half of the
 #                  corpus passes AOT-built with it and JIT-run on the sanitized runtime (lli gets the
 #                  UBSan runtime via LD_PRELOAD)
 #   check-ir       tools/check_ir.sh: the compiler's IR check (PYSTACHY_IRCHECK=1) and llvm-as accept the
@@ -115,7 +115,7 @@ ROOT=$(pwd)
 plan() {
   case $1 in
     bootstrap) echo 'bootstrap' ;;
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 ubsan-0 ubsan-1 ubsan-2 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 ubsan-0 ubsan-1 check-ir runtime-table gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks rtcheck re-fuzz dynany-fuzz dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
@@ -128,8 +128,7 @@ plan() {
     python-free) echo 'bootstrap python-free-0 python-free-1' ;; # local alias (one rebuild for the two halves)
     ubsan-0) echo 'bootstrap ubsan-0' ;;
     ubsan-1) echo 'bootstrap ubsan-1' ;;
-    ubsan-2) echo 'bootstrap ubsan-2' ;;
-    ubsan) echo 'bootstrap ubsan-0 ubsan-1 ubsan-2' ;; # local alias (one sanitized build for the three thirds)
+    ubsan) echo 'bootstrap ubsan-0 ubsan-1' ;; # local alias (one sanitized build for the two halves)
     gc-self) echo 'bootstrap gc-self' ;;
     gc-jit-0) echo 'bootstrap gc-jit-0' ;;
     gc-jit-1) echo 'bootstrap gc-jit-1' ;;
@@ -151,10 +150,10 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free|ubsan-0|ubsan-1|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin|contracts|benchmarks|scaling-1|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
-  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 contracts benchmarks scaling-1; do
+  for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 ubsan-0 ubsan-1 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 python-int-optin-0 python-int-optin-1 contracts benchmarks scaling-1; do
     printf '%s %s\n' "$g" "$(plan "$g")"
   done
   exit 0
@@ -484,8 +483,8 @@ rm -rf "$NP"
 fi
 
 # ---- ubsan: sanitized runtime in every program, the compiler included
-# The sanitized compiler is built once; each shard runs its third of the corpus in both modes.
-if want ubsan-0 || want ubsan-1 || want ubsan-2; then
+# The sanitized compiler is built once; each shard runs its half of the corpus in both modes.
+if want ubsan-0 || want ubsan-1; then
 ubs=$(now); UB=$V/ubsan-build.log; built=0
 UBSO=$("${LLVM}clang" -print-file-name="libclang_rt.ubsan_standalone-$(uname -m).so")
 {
@@ -497,11 +496,11 @@ UBSO=$("${LLVM}clang" -print-file-name="libclang_rt.ubsan_standalone-$(uname -m)
     ls "$V/ubsan-home/build" && test -z "$(grep -L __ubsan_handle "$V"/ubsan-home/build/runtime-*.bc)" &&
     grep -q __ubsan_handle "$V"/ubsan-home/build/runtime-*.bc && echo "cached runtime bitcode is instrumented" && built=1
 } > "$UB" 2>&1
-for shard in 0 1 2; do
+for shard in 0 1; do
   want ubsan-$shard || continue
   # (the first shard's time includes the sanitized build)
   L=$V/ubsan-$shard.log; s=${ubs:-$(now)}; ubs=; r=fail
-  shard_cases $shard 3 "$V/ubsan-$shard-cases.log"
+  shard_cases $shard 2 "$V/ubsan-$shard-cases.log"
   set --
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/ubsan-$shard-cases.log"
   {
@@ -522,7 +521,7 @@ for shard in 0 1 2; do
   x=""
   [ $# = 0 ] || x=$(tests $(($(checks aot "$@") + $(checks jit "$@"))) "$V/ubsan-$shard-aot.log" "$V/ubsan-$shard-jit.log" 2>> "$L") &&
     [ $built = 1 ] && [ $# != 0 ] && r=pass
-  step ubsan-$shard $r "$s" "$L" ", \"cflags\": $(js "$UBSAN"), \"modes\": [\"aot\", \"jit\"], \"jit_preload\": $(js "$UBSO"), \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-ubsan.ll"), \"shard_index\": $shard, \"shard_count\": 3$x"
+  step ubsan-$shard $r "$s" "$L" ", \"cflags\": $(js "$UBSAN"), \"modes\": [\"aot\", \"jit\"], \"jit_preload\": $(js "$UBSO"), \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-ubsan.ll"), \"shard_index\": $shard, \"shard_count\": 2$x"
 done
 fi
 
@@ -864,7 +863,7 @@ sources = {str(p): {"lines": p.read_bytes().count(b"\n"),
                     "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in paths}
 # (suite_checks: the checks of the whole corpus in JIT and AOT, which the shards of each such suite
 # make together; mode_checks: its checks in one mode, which the shards of each GC suite make, and
-# the UBSan thirds once in each mode)
+# the UBSan halves once in each mode)
 # (corpus_cases and syntax_cases: the cases tests-cpython compiles with both compilers, and those it
 # checks with both)
 cases = [*Path("tests/programs").glob("*/*.py"), *Path("tests/deviations").glob("*.py"),

@@ -18,13 +18,13 @@ import python_int_gate
 ROOT = Path(__file__).resolve().parent.parent
 SUITE_STEPS = {"tests-cpython", "tests-native-0", "tests-native-1",
                "tests-opt-off-0", "tests-opt-off-1", "runtime-cache", "python-free-0", "python-free-1",
-               "ubsan-0", "ubsan-1", "ubsan-2", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
+               "ubsan-0", "ubsan-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
                "gc-aot-2"}
 # Steps that run one of the disjoint shards of the corpus (tests/verify.sh shard_cases), and how many
 # shards their suite has: the name ends in the shard index.
 SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
                  (("tests-native", 2), ("tests-opt-off", 2), ("python-free", 2),
-                  ("ubsan", 3), ("gc-jit", 2), ("gc-aot", 3))
+                  ("ubsan", 2), ("gc-jit", 2), ("gc-aot", 3))
                  for index in range(count)}
 GC_STEPS = {"gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"}
 # The halves of tools/scaling.py's check (tests/verify.sh's SCALING_0 and the shapes it leaves)
@@ -252,11 +252,11 @@ def merge_reports(directory, groups, expected_commit=None):
         if sum(shard["expected"] for shard in shards) != suite * runs:
             raise ValueError(f"{what} shards must cover the same full-suite check count as the corpus")
     # The shards of a GC suite, which runs in one mode, make as many as the corpus has in one mode
-    # (sources.mode_checks), and the UBSan thirds, which run in both modes one at a time, twice as many.
+    # (sources.mode_checks), and the UBSan halves, which run in both modes one at a time, twice as many.
     mode_checks = reports[wanted[0]]["sources"]["mode_checks"]
     for shards, runs, what in ((("gc-jit-0", "gc-jit-1"), 1, "GC JIT"),
                                (("gc-aot-0", "gc-aot-1", "gc-aot-2"), 1, "GC AOT"),
-                               (("ubsan-0", "ubsan-1", "ubsan-2"), 2, "UBSan")):
+                               (("ubsan-0", "ubsan-1"), 2, "UBSan")):
         if (all(group in reports for group in shards) and
                 sum(reports[group]["steps"][-1]["expected"] for group in shards) != mode_checks * runs):
             raise ValueError(f"{what} shards must cover the same full-suite check count as the corpus")
