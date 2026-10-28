@@ -15,7 +15,7 @@ the program's classes, functions the compiler writes once every class that is bo
 (dyn_dispatchers): each tests the box's DynType for those classes and calls the class's own code.
 """
 from __future__ import annotations
-from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, nonlocal_decls, targets, walrus_names
+from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import retoken, short
@@ -1317,8 +1317,11 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     elif v.idslot != "":
         # A closed numeric body cannot observe an internal alias and returns at most
         # one object. Its copies may carry nullable provenance until that return;
-        # ordinary bodies must materialize the shared object before copying it.
-        b = self.dyn_id_held(v).v if self.fn.numeric_only else self.dyn_box(v).v
+        # ordinary bodies must materialize the shared object before copying it. A
+        # call's private result slot that a lone assignment stores (IFn.idmove) is
+        # no alias: the store takes its object, boxed or not, as a return does.
+        moved = (self.fn.idmove and v.idexact and ".box." not in v.idslot) or (self.fn.idpass and ".box." in v.idslot)
+        b = self.dyn_id_held(v).v if self.fn.numeric_only or moved else self.dyn_box(v).v
     elif v.lit and (v.t == unopt(t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))) and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         # store_name can retain t until a pending type join restarts compilation to widen
         # it. A provisional int slot may receive a float literal: its LLVM hex bits
@@ -1345,6 +1348,23 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # can survive only the finite stores in its expression, not 2**64 rebindings.
         serial = self.scalar("add", [self.mem_load(counter), Val(step, "int")])
         self.mem_store(counter, Val(serial, "int"))
+
+
+def gen_dyn_id_fresh(self, v: Val) -> bool:
+    # is v an int or float that no binding holds as its object: computed (arithmetic, a
+    # conversion, a builtin's result, an item of typed storage without identity slots), not a
+    # variable's, field's or list item's object, an Any value's or a literal's. Its first
+    # crossing into Any makes its box, so a call passes it with a null companion (dyn_id_arg)
+    t = self.rec_type(v.t)
+    return (t == "int" or t == "float") and not v.lit and v.idfrom == "" and v.idslot == ""
+
+
+def gen_dyn_id_arg(self, v: Val) -> Val:
+    # the companion box a call passes with numeric argument v (identity_abi): null for a new
+    # number (dyn_id_fresh), which the callee boxes where it crosses into Any, else its box
+    if self.dyn_id_fresh(v):
+        return Val("null", DYN)
+    return self.dyn_box(v)
 
 
 def gen_dyn_id_read(self, v: Val, slot: str) -> None:
@@ -1454,15 +1474,30 @@ def gen_lazy_field(self, o: str, f: str, line: int) -> str:
 
 
 def gen_lazy_fields(self, f: FnInfo, body: list[Node]) -> None:
-    # the lazy numeric field locals of the function being compiled, f's body, and the liveness of
-    # each where each of its statements starts (on self.fn)
+    # the lazy numeric field locals of the function being compiled, f's body, the locals that a
+    # call argument or a copy may move (id_move), and the liveness of each where each statement
+    # starts and ends (on self.fn)
     fn = self.fn
     if not identity_abi(f) or f.gen or self.modlevel or self.rtmode or len([st for st in body if has_kind(st, "await")]) > 0:
         return
     reads: list[Node] = []
     wbs: list[Node] = []
     lazy_sites(body, reads, wbs)
-    if len(reads) == 0:
+    passed: dict[str, bool] = {}
+    pending = [x for x in body]
+    while len(pending) > 0:
+        st = pending.pop()
+        if st.kind == "call":
+            for a in st.kids[1:]:
+                e = a.kids[0] if a.kind == "kw" and len(a.kids) == 1 else a
+                if e.kind == "name":
+                    passed[e.s] = True
+        elif (st.kind == "assign" and len(st.kids) == 2) or (st.kind == "annassign" and len(st.kids) == 3):
+            if st.kids[-1].kind == "name":
+                passed[st.kids[-1].s] = True
+        if st.kind != "def" and st.kind != "lambda" and st.kind != "class" and st.kind != "subclass":
+            pending.extend(st.kids)
+    if len(reads) == 0 and len(passed) == 0:
         return
     assigned: dict[str, bool] = {}
     local_names(body, assigned)
@@ -1503,21 +1538,88 @@ def gen_lazy_fields(self, f: FnInfo, body: list[Node]) -> None:
         else:
             fields[fld] = x
     names = [x for x in keys if x not in bad]
-    if len(names) == 0:
-        return
     if len(names) > 16:
         names = names[:16]
+    movers = [x for x in passed if (x in assigned or x in f.params) and x not in odd and x not in self.cells and x not in names]
+    if len(movers) > 46:
+        movers = movers[:46]
+    if len(names) == 0 and len(movers) == 0:
+        return
     bits: dict[str, int] = {}
     for j in range(len(names)):
         bits[names[j]] = 1 << j
+    for j in range(len(movers)):
+        bits[movers[j]] = 1 << (len(names) + j)
     lazy_block(body, bits, 0, 0, 0, fn.lazylines, fn.lazymasks, True)
+    for x in names + movers:
+        fn.movebit[x] = bits[x]
     for x in names:
         fn.lazyobj[x] = keys[x][: keys[x].find(".")]
         fn.lazyfield[x] = keys[x][keys[x].find(".") + 1:]
         fn.lazybit[x] = bits[x]
         fn.lazyflag[x] = self.alloca("bool", "")  # (false where the function begins)
-    fn.lazyreads = [st for st in reads if st.kids[0].s in bits]
-    fn.lazywbs = [st for st in wbs if st.kids[1].s in bits and st.kids[0].kids[0].s == fn.lazyobj[st.kids[1].s] and st.kids[0].s == fn.lazyfield[st.kids[1].s]]
+    fn.lazyreads = [st for st in reads if st.kids[0].s in fn.lazyobj]
+    fn.lazywbs = [st for st in wbs if st.kids[1].s in fn.lazyobj and st.kids[0].kids[0].s == fn.lazyobj[st.kids[1].s] and st.kids[0].s == fn.lazyfield[st.kids[1].s]]
+
+
+def gen_id_move(self, e: Node) -> bool:
+    # is e, a read of a local x in the simple statement being compiled, its last before x is
+    # assigned again: x is not live after the statement (analysis.lazy_block), and nothing the
+    # statement evaluates after e names x (along e's path: call arguments, operands, items and
+    # subscripts evaluate left to right, an assignment's targets after its value). The read may
+    # then hand x's object on as it is, boxed or not, as a return does: no other binding holds
+    # it afterwards, so a copy (dyn_id_store) or an argument (pcoerce) needs no box
+    fn = self.fn
+    n = fn.idstmt
+    if e.kind != "name":
+        return False
+    x = e.s
+    if n is None or x not in fn.movebit or x not in self.idbox or ".box." not in self.idbox[x] or x in self.cells or x in self.compvars:
+        return False
+    if n.kind != "assign" and n.kind != "annassign" and n.kind != "expr" and n.kind != "return":
+        return False
+    if n.line not in fn.lazylines:
+        return False
+    out = -1
+    ns = fn.lazylines[n.line]
+    for j in range(len(ns)):
+        if ns[j] is n:
+            out = fn.lazymasks[n.line][2 * j + 1]
+    if (out & fn.movebit[x]) != 0:
+        return False
+    path: list[Node] = []
+    if not id_path(n, e, path):
+        return False
+    bits = {x: 1}
+    for j in range(len(path) - 1):
+        a = path[j]
+        c = path[j + 1]
+        k = a.kind
+        if k == "assign" or k == "annassign":
+            if c is not a.kids[-1]:
+                return False
+            later = a.kids[:-1]
+        elif k in ["call", "kw", "binop", "unary", "tuple", "list", "index", "slice", "attr", "return", "expr"]:
+            at = [i for i in range(len(a.kids)) if a.kids[i] is c]
+            later = a.kids[at[0] + 1:]
+        else:
+            return False
+        for kid in later:
+            if name_bits(kid, bits) != 0:
+                return False
+    return True
+
+
+def id_path(n: Node, e: Node, path: list[Node]) -> bool:
+    # the nodes from n down to e, a node of n (path), if e is one
+    path.append(n)
+    if n is e:
+        return True
+    for k in n.kids:
+        if id_path(k, e, path):
+            return True
+    path.pop()
+    return False
 
 
 def gen_lazy_test(self, e: Node) -> bool:
@@ -1569,6 +1671,21 @@ def gen_lazy_inert(self, n: Node) -> bool:
     return False
 
 
+def gen_id_stmt(self, n: Node) -> None:
+    # statement n, where a function has lazy field locals or moves: its barrier first
+    # (lazy_barrier), and the statement for id_move while it compiles
+    fn = self.fn
+    if len(fn.lazyobj) > 0:
+        self.line = n.line
+        self.lazy_barrier(n)
+    held = fn.idstmt
+    fn.idstmt = n
+    try:
+        self.stmt_main(n)
+    finally:
+        fn.idstmt = held
+
+
 def gen_lazy_barrier(self, n: Node) -> None:
     # before statement n: where it may run code (lazy_inert), each local that may share a field
     # gets its box (lazy_resolve) if a read of it may follow, else stops sharing
@@ -1580,7 +1697,7 @@ def gen_lazy_barrier(self, n: Node) -> None:
         ns = fn.lazylines[n.line]
         for j in range(len(ns)):
             if ns[j] is n:
-                mask = fn.lazymasks[n.line][j]
+                mask = fn.lazymasks[n.line][2 * j]
     for x in [y for y in fn.lazyobj]:
         if (mask & fn.lazybit[x]) == 0:
             self.mem_store(Val(fn.lazyflag[x], "*bool"), Val("false", "bool"))

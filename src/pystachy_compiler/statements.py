@@ -581,10 +581,14 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
     self.exits = self.exits[:n0]
 
 def gen_stmt(self, n: Node) -> None:
+    if len(self.fn.lazyobj) > 0 or len(self.fn.movebit) > 0:
+        self.id_stmt(n)  # (lazy field locals and moves: dynamic.py)
+    else:
+        self.stmt_main(n)
+
+def gen_stmt_main(self, n: Node) -> None:
     self.line = n.line
     k = n.kind
-    if len(self.fn.lazyobj) > 0:
-        self.lazy_barrier(n)  # (a statement that may run code: dynamic.py's lazy field locals)
     if len(self.dmemo) > 0:
         # (the dry-run types of the display items of the statement before, see dyn_dry)
         self.dmemo = []
@@ -660,17 +664,25 @@ def gen_stmt(self, n: Node) -> None:
             else:
                 v = self.expr(val, self.target_type(t0))
             src = self.joinsrc
-            if n.s == "local-retype":
-                self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
-                self.store_name(t0.s, v, True)
-            else:
-                if len(n.kids) > 2 and (v.t == "int" or v.t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit and self.dyn_policy(n.line):
-                    # (x = y = f(): one object, whose box each target's binding holds: dyn_id_store)
-                    v.idfrom = self.dyn_box(v).v
-                for i in range(len(n.kids) - 1):
-                    tgt = n.kids[i]
-                    self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
-                    self.assign(tgt, v)
+            moving = self.fn.idmove
+            passing = self.fn.idpass
+            self.fn.idmove = len(n.kids) == 2 and v.idexact and (t0.kind == "name" or t0.kind == "attr")
+            self.fn.idpass = len(n.kids) == 2 and (t0.kind == "name" or t0.kind == "attr") and self.id_move(val)
+            try:
+                if n.s == "local-retype":
+                    self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
+                    self.store_name(t0.s, v, True)
+                else:
+                    if len(n.kids) > 2 and (v.t == "int" or v.t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit and self.dyn_policy(n.line):
+                        # (x = y = f(): one object, whose box each target's binding holds: dyn_id_store)
+                        v.idfrom = self.dyn_box(v).v
+                    for i in range(len(n.kids) - 1):
+                        tgt = n.kids[i]
+                        self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
+                        self.assign(tgt, v)
+            finally:
+                self.fn.idmove = moving
+                self.fn.idpass = passing
             self.joinsrc = src
         self.copying = False
     elif k == "annassign" and self.tmpl_ann(n.kids[1]):

@@ -339,6 +339,10 @@ class IFn:
         self.lazymasks: dict[int, list[int]] = {}  # live where each starts (analysis.lazy_block)
         self.lazyoff = 0  # inside a while loop whose test may run code: no sharing starts
         self.lazywb = ""  # the local whose write-back setfield is compiling
+        self.idmove = False  # a lone assignment stores a call's result (dyn_id_store)
+        self.idpass = False  # a copy or argument moves a local (Gen.id_move)
+        self.movebit: dict[str, int] = {}  # locals a read may move: their bits in lazymasks
+        self.idstmt: Node | None = None  # the statement being compiled, where movebit has any
         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]

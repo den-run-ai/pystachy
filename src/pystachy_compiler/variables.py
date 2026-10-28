@@ -33,7 +33,6 @@ from src.pystachy_compiler.utils import (
     empty_ann,
     empty_default,
     empty_display,
-    identity_abi,
     is_const,
     is_dict,
     is_fn,
@@ -125,17 +124,11 @@ def gen_load_name(self, name: str) -> Val:
             self.nn[r] = True
         val = Val(r, t)
         if name in self.idbox and numeric_identity(t):
-            f = self.curfn
-            if t in ["int", "float"] and identity_abi(f) and not f.scalar_args and not f.gen and name in f.params and name not in self.assigned and name not in self.cells and name not in self.nlw and name not in self.compvars and f.ptypes[f.params.index(name)] == t:
-                # Every caller supplies this exact object's box. An immutable private
-                # parameter cannot have replaced it, so no lazy local snapshot is needed.
-                # Scalar-proof callees may receive null companions; captured, rebound,
-                # narrowed and comprehension-shadowed bindings keep the ordinary path.
-                val.idfrom = "%aid" + str(f.params.index(name))
-            else:
-                if name in self.fn.lazyflag and not self.fn.scalar_reads:
-                    self.lazy_resolve(name)  # (a lazy field local's object gets its box: dynamic.py)
-                self.dyn_id_read(val, self.idbox[name])
+            # (A parameter's slot starts with its companion: null where the caller passed a
+            # new number, dyn_id_arg, which its first crossing boxes.)
+            if name in self.fn.lazyflag and not self.fn.scalar_reads:
+                self.lazy_resolve(name)  # (a lazy field local's object gets its box: dynamic.py)
+            self.dyn_id_read(val, self.idbox[name])
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
             if val.idfrom != "" and (is_opt(t) or is_union(t)):
                 # A shared cell's snapshot may fill its adjacent identity cache.

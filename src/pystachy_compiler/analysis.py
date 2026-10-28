@@ -2034,7 +2034,7 @@ def lazy_targets(t: Node, bits: dict[str, int], acc: list[int]) -> None:
 def lazy_block(body: list[Node], bits: dict[str, int], out: int, brk: int, cont: int, lines: dict[int, list[Node]], masks: dict[int, list[int]], record: bool) -> int:
     # the bits of the names live where body starts: read before they are assigned again on some
     # path, out after body, brk at a break and cont at a continue (of the innermost loop). With
-    # record, each statement's own (lazy_stmt) is kept by its line: lines and masks
+    # record, each statement's own (lazy_stmt) are kept by its line: lines and masks
     live = out
     i = len(body) - 1
     while i >= 0:
@@ -2046,7 +2046,8 @@ def lazy_block(body: list[Node], bits: dict[str, int], out: int, brk: int, cont:
 def lazy_stmt(n: Node, bits: dict[str, int], out: int, brk: int, cont: int, lines: dict[int, list[Node]], masks: dict[int, list[int]], record: bool) -> int:
     # lazy_block for statement n. Assignments, if and while statements, returns, raises, breaks
     # and continues are followed; any other statement keeps every name it mentions live, and
-    # every name live after it or where a break or continue in it goes
+    # every name live after it or where a break or continue in it goes. Recorded for n: the
+    # names live where it starts, then those live after it (masks[line][2j], [2j + 1])
     k = n.kind
     live = 0
     if k == "block":
@@ -2088,4 +2089,5 @@ def lazy_stmt(n: Node, bits: dict[str, int], out: int, brk: int, cont: int, line
             masks[n.line] = []
         lines[n.line].append(n)
         masks[n.line].append(live)
+        masks[n.line].append(out)
     return live

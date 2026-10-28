@@ -231,7 +231,10 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         if self.dyn_widened(f.params[i]):
             # (one that an Any value is assigned later: a dynamic slot from the start, dyn_widen)
             incoming = Val(f"%a{i}", t)
-            if identity_abi(f) and numeric_identity(t):
+            if identity_abi(f) and (t == "int" or t == "float"):
+                # (null where the caller passed a new number: dyn_id_arg)
+                incoming.idfrom = self.rt("pys_dyn_int_box" if t == "int" else "pys_dyn_float_box", "ptr", [f"{'i64' if t == 'int' else 'double'} %a{i}", f"ptr %aid{i}"])
+            elif identity_abi(f) and numeric_identity(t):
                 incoming.idfrom = f"%aid{i}"
             self.mem_store(Val(self.alloca("dyn", f.params[i]), "*dyn"), self.dyn_box(incoming))
         elif f.cmprebind != "" and i == 1:
