@@ -133,6 +133,8 @@ def gen_load_name(self, name: str) -> Val:
                 # narrowed and comprehension-shadowed bindings keep the ordinary path.
                 val.idfrom = "%aid" + str(f.params.index(name))
             else:
+                if name in self.fn.lazyflag and not self.fn.scalar_reads:
+                    self.lazy_resolve(name)  # (a lazy field local's object gets its box: dynamic.py)
                 self.dyn_id_read(val, self.idbox[name])
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
             if val.idfrom != "" and (is_opt(t) or is_union(t)):
@@ -1793,6 +1795,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (a value others may hold: str_append)
         if name in self.idbox and numeric_identity(t):
             self.dyn_id_store(self.idbox[name], v, t)  # (the object it now holds: dyn_box)
+        if name in self.fn.lazyflag:
+            self.mem_store(Val(self.fn.lazyflag[name], "*bool"), Val("false", "bool"))  # (no longer a field's object)
         # (a local a closure assigns (nonlocal) keeps its declared type: a call may run the
         # closure, as narrowable says)
         u = unopt(t)

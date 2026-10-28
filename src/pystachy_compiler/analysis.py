@@ -1983,3 +1983,109 @@ def shows_items(n: Node, name: str) -> bool:
         if shows_items(k, name):
             return True
     return False
+
+
+# Lazy numeric field locals (Gen.lazy_fields): a local x that reads a plain numeric field,
+# x = o.f, may share the field's object without a box until identity is observed.
+
+
+def lazy_sites(body: list[Node], reads: list[Node], wbs: list[Node]) -> None:
+    # the statements x = o.f (reads) and o.f = x (write-backs) of names x and o, in body and
+    # the blocks of its if and while statements, not those of for, with and try statements or
+    # of the functions and classes it defines
+    for st in body:
+        if st.kind == "assign" and len(st.kids) == 2:
+            t = st.kids[0]
+            v = st.kids[1]
+            if t.kind == "name" and v.kind == "attr" and len(v.kids) == 1 and v.kids[0].kind == "name":
+                reads.append(st)
+            elif t.kind == "attr" and len(t.kids) == 1 and t.kids[0].kind == "name" and v.kind == "name":
+                wbs.append(st)
+        elif st.kind == "if" or st.kind == "while":
+            for kid in st.kids[1:]:
+                if kid.kind == "block":
+                    lazy_sites(kid.kids, reads, wbs)
+
+
+def name_bits(n: Node, bits: dict[str, int]) -> int:
+    # the bits of the names of bits that code n mentions anywhere, read or bound
+    m = 0
+    pending = [n]
+    while len(pending) > 0:
+        x = pending.pop()
+        if x.kind == "name" and x.s in bits:
+            m = m | bits[x.s]
+        pending.extend(x.kids)
+    return m
+
+
+def lazy_targets(t: Node, bits: dict[str, int], acc: list[int]) -> None:
+    # an assignment target's bits: acc[0] those it binds, acc[1] those its other parts read
+    if t.kind == "name":
+        if t.s in bits:
+            acc[0] = acc[0] | bits[t.s]
+    elif t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
+        for k in t.kids:
+            lazy_targets(k, bits, acc)
+    else:
+        acc[1] = acc[1] | name_bits(t, bits)
+
+
+def lazy_block(body: list[Node], bits: dict[str, int], out: int, brk: int, cont: int, lines: dict[int, list[Node]], masks: dict[int, list[int]], record: bool) -> int:
+    # the bits of the names live where body starts: read before they are assigned again on some
+    # path, out after body, brk at a break and cont at a continue (of the innermost loop). With
+    # record, each statement's own (lazy_stmt) is kept by its line: lines and masks
+    live = out
+    i = len(body) - 1
+    while i >= 0:
+        live = lazy_stmt(body[i], bits, live, brk, cont, lines, masks, record)
+        i -= 1
+    return live
+
+
+def lazy_stmt(n: Node, bits: dict[str, int], out: int, brk: int, cont: int, lines: dict[int, list[Node]], masks: dict[int, list[int]], record: bool) -> int:
+    # lazy_block for statement n. Assignments, if and while statements, returns, raises, breaks
+    # and continues are followed; any other statement keeps every name it mentions live, and
+    # every name live after it or where a break or continue in it goes
+    k = n.kind
+    live = 0
+    if k == "block":
+        live = lazy_block(n.kids, bits, out, brk, cont, lines, masks, record)
+    elif (k == "assign" and len(n.kids) >= 2) or (k == "annassign" and len(n.kids) == 3):
+        acc = [0, 0]
+        for t in n.kids[:-1] if k == "assign" else [n.kids[0]]:
+            lazy_targets(t, bits, acc)
+        live = name_bits(n.kids[-1], bits) | acc[1] | (out & ~acc[0])
+    elif k == "if" and len(n.kids) == 3:
+        live = name_bits(n.kids[0], bits) | lazy_stmt(n.kids[1], bits, out, brk, cont, lines, masks, record) | lazy_stmt(n.kids[2], bits, out, brk, cont, lines, masks, record)
+    elif k == "while" and (len(n.kids) == 2 or len(n.kids) == 3):
+        after = out
+        if len(n.kids) == 3:
+            after = lazy_stmt(n.kids[2], bits, out, brk, cont, lines, masks, record)  # (else: where the test fails)
+        test = name_bits(n.kids[0], bits)
+        head = test | after
+        while True:
+            again = test | after | lazy_stmt(n.kids[1], bits, head, out, head, lines, masks, False)
+            if again == head:
+                break
+            head = again
+        if record:
+            lazy_stmt(n.kids[1], bits, head, out, head, lines, masks, True)
+        live = head
+    elif k == "return" or k == "raise":
+        live = name_bits(n, bits)
+    elif k == "break":
+        live = brk
+    elif k == "continue":
+        live = cont
+    elif k == "pass":
+        live = out
+    else:
+        live = out | name_bits(n, bits) | brk | cont
+    if record:
+        if n.line not in lines:
+            lines[n.line] = []
+            masks[n.line] = []
+        lines[n.line].append(n)
+        masks[n.line].append(live)
+    return live

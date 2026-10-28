@@ -307,6 +307,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.fn.tries.append(tr)
         self.handler = hm
         self.place(tr.body)
+    self.lazy_fields(f, body)
     self.stmts(body)
     if f.gen:
         self.gen_end(f)

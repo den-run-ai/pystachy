@@ -152,6 +152,16 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_hash as dynamic_dyn_hash,
     gen_json_any as dynamic_json_any,
     gen_dyn_id_held as dynamic_dyn_id_held,
+    gen_lazy_field as dynamic_lazy_field,
+    gen_lazy_fields as dynamic_lazy_fields,
+    gen_lazy_test as dynamic_lazy_test,
+    gen_lazy_value as dynamic_lazy_value,
+    gen_lazy_inert as dynamic_lazy_inert,
+    gen_lazy_barrier as dynamic_lazy_barrier,
+    gen_lazy_resolve as dynamic_lazy_resolve,
+    gen_lazy_store as dynamic_lazy_store,
+    gen_lazy_assign as dynamic_lazy_assign,
+    gen_lazy_while as dynamic_lazy_while,
     gen_dyn_id_read as dynamic_dyn_id_read,
     gen_dyn_id_store as dynamic_dyn_id_store,
     gen_dyn_identity as dynamic_dyn_identity,
@@ -1825,6 +1835,36 @@ class Gen:
 
     def dyn_id_held(self, v: Val) -> Val:
         return dynamic_dyn_id_held(self, v)
+
+    def lazy_field(self, o: str, f: str, line: int) -> str:
+        return dynamic_lazy_field(self, o, f, line)
+
+    def lazy_fields(self, f: FnInfo, body: list[Node]) -> None:
+        return dynamic_lazy_fields(self, f, body)
+
+    def lazy_test(self, e: Node) -> bool:
+        return dynamic_lazy_test(self, e)
+
+    def lazy_value(self, e: Node) -> bool:
+        return dynamic_lazy_value(self, e)
+
+    def lazy_inert(self, n: Node) -> bool:
+        return dynamic_lazy_inert(self, n)
+
+    def lazy_barrier(self, n: Node) -> None:
+        return dynamic_lazy_barrier(self, n)
+
+    def lazy_resolve(self, x: str) -> None:
+        return dynamic_lazy_resolve(self, x)
+
+    def lazy_store(self, o: Val, box: str, name: str) -> bool:
+        return dynamic_lazy_store(self, o, box, name)
+
+    def lazy_assign(self, n: Node) -> bool:
+        return dynamic_lazy_assign(self, n)
+
+    def lazy_while(self, n: Node) -> None:
+        return dynamic_lazy_while(self, n)
 
     def dyn_id_read(self, v: Val, slot: str) -> None:
         return dynamic_dyn_id_read(self, v, slot)

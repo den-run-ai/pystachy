@@ -583,6 +583,8 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
 def gen_stmt(self, n: Node) -> None:
     self.line = n.line
     k = n.kind
+    if len(self.fn.lazyobj) > 0:
+        self.lazy_barrier(n)  # (a statement that may run code: dynamic.py's lazy field locals)
     if len(self.dmemo) > 0:
         # (the dry-run types of the display items of the statement before, see dyn_dry)
         self.dmemo = []
@@ -612,6 +614,8 @@ def gen_stmt(self, n: Node) -> None:
                 self.declare(n.kids[0].s, t)
             v = self.coerce(v, t)
         self.assign(n.kids[0], v)
+    elif k == "assign" and len(self.fn.lazyobj) + len(self.fn.lazyflag) > 0 and self.lazy_assign(n):
+        pass  # (x = o.f, o.f = x of a lazy numeric field local: dynamic.py)
     elif k == "assign":
         val = n.kids[-1]
         t0 = n.kids[0]
@@ -735,7 +739,7 @@ def gen_stmt(self, n: Node) -> None:
         if k == "for":
             self.for_(n, [])
         else:
-            self.while_(n)
+            self.lazy_while(n)
         self.elsekids = ek
         self.elsebrk = eb
         brks = self.elsebrks
@@ -749,7 +753,7 @@ def gen_stmt(self, n: Node) -> None:
             self.narrowed = meet(brks)
         self.place(lb)
     elif k == "while":
-        self.while_(n)
+        self.lazy_while(n)
     elif k == "for":
         self.for_(n, [])
     elif k == "return" and self.curfn.gen and not self.modlevel:
