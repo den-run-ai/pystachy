@@ -50,7 +50,9 @@ tests/run.sh ./pystachy jit tests/programs/library/lib_fnmatch.py
 ```
 
 `PYSTACHY_JOBS` controls test workers; the default is one per CPU. Full verification retains
-all coverage even when CI distributes the work across jobs.
+all coverage even when CI distributes the work across jobs. `PYSTACHY_CASE_TIMES=FILE` makes
+`tests/run.sh` append each case's wall-clock milliseconds to `FILE` (`MILLISECONDS CASE`, with GNU
+`date`), which [the shards' weights](#continuous-integration) are made from.
 
 ## Differential tests
 
@@ -230,8 +232,8 @@ directory of its own, which `[paths]` maps to `src/`. Each suite starts with an 
 cache, so the runtime's build is measured too. `make coverage` fails when a test fails or data
 is missing, never because of a percentage: there is no threshold.
 
-`COVERAGE_SHARD=I/N` limits the corpus to the cases `I`, `I + N`, `I + 2N`... in the order of
-`tests/verify.sh`'s shards (`tools/shard_cases.sh`), and `COVERAGE_REPORT=0` leaves out the report.
+`COVERAGE_SHARD=I/N` limits the corpus to shard `I` of `N`, as `tests/verify.sh` shards it
+(`tools/shard_cases.sh`), and `COVERAGE_REPORT=0` leaves out the report.
 `tools/coverage_report.py` combines such parts later. It first checks that every part passed
 with complete data, that no suite was measured twice, that no shard is missing and that all
 parts measured one commit.
@@ -458,9 +460,8 @@ the wider interval still exercises thousands of collections without dominating C
 The GC test suite keeps its compiler interval of 1,000 and collects at **every program
 allocation**. Both self-compilation IR identity and full suite counts remain required.
 Self-compilation, the two JIT halves and the three AOT thirds use separate runners and report
-their own durations. The JIT halves take every other file in a fixed order and the AOT thirds
-every third; the halves together, like the thirds, run the full corpus, including rejection and
-syntax checks. The final gate requires all six groups, both execution modes, the stress
+their own durations. The halves together, like the thirds, run the full corpus, including
+rejection and syntax checks (balanced as below). The final gate requires all six groups, both execution modes, the stress
 intervals, distinct shard identities and complete counts for every job: the JIT halves and the
 AOT thirds each make as many checks as `tests/verify.sh` counts in the whole corpus in one mode
 (each report's `sources.mode_checks`). `tests/verify.sh gc-stress` still runs all GC checks
@@ -473,6 +474,30 @@ unsharded suite: the JIT and AOT shards as many as `tests/verify.sh` counts in t
 thirds, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
 both of their halves, `python-free` rebuilds the compiler once and
 runs its three thirds, and `ubsan` builds the sanitized compiler once and runs its three thirds.
+
+Every such suite is sharded by `tests/corpus.sh`'s `corpus_shard` (`tools/shard_cases.sh` for the
+coverage and variant workflows): the cases are taken heaviest first by their weight in
+`tests/case_weights.txt`, each joining the shard whose total weight is least so far, and each
+shard lists its cases heaviest first, so that `tests/run.sh`'s workers do not end on a long case.
+Every corpus case joins exactly one shard whatever the table holds: a case it lacks weighs its
+kind's default, and a stale or malformed entry counts for nothing, so the table can cost balance
+but never coverage. Integer weights and the C locale make the shards identical on every runner. A
+weight is a case's time in thousandths of a median program's. The suite steps of `native`,
+`opt-off` and `ubsan` keep their per-case times (`build/verify/*-times.log`, from
+`PYSTACHY_CASE_TIMES`) in each group's artifact; refresh the table from one run's native halves:
+
+```sh
+python3 tools/case_weights.py verification-native-0/verify/tests-native-0-times.log \
+  verification-native-1/verify/tests-native-1-times.log
+```
+
+The first table came from the 2-second file times of two CI runs' promoting-int sweeps
+(40719438561 and 40731629369, programs) and a one-core local run of every deviation and
+rejection (rejections take about 1% of a program's time). Judged by the other run's times, the
+heaviest shard exceeds an even split by 0.1-0.2% for halves, 1.0-1.1% for thirds and 0.9-1.3% for
+quarters, against 0.9-1.9%, 2.2-3.1% and 5.0-6.3% by position modulo N. The runners vary far
+more: the same native half took 576 s on a `znver3` runner (run 40731629369) and 408 s on a
+`znver4` one (run 40719438561), so a job's time depends mostly on the runner it lands on.
 The CPython-hosted compiler is checked by identity rather than by executing its output again:
 `hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
 exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results

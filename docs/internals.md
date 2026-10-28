@@ -453,6 +453,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |
 | `PYSTACHY_GC` | `off` disables collection; `stats` prints a summary at exit |
 | `PYSTACHY_JOBS` | Parallelism for the test runner and IR tools |
+| `PYSTACHY_CASE_TIMES=FILE` | The test runner appends each case's milliseconds to `FILE`, from which `tools/case_weights.py` balances verification's shards; `tests/verify.sh` sets its own |
 
 For AddressSanitizer builds, set `ASAN_OPTIONS=detect_stack_use_after_return=0`: its fake stack
 is outside the collector's scanned stack. `PYSTACHY_CFLAGS=-fsanitize=address` instruments

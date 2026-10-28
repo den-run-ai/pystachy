@@ -97,6 +97,10 @@
 #                  lines the CPython-hosted compiler executes, and the items its builtin calls copy or
 #                  scan, grow no faster than the programs; scaling-0 checks the shapes of SCALING_0 and
 #                  scaling-1 every other one
+# The shards of a suite (shard_cases: tests/corpus.sh's corpus_shard) are disjoint and together the
+# whole corpus on every runner, balanced by the weights of tests/case_weights.txt, each heaviest
+# first; tests-native, tests-opt-off and ubsan keep each case's time in build/verify/*-times.log,
+# from which tools/case_weights.py makes that table.
 # A step that runs tests/run.sh over the suite passes only with as many passes as the checks the suite
 # holds, counted from its files (checks): a run that covered fewer cases fails.
 # usage: tests/verify.sh [GROUP]   (make verify runs all)   env: PY (default python3), PYSTACHY_LLVM (LLVM 18 bin dir)
@@ -178,7 +182,7 @@ export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|UNICODE_AUDIT|ARGV0))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|UNICODE_AUDIT|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -237,11 +241,15 @@ checks() {
   echo $c
 }
 ALL=$(checks "jit aot")
-# shard_cases I N OUT: write the cases of shard I of N to OUT, one per line: the files of the corpus
-# whose position in C order is I modulo N, so on every runner the N shards are disjoint and together
-# are the whole corpus (rejection and syntax checks included). The C locale is local to the
-# selection; programs keep theirs.
-shard_cases() {
+# shard_cases I N OUT: write the cases of shard I of N to OUT, one per line, heaviest first
+# (tests/corpus.sh's corpus_shard): on every runner the N shards are disjoint and together are the
+# whole corpus (rejection and syntax checks included), balanced by tests/case_weights.txt, which can
+# change which shard runs a case but never whether one does. The C locale is local to the selection;
+# programs keep theirs.
+shard_cases() { corpus_shard "$1" "$2" > "$3"; }
+# sample_cases I N OUT: write to OUT the cases whose position in C order is I modulo N, spread evenly
+# over the areas (tests-cpython's end-to-end sample)
+sample_cases() {
   (
     export LC_ALL=C
     case_index=0
@@ -377,7 +385,7 @@ fi
 # tests-native checks. A sample still runs end to end with the hosted compiler, JIT and AOT, so that
 # its driver's run, build and check paths after the IR run in this job too (as they do in
 # runtime-cache, jit-dead-code, unicode-audit and compile-limits): the cases of shard 0 of
-# HOSTED_SAMPLE_OF (shard_cases), and the first program of each kind that hosted_strata names.
+# HOSTED_SAMPLE_OF (sample_cases), and the first program of each kind that hosted_strata names.
 # (the CPython-hosted compiler runs as a module, whose bytecode CPython caches, where it compiles a
 # compiler's source again at every start; each module is checked by hash, as an
 # edit within the same second may keep its mtime and size)
@@ -408,7 +416,7 @@ if want tests-cpython; then
   # (in C order, in which the strata's programs are the first of their kind)
   (LC_ALL=C; export LC_ALL; corpus) > "$V/tests-cpython-cases.log"
   hosted_strata "$V/tests-cpython-cases.log" > "$V/tests-cpython-strata.log"
-  shard_cases 0 $HOSTED_SAMPLE_OF "$V/tests-cpython-shard.log"
+  sample_cases 0 $HOSTED_SAMPLE_OF "$V/tests-cpython-shard.log"
   # the sample: shard 0's cases and the strata's programs, once each, in the corpus's order
   sed 's/^[a-z]* //' "$V/tests-cpython-strata.log" | cat "$V/tests-cpython-shard.log" - > "$V/tests-cpython-want.log"
   grep -Fx -f "$V/tests-cpython-want.log" "$V/tests-cpython-cases.log" > "$V/tests-cpython-sample.log"
@@ -471,7 +479,7 @@ for shard in 0 1; do
   while IFS= read -r f; do set -- "$@" "$f"; done < "$V/tests-native-$shard-cases.log"
   # An empty shard must not silently invoke run.sh's whole-suite default.
   [ $# != 0 ] || { echo 'empty native shard' > "$L"; step tests-native-$shard fail "$s" "$L" ""; continue; }
-  tests/run.sh "$V/pystachy2" "jit aot" "$@" > "$L" 2>&1
+  PYSTACHY_CASE_TIMES="$V/tests-native-$shard-times.log" tests/run.sh "$V/pystachy2" "jit aot" "$@" > "$L" 2>&1
   x=$(tests "$(checks "jit aot" "$@")" "$L" 2>> "$L") && r=pass
   step tests-native-$shard $r "$s" "$L" ', "compiler": "stage2", "modes": ["jit", "aot"], "shard_index": '"$shard"', "shard_count": 2'"$x"
 done
@@ -485,7 +493,8 @@ for shard in 0 1; do
   [ $# != 0 ] || { echo 'empty opt-off shard' > "$L"; step tests-opt-off-$shard fail "$s" "$L" ""; continue; }
   # shellcheck disable=SC2043 # (a list of one, for now)
   for o in all; do
-    PYSTACHY_OPT=-$o tests/run.sh "$V/pystachy2" "jit aot" "$@" > "$V/tests-opt-off-$shard-$o.log" 2>&1
+    PYSTACHY_OPT=-$o PYSTACHY_CASE_TIMES="$V/tests-opt-off-$shard-$o-times.log" \
+      tests/run.sh "$V/pystachy2" "jit aot" "$@" > "$V/tests-opt-off-$shard-$o.log" 2>&1
     logs="$logs $V/tests-opt-off-$shard-$o.log"; offs="$offs, \"-$o\""; nl=$((nl + 1))
   done
   for l in $logs; do echo "== $(basename "$l")"; cat "$l"; done > "$L"
@@ -589,11 +598,13 @@ for shard in 0 1 2; do
     if [ $# = 0 ]; then
       echo 'empty UBSan shard'
     elif [ $built = 1 ]; then
-      PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy-ubsan" aot "$@" > "$V/ubsan-$shard-aot.log" 2>&1
+      PYSTACHY_HOME="$V/ubsan-home" PYSTACHY_CFLAGS="$UBSAN" PYSTACHY_CASE_TIMES="$V/ubsan-$shard-aot-times.log" \
+        tests/run.sh "$V/pystachy-ubsan" aot "$@" > "$V/ubsan-$shard-aot.log" 2>&1
       # (LD_PRELOAD reaches what a program execs too, a shell that kills itself by SIGSEGV say, where
       # UBSan's deadly-signal handler would turn the death into its report and status 1)
       env LD_PRELOAD="$UBSO" UBSAN_OPTIONS="${UBSAN_OPTIONS:+$UBSAN_OPTIONS:}handle_segv=0" PYSTACHY_HOME="$V/ubsan-home" \
-        PYSTACHY_CFLAGS="$UBSAN" tests/run.sh "$V/pystachy2" jit "$@" > "$V/ubsan-$shard-jit.log" 2>&1
+        PYSTACHY_CFLAGS="$UBSAN" PYSTACHY_CASE_TIMES="$V/ubsan-$shard-jit-times.log" tests/run.sh "$V/pystachy2" jit "$@" \
+        > "$V/ubsan-$shard-jit.log" 2>&1
       for m in aot jit; do echo "-- tests ($m)"; cat "$V/ubsan-$shard-$m.log"; done
     fi
   } > "$L" 2>&1
