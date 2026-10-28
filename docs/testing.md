@@ -402,7 +402,7 @@ runner variation:
 | `native-0`, `native-1`, `native-2` | Three disjoint thirds of the native differential suite, JIT and AOT. |
 | `opt-off-0`, `opt-off-1`, `opt-off-2` | Three disjoint thirds of the native suite with IR optimizations disabled. |
 | `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
-| `ubsan-0`, `ubsan-1`, `ubsan-2` | Sanitized compiler/runtime; three disjoint thirds of the JIT/AOT suite. |
+| `ubsan-0`, `ubsan-1`, `ubsan-2`, `ubsan-3` | Sanitized compiler/runtime; four disjoint quarters of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
 | `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results (`gc-ir-0`, `gc-ir-1`); then the half's JIT suite with program GC stress, one case in 16 of the half with the compiler stressed too. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
@@ -496,14 +496,14 @@ with no difference. It rejects GC suites without both `gc-ir` halves, even in a 
 omits them. `tests/verify.sh gc-stress` still runs all GC checks locally with one bootstrap;
 `gc-ir` runs the two identity halves, `gc-jit` those and the two JIT halves, and `gc-aot` the
 three AOT thirds.
-The native and opt-off suites are split the same way, in halves, and the python-free and UBSan
-suites in thirds (`tests/verify.sh`'s `shard_cases`). The gate requires each
+The native, opt-off and python-free suites run in thirds, and the UBSan suite in quarters
+(`tests/verify.sh`'s `shard_cases`). The gate requires each
 shard's identity and complete count, and that the shards together make as many checks as an
 unsharded suite: the JIT and AOT shards as many as `tests/verify.sh` counts in the whole corpus
 (each report's `sources.suite_checks`; opt-off's once per `PYSTACHY_OPT` setting), and the UBSan
-thirds, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
-both of their halves, `python-free` rebuilds the compiler once and
-runs its three thirds, and `ubsan` builds the sanitized compiler once and runs its three thirds.
+quarters, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
+all three of their thirds, `python-free` rebuilds the compiler once and runs its three thirds,
+and `ubsan` builds the sanitized compiler once and runs its four quarters.
 
 Every such suite is sharded by `tests/corpus.sh`'s `corpus_shard` (`tools/shard_cases.sh` for the
 coverage and variant workflows): the cases are taken heaviest first by their weight in
@@ -530,7 +530,9 @@ an even split by 0.2% for halves and 0.4% for thirds, against 0.4% and 1.9% with
 The runners vary far more: in that run a `znver3` runner took 1.2-1.4 times as long per case as a
 `znver4` one (the native halves took 598 s and 429 s), so a job's time depends mostly on the
 runner it lands on. Since a half took 10.0-10.4 minutes on `znver3` runners in that run, native
-and opt-off run in thirds.
+and opt-off run in thirds. UBSan thirds took 10.85 and 10.87 minutes in CI run 40764559484,
+so UBSan now runs in four quarters with an independent sanitized rebuild in each CI job. The
+four-way split still needs CI timing evidence; the 15-minute job limit is unchanged.
 The CPython-hosted compiler is checked by identity rather than by executing its output again:
 `hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
 exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results

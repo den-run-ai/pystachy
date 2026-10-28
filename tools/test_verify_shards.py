@@ -30,9 +30,10 @@ SHARDS = [("native-0", "tests-native-0", ["jit", "aot"], ["jit aot"]),
           ("python-free-0", "python-free-0", None, ["jit aot"]), ("python-free-1", "python-free-1", None, ["jit aot"]),
           ("python-free-2", "python-free-2", None, ["jit aot"]),
           ("ubsan-0", "ubsan-0", ["aot", "jit"], ["aot", "jit"]), ("ubsan-1", "ubsan-1", ["aot", "jit"], ["aot", "jit"]),
-          ("ubsan-2", "ubsan-2", ["aot", "jit"], ["aot", "jit"])]
+          ("ubsan-2", "ubsan-2", ["aot", "jit"], ["aot", "jit"]),
+          ("ubsan-3", "ubsan-3", ["aot", "jit"], ["aot", "jit"])]
 # how many shards each suite has: the group kind-I runs shard I
-SHARD_COUNTS = {"native": 3, "opt-off": 3, "python-free": 3, "ubsan": 3}
+SHARD_COUNTS = {"native": 3, "opt-off": 3, "python-free": 3, "ubsan": 4}
 # the kinds of program the hosted sample holds the first of (tests/verify.sh's hosted_strata): a source
 # and the sidecar that make one
 STRATA = [("ffi", "import ffi\n", None), ("full", "# fixture\n", ".full"), ("in", "# fixture\n", ".in"),
@@ -312,7 +313,7 @@ esac
                 self.assertEqual((step["passed"], step["failed"]), (step["expected"], 0))
 
     def test_ubsan_shards_need_an_instrumented_runtime(self):
-        for group in ("ubsan-0", "ubsan-1", "ubsan-2"):
+        for group in ("ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"):
             with self.subTest(group=group):
                 result, report, logs = self.run_group(group, "plain-runtime")
                 self.assertNotEqual(result.returncode, 0)

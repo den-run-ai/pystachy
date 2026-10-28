@@ -19,13 +19,13 @@ import python_int_gate
 ROOT = Path(__file__).resolve().parent.parent
 SUITE_STEPS = {"tests-cpython", "tests-native-0", "tests-native-1", "tests-native-2",
                "tests-opt-off-0", "tests-opt-off-1", "tests-opt-off-2", "runtime-cache", "python-free-0",
-               "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
+               "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
                "gc-aot-2"}
 # Steps that run one of the disjoint shards of the corpus (tests/verify.sh shard_cases), and how many
 # shards their suite has: the name ends in the shard index.
 SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
                  (("tests-native", 3), ("tests-opt-off", 3), ("python-free", 3),
-                  ("ubsan", 3), ("gc-ir", 2), ("gc-jit", 2), ("gc-aot", 3))
+                  ("ubsan", 4), ("gc-ir", 2), ("gc-jit", 2), ("gc-aot", 3))
                  for index in range(count)}
 # The GC suites run their shards (halves in JIT, thirds in AOT) with program stress alone, compiled by
 # stage 2 unstressed, after the gc-ir halves have shown the stage-2 compiler collecting every
@@ -342,7 +342,7 @@ def merge_reports(directory, groups, expected_commit=None):
             raise ValueError(f"{what} shards must cover the same full-suite check count as the corpus")
     # The shards of a GC suite, which runs in one mode, make as many as the corpus has in one mode
     # (sources.mode_checks), their stressed samples included, and hold as many cases as it does
-    # (sources.corpus_cases); the UBSan thirds, which run in both modes one at a time, twice as many.
+    # (sources.corpus_cases); the UBSan quarters, which run in both modes one at a time, twice as many.
     mode_checks = reports[wanted[0]]["sources"]["mode_checks"]
 
     def checks(group):
@@ -350,7 +350,7 @@ def merge_reports(directory, groups, expected_commit=None):
         return step["expected"] + (step["stressed_sample"]["expected"] if step["name"] in GC_STEPS else 0)
     for shards, runs, what in ((("gc-jit-0", "gc-jit-1"), 1, "GC JIT"),
                                (("gc-aot-0", "gc-aot-1", "gc-aot-2"), 1, "GC AOT"),
-                               (("ubsan-0", "ubsan-1", "ubsan-2"), 2, "UBSan")):
+                               (("ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"), 2, "UBSan")):
         if not all(group in reports for group in shards):
             continue
         if sum(checks(group) for group in shards) != mode_checks * runs:

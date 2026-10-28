@@ -222,8 +222,8 @@ def report(group, steps):
         if name in ("python-free-0", "python-free-1", "python-free-2"):
             count = 4 if name.endswith("-0") else 3   # thirds of a 10-check suite
             step.update(passed=count, expected=count)
-        if name in ("ubsan-0", "ubsan-1", "ubsan-2"):
-            count = 6 if name == "ubsan-2" else 7   # thirds of a suite of 10 checks in each of two modes
+        if name in ("ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"):
+            count = 5   # quarters of a suite of 10 checks in each of two modes
             step.update(passed=count, expected=count)
         if name.startswith("tests-opt-off"):
             step.update(PYSTACHY_OPT=["-all"])
@@ -275,7 +275,7 @@ class ContractTests(unittest.TestCase):
                       "python-int-optin"):
             self.assertNotIn(alias, groups)  # Compatibility aliases must not duplicate CI work.
         for group in ("gc-self", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
-                      "ubsan-2", "python-free-0", "python-free-1", "python-free-2", "runtime-cache"):
+                      "ubsan-2", "ubsan-3", "python-free-0", "python-free-1", "python-free-2", "runtime-cache"):
             self.assertEqual(groups[group], ["bootstrap", group])
         # the stressed compiler's identity, half by half, in the JIT jobs; AOT in three thirds
         for shard in ("0", "1"):
@@ -314,7 +314,7 @@ class ContractTests(unittest.TestCase):
             self.assertEqual([step["name"] for step in result["steps"]], groups["all"])
             for group in ("opt-off-0", "opt-off-1", "opt-off-2", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
                           "hosted", "native-0", "native-1", "native-2", "python-free-0", "python-free-1",
-                          "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
+                          "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "runtime-cache", "contracts", "benchmarks",
                           "scaling", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2",
                           *(f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS))):
                 path = directory / f"verification-{group}" / "verification.json"
@@ -442,7 +442,7 @@ class ContractTests(unittest.TestCase):
                            lambda step: step.update(shard_count=str(step["shard_count"])),
                            lambda step: step.pop("shard_count")]
         for group in ("native-0", "native-1", "native-2", "opt-off-0", "opt-off-1", "opt-off-2",
-                      "python-free-0", "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2"):
+                      "python-free-0", "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"):
             mutations[group] = shard_mutations + [lambda step: step.update(passed=step["expected"] - 1),
                                                   lambda step: step.update(failed=1),
                                                   lambda step: step.pop("expected")]
