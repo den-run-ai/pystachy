@@ -1937,18 +1937,15 @@ def gen_seq_item(self, s: Val, j: str, mode: str) -> list[Val]:
         return [Val(j, "dyn")]
     if is_gen(s.t):
         return [self.gen_value(j, gelem(s.t))]  # (j: its promise, gen_next)
-    if self.set_int(s.t):
-        return [self.big_set_value(s, j)]  # (elements past 64 bits: bigints.py)
     if is_set(s.t):
-        return [self.from_slot(self.rt("pys_set_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), selem(s.t))]
+        return [self.set_value(s, j)]  # (elements past 64 bits, tuples of ints: bigints.py)
     if s.t == RANGEC:
         # (start + j * step, which wraps: an item of the range fits)
         rf = self.range_fields(s)
         return [Val(self.scalar('add', [Val(rf[0], 'int'), Val(self.scalar('mul', [Val(j, 'int'), Val(rf[2], 'int')]), 'int')]), "int")]
-    kv = targs(s.t)
     out: list[Val] = []
     if mode != "values":
-        out.append(self.big_dict_key(s, j) if self.dict_bigkey(s.t) else self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), kv[0]))
+        out.append(self.dict_key(s, j))  # (an int past 64 bits, a tuple of ints: bigints.py)
     if mode == "values" or mode == "items":
         out.append(self.dict_value(s, j))  # (an int past 64 bits, a tuple of ints: bigints.py)
     return out

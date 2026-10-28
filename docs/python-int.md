@@ -12,10 +12,10 @@ Modules without the comment, including the compiler, `runtime.py` and `lib/`, ke
 64-bit `int` of the [language guide](language.md). The roadmap is #907; this page describes its
 step 3, the compiler-level integer, and the first parts of step 6: tuples, lists, dicts, sets and
 generators. Values past 64 bits stay in variables, arguments, returns, fields, module variables,
-closures, tuples, lists of ints and of tuples of ints, the keys and values of dicts of ints and the
-values of dicts of tuples of ints (also in the tuples of their `items()` and the pairs that
-`dict()` takes), sets of ints and the values generators yield and return; the other containers
-still hold 64-bit ints ([boundaries](#64-bit-boundaries)).
+closures, tuples, lists of ints and of tuples of ints, the keys and values of dicts of ints and of
+tuples of ints (also in the tuples of their `items()` and the pairs that `dict()` takes), sets of
+ints and of tuples of ints and the values generators yield and return; the other containers still
+hold 64-bit ints ([boundaries](#64-bit-boundaries)).
 
 ```python
 # pystachy: python-int
@@ -109,6 +109,16 @@ print(int("123456789012345678901234567890") % 97)  # 52
   module that opts in, indexing, unpacking, `get()`, `pop()`, `setdefault()`, `popitem()` and
   iteration over `values()` and `items()` read them as tuples of promoting ints, and `values()`,
   `items()`, sorting, searches, `repr()`, `==` and `!=` take them.
+- The tuple keys of a dict and the tuple elements of a set or frozenset (also tuples that hold
+  them, as `dict[tuple[int, str], V]` and `set[tuple[tuple[int, int], int]]`) hold promoting ints
+  too, in the same programs, as a list's tuples do, hashed and compared by those ints: displays,
+  comprehensions, item assignment, `op=`, `setdefault()`, `add()`, `update()`, `dict.fromkeys()`,
+  `dict()` of pairs, `set()` and the methods and operators of set algebra store them as they are,
+  also from a module that does not opt in; indexing, `in`, `del`, `get()`, `pop()`, `discard()`
+  and `remove()` find them exactly, also by a tuple that may be None and by one that holds a bool
+  for an int; in a module that opts in, iteration, `popitem()` and a set's `pop()` read them as
+  tuples of promoting ints, and `keys()`, `items()`, `sorted()`, `min()`, `max()`, copies,
+  comparisons and `repr()` take them.
 - A set or frozenset of ints holds promoting ints, in a program where a module opts in and none
   opts in to [dynamic `Any`](dynamic-any.md), at CPython's hashes, so that loops, `repr()` and
   `pop()` see CPython's order: displays, comprehensions, `add()`, `update()`, `set()` of a list or
@@ -201,19 +211,21 @@ A list of tuples of ints holds each tuple in the layout of the tuple of promotin
 (every int of it, and of the tuples it holds, a promoting int item: `bigints.held`), so that the
 item's slot says where to read a pointer the tuple has. Every store gives it that layout: a tuple of
 promoting ints as it is, and a tuple of 64-bit ints as it is too, unless one of its ints is
--2\*\*63, which a new tuple of that layout holds, with a null pointer; a list that `runtime.c`
-makes of a dict's keys, values or items or of a set's elements gets that layout for its tuples
-(`pys_list_hold`). The tuples of a dict's `items()` are made in it, with an int key's or value's
-pointer from the dict's companion array (`pys_dict_big_items`, as `popitem()` makes its tuple), and
-`dict()` and `update()` of such a list read a pair's int key or value so into the dict
-(`pys_dict_update_pairs_big`). A dict of tuples of ints holds its values in that layout too:
-every store gives it, `values()` and `items()` take them as they are, and its reads are a list's.
-The descriptors of the list's items (and of the dict's values) say `J` for the ints, so that its
-walks read every item's promoting ints (printing, comparisons, searches, sorting), whatever module
-calls them. A read in a module that opts in gives the tuple of promoting ints as it is; in
-another, the tuple of its 64-bit ints, which it is once a test has found no pointer in it
-(`OverflowError` past 64 bits), as a list's int is read there; and so do the runtime functions
-that take a list's tuples into 64-bit storage (`pys_list_narrow_held`).
+-2\*\*63, which a new tuple of that layout holds, with a null pointer. A dict of tuples of ints
+holds its values in that layout too, a dict of tuple keys its keys and a set of tuples its
+elements: every store gives it, and a lookup gives it to the tuple it looks for, so the lists that
+`runtime.c` makes of a dict's keys, values or items or of a set's elements, and the set methods
+that take a list's tuples, take them as they are, and the reads are a list's. The tuples of a
+dict's `items()` are made in it, with an int key's or value's pointer from the dict's companion
+array (`pys_dict_big_items`, as `popitem()` makes its tuple), and `dict()` and `update()` of such
+a list read a pair's int key or value so into the dict (`pys_dict_update_pairs_big`). The
+descriptors of the list's items (and of the dict's keys and values, and of the set's elements)
+say `J` for the ints, so that its walks read every item's promoting ints (printing, comparisons,
+searches, sorting), whatever module calls them, and so do the key descriptors by which a dict or a
+set hashes and compares its tuples: a promoting int by its slot, past 64 bits by its pointer. A read
+in a module that opts in gives the tuple of promoting ints as it is; in another, the tuple of its
+64-bit ints, which it is once a test has found no pointer in it (`OverflowError` past 64 bits), as
+a list's int is read there.
 
 A dict of ints holds a value that fits in its 8-byte slot, as before, and one past 64 bits as
 -2\*\*63 there, with its pointer in a companion array beside the entries, which the collector
@@ -263,11 +275,10 @@ These places keep 64-bit ints for now. A value past 64 bits that reaches one rai
 `OverflowError: Python int too large to convert to C long` (CPython's message for an int too big
 for a C `long`), where CPython goes on with the bigger int:
 
-- The keys of dicts of other types than `int`, the items of lists of other types than `int` and
-  tuples of ints (an `int | None` in a list, also as a tuple's item, holds a 64-bit int), a list's
-  tuple that `set()`, `frozenset()`, `dict.fromkeys()` or a set's methods take, the key's tuple
-  of ints of a pair that `dict()` or `d.update()` takes (`dict([((2 ** 64, 1), 1)])`), the values
-  of dicts of other types than `int` and tuples of ints, a dict's tuple of ints that `get()` or
+- The keys of dicts and the elements of sets of other types than `int` and tuples of ints, the
+  items of lists of other types than `int` and tuples of ints (an `int | None` in a list, also as
+  a tuple's item, holds a 64-bit int), the values of dicts of other types than `int` and tuples
+  of ints, a dict's tuple of ints that `get()` or
   `pop()` gives where it may be None (`d.get(k)`), the items and values
   of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
   items, unions other than `int | None` (also where a join makes one, as
@@ -292,10 +303,9 @@ for a C `long`), where CPython goes on with the bigger int:
   take: a promoting int becomes one as a 64-bit int, and comparing a promoting int with one is
   rejected during compilation for now.
 - `x in c` where the items of `c` are not ints (a `list[float]` may hold a float equal to an int
-  past 64 bits), and a tuple of promoting ints looked up in a list or as a key. Membership in a
-  list of ints is exact; in another container of ints, a `range`, a generator or an iterator
-  object too: an int past 64 bits is not in it. An object's `__contains__` takes `x` as its
-  parameter does.
+  past 64 bits). Membership in a list of ints is exact; in another container of ints, a `range`,
+  a generator or an iterator object too: an int past 64 bits is not in it. An object's
+  `__contains__` takes `x` as its parameter does.
 
 ## Deviations
 
@@ -309,12 +319,10 @@ for a C `long`), where CPython goes on with the bigger int:
 - A tuple of 64-bit ints that holds -2\*\*63, also in a tuple it holds (from a container, a
   builtin or a module that does not opt in), becomes a new tuple where a tuple of promoting ints
   is expected: `is` tells the two apart, where CPython has one object
-  (`tests/deviations/python_int_limits.py`). Lists of tuples of ints expect them, in a program where
-  a module opts in: such a tuple stored into one, also by a module that does not opt in, and one of
-  a dict's keys, values or items or of a set's elements that `list()`, `sorted()`, `keys()`,
-  `values()` or `items()` puts into one, becomes a new tuple there, and so does one stored as the
-  value of a dict of tuples of ints. Other tuples of 64-bit ints stay the same tuple, and so do
-  tuples of promoting ints going into 64-bit storage.
+  (`tests/deviations/python_int_limits.py`). Lists, dicts and sets of tuples of ints expect them,
+  in a program where a module opts in: such a tuple stored into one, as an item, a key, a value
+  or an element, also by a module that does not opt in, becomes a new tuple there. Other tuples of
+  64-bit ints stay the same tuple, and so do tuples of promoting ints going into 64-bit storage.
 
 ## Measurements
 
@@ -443,7 +451,10 @@ the first measurements, before the inline paths, in
   `python_int_tuple_lists.py`: lists of them, their stores, reads, sorting, searches (also by a
   tuple that may be None), comparisons and nested tuples, -2\*\*63, a module that does not opt in
   (`tests/python_int_modules/fixed_tuple_lists.py`) and the lists that dicts and sets give;
-  `python_int_tuple_walks.py`: those that `runtime.c`'s walks read (`J`), nested and holding
+  `python_int_tuple_keys.py`: dicts of tuple keys and sets of tuples, their stores, lookups,
+  deletion, collisions and growth, copies, comparisons, set algebra, nested tuples, a bool for an
+  int, a key that may be None, -2\*\*63 and a module that does not opt in
+  (`tests/python_int_modules/fixed_tuple_keys.py`); `python_int_tuple_walks.py`: those that `runtime.c`'s walks read (`J`), nested and holding
   lists and dicts, with -2\*\*63, exactly against floats and 64-bit tuples, past the digits
   limit, and `vars()` of fields that are promoting ints, `int | None` and such tuples.
 - `tests/programs/numbers/python_int_optional.py`: `int | None` past 64 bits in variables,

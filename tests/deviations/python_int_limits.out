@@ -1,7 +1,5 @@
 tuple of a list: Python int too large to convert to C long
 heapq: Python int too large to convert to C long [18446744073709551616, 1, 0]
-set() of a list of tuples: Python int too large to convert to C long
-dict() of tuple keys: Python int too large to convert to C long
 get() of a tuple: Python int too large to convert to C long
 tuple in a list in heapq: Python int too large to convert to C long
 iter() of a dict: Python int too large to convert to C long
@@ -20,5 +18,6 @@ tuple identity: True False
 tuple identity in a list of keys: True False
 tuple identity in a dict's items: False False
 tuple identity in a dict's values: True False
+tuple identity in a set: True False True
 [1, 2, 9223372036854775807] False False [0] 2.305843009213694e+18 0x7fffffffffffffff 63
 [exit 0]

@@ -268,10 +268,10 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "V" + self.desc(targs(t)[0], sub)
     if is_dict(t):
         a = targs(t)
-        return "D" + self.desc(a[0], use) + self.desc(held(a[1]), use if use == "repr" else "==")  # (a tuple of ints as the dict holds it: bigints.held)
+        return "D" + self.desc(held(a[0]), use) + self.desc(held(a[1]), use if use == "repr" else "==")  # (a tuple of ints as the dict holds it: bigints.held)
     if is_set(t):
         # (S<e> a set, F<e> a frozenset: equal, or ordered as subsets, by their elements)
-        return ("F" if is_fset(t) else "S") + self.desc(selem(t), "repr" if use == "repr" else "==")
+        return ("F" if is_fset(t) else "S") + self.desc(held(selem(t)), "repr" if use == "repr" else "==")  # (a tuple of ints as the set holds it: bigints.held)
     if is_tuple(t):
         a = targs(t)
         if len(a) > 9:
@@ -372,7 +372,7 @@ def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: in
         return "L" + gen_rec_desc(self, held(elem(t)), use, active, offset + 1)
     if is_dict(t):
         ts = targs(t)
-        out = "D" + gen_rec_desc(self, ts[0], use, active, offset + 1)
+        out = "D" + gen_rec_desc(self, held(ts[0]), use, active, offset + 1)
         return out + gen_rec_desc(self, held(ts[1]), use, active, offset + len(out))
     if is_tuple(t):
         ts = targs(t)

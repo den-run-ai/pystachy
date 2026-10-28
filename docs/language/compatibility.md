@@ -384,10 +384,10 @@ above apply to well-formed text (with the surrogate exception described above).
   ([promoting ints](../python-int.md)) in variables, arguments, returns, fields, module
   variables, closures, tuples, `int | None` and the values generators yield and return, and, in a
   program where no module opts in to dynamic `Any`, in lists of ints and of tuples of ints, the
-  keys and values of dicts of ints and the values of dicts of tuples of ints (also in the tuples of
-  their `items()` and the pairs that `dict()` takes) and sets of ints. Other containers and the
-  tuples and `int | None` items they hold, a tuple's `int | None` items, other unions, the values
-  sent to a generator, the code of modules that do not opt in (their `int` and `int | None`
+  keys and values of dicts of ints and of tuples of ints (also in the tuples of their `items()`
+  and the pairs that `dict()` takes) and sets of ints and of tuples of ints. Other containers and
+  the tuples and `int | None` items they hold, a tuple's `int | None` items, other unions, the
+  values sent to a generator, the code of modules that do not opt in (their `int` and `int | None`
   parameters, and their reads of those containers), `Callable` signatures, and builtins and
   methods that take an int (`range()`, indexing, `math` functions, `sum()`'s ints among floats)
   keep 64-bit ints: a value past 64 bits raises `OverflowError` there, where CPython goes on

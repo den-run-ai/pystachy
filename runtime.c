@@ -1432,36 +1432,10 @@ static int list_has_big(List *l) {   /* does l hold an item past 64 bits */
   return 0;
 }
 static void list_narrow(List *l) { if (list_has_big(l)) pys_fail(NARROW); }   /* l's ints for 64-bit code */
-/* In a program whose lists hold promoting ints, a list of tuples of ints holds each in the layout of
-   a tuple of promoting ints (the compiler's bigints.held): a tuple of its whose int, also one of a
-   tuple it holds, is -2**63 has that int's Mpz word (titem), which a tuple of 64-bit ints lacks.
-   pys_list_hold gives that layout to the tuples of a list made of another storage's items (a dict's
-   keys, values or items, a set's elements, a tuple's), which hold 64-bit ints: such a tuple becomes a
-   copy whose Mpz words are null. pys_list_narrow_held takes a list of them to a storage of 64-bit
-   ints: OverflowError where an int is past 64 bits. Their descriptor d (bigints.held_shape) says J
-   for an int, T for a tuple that holds one, and i for an item they do not read */
-static const char *skip(const char *d);
-static I thold(I v, const char *d) {   /* tuple v of descriptor d (T), in the held layout: v, or a copy */
-  I *t = (I *)v, n = d[1] - '0', last = -1, w[9]; int copy = 0; const char *e = d + 2;
-  for (I i = 0; i < n; i++, e = skip(e)) {
-    w[i] = *e == 'T' ? thold(t[i], e) : t[i];
-    if (*e == 'J') last = i;
-    copy |= (*e == 'J' && t[i] == INT64_MIN) || w[i] != t[i];
-  }
-  if (!copy) return v;
-  I *r = pys_alloc((n + last + 1) * 8);   /* (zeroed: its Mpz words are null) */
-  memcpy(r, w, n * 8);
-  return (I)r;
-}
-void pys_list_hold(List *l, Str *d) { for (I i = 0; i < l->len; i++) l->a[i] = thold(l->a[i], d->s); }
-static void tnarrow(I v, const char *d) {
-  I *t = (I *)v, n = d[1] - '0'; const char *e = d + 2;
-  for (I i = 0; i < n; i++, e = skip(e)) {
-    if (*e == 'J' && t[i] == INT64_MIN && t[n + i]) pys_fail(NARROW);
-    if (*e == 'T') tnarrow(t[i], e);
-  }
-}
-void pys_list_narrow_held(List *l, Str *d) { for (I i = 0; i < l->len; i++) tnarrow(l->a[i], d->s); }
+/* In a program whose lists hold promoting ints, its lists, dicts (keys and values) and sets hold a
+   tuple of ints in the layout of a tuple of promoting ints (the compiler's bigints.held): a tuple of
+   theirs whose int, also one of a tuple it holds, is -2**63 has that int's Mpz word (titem), which
+   a tuple of 64-bit ints lacks, so the compiler stores a copy of such a tuple there */
 static I mpz_cmp_float(Mpz *m, double d) {   /* m, past 64 bits, against d, exactly and allocating nothing: -1, 0, 1, or 2 for a NaN */
   if (isnan(d)) return 2;
   if (isinf(d)) return d > 0 ? -1 : 1;
@@ -3624,10 +3598,12 @@ static uint64_t hval(I k, const char *d) {
   for (int i = 0; i < d[1] - '0'; i++) {
     /* an int, bool, str or str | None item (a key's tuple holds only those, objects and such
        tuples) is hashed in place, as the call for it would hash it, without walking its
-       descriptor again */
+       descriptor again; a promoting int (J) too, by its slot, or where that holds -2**63 by its
+       Mpz word's hash (titem's; -2**63 itself has none) */
     I x = ((I *)k)[i]; uint64_t v;
-    if (*e == 'i' || *e == 'b') { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; e++; }
+    if (*e == 'i' || *e == 'b' || (*e == 'J' && x != INT64_MIN)) { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; e++; }
     else if (*e == 's' || (*e == '?' && e[1] == 's')) { v = x ? hstrd((Str *)x) : 0x9E3779B97F4A7C15ULL; e += 1 + (*e == '?'); }
+    else if (*e == 'J') { Mpz *m = (Mpz *)((I *)k)[d[1] - '0' + i]; v = (uint64_t)(m ? pys_mpz_hash(m) : pys_hash_int(x)); v = v ? v : 1; e++; }
     else { v = hval(x, e); if (!v) return 0; e = skip(e); }
     h = (h ^ v) * 0x100000001B3ULL;
   }
@@ -3650,18 +3626,26 @@ static uint64_t hbig(Mpz *m) { return hint1(pys_mpz_hash(m)); }
 static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple or object key's descriptor */
   return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? (*kraw(d->kind) == '!' ? (uint64_t)hitem(k, kdesc(d->kind)) : hkey(k, kdesc(d->kind))) : hint1(k);
 }
+/* items i of tuples x and y of n items, promoting ints (J) one of whose slots holds -2**63: equal,
+   by their two words (titem); a call of its own, which keeps keq small */
+__attribute__((noinline)) static int jeq(const I *x, const I *y, I n, I i) {
+  I wx[2], wy[2]; return eqv(titem(x, n, i, "J", wx), titem(y, n, i, "J", wy), "J");
+}
 /* tuple keys of descriptor d: eqv's answer; pure: 2 instead at the first item whose comparison
-   may run the program's code (an object, a tuple of its own), before comparing it */
-static int keq(I a, I b, const char *d, int pure) {
+   may run the program's code (an object, a tuple of its own), before comparing it. Inlined into
+   the probes (dlook), whose loop so compares tuples of ints, bools and strs without a call */
+static inline __attribute__((always_inline)) int keq(I a, I b, const char *d, int pure) {
   I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
   if (!x || !y) return x == y;
   for (int i = 0; i < d[1] - '0'; i++) {
-    /* an int, bool, str or str | None item in place, another as eqitem compares it */
+    /* an int, bool, str or str | None item in place, a promoting int (J) too, by its slots where
+       neither is -2**63 (else jeq), another as eqitem compares it */
     if (*e == 'i' || *e == 'b') { if (x[i] != y[i]) return 0; e++; }
     else if (*e == 's' || (*e == '?' && e[1] == 's')) {
       if (x[i] != y[i] && (!x[i] || !y[i] || !pys_str_eq((Str *)x[i], (Str *)y[i]))) return 0;
       e += 1 + (*e == '?');
     }
+    else if (*e == 'J') { if (x[i] == INT64_MIN || y[i] == INT64_MIN ? !jeq(x, y, d[1] - '0', i) : x[i] != y[i]) return 0; e++; }
     else { if (pure) return 2; if (!eqitem(x[i], y[i], e)) return 0; e = skip(e); }
   }
   return 1;
@@ -4061,19 +4045,11 @@ List *pys_dict_items(Dict *d) {
   for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = (I)dpair(d, e, 0);
   return l;
 }
-/* and those of a dict whose (key, value) tuples a program's lists hold as tuples of promoting ints
-   (the compiler's bigints.held), in that layout, which s describes (bigints.held_shape): J an int
-   key or value, which dpair gives its Mpz word, T a tuple of ints, which the dict holds as 64-bit
-   ints (thold) */
-List *pys_dict_big_items(Dict *d, Str *s) {
-  const char *k = s->s + 2, *v = skip(k);
+/* and those of a dict of ints or of int keys, in a program whose lists hold promoting ints (the
+   compiler's bigints.big_items): an int key or value past 64 bits has its Mpz word (dpair) */
+List *pys_dict_big_items(Dict *d) {
   List *l = pys_list_new(d->len);
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) {
-    I *t = dpair(d, e, 1);
-    if (*k == 'T') t[0] = thold(t[0], k);
-    if (*v == 'T') t[1] = thold(t[1], v);
-    l->a[l->len++] = (I)t;
-  }
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = (I)dpair(d, e, 1);
   return l;
 }
 /* copies, as CPython 3.13 makes them, since their tables decide what a loop that changes the copy

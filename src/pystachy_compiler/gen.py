@@ -67,12 +67,11 @@ from src.pystachy_compiler.bigints import (
     gen_list_hold as bigints_list_hold,
     gen_big_items as bigints_big_items,
     gen_update_pairs as bigints_update_pairs,
-    gen_held_list as bigints_held_list,
     gen_search_hold as bigints_search_hold,
     gen_held_read as bigints_held_read,
     gen_held_default as bigints_held_default,
     gen_held_pair as bigints_held_pair,
-    gen_held_narrow as bigints_held_narrow,
+    gen_key_hold as bigints_key_hold,
     gen_held_value as bigints_held_value,
     gen_dict_int as bigints_dict_int,
     gen_big_dict_value as bigints_big_dict_value,
@@ -85,6 +84,7 @@ from src.pystachy_compiler.bigints import (
     gen_dict_put as bigints_dict_put,
     gen_big_key as bigints_big_key,
     gen_dict_value as bigints_dict_value,
+    gen_dict_key as bigints_dict_key,
     gen_big_dict_key as bigints_big_dict_key,
     gen_dict_box as bigints_dict_box,
     gen_big_dict_method as bigints_big_dict_method,
@@ -93,6 +93,7 @@ from src.pystachy_compiler.bigints import (
     gen_dict_store as bigints_dict_store,
     gen_set_int as bigints_set_int,
     gen_big_set_value as bigints_big_set_value,
+    gen_set_value as bigints_set_value,
     gen_set_coerce as bigints_set_coerce,
     gen_set_store as bigints_set_store,
     gen_big_set_method as bigints_big_set_method,
@@ -1648,9 +1649,6 @@ class Gen:
     def held_value(self, v: Val) -> Val:
         return bigints_held_value(self, v)
 
-    def held_list(self, v: Val) -> Val:
-        return bigints_held_list(self, v)
-
     def search_hold(self, v: Val, et: str, t: str) -> Val:
         return bigints_search_hold(self, v, et, t)
 
@@ -1663,8 +1661,8 @@ class Gen:
     def held_pair(self, v: Val) -> Val:
         return bigints_held_pair(self, v)
 
-    def held_narrow(self, v: Val) -> Val:
-        return bigints_held_narrow(self, v)
+    def key_hold(self, k: Val, kt: str) -> Val:
+        return bigints_key_hold(self, k, kt)
 
     def dict_int(self, t: str) -> bool:
         return bigints_dict_int(self, t)
@@ -1699,6 +1697,9 @@ class Gen:
     def dict_value(self, d: Val, e: str) -> Val:
         return bigints_dict_value(self, d, e)
 
+    def dict_key(self, d: Val, e: str) -> Val:
+        return bigints_dict_key(self, d, e)
+
     def big_dict_key(self, d: Val, e: str) -> Val:
         return bigints_big_dict_key(self, d, e)
 
@@ -1722,6 +1723,9 @@ class Gen:
 
     def big_set_value(self, s: Val, j: str) -> Val:
         return bigints_big_set_value(self, s, j)
+
+    def set_value(self, s: Val, j: str) -> Val:
+        return bigints_set_value(self, s, j)
 
     def set_coerce(self, v: Val, et: str) -> Val:
         return bigints_set_coerce(self, v, et)

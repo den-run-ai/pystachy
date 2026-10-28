@@ -754,10 +754,6 @@ RUNTIME: dict[str, str] = {
     "list.insert_big": "None:S,int,%ptr|R A rL wL|", "list.big_at": "%ptr:S,int|rL|",
     "list.big_pop": "int+:S,int|R rL wL|", "list.big_minmax": "int+:S,bool|R rL|",
     "list.big_find": "int:S,int,%ptr,bool,int,int,int|R A rL wL|", "list.narrow": "None:S|R rL|",
-    # a list of tuples of ints, which such a program's lists hold as tuples of promoting ints
-    # (bigints.held), by the layout's descriptor (held_shape): made of another storage's tuples, and
-    # going into a storage of 64-bit ints
-    "list.hold": "None:S,%ptr|A rL wL|", "list.narrow_held": "None:S,%ptr|R rL|",
     # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
@@ -836,11 +832,9 @@ RUNTIME: dict[str, str] = {
     "dict.big_find": "int:S,int,%ptr|R? rD U?|", "dict.big_entry": "int:S,int,%ptr|R A I rD U?|",
     "dict.big_put": "int:S,int,%ptr|R? A rD wD U?|", "dict.big_del": "None:S,int,%ptr|R A I rD wD U?|",
     "dict.big_key": "%ptr:S,int|rD|",
-    # popitem() of a dict of ints or of int keys: its tuple of promoting ints (utils.tslots); and
-    # items() and update() of pairs of a dict whose items' tuples a program's lists hold as tuples
-    # of promoting ints (bigints.held), by the layout's descriptor (held_shape) and whether the
-    # key, the value is an int
-    "dict.big_popitem": "tuple[K,V]:S|R A rD wD|", "dict.big_items": "list[tuple[K,V]]:S,%ptr|A rD|",
+    # popitem() and items() of a dict of ints or of int keys: tuples of promoting ints
+    # (utils.tslots); and update() of such a dict by pairs, by whether the key, the value is an int
+    "dict.big_popitem": "tuple[K,V]:S|R A rD wD|", "dict.big_items": "list[tuple[K,V]]:S|A rD|",
     "dict.update_pairs_big": "None:S,list[T],bool,bool|R? A rL rD wD U?|",
     # get(), pop(), setdefault() and their boxes by such a key, as get, getbox, pop, pop_default,
     # popbox, setdefault, big_pop and big_setdefault by a 64-bit key (bigints.py's BKEY)

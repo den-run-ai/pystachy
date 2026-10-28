@@ -385,7 +385,7 @@ def gen_supdate(self, s: str, v: Val, et: str) -> None:
     elif is_dict(v.t):
         self.rt("pys_set_update_dict", "void", [f"ptr {s}", f"ptr {v.v}"], self.key_fx(et))
     else:
-        self.rt("pys_set_update_list", "void", [f"ptr {s}", f"ptr {self.held_narrow(v).v}"], self.key_fx(et))
+        self.rt("pys_set_update_list", "void", [f"ptr {s}", f"ptr {v.v}"], self.key_fx(et))
 
 def gen_sdiscard(self, ov: str, v: Val, et: str) -> None:
     # set ov (of elements of type et) discards v, which it holds or not; None is no element (but
@@ -460,8 +460,7 @@ def gen_sgen(self, o: Val, m: str, g: Node, arg: IterArg | None) -> Val:
 
 def gen_keys_list(self, v: Val) -> Val:
     # a dict's keys (or v as it is), where CPython iterates over a dict as over any iterable
-    # (a list of tuples of ints whose ints go into the set: held_narrow, bigints.py)
-    return self.held_list(Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))) if is_dict(v.t) else self.held_narrow(v)
+    return Val(self.rt("pys_dict_keys", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]])) if is_dict(v.t) else v
 
 def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
     # set(), set(it), frozenset(), frozenset(it): a new set (frozenset) of the elements of it,
@@ -552,7 +551,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         self.rt("pys_set_discard" if m == "discard" else "pys_set_remove", "void", [ov, "i64 " + self.to_slot(k)], kx)
         return none
     if m == "pop":
-        return self.from_slot(self.rt("pys_set_pop", "i64", [ov]), et)
+        return self.held_value(self.from_slot(self.rt("pys_set_pop", "i64", [ov]), et))  # (a tuple of ints: bigints.held)
     if m == "clear":
         self.rt("pys_set_clear", "void", [ov])
         return none
@@ -598,9 +597,9 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
             # code runs as its items are taken (a generator's, __iter__): CPython's
             # set_copy_and_difference has copied o before
             r = Val(self.rt("pys_set_copy", "ptr", [ov]), o.t)
-            self.rt("pys_set_isub_list", "void", [f"ptr {r.v}", f"ptr {self.held_narrow(self.stake(o, m, x)).v}"], kx)
+            self.rt("pys_set_isub_list", "void", [f"ptr {r.v}", f"ptr {self.stake(o, m, x).v}"], kx)
         else:
-            v = self.held_narrow(self.stake(o, m, x))
+            v = self.stake(o, m, x)
             r = Val(self.rt("pys_set_sub" if is_set(v.t) else "pys_set_sub_dict" if is_dict(v.t) else "pys_set_sub_list", "ptr", [ov, f"ptr {v.v}"], kx), o.t)
         for x in sa[1:]:
             v = self.stake(o, m, x)
@@ -613,7 +612,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         e = mk("cmp", "in" if m == "issuperset" else "not in", g.line, [g.kids[0], self.vnode(o)])
         return self.listcomp(mk("listcomp", "gen", g.line, [e] + g.kids[1:]), "", "all")
     vs = [self.siter(a, et, f"{tn}.{m}()") for a in args]
-    v = self.held_narrow(vs[0])
+    v = vs[0]
     if m == "symmetric_difference":
         return Val(self.rt("pys_set_xor" if is_set(v.t) else "pys_set_xor_dict" if is_dict(v.t) else "pys_set_xor_list", "ptr", [ov, f"ptr {v.v}"], kx), o.t)
     if m == "symmetric_difference_update":
@@ -675,7 +674,6 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
         v = self.coerce(v, "dyn")
     if is_dict(xs.t):
         return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
-    xs = self.held_narrow(xs)  # (its tuples of ints become keys of 64-bit ints: bigints.py)
     return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K, True)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
 
 def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> Val:
@@ -712,7 +710,7 @@ def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -
     # a later comparison may look up a native key in a differently typed dict.
     # The marker preserves the original slots and records Python's hash/probe
     # scheme from insertion, including deletions; equality never rehashes keys.
-    kt = "int" if kt == BIG else kt  # (a promoting int's container holds ints: bigints.py)
+    kt = "int" if kt == BIG else held(kt.replace(BIG, "int"))  # (a promoting int's container holds ints, a tuple of them as a list holds it: bigints.py)
     if dictionary and dynamic_program() and not self.rtmode:
         d = self.hash_desc(kt)
         d = d if "H" in d or "A" in d else "!" + d
@@ -818,6 +816,9 @@ def gen_key_repr(self, t: str) -> bool:
 def gen_dkey(self, k: Val, kt: str) -> Val:
     # a key to look up in a dict whose keys have type kt: one that may be None stays optional
     # (see nonekey), and a bool or a tuple with what CPython finds as such a key (lookable) is one
+    # (a tuple of ints in the layout in which the dict holds it, key_hold: bigints.held)
+    if (is_tuple(k.t) or (is_opt(k.t) and unopt(k.t) == kt)) and held(kt.replace(BIG, "int")) != kt.replace(BIG, "int"):
+        return self.key_hold(k, kt.replace(BIG, "int"))
     if is_tuple(k.t) and BIG in k.t and BIG not in kt:
         k = self.big_tuple_narrow(k)  # (a key holds 64-bit ints: bigints.py)
     k = self.big_opt_narrow(k)  # (and an int | None the box of one)
@@ -876,14 +877,14 @@ def gen_store_key(self, k: Val, kt: str) -> Val:
     # looks up, pops and deletes the int key it equals: dkey)
     if bool_for_int(k.t, kt):
         self.err(f"a {typestr(k.t)} key is stored into a dict with {typestr(kt)} keys, where CPython keeps a key it adds as the bool it is (True, not 1): convert the bool with int()")
-    return self.coerce(k, kt)
+    return self.list_hold(k, kt) if held(kt.replace(BIG, "int")) != kt.replace(BIG, "int") else self.coerce(k, kt)  # (a tuple of ints as the dict holds it: bigints.held)
 
 def gen_store_elem(self, k: Val, et: str) -> Val:
     # k as an element added to a set whose elements have type et (s.add(k), a display, a
     # comprehension): as store_key, a bool is rejected where the elements are ints
     if bool_for_int(k.t, et):
         self.err(f"a {typestr(k.t)} element is added to a set of {typestr(et)} elements, where CPython keeps an element it adds as the bool it is (True, not 1): convert the bool with int()")
-    return self.coerce(k, et)
+    return self.list_hold(k, et) if held(et.replace(BIG, "int")) != et.replace(BIG, "int") else self.coerce(k, et)  # (a tuple of ints as the set holds it: bigints.held)
 
 def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
     # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys); a key that

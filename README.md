@@ -176,7 +176,7 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
 - Ordinary integers are checked 64-bit values; overflow raises `OverflowError`. A module that
   opts in to the experimental [promoting ints](docs/python-int.md) gets CPython's `int` in its
   variables, arguments, returns, fields, tuples and generators and in lists, dicts and sets of
-  ints, while other containers keep 64-bit ints. The explicit
+  ints and of tuples of ints, while other containers keep 64-bit ints. The explicit
   experimental [`mpz`](docs/mpz.md) type provides arbitrary-precision integer arithmetic.
 - Strings store UTF-8 with code-point lengths, indexing, slicing and search offsets; Unicode case mapping remains incomplete.
   Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)

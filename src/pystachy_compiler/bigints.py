@@ -12,7 +12,7 @@ from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC
-from src.pystachy_compiler.utils import bool_for_int, elem, is_dict, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_vtuple, selem, targs, unopt
+from src.pystachy_compiler.utils import bool_for_int, elem, is_dict, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_vtuple, lookable, selem, targs, unopt
 
 # pys_big_op's operation codes (pys_mpz_binop's, then shifts and **)
 BIGOPS: dict[str, int] = {"+": 0, "-": 1, "*": 2, "//": 3, "%": 4, "&": 5, "|": 6, "^": 7, "<<": 8, ">>": 9, "**": 10}
@@ -89,10 +89,11 @@ def big_view(t: str) -> str:
 
 
 def held(t: str) -> str:
-    # the type as which a list of item type t holds its items: in a program whose lists hold
-    # promoting ints (int_lists), a tuple of ints holds them as promoting ints (big_view), which
-    # every store gives it (list_coerce) and the descriptors of its items say (desc's J); its
-    # reads give a module that opts in the promoting ints, and narrow them in another (held_value)
+    # the type as which a list of item type t holds its items, and a dict its keys and values and a
+    # set its elements of type t: in a program whose lists hold promoting ints (int_lists), a tuple
+    # of ints holds them as promoting ints (big_view), which every store gives it (list_hold) and
+    # the descriptors of its items say (desc's J, and the key kind's: key_kind); its reads give a
+    # module that opts in the promoting ints, and narrow them in another (held_value)
     return big_view(t) if int_lists() and int_tuple(t) else t
 
 
@@ -105,13 +106,6 @@ def search_type(t: str, et: str) -> str:
     if is_opt(et) and unopt(et) == t and held(t) != t:
         return "opt[" + held(t) + "]"
     return et
-
-
-def held_shape(t: str, j: str = "J") -> str:
-    # runtime.c's descriptor of the layout of a tuple of ints that a list holds (held), for
-    # pys_list_hold and pys_list_narrow_held: J an int (its own ints j: i where the caller reads
-    # them), T a tuple that holds one, i an item they do not read
-    return "T" + str(len(targs(t))) + "".join([j if x == "int" else held_shape(x) if int_tuple(x) else "i" for x in targs(t)])
 
 
 def big_tree(t: str) -> bool:
@@ -688,51 +682,22 @@ def gen_search_hold(self, v: Val, et: str, t: str) -> Val:
     return Val(self.phi(ph), et)
 
 
-def gen_held_list(self, v: Val) -> Val:
-    # list v, which the runtime made of another storage's items: its tuples of ints in the layout
-    # that the program's lists hold them in (held: pys_list_hold copies one that holds -2**63)
-    if is_list(v.t) and held(elem(v.t)) != elem(v.t):
-        self.rt("pys_list_hold", "void", [f"ptr {v.v}", f"ptr {self.sconst(held_shape(elem(v.t)))}"])
-    return v
-
-
-def gen_held_narrow(self, v: Val) -> Val:
-    # list v, whose tuples of ints go into a storage of 64-bit ints (a dict's keys or values, a set's
-    # elements, a tuple's items): NARROW where an int of one is past 64 bits
-    if is_list(v.t) and held(elem(v.t)) != elem(v.t):
-        self.rt("pys_list_narrow_held", "void", [f"ptr {v.v}", f"ptr {self.sconst(held_shape(elem(v.t)))}"])
-    return v
-
-
-def items_shape(kv: list[str]) -> str:
-    # the held_shape of the (key, value) tuples of a dict of key and value types kv, for
-    # pys_dict_big_items: J an int key or value, T a key's tuple of ints, which the dict holds as
-    # 64-bit ints, i a value's, which the dict holds as a list holds it (held), and the other items
-    k = "J" if kv[0] == "int" else held_shape(kv[0]) if int_tuple(kv[0]) else "i"
-    return "T2" + k + ("J" if kv[1] == "int" else "i")
-
-
 def gen_big_items(self, o: Val) -> Val:
-    # o.items() of dict o, whose (key, value) tuples hold ints (int_tuple), in a program whose lists
-    # hold them as tuples of promoting ints (held): pys_dict_big_items makes them in that layout, an
-    # int key or value with its Mpz word from the dict's (as pys_dict_big_popitem's), a key's tuple
-    # of ints, which the dict holds as 64-bit ints, as pys_list_hold makes it, and a value's tuple as
-    # the dict holds it (items_shape). Val("", "") for other dicts
-    t = self.ctype("tuple", targs(o.t))
-    if held(t) == t:
+    # o.items() of dict o, an int key or value of whose (key, value) tuples is a promoting int, in a
+    # program whose lists, dicts and sets of ints hold them (int_lists): pys_dict_big_items makes
+    # them with the slots of one (utils.tslots), an int past 64 bits with its Mpz word from the
+    # dict's (as pys_dict_big_popitem's); a tuple of ints as the dict holds it, as the list of them
+    # holds it (held). Val("", "") for other dicts
+    if not int_lists() or "int" not in targs(o.t):
         return Val("", "")
-    return Val(self.rt("pys_dict_big_items", "ptr", [f"ptr {o.v}", f"ptr {self.sconst(items_shape(targs(o.t)))}"]), self.ctype("list", [t]))
+    return Val(self.rt("pys_dict_big_items", "ptr", [f"ptr {o.v}"]), self.ctype("list", [self.ctype("tuple", targs(o.t))]))
 
 
 def gen_update_pairs(self, d: str, v: Val, kv: list[str]) -> None:
     # dict d, of key and value types kv, updated by v, a list of (key, value) tuples, one insertion
     # per pair: in a program whose lists hold promoting ints (int_lists), an int key or value as the
-    # promoting int its pair holds (pys_dict_update_pairs_big, held), a value's tuple of ints as it is
-    # (the dict holds it so too), and a key's narrowed first (pys_list_narrow_held: the dict holds
-    # 64-bit ints in its keys' tuples)
-    shape = "T2" + (held_shape(kv[0]) if int_tuple(kv[0]) else "i") + "i"
-    if int_lists() and "J" in shape:
-        self.rt("pys_list_narrow_held", "void", [f"ptr {v.v}", f"ptr {self.sconst(shape)}"])
+    # promoting int its pair holds (pys_dict_update_pairs_big); a tuple of ints as it is, as the
+    # list and the dict hold it (held)
     if int_lists() and "int" in kv:
         ints = [f"i64 {1 if x == 'int' else 0}" for x in kv]
         self.rt("pys_dict_update_pairs_big", "void", [f"ptr {d}", f"ptr {v.v}"] + ints, self.key_fx(kv[0]))
@@ -741,14 +706,36 @@ def gen_update_pairs(self, d: str, v: Val, kv: list[str]) -> None:
 
 
 def gen_list_hold(self, v: Val, et: str) -> Val:
-    # v as an item of a list of et, held as held(et): a tuple of promoting ints as it is, and a
-    # tuple of 64-bit ints as it is too, but where one of its ints is -2**63 (a new tuple of the
-    # held layout, big_tuple_view), as et; else list_coerce
+    # v as an item of a list of et (or a dict's key or value, a set's element), held as held(et): a
+    # tuple of promoting ints as it is, and a tuple of 64-bit ints as it is too, but where one of
+    # its ints is -2**63 (a new tuple of the held layout, big_tuple_view), as et; else list_coerce
     e = et.replace(BIG, "int")  # (a list's item type, as ctype makes it)
     h = held(e)
     if h == e:
         return self.list_coerce(v, et)
     return Val(self.coerce(v, h).v, e)
+
+
+def gen_key_hold(self, k: Val, kt: str) -> Val:
+    # k, the key that a lookup takes in a dict or set whose keys or elements have type kt, which it
+    # holds as held(kt) (dkey): in that layout, as a store gives it (list_hold); a tuple that may be
+    # None where it is not None (search_hold: nonekey finds None in no dict), and a tuple that
+    # CPython finds as such a key (utils.lookable: a bool for an int, None for a str) in its own
+    # type's
+    lt = k.t.replace(BIG, "int")
+    if is_opt(k.t) and unopt(k.t) == kt:
+        return self.search_hold(k, k.t, kt)
+    if is_tuple(k.t) and lt != kt and lookable(lt, kt):
+        return Val(self.list_hold(k, lt).v, kt)
+    return self.list_hold(k, kt)
+
+
+def gen_dict_key(self, d: Val, e: str) -> Val:
+    # the key of entry e of dict d (of a dict of int keys, big_dict_key's; a tuple of ints, which
+    # the dict holds as a list holds it, as held_value reads it)
+    if self.dict_bigkey(d.t):
+        return self.big_dict_key(d, e)
+    return self.held_value(self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {d.v}", f"i64 {e}"]), targs(d.t)[0]))
 
 
 def gen_dict_int(self, t: str) -> bool:
@@ -861,13 +848,13 @@ def gen_held_default(self, v: Val, et: str, vt: str) -> Val:
 
 
 def gen_held_pair(self, v: Val) -> Val:
-    # v, the (key, value) tuple that popitem() of a dict gives (pys_dict_popitem), whose value is a
-    # tuple of ints that the dict holds as a list holds it (held): in a module that opts in that
+    # v, the (key, value) tuple that popitem() of a dict gives (pys_dict_popitem), whose key or value
+    # is a tuple of ints that the dict holds as a list holds it (held): in a module that opts in that
     # tuple of promoting ints, elsewhere the tuple of its 64-bit ints (NARROW past 64 bits)
     kv = targs(v.t)
-    if held(kv[1]) == kv[1]:
+    if held(kv[0]) == kv[0] and held(kv[1]) == kv[1]:
         return v
-    t = "tuple[" + kv[0] + "," + held(kv[1]) + "]"
+    t = "tuple[" + held(kv[0]) + "," + held(kv[1]) + "]"
     if self.int_policy(self.line):
         return Val(v.v, t)
     return self.big_tuple_narrow(Val(v.v, t))
@@ -976,7 +963,7 @@ def gen_big_popitem(self, o: Val) -> Val:
     # in: its (key, value) tuple of promoting ints, which pys_dict_big_popitem makes with the slots
     # of one (utils.tslots); in other modules, bmethod's pys_dict_popitem raises past 64 bits
     kv = targs(o.t)
-    t = self.ctype("tuple", [BIG if kv[0] == "int" else kv[0], BIG if kv[1] == "int" else held(kv[1])])  # (a value's tuple of ints: held)
+    t = self.ctype("tuple", [BIG if kv[0] == "int" else held(kv[0]), BIG if kv[1] == "int" else held(kv[1])])  # (a tuple of ints: held)
     return Val(self.rt("pys_dict_big_popitem", "ptr", [f"ptr {o.v}"], self.key_fx(kv[0])), t)
 
 
@@ -1009,6 +996,14 @@ def gen_big_set_value(self, s: Val, j: str) -> Val:
     raw = self.rt("pys_set_key", "i64", [f"ptr {s.v}", f"i64 {j}"])
     v = self.big_slot(raw, "pys_set_big_key", [f"ptr {s.v}", f"i64 {j}"], True)
     return v if self.int_policy(self.line) else self.big_narrow(v)
+
+
+def gen_set_value(self, s: Val, j: str) -> Val:
+    # the element in slot j of set s (of a set of ints, big_set_value's; a tuple of ints, which the
+    # set holds as a list holds it, as held_value reads it)
+    if self.set_int(s.t):
+        return self.big_set_value(s, j)
+    return self.held_value(self.from_slot(self.rt("pys_set_key", "i64", [f"ptr {s.v}", f"i64 {j}"]), selem(s.t)))
 
 
 def gen_set_coerce(self, v: Val, et: str) -> Val:
