@@ -56,7 +56,11 @@ Split trace records before repair and validate types and content afterward.
   retain the original scan for other targets and negative offsets.
 - Update brace/bracket state incrementally after replacing a trailing escape,
   preserving decoded structural characters without rescanning accumulated text.
-  Immutable string copying remains a separate cost.
+- Accumulate string content in bounded 64-code-point tails and immutable chunks;
+  cache tail/regex whitespace metadata and flatten once at finalization. This
+  removes repeated growing-prefix copies. The [accumulator report](../../bench/json_repair/ACCUMULATOR.md)
+  records native wins, a warmed PyPy mixed-workload regression and higher CPython
+  peak memory; this remains an experimental port tradeoff.
 - Use the native `json._raw_decode` adapter at two call sites, with a guarded
   import falling back to CPython’s `JSONDecoder`. The public decoder keeps its
   class identity; see the [JSON API notes](../../docs/json-prototype.md).
@@ -92,6 +96,8 @@ make test FILES='tests/programs/apps/port_json_repair*.py tests/programs/library
 
 See the replay README for the complete corpus commands and original input provenance.
 
-See the [performance report](../../bench/json_repair/PROFILING.md) for typed-cache
-measurements, payload scaling and bottlenecks. The [completion report](../../docs/reports/json-repair-port.md)
+See the [performance report](../../bench/json_repair/PROFILING.md) for historical typed-cache
+measurements, payload scaling and bottlenecks, and the
+[bounded-accumulator report](../../bench/json_repair/ACCUMULATOR.md) for the refreshed
+integrated baseline, copy-work evidence and current cross-engine tradeoffs. The [completion report](../../docs/reports/json-repair-port.md)
 records validation and the minimal upstream contribution strategy.

@@ -139,7 +139,7 @@ def run_campaign(config, *, pairs, batches, warmups, cpu, timeout):
         "platform": platform.platform(), "runner_python": platform.python_version(), "cpu": cpu,
         "cpu_model": next((line.split(":", 1)[1].strip() for line in Path("/proc/cpuinfo").read_text().splitlines()
                            if line.startswith("model name")), platform.processor()) if Path("/proc/cpuinfo").exists() else platform.processor(),
-        "memory_scope": "whole child process peak RSS, including startup/JIT and input/validation; not retained heap",
+        "memory_scope": "whole child process peak RSS, including startup/JIT, input/validation and possible pre-exec inherited launch floor; not retained heap",
         "timing_scope": "repair loops; input creation, full-result validation, startup and compilation excluded",
         "identities": {}, "samples": [], "summary": {},
     }
