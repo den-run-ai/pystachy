@@ -291,3 +291,16 @@ def dumps(obj: Any, *, skipkeys: bool = False, ensure_ascii: bool = True, check_
     w = _Writer(skipkeys, ensure_ascii, check_circular, allow_nan, sort_keys, item_separator, key_separator, default)
     w.write(obj, 0)
     return "".join(w.out)
+
+
+def _raw_decode(s: str, idx: int = 0) -> tuple[Any, int]:
+    try:
+        return _raw_parse(_Parser(s, False), idx)
+    except UnicodeDecodeError:
+        return _raw_parse(_Parser(s, True), idx)
+
+
+def _raw_parse(p: _Parser, idx: int) -> tuple[Any, int]:
+    p.seek_char(idx)
+    value = _value(p, 0)
+    return value, p.char_index(p.pos)
