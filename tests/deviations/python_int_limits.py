@@ -8,14 +8,14 @@
 # display of both), or sent to a generator, given to range(), added by sum() among floats, in a
 # NamedTuple that may be None (a parameter) hashed as the tuple of its fields, a dict's tuple that
 # get() gives where it may be None, or a list's item (a tuple's too), a dict's key, a set's element
-# or a generator's value that tuple() or a module that does not opt in (random) reads, or the
-# result of a Callable (a defaultdict's factory), raises OverflowError, where CPython goes on with
-# the bigger int.
+# or a generator's value that tuple() or a module that does not opt in (random) reads, or given to
+# a Callable of a function of such a module that takes an int, or in a tuple that a Callable takes,
+# raises OverflowError, where CPython goes on with the bigger int.
 # A tuple of 64-bit ints one of whose items is -2**63 becomes a new tuple where a tuple of promoting
 # ints is expected, as in a list, a dict or a set of tuples of ints.
 import random
-from collections import defaultdict
-from typing import Generator, NamedTuple
+from typing import Callable, Generator, NamedTuple
+from devmods.python_int_fixed import doubled
 
 
 def echo() -> Generator[int, int | None, None]:
@@ -49,11 +49,16 @@ try:
     random.shuffle([big, big + 1])
 except OverflowError as e:
     print("random.shuffle():", e)
-factory: defaultdict[str, int] = defaultdict(lambda: big)
+twice: Callable[[int], int] = doubled
 try:
-    print(factory["k"])
+    print(twice(3), twice(big))
 except OverflowError as e:
-    print("defaultdict's factory:", e)
+    print("a Callable's 64-bit function:", e)
+pair: Callable[[tuple[int, int]], int] = lambda t: t[0] + t[1]
+try:
+    print(pair((1, 2)), pair((big, 1)))
+except OverflowError as e:
+    print("a Callable's tuple:", e)
 try:
     print({"k": (big, 1)}.get("k"))
 except OverflowError as e:

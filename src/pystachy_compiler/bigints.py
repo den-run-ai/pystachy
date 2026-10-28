@@ -126,6 +126,35 @@ def narrowed(ts: list[str]) -> list[str]:
     return ["int" if t == BIG else "opt[int]" if t == BIGOPT else t for t in ts]
 
 
+def converts(a: str, b: str) -> bool:
+    # does a call convert its value of type a to type b, an int to a promoting int or one back (also
+    # as int | None), as it passes an argument or returns a result: NARROW past 64 bits
+    return (a == "int" and b == BIG) or (a == BIG and b == "int") or (a == "opt[int]" and b == BIGOPT) or (a == BIGOPT and b == "opt[int]")
+
+
+def callable_ints(t: str) -> str:
+    # type t with the ints and int | Nones that each Callable in it takes and returns promoting ints
+    # (ctype: one signature in every module of a program whose containers hold them, which the
+    # adapters convert to and from a function's own), its other types as they are
+    out = ""
+    i = 0
+    a = t.find("callable[")
+    while a >= 0:
+        b = a + 9
+        depth = 1
+        while depth > 0:
+            depth += 1 if t[b] == "[" else -1 if t[b] == "]" else 0
+            b += 1
+        if a == 0 or t[a - 1] == "[" or t[a - 1] == ",":
+            ts = [BIG if x == "int" or x == BIG else BIGOPT if x == "opt[int]" or x == BIGOPT else callable_ints(x) for x in targs(t[a:b])]
+            out += t[i:a] + "callable[" + ",".join(ts) + "]"
+        else:
+            out += t[i:b]
+        i = b
+        a = t.find("callable[", i)
+    return out + t[i:]
+
+
 # Where a bool and the int it equals give the same results and errors (bool_numeric): arithmetic,
 # whose methods are the int's (& | ^ of two bools give a bool), and builtins that take a number but
 # none that may return it as it is
