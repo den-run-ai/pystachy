@@ -402,8 +402,8 @@ runner variation:
 | `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
 | `ubsan-0`, `ubsan-1`, `ubsan-2` | Sanitized compiler/runtime; three disjoint thirds of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
-| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the full JIT suite, with compiler and program GC stress. |
-| `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the full AOT suite, with compiler and program GC stress. |
+| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case (`gc-ir-0`, `gc-ir-1`); then the half's JIT suite with program GC stress, one case in 32 of the corpus with the compiler stressed too. |
+| `gc-aot-0`, `gc-aot-1` | The same halves' AOT suite with program GC stress, another case in 32 with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-3` | Four disjoint quarters of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-3` | Four disjoint quarters of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
 | `runtime-cache` | The cached runtime's rules with both compilers. |
@@ -452,16 +452,34 @@ workflow time. The 15-minute limit applies to each verification job.
 GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;
 the wider interval still exercises thousands of collections without dominating CI.
-The GC test suite keeps its compiler interval of 1,000 and collects at **every program
-allocation**. Both self-compilation IR identity and full suite counts remain required.
-Self-compilation, the two JIT halves and the three AOT thirds use separate runners and report
-their own durations. The JIT halves take every other file in a fixed order and the AOT thirds
-every third; the halves together, like the thirds, run the full corpus, including rejection and
-syntax checks. The final gate requires all six groups, both execution modes, the stress
-intervals, distinct shard identities and complete counts for every job: the JIT halves and the
-AOT thirds each make as many checks as `tests/verify.sh` counts in the whole corpus in one mode
-(each report's `sources.mode_checks`). `tests/verify.sh gc-stress` still runs all GC checks
-locally with one bootstrap; `gc-jit` runs the two JIT halves and `gc-aot` the three AOT thirds.
+The compiler collecting every 1,000 allocations is checked by identity, once a run: `gc-ir-0`
+and `gc-ir-1` (in `gc-jit-0` and `gc-jit-1`) compile the cases of two disjoint halves of the
+corpus (every other file in a fixed order) with it and with stage 2 unstressed, through
+`tools/irsame.sh` (`rt` for `rtmode_*` cases, with the IR check on), and require the same IR byte
+for byte, the same messages and the same exit status for every case, the same IR of `runtime.py`,
+and the same `check` output and status for every `syntax_*` case. The GC suites then collect at
+**every program allocation** (`PYSTACHY_GC_STRESS_PROGRAM=1`) and run every case of the corpus
+once in each mode, rejection and syntax checks included, compiled by stage 2 unstressed. Each
+suite used to compile every case with the stressed compiler again, in each mode; where the IR is
+the same, the LLVM tools build the same program from it, so that repeated the identity at about
+nine times the frontend's unstressed cost (on a one-in-40 sample of the corpus, the stressed
+frontend took 38% of a GC JIT run and 14% of a GC AOT run). One case in 16 of the corpus in each
+mode still runs end to end with the compiler stressed too: shard I of 32 in `gc-jit-I` and shard
+2 + I in `gc-aot-I`, which lie in half I, so the two modes sample other cases. It runs first, in
+a runtime cache of the GC steps' own (`build/verify/gc-cache`, which each run starts empty), so
+the stressed compiler builds the runtime that the job's GC tests use, and the driver's cache,
+`opt`/`lli` and `clang`/link paths after the IR run under stress; the program-stressed run takes
+the half's other cases.
+Self-compilation and the four suites use separate runners and report their own durations.
+The final gate requires all five groups, both execution modes, the intervals (1,000 for `gc-ir`
+and the samples' compiler, 0 for the program-stressed runs' compiler, 1 for every program),
+distinct shard and sample identities and complete counts for every run: each mode's runs and
+samples together make as many checks as `tests/verify.sh` counts in the whole corpus in one mode
+(each report's `sources.mode_checks`), and the `gc-ir` halves together compare
+`sources.corpus_cases` cases and `sources.syntax_cases` checks with no difference. It rejects GC
+suites without both `gc-ir` halves, even in a contract that omits them. `tests/verify.sh
+gc-stress` still runs all GC checks locally with one bootstrap; `gc-ir` runs the two identity
+halves, `gc-jit` those and the two JIT halves, and `gc-aot` the two AOT halves.
 The native and opt-off suites are split the same way, in halves, and the python-free and UBSan
 suites in thirds (`tests/verify.sh`'s `shard_cases`). The gate requires each
 shard's identity and complete count, and that the shards together make as many checks as an

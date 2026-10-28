@@ -18,6 +18,48 @@ contracts bootstrap check-ir
 """
 COMMIT = "a" * 40
 BUNDLE = "d" * 64
+# A GC suite's sample, which runs end to end with the compiler GC-stressed too, must be the step's own
+# shard of the sample count, at the compiler's interval, and complete
+SAMPLE_MUTATIONS = [lambda step: step.pop("stressed_sample"),
+                    lambda step: step.update(stressed_sample=[]),
+                    lambda step: step["stressed_sample"].update(index=step["stressed_sample"]["index"] ^ 1),
+                    lambda step: step["stressed_sample"].update(index=step["stressed_sample"]["index"] ^ 2),
+                    lambda step: step["stressed_sample"].pop("index"),
+                    lambda step: step["stressed_sample"].update(count=merge.GC_SAMPLE_OF // 2),
+                    lambda step: step["stressed_sample"].update(count=str(merge.GC_SAMPLE_OF)),
+                    lambda step: step["stressed_sample"].pop("count"),
+                    lambda step: step["stressed_sample"].update(tests_compiler_interval=0),
+                    lambda step: step["stressed_sample"].update(tests_compiler_interval=5000),
+                    lambda step: step["stressed_sample"].pop("tests_compiler_interval"),
+                    lambda step: step["stressed_sample"].update(tests_interval=2),
+                    lambda step: step["stressed_sample"].pop("tests_interval"),
+                    lambda step: step["stressed_sample"].update(passed=0),
+                    lambda step: step["stressed_sample"].update(passed=0, expected=0),
+                    lambda step: step["stressed_sample"].pop("expected"),
+                    lambda step: step["stressed_sample"].update(failed=1),
+                    lambda step: step["stressed_sample"].update(failures=["lost case"]),
+                    lambda step: step["stressed_sample"].pop("failures")]
+# The gc-ir halves: the stressed compiler's IR, messages, status and checks identical to stage 2's
+GC_IR_MUTATIONS = [lambda step: step.update(ir_identical=False),
+                   lambda step: step.update(ir_identical="true"),
+                   lambda step: step.pop("ir_identical"),
+                   lambda step: step.update(runtime_identical=False),
+                   lambda step: step.pop("runtime_identical"),
+                   lambda step: step.update(reference="stage1"),
+                   lambda step: step.update(compiler_interval=5000),
+                   lambda step: step.update(compiler_interval=0),
+                   lambda step: step.pop("compiler_interval"),
+                   lambda step: step.update(ir_cases=0),
+                   lambda step: step.update(ir_cases=True),
+                   lambda step: step.pop("ir_cases"),
+                   lambda step: step.update(check_cases=-1),
+                   lambda step: step.pop("check_cases"),
+                   lambda step: step.update(check_differences=1),
+                   lambda step: step.pop("check_differences"),
+                   lambda step: step.update(shard_index=1 - step["shard_index"]),
+                   lambda step: step.pop("shard_index"),
+                   lambda step: step.update(shard_count=3),
+                   lambda step: step.update(result="fail")]
 
 
 @lru_cache(maxsize=4)
@@ -84,14 +126,14 @@ def report(group, steps):
                 step["bootstrap_reused"] = True
         if name in merge.SUITE_STEPS:
             step.update(passed=10, failed=0, expected=10, failures=[])
-        if name in ("tests-native-0", "tests-native-1", "tests-opt-off-0", "tests-opt-off-1", "gc-jit-0", "gc-jit-1"):
+        if name in ("tests-native-0", "tests-native-1", "tests-opt-off-0", "tests-opt-off-1"):
             step.update(passed=5, expected=5)   # halves of a 10-check suite
         if name.startswith("tests-native"):
             step.update(compiler="stage2", modes=["jit", "aot"])
         if name == "tests-cpython":   # every case's IR identical, its sample run end to end
             step.update(reference="stage2", ir_identical=True, ir_cases=5, check_cases=2, modes=["jit", "aot"],
                         sample_index=0, sample_count=merge.HOSTED_SAMPLE_OF)
-        if name in ("python-free-0", "python-free-1", "python-free-2", "gc-aot-0", "gc-aot-1", "gc-aot-2"):
+        if name in ("python-free-0", "python-free-1", "python-free-2"):
             count = 4 if name.endswith("-0") else 3   # thirds of a 10-check suite
             step.update(passed=count, expected=count)
         if name in ("ubsan-0", "ubsan-1", "ubsan-2"):
@@ -109,8 +151,17 @@ def report(group, steps):
         if name.startswith("python-int-optin-"):
             step["python_int_optin"] = copy.deepcopy(python_int_report(int(name[-1])))
         if name in merge.GC_STEPS:
-            step.update(tests_compiler_interval=1000, tests_interval=1,
-                        modes=["jit" if name.startswith("gc-jit") else "aot"])
+            # halves of a mode's 10 checks: 4 with program stress alone, 1 in the sample with the
+            # compiler's too (shard I of 32 in gc-jit-I, 2 + I in gc-aot-I)
+            aot = name.startswith("gc-aot")
+            step.update(tests_compiler_interval=0, tests_interval=1, modes=["aot" if aot else "jit"],
+                        passed=4, expected=4,
+                        stressed_sample={"index": int(name[-1]) + 2 * aot, "count": merge.GC_SAMPLE_OF,
+                                         "tests_interval": 1, "tests_compiler_interval": merge.GC_COMPILER_INTERVAL,
+                                         "passed": 1, "failed": 0, "expected": 1, "failures": []})
+        if name in merge.GC_IR_STEPS:   # halves of the 5 corpus cases and 2 syntax cases
+            step.update(compiler_interval=merge.GC_COMPILER_INTERVAL, reference="stage2", ir_identical=True,
+                        runtime_identical=True, ir_cases=3 - int(name[-1]), check_cases=1, check_differences=0)
         if name in merge.SHARDED_STEPS:
             step.update(shard_index=int(name[-1]), shard_count=merge.SHARDED_STEPS[name])
         if name in merge.SCALING_STEPS:
@@ -141,11 +192,17 @@ class ContractTests(unittest.TestCase):
 
     def test_real_plan_requires_native_suites_and_every_gc_job(self):
         groups = merge.load_groups()
-        for alias in ("gc-stress", "gc-jit", "gc-aot", "ubsan", "native", "opt-off", "python-free", "scaling", "python-int-optin"):
+        for alias in ("gc-stress", "gc-ir", "gc-jit", "gc-aot", "ubsan", "native", "opt-off", "python-free", "scaling",
+                      "python-int-optin"):
             self.assertNotIn(alias, groups)  # Compatibility aliases must not duplicate CI work.
-        for group in ("gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
+        for group in ("gc-self", "gc-aot-0", "gc-aot-1", "ubsan-0", "ubsan-1",
                       "ubsan-2", "python-free-0", "python-free-1", "python-free-2", "runtime-cache", "scaling-1"):
             self.assertEqual(groups[group], ["bootstrap", group])
+        # the stressed compiler's identity, half by half, in the JIT jobs; AOT in two halves
+        for shard in ("0", "1"):
+            self.assertEqual(groups["gc-jit-" + shard], ["bootstrap", "gc-ir-" + shard, "gc-jit-" + shard])
+        for gone in ("gc-aot-2", "gc-ir-0", "gc-ir-1"):
+            self.assertNotIn(gone, groups)
         self.assertEqual(groups["hosted"], ["bootstrap", "tests-cpython"])  # one job: the IR oracle and its sample
         for shard in ("0", "1", "2"):
             self.assertNotIn("hosted-" + shard, groups)
@@ -168,7 +225,7 @@ class ContractTests(unittest.TestCase):
                 path.write_text(json.dumps(report(group, steps)))
             result = merge.merge_reports(directory, groups, COMMIT)
             self.assertEqual([step["name"] for step in result["steps"]], groups["all"])
-            for group in ("opt-off-0", "opt-off-1", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
+            for group in ("opt-off-0", "opt-off-1", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
                           "hosted", "native-0", "native-1", "python-free-0", "python-free-1",
                           "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
                           "scaling-1", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2", "dynany-optin-3",
@@ -179,7 +236,7 @@ class ContractTests(unittest.TestCase):
                 with self.subTest(missing=group), self.assertRaisesRegex(ValueError, f"missing report groups.*{group}"):
                     merge.merge_reports(directory, groups, COMMIT)
                 path.write_text(original)
-            for group in ("gc-aot-0", "gc-aot-2", "native-0", "opt-off-1", "python-free-1",
+            for group in ("gc-jit-1", "gc-aot-0", "gc-aot-1", "native-0", "opt-off-1", "python-free-1",
                           "python-free-2", "ubsan-0"):
                 path = directory / f"verification-{group}" / "verification.json"
                 original = path.read_text()
@@ -232,6 +289,28 @@ class ContractTests(unittest.TestCase):
                     with self.subTest(mode_checks=checks), self.assertRaisesRegex(ValueError, error):
                         merge.merge_reports(directory, groups, COMMIT)
             merge.merge_reports(directory, groups, COMMIT)
+            # the gc-ir halves compile every corpus case once (sources.corpus_cases) and check every syntax
+            # case (sources.syntax_cases); a GC suite's stressed sample counts toward its mode's checks
+            for group, mutate, error in (
+                    ("gc-jit-0", lambda data: data["steps"][1].update(ir_cases=2), "gc-ir halves"),
+                    ("gc-jit-1", lambda data: data["steps"][1].update(ir_cases=3), "gc-ir halves"),
+                    ("gc-jit-1", lambda data: data["steps"][1].update(check_cases=0), "gc-ir halves"),
+                    ("gc-jit-0", lambda data: data["steps"][1].update(check_cases=2), "gc-ir halves"),
+                    ("gc-jit-0", lambda data: data["steps"][-1]["stressed_sample"].update(passed=2, expected=2),
+                     "GC JIT shards"),
+                    ("gc-aot-1", lambda data: data["steps"][-1]["stressed_sample"].update(passed=2, expected=2),
+                     "GC AOT shards"),
+                    ("gc-aot-0", lambda data: data["steps"][-1].update(passed=3, expected=3), "GC AOT shards")):
+                path = directory / f"verification-{group}" / "verification.json"
+                original = path.read_text()
+                data = report(group, groups[group])
+                mutate(data)
+                merge.validate_report(data, group, groups[group])   # (each report alone is consistent)
+                path.write_text(json.dumps(data))
+                with self.subTest(group=group, error=error), self.assertRaisesRegex(ValueError, error):
+                    merge.merge_reports(directory, groups, COMMIT)
+                path.write_text(original)
+            merge.merge_reports(directory, groups, COMMIT)
             # scaling-0 and scaling-1 check every shape of tools/scaling.py once
             path = directory / "verification-scaling-1" / "verification.json"
             original = path.read_text()
@@ -251,14 +330,18 @@ class ContractTests(unittest.TestCase):
                         lambda step: step.pop("compiler_interval"),
                         lambda step: step.update(ir_identical=False),
                         lambda step: step.pop("ir_identical")],
-            "gc-jit-0": [lambda step: step.update(tests_compiler_interval=1001),
+            # program stress alone, honestly reported, and the sample with the compiler stressed too
+            "gc-jit-0": [lambda step: step.update(tests_compiler_interval=1000),
+                         lambda step: step.update(tests_compiler_interval=1001),
+                         lambda step: step.pop("tests_compiler_interval"),
                          lambda step: step.update(tests_interval=2),
                          lambda step: step.pop("tests_interval"),
                          lambda step: step.update(modes=["aot"]),
                          lambda step: step.update(modes=["jit", "aot"]),
                          lambda step: step.pop("modes"),
                          lambda step: step.update(passed=9),
-                         lambda step: step.pop("expected")],
+                         lambda step: step.pop("expected"),
+                         *SAMPLE_MUTATIONS],
         }
         shard_mutations = [lambda step: step.update(shard_index=1 - step["shard_index"]),
                            lambda step: step.update(shard_index=False),
@@ -288,20 +371,21 @@ class ContractTests(unittest.TestCase):
                                lambda step: step.update(passed=step["expected"] - 1),
                                lambda step: step.update(failed=1),
                                lambda step: step.pop("expected")]
-        for group in ("gc-aot-0", "gc-aot-1", "gc-aot-2"):
-            mutations[group] = [lambda step: step.update(tests_compiler_interval=1001),
+        for group in ("gc-jit-1", "gc-aot-0", "gc-aot-1"):
+            mutations[group] = [lambda step: step.update(tests_compiler_interval=1000),
                                 lambda step: step.update(tests_interval=2),
                                 lambda step: step.pop("tests_compiler_interval"),
-                                lambda step: step.update(modes=["jit"]),
+                                lambda step: step.update(modes=["aot" if step["modes"] == ["jit"] else "jit"]),
                                 lambda step: step.update(modes=[]),
                                 lambda step: step.update(failed=1),
                                 lambda step: step.pop("passed"),
-                                lambda step: step.update(shard_index=(step["shard_index"] + 1) % 3),
+                                lambda step: step.update(shard_index=(step["shard_index"] + 1) % 2),
                                 lambda step: step.update(shard_index=False),
                                 lambda step: step.pop("shard_index"),
-                                lambda step: step.update(shard_count=2),
-                                lambda step: step.update(shard_count="3"),
-                                lambda step: step.pop("shard_count")]
+                                lambda step: step.update(shard_count=3),
+                                lambda step: step.update(shard_count="2"),
+                                lambda step: step.pop("shard_count"),
+                                *SAMPLE_MUTATIONS]
         for group in ("benchmarks", "scaling-1"):
             mutations[group] = [lambda step: step.pop("shapes"),
                                 lambda step: step.update(shapes=[]),
@@ -315,6 +399,42 @@ class ContractTests(unittest.TestCase):
                 mutate(data["steps"][-1])
                 with self.subTest(group=group, mutation=index), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
+        # each JIT job's first step is its gc-ir half
+        for group in ("gc-jit-0", "gc-jit-1"):
+            valid = report(group, groups[group])
+            self.assertEqual(valid["steps"][1]["name"], "gc-ir-" + group[-1])
+            for index, mutate in enumerate(GC_IR_MUTATIONS):
+                data = copy.deepcopy(valid)
+                mutate(data["steps"][1])
+                with self.subTest(group=group, gc_ir_mutation=index), self.assertRaises(ValueError):
+                    merge.validate_report(data, group, groups[group])
+
+    def test_gc_suites_require_both_complete_gc_ir_halves(self):
+        # The GC suites run code compiled by stage 2 unstressed: even a contract without the gc-ir
+        # halves, or with one of them, cannot drop the stressed compiler's identity.
+        aot = "gc-aot-0 bootstrap gc-aot-0\ngc-aot-1 bootstrap gc-aot-1\n"
+        full = merge.parse_groups("all bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1\n"
+                                  "gc-jit-0 bootstrap gc-ir-0 gc-jit-0\ngc-jit-1 bootstrap gc-ir-1 gc-jit-1\n" + aot)
+        without = merge.parse_groups("all bootstrap gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1\n"
+                                     "gc-jit-0 bootstrap gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
+        half = merge.parse_groups("all bootstrap gc-ir-0 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1\n"
+                                  "gc-jit-0 bootstrap gc-ir-0 gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
+        alone = merge.parse_groups("all bootstrap gc-ir-0\ngc-jit-0 bootstrap gc-ir-0\n")
+        for groups, error in ((full, None), (without, "gc-ir halves"), (half, "gc-ir halves"),
+                              (alone, "gc-ir halves")):
+            with self.subTest(groups=groups), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp)
+                for name in groups:
+                    if name == "all":
+                        continue
+                    path = directory / f"verification-{name}" / "verification.json"
+                    path.parent.mkdir()
+                    path.write_text(json.dumps(report(name, groups[name])))
+                if error is None:
+                    merge.merge_reports(directory, groups, COMMIT)
+                else:
+                    with self.assertRaisesRegex(ValueError, error):
+                        merge.merge_reports(directory, groups, COMMIT)
 
     def test_dynany_fuzz_requires_full_budget_modes_stress_and_zero_mismatches(self):
         groups = merge.load_groups()
