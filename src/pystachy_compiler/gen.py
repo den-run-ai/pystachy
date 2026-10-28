@@ -27,6 +27,7 @@ from src.pystachy_compiler.bigints import (
     gen_big_compare as bigints_big_compare,
     gen_big_binop as bigints_big_binop,
     gen_int_policy as bigints_int_policy,
+    gen_int_again as bigints_int_again,
     gen_read_policy as bigints_read_policy,
     gen_big as bigints_big,
     gen_big_lo as bigints_big_lo,
@@ -1536,6 +1537,9 @@ class Gen:
         self.dmemot: list[str] = []
 
     # ---- promoting ints (bigints.py)
+    def int_again(self, f: FnInfo, before: list[int]) -> bool:
+        return bigints_int_again(self, f, before)
+
     def int_policy(self, line: int) -> bool:
         return bigints_int_policy(self, line)
 

@@ -297,6 +297,44 @@ def numeric_reads(n: Node, ctx: str, name: str, nums: list[str], calls: list[str
     return all([numeric_reads(e, "", name, nums, calls) for e in n.kids])
 
 
+def int_replay_state(self) -> list[int]:
+    # Dependencies which a discarded function body must not leave behind. In particular,
+    # unused specializations still count toward the compiler's bounded inference budgets.
+    return [len(self.fns), len(self.classes), len(self.closures), self.template_instances, self.template_retained,
+            len(self.globs), len(self.gcroots)]
+
+
+def gen_int_again(self, f: FnInfo, before: list[int]) -> bool:
+    # A bounded alternative to Rejoin: retry one ordinary function whose inferred locals
+    # only widened from int to BIG. No new Gen/Frame state; the driver's existing hints
+    # survive a fallback, and dry() cannot request joins. Shared layouts and dependencies
+    # still need a fresh whole-program pass. Dynamic Any keeps its existing retry path.
+    if not int_lists() or self.modlevel or self.rtmode or f.gen or f.clo >= 0 or f.node.kind != "def":
+        return False
+    if len(self.cells) > 0 or f.ll in self.retseen or f.ll in self.dynseen or int_replay_state(self) != before:
+        return False
+    prefix = self.fnkey(f) + "|"
+    names: list[str] = []
+    for key in self.newhints:
+        name = key[len(prefix):] if key.startswith(prefix) else ""
+        if name == "" or name in f.params or name in self.compvars or self.ltype.get(name, "") != "int" or self.newhints[key] != BIG:
+            return False  # another pending join already needs the whole-program fallback
+        names.append(name)
+    if len(names) == 0:
+        return False
+    for name in names:
+        self.hints[prefix + name] = BIG
+    # Keep newhints until the retry succeeds: gen_err then falls back through Rejoin if
+    # a changed type exposes a diagnostic or a specialization limit during this attempt.
+    # Its result is inferred afresh, just as in dyn_again; no recursive consumer took it.
+    self.guessed.pop(f.ll, "")
+    self.qused.pop(f.ll, "")
+    self.qret.pop(f.ll, "")
+    self.qholes.pop(f.ll, [])
+    self.qforward.pop(f.ll, False)
+    return True
+
+
 def gen_int_policy(self, line: int) -> bool:
     # does the module of source line line promote its ints (# pystachy: python-int), or the
     # definition of lib/ that holds it, where a module of the program opts in (int_lists and
