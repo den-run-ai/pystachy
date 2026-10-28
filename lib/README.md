@@ -128,7 +128,9 @@ compiler's, which only it may import. `_collections_abc` has no file here: it is
 
 `_pystachy_iterators.py` holds the iterator classes of `iter()` over builtin containers
 (`list_iterator`, `dict_keyiterator`, ...). The compiler loads it for a program that calls
-`iter()`; programs do not import it. See [iterators](../docs/language/semantics.md#iterators).
+`iter()`; programs do not import it. See [iterators](../docs/language/semantics.md#iterators). In
+a program where a module opts in to [promoting ints](../docs/python-int.md), its classes read a
+container's ints as that module does (`specs.READ_HELPERS`).
 
 `_pystachy_range.py` holds the class of range objects, `range()` as a value. The compiler loads
 it for a program that may use one, a read of the builtin `range` other than a `range(...)` that a

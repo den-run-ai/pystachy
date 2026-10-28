@@ -14,8 +14,9 @@ step 3, the compiler-level integer, and the first parts of step 6: tuples, lists
 generators. Values past 64 bits stay in variables, arguments, returns, fields, module variables,
 closures, tuples, lists of ints and of tuples of ints, the keys and values of dicts of ints and of
 tuples of ints (also in the tuples of their `items()` and the pairs that `dict()` takes), sets of
-ints and of tuples of ints and the values generators yield and return; the other containers still
-hold 64-bit ints ([boundaries](#64-bit-boundaries)).
+ints and of tuples of ints, the iterators that `iter()` makes of those containers and the values
+generators yield and return; the other containers still hold 64-bit ints
+([boundaries](#64-bit-boundaries)).
 
 ```python
 # pystachy: python-int
@@ -138,6 +139,13 @@ print(int("123456789012345678901234567890") % 97)  # 52
   them, and so do `list()`, `sorted()`, `sum()`, `min()`, `max()`, `in`, `enumerate()`, `zip()`
   and the other consumers of a generator; `yield from` passes them on, and its value is the
   promoting int its generator returns (`Generator[int, None, int]`).
+- `iter()` of a list, a tuple, a dict (also of its `keys()`, `values()` and `items()`) or a set
+  gives an iterator that gives the promoting ints the container holds, also in its tuples, in
+  every module of the program, also one that does not opt in: `next()`, `for` loops and the
+  consumers of an iterator read them. It stays exhausted, and raises `RuntimeError` where the dict
+  or set changes size, as CPython's does. Its class (`lib/_pystachy_iterators.py`) reads the
+  container's ints as a module that opts in does (`specs.READ_HELPERS`), while its own ints, such
+  as its position, stay 64-bit.
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
 - An object's `__len__` and `__hash__` may return a promoting int, annotated `-> int` or not.
@@ -282,7 +290,8 @@ for a C `long`), where CPython goes on with the bigger int:
   `pop()` gives where it may be None (`d.get(k)`), the items and values
   of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
   items, unions other than `int | None` (also where a join makes one, as
-  for a location given a `bool` and an int), the items of a `tuple[int, ...]` (a tuple sliced by
+  for a location given a `bool` and an int, or a list or dict display of ints and floats, bools
+  or `str`s), the items of a `tuple[int, ...]` (a tuple sliced by
   a variable), and the values sent to a generator (`send()`)
   (`tests/deviations/python_int_limits.py`). A NamedTuple that may be None, such as a parameter,
   is hashed, compared, searched, formatted with `%` and unpacked into arguments as the tuple of
@@ -291,9 +300,9 @@ for a C `long`), where CPython goes on with the bigger int:
   unannotated parameters take the promoting int, so arithmetic there promotes too), and the
   parameters and result of a `Callable`.
 - A list's int (or its tuple's), a dict's key or value, a set's element or a generator's value
-  read in a module that does not opt in, such as `lib/`'s `heapq`, `bisect`, `random.shuffle()`, `collections`'
-  `defaultdict` and `Counter` and the iterator that `iter()` gives, and the ints of a list given to
-  `tuple()`, `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`.
+  read in a module that does not opt in, such as `lib/`'s `heapq`, `bisect`, `random.shuffle()`,
+  `collections`' `defaultdict` and `Counter`, and the ints of a list given to `tuple()`,
+  `math.prod()`, `math.fsum()`, `sum()` with a float start and `ffi`.
 - Builtins and methods that take an int: `range()`, indexing and slicing, the other `int`
   methods, `math` functions and other library calls. `sum()` takes 64-bit ints where they meet
   floats: the ints of an `int | float` list, ints added to a float start, and a start past 64
@@ -436,6 +445,11 @@ the first measurements, before the inline paths, in
 - `tests/programs/numbers/python_int_generators.py`: generators that yield and return ints past 64
   bits, through `for` loops, `next()`, unpacking, `yield from`, `send()`, `throw()`, generator
   expressions, a method and a module that does not opt in (`tests/python_int_modules/fixed_iter.py`).
+- `tests/programs/numbers/python_int_iterators.py`: the iterators of `iter()` over lists, tuples,
+  dicts and their views, and sets, of ints and of tuples of ints past 64 bits, through `next()`
+  (also with a default), `for` loops and the builtins that take an iterator, their exhaustion and
+  `RuntimeError`, an object whose `__iter__` returns `iter()`, and a module that does not opt in
+  (`tests/python_int_modules/fixed_iterators.py`).
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in

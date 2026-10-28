@@ -633,6 +633,10 @@ def gen_truth(self, v: Val) -> str:
 def gen_list_hint_type(self, a: str, b: str) -> str:
     # A supported annotation for mixed scalar rows. This is diagnostic advice only;
     # successful programs keep their existing inference and representation.
+    # A promoting int is an int here: the union holds a 64-bit int (bigints.NARROW past 64 bits),
+    # as for an iterator's next() in a module that does not opt in (bigints.read_policy)
+    a = a.replace(BIG, "int")
+    b = b.replace(BIG, "int")
     if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
         ts = [self.list_hint_type(targs(a)[i], targs(b)[i]) for i in range(len(targs(a)))]
         return self.ctype("tuple", ts) if "" not in ts else ""

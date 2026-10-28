@@ -422,6 +422,20 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/numbers/python_int_iterators.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_iterators.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_iterators.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_iterators.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/numbers/python_int_joins.py",
       "mode": "jit",
       "diagnostic": "tests/programs/numbers/python_int_joins.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
