@@ -19,7 +19,8 @@ and the full verification matrix were not rerun here.
 - **Open correctness issues, reproduced on this main:**
   - [#908](https://github.com/den-run-ai/pystachy/issues/908): valid chained
     comparisons over a class hierarchy whose ordering always raises fail to compile, in
-    both JIT and AOT. The fix is in draft [#911](https://github.com/den-run-ai/pystachy/pull/911).
+    both JIT and AOT. (Fixed after the sweep by [#911](https://github.com/den-run-ai/pystachy/pull/911);
+    see [Status after the sweep](#status-after-the-sweep).)
   - [#94](https://github.com/den-run-ai/pystachy/issues/94): `list()` and `sorted()`
     propagate a `TypeError` raised by `__len__`. CPython ignores such length-hint errors
     and returns the list. This is a wrong result, and it is not yet documented as a deviation.
@@ -179,6 +180,20 @@ Cached JIT reuse, peak memory and GC-stressed timings were not measured here.
 - #882 (support-surface docs) needs its json_repair, #773 and manifest-count statements
   refreshed before merge. #743 is an 8.3 MB audit through #842, 319 commits behind main.
   Research drafts #784, #796 and #816 stay unmerged.
+
+## Status after the sweep
+
+Updated later on 28 October 2026; the measurements above are unchanged.
+
+- [#911](https://github.com/den-run-ai/pystachy/pull/911) merged into main (af59fca0), with
+  its three differential fixtures, and [#908](https://github.com/den-run-ai/pystachy/issues/908)
+  is closed.
+- Dependabot closed #827, #828 and #913 after this sweep's combined pin landed, then
+  [#971](https://github.com/den-run-ai/pystachy/pull/971) moved the pins to uv 0.13.5,
+  setuptools 84.2.1, ruff 0.17.2 and coverage 7.17.0 (merged as 5bd492b3 after a full green
+  CI run). ruff 0.17.2 reports no findings on main with #911 merged.
+- The three performance regressions above (#969, the opt-in `json.loads` slowdown and the
+  AOT build cost) remain open on main; fixes are in progress.
 
 ## Ranked expansion targets
 

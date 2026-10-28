@@ -15,7 +15,11 @@ STAGE = (ROOT / "tests/verify.sh").read_text().split("# ---- dynany-optin:", 1)[
 
 
 class DynanyOptinStageTests(unittest.TestCase):
-    def run_stage(self, evidence, status=0):
+    def run_stage(self, evidence, status=0, ci=True):
+        # CI's groups (VERIFY_BOOTSTRAP_DIR) defer to tests-native; a local single group does not.
+        mode = ({"VERIFY_BOOTSTRAP_DIR": "bundle", "GROUP": "dynany-optin-0", "MOCK_NATIVE": "--native-suite ",
+                 "MOCK_ARGS": "17"} if ci else
+                {"VERIFY_BOOTSTRAP_DIR": "", "GROUP": "dynany-optin-0", "MOCK_NATIVE": "", "MOCK_ARGS": "16"})
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
             source = directory / "evidence.json"
@@ -23,14 +27,9 @@ class DynanyOptinStageTests(unittest.TestCase):
             wrapper = directory / "python-wrapper"
             wrapper.write_text('''#!/bin/sh
 if [ "$1" = tools/dynany_optin.py ]; then
-  [ "$2" = --compiler ] && [ "$3" = "$V/pystachy2" ] &&
-    [ "$4" = --modes ] && [ "$5" = jit ] && [ "$6" = aot ] &&
-    [ "$7" = --jobs ] && [ "$8" = 2 ] &&
-    [ "$9" = --shard-index ] && [ "${10}" = 0 ] &&
-    [ "${11}" = --shard-count ] && [ "${12}" = 4 ] &&
-    [ "${13}" = --report ] && [ "${14}" = "$V/dynany-optin-0.json" ] &&
-    [ "${15}" = --keep ] && [ "${16}" = "$V/dynany-optin-0" ] &&
-    [ "$#" = 16 ] || exit 99
+  [ "$*" = "tools/dynany_optin.py --compiler $V/pystachy2 --modes jit aot $MOCK_NATIVE--jobs 2 \
+--shard-index 0 --shard-count 3 --report $V/dynany-optin-0.json --keep $V/dynany-optin-0" ] &&
+    [ "$#" = "$MOCK_ARGS" ] || exit 99
   cp "$MOCK_EVIDENCE" "$V/dynany-optin-0.json"
   exit "$MOCK_STATUS"
 fi
@@ -44,7 +43,7 @@ step() { printf '{"name":"%s", "result":"%s"%s}\n' "$1" "$2" "$5"; }
             process = subprocess.run(["sh", "-c", script], cwd=ROOT,
                                      env={**os.environ, "V": temp, "PY": str(wrapper),
                                           "PYSTACHY_JOBS": "2", "MOCK_EVIDENCE": str(source),
-                                          "MOCK_STATUS": str(status), "REAL_PYTHON": sys.executable},
+                                          "MOCK_STATUS": str(status), "REAL_PYTHON": sys.executable, **mode},
                                      capture_output=True, text=True, timeout=30)
             self.assertEqual(process.returncode, 0, process.stderr)
             return json.loads(process.stdout)
@@ -53,6 +52,11 @@ step() { printf '{"name":"%s", "result":"%s"%s}\n' "$1" "$2" "$5"; }
         evidence = optin_report(0)
         result = self.run_stage(evidence)
         self.assertEqual(result, {"name": "dynany-optin-0", "result": "pass", "optin": evidence})
+        # A local group, without tests-native, executes every check itself.
+        self.assertEqual(self.run_stage(evidence, ci=False)["result"], "fail")
+        local = {**copy.deepcopy(evidence), "native_suite": False}
+        self.assertEqual(self.run_stage(local, ci=False)["result"], "pass")
+        self.assertEqual(self.run_stage(local)["result"], "fail")
 
     def test_partial_wrong_mode_or_failed_runs_fail(self):
         valid = optin_report(0)
