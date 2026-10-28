@@ -1,7 +1,7 @@
 """Expressions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrows, search_type
+from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.dynamic import comparison_container_pair, comparison_invalid, comparison_property_type
@@ -995,7 +995,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 v.idfrom = self.dyn_box(v).v
             if is_tuple(v.t) and BIG in v.t and int_lists():
                 kept[len(items)] = v
-                v = Val(v.v, v.t.replace(BIG, "int"))  # (typed as the list's item for what follows: bigints.held)
+                v = Val(v.v, narrow_type(v.t))  # (typed as the list's item for what follows: bigints.held)
             elif is_tuple(v.t) and BIG in v.t:
                 v = self.big_tuple_narrow(v)  # (an item holds 64-bit ints, and is typed so: bigints.py)
             if et == "" and v.t != "None":
@@ -1064,7 +1064,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 a.idfrom = self.dyn_box(a).v
             if is_tuple(a.t) and BIG in a.t and int_lists():
                 kkept[len(ks)] = a
-                a = Val(a.v, a.t.replace(BIG, "int"))  # (typed as the dict's key for what follows: bigints.held)
+                a = Val(a.v, narrow_type(a.t))  # (typed as the dict's key for what follows: bigints.held)
             elif is_tuple(a.t) and BIG in a.t:
                 a = self.big_tuple_narrow(a)  # (keys and values hold 64-bit ints, and are typed so: bigints.py)
             if kv[0] == "":
@@ -1074,7 +1074,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 b.idfrom = self.dyn_box(b).v
             if is_tuple(b.t) and BIG in b.t and int_lists():
                 vkept[len(vs)] = b
-                b = Val(b.v, b.t.replace(BIG, "int"))  # (typed as the dict's value for what follows: bigints.held)
+                b = Val(b.v, narrow_type(b.t))  # (typed as the dict's value for what follows: bigints.held)
             elif is_tuple(b.t) and BIG in b.t:
                 b = self.big_tuple_narrow(b)
             if kv[1] == "" and b.t != "None":

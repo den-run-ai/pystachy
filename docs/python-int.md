@@ -167,6 +167,15 @@ print(int("123456789012345678901234567890") % 97)  # 52
   template, specialized by each call's types) and a generic function keep the ints of their own
   module, and where a module opts in to dynamic `Any`, whose values do not hold promoting ints, a
   call's argument binds the type it has (an int that fits, the 64-bit int).
+- A `Callable`'s `int` and `int | None` parameters and result are promoting ints, in every module of
+  a program where a module opts in and none opts in to [dynamic `Any`](dynamic-any.md): one
+  signature, as `Callable[[int], int]`, for lambdas, closures, bound methods (also through a base
+  class whose subclasses override them), defs and builtins, also in fields, tuples, lists, dicts and
+  a `defaultdict`'s factory. Its adapter converts them to and from those of the function it holds
+  (`calls.adapter`): a function of a module that does not opt in takes its `int` parameters as
+  64-bit ints, `OverflowError` past 64 bits ([boundaries](#64-bit-boundaries)), and its result
+  promotes. The ints of the other types that a `Callable` takes or returns, such as a
+  `tuple[int, int]`, stay 64-bit.
 - A 64-bit int from a container, a module that does not opt in or a builtin promotes when an
   operation on it overflows: `xs[0] * xs[1]` of a `list[int]` is exact.
 - An object's comparison methods (`__eq__`, `__lt__` and the others, also reflected and a
@@ -324,9 +333,9 @@ for a C `long`), where CPython goes on with the bigger int:
   is hashed, compared, searched, formatted with `%` and unpacked into arguments as the tuple of
   its fields or None, which holds 64-bit ints too.
 - An `int` or `int | None` parameter of a function in a module that does not opt in, also of a
-  class's comparison method (whose unannotated parameters take the promoting int, so arithmetic
-  there promotes too), and the parameters and result of a `Callable`, such as a `defaultdict`'s
-  factory.
+  class's comparison method and where a `Callable` holds the function (whose unannotated parameters
+  take the promoting int, so arithmetic there promotes too), and the ints of the other types that a
+  `Callable` takes or returns (a `tuple[int, int]` parameter).
 - A list's int (or its tuple's), a dict's key or value, a set's element or a generator's value
   read in a module that does not opt in, such as `lib/`'s `random.shuffle()` and a generic
   function of such a module, and the ints of a list given to `tuple()`, `math.prod()`,
@@ -502,6 +511,13 @@ the first measurements, before the inline paths, in
   `python_int_generics_dynamic.py`: such a class specialized for ints that fit in a program where
   another module opts in to dynamic `Any` (`tests/python_int_modules/dynamic_reader.py`), which
   reads its objects as dynamic values.
+- `tests/programs/numbers/python_int_callables.py`: lambdas, closures, bound methods (also of a
+  class hierarchy), defs and builtins as `Callable`s of ints past 64 bits and -2\*\*63, in
+  variables, fields, tuples, lists and dicts, a generic function's, a sort key and a `defaultdict`'s
+  factory;
+  `python_int_callables_fixed.py`: the `Callable`s that a module without the comment takes, keeps
+  and calls, and its methods and functions as `Callable`s
+  (`tests/python_int_modules/fixed_callables.py`).
 - `tests/programs/numbers/python_int_joins.py`: values that fit where a conditional expression,
   `or`, `and` or a call of overriding methods joins a promoting int with `None` or a `str`.
 - `tests/programs/numbers/python_int_bools.py`: locations given a `bool` and an int, and bools in
