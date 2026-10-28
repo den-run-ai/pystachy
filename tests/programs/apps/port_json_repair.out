@@ -1,0 +1,14 @@
+{"tool": "search", "arguments": {"limit": 3, "flags": [true, null, {"ok": false}]}} True
+{"step": 2}
+{"pass": "fal"}
+{"x": [1, 2]}
+{"key": [true, null]}
+{"line": "a\nb"}
+{"n": 1250.0}
+{"a": "one, two", "b": true}
+{"tool": "b"}
+[55357, 56832]
+{"name": "é"}
+{"unquoted": false} True
+ValueError Missing opening object brace in strict mode.
+[exit 0]

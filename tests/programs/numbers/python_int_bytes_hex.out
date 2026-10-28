@@ -1,0 +1,11 @@
+01:02:03:04
+0102:0304
+0102:0304
+01020304
+OverflowError Python int too large to convert to C int
+OverflowError Python int too large to convert to C int
+OverflowError Python int too large to convert to C int
+OverflowError Python int too large to convert to C int
+0102-0304
+TypeError 'NoneType' object cannot be interpreted as an integer
+[exit 0]

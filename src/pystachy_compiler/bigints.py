@@ -8,7 +8,7 @@ that fits, so equal values have one representation. See docs/python-int.md.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import first_use, local_names
-from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists
+from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists, int_span
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC, READ_HELPERS
@@ -124,6 +124,43 @@ def narrowed(ts: list[str]) -> list[str]:
     # the types ts as members of an annotation's container, tuple or union, which hold 64-bit ints
     # (also as an int | None: BIGOPT)
     return ["int" if t == BIG else "opt[int]" if t == BIGOPT else t for t in ts]
+
+
+def converts(a: str, b: str) -> bool:
+    # does a call convert its value of type a to type b, an int to a promoting int or one back (also
+    # as int | None), as it passes an argument or returns a result: NARROW past 64 bits
+    return (a == "int" and b == BIG) or (a == BIG and b == "int") or (a == "opt[int]" and b == BIGOPT) or (a == BIGOPT and b == "opt[int]")
+
+
+def callable_ints(t: str) -> str:
+    # type t with the ints and int | Nones that each Callable in it takes and returns promoting ints
+    # (ctype: one signature in every module of a program whose containers hold them, which the
+    # adapters convert to and from a function's own), its other types as they are
+    out = ""
+    i = 0
+    a = t.find("callable[")
+    while a >= 0:
+        b = a + 9
+        depth = 1
+        while depth > 0:
+            depth += 1 if t[b] == "[" else -1 if t[b] == "]" else 0
+            b += 1
+        if a == 0 or t[a - 1] == "[" or t[a - 1] == ",":
+            ts = [BIG if x == "int" or x == BIG else BIGOPT if x == "opt[int]" or x == BIGOPT else callable_ints(x) for x in targs(t[a:b])]
+            out += t[i:a] + "callable[" + ",".join(ts) + "]"
+        else:
+            out += t[i:b]
+        i = b
+        a = t.find("callable[", i)
+    return out + t[i:]
+
+
+def narrow_type(t: str) -> str:
+    # type t with its promoting ints 64-bit ints, as ctype makes the item type of a container of it:
+    # but for those that a Callable in it takes and returns, in a program whose Callables take
+    # promoting ints (callable_ints), so that a tuple that holds a Callable keeps its type
+    n = t.replace(BIG, "int")
+    return callable_ints(n) if "callable[" in n and int_lists() else n
 
 
 # Where a bool and the int it equals give the same results and errors (bool_numeric): arithmetic,
@@ -260,18 +297,61 @@ def numeric_reads(n: Node, ctx: str, name: str, nums: list[str], calls: list[str
     return all([numeric_reads(e, "", name, nums, calls) for e in n.kids])
 
 
+def int_replay_state(self) -> list[int]:
+    # Dependencies which a discarded function body must not leave behind. In particular,
+    # unused specializations still count toward the compiler's bounded inference budgets.
+    return [len(self.fns), len(self.classes), len(self.closures), self.template_instances, self.template_retained,
+            len(self.globs), len(self.gcroots)]
+
+
+def gen_int_again(self, f: FnInfo, before: list[int]) -> bool:
+    # A bounded alternative to Rejoin: retry one ordinary function whose inferred locals
+    # only widened from int to BIG. No new Gen/Frame state; the driver's existing hints
+    # survive a fallback, and dry() cannot request joins. Shared layouts and dependencies
+    # still need a fresh whole-program pass. Dynamic Any keeps its existing retry path.
+    if not int_lists() or self.modlevel or self.rtmode or f.gen or f.clo >= 0 or f.node.kind != "def":
+        return False
+    if len(self.cells) > 0 or f.ll in self.retseen or f.ll in self.dynseen or int_replay_state(self) != before:
+        return False
+    prefix = self.fnkey(f) + "|"
+    names: list[str] = []
+    for key in self.newhints:
+        name = key[len(prefix):] if key.startswith(prefix) else ""
+        if name == "" or name in f.params or name in self.compvars or self.ltype.get(name, "") != "int" or self.newhints[key] != BIG:
+            return False  # another pending join already needs the whole-program fallback
+        names.append(name)
+    if len(names) == 0:
+        return False
+    for name in names:
+        self.hints[prefix + name] = BIG
+    # Keep newhints until the retry succeeds: gen_err then falls back through Rejoin if
+    # a changed type exposes a diagnostic or a specialization limit during this attempt.
+    # Its result is inferred afresh, just as in dyn_again; no recursive consumer took it.
+    self.guessed.pop(f.ll, "")
+    self.qused.pop(f.ll, "")
+    self.qret.pop(f.ll, "")
+    self.qholes.pop(f.ll, [])
+    self.qforward.pop(f.ll, False)
+    return True
+
+
 def gen_int_policy(self, line: int) -> bool:
-    # does the module of source line line promote its ints (# pystachy: python-int)
-    return int_file(line // LINES)
+    # does the module of source line line promote its ints (# pystachy: python-int), or the
+    # definition of lib/ that holds it, where a module of the program opts in (int_lists and
+    # int_span: specs.INT_HELPERS)
+    return int_file(line // LINES) or (int_lists() and int_span(line))
 
 
 def gen_read_policy(self) -> bool:
     # does a read of a container's int here (a list's item, a dict's key or value, a set's element,
     # also in a tuple of ints that one holds, and a generator's value) give it as the promoting int
     # it is: in a module that opts in (int_policy), and in lib's modules that hand a container's
-    # items on as they are (READ_HELPERS: iter()'s iterators, heapq, bisect) where the program's
-    # containers hold promoting ints (int_lists); elsewhere the 64-bit int, NARROW past 64 bits
-    return self.int_policy(self.line) or (int_lists() and self.curfn.mod in READ_HELPERS)
+    # items on as they are (READ_HELPERS: iter()'s iterators, heapq, bisect) and in the methods of a
+    # generic class's specialization for promoting ints (templates.specialize), whose containers of
+    # its type variable's ints hold them, where the program's containers hold promoting ints
+    # (int_lists); elsewhere the 64-bit int, NARROW past 64 bits
+    c = self.curfn.cls
+    return self.int_policy(self.line) or (int_lists() and (self.curfn.mod in READ_HELPERS or (c in self.classes and BIG in self.classes[c].tvars.values())))
 
 
 def gen_big(self, lo: Val, hi: str = "null") -> Val:
@@ -718,7 +798,7 @@ def gen_list_hold(self, v: Val, et: str) -> Val:
     # v as an item of a list of et (or a dict's key or value, a set's element), held as held(et): a
     # tuple of promoting ints as it is, and a tuple of 64-bit ints as it is too, but where one of
     # its ints is -2**63 (a new tuple of the held layout, big_tuple_view), as et; else list_coerce
-    e = et.replace(BIG, "int")  # (a list's item type, as ctype makes it)
+    e = narrow_type(et)  # (a list's item type, as ctype makes it)
     h = held(e)
     if h == e:
         return self.list_coerce(v, et)
@@ -731,7 +811,7 @@ def gen_key_hold(self, k: Val, kt: str) -> Val:
     # None where it is not None (search_hold: nonekey finds None in no dict), and a tuple that
     # CPython finds as such a key (utils.lookable: a bool for an int, None for a str) in its own
     # type's
-    lt = k.t.replace(BIG, "int")
+    lt = narrow_type(k.t)
     if is_opt(k.t) and unopt(k.t) == kt:
         return self.search_hold(k, k.t, kt)
     if is_tuple(k.t) and lt != kt and lookable(lt, kt):
@@ -1135,7 +1215,7 @@ def gen_big_tuple_narrow(self, v: Val) -> Val:
             self.big_narrow(self.tget(v, i))
         elif is_tuple(ts[i]) and BIG in ts[i]:
             self.big_tuple_narrow(self.tget(v, i))
-    return Val(v.v, v.t.replace(BIG, "int"))
+    return Val(v.v, narrow_type(v.t))
 
 
 def gen_big_item(self, v: Val, lo: Val, k: int, j: str) -> Val:
@@ -1242,7 +1322,7 @@ def gen_big_literal(self, text: str) -> Val:
     return self.big_parse(Val(self.sconst(text), "str"), Val("0" if digits.startswith("0") and len(digits) > 1 else "10", "int"))
 
 
-def gen_big_binop(self, op: str, a: Val, b: Val) -> Val:
+def gen_big_binop(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     # a op b where an operand is a promoting int, or both are ints of a module that opts in: the
     # result, or Val("", "") where the 64-bit operation is CPython's (% & | ^ >> never overflow,
     # / of two ints gives a float)
@@ -1255,11 +1335,11 @@ def gen_big_binop(self, op: str, a: Val, b: Val) -> Val:
         return self.big_arith(op, a, b)
     if a.t == "float" or b.t == "float":
         # (the int converted to float first, as CPython does; OverflowError past the float range)
-        return self.arith(op, self.as_float(a), self.as_float(b))
+        return self.arith(op, self.as_float(a), self.as_float(b), shown)
     if a.t == BIGOPT or b.t == BIGOPT:
         return Val("", "")  # (an int | None's TypeError for None, or its promoting int: Gen.arith)
     # (another operand: a sequence's repetition count, or an object's operator method, take a 64-bit int)
-    return self.arith(op, self.big_narrow(a), self.big_narrow(b))
+    return self.arith(op, self.big_narrow(a), self.big_narrow(b), shown)
 
 
 def gen_big_compare(self, op: str, a: Val, b: Val) -> Val:

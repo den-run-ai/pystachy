@@ -153,7 +153,9 @@ do not by themselves make storage dynamic. Experimental opt-in `Any` uses the
 [separate boxes and dispatchers](dynamic-any.md#representation) described below.
 
 The collector is conservative, non-moving mark-and-sweep. It scans stack/register roots and
-registered program globals; buffers that cannot contain pointers are not scanned. Unreachable
+registered program globals; buffers that cannot contain pointers are not scanned. Marking
+prefetches each object a few objects before it scans it (`MQ`), so the cache misses of a big
+heap overlap; the objects it marks do not depend on that order. Unreachable
 files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.
 

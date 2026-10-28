@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     opaque_class,
@@ -1826,7 +1826,7 @@ def gen_refl_dc_type(self, t: str, what: str, seen: list[str]) -> str:
     # dataclass's object a dict (a tuple), recursively into lists, tuples and dicts; scalars and
     # bytes as they are (CPython's _asdict_inner deep-copies them, and deepcopy returns an
     # immutable object itself; other objects it deep-copies, which is not supported)
-    if t in ["int", "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
+    if t in ["int", BIG, BIGOPT, "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
         return t
     if is_opt(t):
         x = self.refl_dc_type(unopt(t), what, seen)
@@ -1868,7 +1868,7 @@ def gen_refl_dc_copy(self, v: Val, what: str, seen: list[str], nonnull: bool = F
     # asdict()'s (astuple()'s) copy of value v (refl_dc_type): new containers throughout, as
     # CPython's _asdict_inner (_astuple_inner) makes them
     t = v.t
-    if t in ["int", "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
+    if t in ["int", BIG, BIGOPT, "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
         return v
     rt = self.refl_dc_type(t, what, seen)
     if is_opt(t) or (t in self.classes and v.v not in self.nn and not nonnull):
@@ -1910,7 +1910,12 @@ def gen_refl_dc_copy(self, v: Val, what: str, seen: list[str], nonnull: bool = F
                 kids: list[Node] = []
                 for j in range(len(fs)):
                     kids.append(mk("str", fs[j], self.line, []))
-                    kids.append(self.vnode(self.coerce(vals[j], targs(vt)[1])))
+                    # A promoting int or tuple needs the dict display's storage conversion,
+                    # which retains it instead of narrowing it before the store.
+                    item = vals[j]
+                    if item.t != BIG and not (is_tuple(item.t) and BIG in item.t):
+                        item = self.coerce(item, targs(vt)[1])
+                    kids.append(self.vnode(item))
                 r = self.expr(mk("dict", "", self.line, kids), vt)
             rvals.append(r)
             rblocks.append(self.cur)

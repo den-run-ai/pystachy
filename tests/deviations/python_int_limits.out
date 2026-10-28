@@ -1,5 +1,7 @@
 tuple of a list: Python int too large to convert to C long
 random.shuffle(): Python int too large to convert to C long
+a Callable's 64-bit function: Python int too large to convert to C long
+a Callable's tuple: Python int too large to convert to C long
 get() of a tuple: Python int too large to convert to C long
 int | None in a list: Python int too large to convert to C long
 int | None in a tuple: Python int too large to convert to C long

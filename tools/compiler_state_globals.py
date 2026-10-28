@@ -38,7 +38,7 @@ specs.EXCKW specs.HASATTR specs.NONEARG specs.OPTARG specs.NONERET specs.OPTCALL
 specs.NOREF specs.UNSUPPORTED specs.INERT_DECOS specs.INERT specs.PURE specs.RAISERS
 specs.CODECS specs.ARITY specs.METHODS specs.TEXT_OPS specs.UNICODE_AUDIT
 specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.FX
-specs.FXBIT specs.RUNTIME specs.NARROWED specs.READ_HELPERS specs.RTDATA specs.RTSYM
+specs.FXBIT specs.RUNTIME specs.NARROWED specs.READ_HELPERS specs.INT_HELPERS specs.RTDATA specs.RTSYM
 structs.STRUCT_FNS structs.NATIVE_SIZES structs.STANDARD_SIZES
 syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS syntax.NOKIDS
 utils.DECRUNS
@@ -56,6 +56,7 @@ RESET = {
     "diagnostics.FILES": "loader rebuilds the program file-index space before parsing",
     "diagnostics.DYNFILES": "loader resets file-index opt-ins with the file table",
     "diagnostics.INTFILES": "loader resets file-index python-int opt-ins with the file table",
+    "diagnostics.INTSPANS": "loader resets the line spans of lib's promoting definitions with the file table",
 }
 RETAINED = {
     "specs.GLUE": "loader public-name discoveries; currently retained across restarts",
@@ -68,6 +69,7 @@ WRITERS = {
     "diagnostics.FILES": {"loader.Loader.program", "loader.Loader.parse"},
     "diagnostics.DYNFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.INTFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
+    "diagnostics.INTSPANS": {"loader.Loader.program", "loader.Loader.int_spans"},
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
     "names.RENAMED": {"program.gen_program", "driver.compile_program"},
     "specs.LIBS": {"lower_module.gen_cextern", "driver.compile_program", "driver.main"},
