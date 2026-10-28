@@ -15,12 +15,12 @@ the program's classes, functions the compiler writes once every class that is bo
 (dyn_dispatchers): each tests the box's DynType for those classes and calls the class's own code.
 """
 from __future__ import annotations
-from src.pystachy_compiler.analysis import bind_count, local_names, module_reads, object_values, range_values
+from src.pystachy_compiler.analysis import bind_count, local_names
 from src.pystachy_compiler.diagnostics import DYNFILES, FILES, LINES, Rejoin, dynamic_file, dynamic_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, retoken, short
-from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, OBJECTS, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
 from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, gelem, holds_dyn, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -61,11 +61,11 @@ def gen_dyn_policy(self, line: int) -> bool:
 
 def gen_identity_modules(self, mods: list[Mod]) -> None:
     # The modules whose code tracks numeric identity in a program that uses dynamic Any
-    # (docs/dynamic-any.md#identity-scope): those that opt in, lib's dynamic json module,
-    # each module they import (their code may hold its numbers), and lib's range, object and
-    # iterator modules where such a module uses them. The others (idoff) keep their classes'
-    # layouts and their functions' code: no box slots, companions or snapshots. Their values
-    # reach tracking code only through the crossings identity_call, identity_global,
+    # (docs/dynamic-any.md#identity-scope): those that opt in, lib's dynamic json module, and
+    # each module they import (their code may hold its numbers), lib's range, object and
+    # iterator modules included where they use them (Mod.deps). The others (idoff) keep their
+    # classes' layouts and their functions' code: no box slots, companions or snapshots. Their
+    # values reach tracking code only through the crossings identity_call, identity_global,
     # identity_field and identity_box check; one that could carry a number's identity makes
     # the driver compile the program again with every module tracking (idfull), as before.
     self.idoff = {}
@@ -75,30 +75,21 @@ def gen_identity_modules(self, mods: list[Mod]) -> None:
     for k in DYNFILES:
         dyn[FILES[k][2:] if FILES[k].startswith("./") else FILES[k]] = True
     on: dict[str, bool] = {}
+    work: list[Mod] = []
     for m in mods:
         p = m.path[2:] if m.path.startswith("./") else m.path
         if (m.name == "" and 0 in DYNFILES) or (m.name != "" and p in dyn) or m.name == JSONANY:
             on[m.name] = True
+            work.append(m)
     byname: dict[str, Mod] = {}
     for m in mods:
         byname[m.name] = m
-    grown = True
-    while grown:
-        grown = False
-        for m in mods:
-            if m.name in on:
-                for d in m.deps:
-                    if d not in on and d in byname:
-                        on[d] = True
-                        grown = True
-        for m in mods:
-            if m.name in on:
-                # (lib's modules that no import names, loaded for the code that uses them: Loader.program)
-                implied = [(RANGES, range_values(m.body, 0) and module_reads(m.body, "range")), (OBJECTS, object_values(m.body) and module_reads(m.body, "object")), (ITERS, module_reads(m.body, "iter"))]
-                for x in implied:
-                    if x[1] and x[0] in byname and x[0] not in on:
-                        on[x[0]] = True
-                        grown = True
+    while len(work) > 0:
+        m = work.pop()
+        for d in m.deps:
+            if d not in on and d in byname:
+                on[d] = True
+                work.append(byname[d])
     for m in mods:
         if m.name not in on:
             self.idoff[m.name] = True
