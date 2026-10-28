@@ -300,8 +300,15 @@ def count(out, script, args):
     depth = [0]
     work = {id(f) for f in [dict, list, tuple, sorted, dict.copy, list.copy, list.index, list.count, list.insert, list.remove]}
 
+    # whether a code object is the compiler's, by its file, found once per file: os.path.abspath at
+    # each of the hundreds of millions of events cost more than counting them
+    mine = {}
+
     def line(c, _):
-        if os.path.abspath(c.co_filename) not in compiler_files:
+        inside = mine.get(c.co_filename)
+        if inside is None:
+            inside = mine[c.co_filename] = os.path.abspath(c.co_filename) in compiler_files
+        if not inside:
             return mon.DISABLE
         n["lines"] += 1
         if depth[0] > 0:
@@ -309,7 +316,10 @@ def count(out, script, args):
 
     def call(c, _, f, arg0):
         # (a method's arg0 is the object it is called on)
-        if os.path.abspath(c.co_filename) not in compiler_files:
+        inside = mine.get(c.co_filename)
+        if inside is None:
+            inside = mine[c.co_filename] = os.path.abspath(c.co_filename) in compiler_files
+        if not inside:
             return mon.DISABLE
         if id(f) in work and hasattr(arg0, "__len__"):
             n["items"] += len(arg0)
