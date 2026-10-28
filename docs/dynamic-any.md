@@ -313,6 +313,26 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   (`tests/errors/inference/dynany_store_display_typed.py`). Fresh lists that a builtin method returns
   (`str.split()`, `dict.items()` of an `Any` dict) are converted, since nothing else refers to
   them yet.
+- **Delegated generator channels**: `yield from` boxes compatible typed yields into
+  an `Any` yield channel and checks/unboxes `Any` yields into a compatible concrete
+  channel. Object and dynamic-container references keep their identity. Incompatible
+  native mutable-container layouts still reject; a value of the wrong runtime type raises
+  the same annotation `TypeError` as other typed/dynamic crossings
+  (`tests/deviations/dynany_generator_channel_check.py`).
+- **Fresh generator yields**: a direct call to a generator declared to yield `list[Any]`
+  can use a concrete `list[T]` yield channel when every yield is a fresh list display or a
+  direct `yield from` call that satisfies the same rule. The caller's generator annotation
+  or an enclosing `yield from` supplies that context. Each list is allocated in its requested
+  layout from the start; it is never copied or reinterpreted. Ordinary calls still yield
+  `list[Any]`, and the send and return channels retain their independent declarations.
+  Existing generators and stored lists cannot cross layouts this way
+  (`tests/programs/inference/dynany_generator_context.py`,
+  `tests/programs/inference/dynany_generator_context_protocol.py`). A bare return or falling
+  off a generator with an `Any` return channel supplies boxed `None`, including where the
+  return type is inferred after an earlier bare return
+  (`tests/programs/inference/dynany_generator_return_none.py`). An `Any` send channel
+  likewise receives boxed `None` from `next()` and loops; explicit `send()` values retain
+  their boxes (`dynany_generator_send_none.py`, `dynany_generator_send_protocol.py`).
 - **Between tuple types**: a tuple whose items one side holds as `Any` values and the other as
   typed ones converts item by item into a new tuple: a typed item is boxed where an `Any` item is
   declared (`tuple[int, str]` returned as `tuple[int, Any]`), and an `Any` item is checked and
@@ -386,6 +406,19 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 `int`/`float` comparisons are exact, and the error messages are CPython's
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
+
+`int()` and `float()` call a boxed object's `__int__` and `__float__`, respectively,
+falling back to `__index__` only when that method is absent. Return values are checked
+before use, and exceptions propagate without trying the fallback. Builtin list, tuple and
+str indexing and slice bounds call a boxed index object's `__index__`; list assignment and
+deletion do too. Dictionary keys and user-defined `__getitem__` arguments retain the original
+object. Slice conversion preserves receiver validation and step/start/stop ordering
+(`tests/programs/inference/dynany_numeric_protocols.py`,
+`tests/programs/inference/dynany_index_protocol.py`). These conversions keep the existing
+signed-64-bit dynamic integer representation; typed object conversions remain unsupported.
+An imported promoting-int method's integer result narrows at that existing boundary.
+Invalid typed-container or `None` members of a union result raise only when returned
+(`dynany_numeric_union_protocol.py`, `dynany_numeric_promoted_protocol.py`).
 
 `abs()` calls a boxed object's `__abs__` method, including inherited methods. Builtin bools
 give ints, nonnegative ints keep their identity, and floats give new float objects with a
@@ -640,8 +673,6 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (`tests/programs/inference/dynany_namedtuple.py`), but it is no sequence there: `len()`, indexing and
   iteration raise `TypeError`, and an object of another NamedTuple class compares with it by
   identity (an ordering raises `TypeError`), where CPython compares their fields.
-- `int()` and `float()` of an object raise `TypeError` instead of calling `__int__`,
-  `__index__` or `__float__`.
 - A static or class method read through an `Any` value without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a
   property's value (`x.p(...)`). A field's value is called as a function value is.
@@ -728,7 +759,7 @@ lines.
 - **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
   builtin functions as values; `type(x)` as a class object.
 - **Protocols**: legacy sequence iteration through `__getitem__`, reverse iteration through
-  `__len__`/`__getitem__`, `__length_hint__`, `__int__`/`__index__`/`__float__`, and the
+  `__len__`/`__getitem__`, `__length_hint__`, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.
 - **Guarded variants and inline caches** only where measurements justify them (#392): a
   dispatcher with one dominant case is a candidate for a guarded direct call.
