@@ -35,10 +35,16 @@
 #                  runtime.py (types, coverage, and the effects their call graphs show), and no
 #                  function of runtime.py reaches itself through runtime.c
 #   gc-self        the native compiler collecting every 5000 allocations reproduces the IR
-#   gc-jit-*/gc-aot-* every test passes in each mode with a collection at every program allocation
-#                  (PYSTACHY_GC_STRESS_PROGRAM=1), compiled by the compiler collecting every 1000;
-#                  gc-jit-0/-1 each take one of two disjoint halves of the corpus and gc-aot-0/-1/-2
-#                  one of three thirds (shard_cases)
+#   gc-ir-0/-1     the stage-2 compiler collecting every 1000 allocations compiles each case of one of
+#                  two disjoint halves of the corpus (shard_cases), and runtime.py, exactly as stage 2
+#                  does unstressed (tools/irsame.sh: the same IR, messages and exit status, byte for
+#                  byte), and `check`s each syntax_*.py alike (tools/irsame.sh --check)
+#   gc-jit-0/-1, gc-aot-0/-1/-2 every test of the shard passes, JIT (the same halves) or AOT (three
+#                  thirds), with a collection at every program allocation (PYSTACHY_GC_STRESS_PROGRAM=1);
+#                  one case in GC_SAMPLE_EVERY of the shard, heaviest first (from an offset of each
+#                  mode's), runs with the compiler collecting every 1000 too (first, so it builds the
+#                  runtime the step's tests use), the shard's other cases compiled by stage 2
+#                  unstressed, whose IR gc-ir shows to be the stressed compiler's
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
 #                  math functions give on random inputs
@@ -117,7 +123,7 @@ plan() {
     bootstrap) echo 'bootstrap' ;;
     # (in the order a run of all records them: the contracts' steps, as their lanes report them, after
     # the opt-in sweeps)
-    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
+    all) echo 'bootstrap tests-cpython tests-native-0 tests-native-1 tests-opt-off-0 tests-opt-off-1 runtime-cache python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 benchmarks dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code unicode-audit scaling-0 scaling-1' ;;
     hosted) echo 'bootstrap tests-cpython' ;;
     native-0) echo 'bootstrap tests-native-0' ;;
     native-1) echo 'bootstrap tests-native-1' ;;
@@ -134,14 +140,15 @@ plan() {
     ubsan-2) echo 'bootstrap ubsan-2' ;;
     ubsan) echo 'bootstrap ubsan-0 ubsan-1 ubsan-2' ;; # local alias (one sanitized build for the three thirds)
     gc-self) echo 'bootstrap gc-self' ;;
-    gc-jit-0) echo 'bootstrap gc-jit-0' ;;
-    gc-jit-1) echo 'bootstrap gc-jit-1' ;;
+    gc-jit-0) echo 'bootstrap gc-ir-0 gc-jit-0' ;;
+    gc-jit-1) echo 'bootstrap gc-ir-1 gc-jit-1' ;;
     gc-aot-0) echo 'bootstrap gc-aot-0' ;;
     gc-aot-1) echo 'bootstrap gc-aot-1' ;;
     gc-aot-2) echo 'bootstrap gc-aot-2' ;;
-    gc-jit) echo 'bootstrap gc-jit-0 gc-jit-1' ;; # local aliases are not CI groups
+    gc-ir) echo 'bootstrap gc-ir-0 gc-ir-1' ;; # local aliases are not CI groups
+    gc-jit) echo 'bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1' ;;
     gc-aot) echo 'bootstrap gc-aot-0 gc-aot-1 gc-aot-2' ;;
-    gc-stress) echo 'bootstrap gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
+    gc-stress) echo 'bootstrap gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
     runtime-cache) echo 'bootstrap runtime-cache' ;;
     dynany-optin-0|dynany-optin-1|dynany-optin-2) echo "bootstrap $1" ;;
     dynany-optin) echo 'bootstrap dynany-optin-0 dynany-optin-1 dynany-optin-2' ;; # local alias
@@ -153,7 +160,7 @@ plan() {
     *) echo "verify: unknown group: $1" >&2; return 2 ;;
   esac
 }
-[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
+[ $# -le 1 ] || { echo 'usage: tests/verify.sh [all|hosted|native-0|native-1|native|opt-off-0|opt-off-1|opt-off|python-free-0|python-free-1|python-free-2|python-free|ubsan-0|ubsan-1|ubsan-2|ubsan|gc-self|gc-ir|gc-jit-0|gc-jit-1|gc-jit|gc-aot-0|gc-aot-1|gc-aot-2|gc-aot|gc-stress|runtime-cache|dynany-optin-0|dynany-optin-1|dynany-optin-2|dynany-optin|python-int-optin-0|python-int-optin-1|python-int-optin-2|python-int-optin|contracts|benchmarks|scaling|--list]' >&2; exit 2; }
 GROUP=${1:-all}
 if [ "$GROUP" = --list ]; then
   for g in all bootstrap hosted native-0 native-1 opt-off-0 opt-off-1 python-free-0 python-free-1 python-free-2 ubsan-0 ubsan-1 ubsan-2 gc-self gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2 runtime-cache dynany-optin-0 dynany-optin-1 dynany-optin-2 python-int-optin-0 python-int-optin-1 python-int-optin-2 contracts benchmarks scaling; do
@@ -636,23 +643,109 @@ L=$V/gc-self-check.log; s=$(now); r=fail
 step gc-self $r "$s" "$L" ", \"compiler_interval\": 5000, \"ir_identical\": $(same "$V/stage1.ll" "$V/stage-gc.ll")"
 fi
 
-# ---- GC-stressed suite: full corpus in both modes, on independent CI runners
-# JIT runs as two disjoint shards and AOT as three (shard_cases), whose union is exactly the full
-# corpus on every runner; rejection/syntax checks still run in both modes.
+# ---- GC stress: the stressed compiler's output, then the corpus in both modes, on independent CI runners
+# gc-ir-0/-1: stage 2 collecting every GC_COMPILER_INTERVAL allocations must compile each case of one
+# of two disjoint halves of the corpus (shard_cases) exactly as stage 2 does unstressed (tools/irsame.sh:
+# `ir`, or `rt` for rtmode_*, with the IR check on as tests/run.sh has it; the IR byte for byte, every
+# message and the exit status), runtime.py too (`rt`), and `check` each syntax_*.py alike
+# (tools/irsame.sh --check): the two halves compile every case once a run with the stressed compiler.
+# Where the IR is the same, the LLVM tools build the same program from it, so gc-jit-0/-1 (the same
+# halves, JIT) and gc-aot-0/-1/-2 (three thirds, AOT) run their shard's cases with a collection at every
+# program allocation (PYSTACHY_GC_STRESS_PROGRAM=1), compiled by stage 2 unstressed: compiling each case
+# under stress again for each mode added nothing but time. A sample of each shard runs end to end with
+# the compiler stressed too, so that the driver's paths after the IR run under stress: the runtime's
+# build and cache (the sample runs first, in a cache of the GC steps' own that each run starts empty,
+# so the stressed compiler builds the runtime every GC test of the run uses), opt and lli (JIT), clang
+# and the link (AOT); the program-stressed run takes the shard's other cases, so each case runs exactly
+# once in each mode.
+# The sample is the cases at positions GC_JIT_SAMPLE_OFFSET (JIT) or GC_AOT_SAMPLE_OFFSET (AOT) modulo
+# GC_SAMPLE_EVERY of the shard as shard_cases lists it, heaviest first: drawn from the job's own shard,
+# it lies in that shard whatever tests/case_weights.txt does to the shards, and it is the same on every
+# runner, as the shard is (corpus_shard: integer weights, the C locale). Every 16th case in weight order
+# gives each job's sample about a sixteenth of its shard's weight (0.94-1.03 of it at offsets 4 to 12
+# on the measured weights, where every 16th case in C order gave 0.68-1.47), so the stressed compiler's
+# cost does not depend on which heavy cases a sample happens to draw. Offset 0 would put each shard's
+# heaviest case in every sample; JIT's and AOT's offsets lie half a period apart, so that the modes,
+# whose shards differ, stress different cases where their orders agree.
+GC_COMPILER_INTERVAL=1000
+GC_SAMPLE_EVERY=16
+GC_JIT_SAMPLE_OFFSET=4
+GC_AOT_SAMPLE_OFFSET=12
+for shard in 0 1; do
+  want gc-ir-$shard || continue
+  L=$V/gc-ir-$shard.log; s=$(now); r=fail; ir_ok=false; ir_n=0; rt_ok=false; chk_ok=false
+  shard_cases $shard 2 "$V/gc-ir-$shard-cases.log"
+  grep '/syntax_[^/]*\.py$' "$V/gc-ir-$shard-cases.log" > "$V/gc-ir-$shard-syntax.log"
+  chk_n=$(lines "$V/gc-ir-$shard-syntax.log")
+  set --
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/gc-ir-$shard-cases.log"
+  cases=$#
+  {
+    # An empty shard must not silently invoke irsame's whole-corpus default.
+    if [ "$cases" != 0 ]; then
+      echo "== runtime.py: stage 2, then stage 2 collecting every $GC_COMPILER_INTERVAL allocations (tools/irsame.sh)"
+      PYSTACHY_IRCHECK=1 tools/irsame.sh "$V/pystachy2" "env PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL $V/pystachy2" runtime.py \
+        > "$V/gc-ir-$shard-rt.log" 2>&1
+      st=$?; cat "$V/gc-ir-$shard-rt.log"
+      [ $st = 0 ] && [ "$(tail -1 "$V/gc-ir-$shard-rt.log")" = '1 programs identical' ] && rt_ok=true
+      echo "== IR, messages and exit status of $cases cases: stage 2, then stressed (tools/irsame.sh)"
+      PYSTACHY_IRCHECK=1 tools/irsame.sh "$V/pystachy2" "env PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL $V/pystachy2" "$@" \
+        > "$V/gc-ir-$shard-ir.log" 2>&1
+      st=$?; cat "$V/gc-ir-$shard-ir.log"
+      ir_n=$(tail -1 "$V/gc-ir-$shard-ir.log" | sed -n 's/^\([0-9]*\) programs identical$/\1/p')
+      [ $st = 0 ] && [ "${ir_n:-0}" = "$cases" ] && ir_ok=true
+      set --
+      while IFS= read -r f; do set -- "$@" "$f"; done < "$V/gc-ir-$shard-syntax.log"
+      if [ $# != 0 ]; then
+        echo "== check of the $# syntax_*.py cases: stage 2, then stressed (tools/irsame.sh --check)"
+        tools/irsame.sh --check "$V/pystachy2" "env PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL $V/pystachy2" "$@" \
+          > "$V/gc-ir-$shard-check.log" 2>&1
+        st=$?; cat "$V/gc-ir-$shard-check.log"
+        n=$(tail -1 "$V/gc-ir-$shard-check.log" | sed -n 's/^\([0-9]*\) programs identical$/\1/p')
+        [ $st = 0 ] && [ "${n:-0}" = "$chk_n" ] && chk_ok=true
+      else
+        echo 'no syntax_*.py case in this half'; chk_ok=true
+      fi
+    else
+      echo 'empty GC identity shard'
+    fi
+  } > "$L" 2>&1
+  [ $ir_ok = true ] && [ $rt_ok = true ] && [ $chk_ok = true ] && r=pass
+  step gc-ir-$shard $r "$s" "$L" ", \"compiler_interval\": $GC_COMPILER_INTERVAL, \"reference\": \"stage2\", \"ir_cases\": ${ir_n:-0}, \"ir_identical\": $ir_ok, \"runtime_identical\": $rt_ok, \"check_cases\": $chk_n, \"check_identical\": $chk_ok, \"shard_index\": $shard, \"shard_count\": 2"
+done
 for gc_group in gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2; do
-  if want "$gc_group"; then
-    L=$V/$gc_group.log; s=$(now); r=fail; mode=jit; gc_shards=2; shard=${gc_group##*-}
-    case $gc_group in gc-aot-*) mode=aot; gc_shards=3 ;; esac
-    shard_cases "$shard" "$gc_shards" "$V/$gc_group-cases.log"
-    set --
-    while IFS= read -r f; do set -- "$@" "$f"; done < "$V/$gc_group-cases.log"
-    # An empty shard must not silently invoke run.sh's whole-suite default.
-    [ $# != 0 ] || { echo 'empty GC shard' > "$L"; step "$gc_group" fail "$s" "$L" ""; continue; }
-    PYSTACHY_GC_STRESS=1000 PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$V/pystachy2" "$mode" "$@" > "$L" 2>&1
-    suite_status=$?
-    x=$(tests "$(checks "$mode" "$@")" "$L" 2>> "$L") && [ "$suite_status" = 0 ] && r=pass
-    step "$gc_group" $r "$s" "$L" ", \"tests_interval\": 1, \"tests_compiler_interval\": 1000, \"modes\": [\"$mode\"], \"shard_index\": $shard, \"shard_count\": $gc_shards$x"
+  want "$gc_group" || continue
+  L=$V/$gc_group.log; s=$(now); r=fail; mode=jit; gc_shards=2; offset=$GC_JIT_SAMPLE_OFFSET; shard=${gc_group##*-}
+  sample_ok=0; y=""
+  case $gc_group in gc-aot-*) mode=aot; gc_shards=3; offset=$GC_AOT_SAMPLE_OFFSET ;; esac
+  shard_cases "$shard" "$gc_shards" "$V/$gc_group-shard.log"
+  shard_n=$(lines "$V/$gc_group-shard.log")
+  # (in one pass over the shard, each case to exactly one of the two: the sample, or the others)
+  : > "$V/$gc_group-sample-cases.log"
+  awk -v every=$GC_SAMPLE_EVERY -v offset="$offset" -v sample="$V/$gc_group-sample-cases.log" \
+    '(NR - 1) % every == offset { print > sample; next } { print }' "$V/$gc_group-shard.log" > "$V/$gc_group-cases.log"
+  set --
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/$gc_group-sample-cases.log"
+  sample_n=$#
+  # Empty selections must not silently invoke run.sh's whole-suite default.
+  if [ $# != 0 ]; then
+    PYSTACHY_CACHE="$V/gc-cache" PYSTACHY_GC_STRESS=$GC_COMPILER_INTERVAL PYSTACHY_GC_STRESS_PROGRAM=1 \
+      tests/run.sh "$V/pystachy2" "$mode" "$@" > "$V/$gc_group-sample.log" 2>&1 && sample_ok=1
+    y=$(tests "$(checks "$mode" "$@")" "$V/$gc_group-sample.log" 2>> "$V/$gc_group-sample.log") || sample_ok=0
+  else
+    echo 'empty GC sample' > "$V/$gc_group-sample.log"
   fi
+  { echo "== $mode, compiler and program GC-stressed: the $# cases at positions $offset modulo $GC_SAMPLE_EVERY of shard $shard of $gc_shards ($shard_n cases, heaviest first)"
+    cat "$V/$gc_group-sample.log"; } > "$L"
+  set --
+  while IFS= read -r f; do set -- "$@" "$f"; done < "$V/$gc_group-cases.log"
+  [ $# != 0 ] || { echo 'empty GC shard' >> "$L"; step "$gc_group" fail "$s" "$L" ""; continue; }
+  echo "== $mode, program GC-stressed: the shard's other $# cases" >> "$L"
+  PYSTACHY_CACHE="$V/gc-cache" PYSTACHY_GC_STRESS_PROGRAM=1 tests/run.sh "$V/pystachy2" "$mode" "$@" > "$V/$gc_group-suite.log" 2>&1
+  suite_status=$?
+  cat "$V/$gc_group-suite.log" >> "$L"
+  x=$(tests "$(checks "$mode" "$@")" "$V/$gc_group-suite.log" 2>> "$L") && [ "$suite_status" = 0 ] && [ $sample_ok = 1 ] && r=pass
+  step "$gc_group" $r "$s" "$L" ", \"tests_interval\": 1, \"tests_compiler_interval\": 0, \"modes\": [\"$mode\"], \"shard_index\": $shard, \"shard_count\": $gc_shards, \"shard_cases\": $shard_n, \"cases\": $#$x, \"stressed_sample\": {\"every\": $GC_SAMPLE_EVERY, \"offset\": $offset, \"cases\": $sample_n, \"tests_interval\": 1, \"tests_compiler_interval\": $GC_COMPILER_INTERVAL$y}"
 done
 
 # ---- benchmarks: same output as CPython, JIT and AOT
@@ -1018,10 +1111,10 @@ paths += sorted(Path("src").rglob("*.py"))
 sources = {str(p): {"lines": p.read_bytes().count(b"\n"),
                     "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in paths}
 # (suite_checks: the checks of the whole corpus in JIT and AOT, which the shards of each such suite
-# make together; mode_checks: its checks in one mode, which the shards of each GC suite make, and
-# the UBSan thirds once in each mode)
-# (corpus_cases and syntax_cases: the cases tests-cpython compiles with both compilers, and those it
-# checks with both; all of them counted in tests/corpus.sh's corpus)
+# make together; mode_checks: its checks in one mode, which the shards of each GC suite make with
+# their samples, and the UBSan thirds once in each mode)
+# (corpus_cases and syntax_cases: the cases tests-cpython, and the gc-ir halves together, compile
+# with both compilers, and those they check with both; all of them counted in tests/corpus.sh's corpus)
 cases = [Path(p) for p in Path(os.environ["CORPUS_LIST"]).read_text().splitlines()]
 sources.update(test_programs=sum(p.parts[:2] == ("tests", "programs") for p in cases),
                rejection_tests=sum(p.parts[:2] == ("tests", "errors") for p in cases),
