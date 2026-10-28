@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
 from src.pystachy_compiler.diagnostics import int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_rebinds, comparison_reserve_fields
+from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import (
@@ -621,10 +622,11 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     # A lambda's Callable result type, a generic class's specialization, types the C(...) it
     # returns (see call_fn): lambda: defaultdict(int) as a defaultdict[str, int]'s factory.
     body = f.orig.kids[2] if f.pending else f.node.kids[2]
+    yield_context = not resultsoft and fresh_yield_context(f, want)
     context = f.ret == "" and "?" not in want and ("list[" in want or "dict[" in want or "set[" in want or "tuple[" in want)
     context = context or (f.ret == "" and f.node.s == "<lambda>" and unopt(want) in self.classes and self.classes[unopt(want)].origin in self.tparams)
     locals = local_result(body.kids, f.params) if context and not resultsoft else []
-    want = want if context and (contextual_result(body) or len(locals) > 0) else ""
+    want = want if yield_context or (context and (contextual_result(body) or len(locals) > 0)) else ""
     cmpops = cmpfields != "" or self.curfn.cmpops
     cmptypes = dict(self.curfn.cmptypes)
     if cmpfields != "":
@@ -707,9 +709,9 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.dtypes = f.dtypes
     g.uflags = f.uflags
     g.mod = f.mod
-    g.ret = f.ret
+    g.ret = want if yield_context else f.ret
     g.infer = f.ret == ""
-    g.rctx = want
+    g.rctx = "" if yield_context else want
     g.rsoft = resultsoft and want != ""
     g.rlocals = locals if want != "" else []
     g.inst = True

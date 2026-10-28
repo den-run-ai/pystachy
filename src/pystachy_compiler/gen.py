@@ -3195,8 +3195,8 @@ class Gen:
     def gen_slots(self, v: Val, y: str) -> list[str]:
         return generators_gen_slots(self, v, y)
 
-    def gen_words(self, p: str, t: str, y: str) -> list[str]:
-        return generators_gen_words(self, p, t, y)
+    def gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> list[str]:
+        return generators_gen_words(self, p, t, y, owned)
 
     def gen_value(self, p: str, t: str) -> Val:
         return generators_gen_value(self, p, t)

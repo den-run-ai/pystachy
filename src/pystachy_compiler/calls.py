@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
+from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
@@ -1433,7 +1434,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         vals[0] = self.new_obj(sc)
         pre[0] = vals[0]
         f = self.classes[sc].methods["__init__"]
-    if f.generic:
+    if f.generic or (not resultsoft and fresh_yield_context(f, want)):
         nnp: list[str] = []
         for j in range(np):
             if vals[j].t in self.classes and vals[j].v in self.nn and self.dispatches(f, f.params[j]):
