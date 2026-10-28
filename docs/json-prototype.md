@@ -84,6 +84,11 @@ them compare equal. See [numeric deviations](language/compatibility.md#numbers).
 
 Strings support JSON escapes, Unicode code points, surrogate-pair decoding and
 lone surrogates, as CPython's JSON codec does. Error positions count characters.
+`JSONDecoder.decode()` calls a subclass's `raw_decode()` override after skipping leading
+JSON whitespace and preserves its effects, result and exceptions. Dispatch through
+a base-annotated decoder follows the compiler's common override-return contract;
+use the quoted annotation `"tuple[json.JSONValue, int]"` for that path. Concrete
+subclass calls can retain a narrower return annotation.
 `ensure_ascii=True` escapes non-ASCII text; `False` retains it in the returned
 string. Writing lone surrogates remains subject to the runtime's separate
 [text encoding rules](language/compatibility.md#text-and-file-positions).
