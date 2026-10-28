@@ -1464,7 +1464,8 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         self.add(c)
         self.unreachable()
         t = want if want != "" and "?" not in want else "None"
-        return Val("0" if t == "int" else fbits("0.0") if t == "float" else "false" if t == "bool" else "null", t)
+        # A promoting int is an aggregate, so the unreachable placeholder cannot be null.
+        return Val("undef" if t == BIG else "0" if t == "int" else fbits("0.0") if t == "float" else "false" if t == "bool" else "null", t)
     if f.ret == "None":
         self.add(c)
         v = Val("null", "None")

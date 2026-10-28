@@ -94,7 +94,7 @@ jobs:
         run: python3 -m unittest discover -s tools -p test_dynany_optin.py
 
       - name: Promoting int corpus sweep controls
-        run: python3 -m unittest discover -s tools -p test_python_int_optin.py
+        run: python3 -m unittest discover -s tools -p 'test_python_int*.py'
 
       - name: microGPT graph parity and benchmark contract tests
         run: python3 -m unittest discover -s tools -p test_bench_microgpt.py

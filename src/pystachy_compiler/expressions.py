@@ -3925,7 +3925,7 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
     if a.t == "dyn" or b.t == "dyn":
         return self.dyn_arith(op, a, b, shown == op + "=")  # (a dynamic value's, in place where shown is op=: dynamic.py)
     if a.t == BIG or b.t == BIG or ((a.t == "int" or a.t == "bool") and (b.t == "int" or b.t == "bool") and self.int_policy(self.line)):
-        pr = self.big_binop(op, a, b)  # (promoting ints: bigints.py)
+        pr = self.big_binop(op, a, b, shown)  # (promoting ints: bigints.py)
         if pr.t != "":
             return pr
     if is_union(unopt(a.t)) or is_union(unopt(b.t)):

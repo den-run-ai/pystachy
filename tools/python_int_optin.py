@@ -79,6 +79,10 @@ def compare(base, new):
 
 
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "--gate" in argv:
+        import python_int_gate
+        return python_int_gate.main([arg for arg in argv if arg != "--gate"])
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--compiler", default="./pystachy")
     parser.add_argument("--modes", nargs="+", choices=MODES, default=list(MODES))
