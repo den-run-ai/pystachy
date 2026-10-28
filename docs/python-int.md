@@ -170,8 +170,8 @@ print(int("123456789012345678901234567890") % 97)  # 52
 - A `Callable`'s `int` and `int | None` parameters and result are promoting ints, in every module of
   a program where a module opts in and none opts in to [dynamic `Any`](dynamic-any.md): one
   signature, as `Callable[[int], int]`, for lambdas, closures, bound methods (also through a base
-  class whose subclasses override them), defs and builtins, also in fields, lists, dicts and a
-  `defaultdict`'s factory. Its adapter converts them to and from those of the function it holds
+  class whose subclasses override them), defs and builtins, also in fields, tuples, lists, dicts and
+  a `defaultdict`'s factory. Its adapter converts them to and from those of the function it holds
   (`calls.adapter`): a function of a module that does not opt in takes its `int` parameters as
   64-bit ints, `OverflowError` past 64 bits ([boundaries](#64-bit-boundaries)), and its result
   promotes. The ints of the other types that a `Callable` takes or returns, such as a
@@ -513,7 +513,8 @@ the first measurements, before the inline paths, in
   reads its objects as dynamic values.
 - `tests/programs/numbers/python_int_callables.py`: lambdas, closures, bound methods (also of a
   class hierarchy), defs and builtins as `Callable`s of ints past 64 bits and -2\*\*63, in
-  variables, fields, lists and dicts, a generic function's, a sort key and a `defaultdict`'s factory;
+  variables, fields, tuples, lists and dicts, a generic function's, a sort key and a `defaultdict`'s
+  factory;
   `python_int_callables_fixed.py`: the `Callable`s that a module without the comment takes, keeps
   and calls, and its methods and functions as `Callable`s
   (`tests/python_int_modules/fixed_callables.py`).

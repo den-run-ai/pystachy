@@ -2,10 +2,10 @@
 # Promoting ints (docs/python-int.md) as the ints of the Callables that a module that does not opt in
 # (fixed_callables) takes, keeps and calls, past 64 bits and -2**63 too, and its methods (also of a
 # class hierarchy) and functions as Callables, which take and return its 64-bit ints: the Callable
-# converts them. Also Callables that return an object of a class template, and a function of 64-bit
-# ints given for one, which a Callable[[int], int] then holds.
+# converts them, also in the tuples of its lists. Also Callables that return an object of a class
+# template, and a function of 64-bit ints given for one, which a Callable[[int], int] then holds.
 from typing import Callable
-from fixed_callables import FNode, FixedBase, Holder, apply, apply_u, fbuild, fbuild_u, fixed_pick, fmake, third, twice
+from fixed_callables import FNode, FixedBase, Holder, apply, apply_u, fbuild, fbuild_u, fixed_pick, fmake, make_pairs, run_pairs, third, twice
 
 big = 2 ** 70
 low = -(2 ** 63)
@@ -20,3 +20,6 @@ print(fbuild(lambda x: FNode(x), 5).v, fbuild_u(lambda x: FNode(x), big).v, fbui
 print(fbuild_u(third, 31))
 th: Callable[[int], int] = third
 print(th(31), th(-31), th(low))
+ps: list[tuple[int, Callable[[int], int]]] = [(5, lambda x: x * big), (7, tw)]
+qs = make_pairs()
+print(run_pairs(ps, 3), [g(big) for g in [qs[0][1]]], [g(low // 2) + n for n, g in qs])

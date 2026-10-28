@@ -7,7 +7,7 @@ from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.reflection import VARS_USES
-from src.pystachy_compiler.bigints import held, search_type
+from src.pystachy_compiler.bigints import held, narrow_type, search_type
 from src.pystachy_compiler.specs import (
     ARITY,
     BIG,
@@ -1732,7 +1732,7 @@ def gen_as_list(self, v: Val, name: str) -> Val:
     if is_vtuple(v.t):
         return Val(self.rt("pys_vtuple_list", "ptr", [f"ptr {v.v}"]), self.ctype("list", [targs(v.t)[0]]))
     if is_tuple(v.t):
-        ts = [x.replace(BIG, "int") for x in targs(v.t)]  # (a list holds 64-bit ints: bigints.py)
+        ts = [narrow_type(x) for x in targs(v.t)]  # (a list holds 64-bit ints: bigints.py)
         et = ts[0] if len(ts) > 0 else "str" if name == "join" else "int"  # (the empty tuple: no item to type)
         if any(x != et for x in ts):
             if (name == "math.fsum" or name == "math.dist") and all(self.isnum(x) for x in ts):

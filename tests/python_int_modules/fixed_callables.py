@@ -61,3 +61,11 @@ def fmake(x: int) -> FNode:
 
 def third(n: int) -> int:
     return n // 3
+
+
+def run_pairs(ps: list[tuple[int, Callable[[int], int]]], x: int) -> list[int]:
+    return [f(x) + n for n, f in ps]
+
+
+def make_pairs() -> list[tuple[int, Callable[[int], int]]]:
+    return [(1, lambda x: x * 3), (2, twice)]

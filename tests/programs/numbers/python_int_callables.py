@@ -1,9 +1,9 @@
 # pystachy: python-int
 # Promoting ints (docs/python-int.md) as the ints that a Callable takes and returns: lambdas,
 # closures, bound methods (also of a class hierarchy), defs and builtins as Callables, in variables,
-# fields, lists and dicts, a generic function's, a sort key, a defaultdict's factory and one that
-# returns an object of a class template, past 64 bits and -2**63 too (python_int_callables_fixed.py:
-# a module that does not opt in).
+# fields, tuples, lists and dicts, a generic function's, a sort key, a defaultdict's factory and one
+# that returns an object of a class template, past 64 bits and -2**63 too
+# (python_int_callables_fixed.py: a module that does not opt in).
 from collections import defaultdict
 from typing import Callable, TypeVar
 
@@ -79,6 +79,14 @@ keep: Callable[[int], None] = lambda x: out.append(x)
 keep(big)
 keep(low)
 print(nxt(None), nxt(big), nxt(1), out)
+
+# tuples that hold Callables, as a list's items and a dict's values, and a dict's items()
+pairs: list[tuple[int, Callable[[int], int]]] = [(1, f), (2, lambda x: x + big)]
+pairs.append((3, make(low)))
+table: dict[str, tuple[int, Callable[[int], int]]] = {"f": (1, f)}
+table["mk"] = (2, mk(big))
+print([g(big) + n for n, g in pairs], [table[k][1](low) + table[k][0] for k in sorted(table)], pairs[2][1](1))
+print([k for k, g in ops.items() if g(big, 1) > big])
 
 
 # a generic function given a Callable, and a Callable as a sort key and for map()
