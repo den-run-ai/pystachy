@@ -1,0 +1,4 @@
+indirect function True True True
+indirect method True True True
+Callable parameter True True True
+[exit 0]

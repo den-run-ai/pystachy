@@ -189,7 +189,7 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         if et == "dyn" and v.idslot != "":
             # BUILD_SET inserts after evaluating every item; a later walrus must
             # not split repeated reads of one numeric object into separate boxes.
-            v.idfrom = self.dyn_box(v).v
+            v.idfrom = self.dyn_id_box(v).v
         if et == "" and v.t != "None":
             et = v.t
         jt = v.t if jt == "" else self.join(jt, v.t) or "-"  # (the items' types together)
@@ -289,7 +289,7 @@ def gen_star_display(self, n: Node, want: str) -> Val:
     for x in n.kids:
         v = self.star_items(x.kids[0]) if x.kind == "starred" else self.expr(x, ew)
         if x.kind != "starred" and (capture or self.list_id_kind(self.ctype("list", [v.t])) != 0) and v.idslot != "":
-            v.idfrom = self.dyn_box(v).v
+            v.idfrom = self.dyn_id_box(v).v
         if x.kind == "starred" and is_tuple(v.t):
             for i in range(len(targs(v.t))):
                 parts.append(self.tget(v, i))

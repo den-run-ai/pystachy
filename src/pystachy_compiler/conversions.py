@@ -171,7 +171,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return self.big_tuple_view(v, t)  # (items that promote where t's do not, or the other way: the same tuple, bigints.py)
     if dynamic_program() and v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) and ((is_sopt(t) and unopt(t) == v.t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))):
         captured = Val(v.v, v.t).identity(v)
-        captured.idfrom = self.dyn_box(v).v
+        captured.idfrom = self.dyn_id_box(v).v
         v = captured
     if t == "dyn":
         return self.dyn_box(v)  # (into dynamic storage: dynamic.py)

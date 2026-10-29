@@ -19,7 +19,7 @@ from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globa
 from src.pystachy_compiler.diagnostics import LINES, dynamic_file
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.names import retoken, short
-from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
+from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
 from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, gelem, holds_dyn, identity_abi, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -70,7 +70,7 @@ def gen_dyn_boxable(self, t: str) -> str:
     # why a value of static type t cannot become a dyn value, or "": a scalar, None, a str, an
     # object of the program's classes, a container of boxes, a tuple (made one of boxes), a union
     # of these, and dyn
-    if t == DYN or t in BUILTIN or t == NONEVAR:
+    if t == DYN or t in BUILTIN or t == BIG or t == NONEVAR:
         return ""
     if t in self.classes and t not in self.tmpl:
         return "" if self.classes[t].exc == "" else f"an exception object ({typestr(t)}) as Any is not supported yet"
@@ -1164,6 +1164,10 @@ def gen_dyn_xbody(self, c: str) -> None:
 def gen_dyn_box(self, v: Val) -> Val:
     # v as a dyn value (dyn_boxable says which values can be)
     t = self.rec_type(v.t)
+    if t == BIG:
+        return self.dyn_box(self.big_narrow(v))
+    if t == BIGOPT:
+        return self.dyn_box(self.big_opt_narrow(v))
     if t == DYN:
         return v
     if t == "None" or t == NONEVAR or (is_opt(t) and v.v == "null"):
@@ -1301,6 +1305,41 @@ def gen_dyn_box(self, v: Val) -> Val:
     return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.dyn_type(t)}", f"ptr {v.v}"]), DYN)
 
 
+def gen_dyn_id_box(self, v: Val) -> Val:
+    # A numeric binding's companion is its Any box while representable, else null.
+    # Unlike a crossing into Any (dyn_box), bookkeeping must never narrow or raise.
+    # An out-of-range promoting integer is still a valid typed value.
+    if v.t != BIG and v.t != BIGOPT:
+        return self.dyn_box(v)
+    if v.idfrom != "":
+        return Val(v.idfrom, DYN)
+    if v.t == BIGOPT:
+        if v.v == "null":
+            return Val(self.rtdata("pys_dyn_none_box"), DYN)
+        some = self.label()
+        end = self.label()
+        ph = Ins("phi", DYN, "")
+        self.incoming(ph, self.rtdata("pys_dyn_none_box"), self.cur)
+        self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, some)
+        self.place(some)
+        b = self.dyn_id_box(self.big_unbox(v))
+        self.incoming(ph, b.v, self.cur)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), DYN)
+    fits = self.label()
+    end = self.label()
+    ph = Ins("phi", DYN, "")
+    self.incoming(ph, "null", self.cur)
+    self.cbr(self.big_fits([v]), fits, end)
+    self.place(fits)
+    b = self.dyn_box(self.big_lo(v).identity(v))
+    self.incoming(ph, b.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), DYN)
+
+
 def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
     # the box that an int or float variable's binding has as an Any value, where store_name gives
     # it v (its box slot, idbox): the box of the Any value it unboxes, the box of the binding it
@@ -1321,16 +1360,16 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # call's private result slot that a lone assignment stores (IFn.idmove) is
         # no alias: the store takes its object, boxed or not, as a return does.
         moved = (self.fn.idmove and v.idexact and ".box." not in v.idslot) or (self.fn.idpass and ".box." in v.idslot)
-        b = self.dyn_id_held(v).v if self.fn.numeric_only or moved else self.dyn_box(v).v
-    elif v.lit and (v.t == unopt(t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))) and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
+        b = self.dyn_id_held(v).v if self.fn.numeric_only or moved else self.dyn_id_box(v).v
+    elif v.lit and (v.t == unopt(t) or (v.t == "int" and unopt(t) == BIG) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))) and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         # store_name can retain t until a pending type join restarts compilation to widen
         # it. A provisional int slot may receive a float literal: its LLVM hex bits
         # must not be parsed as an int or given the provisional destination's identity.
-        b = self.dyn_box(v).v
+        b = self.dyn_id_box(v).v
     if b == "null" and slot.startswith("@g.") and slot[3:-4] in self.intglobals:
         # Proven single-binding integer globals have their cached/literal box at
         # initialization. Mutable globals retain lazy boxing and snapshot reads.
-        b = self.dyn_box(v).v
+        b = self.dyn_id_box(v).v
     step = "1"
     if slot.startswith("%") and ".box." in slot and b != "null":
         # Boxing a conditional or alias copy may reveal the destination's own object.
@@ -1356,7 +1395,7 @@ def gen_dyn_id_fresh(self, v: Val) -> bool:
     # variable's, field's or list item's object, an Any value's or a literal's. Its first
     # crossing into Any makes its box, so a call passes it with a null companion (dyn_id_arg)
     t = self.rec_type(v.t)
-    return (t == "int" or t == "float") and not v.lit and v.idfrom == "" and v.idslot == ""
+    return (t == "int" or t == BIG or t == "float") and not v.lit and v.idfrom == "" and v.idslot == ""
 
 
 def gen_dyn_id_arg(self, v: Val) -> Val:
@@ -1364,7 +1403,7 @@ def gen_dyn_id_arg(self, v: Val) -> Val:
     # number (dyn_id_fresh), which the callee boxes where it crosses into Any, else its box
     if self.dyn_id_fresh(v):
         return Val("null", DYN)
-    return self.dyn_box(v)
+    return self.dyn_id_box(v)
 
 
 def gen_dyn_id_read(self, v: Val, slot: str) -> None:
@@ -1411,7 +1450,7 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         self.place(make)
         # A cell may hold a joined/optional number too. Box its current member,
         # without consulting the slot again, while the snapshot is still live.
-        b = self.dyn_box(Val(v.v, v.t)).v
+        b = self.dyn_id_box(Val(v.v, v.t)).v
         self.mem_store(Val(slot, "*" + DYN), Val(b, DYN))
         made = self.cur
         self.br(end)
@@ -2477,11 +2516,12 @@ def gen_dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
     # define them (dyn_dispatchers), then pys_dyn_binop's builtin arithmetic
     if op not in BINOPS:
         self.err(f"the operator {op} on Any values is not supported")
-    pa = self.dyn_proven_int(a)
-    pb = self.dyn_proven_int(b)
-    if pa.t != "" and pb.t != "" and op != "**" and ((op != "&" and op != "|" and op != "^") or a.t == "int" or b.t == "int"):
+    pa = a if a.t == BIG else self.dyn_proven_int(a)
+    pb = b if b.t == BIG else self.dyn_proven_int(b)
+    if pa.t != "" and pb.t != "" and op != "**" and ((op != "&" and op != "|" and op != "^") or a.t == "int" or a.t == BIG or b.t == "int" or b.t == BIG):
         # (ints, or a bool and an int: the typed arithmetic, of an int result but for /'s float;
-        # ** may give a float, and & | ^ of two bools a bool)
+        # a promoting accumulator stays typed even past int64. ** may give a float,
+        # and & | ^ of two bools a bool)
         return self.arith(op, pa, pb)
     x = self.dyn_box(a)
     y = self.dyn_box(b)

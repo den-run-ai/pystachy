@@ -1,0 +1,6 @@
+fits [9223372036854775807, -9223372036854775808]
+typed 265252859812191058636308480000000
+Any list: Python int too large to convert to C long
+typed negative -265252859812191058636308480000000
+negative Any list: Python int too large to convert to C long
+[exit 0]
