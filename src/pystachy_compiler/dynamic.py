@@ -2516,11 +2516,12 @@ def gen_dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
     # define them (dyn_dispatchers), then pys_dyn_binop's builtin arithmetic
     if op not in BINOPS:
         self.err(f"the operator {op} on Any values is not supported")
-    pa = self.dyn_proven_int(a)
-    pb = self.dyn_proven_int(b)
-    if pa.t != "" and pb.t != "" and op != "**" and ((op != "&" and op != "|" and op != "^") or a.t == "int" or b.t == "int"):
+    pa = a if a.t == BIG else self.dyn_proven_int(a)
+    pb = b if b.t == BIG else self.dyn_proven_int(b)
+    if pa.t != "" and pb.t != "" and op != "**" and ((op != "&" and op != "|" and op != "^") or a.t == "int" or a.t == BIG or b.t == "int" or b.t == BIG):
         # (ints, or a bool and an int: the typed arithmetic, of an int result but for /'s float;
-        # ** may give a float, and & | ^ of two bools a bool)
+        # a promoting accumulator stays typed even past int64. ** may give a float,
+        # and & | ^ of two bools a bool)
         return self.arith(op, pa, pb)
     x = self.dyn_box(a)
     y = self.dyn_box(b)
