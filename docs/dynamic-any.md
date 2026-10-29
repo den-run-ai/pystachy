@@ -630,9 +630,15 @@ as a reason to decline (`tests/programs/inference/dynany_eq_annotated_body.py`,
 typed-container annotations when the body can operate on dynamic values. If the dynamic body
 cannot compile, the original typed call remains available to matching values
 (`tests/programs/inference/dynany_cmp_typed_fallback.py`). If neither its dynamic body nor a
-guarded concrete-class body compiles, the cross-type call still uses the documented
-identity/ordering fallback below. Typed calls and same-hierarchy comparison
+guarded concrete-class body compiles, executing that cross-type call raises an explicit
+unsupported-comparison `TypeError`. It does not return an identity result or try a reflected
+method after skipping the selected body. An absent method still permits normal reflection
+and identity fallback. Typed calls and same-hierarchy comparison
 helpers retain their existing behavior.
+A literal-name `getattr(value, "field", default)` through `Any` evaluates its default before
+lookup and catches only `AttributeError`, including from a property getter. Comparison
+bodies using it execute normally; a missing field is not a reason to skip the method
+(`tests/programs/inference/dynany_cmp_getattr_default.py`).
 A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
 methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
 rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
@@ -681,17 +687,16 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   a valid store into the rebound receiver. Existing containers and aliases retain
   their layouts (`tests/deviations/dynany_cmp_rebinding_native_store.py`).
 - A cross-type comparison method whose body cannot compile for an `Any` operand and falls
-  outside the supported guarded concrete adapter still does
-  not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
-  CPython runs the method, whose body may give another result or raise another error
+  outside the supported guarded concrete adapter raises an explicit unsupported-comparison
+  `TypeError` when selected. CPython runs the method, whose body may give a result or raise another error
   (the comparison acceptance matrix above defines the proven cases). Supported helper calls,
   escapes and returned aliases, native operand rebinding, inferred getters, nested container
   callbacks and finite literal missing-field writes are covered by that matrix. Unknown
   helper/alias origins and unsupported native body or layout pairs still need further work,
-  and a proof past its size bound falls back in the same way
+  and a proof past its size bound raises in the same way
   (`tests/deviations/dynany_cmp_proof_bound.py`). Concrete operand annotations alone no
-  longer suppress normal instance comparison methods; the remaining unsupported-body fallback
-  is a correctness gap tracked by #803, not a stable comparison contract
+  longer suppress normal cross-type instance comparison methods. Unsupported bodies remain
+  a compatibility limit tracked by #803; these cross-type calls cannot silently succeed
   (`tests/deviations/dynany_cmp_uncompiled_body.py`).
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.

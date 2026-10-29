@@ -1,0 +1,23 @@
+receiver False
+default
+getter False
+captured False True
+aliases 1 2
+receiver True
+default
+getter True
+captured True False
+aliases 3 1
+absent True
+[2, 4]
+default failed
+default error
+default cleanup
+default
+exploding getter
+getter error
+getter cleanup
+numeric getter [2000, 'allocate']
+1000 1000 2000
+numeric identity True False
+[exit 0]

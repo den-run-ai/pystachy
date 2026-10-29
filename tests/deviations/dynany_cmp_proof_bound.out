@@ -1,2 +1,2 @@
-False
-[exit 0]
+TypeError: unsupported dynamic comparison: Left.__eq__ could not be compiled for Right
+[exit 1]

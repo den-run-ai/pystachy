@@ -1,9 +1,9 @@
 # pystachy: dynamic-any
 # A comparison method without an annotation runs, through Any values, with a value of another type
 # where its body compiles for an Any value (Money). Where it does not (Bag and Ver compare a typed
-# list with an Any value's field, G calls getattr() with a default on one), the compiler also
-# tries guarded concrete-class adapters. Same-class calls remain available independently;
-# unsupported operand bodies retain the documented identity/ordering fallback.
+# list with an Any value's field), the compiler also tries guarded concrete-class adapters.
+# G's dynamic getattr(default) executes its body, including for a missing builtin attribute.
+# Same-class calls remain available independently; unavailable bodies raise explicitly.
 from typing import Any
 
 

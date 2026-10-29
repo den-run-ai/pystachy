@@ -4439,8 +4439,8 @@ I pys_dyn_truth(Dyn *x) {
    class both are objects of (dhier); an object and another value, an object of an unrelated class
    among them, as CPython's do_richcompare: the left operand's method, else the right one's reflected
    method (dobj), else identity for == and != and TypeError for an ordering. There is no
-   NotImplemented (#499): the first method that runs gives the result. The remaining unsupported
-   dynamic-body fallback gives identity's result (or TypeError); see docs/dynamic-any.md. */
+   NotImplemented (#499): the first method that runs gives the result. An unavailable compiled
+   body raises explicitly, rather than silently replacing the method with identity. */
 static const DynType *dhier(Dyn *a, Dyn *b) {
   if (DKIND(a) != DK_OBJ || DKIND(b) != DK_OBJ) return 0;
   return derives(b->t, a->t) ? a->t : derives(a->t, b->t) ? b->t : 0;
@@ -4448,8 +4448,17 @@ static const DynType *dhier(Dyn *a, Dyn *b) {
 /* comparison k (0 ==, 1 !=, 2 <, 3 <=, 4 >, 5 >=) of the object a with b by a's class's own method,
    which the program's helper calls with b as an Any value (pys_obj_cmp(-1 - id, 1 + k, a, b)): 0 or 1,
    its result, 2 where a is no object or its class has no such method, as object's methods decline,
-   or 3 where its method's body cannot compile for b */
-static I dobj(Dyn *a, Dyn *b, I k) { return DKIND(a) == DK_OBJ && (a->t->flags & DF_X) ? pys_obj_cmp(-1 - a->t->cls, 1 + k, a->v, (I)b) : 2; }
+   or 3 where its method's body cannot compile for b. Only absence may try the reflected method;
+   an unavailable body is not Python's NotImplemented and must never become a boolean result. */
+static I dobj(Dyn *a, Dyn *b, I k) {
+  if (DKIND(a) != DK_OBJ || !(a->t->flags & DF_X)) return 2;
+  I r = pys_obj_cmp(-1 - a->t->cls, 1 + k, a->v, (I)b);
+  if (r == 3) {
+    const char *method = k == 0 ? "__eq__" : k == 1 ? "__ne__" : k == 2 ? "__lt__" : k == 3 ? "__le__" : k == 4 ? "__gt__" : "__ge__";
+    failf("TypeError: unsupported dynamic comparison: %s.%s could not be compiled for %s", DNAME(a), method, DNAME(b));
+  }
+  return r;
+}
 I pys_dyn_eq(Dyn *a, Dyn *b) {
   int ka = DKIND(a), kb = DKIND(b);
   if (ka == DK_OBJ || kb == DK_OBJ) {

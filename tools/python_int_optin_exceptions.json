@@ -562,6 +562,22 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/inference/dynany_cmp_available_controls.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_cmp_available_controls.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_cmp_available_controls.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_cmp_available_controls.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/inference/dynany_cmp_builtin_fields.py",
       "mode": "jit",
       "category": "dynamic-any-conflict",
@@ -671,6 +687,22 @@
       "category": "dynamic-any-conflict",
       "diagnostic": "tests/programs/inference/dynany_cmp_control_rebinding.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
       "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_cmp_getattr_default.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_cmp_getattr_default.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_cmp_getattr_default.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_cmp_getattr_default.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
@@ -2142,6 +2174,102 @@
       "mode": "aot",
       "category": "dynamic-any-conflict",
       "diagnostic": "tests/programs/inference/dynany_generator_send_protocol.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_import_alias.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_import_alias.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_import_alias.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_import_alias.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_local_alias.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_local_alias.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_local_alias.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_local_alias.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_missing.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_missing.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_missing.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_missing.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_module_alias.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_module_alias.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_module_alias.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_module_alias.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_qualified.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_qualified.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_getattr_default_qualified.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_getattr_default_qualified.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
       "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
