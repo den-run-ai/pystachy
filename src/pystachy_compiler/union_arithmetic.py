@@ -65,7 +65,8 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
     result_type = self.union_type([r.t for r in results])
     ph = Ins("phi", result_type, "")
     for i in range(len(results)):
-        self.incoming(ph, self.convert_at(results[i], result_type, edges[i]).v, edges[i])
+        r = self.convert_at(results[i], result_type, edges[i])
+        self.incoming(ph, r.v, self.convedge)
     return Val(self.phi(ph), result_type)
 
 def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
@@ -103,7 +104,8 @@ def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
         self.err(f"unsupported call {name}() of {typestr(u.t)}: its members' results ({', '.join([typestr(r.t) for r in results])}) have no union")
     ph = Ins("phi", result_type, "")
     for j in range(len(results)):
-        self.incoming(ph, self.convert_at(results[j], result_type, edges[j]).v, edges[j])
+        r = self.convert_at(results[j], result_type, edges[j])
+        self.incoming(ph, r.v, self.convedge)
     return Val(self.phi(ph), result_type)
 
 def gen_uorders(self, a: str, b: str) -> bool:
@@ -112,9 +114,30 @@ def gen_uorders(self, a: str, b: str) -> bool:
     ms = (umembers(a) if is_union(a) else [a]) + (umembers(b) if is_union(b) else [b])
     return all([m in ["int", "float", "bool"] for m in ms]) or all([m == "str" for m in ms])
 
-def gen_ucmp(self, op: str, a: Val, b: Val) -> Val:
+def gen_ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
     # a op b, an ordering where a or b is of a union (uorders): each member's ordering, chosen by
-    # its tag (union splitting), compiled as the native comparison it is
+    # its tag (union splitting), compiled as the native comparison it is; nonnull: identity's
+    # operands are known not to be None
+    if op in ["is", "is not"] and not nonnull and (is_opt(a.t) or is_opt(b.t) or self.reference_union(a.t) or self.reference_union(b.t)):
+        # Native reference identity may include None, an optional union's or a class
+        # union's (whose None is a null box pointer, as a class type's None is null).
+        # Do not read a union tag until both pointers are nonnull; the remaining arms
+        # use original refs.
+        nula = self.ptr_cmp("==", a, Val("null", "None")).v
+        nulb = self.ptr_cmp("==", b, Val("null", "None")).v
+        both = self.scalar("and", [Val(nula, "bool"), Val(nulb, "bool")])
+        null_result = both if op == "is" else self.scalar("xor", [Val(both, "bool"), Val("true", "bool")])
+        some = self.label()
+        done = self.label()
+        result = Ins("phi", "bool", "")
+        self.incoming(result, null_result, self.cur)
+        self.cbr(self.scalar("or", [Val(nula, "bool"), Val(nulb, "bool")]), done, some)
+        self.place(some)
+        value = self.ucmp(op, Val(a.v, unopt(a.t)), Val(b.v, unopt(b.t)), True)
+        self.incoming(result, value.v, self.cur)
+        self.br(done)
+        self.place(done)
+        return Val(self.phi(result), "bool")
     left = is_union(a.t)
     v = a if left else b
     members = umembers(v.t)

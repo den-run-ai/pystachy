@@ -1,0 +1,10 @@
+stored 0
+setter 11
+stored 1
+AttributeError cannot assign to field 'x'
+AttributeError 'Slotted' object has no attribute 'x' and no __dict__ for setting new attributes
+AttributeError 'NoneType' object has no attribute 'x' and no __dict__ for setting new attributes
+6
+setter 7
+7
+[exit 0]

@@ -1,6 +1,7 @@
 """struct's calls of a format known as the program compiles: component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.ir import Val
+from src.pystachy_compiler.specs import BIG
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import is_opt, is_tuple, targs, tname
 
@@ -163,7 +164,7 @@ def gen_struct_call(self, name: str, args: list[Node], want: str) -> Val | None:
         return self.tuple_([self.expr(e, "") for e in self.struct_nodes(sf, bn, None)])
     if fn == "unpack_from":
         o = self.expr(off, "int") if off is not None else Val("0", "int")
-        if o.t != "int" and o.t != "bool":
+        if o.t != "int" and o.t != "bool" and o.t != BIG:
             self.err(f"'{tname(o.t)}' object cannot be interpreted as an integer")
         at = self.expr(self.struct_helper("_offset", [bn, self.vnode(self.as_int(o)), sz]), "int")
         return self.tuple_([self.expr(e, "") for e in self.struct_nodes(sf, bn, self.vnode(at))])
@@ -249,13 +250,13 @@ def gen_struct_pack(self, sf: StructFmt, args: list[Node]) -> Val:
             elif c == "?":
                 e = self.struct_helper("_pack_bool", [self.vnode(Val(self.truth(v), "bool"))])
             elif c == "e" or c == "f" or c == "d":
-                if v.t != "float" and v.t != "int" and v.t != "bool":
+                if v.t != "float" and v.t != "int" and v.t != "bool" and v.t != BIG:
                     self.err("required argument is not a float")
                 x = self.as_float(v)
                 e = self.struct_helper("_pack_float", [mk("str", c, line, []), self.vnode(x), little])
             else:
-                if v.t != "int" and v.t != "bool":
-                    self.err("required argument is not an integer")
+                if v.t != "int" and v.t != "bool" and v.t != BIG:
+                    self.err("required argument is not an integer")  # (a promoting int: as_int narrows it)
                 signed = mk("True" if c in "bhilqnP" else "False", "", line, [])  # (P packs any int, as CPython's PyLong_AsVoidPtr does)
                 e = self.struct_helper("_pack_int", [mk("str", c, line, []), self.vnode(self.as_int(v)), mk("int", str(k), line, []), signed, little])
             parts.append(self.expr(e, "bytes"))

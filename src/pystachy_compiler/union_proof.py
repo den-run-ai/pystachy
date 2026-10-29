@@ -6,6 +6,7 @@ stable. It keeps one state per block, not a product of whole-function execution 
 """
 from __future__ import annotations
 from src.pystachy_compiler.ir import IFn, Ins, Val
+from src.pystachy_compiler.specs import BIG
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join
 from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
 
@@ -640,6 +641,8 @@ class UnionProof:
                 # Container typing proves its scalar kind; this proof must not invent
                 # a more precise member from the runtime signature's T/V placeholders.
                 s.set("U:" + r, ["bool", "float", "int"])
+        elif op == "rt" and i.s == "big.box":
+            s.set("U:" + r, [BIG])  # (a promoting int's box, never None: bigints.py)
         elif op == "rt" and (i.s == "ubox" or i.s == "ubox_opt"):
             t = self.tag(s, a[0].v)
             d = s.dom(t)

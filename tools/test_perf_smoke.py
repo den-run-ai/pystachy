@@ -83,6 +83,30 @@ class KernelTests(unittest.TestCase):
         self.assertEqual(output.getvalue(), "1\n")
         self.assertEqual(bench_pyperformance.seconds(timing.getvalue()), 3.0)
 
+    def test_dynamic_iteration_checksums_work_counts_and_timing_protocol(self):
+        # These newly supported paths cannot yet be base/head timing cases: the
+        # base compiler rejects them. Keep their deterministic workload checks.
+        path = perf.ROOT / "tools/dynany_iteration_bench.py"
+        for n in (0, 1, 17):
+            for kind in ("list", "range", "object", "generator"):
+                advances = n + 1 if kind in ("object", "generator") else 0
+                expected = f"{kind} {n * (n - 1) // 2} {n} {advances}\n"
+                with self.subTest(kind=kind, n=n):
+                    record = bench_pyperformance.run(
+                        [sys.executable, str(path), kind, str(n), "smoke"],
+                        dict(os.environ), 10, expected)
+                    self.assertGreaterEqual(record["loop_s"], 0)
+
+    def test_dynamic_iteration_rejects_eager_production(self):
+        path = perf.ROOT / "tools/dynany_iteration_bench.py"
+        with mock.patch.object(sys, "argv", [str(path), "list", "0"]), \
+                contextlib.redirect_stdout(io.StringIO()):
+            workload = runpy.run_path(path)
+        steps = workload["Steps"]()
+        eager = list(workload["generated"](3, steps))
+        with self.assertRaises(AssertionError):
+            workload["consume"](eager, steps, True)
+
     def test_numeric_identity_cases_match_analytical_checksum_and_timing_protocol(self):
         for case, seed, expected in (("copy_int", "1", "int 6197\n"),
                                      ("copy_float", "4", "float 40\n"),

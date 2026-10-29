@@ -38,6 +38,8 @@
 #   set_int_max_str_digits() are not supported; their values have thousands of digits; Pystachy
 #   checks CPython's default limit of 4300 digits: tests/programs/runtime/rt_int_digit_limit.py), and
 #   PyLongModuleTests (_pylong, ints of 30,000 to 1,000,000 digits)
+# tests/programs/numbers/mpz_cpython_text.py runs the excluded string cases and
+# IntStrDigitLimitsTests' values with explicit mpz values.
 import sys
 
 

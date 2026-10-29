@@ -13,9 +13,10 @@ from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, OPAQUE, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    opaque_class,
     targs,
     is_dict,
     is_kw,
@@ -90,7 +91,7 @@ def gen_refl_may_none(self, v: Val) -> bool:
     return is_opt(v.t) or v.t in self.classes or (is_union(v.t) and self.optional(v.t) == v.t)
 
 
-def gen_refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
+def gen_refl_split(self, v: Val, nonnull: bool = False, guarded: bool = False) -> list[RLeaf]:
     # dispatch on the exact type of v: None (where it may be, unless nonnull), then the union's
     # member tag and an object's class tag. Each leaf's block is left open for the caller to
     # place and fill; the blocks that test end here
@@ -115,7 +116,7 @@ def gen_refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
         ms = umembers(t)
         for i in range(len(ms)):
             hit = self.label()
-            miss = self.label() if i + 1 < len(ms) else ""
+            miss = self.label() if guarded or i + 1 < len(ms) else ""
             if miss != "":
                 self.cbr(self.num_cmp('==', Val(f"%t{tag.r[0]}", "int"), Val(str(self.utag(ms[i])), "int")).v, hit, miss)
             else:
@@ -125,6 +126,8 @@ def gen_refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
             leaves.extend(self.refl_split_class(x))
             if miss != "":
                 self.place(miss)
+                if guarded and i + 1 == len(ms):
+                    self.unreachable()
         return leaves
     leaves.extend(self.refl_split_class(v))
     return leaves
@@ -155,6 +158,8 @@ def gen_refl_split_class(self, v: Val) -> list[RLeaf]:
 def gen_refl_type_name(self, c: str, what: str) -> str:
     # what type(x).<what> is (__name__, __qualname__ or __module__) for a value of exact type c,
     # or "" where Pystachy does not know it
+    if c == BIG:
+        c = "int"  # (a promoting int's class is int: bigints.py)
     if c == "None" or c in BUILTIN_TYPES or is_list(c) or is_dict(c) or is_tuple(c) or is_vtuple(c) or is_set(c) or is_kw(c):
         b = "NoneType" if c == "None" else "list" if is_list(c) else "dict" if is_dict(c) or is_kw(c) else "tuple" if is_tuple(c) or is_vtuple(c) else c[: c.find("[")] if is_set(c) else c
         return "builtins" if what == "__module__" else b
@@ -455,7 +460,8 @@ def gen_refl_phi(self, vals: list[Val], blocks: list[str], end: str, what: str) 
         return Val("null", "None")
     ph = Ins("phi", t, "")
     for j in range(len(vals)):
-        self.incoming(ph, self.convert_at(vals[j], t, blocks[j]).v, blocks[j])
+        r = self.convert_at(vals[j], t, blocks[j])
+        self.incoming(ph, r.v, self.convedge)
     r = Val(self.phi(ph), t)
     if numeric_identity(t) and all(v.idfrom != "" or v.t == "None" for v in vals):
         # Field reads snapshot before later operands can change them. Select that
@@ -502,7 +508,7 @@ def gen_refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: l
     self.br(end)
 
 
-def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
+def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> Val:
     # getattr(o, name, default) with a name the compiler knows: per exact class of o, the
     # attribute where it has it, else the default (a property's getter that raises
     # AttributeError: the default too, as CPython catches it). o and default are evaluated first
@@ -510,16 +516,16 @@ def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
     a = self.refl_name(args[1])
     if a == "":
         self.err("getattr() of a name only the run time knows is supported where its text is used (print(), str(), repr(), an f-string field without a format spec): elsewhere its value would need a type of its own (#487, #489); use a str literal or a constant set of names (#486)")
-    if len(args) == 2 and not self.refl_derived_only(args[0], a):
+    if len(args) == 2 and not split and not self.refl_derived_only(args[0], a):
         return self.expr(mk("attr", a, args[0].line, [args[0]]), want)
     o = self.expr(args[0], "")
     known = self.knownobj(args[0])  # (a template's parameter whose argument is no None)
     d = self.expr(args[2], "") if len(args) == 3 else Val("", "")  # (none: CPython's AttributeError)
-    if numeric_identity(d.t) and dynamic_program():
+    if numeric_identity(d.t) and self.idhere():
         # The default is evaluated before attribute lookup or a property's code.
         # Keep its object now; refl_phi cannot recover a retired lazy binding.
         captured = Val(d.v, d.t).identity(d)
-        captured.idfrom = self.dyn_box(d).v
+        captured.idfrom = self.dyn_id_box(d).v
         d = captured
     if o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != ""):
         self.err("getattr() of an exception object is not supported (its fields are read as e.name, after except C as e)")
@@ -527,7 +533,7 @@ def gen_refl_getattr(self, args: list[Node], want: str) -> Val:
     blocks: list[str] = []
     end = self.label()
     narrow = dict(self.narrowed)
-    for lf in self.refl_split(o, known):
+    for lf in self.refl_split(o, known, split):
         self.place(lf.label)
         self.narrowed = dict(narrow)
         h = self.refl_has(lf.c, a)
@@ -665,9 +671,7 @@ def refl_binds_in(n: Node, name: str) -> bool:
 def refl_subst(n: Node, name: str, lit: Node) -> Node:
     # a copy of code n whose reads of name are lit (but in a comprehension that binds name)
     if n.kind == "name" and n.s == name:
-        c = Node(lit.kind, lit.s, n.line)
-        c.kids = lit.kids
-        return c
+        return Node(lit.kind, lit.s, n.line, lit.kids)
     c = Node(n.kind, n.s, n.line)
     c.chk = n.chk
     c.mchk = n.mchk
@@ -679,8 +683,7 @@ def refl_subst(n: Node, name: str, lit: Node) -> Node:
 
 
 def clone_node(n: Node) -> Node:
-    c = Node(n.kind, n.s, n.line)
-    c.kids = [clone_node(k) for k in n.kids]
+    c = Node(n.kind, n.s, n.line, [clone_node(k) for k in n.kids])
     c.chk = n.chk
     c.mchk = n.mchk
     c.depth = n.depth
@@ -883,7 +886,7 @@ def gen_refl_supported(self, c: str, what: str) -> None:
         why = "a range"
     elif ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
-    elif ci.mod in OPAQUE and self.curfn.mod != ci.mod:
+    elif opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod:
         tshown = TYPEMODS[ci.mod] + "." + short(c) if TYPEMODS.get(ci.mod, "builtins") != "builtins" else short(c)
         self.err(f"{what} of a {tshown} object is not supported: its fields are Pystachy's {ci.mod} module's own, and CPython's object has no attributes of its own")
     elif ci.bad != "":
@@ -1086,7 +1089,7 @@ def gen_refl_dict_order(self, c: str) -> list[str]:
     if len(late) > 1 or (len(late) == 1 and late[0] != out[-1]):
         self.err(f"vars() of {short(c)} is not supported: its attribute {late[0]}, which its __init__ may leave unassigned, may be assigned later, which inserts it last in the __dict__ (#486)")
     for fl in ci.ftypes:
-        if fl.startswith(" ") or fl in out:
+        if fl.startswith(" ") or fl in out or fl in ci.fextra:
             continue
         if fl in ci.fdefault and (fl not in ci.fopts or c in self.nts):
             if self.refl_stored(fl):
@@ -1198,7 +1201,7 @@ def gen_refl_fields_table(self, c: str) -> str:
             if is_union(unopt(ft)) and not self.value_union(ft):
                 self.err(f"vars() of {short(c)}, whose field {fl} is a {typestr(ft)}, is not supported (a union of classes: #487)")
             t.refs.append(self.sconst(fl))
-            t.refs.append(self.sconst(self.desc(ft, "repr")))
+            t.refs.append(self.sconst("J" if ft == BIG else self.desc(ft, "repr")))  # (a promoting int's {lo, hi}: runtime.c's jbig)
             t.items.append(Val(str(ci.fpos[fl]), "int"))
             flag = ci.fflag[fl] if fl in ci.fflag and c + "." + fl not in self.cvars else -1
             t.items.append(Val(str(flag), "int"))
@@ -1237,8 +1240,28 @@ def gen_refl_dict_of(self, n: Node) -> Node | None:
     return None
 
 
+def comparison_dict_guard(self, o: Val, known: bool) -> None:
+    # Reserved comparison fields must not change the static dictionary value
+    # type or order of a previously supported vars() consumer while absent.
+    # Once assigned, reject this unsupported late-field reflection explicitly.
+    leaves = self.refl_type_of(o, "__name__", known)
+    if not any(lf.c in self.classes and len(self.classes[lf.c].fextra) > 0 for lf in leaves):
+        return
+    end = self.label()
+    for lf in self.refl_split(o, known):
+        self.place(lf.label)
+        if lf.c in self.classes:
+            ci = self.classes[lf.c]
+            for field in ci.fextra:
+                flag = self.mem_load(Val(self.fgep(lf.v, ci.fflag[field]), "*bool"))
+                self.guard(flag.v, "TypeError: vars() and __dict__ after comparison-created attributes are not supported (#486)")
+        self.br(end)
+    self.place(end)
+
+
 def gen_refl_vars_text(self, o: Val, known: bool) -> Val:
     # repr(vars(o)): the runtime's walk of the field table of o's exact class
+    comparison_dict_guard(self, o, known)  # another print argument may have mutated its live view
     leaves = self.refl_type_of(o, "__name__", known)
     for lf in leaves:
         if lf.c == "None" or lf.c not in self.classes:
@@ -1332,6 +1355,7 @@ def gen_refl_dict_operand(self, n: Node, x: Node) -> Val:
             self.err(f"vars() argument must have __dict__ attribute: of a {typestr(lf.c)}, it is not supported (#486)" if n.kind == "call" else f"type {typestr(lf.c)} has no attribute '__dict__'")
         else:
             self.refl_dict_order(lf.c)
+    comparison_dict_guard(self, o, True)
     return o
 
 
@@ -1390,6 +1414,7 @@ def gen_refl_unroll_dict(self, n: Node, d: Node, x: Node, m: str) -> None:
         # (the fields __init__ may leave unassigned, as the loop starts: where its body assigns
         # one, CPython's next step raises, see refl_size_check)
         flagged = [fl for fl in orders[li] if fl in ci.fflag and lf.c + "." + fl not in self.cvars]
+        flagged.extend([fl for fl in ci.fextra if fl not in flagged])
         snap = [self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v for fl in flagged]
         for j in range(len(orders[li])):
             fl = orders[li][j]
@@ -1544,8 +1569,8 @@ def gen_refl_dict_copy(self, d: Node) -> Val:
                 self.cbr(self.mem_load(Val(self.fgep(ov, ci.fflag[fl]), "*bool")).v, go, nxt)
                 self.place(go)
             kv = targs(dt)  # (["dyn", "dyn"] where the values are Any values or containers: ctype)
-            v = self.coerce(self.getfield(ov, self.field(ov, fl), fl), kv[1])
-            self.rt("pys_dict_set", "void", [f"ptr {r.v}", "i64 " + self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), "i64 " + self.to_slot(v)], self.key_fx(kv[0]))
+            v = self.list_hold(self.getfield(ov, self.field(ov, fl), fl), kv[1])  # (a tuple of ints as the dict holds it, a promoting int as a dict of ints does: bigints.py)
+            self.dict_store(r.v, self.to_slot(self.store_key(Val(self.sconst(fl), "str"), kv[0])), v, kv)
             if nxt != "":
                 self.br(nxt)
                 self.place(nxt)
@@ -1801,7 +1826,7 @@ def gen_refl_dc_type(self, t: str, what: str, seen: list[str]) -> str:
     # dataclass's object a dict (a tuple), recursively into lists, tuples and dicts; scalars and
     # bytes as they are (CPython's _asdict_inner deep-copies them, and deepcopy returns an
     # immutable object itself; other objects it deep-copies, which is not supported)
-    if t in ["int", "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
+    if t in ["int", BIG, BIGOPT, "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
         return t
     if is_opt(t):
         x = self.refl_dc_type(unopt(t), what, seen)
@@ -1843,7 +1868,7 @@ def gen_refl_dc_copy(self, v: Val, what: str, seen: list[str], nonnull: bool = F
     # asdict()'s (astuple()'s) copy of value v (refl_dc_type): new containers throughout, as
     # CPython's _asdict_inner (_astuple_inner) makes them
     t = v.t
-    if t in ["int", "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
+    if t in ["int", BIG, BIGOPT, "float", "bool", "str", "bytes", "None"] or self.scalar_union(t):
         return v
     rt = self.refl_dc_type(t, what, seen)
     if is_opt(t) or (t in self.classes and v.v not in self.nn and not nonnull):
@@ -1885,7 +1910,12 @@ def gen_refl_dc_copy(self, v: Val, what: str, seen: list[str], nonnull: bool = F
                 kids: list[Node] = []
                 for j in range(len(fs)):
                     kids.append(mk("str", fs[j], self.line, []))
-                    kids.append(self.vnode(self.coerce(vals[j], targs(vt)[1])))
+                    # A promoting int or tuple needs the dict display's storage conversion,
+                    # which retains it instead of narrowing it before the store.
+                    item = vals[j]
+                    if item.t != BIG and not (is_tuple(item.t) and BIG in item.t):
+                        item = self.coerce(item, targs(vt)[1])
+                    kids.append(self.vnode(item))
                 r = self.expr(mk("dict", "", self.line, kids), vt)
             rvals.append(r)
             rblocks.append(self.cur)

@@ -1,0 +1,13 @@
+body
+True
+[3]
+['existing'] 10
+['existing'] 10 11
+property
+['property'] ['default']
+{'items': ['existing'], 'number': 10} {'items': ['existing'], 'number': 10, 'last': 11}
+True
+True
+10 10
+True True
+[exit 0]

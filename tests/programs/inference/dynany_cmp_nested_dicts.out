@@ -1,0 +1,66 @@
+leaf 0 True
+leaf 0 True
+leaf 0 True
+direct True True False
+leaf 1 False
+mutation 1 False False
+aliases True True 0 2
+leaf 1 True
+mutation 1 True True
+aliases True True 0 2
+leaf 2 False
+mutation 2 False False
+aliases True True 2 0
+leaf 2 True
+mutation 2 True False
+aliases True True 2 0
+leaf 3 False
+mutation 3 False False
+aliases True True 0 0
+leaf 3 True
+mutation 3 True True
+aliases True True 0 0
+leaf 4 False
+mutation 4 False False
+aliases True True 1 2
+leaf 4 True
+mutation 4 True True
+aliases True True 1 2
+leaf 5 False
+mutation 5 False False
+aliases True True 2 2
+leaf 5 True
+leaf 0 False
+mutation 5 True False
+aliases True True 2 2
+leaf 6 False
+mutation 6 False False
+aliases True True 8 8
+leaf 6 True
+leaf 0 True
+leaf 0 True
+leaf 0 True
+leaf 0 True
+leaf 0 True
+leaf 0 True
+leaf 0 True
+mutation 6 True True
+aliases True True 8 8
+leaf 7 True
+dict value
+cleanup
+missing key False
+different lengths False
+empty True
+leaf 0 True
+leaf 0 True
+tuple keys True True
+different key types False
+comparison ran
+leaf 0 True
+comparison ran
+leaf 0 True
+comparison ran
+leaf 0 True
+boxed True True False
+[exit 0]

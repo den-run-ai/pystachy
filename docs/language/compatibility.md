@@ -20,9 +20,19 @@ In these cases a program can compile but behave differently from CPython.
 
 - `int` is 64-bit. Where CPython would produce a bigger int, including an intermediate
   result or `int()` of a long string, Pystachy raises `OverflowError` instead of
-  wrapping. `int ** negative int` is a `ValueError` (the result type would be dynamic;
+  wrapping. In `x & y`, a side that is a tree of `+`, `-`, `*` and `<<` (also under
+  `&`, `|` and `^`) keeps each step's low 64 bits (a shift's count stays checked),
+  which gives CPython's result where the other side is exact and not negative:
+  `(k * 0xCC9E2D51) & 0xFFFFFFFF` works as in CPython. Where the masked result itself
+  can need more bits, `OverflowError` comes after the whole expression is evaluated
+  ([deviation](../../tests/deviations/int_masked_overflow.py)). `int ** negative int` is a `ValueError` (the result type would be dynamic;
   `0 ** -1` raises CPython's `ZeroDivisionError`), and so is a negative float to a
   fractional power (CPython returns a complex).
+
+  Explicit [`mpz.mpz`](../mpz.md) values provide a separate arbitrary-precision
+  arithmetic path. They do not automatically replace or promote ordinary `int`. A module that
+  opts in to [promoting ints](#promoting-ints-opt-in-prototype) gets CPython's `int`, with the
+  limits below.
 
 - The native JSON prototype also rejects integer tokens outside signed 64-bit
   range with `OverflowError`. Its decoder and encoder allow at most 256 nested
@@ -334,6 +344,10 @@ above apply to well-formed text (with the surrogate exception described above).
 
 ### Dynamic `Any` (opt-in prototype)
 
+- Boxed ranges, builtin iterators, user `__iter__`/`__next__` and generators with
+  boxable yields support lazy iteration and `next()` with a default. See the
+  [bounded iteration contract](../dynamic-any.md#iteration) for remaining protocol limits.
+
 - In a module whose leading comments hold `# pystachy: dynamic-any`, `Any` values are
   runtime-typed boxes ([dynamic `Any`](../dynamic-any.md)). A concrete annotation, or storage
   that keeps its first type, that receives an `Any` value of another type raises `TypeError`
@@ -343,19 +357,54 @@ above apply to well-formed text (with the surrogate exception described above).
   body cannot compile for an `Any` operand and falls outside the supported guarded concrete
   adapter still falls back to identity (or `TypeError` for
   an ordering) where CPython runs the method
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`, which writes a missing instance
-  field). Guarded adapters now cover closed builtin field equality, numeric/indexed
-  expressions and mixed-list concatenation, direct mixed-list element equality,
-  nested object field reads, supported property getters, cleanup/loops, missing reads
-  through stable aliases/closures, and operand rebinding that provably discards the
-  incoming reference. See the [acceptance matrix](../dynamic-any.md#operations).
-  Missing-field creation, arbitrary operand escape, general rebinding and unsupported
-  property/nested-container shapes remain outside the proof. Custom lookup methods
-  remain explicit compile-time rejections. Concrete operand annotations alone no
+  outside the proven operation surface (`tests/deviations/dynany_cmp_uncompiled_body.py`, an
+  operand read back out of a container) or past the proof's size bound
+  (`tests/deviations/dynany_cmp_proof_bound.py`). Guarded adapters cover closed builtin field
+  equality, numeric/indexed expressions and mixed-list concatenation, nested list/tuple/dict equality
+  with user callbacks, and property getters using normal native return inference. Known
+  helpers, including local and recursive helpers, can retain or return proven operand/field
+  aliases; escapes to `Any` globals and global `list[Any]` storage preserve the original object. Sequential
+  and supported conditional/loop rebinding retain both the incoming and replacement
+  objects' layouts, including getters and setters. Missing reads preserve effects and cleanup;
+  literal missing-field writes use native storage without copying aliases.
+  `vars()`/`__dict__` still explicitly reject reflection after one of those fields is created
+  (`tests/deviations/dynany_cmp_field_reflection.py`, #486). See the
+  [acceptance matrix](../dynamic-any.md#operations).
+  An executed incompatible write to an existing native field or typed property setter
+  raises `TypeError` after its value and target effects, including after operand rebinding
+  (`tests/deviations/dynany_cmp_rebinding_native_store.py`). Arbitrary runtime-name field
+  creation, unresolved helper/alias flows and unsupported native operation/layout pairs
+  remain outside the proof. Custom lookup methods, differing unsupported `NamedTuple`
+  element layouts and `list[bytes]`/`list[Any]` equality remain explicit compile-time
+  rejections. Concrete operand annotations alone no
   longer suppress normal instance comparison methods. The prototype's other differences, such as
   `in` of an `Any` item in a typed container and function values printing as `<function>`, are
   listed in its
   [deviations](../dynamic-any.md#deviations).
+
+### Promoting ints (opt-in prototype)
+
+- In a module whose leading comments hold `# pystachy: python-int`, ints promote past 64 bits
+  ([promoting ints](../python-int.md)) in variables, arguments, returns, fields, module
+  variables, closures, tuples, `int | None` and the values generators yield and return, and, in a
+  program where no module opts in to dynamic `Any`, in lists of ints and of tuples of ints, the
+  keys and values of dicts of ints and of tuples of ints (also in the tuples of their `items()`
+  and the pairs that `dict()` takes), sets of ints and of tuples of ints, the iterators that
+  `iter()` makes of them, the lists that `heapq` and `bisect` change, the counts of
+  `collections.Counter`, the specializations of generic classes for ints (their fields,
+  parameters, results and containers of the type variable), and the `int` and `int | None`
+  parameters and results of `Callable`s. Other containers and the
+  tuples and `int | None` items they hold, a tuple's `int | None` items, other unions, the values
+  sent to a generator, the code of modules that do not opt in (their `int` and `int | None`
+  parameters, also through a `Callable`, and their reads of those containers), the ints of the
+  other types in `Callable` signatures, and builtins and
+  methods that take an int (`range()`, indexing, `math` functions, `sum()`'s ints among floats)
+  keep 64-bit ints: a value past 64 bits raises `OverflowError` there, where CPython goes on
+  (`tests/deviations/python_int_limits.py`).
+  A tuple of 64-bit ints that holds -2\*\*63 becomes a new tuple where a tuple of promoting ints
+  is expected, which `is` tells apart. Such a module rejects `is` between ints
+  (`tests/errors/numbers/python_int_is.py`), and cannot also opt in to dynamic `Any`
+  (`tests/errors/numbers/python_int_dynamic_any.py`).
 
 ## Rejected rather than miscompiled
 

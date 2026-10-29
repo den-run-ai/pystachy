@@ -69,6 +69,7 @@ PROGRAM = """
     inited guessed galias nts cnts ntdflts hasfrozen cvars typevars tvtuples tvdefaults tparams
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
+    idoff idfull idevent idsplit
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.
@@ -116,6 +117,7 @@ SCOPED = {
     "scanning": "properties whose setters scan_fields scans: a recursion guard",
     "resolving": "aliases that alias_ann expands: a cycle check, pushed and popped",
     "unaliased": "the node count of the annotation unalias expands: reset per expansion",
+    "convedge": "the block convert_at's conversion ends in: set there, read right after as the phi's edge",
 }
 # those of SCOPED that a nested compile wrongly sees or changes today, each with its reproducer: a
 # fix saves and resets each as Frame and gen_enter do, and moves it out of SCOPED (as #822's

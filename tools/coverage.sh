@@ -21,8 +21,8 @@
 # suite and module) and badge.json (both, as a shields.io endpoint badge).
 # usage: tools/coverage.sh [FILE...]   env: PY (default python3), which has coverage.py
 #        (pip install -r tools/requirements-dev.txt); COVERAGE_SUITES, the suites to run (default
-#        "corpus ffi cache unit ir", or corpus alone for FILEs); COVERAGE_SHARD=I/N, the corpus cases I,
-#        I + N, I + 2N... alone, as tests/verify.sh's shards are (tools/shard_cases.sh);
+#        "corpus ffi cache unit ir", or corpus alone for FILEs); COVERAGE_SHARD=I/N, shard I of N of the
+#        corpus alone, as tests/verify.sh shards it (tools/shard_cases.sh);
 #        COVERAGE_REPORT=0, no report (CI measures the parts in jobs of their own, then combines them);
 #        COVERAGE_BASE=REF, the summary also lists the code changed since REF's merge base with HEAD
 #        that no suite ran

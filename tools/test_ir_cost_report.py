@@ -71,6 +71,38 @@ attributes #0 = { noinline allocsize(0) }
             with self.subTest(data=data), self.assertRaises(ValueError):
                 report.inventory(data)
 
+    def test_named_return_types_do_not_hide_explicit_signature_callees(self):
+        # LLVM 18 llvm-as/llvm-dis preserves these variadic signatures. The
+        # first %Result (...) is a function type, not an indirect callee.
+        result = report.inventory(b'''%Result = type { i64 }
+%"Result;quoted" = type { i64 }
+declare %Result @pys_probe(i32, ...)
+declare %"Result;quoted" @"pys_probe;quoted"(i32, ...)
+define void @test(ptr %fp, ptr %"fp;quoted") {
+  %a = call %Result (i32, ...) @pys_probe(i32 1)
+  %b = call %Result (i32, ...) %fp(i32 2)
+  %c = call %"Result;quoted" (i32, ...) @"pys_probe;quoted"(i32 3)
+  %d = call %"Result;quoted" (i32, ...) %"fp;quoted"(i32 4)
+  ret void
+}
+''')
+        self.assertEqual(result['calls'], {'<indirect>': 2, '@pys_probe': 1, '@pys_probe;quoted': 1})
+        self.assertEqual(result['functions']['test']['unresolved_lines'], [])
+
+    def test_explicit_signatures_preserve_unresolved_callees(self):
+        # These are valid IR call operands even though executing null/poison
+        # calls would be undefined. This inventory never executes the module.
+        for callee in ('null', 'undef', 'poison', 'inttoptr (i64 1 to ptr)',
+                       'asm sideeffect "call @fake()", "=r,=r,r"'):
+            with self.subTest(callee=callee):
+                data = ('%Result = type { i64, i64 }\n'
+                        'define void @test() {\n'
+                        f'  %r = call %Result (i32) {callee}(i32 1)\n'
+                        '  ret void\n}\n').encode()
+                result = report.inventory(data)
+                self.assertEqual(result['calls'], {'<unresolved>': 1})
+                self.assertEqual(result['functions']['test']['unresolved_lines'], [3])
+
     def test_cli_preserves_stage_identity_and_does_not_overwrite_input(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / 'raw.ll'

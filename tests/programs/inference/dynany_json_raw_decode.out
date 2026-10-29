@@ -1,0 +1,13 @@
+True
+{"items": [1, true, null, {"v": "\ud83d\ude00"}, {"later": [false, 2.5]}]} 40 tail True
+[{"a": [3]}] 11 True
+{"flag": false, "list": ["new"]}
+[1, true] 9
+"x" 4 'tail'
+["\ud800"] 5 ' tail'
+0 1 '1'
+error Expecting value 0 1 1
+error Expecting property name enclosed in double quotes 3 1 4
+error Expecting value 3 1 4
+error idx cannot be negative
+[exit 0]

@@ -17,8 +17,8 @@
 # logs go to build/variants/ (so a checkout runs one at a time). Fails when a variant fails a test.
 # usage: tools/variants.sh [FILE...]   (as tests/run.sh takes them; default: every case)
 #   env: COMPILER (default ./pystachy), MODES (default "jit aot"), VARIANTS (default: all, in the
-#        order above), VARIANTS_SHARD=I/N (the corpus cases I, I + N, I + 2N... alone, as
-#        tests/verify.sh's shards are: tools/shard_cases.sh), PY (default python3, to read OPTS)
+#        order above), VARIANTS_SHARD=I/N (shard I of N of the corpus alone, as
+#        tests/verify.sh shards it: tools/shard_cases.sh), PY (default python3, to read OPTS)
 cd "$(dirname "$0")/.." || exit 1
 ROOT=$(pwd)
 PYS=${COMPILER:-./pystachy}

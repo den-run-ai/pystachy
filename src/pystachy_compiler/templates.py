@@ -1,11 +1,13 @@
 """Templates component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
-from src.pystachy_compiler.diagnostics import shown, where
-from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties
+from src.pystachy_compiler.diagnostics import int_lists, shown, where
+from src.pystachy_compiler.dynamic import comparison_aliases, comparison_properties, comparison_rebinds, comparison_reserve_fields
+from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.names import retoken, short
 from src.pystachy_compiler.specs import (
+    BIG,
     SPECIAL,
     SPECSHOW,
     TEMPLATE_BYTES,
@@ -44,6 +46,13 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     init = t.methods["__init__"]
     # (an annotated parameter's argument has its type, as call_fn coerces it)
     ts = [init.ptypes[i + 1] if i + 1 < len(init.ptypes) and init.ptypes[i + 1] != "" else ts[i] for i in range(len(ts))]
+    if int_lists() and c in self.tparams:
+        # (in a program where a module opts in to promoting ints, and none to dynamic Any, whose
+        # values cannot hold them, an int that binds a type variable of generic class c, by an
+        # argument or by an annotation in any module, is a promoting int: its specializations for
+        # ints are one class, keyed and laid out so, bigints.py)
+        ts = [promoted(ts[i]) if i + 1 >= len(init.ptypes) or init.ptypes[i + 1] == "" else ts[i] for i in range(len(ts))]
+        given = {x: promoted(given[x]) for x in given}
     doing = c + ("[" if named else "(") + ",".join(ts) + ")"
     doing += "".join([f";{x}={given[x]}" for x in self.tparams.get(c, []) if x in given])
     doing += "".join([f";{x}={lit_key(lits[x])}" for x in init.params if x in lits])  # (literal_class)
@@ -86,6 +95,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     line = self.line
     if c in self.tparams:
         s.tvars = self.bind(c, ts, given)  # (before its fields, which its type variables may type)
+        if int_lists():
+            s.tvars = {x: promoted(s.tvars[x]) for x in s.tvars}  # (as above: an int that an item binds, list[T] of a list[int])
     if named:
         fi.ptypes = [name] + self.named_params(c, init.node)
     elif c in self.tparams:
@@ -101,6 +112,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     if c in self.cnts:
         self.nts[name] = True  # (namedtuple()'s, whose objects are NamedTuples)
     self.scan_fields(s, fi, init.node.kids[2].kids, {})
+    comparison_reserve_fields(self, s)  # late-created specialization, before layout
     if len(lits) > 0:
         s.lits = lits
         self.const_fields(s, init)
@@ -124,7 +136,7 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     self.template_instances += 1
     t.specs[key] = name
     self.specdone[doing] = name
-    shown_ts = [typestr(s.ftypes[x]) for x in s.fields if x not in t.ftypes]
+    shown_ts = [typestr(s.ftypes[x]) for x in s.fields if x not in t.ftypes and x not in s.fextra]
     if c in self.tparams:
         shown_ts = []  # (a generic class's: its type variables', C[int, str])
         for x in self.tparams[c]:
@@ -169,6 +181,11 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
     self.selfcls = sel
     self.making.pop()
     return name
+
+def promoted(t: str) -> str:
+    # what a type variable bound to t is, in a program whose containers hold promoting ints
+    # (int_lists): a promoting int for an int (specialize), else t
+    return BIG if t == "int" else t
 
 def gen_names_tv(self, a: Node, tvs: list[str]) -> bool:
     # does annotation a (also as a string) mention one of type variables tvs
@@ -605,11 +622,26 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     # A lambda's Callable result type, a generic class's specialization, types the C(...) it
     # returns (see call_fn): lambda: defaultdict(int) as a defaultdict[str, int]'s factory.
     body = f.orig.kids[2] if f.pending else f.node.kids[2]
+    yield_context = not resultsoft and fresh_yield_context(f, want)
     context = f.ret == "" and "?" not in want and ("list[" in want or "dict[" in want or "set[" in want or "tuple[" in want)
     context = context or (f.ret == "" and f.node.s == "<lambda>" and unopt(want) in self.classes and self.classes[unopt(want)].origin in self.tparams)
     locals = local_result(body.kids, f.params) if context and not resultsoft else []
-    want = want if context and (contextual_result(body) or len(locals) > 0) else ""
-    key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "")
+    want = want if yield_context or (context and (contextual_result(body) or len(locals) > 0)) else ""
+    cmpops = cmpfields != "" or self.curfn.cmpops
+    cmptypes = dict(self.curfn.cmptypes)
+    if cmpfields != "":
+        actual = self.classes[ts[1]]
+        canonical = self.classes[cmpfields]
+        readable = list(canonical.ftypes) + [a for a in canonical.methods if canonical.methods[a].prop]
+        if any(a not in actual.ftypes and a not in actual.methods for a in readable):
+            cmptypes[ts[1]] = cmpfields
+    readkey = "".join(" missing " + a + "=" + cmptypes[a] for a in sorted(cmptypes))
+    readkey += " runtime-errors" if cmpops else ""
+    # Length hints validate the method's result at runtime, after its effects.
+    # Keep that specialization separate from typed len(), which requires int.
+    raw_hint = f.name == "__len__" and self.curfn.name == "dyn.lengthhint" and self.xtry.startswith("protocol-hint:")
+    readkey += " length-hint" if raw_hint else ""
+    key = ",".join(ts) + (" " + ",".join(nnp) if len(nnp) > 0 else "") + readkey
     if cmpfields != "":
         key += " fields " + cmpfields  # never reuse the ordinary typed call's specialization
     if key in f.insts and f.insts[key].ll in self.building:
@@ -617,7 +649,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
         # inference cycle, including the diagnostic for an open empty result.
         want = ""
     mode = " ~ " if resultsoft else " -> "
-    size = len(ts) + len(nnp) + len(want) + (len(mode) if want != "" else 0) + (len(cmpfields) + 8 if cmpfields != "" else 0)
+    size = len(ts) + len(nnp) + len(want) + len(readkey) + (len(mode) if want != "" else 0) + (len(cmpfields) + 8 if cmpfields != "" else 0)
     for t in ts:
         size += len(t)
     for p in nnp:
@@ -681,18 +713,24 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.dtypes = f.dtypes
     g.uflags = f.uflags
     g.mod = f.mod
-    g.ret = f.ret
+    g.home = f.home
+    g.ret = want if yield_context else f.ret
     g.infer = f.ret == ""
-    g.rctx = want
+    g.rctx = "" if yield_context else want
     g.rsoft = resultsoft and want != ""
     g.rlocals = locals if want != "" else []
     g.inst = True
     g.cmpfields = cmpfields
+    if cmpfields != "" and ts[0] != ts[1] and comparison_rebinds(f.node.kids[2], f.params[0], f.params[1]):
+        g.cmprebind = self.union_type([ts[0], ts[1]])
+    g.cmptypes = cmptypes
+    g.cmpops = cmpops
     if cmpfields != "":
         g.node = clone(f.node)
         actual = self.classes[ts[1]]
         missing = {a: self.classes[cmpfields].ftypes[a] for a in self.classes[cmpfields].ftypes if a not in actual.ftypes and a not in actual.methods}
-        comparison_missing(g.node.kids[2], comparison_aliases(g.node.kids[2], f.params[1]), missing)
+        if g.cmprebind == "":
+            comparison_missing(g.node.kids[2], comparison_aliases(g.node.kids[2], f.params[1]), missing)
     g.ikey = key
     g.npos = f.npos
     g.posonly = f.posonly
@@ -716,8 +754,8 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     self.lenient = False
     self.function(g, g.node.kids[2].kids)
     self.restore(fr)
-    ret = SPECIAL[f.name][SPECIAL[f.name].find(":") + 1 :] if f.cls != "" and f.name in SPECIAL else ""
-    if ret != "" and g.ret != ret and not (f.name == "__len__" and g.ret == "bool"):
+    ret = SPECIAL[f.name][SPECIAL[f.name].find(":") + 1 :] if f.cls != "" and f.name in SPECIAL and not raw_hint else ""
+    if ret != "" and g.ret != ret and not ((f.name == "__len__" or f.name == "__hash__") and g.ret == "bool") and not (ret == "int" and g.ret == BIG):
         self.err(f"{f.name} must return {ret}, and {shown(f.cls)}.{f.name}() returns {typestr(g.ret)}")
     self.making.pop()
     self.template_bytes -= size

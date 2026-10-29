@@ -1,11 +1,13 @@
 """Utils component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.diagnostics import dynamic_program, fail, where
-from src.pystachy_compiler.ir import FnInfo
+from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fail, where
+from src.pystachy_compiler.ir import ClassInfo, Closure, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
+    BIG,
+    BIGOPT,
     CODECS,
     FSETMETHODS,
     FX,
@@ -15,12 +17,24 @@ from src.pystachy_compiler.specs import (
     INERT,
     METHODS,
     OPTS,
+    OPAQUE,
     RUNTIME,
     SETMETHODS,
     SPECIAL,
     SPECSHOW,
 )
 from src.pystachy_compiler.syntax import Node
+
+
+def lib_source(line: int, libdir: str, filename: str) -> bool:
+    # Private library behavior belongs to the shipped file, not a user module
+    # with the same import name. Loader strips a leading ./ from recorded paths.
+    path = libdir + "/" + filename
+    return libdir != "" and FILES[line // LINES] == (path[2:] if path.startswith("./") else path)
+
+
+def opaque_class(ci: ClassInfo, libdir: str) -> bool:
+    return ci.mod in OPAQUE or (ci.mod == "mpz" and lib_source(ci.node.line, libdir, "mpz.py"))
 
 
 def codec(e: str) -> int:
@@ -65,6 +79,8 @@ def lt(t: str) -> str:
         return "void"
     if t == "%slot":
         return "i64"  # (the IR's pseudo-type of a value in an 8-byte container slot)
+    if t == "int+":
+        return "{i64, ptr}"  # (a promoting int: its 64-bit value, and its Mpz or null, bigints.py)
     return "ptr"
 
 
@@ -184,6 +200,8 @@ def tname(t: str) -> str:
     # the CPython name of a type, for error messages
     if t == "None":
         return "NoneType"
+    if t == "int+":
+        return "int"
     if t == "file":
         return "TextIOWrapper"
     if is_vtuple(t):
@@ -386,6 +404,24 @@ def is_tuple(t: str) -> bool:
     return t.startswith("tuple[")
 
 
+def tslots(t: str) -> int:
+    # the 8-byte slots of fixed tuple type t: one per item, then, where it has promoting int items
+    # (bigints.py), one more per item up to its last such: item i's Mpz word is slot len + i
+    # (hislot), whatever the other items are, so tuple types that differ in which items promote
+    # agree on where it is, and the first slots are the tuple of their 64-bit ints
+    ts = targs(t)
+    last = -1
+    for i in range(len(ts)):
+        if ts[i] == BIG:
+            last = i
+    return len(ts) + last + 1
+
+
+def hislot(t: str, i: int) -> int:
+    # the slot of item i's Mpz word, for promoting int item i of fixed tuple type t (tslots)
+    return len(targs(t)) + i
+
+
 def is_gen(t: str) -> bool:
     # gen[Y]: a generator object that yields Y, the handle of an LLVM coroutine (a generator
     # function's call makes one): generators of every function that yields Y share the type
@@ -408,8 +444,9 @@ def unopt(t: str) -> str:
 
 
 def is_sopt(t: str) -> bool:
-    # int, float or bool | None: a pointer to an immutable box of the value (runtime.c's pys_box)
-    return t == "opt[int]" or t == "opt[float]" or t == "opt[bool]"
+    # int, float or bool | None: a pointer to an immutable box of the value (runtime.c's pys_box),
+    # also of a promoting int (BIGOPT: bigints.py)
+    return t == "opt[int]" or t == "opt[float]" or t == "opt[bool]" or t == BIGOPT
 
 
 def pure_arg(e: Node) -> bool:
@@ -541,7 +578,7 @@ def typestr(t: str) -> str:
     # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
     # opt[T] is T | None, a builtin exception BaseException, a class its own name, a function value
     # the function (fn_shown)
-    t = recnames(t.replace("[?,?]", "").replace("[?]", ""))
+    t = recnames(t.replace("[?,?]", "").replace("[?]", "").replace("int+", "int"))
     while "vtuple[" in t:
         a = t.find("vtuple[")
         b = a + 7
@@ -611,7 +648,12 @@ def identity_abi(f: FnInfo) -> bool:
 def numeric_identity(t: str) -> bool:
     # Storage which may hold an int/float object's identity, including joined locals.
     u = unopt(t)
-    return u in ["int", "float"] or (is_union(u) and all(m in ["int", "float", "bool", "str"] for m in umembers(u)) and any(m in ["int", "float"] for m in umembers(u)))
+    return u in ["int", BIG, "float"] or (is_union(u) and all(m in ["int", "float", "bool", "str"] for m in umembers(u)) and any(m in ["int", "float"] for m in umembers(u)))
+
+
+def closure_default_slots(c: Closure) -> int:
+    # Closure defaults are values, including the two words of a promoting integer.
+    return sum(2 if c.f.dtypes[j] == BIG else 1 for j in c.defs)
 
 
 def folded_int(op: str, a: str, b: str) -> str:
@@ -920,8 +962,7 @@ def stack_keyed(f: FnInfo) -> bool:
 
 def clone(n: Node) -> Node:
     # a copy of tree n (a class method's def, compiled again for a class that inherits it)
-    c = Node(n.kind, n.s, n.line)
-    c.kids = [clone(k) for k in n.kids]
+    c = Node(n.kind, n.s, n.line, [clone(k) for k in n.kids])
     c.chk = n.chk
     c.mchk = n.mchk
     c.depth = n.depth

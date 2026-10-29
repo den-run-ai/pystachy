@@ -46,6 +46,9 @@ class Mod:
         # them are types where X is types.GenericAlias (Loader.generic_class)
         self.cgetitem: dict[str, Node] = {}
         self.deftps: list[str] = []  # the type parameters of its generic defs, as Loader.qren names them: TypeVars
+        # the user modules its imports (also its functions') initialize, packages included
+        # (Gen.identity_modules: the modules whose code tracks numeric identity)
+        self.deps: dict[str, bool] = {}
 
 
 # Python's builtin names: in an imported module, a name it does not bind is one of these or an

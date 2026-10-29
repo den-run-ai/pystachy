@@ -1,0 +1,21 @@
+comparison
+forward
+helper 2
+False
+True
+comparison
+forward
+helper 2
+False
+True
+comparison
+forward
+helper 2
+True
+True
+comparison
+forward
+helper 2
+0
+True
+[exit 0]

@@ -8,6 +8,7 @@ from src.pystachy_compiler.syntax import (
     BINOPS,
     CMPOPS,
     LAMBDAS,
+    NOKIDS,
     Node,
     STARTS,
     as_target,
@@ -69,6 +70,7 @@ class Parser:
         self.toks = toks
         self.p = 0
         self.early = True  # only a docstring and from __future__ imports so far
+        self.exact_ints = False  # a literal past 64 bits keeps its digits (a module whose ints promote)
         self.loops = 0  # loops around the statement being parsed, in its function or class
         self.infn = False  # inside a def
         self.nest = 0  # the parser's own recursion: nested expressions and elif branches
@@ -889,7 +891,7 @@ class Parser:
                     return True
                 stores.append(nm)
             return False
-        for q in p.kids if k == "pseq" else p.kids[:0]:
+        for q in p.kids if k == "pseq" else NOKIDS:
             if self.pcheck(q, True, stores):
                 return True
         return False
@@ -1789,7 +1791,7 @@ class Parser:
         if k == "id":
             return mk("name", t.text, line, [])
         if k == "int" or k == "float" or k == "complex":
-            return mk(k, t.text, line, [])
+            return mk(k, "0" + t.big if self.exact_ints and t.big != "" else t.text, line, [])
         if k == "...":
             return mk("ellipsis", "", line, [])
         if k == "await":
@@ -2070,6 +2072,7 @@ class Parser:
         if cut > 0 and toks[cut - 1].kind == ")":
             toks = toks[: cut - 1] + toks[cut:]
         sub = Parser(toks)
+        sub.exact_ints = self.exact_ints
         sub.nest = self.nest
         sub.extra = self.extra + 32  # (33 levels in CPython's parser, one of them the deeper() of the expression)
         sub.outer = self.outer + [self.toks]

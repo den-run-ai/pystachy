@@ -1,0 +1,35 @@
+source iter
+source len
+next 1
+next 2
+list ['key', 'value']
+source iter
+iterator iter
+iterator len
+next 1
+next 2
+join key:value
+source iter
+iterator iter
+iterator len
+next 1
+next 2
+pairs {'key': 'value'}
+no length
+yield
+list without length ['ok']
+yield
+join without source length ok
+no length
+yield
+extend without length ['ok']
+huge length
+bounded length hint
+huge length
+bounded extend hint []
+invalid length result
+[1]
+dynamic length
+hint index
+['x']
+[exit 0]

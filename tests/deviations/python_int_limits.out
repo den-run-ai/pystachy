@@ -1,0 +1,22 @@
+tuple of a list: Python int too large to convert to C long
+random.shuffle(): Python int too large to convert to C long
+a Callable's 64-bit function: Python int too large to convert to C long
+a Callable's tuple: Python int too large to convert to C long
+get() of a tuple: Python int too large to convert to C long
+int | None in a list: Python int too large to convert to C long
+int | None in a tuple: Python int too large to convert to C long
+int and float in a list display: Python int too large to convert to C long
+send: Python int too large to convert to C long
+bool join: Python int too large to convert to C long
+range: Python int too large to convert to C long
+sum: integer result does not fit in 64 bits
+in: Python int too large to convert to C long
+True
+NamedTuple: Python int too large to convert to C long
+tuple identity: True False
+tuple identity in a list of keys: True False
+tuple identity in a dict's items: False False
+tuple identity in a dict's values: True False
+tuple identity in a set: True False True
+[1, 2, 9223372036854775807] False False [0] 2.305843009213694e+18 0x7fffffffffffffff 63
+[exit 0]

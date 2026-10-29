@@ -1,0 +1,21 @@
+same
+values
+right items
+left items
+right items
+cleanup
+False
+[] [] True
+same
+values
+right items
+cleanup
+getter first
+same
+values
+cleanup
+'Missing' object has no attribute 'items'
+values
+right items
+True
+[exit 0]

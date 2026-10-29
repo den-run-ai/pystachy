@@ -1,0 +1,4 @@
+exact arithmetic vectors 24 operations 192
+mixed right-int and unary operations passed
+mixed right-bool operations passed
+[exit 0]

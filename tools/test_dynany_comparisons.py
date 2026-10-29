@@ -1,4 +1,5 @@
 """Guard concrete comparison adapters and their whole-program restart budget."""
+import io
 import sys
 import unittest
 from pathlib import Path
@@ -7,8 +8,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.pystachy_compiler import driver  # noqa: E402
-from src.pystachy_compiler.dynamic import comparison_discards_operand, comparison_equalities, comparison_fields, comparison_layout, comparison_properties, comparison_reads  # noqa: E402
+from src.pystachy_compiler import driver, dynamic  # noqa: E402
+from src.pystachy_compiler.dynamic import comparison_discards_operand, comparison_equalities, comparison_invalid, comparison_fields, comparison_layout, comparison_properties, comparison_reads, comparison_record_write, comparison_storage  # noqa: E402
 from src.pystachy_compiler.ir import ClassInfo, FnInfo  # noqa: E402
 from src.pystachy_compiler.lexer import Lexer  # noqa: E402
 from src.pystachy_compiler.parser import Parser  # noqa: E402
@@ -36,6 +37,82 @@ class ConcreteComparisonTests(unittest.TestCase):
         with patch.object(driver, "Gen", generator):
             ir = driver.compile_program("concrete_comparison_probe.py", source, [str(ROOT / "lib")], "")
         return ir, len(generators), generators[-1]
+
+    def test_missing_write_storage_has_bounded_restarts_and_assignment_flags(self):
+        counts = []
+        for count in [1, 20, 40]:
+            result = self.compile(count, body="other.items = self.items\nreturn other.items is self.items", fields="self.tag = 1")
+            counts.append(result[1])
+            self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+            for name in ["Peer"] + [f"Irrelevant{i}" for i in range(count)]:
+                ci = result[2].classes[name]
+                self.assertEqual(ci.ftypes["items"], "list[int]")
+                self.assertIn("items", ci.fextra)
+                self.assertIn("items", ci.fflag)
+                self.assertNotIn("items", ci.fsure)
+        self.assertEqual(len(set(counts)), 1)
+        self.assertLessEqual(max(counts), 3)
+
+    def test_reserved_base_fields_do_not_replace_descendant_storage(self):
+        source = ROOT / "tests/programs/inference/dynany_cmp_missing_write_hierarchy.py"
+        generators = []
+        original = driver.Gen
+
+        def generator():
+            value = original()
+            generators.append(value)
+            return value
+
+        with patch.object(driver, "Gen", generator):
+            driver.compile_program(str(source), source.read_text(), [str(ROOT / "lib")], "")
+        final = generators[-1]
+        base = final.classes["Root"]
+        child = final.classes["Child"]
+        self.assertEqual(base.ftypes["items"], "list[int]")
+        self.assertEqual(child.ftypes["items"], "list[str]")
+        self.assertIn("items", base.fextra)
+        self.assertNotIn("items", child.fextra)
+        self.assertNotEqual(base.fpos["items"], child.fpos["items"])
+        self.assertNotEqual(base.fbox["number"], child.fbox["number"])
+        self.assertIn(" Root.comparison.items", child.fields)
+
+    def test_template_missing_writes_share_original_layout_hints(self):
+        counts = []
+        for count in [1, 20, 40]:
+            extra = "class GenericPeer:\n    def __init__(self, value):\n        self.tag = str(value)\n"
+            for index in range(count):
+                # Calls of different types deduplicate their identical native
+                # layouts; field discovery must not add one retry per call.
+                argument = repr(str(index)) if index % 2 else str(index)
+                extra += f"peer{index}: Any = GenericPeer({argument})\n"
+            result = self.compile(0, body="other.items = self.items\nreturn other.items is self.items", extra=extra)
+            counts.append(result[1])
+            peers = [ci for ci in result[2].classes.values() if ci.origin == "GenericPeer"]
+            self.assertEqual(len(peers), 1)
+            self.assertEqual(peers[0].ftypes["items"], "list[int]")
+            self.assertIn("items", peers[0].fflag)
+        self.assertEqual(len(set(counts)), 1)
+        self.assertLessEqual(max(counts), 3)
+
+    def test_new_comparison_fields_finish_after_ordinary_join_budget(self):
+        body = "\n".join(f"other.field{i} = {i}" for i in range(12)) + "\nreturn True"
+        result = self.compile(0, body=body, fields="self.tag = 1", own_fields="self.tag = 1")
+        for i in range(12):
+            name = f"field{i}"
+            self.assertEqual(result[2].classes["Peer"].ftypes[name], "int")
+            self.assertIn(name, result[2].classes["Peer"].fflag)
+        self.assertLessEqual(result[1], 16)
+
+    def test_incompatible_comparison_storage_hints_are_terminal(self):
+        result = self.compile(0, body="other.items = self.items\nreturn True", fields="self.tag = 1")
+        compiler = result[2]
+        compiler.hints["cmpfield:Peer.items"] = "!incompatible storage"
+        compiler.newhints.clear()
+        comparison_storage(compiler, "Peer")
+        self.assertNotIn("cmpfield:Peer.items", compiler.newhints)
+        compiler.hints["cmpwrite:items"] = "!incompatible storage"
+        comparison_record_write(compiler, "items", "list[int]")
+        self.assertNotIn("cmpwrite:items", compiler.newhints)
 
     def test_irrelevant_classes_do_not_add_restarts(self):
         small = self.compile(0)
@@ -151,7 +228,7 @@ class ConcreteComparisonTests(unittest.TestCase):
             # The preexisting adapter still accepts the matching list[int].
             self.assertTrue(result[2].dyn_supports("Peer", "cmp.Strict.__eq__", "__eq__", 1))
             for index in range(count):
-                self.assertFalse(result[2].dyn_supports(f"Incompatible{index}", "cmp.Strict.__eq__", "__eq__", 1))
+                self.assertTrue(result[2].dyn_supports(f"Incompatible{index}", "cmp.Strict.__eq__", "__eq__", 1))
         self.assertEqual(results[0], results[1])
         self.assertLessEqual(results[1], 3)
 
@@ -197,8 +274,7 @@ class ConcreteComparisonTests(unittest.TestCase):
     def test_rebinding_and_operand_escapes_are_not_adapted(self):
         bodies = ["other = self\nreturn self.items == other.items",
                   "alias = other\nalias = self\nreturn self.items == alias.items",
-                  "alias = other\nprint(alias)\nreturn self.items == alias.items",
-                  "def nested(other):\n    return other.items\nreturn self.items == nested(other)"]
+                  "alias = other\nprint(alias)\nreturn self.items == alias.items"]
         for body in bodies:
             with self.subTest(body=body):
                 result = self.compile(0, body=body)
@@ -227,6 +303,35 @@ class ConcreteComparisonTests(unittest.TestCase):
         self.assertTrue(result[2].dyn_supports("PropertyPeer", "cmp.Strict.__eq__", "__eq__", 1))
         self.assertTrue("call ptr @m.PropertyPeer.items(" in result[0])
         self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+
+    def test_inferred_property_bodies_keep_restart_counts_bounded(self):
+        counts = []
+        for count in [1, 20]:
+            extra = ""
+            for index in range(count):
+                extra += (f"class GetterPeer{index}:\n"
+                          "    def __init__(self):\n        self.saved = ['a']\n"
+                          "    @property\n    def items(self):\n"
+                          "        print('getter effect')\n"
+                          "        values = self.saved + ['b']\n"
+                          "        return values\n"
+                          f"getter_peer{index}: Any = GetterPeer{index}()\n")
+            result = self.compile(0, extra=extra)
+            counts.append(result[1])
+            self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+            for index in range(count):
+                self.assertTrue(result[2].dyn_supports(f"GetterPeer{index}", "cmp.Strict.__eq__", "__eq__", 1))
+        self.assertEqual(counts[0], counts[1])
+        self.assertLessEqual(counts[1], 3)
+
+    def test_recursive_getter_does_not_inherit_an_implicit_none_return(self):
+        source = ("# pystachy: dynamic-any\nclass Recursive:\n"
+                  "    @property\n    def value(self):\n"
+                  "        return self.value\nprint(Recursive().value)\n")
+        error = io.StringIO()
+        with patch.object(sys, "stderr", error), self.assertRaises(SystemExit):
+            driver.compile_program("recursive_getter.py", source, [str(ROOT / "lib")], "")
+        self.assertIn("cannot infer what value() returns", error.getvalue())
 
     def test_extended_shapes_keep_restart_counts_bounded(self):
         cases = [
@@ -284,6 +389,32 @@ class ConcreteComparisonTests(unittest.TestCase):
                 self.assertTrue(generators[-1].dyn_supports(f"NestedPeer{index}", "cmp.Nested.__eq__", "__eq__", 1))
         self.assertEqual(counts[0], counts[1])
         self.assertLessEqual(counts[1], 5)  # one generic decline per rich method
+
+    def test_nested_callback_containers_keep_restarts_bounded(self):
+        leaves = ("class Leaf:\n    def __eq__(self, other: Any) -> bool:\n        return True\n"
+                  "class Key:\n    def __hash__(self) -> int:\n        return 1\n"
+                  "    def __eq__(self, other: Any) -> bool:\n        return True\n")
+        cases = [("[[Leaf()]]", "[['peer']]"),
+                 ("{'key': [Leaf()]}", "{'key': ['peer']}"),
+                 ("{(1, 'key'): [Leaf()]}", "{(True, 'key'): ['peer']}"),
+                 ("{Key(): [Leaf()]}", "{Key(): ['peer']}"),
+                 ("{Key(): [Leaf()]}", "{1: ['peer']}"),
+                 ("([Leaf()],)", "(['peer'],)")]
+        for own, peer in cases:
+            with self.subTest(own=own, peer=peer):
+                counts = []
+                for count in [1, 20]:
+                    extra = leaves
+                    for index in range(count):
+                        extra += (f"class NestedPeer{index}:\n    def __init__(self):\n        self.items = {peer}\n"
+                                  f"nested_peer{index}: Any = NestedPeer{index}()\n")
+                    result = self.compile(0, fields="self.items = " + peer, own_fields="self.items = " + own, extra=extra)
+                    counts.append(result[1])
+                    self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+                    for index in range(count):
+                        self.assertTrue(result[2].dyn_supports(f"NestedPeer{index}", "cmp.Strict.__eq__", "__eq__", 1))
+                self.assertEqual(counts[0], counts[1])
+                self.assertLessEqual(counts[1], 3)
 
     def test_missing_reads_follow_proven_aliases_and_closures(self):
         bodies = ["alias = other\nreturn self.items == alias.items",
@@ -355,6 +486,157 @@ class ConcreteComparisonTests(unittest.TestCase):
                         self.assertFalse(result[2].dyn_supports(f"Incompatible{index}", "cmp.Strict.__eq__", "__eq__", 1))
                 self.assertEqual(results[0], results[1])
                 self.assertLessEqual(results[1], 3)
+
+    def test_helper_projection_and_observed_rebinding_keep_restarts_bounded(self):
+        for fixture in ["dynany_cmp_helper_escapes", "dynany_cmp_observed_rebinding", "dynany_cmp_helper_errors", "dynany_cmp_control_rebinding", "dynany_cmp_rebinding_getters", "dynany_cmp_rebinding_stores"]:
+            counts = []
+            for count in [1, 20]:
+                source = (ROOT / f"tests/programs/inference/{fixture}.py").read_text()
+                for index in range(count):
+                    fields = "        self.count = 0\n" if fixture == "dynany_cmp_rebinding_stores" else ""
+                    source += (f"class Compatible{index}:\n    def __init__(self):\n        self.items = ['x']\n" + fields +
+                               f"compatible{index}: Any = Compatible{index}()\n")
+                generators = []
+                original = driver.Gen
+
+                def generator(original=original, generators=generators):
+                    value = original()
+                    generators.append(value)
+                    return value
+
+                with patch.object(driver, "Gen", generator):
+                    driver.compile_program(fixture + ".py", source, [str(ROOT / "lib")], "")
+                counts.append(len(generators))
+                final = generators[-1]
+                self.assertFalse(any(":concrete:" in key for key in final.xnot))
+                for index in range(count):
+                    self.assertTrue(final.dyn_supports(f"Compatible{index}", "cmp.Left.__eq__", "__eq__", 1))
+            self.assertEqual(counts[0], counts[1])
+            self.assertLessEqual(counts[1], 3)
+
+    def test_local_and_recursive_helpers_keep_restarts_bounded(self):
+        for fixture in ["dynany_cmp_local_helpers", "dynany_cmp_recursive_helpers"]:
+            counts = []
+            for count in [1, 20]:
+                source = (ROOT / f"tests/programs/inference/{fixture}.py").read_text()
+                for index in range(count):
+                    source += (f"class Extra{index}:\n    def __init__(self):\n        self.items = ['x']\n"
+                               f"extra{index}: Any = Extra{index}()\n")
+                generators = []
+                original = driver.Gen
+
+                def generator(original=original, generators=generators):
+                    value = original()
+                    generators.append(value)
+                    return value
+
+                with patch.object(driver, "Gen", generator):
+                    driver.compile_program(fixture + ".py", source, [str(ROOT / "lib")], "")
+                counts.append(len(generators))
+                final = generators[-1]
+                self.assertFalse(any(":concrete:" in key for key in final.xnot))
+                for index in range(count):
+                    self.assertTrue(final.dyn_supports(f"Extra{index}", "cmp.Left.__eq__", "__eq__", 1))
+            self.assertEqual(counts[0], counts[1])
+            self.assertLessEqual(counts[1], 3)
+
+    def test_repeated_helper_states_share_their_projection(self):
+        # Each helper calls the one before it twice, in a condition and in its return: one
+        # binding state at both calls, whose body the proof view projects once and shares,
+        # so projection work grows linearly with the depth, not exponentially. The view still
+        # holds a body at each call, 2 ** (depth + 1) - 1 of them: past PROOF_BODIES (at
+        # depth 12) the comparison is unsupported.
+        def source(depth):
+            text = "# pystachy: dynamic-any\nfrom typing import Any\ndef h0(o):\n    return o.items\n"
+            for level in range(1, depth + 1):
+                text += f"def h{level}(o):\n    if len(h{level - 1}(o)) > {level}:\n        print({level})\n    return h{level - 1}(o)\n"
+            return text + ("class Left:\n    def __init__(self):\n        self.items = [3]\n"
+                           f"    def __eq__(self, other):\n        return h{depth}(other) == self.items\n"
+                           "class Right:\n    def __init__(self):\n        self.items = ['3']\n"
+                           "x: Any = Left()\ny: Any = Right()\nprint(x == y)\n")
+
+        projections = {}
+        for depth in [4, 8, 12]:
+            calls = [0]
+            generators = []
+            original = driver.Gen
+            projection = dynamic.comparison_projection
+
+            def generator(original=original, generators=generators):
+                value = original()
+                generators.append(value)
+                return value
+
+            def counted(*args, projection=projection, calls=calls):
+                calls[0] += 1
+                return projection(*args)
+
+            with patch.object(driver, "Gen", generator), patch.object(dynamic, "comparison_projection", counted):
+                driver.compile_program("shared_helpers_probe.py", source(depth), [str(ROOT / "lib")], "")
+            projections[depth] = calls[0]
+            final = generators[-1]
+            self.assertEqual("cmp.Left.__eq__" in final.dynfns and final.dyn_supports("Right", "cmp.Left.__eq__", "__eq__", 1), depth < 12)
+            self.assertLess(projections[depth], depth * projections[4])
+
+    def test_lexical_helpers_execute_invalid_argument_or_body_types(self):
+        bodies = [
+            "def bad(left, right, n: int) -> bool:\n    if n:\n        return bad(left, right, n - 1)\n    return left.items[0] + right.items[0] > 0\nreturn bad(self, other, 1)",
+            "def ignored(left, right, n: int) -> bool:\n    return left.items == right.items\nreturn ignored(self, other, self.items[0] + other.items[0])",
+            "def target(left, right) -> bool:\n    return left.items[0] + right.items[0] > 0\ndef captured() -> bool:\n    return target(self, other)\nreturn captured()",
+        ]
+        for body in bodies:
+            counts = []
+            for count in [1, 20]:
+                extra = ""
+                for index in range(count):
+                    extra += (f"class Extra{index}:\n    def __init__(self):\n        self.items = ['x']\n"
+                              f"extra{index}: Any = Extra{index}()\n")
+                result = self.compile(0, body=body, extra=extra)
+                counts.append(result[1])
+                self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+                for index in range(count):
+                    self.assertTrue("cmp.Strict.__eq__" in result[2].dynfns and result[2].dyn_supports(f"Extra{index}", "cmp.Strict.__eq__", "__eq__", 1))
+            self.assertEqual(counts[0], counts[1])
+            self.assertLessEqual(counts[1], 3)
+
+    def test_helper_result_origins_and_effects_keep_restarts_bounded(self):
+        bodies = [
+            ("def operand(value):\n    saved = value\n    return saved\npeer = operand(other)\nreturn self.items == peer.items", True),
+            ("def contents(value):\n    saved = value.items\n    return saved\nleft = contents(self)\nreturn left == contents(other)", True),
+            ("def contents(value):\n    saved = value.items\n    return saved\ntry:\n    left = contents(self)\n    right = contents(other)\n    return left == right\nfinally:\n    print('cleanup')", True),
+        ]
+        for consumer in ["return self.items == contents(other)", "print(len(contents(other)))\nreturn self.items == other.items", "contents(other).clear()\nreturn self.items == other.items"]:
+            bodies.append(("def contents(value):\n    value.items.append(1)\n    return value.items\n" + consumer, False))
+        for body, supported in bodies:
+            counts = []
+            for count in [1, 20]:
+                extra = ""
+                for index in range(count):
+                    extra += (f"class Extra{index}:\n    def __init__(self):\n        self.items = ['x']\n"
+                              f"extra{index}: Any = Extra{index}()\n")
+                result = self.compile(0, body=body, extra=extra)
+                counts.append(result[1])
+                self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+                for index in range(count):
+                    self.assertEqual(result[2].dyn_supports(f"Extra{index}", "cmp.Strict.__eq__", "__eq__", 1), supported)
+            self.assertEqual(counts[0], counts[1])
+            self.assertLessEqual(counts[1], 3)
+
+    def test_conditional_alias_projection_does_not_hide_unsupported_pairs(self):
+        body = ("if True:\n    peer = other\n"
+                "print(self.items == other.items)\n"
+                "return self.items[0] + peer.items[0] > 0")
+        results = []
+        for count in [1, 20]:
+            extra = ""
+            for index in range(count):
+                extra += (f"class Incompatible{index}:\n    def __init__(self):\n        self.items = ['x']\n"
+                          f"incompatible{index}: Any = Incompatible{index}()\n")
+            result = self.compile(0, body=body, extra=extra)
+            results.append(result[1])
+            self.assertFalse(any(":concrete:" in key for key in result[2].xnot))
+        self.assertEqual(results[0], results[1])
+        self.assertLessEqual(results[1], 3)
 
     def test_shadowed_capture_and_unknown_nodes_fail_closed(self):
         for source in ["def nested(other):\n    return other.items",
@@ -457,17 +739,72 @@ class ComparisonEqualitiesTests(unittest.TestCase):
         for source in ("return self.items == other.items", "return other.items != self.items",
                        "return self.items == other.items != self.items", "print('effect'); return self.items == other.items",
                        "return self.items == other.items and self.marker == other.marker",
-                       "return self.items == other.items[0]", "return self.items[0] != other.items[0]"):
+                       "return self.items == other.items[0]", "return self.items[0] != other.items[0]", "return self.items[0] + other.items[0] > 0"):
             with self.subTest(source=source):
                 self.assertTrue(self.supported(source))
 
     def test_other_uses_of_differing_field_are_rejected(self):
-        for source in ("return self.items[0] + other.items[0] > 0",
-                       "return self.items < other.items", "return self.callback == other.items",
+        for source in ("return self.items < other.items", "return self.callback == other.items",
                        "return callback() == other.items",
-                       "other.items = self.items", "return other.items", "print(other.items)"):
+                       "other.items = self.items", "return other.items", "print(other.items)",
+                       "return callback(other.items) + (self.items[0] + other.items[0]) > 0"):
             with self.subTest(source=source):
                 self.assertFalse(self.supported(source))
+
+
+class ComparisonInvalidOperationTests(unittest.TestCase):
+    def test_classified_errors_match_cpython(self):
+        import operator
+        values = [("None", None), ("bool", True), ("int", 2), ("float", 1.5), ("str", "x"),
+                  ("bytes", b"x"), ("list[int]", [1]), ("tuple[int]", (1,)),
+                  ("vtuple[int]", (1,)), ("dict[int,int]", {1: 1}), ("set[int]", {1}),
+                  ("frozenset[int]", frozenset({1}))]
+        binary = {"+": operator.add, "-": operator.sub, "*": operator.mul, "/": operator.truediv,
+                  "//": operator.floordiv, "%": operator.mod, "**": operator.pow,
+                  "<<": operator.lshift, ">>": operator.rshift, "&": operator.and_,
+                  "|": operator.or_, "^": operator.xor, "<": operator.lt, "<=": operator.le,
+                  ">": operator.gt, ">=": operator.ge, "[]": operator.getitem}
+        for op, call in binary.items():
+            for at, a in values:
+                for bt, b in values:
+                    message = comparison_invalid(op, at, bt)
+                    if message:
+                        with self.subTest(op=op, a=at, b=bt):
+                            with self.assertRaises(TypeError) as caught:
+                                call(a, b)
+                            self.assertEqual(str(caught.exception), message)
+        inplace = {"+": operator.iadd, "-": operator.isub, "*": operator.imul,
+                   "/": operator.itruediv, "//": operator.ifloordiv, "%": operator.imod,
+                   "**": operator.ipow, "<<": operator.ilshift, ">>": operator.irshift,
+                   "&": operator.iand, "|": operator.ior, "^": operator.ixor}
+        for op, call in inplace.items():
+            for at, a in values:
+                for bt, b in values:
+                    message = comparison_invalid(op, at, bt, op + "=")
+                    if message:
+                        with self.subTest(inplace=op, a=at, b=bt):
+                            with self.assertRaises(TypeError) as caught:
+                                call(a, b)
+                            self.assertEqual(str(caught.exception), message)
+        for op, call in [("+", operator.pos), ("-", operator.neg), ("~", operator.invert)]:
+            for at, a in values:
+                message = comparison_invalid("unary" + op, at)
+                if message:
+                    with self.subTest(op=op, a=at):
+                        with self.assertRaises(TypeError) as caught:
+                            call(a)
+                        self.assertEqual(str(caught.exception), message)
+
+    def test_valid_and_unknown_operations_are_never_reclassified(self):
+        for op, a, b in [("+", "list[int]", "list[str]"), ("+", "tuple[int]", "tuple[str]"),
+                         ("<", "list[int]", "list[str]"), ("|", "dict[int,int]", "dict[str,str]"),
+                         ("-", "set[int]", "frozenset[str]"), ("%", "str", "dict[str,int]"),
+                         ("+", "User", "int"), ("[]", "list[int]", "Indexable"),
+                         ("+", "opt[int]", "str"), ("+", "union[int,str]", "float")]:
+            with self.subTest(op=op, a=a, b=b):
+                self.assertEqual(comparison_invalid(op, a, b), "")
+        self.assertEqual(comparison_invalid("+", "list[int]", "tuple[int]", "+="), "")
+        self.assertEqual(comparison_invalid("|", "dict[int,int]", "list[tuple[int,int]]", "|="), "")
 
 
 class DisjointKeyTests(unittest.TestCase):

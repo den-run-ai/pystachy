@@ -112,8 +112,8 @@ infer a missing return annotation from their supported return statements, even w
 parameter is annotated or no arguments are taken. A function without a value return keeps
 its `None` result type; an explicit `-> None` still rejects returning a value.
 Unannotated `__str__` and `__repr__` use their required `str` result type and `__bool__`
-uses `bool`; their bodies are checked against those contracts. An unannotated `__len__`
-infers `int` or `bool`. Constructors keep their `None` result contract.
+uses `bool`; their bodies are checked against those contracts. An unannotated `__len__` or
+`__hash__` infers `int` or `bool`. Constructors keep their `None` result contract.
 There is no implicit `int` to `float`
 conversion in an assignment, argument or return: write `1.0`, or convert explicitly.
 Arithmetic and numeric list searches may mix integers and floats. Equality also compares
@@ -555,11 +555,15 @@ implemented.
 Reference unions cannot mix with scalar or container members or exception types.
 Callable fields, bound-method extraction and unpacked method arguments
 are unsupported. Use a typed local for an empty-container argument that needs an
-expected type. Narrow a local to a member before field access, identity/equality
-comparison, truth testing or formatting. Containers remain invariant, and no reference
-union is [inferred](#inferred-unions). This adds deterministic native execution,
-without profiles, an interpreter, runtime compilation or speculative assumptions;
-boxing and dispatch have costs, so no performance improvement is claimed.
+expected type. Field and property reads and stores dispatch on the member. A read of
+an attribute a member lacks raises CPython's `AttributeError`; a store that would add
+an attribute to a member's object is rejected, since a native layout has no instance
+dictionary. `None`, frozen dataclasses and classes with only `__slots__` raise CPython's
+errors. `is` and `is not` compare the objects themselves, `None` included. Narrow a local
+to a member before equality comparison, truth testing or formatting. Containers remain
+invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
+native execution, without profiles, an interpreter, runtime compilation or speculative
+assumptions; boxing and dispatch have costs, so no performance improvement is claimed.
 
 ## Function and method templates
 

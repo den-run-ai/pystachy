@@ -9,7 +9,7 @@
 #     the .o where it is missing (no runtime is built then), and replaced with its entry; a run that
 #     may not execute it (its file system mounted noexec since: here its mode) links the .o instead.
 #   - It is built again, and the new entry replaces the old, when runtime.py changes by an edit of the
-#     same size whose mtime is set back, when runtime.c changes, when a file it includes from ryu/
+#     same size whose mtime is set back, when runtime.c changes, when a file it includes from ryu/ or mpz/
 #     changes (the home's: the runs start in a directory whose ryu/d2s.c does not compile), when they
 #     change while the runtime is built (the edits set their mtimes back: the build is of the bytes it
 #     read, and the next run builds the new ones), when a tool changes and when the compiler changes
@@ -37,14 +37,15 @@ esac
 unset PYSTACHY_CFLAGS PYSTACHY_OPT PYSTACHY_PATH PYSTACHY_GC PYSTACHY_GC_STRESS PYSTACHY_IRFX PYSTACHY_CACHE
 T=${TMPDIR:-/tmp}/pystachy-cache.$$
 rm -rf "$T"
-mkdir -p "$T/home" "$T/bin" "$T/llvm" "$T/tmp" "$T/d1/pystachy" "$T/d1/clang" "$T/d2" "$T/d3" "$T/d4" "$T/ryu" || exit 1
+mkdir -p "$T/home" "$T/bin" "$T/llvm" "$T/tmp" "$T/d1/pystachy" "$T/d1/clang" "$T/d2" "$T/d3" "$T/d4" "$T/ryu" "$T/mpz" || exit 1
 trap 'rm -rf "$T"' EXIT
 H=$T/home
 B=$H/build
-cp runtime.c runtime.py pyembed.c pyext.c "$H/" && cp -R lib ryu "$H/" && cp "$from" "$T/bin/$me" && cp "$from" "$T/base" || exit 1
+cp runtime.c runtime.py pyembed.c pyext.c "$H/" && cp -R lib ryu mpz "$H/" && cp "$from" "$T/bin/$me" && cp "$from" "$T/base" || exit 1
 if [ -n "$PY" ] && [ -d src ]; then cp -R src "$T/bin/" || exit 1; fi
 # the runs start in $T: a runtime.c that took its includes from there would not compile
 printf '#error "ryu/d2s.c of the current directory"\n' > "$T/ryu/d2s.c" || exit 1
+printf '#error "mpz/mpz.c of the current directory"\n' > "$T/mpz/mpz.c" || exit 1
 # The runtime.py sentinel uses bytes.index: public str.index has its error in runtime.c.
 # Keep the two messages in distinct source files so each edit proves independent invalidation.
 # the edits: the same size, other messages
@@ -167,6 +168,8 @@ cat "$T/INVALID.c" > "$H/runtime.c"
 check "an edit of runtime.c: built again" "$(printf '%s\n%s' "$P1" "$C1")" 1
 printf '/* an edit */\n' >> "$H/ryu/common.h"
 check "an edit of ryu/common.h, which runtime.c includes: built again, from the home's ryu/" "$(printf '%s\n%s' "$P1" "$C1")" 1
+printf '/* an edit */\n' >> "$H/mpz/mpz.c"
+check "an edit of mpz/mpz.c, which runtime.c includes: built again, from the home's mpz/" "$(printf '%s\n%s' "$P1" "$C1")" 1
 check "and used then" "$(printf '%s\n%s' "$P1" "$C1")" 0
 # edits while the runtime is built, after its sources were read, both with their mtimes set back
 cat "$T/orig.py" > "$H/runtime.py"

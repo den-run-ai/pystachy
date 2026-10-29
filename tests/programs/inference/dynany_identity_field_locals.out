@@ -1,0 +1,33 @@
+local first True True
+field first True True
+after store False False
+keeps object True True
+alias local True True
+alias field False False
+alias local True True
+alias field True True
+observed by call True True
+rebound by call False True
+unchanged write-back True True
+moved write-back True True
+moved from before False False
+write-back then local True True
+returned local True True
+loop break True True
+raised True True
+appended True True
+two locals True True
+two locals field True True
+nan local True True
+nan written back True True
+call in loop test True True
+small int True True
+augmented True True
+1
+scanner moved False False
+scanner read True True
+scanner unchanged True True
+scanner word True True
+scanner peek True True
+scanner at 311 b'gamma'
+[exit 0]

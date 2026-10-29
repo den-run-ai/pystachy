@@ -1,0 +1,22 @@
+ampersand and pipe ok
+semicolon ok
+redirect ok
+paren ok
+custom ['~/a&&b-c', '--color=auto', '||', 'd', '*.py?']
+token types [('a', 'a'), ('&&', 'c'), ('b', 'a'), ('||', 'c'), ('c', 'a')]
+punctuation in wordchars ['a', '_', 'b', '__', 'c']
+punctuation with whitespace_split ok
+punctuation with posix ok
+empty string ok
+unicode ['ℙ', 'ƴ', '☂', 'ℌ', 'ø', 'ἤ']
+quote 'test$'"'"'name'"'"''
+join 'a ' b
+join a ' b'
+join a ' ' b
+join '"a' 'b"'
+lineno ok
+push ok
+error leader "override.sh", line 42: 
+ValueError No closing quotation
+ValueError No escaped character
+[exit 0]

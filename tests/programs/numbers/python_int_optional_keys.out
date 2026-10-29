@@ -1,0 +1,30 @@
+50 51 {7: 70}
+5 70
+KeyError 5 {6}
+70 71 {5: 50}
+7 7
+KeyError 7 {5, 6}
+KeyError 6
+6 70
+KeyError 6 {5}
+KeyError None
+None 70
+KeyError None {5, 6}
+True True True False
+True False False True
+False False False True
+False False False True
+5 int 5 int 5
+False True True True False
+None NoneType None NoneType None
+True False False False True
+True bool big str big
+False True False False True
+FileNotFoundError [Errno 2] x
+PermissionError [Errno 13] x
+OSError [Errno 1180591620717411303424] x
+OSError [Errno None] x
+FileNotFoundError [Errno 2] y
+OSError [Errno 1180591620717411303424] y
+SystemExit 5 SystemExit(5)
+[exit 255]

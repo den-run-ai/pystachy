@@ -30,20 +30,6 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/782"
     },
     {
-      "case": "tests/programs/inference/any_generators.py",
-      "mode": "jit",
-      "diagnostic": "tests/programs/inference/any_generators.py:74: error: nested_outer() yields list[int], but yield from delegates to a generator that yields list[Any]",
-      "reason": "The nested generator yields list[Any], which cannot cross into the outer generator's declared list[int] yield channel.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/773"
-    },
-    {
-      "case": "tests/programs/inference/any_generators.py",
-      "mode": "aot",
-      "diagnostic": "tests/programs/inference/any_generators.py:74: error: nested_outer() yields list[int], but yield from delegates to a generator that yields list[Any]",
-      "reason": "The nested generator yields list[Any], which cannot cross into the outer generator's declared list[int] yield channel.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/773"
-    },
-    {
       "case": "tests/programs/inference/any_iterators.py",
       "mode": "jit",
       "diagnostic": "tests/programs/inference/any_iterators.py:60: error: expected list[Any], got list[int]",
@@ -70,6 +56,1406 @@
       "diagnostic": "tests/programs/inference/any_methods.py:41: error: a list[int] cannot become an Any value: its items are typed, and Any's containers hold Any items (make it a list[Any] from the start, or copy it)",
       "reason": "A method combines its typed list[int] field with a dynamically accessed field, requiring unsupported typed-container boxing while preserving aliases.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_arith.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_arith.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_arith.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_arith.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_bool_args.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_bool_args.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_bool_args.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_bool_args.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_bools.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_bools.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_bools.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_bools.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_bounds.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_bounds.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_bounds.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_bounds.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_builtins.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_builtins.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_builtins.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_builtins.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_bytes_hex.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_bytes_hex.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_bytes_hex.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_bytes_hex.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_callables.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_callables.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_callables.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_callables.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_callables_fixed.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_callables_fixed.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_callables_fixed.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_callables_fixed.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_calls.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_calls.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_calls.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_calls.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_class_defaults.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_class_defaults.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_class_defaults.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_class_defaults.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_class_inference.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_class_inference.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_class_inference.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_class_inference.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_compare.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_compare.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_compare.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_compare.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_counter.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_counter.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_counter.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_counter.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_cpython_int.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_cpython_int.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_cpython_int.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_cpython_int.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_cpython_long.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_cpython_long.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_cpython_long.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_cpython_long.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dataclass_copy.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dataclass_copy.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dataclass_copy.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dataclass_copy.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_bool_pop.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dict_bool_pop.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_bool_pop.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dict_bool_pop.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_items.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dict_items.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_items.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dict_items.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_key_methods.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dict_key_methods.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_key_methods.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dict_key_methods.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_keys.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dict_keys.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_keys.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dict_keys.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_optional_key_methods.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dict_optional_key_methods.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_optional_key_methods.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dict_optional_key_methods.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_popitem.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dict_popitem.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_popitem.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dict_popitem.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_values.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dict_values.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dict_values.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dict_values.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dicts.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dicts.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dicts.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dicts.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dicts_nested.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_dicts_nested.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_dicts_nested.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_dicts_nested.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_exit.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_exit.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_exit.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_exit.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_exit_class.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_exit_class.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_exit_class.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_exit_class.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_field_dicts.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_field_dicts.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_field_dicts.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_field_dicts.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_forward_ref.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_forward_ref.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_forward_ref.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_forward_ref.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_generators.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_generators.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_generators.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_generators.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_generic_lib.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_generic_lib.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_generic_lib.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_generic_lib.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_generics.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_generics.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_generics.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_generics.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_generics_dynamic.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_generics_dynamic.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_generics_dynamic.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_generics_dynamic.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_hash_collisions.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_hash_collisions.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_hash_collisions.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_hash_collisions.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_heapq.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_heapq.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_heapq.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_heapq.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_ipow.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_ipow.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_ipow.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_ipow.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_iterators.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_iterators.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_iterators.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_iterators.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_joins.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_joins.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_joins.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_joins.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_lists.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_lists.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_lists.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_lists.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_local_retry.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_local_retry.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_local_retry.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_local_retry.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_local_retry_fallback.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_local_retry_fallback.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_local_retry_fallback.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_local_retry_fallback.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_noreturn.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_noreturn.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_noreturn.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_noreturn.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_object_compare.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_object_compare.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_object_compare.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_object_compare.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_optional.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_optional.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_optional.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_optional.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_optional_key.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_optional_key.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_optional_key.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_optional_key.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_optional_keys.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_optional_keys.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_optional_keys.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_optional_keys.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_recursion.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_recursion.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_recursion.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_recursion.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_reflection.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_reflection.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_reflection.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_reflection.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_repr_limit.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_repr_limit.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_repr_limit.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_repr_limit.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_roots.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_roots.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_roots.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_roots.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_sets.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_sets.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_sets.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_sets.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_sets_fixed.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_sets_fixed.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_sets_fixed.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_sets_fixed.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_special.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_special.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_special.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_special.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_spellings.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_spellings.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_spellings.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_spellings.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_storage.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_storage.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_storage.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_storage.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_sums.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_sums.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_sums.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_sums.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_text.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_text.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_text.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_text.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_truediv.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_truediv.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_truediv.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_truediv.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_tuple_keys.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_tuple_keys.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_tuple_keys.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_tuple_keys.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_tuple_lists.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_tuple_lists.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_tuple_lists.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_tuple_lists.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_tuple_walks.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_tuple_walks.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_tuple_walks.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_tuple_walks.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_tuples.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_tuples.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_tuples.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_tuples.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_unicode_error.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_unicode_error.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_unicode_error.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_unicode_error.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This promoting-int regression explicitly opts into python-int; combining both representation pragmas remains unsupported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_varargs.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/numbers/python_int_varargs.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/python_int_varargs.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/numbers/python_int_varargs.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_abs_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_abs_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_abs_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_abs_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_bin_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_bin_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_bin_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_bin_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_divmod_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_divmod_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_divmod_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_divmod_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_hash_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_hash_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_hash_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_hash_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_hex_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_hex_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_hex_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_hex_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_oct_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_oct_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_oct_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_oct_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_pow3_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_pow3_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_builtin_pow3_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_builtin_pow3_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_floordivide_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_floordivide_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_floordivide_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_floordivide_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int2.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int2.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int2.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int2.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big1.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big1.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big1.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big1.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_add.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_add.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_add.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_add.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_and.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_and.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_and.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_and.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_and2.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_and2.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_and2.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_and2.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_and3.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_and3.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_and3.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_and3.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_cmp.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_cmp.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_cmp.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_cmp.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_div.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_div.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_div.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_div.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_lshift.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_lshift.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_lshift.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_lshift.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_mod.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_mod.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_mod.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_mod.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_mul.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_mul.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_mul.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_mul.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_or.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_or.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_or.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_or.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_or2.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_or2.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_or2.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_or2.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_or3.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_or3.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_or3.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_or3.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_pow.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_pow.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_pow.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_pow.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_rshift.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_rshift.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_rshift.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_rshift.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_unary.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_unary.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_unary.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_unary.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_xor.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_xor.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_xor.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_xor.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_xor2.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_xor2.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_xor2.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_xor2.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_xor3.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_xor3.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_big_xor3.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_big_xor3.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_constfolding.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_constfolding.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_constfolding.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_constfolding.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_constfolding_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_constfolding_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_constfolding_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_constfolding_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_divmod.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_divmod.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_divmod.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_divmod.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_divmod_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_divmod_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_divmod_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_divmod_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_divzero.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_divzero.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_divzero.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_divzero.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_small.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_small.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_int_small.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_int_small.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_slice_intbig.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_slice_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/upstream/upstream_micropython_slice_intbig.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/upstream/upstream_micropython_slice_intbig.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The program opts in to promoting ints (docs/python-int.md), which a module cannot combine with dynamic Any yet.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]
 }

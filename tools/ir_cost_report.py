@@ -18,6 +18,9 @@ CALL = re.compile(r'^\s*(?:%' + NAME + r'\s*=\s*)?(?:(?:tail|musttail|notail)\s+
 TARGET = re.compile(r'([@%])(' + NAME + r')\s*\(')
 GROUP = re.compile(r'^attributes #(\d+) = (.*)$')
 STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
+PARENS = re.compile(STRING.pattern + r'|[()]')
+CONSTANT_CALLEE = re.compile(r'(?:asm|null|undef|poison|inttoptr|bitcast|addrspacecast|'
+                             r'getelementptr|blockaddress|dso_local_equivalent|no_cfi)\b')
 LIMITS = [
     'Counts are static call sites, not execution counts, allocation counts or timings.',
     'Inlining can replace a helper call with work in the caller; fewer calls do not prove less work.',
@@ -35,6 +38,30 @@ def strip_comment(line):
 def name_text(name):
     # Retain LLVM escapes verbatim rather than accidentally decoding symbol bytes.
     return name[1:-1] if name.startswith('"') else name
+
+
+def call_target(body):
+    # Keep quoted identifiers, but do not count call-like assembly text.
+    masked = STRING.sub(lambda m: m[0] if m.start() > 0 and body[m.start() - 1] in '@%' else '""', body)
+    target = TARGET.search(masked)
+    if target is None or target[1] == '@':
+        return target
+    # In `call %Result (i32, ...) @callee(...)`, %Result begins an explicit
+    # function type. Skip its balanced signature when another callee follows;
+    # parentheses inside quoted type names must not affect the nesting.
+    depth = 0
+    for token in PARENS.finditer(masked, target.end() - 1):
+        if token[0] == '(':
+            depth += 1
+        elif token[0] == ')':
+            depth -= 1
+            if depth == 0:
+                following = masked[token.end():].lstrip()
+                callee = TARGET.match(following)
+                if callee is not None or CONSTANT_CALLEE.match(following):
+                    return callee
+                break
+    return target
 
 
 def inventory(data, function_pattern='.*'):
@@ -66,10 +93,7 @@ def inventory(data, function_pattern='.*'):
             continue
         call = CALL.match(line) if current is not None else None
         if call:
-            # Keep quoted identifiers, but do not count call-like assembly text.
-            body = call[2]
-            masked = STRING.sub(lambda m, body=body: m[0] if m.start() > 0 and body[m.start() - 1] in '@%' else '""', body)
-            target = TARGET.search(masked)
+            target = call_target(call[2])
             name = ('@' + name_text(target[2]) if target[1] == '@' else '<indirect>') if target else '<unresolved>'
             functions[current]['calls'][name] += 1
             functions[current]['call_kinds'][call[1]] += 1

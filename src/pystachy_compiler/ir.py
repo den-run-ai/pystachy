@@ -125,6 +125,9 @@ class FnInfo:
         self.uflags: dict[str, bool] = {}  # locals some read may find unassigned
         self.ret = "None"  # "" while a template's function is being compiled, before its first return
         self.mod = ""  # the dotted name of its module ("" for the main program)
+        # the identity policy of a closure, generator expression or Callable adapter: that of the
+        # code that made it ("-": its module's or its class's, Gen.fn_home)
+        self.home = "-"
         self.npos = -1  # how many parameters may be passed by position (-1: all; the rest are keyword-only)
         self.posonly = 0  # how many may only be passed by position
         # templates: a module-level function with an unannotated parameter, compiled per call for
@@ -140,6 +143,9 @@ class FnInfo:
         self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
+        self.cmprebind = ""  # native reference union for a comparison operand rebound across control flow
+        self.cmpops = False  # isolated comparison helpers raise guaranteed builtin TypeErrors at runtime
+        self.cmptypes: dict[str, str] = {}  # guarded comparison missing-read layouts, inherited by isolated helper specializations
         self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
         self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
         self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
@@ -324,6 +330,22 @@ class IFn:
         self.f = f  # f.ret is final once the IFn is complete
         self.numeric_only = False  # function_body proved local numeric identity unobservable
         self.scalar_reads = False  # scoped numeric arithmetic/comparison; no operand identity escapes
+        # Lazy numeric field locals (Gen.lazy_fields): local -> the parameter whose field it reads,
+        # that field, its bit in lazymasks, and its "shares the field's object" flag slot
+        self.lazyobj: dict[str, str] = {}
+        self.lazyfield: dict[str, str] = {}
+        self.lazybit: dict[str, int] = {}
+        self.lazyflag: dict[str, str] = {}
+        self.lazyreads: list[Node] = []  # the x = o.f statements that share without a box
+        self.lazywbs: list[Node] = []  # the o.f = x statements that write such a local back
+        self.lazylines: dict[int, list[Node]] = {}  # statements by line, and the lazy locals
+        self.lazymasks: dict[int, list[int]] = {}  # live where each starts (analysis.lazy_block)
+        self.lazyoff = 0  # inside a while loop whose test may run code: no sharing starts
+        self.lazywb = ""  # the local whose write-back setfield is compiling
+        self.idmove = False  # a lone assignment stores a call's result (dyn_id_store)
+        self.idpass = False  # a copy or argument moves a local (Gen.id_move)
+        self.movebit: dict[str, int] = {}  # locals a read may move: their bits in lazymasks
+        self.idstmt: Node | None = None  # the statement being compiled, where movebit has any
         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]
@@ -498,6 +520,7 @@ class ClassInfo:
         self.slots: list[str] = []  # literal __slots__, including inherited slots
         self.slotlimit = False  # every ordinary base and this class omit an instance dict
         self.fglob: dict[str, str] = {}
+        self.fextra: dict[str, bool] = {}  # statically reserved comparison writes, absent until assigned
         self.fflag: dict[str, int] = {}  # field -> index of its "is assigned" flag in the struct
         self.fbox: dict[str, int] = {}  # numeric field -> its companion identity-box index
         self.nbox = 0  # own companion boxes after the assignment flags

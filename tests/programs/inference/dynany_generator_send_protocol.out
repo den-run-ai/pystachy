@@ -1,0 +1,10 @@
+first True None
+1 2
+second True None
+done
+first False sent
+1 2
+3
+third True None
+done after throw
+[exit 0]

@@ -1,0 +1,24 @@
+param crossings True True
+fresh result True True
+param crossings True True
+still read True True
+param crossings True True
+new value False True
+stored result True True
+result of field True True
+chained True True
+field result True True
+param crossings True True
+copy of last read True True
+copy still read True True
+two params True True
+again in call True True
+param crossings True True
+field local passed True True
+last read result True
+param crossings True True
+indirect fresh True True
+param crossings True True
+indirect still read True True
+widened True True
+[exit 0]

@@ -22,17 +22,17 @@ from src.pystachy_compiler.analysis import (
     typed_default,
     walrus_values,
 )
-from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, dynamic_program, where
+from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, dynamic_program, where
+from src.pystachy_compiler.dynamic import XCMP, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import owner, short
-from src.pystachy_compiler.specs import INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
-from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, name_targets, starred_target
+from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
+from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
     empty_ann,
     empty_default,
     empty_display,
-    identity_abi,
     is_const,
     is_dict,
     is_fn,
@@ -47,6 +47,7 @@ from src.pystachy_compiler.utils import (
     is_vtuple,
     lt,
     numeric_identity,
+    closure_default_slots,
     same_kind,
     selem,
     targs,
@@ -62,6 +63,8 @@ def gen_global_var(self, g: str, ty: str) -> None:
     self.globs.append(Val(g, ty))
     if lt(ty) == "ptr":
         self.gcroots.append(g)
+    elif ty == BIG:
+        self.gcroots.append(f"getelementptr inbounds ({lt(ty)}, ptr {g}, i32 0, i32 1)")  # (its Mpz word)
 
 def gen_is_global(self, name: str) -> bool:
     if name in self.ltype or name in self.compvars:
@@ -122,17 +125,13 @@ def gen_load_name(self, name: str) -> Val:
             self.nn[r] = True
         val = Val(r, t)
         if name in self.idbox and numeric_identity(t):
-            f = self.curfn
-            if t in ["int", "float"] and identity_abi(f) and not f.scalar_args and not f.gen and name in f.params and name not in self.assigned and name not in self.cells and name not in self.nlw and name not in self.compvars and f.ptypes[f.params.index(name)] == t:
-                # Every caller supplies this exact object's box. An immutable private
-                # parameter cannot have replaced it, so no lazy local snapshot is needed.
-                # Scalar-proof callees may receive null companions; captured, rebound,
-                # narrowed and comprehension-shadowed bindings keep the ordinary path.
-                val.idfrom = "%aid" + str(f.params.index(name))
-            else:
-                self.dyn_id_read(val, self.idbox[name])
+            # (A parameter's slot starts with its companion: null where the caller passed a
+            # new number, dyn_id_arg, which its first crossing boxes.)
+            if name in self.fn.lazyflag and not self.fn.scalar_reads:
+                self.lazy_resolve(name)  # (a lazy field local's object gets its box: dynamic.py)
+            self.dyn_id_read(val, self.idbox[name])
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
-            if val.idfrom != "" and (is_opt(t) or is_union(t)):
+            if val.idfrom != "" and t != BIGOPT and (is_opt(t) or is_union(t)):
                 # A shared cell's snapshot may fill its adjacent identity cache.
                 # Read the checked member from that snapshot: storage proofs need
                 # not survive the cache write or another closure reading the cell.
@@ -150,7 +149,8 @@ def gen_load_name(self, name: str) -> Val:
         if is_opt(t) or is_union(t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
         val = Val(r, t)
-        if name in self.gidbox and numeric_identity(t):
+        self.identity_global(name, t, False)  # (dynamic.py)
+        if name in self.gidbox and numeric_identity(t) and self.idhere():
             self.dyn_id_read(val, self.gidbox[name])
         return val
     if name == "__name__":
@@ -399,6 +399,7 @@ def gen_closure(self, n: Node) -> Val:
     c = self.closures[self.clokeys[key]] if key in self.clokeys else self.new_closure(n, key)
     f = c.f
     dvals: list[Val] = []
+    offset = len(c.caps)
     for j in c.defs:
         t = f.ptypes[j]
         v = self.expr(f.defaults[j], t)
@@ -408,25 +409,27 @@ def gen_closure(self, n: Node) -> Val:
         if f.dtypes[j] == "":
             f.dtypes[j] = v.t
         value = self.coerce(v, f.dtypes[j])
-        if dynamic_program() and numeric_identity(value.t):
+        if self.idhere() and numeric_identity(value.t):
             captured = Val(value.v, value.t).identity(value)
-            captured.idfrom = self.dyn_box(value).v
+            captured.idfrom = self.dyn_id_box(value).v
             value = captured
+        f.dglob[j] = f"&{offset}"
+        offset += 2 if value.t == "int+" else 1
         dvals.append(value)
-    env = self.rt("pys_alloc", "ptr", [f"i64 {8 * max(len(c.caps) + len(c.defs) + len(c.iflags) + (len(c.defs) if dynamic_program() else 0), 1)}"])
+    env = self.rt("pys_alloc", "ptr", [f"i64 {8 * max(len(c.caps) + closure_default_slots(c) + len(c.iflags) + (len(c.defs) if dynamic_program() else 0), 1)}"])
     for i in range(len(c.caps)):
         if c.ctypes[i] != "None":
             x = c.caps[i]
             a = self.maddr('%ptr', env, f'{i}', True)
             self.mstore('%ptr', self.cells[x] if x in self.cells else self.lreg[x], a)
     for j in range(len(dvals)):
-        a = self.maddr('int', env, f'{len(c.caps) + j}', True)
+        a = self.maddr('int', env, f'{f.dglob[c.defs[j]][1:]}', True)
         self.mstore(dvals[j].t, dvals[j].v, a)
-        if dynamic_program() and numeric_identity(dvals[j].t):
-            b = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + len(c.iflags) + j}', True)
+        if self.idhere() and numeric_identity(dvals[j].t):
+            b = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + len(c.iflags) + j}', True)
             self.mstore('dyn', dvals[j].idfrom, b)
     for j in range(len(c.iflags)):
-        a = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + j}', True)
+        a = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
         self.mstore('%ptr', self.iflag[c.iflags[j]], a)
     self.nn[env] = True
     return Val(env, c.t)
@@ -442,6 +445,7 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     f.ll = f"@c.{idx}"
     f.name = qual
     f.mod = outer.mod
+    f.home = self.fn_home(outer)  # (its cells' and env's identity policy is its maker's: dynamic.py)
     f.clo = idx
     f.generic = True
     f.ret = f.ret if d.kids[1].kind != "noann" else ""
@@ -504,7 +508,7 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
             c.nlw[x] = True
     # the defaults that are no constants: the env holds their values, after the cells
     for j in range(1, len(f.params)):
-        if not is_const(f.defaults[j]) or identity_default(f.defaults[j]):
+        if not is_const(f.defaults[j]) or (identity_default(f.defaults[j]) and self.idhere()):
             f.dglob[j] = f"&{len(c.caps) + len(c.defs)}"
             c.defs.append(j)
     lf: dict[str, bool] = {}
@@ -663,7 +667,7 @@ def gen_none_arms(self, name: str) -> str:
     for st in self.nonesites.get(name, []):
         self.none_values(st, name, found)
     for e in found:
-        for x in e.kids[1:] if e.kind == "ifexp" else e.kids if e.kind == "boolop" else e.kids[:0]:
+        for x in e.kids[1:] if e.kind == "ifexp" else e.kids if e.kind == "boolop" else NOKIDS:
             if x.kind != "None" and not empty_display(x) and self.typed_now(x) and not self.calls_open(x, {}):
                 t = self.dry(x)
                 if t != "None" and t != "" and "?" not in t and t != NONEVAR and self.optional(t) != "":
@@ -738,7 +742,8 @@ def gen_read(self, n: Node) -> Val:
         # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
         # folds the identity operation to a literal for opcode dispatch and other arithmetic.
         val = Val(self.scalar('add', [Val(self.intglobals[name], 'int'), Val('0', 'int')]), "int")
-        if name in self.gidbox:
+        self.identity_global(name, "int", False)  # (dynamic.py)
+        if name in self.gidbox and self.idhere():
             self.dyn_id_read(val, self.gidbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
     if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and self.classes[name].exc != "":
@@ -1197,7 +1202,7 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
     for h in toks.split():
         self.holes[int(h)] = t
         if is_dict(t) or is_set(t):
-            self.key_kind(targs(t)[0] if is_dict(t) else selem(t))  # (a tuple key's descriptor, a string constant from here on, which lowering prints)
+            self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))  # (a tuple key's descriptor, a string constant from here on, which lowering prints)
 
 def gen_lookahead(self, name: str, ahead: bool = False) -> str:
     # an empty list or dict read before the code that fills it: the first use in this
@@ -1336,7 +1341,7 @@ def gen_adopt(self, t: str) -> None:
     for h in self.qholes.get(self.curfn.ll, []):
         self.holes[h] = t
         if is_dict(t) or is_set(t):
-            self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+            self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
     for k in self.qroot:
         # a function that returns this one's open result unchanged (qchain) stores the key
         # layout of what it returns as the call returns (typed_empty), before its own finally
@@ -1347,7 +1352,7 @@ def gen_adopt(self, t: str) -> None:
                     for h in self.qholes[k]:
                         self.holes[h] = t
                     if is_dict(t) or is_set(t):
-                        self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+                        self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
 
 def gen_qchain(self, f: FnInfo) -> list[FnInfo]:
     # f, and the functions whose open empty result it returns unchanged, through those it
@@ -1397,7 +1402,7 @@ def gen_typed_empty(self, v: Val, want: str, f: FnInfo) -> Val:
     if t != want:
         self.guessed[self.curfn.ll] = f"{short(f.name)}() at line {self.line} returns an empty {tname(t)} taken as {typestr(t)}: give it a type first, as in v: {'list[T]' if is_list(t) else 'set[T]' if is_set(t) else 'dict[K, V]'} = {short(f.name)}()"
     if is_dict(t) or is_set(t):
-        self.key_kind(targs(t)[0] if is_dict(t) else selem(t))
+        self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t))
         i = Ins("empty.kind", "", "")
         i.a = [Val(v.v, t)]
         self.put(i, 1)
@@ -1574,6 +1579,8 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
             v = self.coerce(v, elem(self.qtype(name)))  # (into a list of None: T | None)
         elif m != "extend" and self.qtype(name) == "list[dyn]":
             v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
+        if m != "extend":
+            v = self.list_hold(v, v.t)  # (a tuple of ints: held, bigints.py)
         if m == "append":
             self.list_store(Val(o.v, self.qtype(name)), v, "append")
         elif m == "insert":
@@ -1587,7 +1594,7 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
         v = self.expr(args[0], "")
         self.refine(name, self.ctype("set", [v.t]))
         t = self.qtype(name)
-        self.rt("pys_set_add", "void", [f"ptr {o.v}", "i64 " + self.to_slot(self.store_elem(v, selem(t)))], self.key_fx(selem(t)))
+        self.set_store(o.v, self.set_coerce(v, selem(t)), selem(t))
         return Val("null", "None")
     if is_set(o.t) and m == "update" and len(args) == 1 and args[0].kind == "listcomp" and args[0].s == "gen":
         # (item by item, as smethod's)
@@ -1624,6 +1631,14 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
         elif self.qtype(name) == "dict[dyn,dyn]":
             k = self.store_key(k, "dyn")  # (a dict of Any containers holds boxes, keys too: ctype)
             v = self.coerce(v, "dyn")
+        elif self.dict_int(self.qtype(name)) and not is_opt(k.t) and (v.t == "int" or v.t == BIG):
+            # (whose values may be past 64 bits, as a later run of this call may find, and so may
+            # its key: bigints.py)
+            d = Val(o.v, self.qtype(name))
+            return self.big_dict_call(d, m, k, "" if k.t == BIG else self.to_slot(k), self.to_big(v), True, self.key_fx(targs(d.t)[0]))
+        if k.t == BIG and self.dict_bigkey(self.qtype(name)):
+            fn = "pys_dict_bkey_setdefault" if m == "setdefault" else "pys_dict_bkey_get"  # (a key past 64 bits: bigints.py)
+            return self.from_slot(self.rt(fn, "i64", [f"ptr {o.v}"] + self.dict_key_args(k, "") + ["i64 " + self.to_slot(v)], self.key_fx("int")), v.t)
         return self.from_slot(self.rt(f"pys_dict_{m}", "i64", [f"ptr {o.v}", "i64 " + self.to_slot(k), "i64 " + self.to_slot(v)], self.key_fx(targs(self.qtype(name))[0])), v.t)
     # any other method: the type a later use shows (or an error), then the method as usual
     return self.method(self.load_name(name), m, args)
@@ -1654,9 +1669,9 @@ def gen_new_global(self, name: str, t: str) -> None:
     self.global_var(f"@g.{name}", t)
     if name in self.gflag:
         self.global_var(f"@g.{name}.def", "bool")
-    if numeric_identity(t) and dynamic_program():
+    if numeric_identity(t) and self.global_identity(name):
         # (the box of its binding as an Any value, as a local's: alloca; a root, as a dyn global is.
-        # Every module's, as a module that compiles Any as dyn may read it)
+        # Every tracking module's, as a module that compiles Any as dyn may read it: identity_modules)
         self.gidbox[name] = f"@g.{name}.box"
         self.global_var(self.gidbox[name], "dyn")
 
@@ -1717,13 +1732,14 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         was = self.join_at("global", name, t)  # (a value it does not take may widen it: join_hint)
         cv = self.coerce(v, t, self.assigned_to(v, t, name))
         self.join_at(was[0], was[1], was[2])
+        self.identity_global(name, t, True)  # (dynamic.py)
         self.mem_store(Val(f"@g.{name}", "*" + t), cv)
         if name in self.gflag:
             self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))
         if name in self.gidbox and numeric_identity(t):
             self.dyn_id_store(self.gidbox[name], v, t)  # (the object it now holds: dyn_box)
     else:
-        if name in self.compshare and name in self.compvars and not self.widens(v.t, self.compshare[name]):
+        if name in self.compshare and name in self.compvars and not self.widens(v.t, self.compshare[name]) and not (v.t in ["int", BIG] and self.compshare[name] in ["int", BIG]):
             # (a comprehension's for clause that binds it into an earlier clause's variable, which
             # keeps its type: see the statement "compfor")
             self.err(f"comprehension variable '{name}' is {typestr(self.compshare[name])} in an earlier for clause and {typestr(v.t)} in a later one, and a clause between them can read either (not supported)")
@@ -1780,6 +1796,8 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
             self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (a value others may hold: str_append)
         if name in self.idbox and numeric_identity(t):
             self.dyn_id_store(self.idbox[name], v, t)  # (the object it now holds: dyn_box)
+        if name in self.fn.lazyflag:
+            self.mem_store(Val(self.fn.lazyflag[name], "*bool"), Val("false", "bool"))  # (no longer a field's object)
         # (a local a closure assigns (nonlocal) keeps its declared type: a call may run the
         # closure, as narrowable says)
         u = unopt(t)
@@ -1862,11 +1880,18 @@ def gen_assign(self, t: Node, v: Val) -> None:
     k = t.kind
     if k == "index" and self.list_id_kind(self.ctype("list", [v.t])) != 0 and v.idslot != "":
         # The target and index can run callbacks after the RHS was read.
-        v.idfrom = self.dyn_box(v).v
+        v.idfrom = self.dyn_id_box(v).v
     if k == "badattr":
         self.err(t.s)
     if k in UNSUPPORTED:
         self.err(UNSUPPORTED[k])
+    if k == "cmpmissing":
+        # A fixed-slot comparison operand cannot acquire this field. The RHS
+        # has already run; evaluate the target and raise at the actual store.
+        o = self.expr(t.kids[0], "")
+        if not self.frozen_store(o, t.kids[1].s):
+            self.raise_("AttributeError", self.sconst(f"'{short(o.t)}' object has no attribute '{t.kids[1].s}'"))
+        return
     if starred_target(t):
         self.star_assign(t, v)
     elif k == "name":
@@ -1879,12 +1904,60 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
     elif k == "attr":
         o = self.expr(t.kids[0], "")
+        if self.reference_union(o.t):
+            end = self.label()
+            narrow = dict(self.narrowed)
+            for lf in self.refl_split(o, False, True):
+                self.place(lf.label)
+                self.narrowed = dict(narrow)
+                if lf.c == "None":
+                    self.raise_("AttributeError", self.sconst(f"'NoneType' object has no attribute '{t.s}' and no __dict__ for setting new attributes"))
+                elif lf.c not in self.classes:
+                    # (CPython's file objects take new attributes, which a native file cannot)
+                    self.err(f"type {typestr(o.t)} has no attribute '{t.s}'")
+                else:
+                    actual = self.classes[lf.c].ftypes.get(t.s, "")
+                    setter = t.s + ".setter"
+                    if self.is_prop(lf.c, t.s) and setter in self.classes[lf.c].methods and len(self.classes[lf.c].methods[setter].ptypes) == 2:
+                        actual = self.classes[lf.c].methods[setter].ptypes[1]
+                    if actual == "" and t.s not in self.classes[lf.c].methods:
+                        # CPython adds the attribute to an object with a __dict__, which a
+                        # native layout cannot: rejected, as for one class (field). A frozen
+                        # dataclass and a class with only __slots__ raise as CPython does
+                        if not self.frozen_store(lf.v, t.s):
+                            if not self.classes[lf.c].slotlimit:
+                                self.err(f"type {typestr(o.t)} has no attribute '{t.s}'")
+                            self.raise_("AttributeError", self.sconst(f"'{short(lf.c)}' object has no attribute '{t.s}' and no __dict__ for setting new attributes"))
+                    elif self.curfn.cmprebind != "" and actual != v.t and ((is_list(actual) and is_list(v.t)) or (is_dict(actual) and is_dict(v.t)) or (is_set(actual) and is_set(v.t))):
+                        # A runtime-selected typed boundary must not suppress
+                        # a valid store through another member of this union.
+                        if not self.frozen_store(lf.v, t.s):
+                            self.raise_("TypeError", self.sconst(f"expected {typestr(actual)}, got {typestr(v.t)}"))
+                    else:
+                        self.assign(mk("attr", t.s, t.line, [self.vnode(lf.v)]), v)
+                if not self.term:
+                    self.br(end)
+            self.narrowed = narrow
+            self.place(end)
+            return
         if o.t == "dyn":
             self.dyn_setattr(o, t.s, v)  # (a field of its box's class: dynamic.py)
             return
         if self.is_prop(o.t, t.s):
             self.prop_store(o, t.s, v)
             return
+        # The native same-class comparison helper may be compiled before its
+        # Any adapter. Discover a wholly new field here from the actual RHS,
+        # without changing any ordinary field or marking the body unsupported.
+        if o.t in self.classes and self.drying == 0 and self.curfn.cls != "" and self.curfn.name in XCMP and self.dyn_policy(self.curfn.node.line):
+            ci = self.classes[o.t]
+            if t.s not in ci.ftypes and t.s not in ci.methods and not ci.slotlimit and o.t not in self.nts and "frozen" not in ci.dcopts and ci.exc == "":
+                key = "cmpfield:" + comparison_storage_key(self, ci) + "." + t.s
+                ty = v.t
+                if not self.hints.get(key, "").startswith("!") and self.hints.get(key, "") != ty:
+                    self.newhints[key] = ty
+                    comparison_record_write(self, t.s, ty)
+                    raise Rejoin()
         self.glue_field(o, t.s)
         self.none_field_store(o, t.s, v)
         p = self.field(o, t.s, True)
@@ -1904,7 +1977,8 @@ def gen_assign(self, t: Node, v: Val) -> None:
             elif self.qtype(t.kids[0].s) == "dict[dyn,dyn]":
                 kval = self.store_key(kval, "dyn")  # (a dict of Any containers holds boxes, keys too: ctype)
                 v = self.coerce(v, "dyn")
-            self.rt("pys_dict_set", "void", [f"ptr {o.v}", "i64 " + self.to_slot(kval), "i64 " + self.to_slot(v)], self.key_fx(targs(self.qtype(t.kids[0].s))[0]))
+            ks = self.to_slot(kval)
+            self.dict_store(o.v, ks, v, targs(self.qtype(t.kids[0].s)))
         else:
             ix = self.ival(t.kids[1])
             self.refine(t.kids[0].s, self.ctype("list", [v.t], NONE_ITEM not in o.t))
@@ -1912,7 +1986,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
                 v = self.coerce(v, elem(self.qtype(t.kids[0].s)))  # (into a list of None: T | None)
             elif self.qtype(t.kids[0].s) == "list[dyn]":
                 v = self.coerce(v, "dyn")  # (an Any container's box, which a list of them holds: ctype)
-            self.list_store(Val(o.v, self.qtype(t.kids[0].s)), v, "set", ix.v)
+            self.list_store(Val(o.v, self.qtype(t.kids[0].s)), self.list_hold(v, v.t), "set", ix.v)
     elif k == "index":
         o = self.expr(t.kids[0], self.default_want(t.kids[0], "[]", [t.kids[1]], v.t))
         nosub = "TypeError: 'NoneType' object does not support item assignment"
@@ -1922,12 +1996,13 @@ def gen_assign(self, t: Node, v: Val) -> None:
         if is_list(unopt(o.t)):
             ix = self.ival(t.kids[1])
             o = self.unwrap(o, nosub)
-            self.list_store(o, self.coerce(v, elem(o.t)), "set", ix.v)
+            self.list_store(o, self.list_hold(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
             kv = targs(unopt(o.t))
-            key = self.to_slot(self.store_key(self.expr(t.kids[1], kv[0]), kv[0]))
+            kc = self.key_coerce(self.expr(t.kids[1], kv[0]), kv[0])
+            ks = self.key_slot(kc)
             o = self.unwrap(o, nosub)
-            self.rt("pys_dict_set", "void", [f"ptr {o.v}", f"i64 {key}", "i64 " + self.to_slot(self.coerce(v, kv[1]))], self.key_fx(kv[0]))
+            self.dict_put(o, kc, ks, self.list_hold(v, kv[1]), kv)  # (a tuple of ints: held, bigints.py)
         elif o.t in self.classes:
             # o[k] = v: o.__setitem__(k, v), once v, o and k are evaluated (a tuple display k in
             # the frame where __setitem__ only reads it: stack_key)
@@ -1970,9 +2045,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
             if v.t == "str":
                 self.assign(t.kids[i], Val(self.rt("pys_str_get", "ptr", [f"ptr {v.v}", f"i64 {i}"]), "str"))
             elif first:
-                items.append(self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.from_slot(self.list_slot(v, str(i)), elem(v.t)))
+                items.append(self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.list_value(v, str(i), self.list_slot(v, str(i))))
             else:
-                self.assign(t.kids[i], self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.from_slot(self.list_slot(v, str(i)), elem(v.t)))
+                self.assign(t.kids[i], self.list_item(v, Val(str(i), "int")) if self.list_id_kind(v.t) != 0 else self.list_value(v, str(i), self.list_slot(v, str(i))))
         for i in range(len(items)):
             self.assign(t.kids[i], items[i])
     elif k == "tuple" and is_gen(v.t):
@@ -2152,12 +2227,12 @@ def gen_star_assign(self, t: Node, v: Val) -> None:
         size = self.mload('int', xs.v)
         self.rt("pys_unpack_ex_check", "void", [f"i64 {size}", f"i64 {s + after}"])
         for i in range(s):
-            items.append(self.list_item(xs, Val(str(i), "int")) if self.list_id_kind(xs.t) != 0 else self.from_slot(self.list_slot(xs, str(i)), elem(xs.t)))
+            items.append(self.list_item(xs, Val(str(i), "int")) if self.list_id_kind(xs.t) != 0 else self.list_value(xs, str(i), self.list_slot(xs, str(i))))
         end = self.scalar('sub', [Val(size, 'int'), Val(str(after), 'int')])
         items.append(Val(self.rt("pys_list_slice", "ptr", [f"ptr {xs.v}", f"i64 {s}", f"i64 {end}"]), xs.t))
         for i in range(after):
             at = self.scalar('add', [Val(end, 'int'), Val(str(i), 'int')])
-            items.append(self.list_item(xs, Val(at, "int")) if self.list_id_kind(xs.t) != 0 else self.from_slot(self.list_slot(xs, at), elem(xs.t)))
+            items.append(self.list_item(xs, Val(at, "int")) if self.list_id_kind(xs.t) != 0 else self.list_value(xs, at, self.list_slot(xs, at)))
     for i in range(len(t.kids)):
         self.assign(star if i == s else t.kids[i], items[i])
 def gen_list_slot(self, o: Val, i: str) -> str:

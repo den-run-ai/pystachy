@@ -10,7 +10,9 @@
      longest  the most slots that one of those lookups visited
    A last row sweeps the shifts, keys i << s and -(i << s) for every s up to 56 (8000 keys, fewer
    where 2N of them do not fit in 63 bits), and shows each column's worst: a cheap hash can
-   spread i << 46 and still cluster at another shift. It checks the values, the insertion order
+   spread i << 46 and still cluster at another shift. The tuples (i << 64, 0) hold promoting ints
+   past 64 bits (descriptor J, the compiler's bigints.held), whose slots all hold -2**63: they
+   spread only where the hash reads the ints' values. It checks the values, the insertion order
    and the deletions on the way. The counts depend on nothing but the runtime, so they are the
    same on every machine, and the run fails if a pattern averages more than LIMIT slots per
    lookup: a hash that behaved randomly would average at most 1.5 per miss and 2 per lookup
@@ -28,6 +30,8 @@
    nothing else holds keep none of them alive (#210), and objects that are keys or elements stay.
    Integer queries in Any dictionaries also check the allocation-free guarded probe,
    including identical probe counts and fallback before any user comparison.
+   Marked native str/int keys compare hashes, table layouts and exact probe counts
+   against the generic descriptor path, and must never call its hash dispatcher.
    --hash-cache runs only these checks, also under GC stress.
    runtime.c's dict hash functions are in runtime.py, so the build links its IR (pystachy rt).
    usage: make dictprobe   (build/dictprobe [N...] or build/dictprobe --hash-cache) */
@@ -36,6 +40,8 @@ static long long dict_slots;          /* (not a name the runtime's code uses: th
 #define DICT_PROBE() (dict_slots++)
 static long long dict_keyeqs;
 #define DICT_KEYEQ() (dict_keyeqs++)
+static long long dict_generic_hashes;
+#define DICT_HASH_GENERIC() (dict_generic_hashes++)
 #define pys_hash_str counted_hash_str
 #include "../runtime.c"
 #undef pys_hash_str
@@ -65,7 +71,7 @@ Str *pys_obj_repr(I c, I a, I b) { (void)c; (void)a; (void)b; return cstr("<obje
 
 static const char *pats[] = {"i", "-i", "i << 46", "i << 32", "i * 1000", "(i // 128) << 32 | i % 128",
   "random", "f\"k{i}\"", "f\"{i:08}\"", "\"x\" * 64 + str(i)", "str(i) + \"x\" * 64", "letter case of i's bits",
-  "objects, by identity", "i << s, -(i << s): s <= 56"};
+  "objects, by identity", "(i << 64, 0): promoting ints", "i << s, -(i << s): s <= 56"};
 #define NPAT (I)(sizeof pats / sizeof *pats - 1)   /* the last one is the sweep's */
 #define MAXN 65536                     /* 2N keys i << 46 fit in 63 bits */
 static List *keys;                     /* the collector's roots */
@@ -235,7 +241,7 @@ static void int_queries(void) {
   /* A colliding user key comes before the integer. The guarded probe must stop
      there without callbacks; the normal fallback observes the original query. */
   DSTR(desc, "O091"); DSTR(name, "IntProbeKey");
-  static const DynType type = {DK_OBJ, (Str *)&desc, (Str *)&name, 91, 0, DF_HASH | DF_X};
+  static const DynType type = {DK_OBJ, (Str *)&desc, (Str *)&name, 91, 0, DF_HASH | DF_X, NULL, NULL, NULL};
   dict = pys_dict_new((I)cstr("A"), 0);
   Dyn *object = pys_dyn_ref(&type, (void *)1);
   pys_dict_set(dict, (I)object, 9);
@@ -251,6 +257,87 @@ static void int_queries(void) {
   if (e < 0 || pys_dict_val(dict, e) != 11 || int_guard_calls != 2 || int_guard_hashes || int_guard_seen != (I)query)
     any_bad("fallback lost query identity or comparison order");
   printf("Any integer probes: no allocations, unchanged slots, guarded fallback preserves query identity\n");
+}
+
+static _Noreturn void marked_bad(const char *what) { fprintf(stderr, "dictprobe: marked scalar keys: %s\n", what); exit(1); }
+static void marked_layout(Dict *a, Dict *b) {
+  if (a->len != b->len || a->n != b->n || a->size != b->size || a->cut != b->cut || a->kind != b->kind)
+    marked_bad("table shape changed");
+  if (a->size && (memcmp(a->idx, b->idx, a->size * 4) || memcmp(a->hs, b->hs, a->n * 8) ||
+                 memcmp(a->keys, b->keys, a->n * 8) || memcmp(a->vals, b->vals, a->n * 8)))
+    marked_bad("hashes, slots or insertion order changed");
+}
+static void marked_query(Dict *reference, I key, const char *desc) {
+  uint64_t expected_hash = (uint64_t)hitem(key, desc), actual_hash = 0;
+  I expected_free = -1, actual_free = -1;
+  dict_slots = 0;
+  I expected = dfind(reference, key, expected_hash, &expected_free), slots = dict_slots;
+  dict_slots = 0;
+  I actual = dhfind(dict, key, &actual_hash, &actual_free);
+  if (actual_hash != expected_hash || actual != expected || actual_free != expected_free || dict_slots != slots)
+    marked_bad("hash or lookup probes changed");
+  dict_slots = 0;
+  expected = reference->len ? dfind(reference, key, expected_hash, 0) : -1; slots = dict_slots;
+  dict_slots = 0;
+  if (dpfind(dict, key) != expected || dict_slots != slots) marked_bad("pop lookup probes changed");
+}
+static void marked_scalars(void) {
+  /* The int hash cases include zero, -1 normalization, INT64_MIN and equal hashes.
+     Strings include distinct equal objects, None and cached 0/-1 sentinel results. */
+  I ints[] = {0, -1, -2, INT64_MIN, INT64_MAX, ((I)1 << 61) - 1, ((I)1 << 61), -((I)1 << 61),
+              1000, 1008, 1016, 1024, 1032, 1040, 1048, 1056};
+  I n = sizeof ints / sizeof *ints;
+  for (I str = 0; str < 2; str++) {
+    keys = pys_list_new(2 * n + 2);
+    Str *descriptor = cstr(str ? "!s" : "!i"); pys_list_append(keys, (I)descriptor);
+    dict = pys_dict_new((I)descriptor, 0);
+    Dict *reference = pys_dict_new((I)descriptor, 0); pys_list_append(keys, (I)reference);
+    for (I i = 0; i < n; i++) {
+      char text[24]; I length = snprintf(text, sizeof text, "scalar-%lld", (long long)i);
+      I key = str ? i ? (I)pys_str(text, length) : 0 : ints[i];
+      I query = str ? i ? (I)pys_str(text, length) : 0 : ints[i];
+      if (str && i == 1) { ((Str *)key)->dict_hash = 1; ((Str *)query)->dict_hash = 1; }
+      if (str && i == 2) { ((Str *)key)->dict_hash = (uint64_t)-1; ((Str *)query)->dict_hash = (uint64_t)-1; }
+      pys_list_append(keys, key); pys_list_append(keys, query);
+    }
+    dict_generic_hashes = 0;
+    if (str) {
+      Str *cold = (Str *)keys->a[8];
+      hash_calls = hash_bytes = 0;
+      uint64_t hash = hobj((I)descriptor, (I)cold);
+      if (hash != hobj((I)descriptor, (I)cold) || hash != (uint64_t)hitem((I)cold, "s")) marked_bad("cold string hash changed");
+      hash_count(1, cold->len);
+    }
+    for (I round = 0; round < 2; round++) {
+      for (I i = 0; i < n; i++) {
+        I key = keys->a[2 + 2 * i];
+        marked_query(reference, key, descriptor->s + 1);   /* includes the empty table */
+        dict_slots = 0;
+        dset(reference, key, (uint64_t)hitem(key, descriptor->s + 1), i + round);
+        I slots = dict_slots; dict_slots = 0;
+        pys_dict_set(dict, key, i + round);
+        if (dict_slots != slots) marked_bad("insertion probes changed");
+        marked_layout(dict, reference);
+      }
+      for (I i = 0; i < n; i++) marked_query(reference, keys->a[3 + 2 * i], descriptor->s + 1);
+      for (I i = 0; i < n; i += 2) {
+        I key = keys->a[3 + 2 * i];
+        dict_slots = 0;
+        I slot = dfind(reference, key, (uint64_t)hitem(key, descriptor->s + 1), 0);
+        I expected = dtake(reference, slot), slots = dict_slots; dict_slots = 0;
+        if (pys_dict_pop(dict, key) != expected || dict_slots != slots) marked_bad("deletion probes changed");
+        marked_layout(dict, reference);
+      }
+      for (I i = 0; i < n; i++) marked_query(reference, keys->a[3 + 2 * i], descriptor->s + 1);
+    }
+    pys_dict_clear(dict); pys_dict_clear(reference);
+    marked_query(reference, keys->a[2], descriptor->s + 1);
+    pys_dict_set(dict, keys->a[2], 9);
+    dset(reference, keys->a[2], (uint64_t)hitem(keys->a[2], descriptor->s + 1), 9);
+    marked_layout(dict, reference);
+    if (dict_generic_hashes) marked_bad("native str/int keys reached the generic hash dispatcher");
+  }
+  printf("marked str/int keys: generic hashes, table layouts and probes preserved without generic hash calls\n");
 }
 
 #define MIB ((I)1 << 20)
@@ -328,6 +415,21 @@ static void storage(void) {
     for (I i = 0; i < 100; i++) pys_set_add(s, skey(kind, i));
     set_kinds(s, ints, "a set that grew");
     set_kinds(pys_set_copy(s), ints, "set.copy()");
+  }
+  /* Dynamic programs mark native builtin dict kinds for Python hash/probes.
+     The marker must not turn integer payloads into conservative GC roots. */
+  for (I kind = 0; kind < 2; kind++) {
+    Dict *d = pys_dict_new((I)cstr(kind ? "!s" : "!i"), 10);
+    dict_kinds(d, !kind, "a marked presized dict");
+    for (I i = 0; i < 100; i++) pys_dict_set(d, skey(kind, i), i);
+    dict_kinds(d, !kind, "a marked dict that grew");
+    for (I i = 1; i < 100; i += 2) pys_dict_pop(d, skey(kind, i));
+    Dict *c = pys_dict_copy(d), *f = pys_dict_from(d);
+    dict_kinds(c, !kind, "a marked copy with holes");
+    dict_kinds(f, !kind, "a marked constructor with holes");
+    if (!(d->kind & KTAG) || c->len != 50 || f->len != 50 || pys_dict_getitem(c, skey(kind, 0)) != 0) storage_bad("marked live zero/copy");
+    pys_dict_clear(d); pys_dict_set(d, skey(kind, 0), 0);
+    dict_kinds(d, !kind, "a marked dict filled after clear");
   }
   addresses(); scrub_collect(); scrub_collect();
   if (gc_live >= 4 * MIB) storage_bad("ints that are the addresses of strs kept them alive");
@@ -409,7 +511,11 @@ static I key(I p, I i) {               /* key i of pattern p; the 2N keys of a p
   case 9: return (I)pys_str(b, snprintf(b, sizeof b, "%s%lld", X64, (long long)i));
   case 10: return (I)pys_str(b, snprintf(b, sizeof b, "%lld%s", (long long)i, X64));
   case 12: { I *o = pys_alloc(24); o[0] = i; return (I)o; }   /* (an object of three fields: P000) */
-  case 13: return sign * (i << shift);
+  case 13: {   /* a tuple of promoting ints (T2Ji, the compiler's bigints.held): past 64 bits, -2**63 and its Mpz in slot 2 */
+    Big b = pys_big_op(i, NULL, 64, NULL, 8); I *t = pys_alloc(24);
+    t[0] = b.hi ? INT64_MIN : b.lo; t[2] = (I)b.hi; return (I)t;
+  }
+  case 14: return sign * (i << shift);
   default: for (int j = 0; j < 20; j++) b[j] = (char)('a' + j - (i >> j & 1) * 32);   /* "aBcD..." */
     return (I)pys_str(b, 20);
   }
@@ -424,7 +530,7 @@ static _Noreturn void bad(I p, I n, const char *what) { fprintf(stderr, "dictpro
 static double run(I p, I n, long long c[4]) {  /* c: slots visited by insert, hit, miss, deleted */
   double t = 1e9;
   for (int r = 0; r < 3; r++) {
-    dict = pys_dict_new(p == 12 ? (I)cstr("P000") : p >= 7 && p < NPAT, 0);
+    dict = pys_dict_new(p == 12 ? (I)cstr("P000") : p == 13 ? (I)cstr("T2Ji") : p >= 7 && p < NPAT, 0);
     dict_slots = 0; double t0 = now();
     for (I i = 0; i < n; i++) pys_dict_set(dict, keys->a[i], i);
     c[0] = dict_slots; dict_slots = 0;
@@ -457,6 +563,7 @@ int main(int argc, char **argv) {
   any_keys();
   numeric_boxes();
   int_queries();
+  marked_scalars();
   storage();
   values();
   if (argc == 2 && !strcmp(argv[1], "--hash-cache")) return 0;

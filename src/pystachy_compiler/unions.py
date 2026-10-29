@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import ann_target
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import NONEVAR, OPTTYPES
+from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
 from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
@@ -52,10 +52,12 @@ def gen_uop(self, v: Val, op: str) -> Val:
         return self.refl_union_str(v, "__str__")  # (each class's: reflection.py)
     if not self.value_union(v.t):
         self.err("closed reference union operations require narrowing with isinstance() first")
-    t = "bool" if op == "truth" else "str"
+    t = "bool" if op == "truth" else "int" if op == "len" else "str"
+    if op == "len":
+        self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
     end = self.label()
     ph = Ins("phi", t, "")
-    if is_opt(v.t):
+    if is_opt(v.t) and op != "len":
         arm = self.label()
         self.incoming(ph, "false" if op == "truth" else self.sconst("None"), self.cur)
         self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, arm)
@@ -69,7 +71,7 @@ def gen_uop(self, v: Val, op: str) -> Val:
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(members[i])), "int")).v, arm, nxt)
             self.place(arm)
         item = self.uget(Val(v.v, unopt(v.t)), members[i])
-        result = Val(self.truth(item), "bool") if op == "truth" else self.to_str(item)
+        result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.to_str(item)
         self.incoming(ph, result.v, self.cur)
         self.br(end)
         if nxt != "":
@@ -80,6 +82,9 @@ def gen_uop(self, v: Val, op: str) -> Val:
 def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     # Both operands are already evaluated. Boxes of a narrower union keep their
     # pointers and tags; a concrete scalar is boxed only at this dynamic boundary.
+    # A tuple of promoting ints compares as its 64-bit ints, as a union holds them (bigints.py).
+    a = self.big_tuple_narrow(a) if is_tuple(a.t) and BIG in a.t else a
+    b = self.big_tuple_narrow(b) if is_tuple(b.t) and BIG in b.t else b
     t = self.union_type([a.t, b.t])
     if t.startswith("!") and self.ueq_type(a.t) and self.ueq_type(b.t):
         # A tuple need not become a union member just to compare with a union.
@@ -121,6 +126,12 @@ def gen_union_type(self, ts: list[str]) -> str:
         for m in umembers(t) if is_union(t) else [t]:
             if m not in ms:
                 ms.append(m)
+    if BIG in ms and "int" in ms:
+        ms.remove("int")  # (a promoting int holds a 64-bit one: bigints.py)
+    if len(ms) > 1 and BIG in ms and BIGOPT in ts and BIG not in ts:
+        # (an int | None of a module that opts in, with other types: their union, which holds a 64-bit
+        # int, as the 64-bit int | None it holds makes one: bigints.py)
+        ms[ms.index(BIG)] = "int"
     if len(ms) == 0:
         return "None"
     if len(ms) == 1:
@@ -516,6 +527,11 @@ def gen_join_type(self, a: str, b: str) -> str:
         return self.ctype("tuple", ts)
     if a == b:
         return a
+    if (a == BIG and b == "int") or (b == BIG and a == "int"):
+        return BIG  # (a promoting int holds both: bigints.py)
+    if (a == BIG and b in ["bool", "float", "str"]) or (b == BIG and a in ["bool", "float", "str"]):
+        # (with a bool, a float or a str, their union, which holds 64-bit ints, as in other modules)
+        a, b = "int" if a == BIG else a, "int" if b == BIG else b
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 

@@ -1,0 +1,14 @@
+no result
+no result
+f 1
+f 4611686018427387904
+no result
+f 3
+f 2
+192
+f 4611686018427387904
+f 1
+40
+f 2
+ValueError: negative shift count
+[exit 0]

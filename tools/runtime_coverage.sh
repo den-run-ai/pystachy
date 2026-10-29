@@ -1,6 +1,6 @@
 #!/bin/sh
 # Coverage of the native runtime's C code (make runtime-coverage; docs/testing.md#native-runtime-coverage):
-# runtime.c (with the ryu/ files it includes), pyembed.c and pyext.c, built with clang's source-based
+# runtime.c (with the ryu/ and mpz/ files it includes), pyembed.c and pyext.c, built with clang's source-based
 # coverage (PYSTACHY_CFLAGS="-fprofile-instr-generate -fcoverage-mapping") into a new runtime cache,
 # while these suites run with the native compiler:
 #   corpus  tests/run.sh's differential and deviation programs, JIT and AOT, or the FILEs given
@@ -25,8 +25,8 @@
 # usage: tools/runtime_coverage.sh [FILE...]   env: COMPILER (default ./pystachy), PY (default python3:
 #        the FFI suite's CPython, and the report's), PYSTACHY_LLVM (its llvm-profdata, llvm-cov and
 #        clang's profile runtime, which Ubuntu's libclang-rt-18-dev holds); RUNTIME_COVERAGE_SUITES
-#        (default "corpus ffi", or corpus alone for FILEs); RUNTIME_COVERAGE_SHARD=I/N, the corpus
-#        cases I, I + N, I + 2N... alone (tools/shard_cases.sh); RUNTIME_COVERAGE_REPORT=0, no report
+#        (default "corpus ffi", or corpus alone for FILEs); RUNTIME_COVERAGE_SHARD=I/N, shard I of
+#        N of the corpus alone (tools/shard_cases.sh); RUNTIME_COVERAGE_REPORT=0, no report
 #        (CI measures the parts in jobs of their own); COVERAGE_BASE=REF, the summary also lists the
 #        C code changed since REF's merge base with HEAD that the programs did not run
 #        tools/runtime_coverage.sh --report   (the report alone, of the parts already in parts/)

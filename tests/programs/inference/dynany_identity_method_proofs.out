@@ -1,0 +1,16 @@
+begin is pos True True
+end True True
+end at 304 b' res'
+returned parameter True True
+returned parameter field True True
+returned alias True True
+returned field True True
+field local and result True True
+capped True True
+capped argument True True
+unobserved argument True True
+stored by a method False False
+kept object True True
+dispatched False True
+dispatched True True
+[exit 0]

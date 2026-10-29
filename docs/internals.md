@@ -17,6 +17,7 @@ explains differential checks and bootstrap validation.
 | `runtime.c` | Allocation and collection, container storage, files, numeric support and exception unwinding |
 | `runtime.py` | Runtime functions written in the subset; see [runtime in the subset](runtime-in-subset.md) |
 | `lib/`, `ports/` | Standard-library modules and adapted third-party packages; see [library support](stdlib.md) |
+| `mpz/` | Compact arbitrary-precision arithmetic, adapted from MicroPython; see [representation and provenance](../mpz/README.md) |
 | `ryu/` | Ryu's float-to-string conversion, with its upstream license; see [Ryu's README](../ryu/README.md) |
 | `tests/`, `tools/` | CPython comparisons, rejection cases, IR probes, fuzzers and validation tools |
 | `bench/`, `examples/` | Performance workloads and complete applications |
@@ -152,7 +153,9 @@ do not by themselves make storage dynamic. Experimental opt-in `Any` uses the
 [separate boxes and dispatchers](dynamic-any.md#representation) described below.
 
 The collector is conservative, non-moving mark-and-sweep. It scans stack/register roots and
-registered program globals; buffers that cannot contain pointers are not scanned. Unreachable
+registered program globals; buffers that cannot contain pointers are not scanned. Marking
+prefetches each object a few objects before it scans it (`MQ`), so the cache misses of a big
+heap overlap; the objects it marks do not depend on that order. Unreachable
 files close during collection or at program exit. Supported Python operations are checked
 against CPython; the [compatibility reference](language/compatibility.md) lists deviations.
 
@@ -375,7 +378,10 @@ where a `try`, `with` or `yield from` may handle it, and raises it in the throwe
 there sends what it is sent on to its generator, throws what is thrown into it into its generator
 (closing it for `GeneratorExit`) and suspends again with what that yields, or finishes with its
 value. Programs without `send` and `throw` keep five words and the code they had; only a
-`yield from` whose closing may run code closes its generator as above.
+`yield from` whose closing may run code closes its generator as above. A program where a module
+opts in to [promoting ints](python-int.md) gives its generators nine words: also the pointers of
+the promoting ints yielded last and returned (`specs.GENVALP`, `GENRETP`), which every `yield` of
+an int writes, null where the value fits.
 
 A generator expression that no consumer takes directly becomes an anonymous generator
 function, called with its first iterable (evaluated where it is written) and the values of
@@ -413,8 +419,16 @@ keeps ORC and its normal code generation. This choice does not change the IR cle
 or inlining pipeline, and does not affect `build` or `ext`.
 
 `build` links the runtime bitcode with the program and applies clang's `-O2` optimization
-pipeline, allowing optimization across that boundary. `ext` builds a shared CPython module
-with its boundary wrappers; see the [FFI guide](ffi.md).
+pipeline, allowing optimization across that boundary. The program's module also defines
+`pys_plain`: 1 when no module opts in to dynamic `Any` or promoting ints, else 0. The runtime
+tests it (`opt_in()` in `runtime.c`) only on paths that values of those opt-ins lead to: ints
+past 64 bits in containers, promoting ints and list identity companions. For a plain program
+those paths become traps, and `-O2` drops static helpers that have no remaining caller from
+the executable. Explicit `mpz` users retain the helpers they need. The reusable runtime cache
+still contains all features. `make aotprobe` checks retained symbols and output for plain programs, direct
+opt-ins and imported opt-ins. The JIT tier's precompiled runtime and `ext` keep the runtime's
+weak definition, 0. `ext` builds a shared CPython module with its boundary wrappers; see the
+[FFI guide](ffi.md).
 
 Cached runtime artifacts depend on the runtime sources, included Ryu files, compiler,
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private
@@ -447,6 +461,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |
 | `PYSTACHY_GC` | `off` disables collection; `stats` prints a summary at exit |
 | `PYSTACHY_JOBS` | Parallelism for the test runner and IR tools |
+| `PYSTACHY_CASE_TIMES=FILE` | The test runner appends each case's milliseconds to `FILE`, from which `tools/case_weights.py` balances verification's shards; `tests/verify.sh` sets its own |
 
 For AddressSanitizer builds, set `ASAN_OPTIONS=detect_stack_use_after_return=0`: its fake stack
 is outside the collector's scanned stack. `PYSTACHY_CFLAGS=-fsanitize=address` instruments

@@ -1,0 +1,11 @@
+caught: integer result does not fit in 64 bits
+caught: integer result does not fit in 64 bits
+caught: integer result does not fit in 64 bits
+caught: integer result does not fit in 64 bits
+caught: integer result does not fit in 64 bits
+caught: integer result does not fit in 64 bits
+caught: integer result does not fit in 64 bits
+f 4611686018427387904
+f -1
+caught: integer result does not fit in 64 bits
+[exit 0]

@@ -1,0 +1,9 @@
+@init.scopelib: pys_list_new
+@main.init: pys_alloc pys_int_str pys_str_int pys_write pys_write pys_str_int pys_write pys_write pys_write pys_write pys_raise pys_raise
+@m.Counter.__init__:
+@m.Counter.step: pys_raise
+@f.scopelib$same:
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish

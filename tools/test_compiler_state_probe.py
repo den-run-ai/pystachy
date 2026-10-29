@@ -64,6 +64,7 @@ class StateProbeTests(unittest.TestCase):
                 self.newhints = {}
                 self.newx = {}
                 self.gtypes = {}
+                self.idevent = ""
                 generations.append(self)
 
             def program(self, source):
@@ -105,6 +106,55 @@ class StateProbeTests(unittest.TestCase):
 
     def test_restart_rewinds_known_globals_and_uses_fresh_gen(self):
         self.restart_contract(driver.compile_program)
+
+    def test_identity_restart_starts_over_tracking_everywhere(self):
+        # A crossing into code that tracks numeric identity (Gen.identity_event) discards the
+        # aborted pass's joins and comparison retries: the next pass is the first of a program
+        # whose every module tracks identity (idfull).
+        names = ("LAMBDAS", "RENAMED", "LIBS", "LINKDL")
+        saved = {name: getattr(driver, name).copy() for name in names}
+        generations = []
+        test = self
+
+        class FakeLoader:
+            def __init__(self, dirs):
+                pass
+
+            def program(self, path, source):
+                return source
+
+        class FakeGen:
+            def __init__(self):
+                self.newhints = {}
+                self.newx = {}
+                self.idevent = ""
+                generations.append(self)
+
+            def program(self, source):
+                if len(generations) == 1:
+                    test.assertFalse(self.idfull)
+                    self.newhints["join"] = "union[int,str]"
+                    self.newx["A.__eq__"] = True
+                    self.idevent = "number as an Any value"
+                    raise Rejoin()
+                test.assertTrue(self.idfull)
+                test.assertEqual(self.hints, {})
+                test.assertEqual(self.xnot, {})
+                test.assertFalse(self.final)
+                return "tracking pass"
+
+        try:
+            with patch.dict(driver.compile_program.__globals__, Gen=FakeGen, Loader=FakeLoader):
+                self.assertEqual(driver.compile_program("probe.py", "", [], ""), "tracking pass")
+            self.assertEqual(len(generations), 2)
+        finally:
+            for name, value in saved.items():
+                target = getattr(driver, name)
+                if isinstance(target, list):
+                    target[:] = value
+                else:
+                    target.clear()
+                    target.update(value)
 
     def test_each_missing_rewind_is_detected(self):
         source = inspect.getsource(driver.compile_program)

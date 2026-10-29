@@ -11,7 +11,9 @@ at specific compiler revisions.
 | [Installation](install.md) | Native releases, Docker, Linux/macOS source setup, uv and custom prefixes |
 | [Packages and apps](packages.md) | Source wheels, dependency locks, CPython reuse and standalone deployment |
 | [Language](language.md) | Supported Python, types, inference and compatibility limits |
+| [CPython support surface](support-surface.md) | Color-labelled diagrams of the native core, bounded features, costs and compatibility gaps |
 | [Dynamic `Any` (prototype)](dynamic-any.md) | Opt-in runtime-typed `Any` values: representation, contract, deviations and costs |
+| [Promoting ints (prototype)](python-int.md) | Opt-in CPython `int` past 64 bits: representation, 64-bit boundaries, deviations and costs |
 | [Standard library](../lib/README.md) | Available modules, supported APIs and port provenance |
 | [Porting and coverage](stdlib.md) | Choosing a library, adapting it and checking it against CPython |
 | [Third-party ports](../ports/README.md) | Port examples, usage and per-package restrictions |
@@ -23,6 +25,7 @@ at specific compiler revisions.
 | [Extended benchmarks](extended-performance.md) | Reproducing diagnostic benchmark runs |
 | [pyperformance results](pyperformance.md) | Ported pyperformance benchmarks under CPython, JIT and AOT |
 | [microGPT benchmark](../bench/microgpt/README.md) | Scalar-autograd transformer training, numerical parity and native performance |
+| [Integer benchmarks](../bench/integers/README.md) | `mpz` and checked int64 against CPython and PyPy, from int64-only loops to 20,000-bit values |
 | [Application examples](../examples/) | Small compiled command-line applications |
 | [Native nanoGPT](../examples/nanogpt/README.md) | CPU transformer inference and training with ndarray and optional native BLAS |
 

@@ -50,7 +50,9 @@ tests/run.sh ./pystachy jit tests/programs/library/lib_fnmatch.py
 ```
 
 `PYSTACHY_JOBS` controls test workers; the default is one per CPU. Full verification retains
-all coverage even when CI distributes the work across jobs.
+all coverage even when CI distributes the work across jobs. `PYSTACHY_CASE_TIMES=FILE` makes
+`tests/run.sh` append each case's wall-clock milliseconds to `FILE` (`MILLISECONDS CASE`, with GNU
+`date`), which [the shards' weights](#continuous-integration) are made from.
 
 ## Differential tests
 
@@ -114,7 +116,7 @@ every program allocation. It also runs the contract checks below.
 
 | Area | Checks |
 |---|---|
-| Compiler and IR | Valid typed/LLVM IR, runtime ABI and effects, bounded specialization failures, linear compilation, inherited-AST storage and hierarchy comparison code, JIT dead-code removal and inlining. |
+| Compiler and IR | Valid typed/LLVM IR, runtime ABI and effects, bounded specialization failures, linear compilation, inherited-AST storage and hierarchy comparison code, JIT dead-code removal and inlining, AOT opt-in code retention. |
 | Runtime | CPython comparisons for subset runtime functions; dictionary probes and string-hash caching; list storage, shared-container comparisons, file-buffer accounting and streaming consumers. |
 | Libraries and interoperability | Regex differential fuzzing and deterministic matcher budgets; FFI calls, embedded CPython and extension modules; runtime build-cache rules. |
 | Benchmarks | CPython-equivalent output plus advisory timings. |
@@ -129,9 +131,25 @@ using the verified native compiler in JIT and AOT, both normally and with progra
 every allocation. `--aot --gc-stress` selects the same configurations locally; the aggregate gate
 requires all four modes, 540 cases including 90 parity cases and zero mismatches. This bounded
 check complements the full opt-in corpus sweep, `make dynany-optin`), `make dictprobe`,
-`make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe` and `make jitprobe`.
+`make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe`, `make jitprobe` and
+`make aotprobe` (the runtime's opt-in code that AOT executables keep, by symbol, plain or not).
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
+
+`make python-int-gate` enforces the reviewed promoting-int compatibility baseline across
+`tests/programs/`: a fresh pinned-CPython oracle and both JIT and AOT for each entry module
+with `# pystachy: python-int`. Its manifest, `tools/python_int_optin_exceptions.json`, names
+one case and mode per accepted limitation, with an exact diagnostic, classification, rationale
+and tracking issue. New or changed failures, unexpected passes, failed oracles and missing
+checks fail the gate. Remove an exception when its case starts passing; never add one to
+hide a crash or a wrong result in supported code. `PYTHON_INT_GATE` passes tool options;
+`--shard-index 0 --shard-count 3` selects one CI shard. Reports from `--cases` or a single
+execution mode are useful for investigation but cannot satisfy CI's full-sweep requirement.
+
+`make python-int-optin` retains the exploratory sweep and `PYTHON_INT_OPTIN="--compare BASE"`
+comparison with an earlier report. It can use `--any-python` for local comparisons on another
+patch version, unlike the gate, which requires the pinned interpreter. Exploratory reports
+never substitute for gate evidence. `tools/python_int_optin.py --gate` invokes the gate too.
 
 `build/verification.json` records each stage's result, duration and counts, plus the source
 revision and hashes, toolchain, platform and timestamp. A suite run passes only when its
@@ -215,8 +233,8 @@ directory of its own, which `[paths]` maps to `src/`. Each suite starts with an 
 cache, so the runtime's build is measured too. `make coverage` fails when a test fails or data
 is missing, never because of a percentage: there is no threshold.
 
-`COVERAGE_SHARD=I/N` limits the corpus to the cases `I`, `I + N`, `I + 2N`... in the order of
-`tests/verify.sh`'s shards (`tools/shard_cases.sh`), and `COVERAGE_REPORT=0` leaves out the report.
+`COVERAGE_SHARD=I/N` limits the corpus to shard `I` of `N`, as `tests/verify.sh` shards it
+(`tools/shard_cases.sh`), and `COVERAGE_REPORT=0` leaves out the report.
 `tools/coverage_report.py` combines such parts later. It first checks that every part passed
 with complete data, that no suite was measured twice, that no shard is missing and that all
 parts measured one commit.
@@ -224,7 +242,7 @@ parts measured one commit.
 ## Native runtime coverage
 
 `make runtime-coverage` measures which lines and branches of the runtime's C code the programs
-run: `runtime.c` with the `ryu/` files it includes, `pyembed.c` (embedded CPython) and `pyext.c`
+run: `runtime.c` with the `ryu/` and `mpz/` files it includes, `pyembed.c` (embedded CPython) and `pyext.c`
 (the extension-module ABI). It builds a new runtime cache with clang's
 [source-based coverage](https://clang.llvm.org/docs/SourceBasedCodeCoverage.html)
 (`PYSTACHY_CFLAGS="-fprofile-instr-generate -fcoverage-mapping"`), then runs the corpus's
@@ -371,7 +389,7 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then twenty-seven groups
+A bootstrap job checks compiler and runtime IR fixed points once, then thirty groups
 run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
 complete tracked source identity, commit and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
@@ -381,19 +399,20 @@ runner variation:
 
 | Group | Work after bootstrap |
 |---|---|
-| `hosted-0`, `hosted-1`, `hosted-2` | Three disjoint thirds of the CPython-hosted differential suite, JIT and AOT. |
-| `native-0`, `native-1` | Two disjoint halves of the native differential suite, JIT and AOT. |
-| `opt-off-0`, `opt-off-1` | Two disjoint halves of the native suite with IR optimizations disabled. |
+| `hosted` | The CPython-hosted compiler against stage 2 on every corpus case: identical IR, messages and exit status (`tools/irsame.sh`) and `check` results (`tools/irsame.sh --check`); one case in 64 and a program of each hosted-driver path after the IR also run end to end, JIT and AOT. |
+| `native-0`, `native-1`, `native-2` | Three disjoint thirds of the native differential suite, JIT and AOT. |
+| `opt-off-0`, `opt-off-1`, `opt-off-2` | Three disjoint thirds of the native suite with IR optimizations disabled. |
 | `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
-| `ubsan-0`, `ubsan-1`, `ubsan-2` | Sanitized compiler/runtime; three disjoint thirds of the JIT/AOT suite. |
+| `ubsan-0`, `ubsan-1`, `ubsan-2`, `ubsan-3` | Sanitized compiler/runtime; four disjoint quarters of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
-| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the full JIT suite, with compiler and program GC stress. |
-| `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the full AOT suite, with compiler and program GC stress. |
-| `dynany-optin-0` through `dynany-optin-3` | Four disjoint quarters of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
-| `runtime-cache` | The cached runtime's rules with both compilers. |
-| `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress. |
-| `benchmarks` | Benchmark correctness/timings and half of the compiler-scaling shapes; extended correctness checks reuse the verified compiler. |
-| `scaling-1` | The other compiler-scaling shapes. |
+| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results (`gc-ir-0`, `gc-ir-1`); then the half's JIT suite with program GC stress, one case in 16 of the half with the compiler stressed too. |
+| `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
+| `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
+| `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
+| `runtime-cache` | The cached runtime's rules with both compilers, the two runs side by side. |
+| `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress; independent steps run side by side. |
+| `benchmarks` | Benchmark correctness/timings; extended correctness checks reuse the verified compiler. |
+| `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
 
 A failed group leaves the others running. The required check remains
 `make verify (Linux x86-64, LLVM 18, Python 3.13)`. Its report gate requires every group to
@@ -410,8 +429,25 @@ signatures; unexpected passes require removing stale exceptions, and new failure
 The report gate verifies the full corpus and exception hashes, exact shard membership, every
 case/mode result and complete oracle/check counts. Generated copies and failure logs remain in
 the workflow artifacts. Run locally with `make dynany-optin`, or select a shard with
-`DYNANY_OPTIN="--shard-index 0 --shard-count 4"`. This sweep covers normal JIT/AOT execution;
+`DYNANY_OPTIN="--shard-index 0 --shard-count 3"`. This sweep covers normal JIT/AOT execution;
 program GC stress remains covered by the separate generated parity checks and existing corpus.
+Both sweeps run a program on every CPU; AOT builds are about 80% of their time. In CI, and in
+`tests/verify.sh all`, they pass `--native-suite`: the same run's `tests-native` steps execute
+every unchanged program with the same compiler, JIT and AOT, so the sweeps leave to them only the
+baseline rerun of an exact expected failure and the AOT check of a program whose opted-in LLVM IR
+and fresh CPython recording are byte-identical to the original's (`native-ir` rows, about a
+quarter of the corpus). Every JIT check and every other AOT check still runs opted in, and the
+aggregate rejects such reports without a complete stage-2 JIT/AOT `tests-native` suite. The logs
+list only checks that neither passed nor were left to `tests-native`; the summary line counts the
+latter. `tests-native` never runs with GC stress, so `python_int_gate.py` refuses
+`--native-suite` with `--gc-stress`.
+The promoting-int sweep uses the same isolated-source and CPython-recording contract. Its
+report is checked against the current corpus, reviewed manifest and consumed source hashes,
+and binds the executed native compiler by its SHA-256. The aggregate rejects missing shards,
+duplicate case/mode pairs and inconsistent compiler identities. Promotion regressions added
+with their explicit pragma are also included in the existing full GC JIT/AOT suites, which
+collect at every program allocation; the normal opt-in sweep does not claim GC-stressed
+execution. Artifacts retain each shard's report and reproduced sources for diagnosis.
 A failed producer blocks its consumers
 and fails the final gate; there is no fallback to an older compiler.
 
@@ -422,28 +458,121 @@ workflow time. The 15-minute limit applies to each verification job.
 GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;
 the wider interval still exercises thousands of collections without dominating CI.
-The GC test suite keeps its compiler interval of 1,000 and collects at **every program
-allocation**. Both self-compilation IR identity and full suite counts remain required.
-Self-compilation, the two JIT halves and the three AOT thirds use separate runners and report
-their own durations. The JIT halves take every other file in a fixed order and the AOT thirds
-every third; the halves together, like the thirds, run the full corpus, including rejection and
-syntax checks. The final gate requires all six groups, both execution modes, the stress
-intervals, distinct shard identities and complete counts for every job: the JIT halves and the
-AOT thirds each make as many checks as `tests/verify.sh` counts in the whole corpus in one mode
-(each report's `sources.mode_checks`). `tests/verify.sh gc-stress` still runs all GC checks
-locally with one bootstrap; `gc-jit` runs the two JIT halves and `gc-aot` the three AOT thirds.
-The native and opt-off suites are split the same way, in halves, and the CPython-hosted,
-python-free and UBSan suites in thirds (`tests/verify.sh`'s `shard_cases`). The gate requires each
+The compiler collecting every 1,000 allocations is checked by identity, once a run: `gc-ir-0`
+and `gc-ir-1` (in `gc-jit-0` and `gc-jit-1`) compile the cases of two disjoint halves of the
+corpus (`shard_cases`, balanced as below) with it and with stage 2 unstressed, through
+`tools/irsame.sh` (`rt` for `rtmode_*` cases, with the IR check on), and require the same IR byte
+for byte, the same messages and the same exit status for every case, the same IR of `runtime.py`,
+and the same `check` output and status for every `syntax_*` case (`tools/irsame.sh --check`). The
+GC suites then collect at **every program allocation** (`PYSTACHY_GC_STRESS_PROGRAM=1`) and run
+every case of the corpus once in each mode, rejection and syntax checks included, compiled by
+stage 2 unstressed: JIT in the same two halves, AOT in three thirds. Each suite used to compile
+every case with the stressed compiler, in each mode; where the IR is the same, the LLVM tools
+build the same program from it, so the second compilation only repeated what one identity check
+shows, at about twelve times the unstressed frontend's cost (on one case in ten of the corpus, on
+one core, the stressed frontend took 62% of a GC JIT run and 28% of a GC AOT run). One case in 16
+of each job's shard still runs end to end with the compiler stressed too: the cases at positions
+4 (JIT) or 12 (AOT) modulo 16 of the shard as `shard_cases` lists it, heaviest first. Drawn from
+the job's own shard, the sample lies in it whatever `tests/case_weights.txt` does to the shards,
+and is the same on every runner. Taken in weight order, it holds about a sixteenth of the shard's
+weight (0.94 to 1.03 of it at offsets 4 to 12 with the committed weights, where every 16th case in
+C order held 0.68 to 1.47), so a job's time does not depend on which heavy cases its sample
+draws; offset 0 would put each shard's heaviest case in every sample, and the two modes' offsets
+differ, so that they stress different cases where their shards' orders agree. The sample runs
+first, in a runtime cache of the GC steps' own (`build/verify/gc-cache`, which each run starts
+empty), so the stressed compiler builds the runtime that the job's GC tests use, and the driver's
+cache, `opt`/`lli` and `clang`/link paths after the IR run under stress; the program-stressed run
+takes the shard's other cases. AOT keeps three jobs: projected from the same measurements, two
+would each take about 11.2 minutes of work, over the ten-minute target, and three take about 7.7.
+Self-compilation and the five suites use separate runners and report their own durations.
+The final gate requires all six groups, both execution modes, the intervals (1,000 for `gc-ir`
+and the samples' compiler, 0 for the program-stressed runs' compiler, 1 for every program),
+distinct shard identities, each sample's identity (its period and its mode's offset, as many
+cases as its shard has positions at that offset, and with the program-stressed run's cases as
+many as the shard holds) and complete counts for every run: each mode's runs and samples together
+make as many checks as `tests/verify.sh` counts in the whole corpus in one mode (each report's
+`sources.mode_checks`), and its shards hold `sources.corpus_cases` cases between them; the
+`gc-ir` halves together compare `sources.corpus_cases` cases and `sources.syntax_cases` checks
+with no difference. It rejects GC suites without both `gc-ir` halves, even in a contract that
+omits them. `tests/verify.sh gc-stress` still runs all GC checks locally with one bootstrap;
+`gc-ir` runs the two identity halves, `gc-jit` those and the two JIT halves, and `gc-aot` the
+three AOT thirds.
+The native, opt-off and python-free suites run in thirds, and the UBSan suite in quarters
+(`tests/verify.sh`'s `shard_cases`). The gate requires each
 shard's identity and complete count, and that the shards together make as many checks as an
 unsharded suite: the JIT and AOT shards as many as `tests/verify.sh` counts in the whole corpus
 (each report's `sources.suite_checks`; opt-off's once per `PYSTACHY_OPT` setting), and the UBSan
-thirds, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
-both of their halves and `hosted` its three thirds, `python-free` rebuilds the compiler once and
-runs its three thirds, and `ubsan` builds the sanitized compiler once and runs its three thirds.
-The compiler-scaling check is split by shapes: `scaling-0` (in `benchmarks`) checks those of
-`SCALING_0`, about half of the lines the CPython-hosted compiler executes, and `scaling-1` every
-other shape of `tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires
-the two to check every shape once. Locally, `scaling` runs both.
+quarters, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
+all three of their thirds, `python-free` rebuilds the compiler once and runs its three thirds,
+and `ubsan` builds the sanitized compiler once and runs its four quarters.
+
+Every such suite is sharded by `tests/corpus.sh`'s `corpus_shard` (`tools/shard_cases.sh` for the
+coverage and variant workflows): the cases are taken heaviest first by their weight in
+`tests/case_weights.txt`, each joining the shard whose total weight is least so far, and each
+shard lists its cases heaviest first, so that `tests/run.sh`'s workers do not end on a long case.
+Every corpus case joins exactly one shard whatever the table holds: a case it lacks weighs its
+kind's default, and a stale or malformed entry counts for nothing, so the table can cost balance
+but never coverage. Integer weights and the C locale make the shards identical on every runner. A
+weight is a case's time in thousandths of a median program's. The suite steps of `native`,
+`opt-off` and `ubsan` keep their per-case times (`build/verify/*-times.log`, from
+`PYSTACHY_CASE_TIMES`) in each group's artifact; refresh the table from one run's native thirds:
+
+```sh
+python3 tools/case_weights.py verification-native-0/verify/tests-native-0-times.log \
+  verification-native-1/verify/tests-native-1-times.log \
+  verification-native-2/verify/tests-native-2-times.log
+```
+
+The table comes from the native halves of CI run 40753601291 (`--keep`; they timed every case).
+It replaced a first table made from the 2-second file times of the promoting-int sweeps of runs
+40719438561 and 40731629369 and a one-core local run of the deviations and rejections. Judged by
+that run's opt-off halves and UBSan thirds, which it was not made from, the heaviest shard exceeds
+an even split by 0.2% for halves and 0.4% for thirds, against 0.4% and 1.9% with the first table.
+The runners vary far more: in that run a `znver3` runner took 1.2-1.4 times as long per case as a
+`znver4` one (the native halves took 598 s and 429 s), so a job's time depends mostly on the
+runner it lands on. Since a half took 10.0-10.4 minutes on `znver3` runners in that run, native
+and opt-off run in thirds. UBSan thirds took 10.85 and 10.87 minutes in CI run 40764559484,
+so UBSan now runs in four quarters with an independent sanitized rebuild in each CI job. The
+four-way split still needs CI timing evidence; the 15-minute job limit is unchanged.
+The CPython-hosted compiler is checked by identity rather than by executing its output again:
+`hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
+exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results
+for every `syntax_*` case (`sources.syntax_cases`; both counted in `tests/corpus.sh`'s corpus), each
+comparison in a worker per CPU. The LLVM tools build the same program from the
+same IR, and the `native-*` groups run every case's stage-2 output in JIT and AOT, so executing
+the hosted compiler's identical output again added no coverage; it replaced three jobs, whose
+Verify steps took 24.3 minutes together in run 40719438561 (a historical measurement). A sample
+still runs end to end with the hosted compiler, so its driver's `run`, `build` and `check` paths
+execute in this job too, as they do in `runtime-cache`, `jit-dead-code`, `unicode-audit`,
+`compile-limits` and `scaling`: shard 0 of 64, and the first program in C order of each kind whose
+run takes the hosted driver past the IR along a path of its own (`tests/verify.sh`'s
+`hosted_strata`): one that sends itself SIGINT, one with `NAME.full`, one with `NAME.in`, one with
+`NAME.path`, and one that imports a module named `ffi`. The step reports the sample and the
+program of each kind, and fails if a kind has none; the gate requires every kind, each a program
+of the checkout's corpus of that kind and in the sample. The maintainer accepted this identity
+check with its stratified end-to-end sample on 2026-10-28.
+The compiler-scaling check is split by shapes: `scaling-0` checks those of `SCALING_0`, about
+half of the lines the CPython-hosted compiler executes, and `scaling-1` every other shape of
+`tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires the two to
+check every shape once. Both run in the `scaling` group with `tools/scaling.py -j`, one shape per
+CPU (`PYSTACHY_JOBS` if set): `--check` compares counts, which do not depend on the load, so its
+seconds there are informational; measure timings with `-j 1`.
+The `contracts` group runs its steps in three phases (`tests/verify.sh`'s `contracts_*` lanes), after
+one runtime build per compiler so that each step finds the warm cache it found when the steps ran
+one after another: `check-ir` and `rt-abi`, which use every CPU; `compile-limits` beside one lane
+only, since its compilers must stay under ten CPU seconds (the hosted one takes about eight on CI,
+and a busy sibling thread of CI's two-thread cores would add to that); then four lanes at once.
+`contracts_d` runs `aot-dead-code` after `jit-dead-code`; both report through the aggregate gate. A
+shell's background job starts with SIGINT and SIGQUIT ignored, so the steps whose programs take
+SIGINT (`ffi`, `select-io`) are in the shell's own lane, `contracts_fg`. Each lane keeps its
+steps' records and the shell appends them in the plan's order; a lane that ends before a step
+reports fails that step (`lane_ended`). `tools/test_verify_contracts.py` checks the order, the
+overlap, what runs beside `compile-limits`, the SIGINT disposition and both failures. `runtime-cache` runs `tests/cache.sh` for
+the two compilers at once: each run has its own home, LLVM wrappers and temporary directory.
+On TERM, or SIGINT as Ctrl-C sends it, `tests/verify.sh` ends every process its background jobs
+started (the lanes and the background `tests/cache.sh` run, `stop_jobs`), not their shells alone,
+whose programs would run on into `build/verify`; `tools/test_verify_contracts.py` checks that none
+survives.
 The final report job allows ten minutes for artifact downloads and validation.
 
 The compiler state controls (`python3 -m unittest discover -s tools -p

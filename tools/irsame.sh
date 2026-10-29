@@ -16,14 +16,19 @@
 # left. The first 3 that differ are shown with the start of each diff (the IR's from its first
 # differing line, named by the function that holds it); the last line counts them all. Only sh and
 # the tools tests/run.sh uses are needed (no python), as in the Python-free stage of tests/verify.sh.
-# usage: tools/irsame.sh OLD NEW [FILE...]   (compiler commands, e.g. build/ref/pystachy ./pystachy
-#        or "python3 pystachy.py"; make irsame REF=<commit> runs it against that commit's compiler)
+# With --check, they run `check` (which only parses) instead, as tests/run.sh runs it (no NAME.path,
+# no IR), and must print the same messages with the same exit status (tests/verify.sh's tests-cpython,
+# on the syntax_*.py cases).
+# usage: tools/irsame.sh [--check] OLD NEW [FILE...]   (compiler commands, e.g. build/ref/pystachy
+#        ./pystachy or "python3 pystachy.py"; make irsame REF=<commit> runs it against that commit's compiler)
 cd "$(dirname "$0")/.." || exit 1
-[ $# -ge 2 ] || { echo "usage: tools/irsame.sh OLD NEW [FILE...]" >&2; exit 2; }
+HOW=ir
+[ "${1:-}" != --check ] || { HOW=check; shift; }
+[ $# -ge 2 ] || { echo "usage: tools/irsame.sh [--check] OLD NEW [FILE...]" >&2; exit 2; }
 OLD=$1; NEW=$2; shift 2
 for f; do [ -f "$f" ] || { echo "tools/irsame.sh: no such program: $f" >&2; exit 2; }; done
 RT=0  # (whether both have runtime mode: their usage names it)
-{ $OLD 2>&1 | grep -q 'pystachy rt '; } && { $NEW 2>&1 | grep -q 'pystachy rt '; } && RT=1
+[ $HOW = check ] || { { $OLD 2>&1 | grep -q 'pystachy rt '; } && { $NEW 2>&1 | grep -q 'pystachy rt '; } && RT=1; }
 if [ $# = 0 ]; then
   for f in pystachy.py runtime.py tests/programs/*/*.py tests/deviations/*.py bench/*.py bench/pyperformance/*.py \
       tests/ir/*.py tests/errors/*/*.py; do
@@ -39,16 +44,21 @@ trap 'exit 130' INT TERM
 
 # same FILE DIR: compile FILE with both compilers in DIR; DIR/report says what differs (empty: nothing)
 same() {
-  mp=$PYSTACHY_PATH
-  if [ -f "${1%.py}.path" ]; then
-    mp=$(sh tests/prepare_path.sh "$1" "$2") || {
-      echo "cannot prepare import path" > "$2/report"; return;
-    }
+  if [ $HOW = check ]; then
+    $OLD check "$1" > "$2/old.msg" 2>&1; a=$?
+    $NEW check "$1" > "$2/new.msg" 2>&1; b=$?
+  else
+    mp=$PYSTACHY_PATH
+    if [ -f "${1%.py}.path" ]; then
+      mp=$(sh tests/prepare_path.sh "$1" "$2") || {
+        echo "cannot prepare import path" > "$2/report"; return;
+      }
+    fi
+    how=ir
+    case $RT:$1 in 1:runtime.py | 1:*/runtime.py | 1:*/rtmode_*.py) how=rt ;; esac
+    PYSTACHY_PATH=$mp $OLD $how "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?
+    PYSTACHY_PATH=$mp $NEW $how "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
   fi
-  how=ir
-  case $RT:$1 in 1:runtime.py | 1:*/runtime.py | 1:*/rtmode_*.py) how=rt ;; esac
-  PYSTACHY_PATH=$mp $OLD $how "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?
-  PYSTACHY_PATH=$mp $NEW $how "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
   {
     [ $a = $b ] || echo "  exit status $a -> $b"
     if ! cmp -s "$2/old.msg" "$2/new.msg"; then

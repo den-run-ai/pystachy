@@ -1,0 +1,69 @@
+join /bar/baz a/b//c/d
+split ('//foo', 'bar')
+splitext 'foo.bar' ('foo', '.bar')
+splitext 'foo.boo.bar' ('foo.boo', '.bar')
+splitext 'foo.boo.biff.bar' ('foo.boo.biff', '.bar')
+splitext '.csh.rc' ('.csh', '.rc')
+splitext 'nodots' ('nodots', '')
+splitext '.cshrc' ('.cshrc', '')
+splitext '...manydots' ('...manydots', '')
+splitext '...manydots.ext' ('...manydots', '.ext')
+splitext '.' ('.', '')
+splitext '..' ('..', '')
+splitext '........' ('........', '')
+splitext '' ('', '')
+splitroot ('', '//', 'a') ('', '/', '//a/b')
+isabs ok
+basename ok
+dirname ok
+normpath '' '.'
+normpath '/' '/'
+normpath '/.' '/'
+normpath '/./' '/'
+normpath '/.//.' '/'
+normpath '/./foo/bar' '/foo/bar'
+normpath '/foo' '/foo'
+normpath '/foo/bar' '/foo/bar'
+normpath '//' '//'
+normpath '///' '/'
+normpath '///foo/.//bar//' '/foo/bar'
+normpath '///foo/.//bar//.//..//.//baz///' '/foo/baz'
+normpath '///..//./foo/.//bar' '/foo/bar'
+normpath '.' '.'
+normpath './/.' '.'
+normpath './foo/bar' 'foo/bar'
+normpath '..' '..'
+normpath '../' '..'
+normpath '../foo' '../foo'
+normpath '../../foo' '../../foo'
+normpath '../foo/../bar' '../bar'
+normpath '../../foo/../bar/./baz/boom/..' '../../bar/baz'
+normpath '/..' '/'
+normpath '/..' '/'
+normpath '/../' '/'
+normpath '/..//' '/'
+normpath '//.' '//'
+normpath '//..' '//'
+normpath '//...' '//...'
+normpath '//../foo' '//foo'
+normpath '//../../foo' '//foo'
+normpath '/../foo' '/foo'
+normpath '/../../foo' '/foo'
+normpath '/../foo/../' '/'
+normpath '/../foo/../bar' '/bar'
+normpath '/../../foo/../bar/./baz/boom/..' '/bar/baz'
+normpath '/../../foo/../bar/./baz/boom/.' '/bar/baz/boom'
+normpath 'foo/../bar/baz' 'bar/baz'
+normpath 'foo/../../bar/baz' '../bar/baz'
+normpath 'foo/../../../bar/baz' '../../bar/baz'
+normpath 'foo///../bar/.././../baz/boom' '../baz/boom'
+normpath 'foo/bar/../..///../../baz/boom' '../../baz/boom'
+normpath '/foo/..' '/'
+normpath '/foo/../..' '/'
+normpath '//foo/..' '//'
+normpath '//foo/../..' '//'
+normpath '///foo/..' '/'
+normpath '///foo/../..' '/'
+normpath '////foo/..' '/'
+normpath '/////foo/..' '/'
+[exit 0]

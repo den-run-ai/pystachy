@@ -1,0 +1,17 @@
+comparison
+right items get
+left get
+left set 2
+replacement
+right items get
+right get
+original 2 10
+True
+right items get
+[1] ['one', 'two'] 2 10
+comparison
+replacement
+original 1 22
+True
+True 22
+[exit 0]

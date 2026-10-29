@@ -24,6 +24,7 @@ COMPILER_SOURCES: list[str] = [
     'src/__init__.py',
     'src/pystachy_compiler/__init__.py',
     'src/pystachy_compiler/analysis.py',
+    'src/pystachy_compiler/bigints.py',
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
     'src/pystachy_compiler/containers.py',
@@ -76,13 +77,19 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # types, as if annotated, until no join widens one (at most JOINS passes after the first).
     # Where a comparison method's call with an Any value does not compile, it is compiled again
     # without that call (Gen.xnot: each such pass adds a method, so these passes count toward no
-    # limit)
+    # limit). Unsupported iteration protocol bodies use the same per-method retry
+    # registry, but their replacement arms raise an explicit compatibility error.
     hints: dict[str, str] = {}
     xnot: dict[str, bool] = {}
     lambdas = LAMBDAS[0]
     libs = len(LIBS)
     linkdl = len(LINKDL)
     passes = 0
+    # In a program that uses dynamic Any, the code of modules that neither opt in nor are imported
+    # by one that does tracks no numeric identity (Gen.identity_modules), until a pass finds a
+    # crossing that could carry one (Gen.identity_event): the program is then compiled from the
+    # start with every module tracking it (idfull), as if that split had never been tried.
+    idfull = False
     while True:
         g = Gen()
         g.ext = ext
@@ -91,17 +98,24 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.hints = hints
         g.xnot = xnot
         g.final = passes >= JOINS
+        g.idfull = idfull
         ld = Loader(dirs)
         ld.ext = ext
         try:
             return g.program(ld.program(path, src))
         except Rejoin:
-            for k in g.newhints:
-                hints[k] = g.newhints[k]
-            if len([k for k in g.newx if k not in xnot]) == 0:
-                passes += 1
-            for k in g.newx:
-                xnot[k] = True
+            if g.idevent != "" and not idfull:
+                idfull = True
+                hints = {}
+                xnot = {}
+                passes = 0
+            else:
+                for k in g.newhints:
+                    hints[k] = g.newhints[k]
+                if len([k for k in g.newx if k not in xnot]) == 0:
+                    passes += 1
+                for k in g.newx:
+                    xnot[k] = True
             # (as parsing and lowering found them: the next pass numbers lambdas and
             # lists C libraries as the first did; Loader.program rebuilds its file-index space)
             LAMBDAS[0] = lambdas
@@ -161,9 +175,9 @@ def sh(cmd: str) -> int:
 CPUID: list[str] = ["vendor_id", "cpu family", "model", "model name", "stepping", "flags", "CPU implementer", "CPU architecture",
                     "CPU variant", "CPU part", "CPU revision", "Features"]
 # the files that runtime.c includes from beside it, each DIR/NAME (ryu/: Ryu's d2s, a float's shortest
-# digits, ryu/README.md): the runtime is built from their bytes too
+# digits, ryu/README.md; mpz/: packed integer arithmetic): the runtime is built from their bytes too
 RTPARTS: list[str] = ["ryu/d2s.c", "ryu/ryu.h", "ryu/common.h", "ryu/digit_table.h", "ryu/d2s_intrinsics.h",
-                      "ryu/d2s_small_table.h"]
+                      "ryu/d2s_small_table.h", "mpz/mpz.c"]
 # On Linux, pystachy run's lli loads the runtime as a shared library (-dlopen) rather than linking the
 # runtime's machine code into each run (-extra-object), which cost about 35 ms a run (#704). The
 # library is the cached runtime's .o, linked with RTSO: the runtime calls back into the program
@@ -365,6 +379,9 @@ def main() -> None:
     ext = diagnostics.SRC[diagnostics.SRC.rfind("/") + 1 : -3] if cmd == "ext" and diagnostics.SRC.endswith(".py") else ""
     ir = compile_program(diagnostics.SRC, f.read(), dirs, ext)
     f.close()
+    # a program that opts in to neither dynamic Any nor promoting ints: pys_plain, below (read now, as
+    # building the runtime compiles runtime.py as a program of its own, which has no opt-in)
+    plain = not diagnostics.dynamic_program() and not diagnostics.int_program()
     out = ""
     abi = "abi3"  # pystachy ext: abi3 (CPython 3.12+, GIL builds) or abi3t (3.15+, GIL and free-threaded)
     rest: list[str] = []
@@ -558,6 +575,11 @@ def main() -> None:
     partso = f"{rts}.{os.getpid()}.{own}"
     f = open(ll, "w", encoding=RAW)
     f.write(ir)
+    if cmd == "build":
+        # runtime.c's pys_plain, which -O2 reads with the runtime as one module: 1 removes the code
+        # that only values of those opt-ins reach (opt_in()), before it is optimized; the JIT tier
+        # and extension modules keep the runtime's weak 0
+        f.write(f"@pys_plain = constant i64 {1 if plain else 0}\n")
     f.close()
     tc = [q(paths[i]) if paths[i] != "" else tools[i] for i in range(len(tools))]
     msg = ""

@@ -6,6 +6,8 @@ annotations, inference and specialization give the compiler the types it needs.
 This guide covers the language you use to write and port programs. The detailed references
 cover [typing](language/typing.md), [imports and builtins](language/modules.md),
 [execution rules](language/semantics.md) and [CPython compatibility](language/compatibility.md).
+The [support-surface diagrams](support-surface.md) show the concrete native core, supported
+extensions and their compiler, runtime and IR costs.
 
 ## Types
 
@@ -22,7 +24,11 @@ cover [typing](language/typing.md), [imports and builtins](language/modules.md),
 | Generics | Function templates and `Generic` or PEP 695 (`class Box[T]`) classes with inferred or explicit type arguments; module-level type aliases |
 | Recursive values (prototype) | `type JSONValue = None \| bool \| int \| float \| str \| list[JSONValue] \| dict[str, JSONValue]` and smaller closed recursive unions, narrowed with `isinstance()`; see [recursive value aliases](language/typing.md#recursive-value-aliases-prototype) |
 
-Integers are checked 64-bit values. Strings are stored as UTF-8, and their lengths, indexing,
+Integers are checked 64-bit values; `x & y` keeps the low 64 bits of arithmetic it
+masks, as described under [deviations](language/compatibility.md#numbers). A module that opts in
+to the [promoting int prototype](python-int.md) gets CPython's arbitrary-precision `int` in its
+variables, arguments, returns, fields, tuples and generators and in lists, dicts and sets of ints
+and of tuples of ints instead. Strings are stored as UTF-8, and their lengths, indexing,
 slicing, iteration and search positions count code points, as CPython's do; a `bytes` holds its
 bytes, and its items are ints. Dictionary keys and set elements
 have a restricted set of types: integers, strings, `bytes`, objects (hashed by identity, or by their
@@ -256,7 +262,7 @@ separately in [FFI](ffi.md).
 
 The main gaps are multiple inheritance, general object unions, dynamic `Any` values outside the
 opt-in [prototype](dynamic-any.md), `async`, `bytearray`, `memoryview` and binary files, complex
-and arbitrary-precision numbers, `match`, attribute values looked up by names only the run time
+numbers, arbitrary-precision ints outside the opt-in [prototype](python-int.md), `match`, attribute values looked up by names only the run time
 knows (their text and `hasattr()` are supported), slice objects and unrestricted argument
 expansion.
 

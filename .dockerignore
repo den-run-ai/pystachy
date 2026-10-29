@@ -17,6 +17,8 @@
 !lib/**
 !ryu/
 !ryu/**
+!mpz/
+!mpz/**
 !tools/
 !tools/install.py
 !tools/docker_smoke.sh

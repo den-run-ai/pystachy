@@ -366,7 +366,7 @@ def runtime(d: str, rev: str, dirty: str, source: str = os.path.join(ROOT, "runt
         "",
         f"Commit `{rev}`{' with uncommitted changes' if dirty == 'true' else ''}: lines **{pct(ln['covered'], ln['count'])}**"
         f" ({ln['covered']} of {ln['count']}) and branches **{pct(br['covered'], br['count'])}** ({br['covered']} of"
-        f" {br['count']}) of `runtime.c` (with the `ryu/` files it includes), `pyembed.c` and `pyext.c`, as clang's"
+        f" {br['count']}) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's"
         f" source-based coverage counts them; functions {pct(fn['covered'], fn['count'])}, regions"
         f" {pct(rg['covered'], rg['count'])}. `pys_init` ran {runs} times: the program runs whose profiles were written.",
         "Programs built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy,"
@@ -379,7 +379,7 @@ def runtime(d: str, rev: str, dirty: str, source: str = os.path.join(ROOT, "runt
     lines += [f"| {n} | {runs} | {r} | {secs} s |" for n, runs, r, secs in suites]
     base = os.environ.get("COVERAGE_BASE", "")
     if base != "":
-        commit, changed = changed_lines(base, ["runtime.c", "pyembed.c", "pyext.c", "ryu"])
+        commit, changed = changed_lines(base, ["runtime.c", "pyembed.c", "pyext.c", "ryu", "mpz"])
         rows, cln, cbr = runtime_changed(records, changed)
         lines += changed_section(base, commit, rows, cln, cbr, "Changed lines of code", "Lines not run")
     print("\n".join(lines[2:]))

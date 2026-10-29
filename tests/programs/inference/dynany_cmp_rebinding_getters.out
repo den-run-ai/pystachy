@@ -1,0 +1,16 @@
+comparison
+right getter
+left getter
+left getter
+cleanup
+True
+comparison
+right getter
+getter first
+cleanup
+True
+comparison
+missing
+cleanup
+True
+[exit 0]

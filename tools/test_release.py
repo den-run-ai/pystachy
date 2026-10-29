@@ -45,6 +45,8 @@ class ReleaseTests(unittest.TestCase):
         (self.source / "lib/module.py").write_text("print(42)\n", encoding="utf-8")
         (self.source / "ryu/ryu.h").write_text("/* fixture */\n", encoding="utf-8")
         (self.source / "ryu/LICENSE-Boost").write_text("fixture license\n", encoding="utf-8")
+        (self.source / "mpz/mpz.c").write_text("/* packed integer fixture */\n", encoding="utf-8")
+        (self.source / "mpz/README.md").write_text("fixture provenance\n", encoding="utf-8")
         self.target = release.binary_target(self.source / "pystachy")
         self.commit = "a" * 40
         self.epoch = 1700000000
@@ -89,6 +91,8 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual((directory / "libexec/pystachy/REVISION").read_text(), self.commit + "\n")
         self.assertTrue((directory / "libexec/pystachy/lib/module.py").is_file())
         self.assertTrue((directory / "libexec/pystachy/ryu/LICENSE-Boost").is_file())
+        for name in ("mpz/mpz.c", "mpz/README.md"):
+            self.assertEqual((directory / "libexec/pystachy" / name).read_bytes(), (self.source / name).read_bytes())
         self.assertEqual((directory / "LICENSE").read_bytes(), (self.source / "LICENSE").read_bytes())
         self.assertTrue(os.access(directory / "bin/pystachy", os.X_OK))
         self.assertTrue(os.access(directory / "libexec/pystachy/pystachy", os.X_OK))
@@ -158,9 +162,10 @@ class ReleaseTests(unittest.TestCase):
         (self.source / "lib/.private").write_bytes(b"private")
         (self.source / "lib/build.o").write_bytes(b"build")
         (self.source / "ryu/local.env").write_bytes(b"unrelated")
+        (self.source / "mpz/private.o").write_bytes(b"build")
         directory = self.unpack(self.package())
         files = release_smoke.verify_manifest(directory)["files_sha256"]
-        for name in ("__pycache__", ".private", "build.o", "local.env"):
+        for name in ("__pycache__", ".private", "build.o", "local.env", "private.o"):
             self.assertFalse(any(name in path for path in files), name)
 
     def test_rejects_symlinked_resources_without_output(self):

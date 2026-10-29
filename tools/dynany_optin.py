@@ -10,6 +10,13 @@ failures; the baseline is rerun on a failure to distinguish a regression from a 
 All cases, including stdin, /dev/full and SIGINT fixtures, are selected before deterministic
 sharding. Exceptions identify one case/mode and its exact diagnostic; changed failures and
 unexpected passes fail. The JSON report is independently checked by verification aggregation.
+
+--native-suite is for a verification run whose tests-native steps execute the unchanged corpus
+with the same compiler, JIT and AOT (tests/verify.sh; tools/merge_verification.py requires them
+complete). It defers to them only what they already prove: the baseline of an exact expected
+failure, and the AOT check of a program whose opted-in LLVM IR is byte-identical to the original's
+and whose fresh oracle is byte-identical to its recording ("native-ir" rows). The JIT check of
+every program still runs in the opted-in tree.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -103,14 +110,14 @@ def exceptions(root, cases):
     return result
 
 
-def opt_in(source):
+def opt_in(source, pragma=PRAGMA):
     """Preserve a BOM and either of Python's first-two-line encoding-cookie positions."""
     bom = b"\xef\xbb\xbf" if source.startswith(b"\xef\xbb\xbf") else b""
     body = source[len(bom):]
     lines = body.splitlines(keepends=True)
     for line in body.split(b"\n"):
         stripped = line.strip()
-        if stripped == PRAGMA.strip():
+        if stripped == pragma.strip():
             return source
         if stripped and not stripped.startswith(b"#"):
             break
@@ -121,10 +128,10 @@ def opt_in(source):
     before = b"".join(lines[:at])
     if before and not before.endswith(b"\n"):
         before += b"\n"
-    return bom + before + PRAGMA + b"".join(lines[at:])
+    return bom + before + pragma + b"".join(lines[at:])
 
 
-def prepare_tree(root, target, cases):
+def prepare_tree(root, target, cases, pragma=PRAGMA):
     target.mkdir(parents=True)
     # Cases read examples and import ports through repository-relative paths. Keep those
     # paths, while giving every writable test/recording an independent copy.
@@ -136,7 +143,7 @@ def prepare_tree(root, target, cases):
         path = target / case
         if not path.resolve().is_relative_to((target / "tests").resolve()):
             raise ValueError(f"selected source symlink leaves the temporary tests tree: {case}")
-        path.write_bytes(opt_in(path.read_bytes()))
+        path.write_bytes(opt_in(path.read_bytes(), pragma))
 
 
 def environment(root, temp):
@@ -229,7 +236,48 @@ def recorded(status, output, case, overlay):
             re.search(br"\[exit [0-9]+\]\n\Z", path.read_bytes()) is not None)
 
 
-def one(case, root, overlay, temp, compiler, modes, timeout, allowed):
+def recording_unchanged(case, root, overlay):
+    """Are the overlay's fresh oracle files byte-identical to the case's committed recording?"""
+    for suffix in (".out", ".err"):
+        old, new = (root / case).with_suffix(suffix), (overlay / case).with_suffix(suffix)
+        if old.is_file() != new.is_file() or (old.is_file() and old.read_bytes() != new.read_bytes()):
+            return False
+    return True
+
+
+def identical_ir(case, root, overlay, compiler, env, temp, timeout):
+    """The sha256 of the case's LLVM IR when the opted-in program's, compiled in the overlay, is
+    byte-identical to the original's, compiled in root, each with the import path tests/run.sh
+    gives it; None otherwise (including any compiler failure or output)."""
+    texts = []
+    for tree, name in ((root, "original"), (overlay, "optin")):
+        tree_env = dict(env)
+        if (tree / case).with_suffix(".path").is_file():
+            scratch = temp / f"{name}-path"
+            scratch.mkdir(exist_ok=True)
+            status, output = run(["sh", "tests/prepare_path.sh", case, str(scratch)], tree, env, timeout)
+            if status != 0 or len(output.splitlines()) != 1:
+                return None
+            tree_env["PYSTACHY_PATH"] = output.rstrip("\n")
+        ir = temp / f"{name}.ll"
+        ir.unlink(missing_ok=True)
+        status, output = run(shlex.split(compiler) + ["ir", case, "-o", str(ir)], tree, tree_env, timeout)
+        if status != 0 or output or not ir.is_file():
+            return None
+        texts.append(ir.read_bytes())
+        ir.unlink()
+    return hashlib.sha256(texts[0]).hexdigest() if texts[0] == texts[1] else None
+
+
+def native_ir(case, root, overlay, compiler, env, temp, timeout, modes, allowed):
+    """The IR digest that lets tests-native's AOT check of the unchanged program stand for this
+    case's (see --native-suite), or None: never for an excepted AOT check or a changed oracle."""
+    if "aot" not in modes or (case, "aot") in allowed or not recording_unchanged(case, root, overlay):
+        return None
+    return identical_ir(case, root, overlay, compiler, env, temp, timeout)
+
+
+def one(case, root, overlay, temp, compiler, modes, timeout, allowed, oracle=recorded, native=False):
     case_temp = temp / Path(case).stem
     case_temp.mkdir()
     env = environment(root, case_temp)
@@ -237,11 +285,15 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed):
     for suffix in (".out", ".err"):
         (overlay / case).with_suffix(suffix).unlink(missing_ok=True)
     status, output = run(["sh", "tests/record.sh", case], overlay, env, timeout)
-    if not recorded(status, output, case, overlay):
+    if not oracle(status, output, case, overlay):
         return {"case": case, "oracle": False, "results": [],
                 "failure": f"{case}: oracle exit {status}: {output.strip()}"}
     rows = []
+    same = native_ir(case, root, overlay, compiler, env, case_temp, timeout, modes, allowed) if native else None
     for mode in modes:
+        if mode == "aot" and same is not None:
+            rows.append({"case": case, "mode": mode, "result": "native-ir", "diagnostic": ""})
+            continue
         exception = allowed.get((case, mode))
         checked_compiler, trace = (rejection_wrapper(compiler, case, mode, case_temp)
                                    if exception is not None else (compiler, None))
@@ -253,7 +305,10 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed):
         if exception is not None and not ok and rejected != b"1\n":
             diagnostic += f"\nexpected one compiler exit 1 with only its exact diagnostic, recorded {rejected!r}"
         row = {"case": case, "mode": mode, "result": result, "diagnostic": diagnostic}
-        if not ok:
+        # (with --native-suite, tests-native runs the unchanged program in this mode)
+        if not ok and native and result == "expected-failure":
+            pass
+        elif not ok:
             baseline_status, baseline_output = run(["sh", "tests/run.sh", compiler, mode, case], root, env, timeout)
             baseline_ok, baseline_diagnostic = harness_result(baseline_status, baseline_output, case)
             if not baseline_ok:
@@ -263,6 +318,17 @@ def one(case, root, overlay, temp, compiler, modes, timeout, allowed):
             row["diagnostic"] = "unexpected pass: remove the obsolete exception"
         rows.append(row)
     return {"case": case, "oracle": True, "results": rows}
+
+
+def progress(result):
+    """The lines a case's result adds to the log: one per check that neither passed nor was left to
+    tests-native, as RESULT CASE (MODE): DIAGNOSTIC, and FAIL for a missing oracle. A "native-ir" row
+    is no failure: the summary line counts those."""
+    lines = [f"{row['result'].upper()} {row['case']} ({row['mode']}): {row['diagnostic']}"
+             for row in result["results"] if row["result"] not in ("pass", "native-ir")]
+    if not result["oracle"]:
+        lines.append("FAIL " + result["failure"])
+    return lines
 
 
 def positive_int(value, label, minimum=0):
@@ -288,6 +354,9 @@ def validate_report(report, root=ROOT):
         raise ValueError("opt-in report does not cover exactly its full corpus shard")
     if report.get("modes") != list(MODES):
         raise ValueError("opt-in report must execute JIT and AOT")
+    native = report.get("native_suite")
+    if type(native) is not bool:
+        raise ValueError("opt-in report must state whether it defers to tests-native")
     expected = [(case, mode) for case in selected for mode in MODES]
     if (positive_int(report.get("corpus_cases"), "corpus_cases") != len(corpus) or
             report.get("corpus_sha256") != corpus_digest(root, corpus) or
@@ -302,14 +371,16 @@ def validate_report(report, root=ROOT):
         raise ValueError("missing opt-in result rows")
     if report.get("failures") != []:
         raise ValueError("opt-in report contains failures")
-    passed = known = 0
+    passed = known = same = 0
     for row, (case, mode) in zip(rows, expected):
         if not isinstance(row, dict) or set(row) != {"case", "mode", "result", "diagnostic"}:
             raise ValueError("invalid opt-in result row")
         if row["case"] != case or row["mode"] != mode:
             raise ValueError("opt-in case/mode missing, duplicated or reordered")
         exception = allowed.get((case, mode))
-        if exception is None:
+        if exception is None and native and mode == "aot" and row["result"] == "native-ir" and row["diagnostic"] == "":
+            same += 1
+        elif exception is None:
             if row["result"] != "pass" or row["diagnostic"] != "":
                 raise ValueError(f"unexpected opt-in failure: {case} ({mode})")
             passed += 1
@@ -318,7 +389,8 @@ def validate_report(report, root=ROOT):
                 raise ValueError(f"changed or obsolete opt-in exception: {case} ({mode})")
             known += 1
     if (positive_int(report.get("passed_checks"), "passed_checks") != passed or
-            positive_int(report.get("expected_failures"), "expected_failures") != known):
+            positive_int(report.get("expected_failures"), "expected_failures") != known or
+            positive_int(report.get("native_ir_checks"), "native_ir_checks") != same):
         raise ValueError("opt-in result counts disagree")
 
 
@@ -333,6 +405,8 @@ def main(argv=None):
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--keep", type=Path)
     parser.add_argument("--cases", nargs="+")
+    parser.add_argument("--native-suite", action="store_true",
+                        help="defer to the same verification run's tests-native steps (see above)")
     args = parser.parse_args(argv)
     if (args.jobs < 1 or args.shard_count < 1 or not 0 <= args.shard_index < args.shard_count or
             not 0 < args.timeout < float("inf") or len(args.modes) != len(set(args.modes))):
@@ -373,16 +447,13 @@ def main(argv=None):
             parser.error(f"compiler/runtime warmup failed (exit {status}): {output}")
         with ThreadPoolExecutor(max_workers=args.jobs) as pool:
             futures = [pool.submit(one, case, ROOT, overlay, work, compiler, args.modes,
-                                   args.timeout, allowed) for case in selected]
+                                   args.timeout, allowed, native=args.native_suite) for case in selected]
             cases = []
             for future in futures:
                 result = future.result()
                 cases.append(result)
-                for row in result["results"]:
-                    if row["result"] != "pass":
-                        print(f"{row['result'].upper()} {row['case']} ({row['mode']}): {row['diagnostic']}", flush=True)
-                if not result["oracle"]:
-                    print("FAIL " + result["failure"], flush=True)
+                for line in progress(result):
+                    print(line, flush=True)
         rows = [row for case in cases for row in case["results"]]
         failures = [case["failure"] for case in cases if not case["oracle"]]
         failures += [f"{row['case']} ({row['mode']}): {row['diagnostic']}" for row in rows if row["result"] == "fail"]
@@ -393,18 +464,20 @@ def main(argv=None):
         report = {"schema": 1, "corpus_cases": len(corpus), "corpus_sha256": digest,
                   "exceptions_sha256": manifest_digest,
                   "shard_index": args.shard_index, "shard_count": args.shard_count,
-                  "modes": args.modes, "cases": selected, "subset": args.cases is not None,
-                  "oracle_cases": sum(case["oracle"] for case in cases),
+                  "modes": args.modes, "native_suite": args.native_suite, "cases": selected,
+                  "subset": args.cases is not None, "oracle_cases": sum(case["oracle"] for case in cases),
                   "expected_checks": len(selected) * len(args.modes), "completed_checks": len(rows),
                   "passed_checks": sum(row["result"] == "pass" for row in rows),
                   "expected_failures": sum(row["result"] == "expected-failure" for row in rows),
+                  "native_ir_checks": sum(row["result"] == "native-ir" for row in rows),
                   "failures": failures, "results": rows}
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2) + "\n")
         if args.keep:
             shutil.copytree(overlay, args.keep, symlinks=True)
     print(f"{len(selected)} programs, {report['completed_checks']} checks: "
-          f"{report['passed_checks']} passed, {report['expected_failures']} expected failures, {len(failures)} failures")
+          f"{report['passed_checks']} passed, {report['native_ir_checks']} AOT checks of unchanged IR left to "
+          f"tests-native, {report['expected_failures']} expected failures, {len(failures)} failures")
     return bool(failures)
 
 
