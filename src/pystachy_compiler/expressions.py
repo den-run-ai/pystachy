@@ -1044,7 +1044,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             if (et == "dyn" or self.list_id_kind(self.ctype("list", [et if et != "" else v.t])) != 0) and v.idslot != "":
                 # A later item may rebind this local before the display stores its
                 # items. Capture its object now, while repeated reads share its slot.
-                v.idfrom = self.dyn_box(v).v
+                v.idfrom = self.dyn_id_box(v).v
             if is_tuple(v.t) and BIG in v.t and int_lists():
                 kept[len(items)] = v
                 v = Val(v.v, narrow_type(v.t))  # (typed as the list's item for what follows: bigints.held)
@@ -1113,7 +1113,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         for i in range(0, len(n.kids), 2):
             a = self.expr(n.kids[i], kv[0], returnctx, resultsoft)
             if kv[0] == "dyn" and a.idslot != "":
-                a.idfrom = self.dyn_box(a).v
+                a.idfrom = self.dyn_id_box(a).v
             if is_tuple(a.t) and BIG in a.t and int_lists():
                 kkept[len(ks)] = a
                 a = Val(a.v, narrow_type(a.t))  # (typed as the dict's key for what follows: bigints.held)
@@ -1123,7 +1123,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 kv[0] = a.t
             b = self.expr(n.kids[i + 1], kv[1], returnctx, resultsoft)
             if kv[1] == "dyn" and b.idslot != "":
-                b.idfrom = self.dyn_box(b).v
+                b.idfrom = self.dyn_id_box(b).v
             if is_tuple(b.t) and BIG in b.t and int_lists():
                 vkept[len(vs)] = b
                 b = Val(b.v, narrow_type(b.t))  # (typed as the dict's value for what follows: bigints.held)

@@ -16,6 +16,7 @@ from src.pystachy_compiler.utils import (
     identity_abi,
     identity_default,
     numeric_identity,
+    closure_default_slots,
     clone,
     codec,
     fbits,
@@ -604,7 +605,7 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
             # A pre-evaluated vnode can also feed a sibling branch. Keep this call's
             # snapshot on its own Val, rather than publishing branch-local SSA there.
             captured = Val(value.v, value.t).identity(value)
-            captured.idfrom = self.dyn_box(value).v
+            captured.idfrom = self.dyn_id_box(value).v
             value = captured
         vals.append(value)
     o = self.unwrap(o, "TypeError: 'NoneType' object is not callable")
@@ -625,7 +626,7 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
     self.put(c, 1)
     result = Val(f"%t{c.r[0]}", ts[0])
     if idresult != "" and numeric_identity(ts[0]):
-        result.idexact = result.t == "int" or result.t == "float"
+        result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult
         result.idheld = self.mem_load(Val(idresult, "*dyn")).v
         result.idcounter = self.alloca("int", "")
@@ -1152,7 +1153,7 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
     if identity_abi(f) and numeric_identity(v.t) and numeric_identity(t) and (not f.scalar_args or f.params[j] in f.idnames) and not self.dyn_id_fresh(v):
         captured = Val(v.v, v.t).identity(v)
         # (a local's last read hands its object on, boxed or not: id_move)
-        captured.idfrom = self.dyn_id_held(v).v if self.fn.idpass and v.t == t and (t == "int" or t == "float") and v.idslot.startswith("%") and ".box." in v.idslot else self.dyn_box(v).v
+        captured.idfrom = self.dyn_id_held(v).v if self.fn.idpass and v.t == t and (t == "int" or t == "float") and v.idslot.startswith("%") and ".box." in v.idslot else self.dyn_id_box(v).v
         v = captured
     if v.t == "bool" and t == BIG and self.bool_numeric(f, j):
         v = self.to_big(v)  # (a bool that f reads only as a number: the int it equals, see bool_numeric)
@@ -1161,7 +1162,7 @@ def gen_pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         # Capture now, before a later argument can rebind the original local or cell.
         # (A new number has nothing to capture: its companion is null, dyn_id_arg.)
         result = Val(value.v, value.t).identity(value)
-        result.idfrom = self.dyn_box(value).v
+        result.idfrom = self.dyn_id_box(value).v
         return result
     return value
 
@@ -1183,7 +1184,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         value = self.expr(a.kids[0] if a.kind == "kw" else a, t)
         if dynamic_program() and numeric_identity(value.t):
             captured = Val(value.v, value.t).identity(value)
-            captured.idfrom = self.dyn_box(value).v
+            captured.idfrom = self.dyn_id_box(value).v
             value = captured
         argnode = self.vnode(value)
         bound.append(mk("kw", a.s, a.line, [argnode]) if a.kind == "kw" else argnode)
@@ -1206,7 +1207,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         v = self.call_fn(c.methods[f.name], [Val(o.v, c.name)] + pre[1:], bound, want, direct=True, resultsoft=resultsoft)
         if not self.term:
             if dynamic_program() and numeric_identity(v.t):
-                v.idfrom = self.dyn_box(v).v
+                v.idfrom = self.dyn_id_box(v).v
             vals.append(v)
             edges.append(self.cur)
             self.br(end)
@@ -1386,7 +1387,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
                 vals[j] = Val(self.mload(t, da), t)
                 if dynamic_program() and numeric_identity(t):
                     closure = self.closures[f.clo]
-                    ba = self.maddr('%ptr', pre[0].v, str(int(df.dglob[j][1:]) + len(closure.defs) + len(closure.iflags)), True)
+                    ba = self.maddr('%ptr', pre[0].v, str(len(closure.caps) + closure_default_slots(closure) + len(closure.iflags) + closure.defs.index(j)), True)
                     vals[j].idfrom = self.mload('dyn', ba)
             elif df.dglob[j] != "":
                 t = t if t != "" else df.dtypes[j]
@@ -1519,7 +1520,7 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         return v
     result = Val(f"%t{c.r[0]}", f.ret)
     if idresult != "" and numeric_identity(f.ret):
-        result.idexact = result.t == "int" or result.t == "float"
+        result.idexact = result.t == "int" or result.t == BIG or result.t == "float"
         result.idslot = idresult
         result.idheld = self.mem_load(Val(idresult, "*dyn")).v
         result.idcounter = self.alloca("int", "")

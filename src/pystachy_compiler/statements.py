@@ -285,7 +285,7 @@ def gen_hoist(self, f: FnInfo) -> None:
                     value = self.coerce(v, f.dtypes[j])
                     self.mstore(f.dtypes[j], value.v, f.dglob[j])
                     if dynamic_program() and numeric_identity(f.dtypes[j]):
-                        self.mstore("dyn", self.dyn_box(value).v, f.dglob[j] + ".box")
+                        self.mstore("dyn", self.dyn_id_box(value).v, f.dglob[j] + ".box")
                 continue
             if v.t == "None" and t == "":
                 f.dglob[j] = "=None"  # a None value is no global: calls pass None
@@ -294,7 +294,7 @@ def gen_hoist(self, f: FnInfo) -> None:
             value = self.coerce(v, t) if t != "" else v
             f.dglob[j] = self.hidden(f"@d.{f.ll[1:]}.{f.params[j]}", value)
             if dynamic_program() and numeric_identity(value.t):
-                self.hidden(f.dglob[j] + ".box", self.dyn_box(value))
+                self.hidden(f.dglob[j] + ".box", self.dyn_id_box(value))
 
 def gen_default_problem(self, e: Node, t: str) -> str:
     # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
@@ -452,7 +452,7 @@ def gen_leave(self, depth: int) -> bool:
     cv = self.carried
     if len(self.exits) > depth and identity_abi(self.curfn) and numeric_identity(cv.t):
         captured = Val(cv.v, cv.t).identity(cv)
-        captured.idfrom = self.dyn_box(cv).v
+        captured.idfrom = self.dyn_id_box(cv).v
         cv = captured
     ended = False
     for i in range(len(self.exits) - 1, depth - 1, -1):
@@ -673,9 +673,9 @@ def gen_stmt_main(self, n: Node) -> None:
                     self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
                     self.store_name(t0.s, v, True)
                 else:
-                    if len(n.kids) > 2 and (v.t == "int" or v.t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit and self.dyn_policy(n.line):
+                    if len(n.kids) > 2 and (v.t == "int" or v.t == BIG or v.t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit and self.dyn_policy(n.line):
                         # (x = y = f(): one object, whose box each target's binding holds: dyn_id_store)
-                        v.idfrom = self.dyn_box(v).v
+                        v.idfrom = self.dyn_id_box(v).v
                     for i in range(len(n.kids) - 1):
                         tgt = n.kids[i]
                         self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
