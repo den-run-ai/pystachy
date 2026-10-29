@@ -12,20 +12,20 @@ and limits are json's (_Parser): strings, keys, numbers, 64-bit integers, 256 le
 """
 from typing import Any
 
-from json import _Parser, _quote
+from json import _ARRAY_TOKEN, _OBJECT_TOKEN, _Parser, _STRING_TOKEN, _quote
 
 
 def _value(p: _Parser, depth: int) -> Any:
-    token = p.next_token()[0]
-    if token == 34:
+    token = p.next_token()
+    if token is _STRING_TOKEN:
         return p.string()
-    if token == 91 or token == 123:
+    if token is _ARRAY_TOKEN or token is _OBJECT_TOKEN:
         if depth >= 256:
             raise RecursionError("maximum JSON nesting depth exceeded")
-        if token == 91:
+        if token is _ARRAY_TOKEN:
             return _array(p, depth)
         return _object(p, depth)
-    v = p.scalar()  # a number or a constant, in json's existing typed representation
+    v = p.scalar_value()  # a number or a constant, in json's existing typed representation
     if isinstance(v, bool):
         return v
     if isinstance(v, int):

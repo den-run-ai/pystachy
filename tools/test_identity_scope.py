@@ -352,13 +352,26 @@ print(p.step('def'), inertlib.decode('1000'))
         for fn in generations[-1].fns:
             if generations[-1].fn_home(fn.f) == "json":
                 self.assertIsNone(BOXING.search(functions(ir)[fn.f.ll]), fn.f.ll)
-        # Scanner categories must not add generic string equality to each decoded
-        # value: that erased the identity savings in a real Any-result consumer.
+        # Scanner categories must not add generic string equality or bytes indexing
+        # to each decoded value: both erased identity savings in an Any consumer.
         for name, body in functions(ir).items():
             if name.startswith("@f._pystachy_json_any$_value"):
                 self.assertNotIn("@pys_eq(", body)
+                self.assertNotIn("@pys_bytes_get(", body)
         baseline, _ = self.compile(source, hints=False)
         self.assertIn("%C.json$_Parser = type {ptr, i1, ptr, i1, i1, i64, i64, i64, i64, ptr, ptr, ptr, ptr, ptr, ptr}", baseline)
+
+    def test_observed_any_json_does_not_reenter_typed_container_decoder(self):
+        source = (ROOT / "bench/smoke/json_decode_any.py").read_text()
+        ir, generations = self.compile(source)
+        self.assertEqual([g.idevent for g in generations], [""])
+        self.assertIn("json", generations[-1].idhint)
+        names = functions(ir)
+        self.assertIn("@m.json$_Parser.scalar_value", names)
+        # Falling back through value() reaches typed recursive array/object code,
+        # preventing inlining even though this consumer needs Any containers only.
+        for method in ["value", "array", "object"]:
+            self.assertNotIn("@m.json$_Parser." + method, names)
 
     def test_unsafe_boundaries_restore_the_unhinted_ir(self):
         programs = [

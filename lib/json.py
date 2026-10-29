@@ -49,6 +49,11 @@ def _u8len(data: bytes, i: int) -> int:
     return _u8char(data, i) >> 21
 
 
+_STRING_TOKEN = b'"'
+_ARRAY_TOKEN = b"["
+_OBJECT_TOKEN = b"{"
+
+
 _NO_KEY_BYTES: list[bytes] = []  # (never filled: key() replaces them)
 _NO_KEY_STRS: list[str] = []
 
@@ -146,12 +151,45 @@ class _Parser:
         if self.pos == self.n:
             raise self.error("Expecting value", self.pos)
         token = self.data[self.pos]
-        # Punctuation categories use constant one-byte tokens, so the caller can
-        # test a raw byte without allocating a string or borrowing numeric identity.
-        return b'"' if token == 34 else b"[" if token == 91 else b"{" if token == 123 else b" "
+        # Canonical byte tokens let the caller compare identities without indexing,
+        # allocating a string or borrowing numeric identity from the scanner.
+        return _STRING_TOKEN if token == 34 else _ARRAY_TOKEN if token == 91 else _OBJECT_TOKEN if token == 123 else b" "
 
     def scalar(self) -> JSONValue:
         return self.value(0)
+
+    def scalar_value(self) -> JSONValue:
+        # The Any decoder has already ruled out strings and containers. Keep this
+        # dispatch independent of value() so an Any-only decoder does not pull in
+        # typed recursive containers. Number scanning remains shared in number().
+        i = self.pos
+        if i == self.n:
+            raise self.error("Expecting value", i)
+        data = self.data
+        c = data[i]
+        if 48 <= c <= 57:
+            return self.number()
+        if c == 45:
+            if data.startswith(b"-Infinity", i):
+                self.pos = i + 9
+                return -float("inf")
+            return self.number()
+        if c == 110 and data.startswith(b"null", i):
+            self.pos = i + 4
+            return None
+        if c == 116 and data.startswith(b"true", i):
+            self.pos = i + 4
+            return True
+        if c == 102 and data.startswith(b"false", i):
+            self.pos = i + 5
+            return False
+        if c == 78 and data.startswith(b"NaN", i):
+            self.pos = i + 3
+            return float("nan")
+        if c == 73 and data.startswith(b"Infinity", i):
+            self.pos = i + 8
+            return float("inf")
+        raise self.error("Expecting value", i)
 
     def begin(self, array: bool) -> bool:
         close = 93 if array else 125
@@ -166,10 +204,13 @@ class _Parser:
         close = 93 if array else 125
         self.skip()
         i = self.pos
-        if i < self.n and self.data[i] == close:
+        if i == self.n:
+            raise self.error("Expecting ',' delimiter", i)
+        token = self.data[i]
+        if token == close:
             self.pos = i + 1
             return False
-        if i == self.n or self.data[i] != 44:
+        if token != 44:
             raise self.error("Expecting ',' delimiter", i)
         self.pos = i + 1
         self.skip()

@@ -3621,6 +3621,9 @@ List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic 
 #ifndef DICT_HASH_GENERIC
 #define DICT_HASH_GENERIC()
 #endif
+#ifndef DICT_STRING_EMPTY
+#define DICT_STRING_EMPTY()
+#endif
 #define NONE_HASH 0xFCA86420                         /* hash(None) since CPython 3.12 */
 I pys_hash_str(Str *s);                  /* the hash functions are in runtime.py */
 I pys_hash_int(I k);
@@ -3781,6 +3784,12 @@ static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp
   if ((d->kind & ~(I)KTAG) == 1) {
     *hp = hstrd((Str *)k);
     if (!d->size) return -1;
+    /* Fresh string insertions usually find an empty first slot. Read-only lookups
+       skip this check; tombstones and occupied slots retain their full probe. */
+    if (free) {
+      I i = *hp & dmask(d);
+      if (!d->idx[i]) { DICT_PROBE(); DICT_STRING_EMPTY(); *free = i; return -1; }
+    }
     return d->kind & KTAG ? dfinds(d, k, *hp, free) : dfindi(d, k, *hp, free);
   }
   if (d->kind > 1) {
@@ -3888,8 +3897,13 @@ LOOKUP I pys_dict_get(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? 
 __attribute__((noinline)) static I dgrow(Dict *d, uint64_t h) {   /* insertion_resize: hash h's idx slot in the larger table */
   build(d, d, keysize(d->len * 3)); return dempty(d, h);
 }
+static int dfull(Dict *d) {   /* used >= floor(2*size/3), without dividing on each insertion */
+  /* size is zero or a positive power of two (at most 2**62); n+cut never exceeds
+     its capacity, so both unsigned products fit, including the empty table. */
+  return (uint64_t)(d->n + d->cut) * 3 + 2 >= (uint64_t)d->size * 2;
+}
 static inline __attribute__((always_inline)) void dadd(Dict *d, I k, uint64_t h, I v, I f) {   /* k, which d has not, into idx slot f (dfind's *free) */
-  if (d->n + d->cut >= d->size * 2 / 3) f = dgrow(d, h);    /* (full; popitem's cut entries still count) */
+  if (dfull(d)) f = dgrow(d, h);    /* (full; popitem's cut entries still count) */
   /* Both companion words are already null past n: allocation zeroes them, and
      deletion/popitem clear them before an entry can be reused. Existing-key stores
      still clear vb, since they may replace a value past 64 bits. */
