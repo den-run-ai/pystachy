@@ -635,6 +635,10 @@ unsupported-comparison `TypeError`. It does not return an identity result or try
 method after skipping the selected body. An absent method still permits normal reflection
 and identity fallback. Typed calls and same-hierarchy comparison
 helpers retain their existing behavior.
+A literal-name `getattr(value, "field", default)` through `Any` evaluates its default before
+lookup and catches only `AttributeError`, including from a property getter. Comparison
+bodies using it execute normally; a missing field is not a reason to skip the method
+(`tests/programs/inference/dynany_cmp_getattr_default.py`).
 A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
 methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
 rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
