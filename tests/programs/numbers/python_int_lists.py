@@ -78,3 +78,7 @@ for i in range(3):
     bag.add(i + 1)
 print(bag.items, bag.total(), bag.items.pop(), squares(4)[-1], max(squares(5)))
 print(max(i * big for i in range(5)), min(-i * big for i in range(1, 4)))
+
+# A module without the opt-in can list a wide value returned by a promoting module.
+from fixed_import_list import show
+show()

@@ -22,9 +22,8 @@ values are excluded. The case and
 `__class__` reflection) come from the source-rewriting prototype of #901, recorded again with
 the pinned interpreter.
 
-[python_int_cpython_long.py](../programs/numbers/python_int_cpython_long.py) and
-[python_int_import.py](../programs/numbers/python_int_import.py) come from #901's head
-`9c81341a` too, unchanged, with the recordings it made with the pinned interpreter. The first
+[python_int_cpython_long.py](../programs/numbers/python_int_cpython_long.py) comes from #901's head
+`9c81341a` too, unchanged, with the recording it made with the pinned interpreter. It
 checks assertions selected from `Lib/test/test_long.py` at the same CPython commit (SHA-256
 `66eeb959a2a1e573f16067fc02d75f22d5344a223bed08033b01612f52d9a11a`, which [mpz.md](mpz.md)
 records), under the same license:
@@ -33,9 +32,14 @@ records), under the same license:
 |---|---|
 | Twelve long-division cases, each in four sign combinations; bitwise identities over eight values; 64 multiplication identities; twelve `bit_length()` boundaries; integer hashes | Ordinary `int` operators and `pow()` with standalone assertions instead of `unittest`; deterministic bounded loops instead of random and exhaustive ones. Floats, bytes, subclasses, C-API and huge-memory cases are excluded. |
 
-The second is original: a module without the comment calls a function of one that opts in
-(`tests/python_int_modules/promoting_module.py`) and computes with, prints and lists the int
-past 64 bits that it returns. Both needed a list of ints that holds one.
+[python_int_import.py](../programs/numbers/python_int_import.py) is original and came from the
+same head: a module without the comment calls a function of one that opts in
+(`tests/python_int_modules/promoting_module.py`) and computes with and prints the int past
+64 bits that it returns. Its original wide list display is preserved in the plain module
+`tests/python_int_modules/fixed_import_list.py`, called by `python_int_lists.py`. This separates
+typed wide-list storage from the 64-bit boundary imposed by a program using dynamic `Any`;
+`tests/deviations/python_int_any_list.py` records that boundary for the same display. Both
+differential recordings were regenerated with the pinned interpreter after the split.
 
 [python_int_recursion.py](../programs/numbers/python_int_recursion.py) and
 [python_int_forward_ref.py](../programs/numbers/python_int_forward_ref.py) come from the same

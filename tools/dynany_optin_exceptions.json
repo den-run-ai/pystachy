@@ -548,20 +548,6 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
-      "case": "tests/programs/numbers/python_int_import.py",
-      "mode": "jit",
-      "diagnostic": "tests/programs/numbers/python_int_import.py:8: error: a int value cannot become an Any value",
-      "reason": "The program's module that opts in to promoting ints returns one past 64 bits into a list display of the module that the replay opts in to dynamic Any, which holds Any values: a promoting int cannot become one yet (docs/python-int.md).",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
-      "case": "tests/programs/numbers/python_int_import.py",
-      "mode": "aot",
-      "diagnostic": "tests/programs/numbers/python_int_import.py:8: error: a int value cannot become an Any value",
-      "reason": "The program's module that opts in to promoting ints returns one past 64 bits into a list display of the module that the replay opts in to dynamic Any, which holds Any values: a promoting int cannot become one yet (docs/python-int.md).",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
       "case": "tests/programs/numbers/python_int_ipow.py",
       "mode": "jit",
       "diagnostic": "tests/programs/numbers/python_int_ipow.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
