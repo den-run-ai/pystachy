@@ -151,6 +151,21 @@ class IdentityScopeTests(unittest.TestCase):
         # (tomllib's own code still tracks identity)
         self.assertIn("call ptr @pys_dyn_int_box", ir)
 
+    def test_typed_json_container_delimiters_do_not_repeat_byte_reads(self):
+        ir, _ = self.compile(
+            'import json\nprint(json.dumps(json.loads(\'[1,2,{"a":3,"b":4}]\')))\n',
+            helper=False,
+        )
+        bodies = functions(ir)
+        # Initial close, loop delimiter, trailing close; an object additionally
+        # reads the opening key quote and colon. Re-reading the loop delimiter
+        # adds one bytes_get to each function and regresses the broad JSON probe.
+        for method, limit in [("array", 3), ("object", 5)]:
+            with self.subTest(method=method):
+                body = bodies["@m.json$_Parser." + method]
+                self.assertGreater(body.count("@pys_bytes_get("), 0)
+                self.assertLessEqual(body.count("@pys_bytes_get("), limit)
+
     def test_identity_free_exchanges_keep_the_split(self):
         programs = [
             "import scopelib\nt = scopelib.table('5000')\nprint(scopelib.same(t['a'], t['b']))\n",

@@ -1,13 +1,127 @@
 """Guard benchmark evidence against corrupt results and missing rare inputs."""
+import ast
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
+import runpy
+import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import bench_json as bench
 
 WARMUP = "JSON_WARMUP 3 2000000000\n"
+
+
+class ObservedAny32Tests(unittest.TestCase):
+    SOURCE = bench.ROOT / "bench/smoke/json_decode_any32.py"
+    TYPED = bench.ROOT / "bench/smoke/json_decode.py"
+
+    def run_control(self, case="numeric", loops=3):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, "argv", [str(self.SOURCE), case, str(loops)]), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            namespace = runpy.run_path(str(self.SOURCE), run_name="__main__")
+        return namespace, stdout.getvalue(), stderr.getvalue()
+
+    def test_inputs_match_typed_control_and_independent_32_key_objects(self):
+        def constants(path):
+            result = {}
+            for node in ast.parse(path.read_text()).body:
+                if isinstance(node, ast.Assign) and len(node.targets) == 1 \
+                        and isinstance(node.targets[0], ast.Name) \
+                        and node.targets[0].id in {"NUMERIC", "STRINGS", "MIXED"}:
+                    result[node.targets[0].id] = ast.literal_eval(node.value)
+            return result
+
+        observed = constants(self.SOURCE)
+        self.assertEqual(set(observed), {"NUMERIC", "STRINGS", "MIXED"})
+        self.assertEqual(observed, constants(self.TYPED))
+        values = [1000, 1001.25, "value-02", True, False, None,
+                  [1006, "value-06"], {"inner": 1007}]
+        expected = {
+            "NUMERIC": {f"k{i}": 1000 + i for i in range(32)},
+            "STRINGS": {f"k{i}": f"value-{i:02d}" for i in range(32)},
+            "MIXED": {f"k{i}": values[i % 8] for i in range(32)},
+        }
+        for case, text in observed.items():
+            with self.subTest(case=case):
+                # repr checks order and distinguishes bool/int and int/float.
+                self.assertEqual(repr(json.loads(text)), repr(expected[case]))
+
+    def test_every_load_observes_any_result_and_prints_complete_oracle(self):
+        original_loads = json.loads
+        for case, per_load in (("numeric", 1063), ("strings", 40), ("mixed", 1039)):
+            with self.subTest(case=case):
+                observations = []
+
+                class ObservedDict(dict):
+                    def __init__(self, value, log):
+                        super().__init__(value)
+                        self.log = log
+
+                    def __len__(self):
+                        self.log.append("length")
+                        return super().__len__()
+
+                    def __getitem__(self, key):
+                        self.log.append(key)
+                        return super().__getitem__(key)
+
+                def load(text, observations=observations):
+                    return ObservedDict(original_loads(text), observations)
+
+                with mock.patch.object(json, "loads", side_effect=load) as loads:
+                    namespace, output, timing = self.run_control(case)
+                self.assertEqual(loads.call_count, 3)
+                self.assertEqual(observations, ["length", "k31"] * 3)
+                expected = original_loads(namespace[case.upper()])
+                self.assertEqual(output, f"json_decode_any32 {case} 3 {3 * per_load}\n{expected!r}\n")
+                self.assertEqual(len(timing.splitlines()), 1)
+                label, seconds = timing.split()
+                self.assertEqual(label, "seconds")
+                self.assertGreaterEqual(float(seconds), 0)
+
+    def test_corrupt_intermediate_result_fails_even_with_correct_final_result(self):
+        original_loads = json.loads
+        for case in ("numeric", "strings", "mixed"):
+            for corruption in ("field", "length"):
+                with self.subTest(case=case, corruption=corruption):
+                    calls = 0
+
+                    def load(text, case=case, corruption=corruption):
+                        nonlocal calls
+                        calls += 1
+                        result = original_loads(text)
+                        if calls == 2:
+                            if corruption == "length":
+                                del result["k0"]
+                            elif case == "numeric":
+                                result["k31"] += 1
+                            elif case == "strings":
+                                result["k31"] += "x"
+                            else:
+                                result["k31"]["inner"] += 1
+                        return result
+
+                    with mock.patch.object(json, "loads", side_effect=load), \
+                            self.assertRaises(AssertionError):
+                        self.run_control(case)
+                    self.assertEqual(calls, 3)
+
+    def test_invalid_inputs_fail_before_decoding(self):
+        for case, loops, message in (("numeric", 0, "positive"),
+                                      ("numeric", -1, "positive"),
+                                      ("unknown", 3, "case must"),
+                                      ("numeric", "bad", "invalid literal")):
+            with self.subTest(case=case, loops=loops), \
+                    mock.patch.object(json, "loads") as loads, \
+                    self.assertRaisesRegex(ValueError, message):
+                self.run_control(case, loops)
+            loads.assert_not_called()
 
 
 class EvidenceTests(unittest.TestCase):

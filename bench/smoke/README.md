@@ -138,6 +138,26 @@ profiles establish instruction savings. Retain the broader
 
 ### Actual Any-result decoding
 
+[`json_decode_any32.py`](json_decode_any32.py) uses the **same input bytes** as
+`json_decode.py` for `numeric`, `strings` and `mixed`, but every timed load is
+assigned to `Any`. Each iteration consumes the dictionary length and a field
+(including a nested field for `mixed`); a checksum is checked before the complete
+final value is printed. The benchmark unit tests reject a corrupt intermediate
+result even when the final result is correct, and keep both fixtures identical.
+
+```sh
+python3.13 bench/smoke/json_decode_any32.py numeric 3000
+./pystachy run bench/smoke/json_decode_any32.py mixed 2
+./pystachy build bench/smoke/json_decode_any32.py -o build/json_decode_any32
+build/json_decode_any32 strings 3000
+```
+
+The default is `numeric 3000`; counts must be positive. Use the paired procedure
+above with `JSON_INPUT` pointing to this file. Both 32-key controls are retained
+replacements, not a reconstruction of the unavailable historical 124M input.
+Keep the actual alpha.3 tag (`f5a09d42`) separate from the historical post-tag
+baseline (`dcdc1a28`) when comparing results.
+
 The standalone [Any-result JSON decoder control](json_decode_any.py) parses a short mixed
 object into an `Any` result on every iteration and accumulates an integer field. Its
 nested arrays/object, strings, float, bool, null and escaped Unicode exercise the actual
