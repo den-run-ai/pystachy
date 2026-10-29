@@ -604,9 +604,6 @@ def refl_props(n: Node, out: dict[str, bool]) -> None:
 def refl_needs_eh(n: Node, props: dict[str, bool]) -> bool:
     # does n hold getattr(o, name, default) or hasattr(o, name) whose name may be a property's:
     # one of props, or a name the run time decides (only where the program has properties)
-    # A dynamic receiver also needs to catch a missing attribute, without any property.
-    if dynamic_program() and n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "getattr" and len(n.kids) == 4:
-        return True
     if len(props) > 0 and n.kind == "call" and n.kids[0].kind == "name" and ((n.kids[0].s == "getattr" and len(n.kids) == 4) or (n.kids[0].s == "hasattr" and len(n.kids) == 3)):
         a = n.kids[2]
         if a.kind != "str" or a.s in props:
