@@ -1,6 +1,7 @@
 """Identity elision must stay inside its numeric function or scalar consumer proof."""
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -12,7 +13,7 @@ from src.pystachy_compiler import driver, functions  # noqa: E402
 from src.pystachy_compiler.diagnostics import Rejoin  # noqa: E402
 from src.pystachy_compiler.gen import Gen  # noqa: E402
 from src.pystachy_compiler.syntax import mk  # noqa: E402
-from src.pystachy_compiler.utils import folded_int  # noqa: E402
+from src.pystachy_compiler.utils import folded_int, numeric_identity  # noqa: E402
 
 
 class NumericIdentityTests(unittest.TestCase):
@@ -284,14 +285,17 @@ class NumericCallIdentityTests(unittest.TestCase):
         self.assertEqual(body.count("call ptr @pys_dyn_float("), 1)
         self.assertNotIn("br i1", body)
 
-    def test_immutable_numeric_parameter_keeps_incoming_box_directly(self):
+    def test_immutable_numeric_parameter_reuses_incoming_box(self):
+        # A caller passes a new number's companion as null (dyn_id_arg), so the parameter's
+        # slot starts with the incoming companion and its crossing reuses that box, or boxes
+        # the new number once; it never allocates unconditionally.
         for scalar, value in [("int", "1000"), ("float", "1.5")]:
             ir = self.compile("from typing import Any\ndef target(x: " + scalar +
                               ") -> Any:\n    return x\nprint(target(" + value + "))\n")
             body = self.function_ir(ir, "f.target")
-            self.assertIn("ret ptr %aid0", body)
-            self.assertNotIn("@pys_dyn_" + scalar, body)
-            self.assertNotRegex(body, r"load [^\n]*%x\.box(?:gen)?\.")
+            self.assertRegex(body, r"store ptr %aid0, ptr %x\.box\.")
+            self.assertEqual(body.count("call ptr @pys_dyn_" + scalar + "_box("), 1)
+            self.assertNotIn("call ptr @pys_dyn_" + scalar + "(", body)
 
     def test_rebound_numeric_parameter_keeps_slot_provenance(self):
         ir = self.compile("from typing import Any\ndef target(x: int) -> Any:\n"
@@ -633,6 +637,60 @@ print(outer())
         self.assertNotRegex(read[1], r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
         # The list member's items have boxes from construction; reading one returns that object.
         self.assertIn("@pys_list_get_identity", read[1])
+
+
+class PromotingIntegerIdentityTests(unittest.TestCase):
+    def compile(self, source):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "observer.py").write_text(
+                "# pystachy: dynamic-any\nfrom typing import Any\n"
+                "def observe(x: Any) -> None:\n    print(x is x)\n"
+                "def same(x: Any, y: Any) -> bool:\n    return x is y\n"
+                "def number() -> Any:\n    return int('2')\n")
+            return driver.compile_program("promoting_identity_probe.py",
+                                          "# pystachy: python-int\nimport observer\n" + source,
+                                          [tmp, str(ROOT / "lib")], "")
+
+    def test_promoting_storage_has_numeric_companions(self):
+        self.assertTrue(numeric_identity("int+"))
+        self.assertTrue(numeric_identity("opt[int+]"))
+        self.assertFalse(numeric_identity("list[int+]"))
+        ir = self.compile("def carry(value: int) -> int:\n    copy = value\n    return copy\n"
+                          "observer.observe(carry(int('1000')))\n")
+        signature = next(line for line in ir.splitlines() if line.startswith("define ") and "@f.carry(" in line)
+        self.assertIn("{i64, ptr} %a0", signature)
+        self.assertIn("ptr %aid0", signature)
+        self.assertIn("ptr %idret", signature)
+
+    def test_wide_bookkeeping_emits_no_narrowing_error(self):
+        ir = self.compile("def carry(value: int) -> int:\n    copy = value\n    return copy\n"
+                          "large = other = int('1180591620717411303424')\n"
+                          "alias = large\nprint(carry(alias), other)\n")
+        self.assertNotIn("Python int too large to convert to C long", ir)
+        self.assertIn("ptr %aid0", ir)
+
+    def test_chained_assignment_shares_one_companion(self):
+        ir = self.compile("first = second = int('1000')\nprint(observer.same(first, second))\n")
+        boxes = [re.search(r"store ptr ([^,]+), ptr @g\." + name + r"\.box", ir).group(1)
+                 for name in ("first", "second")]
+        self.assertEqual(boxes[0], boxes[1])
+        self.assertNotEqual(boxes[0], "null")
+
+    def test_actual_any_crossing_retains_narrowing_error(self):
+        ir = self.compile("large = int('1180591620717411303424')\nobserver.observe(large)\n")
+        self.assertIn("Python int too large to convert to C long", ir)
+
+    def test_promoting_literal_retains_constant_pool_identity(self):
+        ir = self.compile("def carry(value: int) -> int:\n    return value\n"
+                          "observer.observe(carry(1000))\n")
+        self.assertIn("@dbi.", ir)
+        self.assertIn("ptr %aid0", ir)
+
+    def test_narrowed_any_arithmetic_does_not_box_a_wide_accumulator(self):
+        ir = self.compile("def add(value):\n    total = int('1180591620717411303424')\n"
+                          "    if isinstance(value, int):\n        total += value\n"
+                          "    return total\nprint(add(observer.number()))\n")
+        self.assertNotIn("Python int too large to convert to C long", ir)
 
 
 class FoldedIntegerIdentityTests(unittest.TestCase):

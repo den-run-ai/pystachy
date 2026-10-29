@@ -372,6 +372,11 @@ for a C `long`), where CPython goes on with the bigger int:
   `x is None` and `x is not None` of an int are `False` and `True`.
 - A module cannot opt in to both promoting ints and [dynamic `Any`](dynamic-any.md) yet
   (`tests/errors/numbers/python_int_dynamic_any.py`).
+- Passing an in-range promoting int to another module's dynamic `Any` parameter can
+  lose alias identity: separate crossings create separate boxes even when the caller
+  passes the same binding twice. Numeric value conversion is not an identity guarantee.
+  Keep identity-sensitive values out of this mixed boundary or use CPython
+  ([#858](https://github.com/den-run-ai/pystachy/issues/858)).
 - A tuple of 64-bit ints that holds -2\*\*63, also in a tuple it holds (from a container, a
   builtin or a module that does not opt in), becomes a new tuple where a tuple of promoting ints
   is expected: `is` tells the two apart, where CPython has one object
@@ -575,7 +580,7 @@ the first measurements, before the inline paths, in
   `python_int_class_inference.py` and `python_int_class_defaults.py`: regressions from the
   full-corpus opt-in review. Their explicit pragma also exercises the existing GC suites.
 - `make python-int-gate` (`tools/python_int_gate.py`): every case of `tests/programs` with the
-  comment, against a fresh pinned CPython recording, in both JIT and AOT. CI requires eight
+  comment, against a fresh pinned CPython recording, in both JIT and AOT. CI requires three
   complete shards. The reviewed manifest permits only exact compiler rejections, classified
   and linked to their remaining limitation; crashes, runtime errors, changed output, changed
   diagnostics and obsolete exceptions fail. See the [baseline review](reports/python-int-compatibility-2026-10-28.md)

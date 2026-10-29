@@ -379,6 +379,9 @@ def main() -> None:
     ext = diagnostics.SRC[diagnostics.SRC.rfind("/") + 1 : -3] if cmd == "ext" and diagnostics.SRC.endswith(".py") else ""
     ir = compile_program(diagnostics.SRC, f.read(), dirs, ext)
     f.close()
+    # a program that opts in to neither dynamic Any nor promoting ints: pys_plain, below (read now, as
+    # building the runtime compiles runtime.py as a program of its own, which has no opt-in)
+    plain = not diagnostics.dynamic_program() and not diagnostics.int_program()
     out = ""
     abi = "abi3"  # pystachy ext: abi3 (CPython 3.12+, GIL builds) or abi3t (3.15+, GIL and free-threaded)
     rest: list[str] = []
@@ -572,6 +575,11 @@ def main() -> None:
     partso = f"{rts}.{os.getpid()}.{own}"
     f = open(ll, "w", encoding=RAW)
     f.write(ir)
+    if cmd == "build":
+        # runtime.c's pys_plain, which -O2 reads with the runtime as one module: 1 removes the code
+        # that only values of those opt-ins reach (opt_in()), before it is optimized; the JIT tier
+        # and extension modules keep the runtime's weak 0
+        f.write(f"@pys_plain = constant i64 {1 if plain else 0}\n")
     f.close()
     tc = [q(paths[i]) if paths[i] != "" else tools[i] for i in range(len(tools))]
     msg = ""

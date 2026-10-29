@@ -919,7 +919,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             old = v
             v = Val(self.select(gt.v, Val(b.v, t), Val(old.v, t)), t)
             if self.list_id_kind(self.ctype("list", [t])) != 0:
-                v.idfrom = self.select(gt.v, self.dyn_box(b), self.dyn_box(old))
+                v.idfrom = self.select(gt.v, self.dyn_id_box(b), self.dyn_id_box(old))
         return v
     elif (name == "sorted" or name == "list") and is_list(t):
         c = v.v if fresh else self.rt("pys_list_copy", "ptr", [f"ptr {v.v}"])
@@ -1228,7 +1228,7 @@ def gen_key_minmax2(self, vals: list[Val], key: Val, name: str) -> Val:
         item = self.coerce(b, t)
         best = Val(self.select(c, item, old), t)
         if self.list_id_kind(self.ctype("list", [t])) != 0:
-            best.idfrom = self.select(c, self.dyn_box(item), self.dyn_box(old))
+            best.idfrom = self.select(c, self.dyn_id_box(item), self.dyn_id_box(old))
         bk = Val(self.select(c, self.coerce(kb, kt), self.coerce(bk, kt)), kt)
     return self.key_none_join(best, lnone, Val("", ""), vals, name)
 
@@ -1727,7 +1727,30 @@ def gen_as_list(self, v: Val, name: str) -> Val:
         items = self.obj_iterator(v, "TypeError: can only join an iterable" if name == "join" else "TypeError: 'NoneType' object is not iterable",
                                   "can only join an iterable" if name == "join" else f"'{tname(v.t)}' object is not iterable")
         if (name == "list" or name == "sorted" or name == "extend" or name == "tuple") and "__len__" in self.classes[v.t].methods:
-            self.objlen(v)  # (a length hint: CPython's list() calls __len__ once __iter__ has run)
+            # A length hint follows __iter__, but its TypeError means that the size
+            # is unknown. Catch only the hint; iterator errors must still propagate.
+            c = self.stop_catch()
+            outer = self.handler
+            self.handler = c.landing
+            block = self.label()
+            c.tr.body = block
+            self.place(block)
+            self.objlen(v)
+            self.handler = outer
+            done = self.label()
+            self.br(done)
+            e = self.landing(c.landing, c.slot, c.mark)
+            yes = self.label()
+            no = self.label()
+            kinds = ["TypeError"] + [k for k in self.classes if self.classes[k].exc != "" and self.derives(k, "TypeError")]
+            self.cbr(self.exc_match(e, "\x01" + "\x01".join(kinds) + "\x01"), yes, no)
+            self.place(no)
+            self.throw(e)
+            self.place(yes)
+            self.rt("pys_exc_restore", "void", [f"ptr {c.old}"])
+            self.br(done)
+            c.tr.exit = done
+            self.place(done)
         if is_gen(items.t):
             return self.gen_list(items, "")  # (an __iter__ that yields: its generator's items)
         if name == "join" and not is_list(items.t):
@@ -2387,7 +2410,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 idquery = v
                 # index's later bounds may call back and rebind the query's source.
                 if m == "index" and v.idslot != "":
-                    idquery.idfrom = self.dyn_box(v).v
+                    idquery.idfrom = self.dyn_id_box(v).v
             if (base == "str" or base == "bytes") and (m == "startswith" or m == "endswith") and i == 0 and (is_tuple(unopt(v.t)) or v.t in self.nts):
                 v = self.ntup(v)  # (a NamedTuple: the tuple of its fields, None if it is None)
                 for x in targs(unopt(v.t)):
@@ -2468,7 +2491,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 if idquery.t == "" and v.t in ["int", "float", "bool"]:
                     idquery = v
                     if m == "index" and v.idslot != "":
-                        idquery.idfrom = self.dyn_box(v).v
+                        idquery.idfrom = self.dyn_id_box(v).v
             av.append("i64 " + self.to_slot(v) if slot else self.rarg(v))
         elif dflt != "" and slot and pt == "dyn" and dflt == "0":
             av.append(f"i64 ptrtoint (ptr {self.rtdata('pys_dyn_none_box')} to i64)")  # (None, as a dynamic value: dynamic.py)

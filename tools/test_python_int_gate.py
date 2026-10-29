@@ -1,4 +1,6 @@
 """Fail-closed controls for the python-int compatibility release gate."""
+import contextlib
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -50,11 +52,11 @@ def report(root, index=0, count=1):
             "source_sha256": gate.source_digest(root), "corpus_cases": len(corpus),
             "corpus_sha256": gate.optin.corpus_digest(root, corpus),
             "exceptions_sha256": gate.sha256(root / gate.MANIFEST), "shard_index": index, "shard_count": count,
-            "gc_stress": False, "modes": list(gate.MODES), "cases": selected, "subset": False,
-            "oracle_cases": len(selected), "expected_checks": len(rows), "completed_checks": len(rows),
-            "passed_checks": sum(row["result"] == "pass" for row in rows),
+            "gc_stress": False, "modes": list(gate.MODES), "native_suite": False, "cases": selected,
+            "subset": False, "oracle_cases": len(selected), "expected_checks": len(rows),
+            "completed_checks": len(rows), "passed_checks": sum(row["result"] == "pass" for row in rows),
             "expected_failures": sum(row["result"] == "expected-failure" for row in rows),
-            "failures": [], "results": rows}
+            "native_ir_checks": 0, "failures": [], "results": rows}
 
 
 class ManifestTests(unittest.TestCase):
@@ -183,6 +185,19 @@ class ReportTests(unittest.TestCase):
             ):
                 with self.subTest(rows=changed), self.assertRaises(ValueError):
                     gate.validate_report({**good, "results": changed}, root)
+            for field, value in (("native_suite", None), ("native_suite", 0), ("native_ir_checks", 1)):
+                with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                    gate.validate_report({**good, field: value}, root)
+            # B's AOT check may be left to tests-native only by a report that defers to it.
+            deferred = [*good["results"][:-1], {**good["results"][-1], "result": "native-ir"}]
+            native = {**good, "native_suite": True, "results": deferred, "native_ir_checks": 1,
+                      "passed_checks": good["passed_checks"] - 1}
+            gate.validate_report(native, root)
+            for changed in ({"native_suite": False}, {"native_ir_checks": 0},
+                            {"results": [*deferred[:-2], {**deferred[-2], "result": "native-ir"}, deferred[-1]]},
+                            {"results": [{**deferred[0], "result": "native-ir", "diagnostic": ""}, *deferred[1:]]}):
+                with self.subTest(changed=changed), self.assertRaises(ValueError):
+                    gate.validate_report({**native, **changed}, root)
             (root / "tools/new_helper.py").write_text("value = 1\n")
             with self.assertRaisesRegex(ValueError, "identity"):
                 gate.validate_report(good, root)
@@ -217,8 +232,10 @@ class DiagnosticTests(unittest.TestCase):
 
 class ExecutionTests(unittest.TestCase):
     def run_one(self, root, *, native_status=b"1\n", native_out=b"", native_error=None,
-                base_ok=True, oracle_ok=True, pass_now=False, gc_stress=False, absolute_error=False, trace_error=None):
+                base_ok=True, oracle_ok=True, pass_now=False, gc_stress=False, absolute_error=False, trace_error=None,
+                native=False):
         overlay, temp = root / "overlay", root / "work"
+        self.baselines = 0
         overlay.mkdir()
         (overlay / A).parent.mkdir(parents=True)
         (overlay / A).write_text("print(1)\n")
@@ -247,12 +264,37 @@ class ExecutionTests(unittest.TestCase):
                 error = (DIAGNOSTIC + "\n").encode() if native_error is None else native_error
                 trace.with_suffix(".stderr").write_bytes(error if trace_error is None else trace_error)
                 return (0 if pass_now else 1), output
+            self.baselines += 1
             return (0, "selected 1 cases\n1 passed, 0 failed\n") if base_ok else (1, "bad baseline")
 
         with mock.patch.object(gate.optin, "run", side_effect=run):
-            result = gate.one(A, root, overlay, temp, "true", ["jit"], 1, {(A, "jit"): manifest_row()}, gc_stress)
+            result = gate.one(A, root, overlay, temp, "true", ["jit"], 1, {(A, "jit"): manifest_row()}, gc_stress,
+                              native=native)
         evidence = json.loads((temp / Path(A).with_suffix("") / "evidence.json").read_text())
         return result, evidence
+
+    def test_native_suite_defers_only_an_exact_expected_failures_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result, evidence = self.run_one(Path(tmp), native=True, base_ok=False)
+        self.assertEqual(result["results"][0]["result"], "expected-failure")
+        self.assertEqual((self.baselines, evidence["modes"][0]["baseline"]), (0, "tests-native"))
+        for changes in ({"native_status": b"139\n"}, {"pass_now": True}):
+            with self.subTest(changes=changes), tempfile.TemporaryDirectory() as tmp:
+                result, _ = self.run_one(Path(tmp), native=True, **changes)
+                self.assertEqual(result["results"][0]["result"], "fail")
+                self.assertEqual(self.baselines, 0 if changes.get("pass_now") else 1)
+
+    def test_gc_stressed_expected_failure_keeps_its_baseline_under_native_suite(self):
+        # tests-native never runs with GC stress, so it cannot stand for a GC-stressed baseline
+        with tempfile.TemporaryDirectory() as tmp:
+            result, evidence = self.run_one(Path(tmp), native=True, gc_stress=True)
+        self.assertEqual(result["results"][0]["result"], "expected-failure")
+        self.assertEqual(self.baselines, 1)
+        self.assertEqual(evidence["modes"][0]["baseline"]["status"], 0)
+        with tempfile.TemporaryDirectory() as tmp:
+            result, _ = self.run_one(Path(tmp), native=True, gc_stress=True, base_ok=False)
+        self.assertEqual(result["results"][0]["result"], "fail")
+        self.assertIn("baseline also fails", result["results"][0]["diagnostic"])
 
     def test_expected_rejection_preserves_same_invocation_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -333,7 +375,7 @@ class MainTests(unittest.TestCase):
         compiler.chmod(0o755)
         output = root / "build/report.json"
 
-        def one(case, *args):
+        def one(case, *args, native=False):
             rows = [{"case": case, "mode": mode, "result": "pass", "diagnostic": ""} for mode in gate.MODES]
             result = {"case": case, "oracle": True, "results": rows}
             if change is not None and case == B:
@@ -364,7 +406,7 @@ class MainTests(unittest.TestCase):
             compiler.chmod(0o755)
             observed = []
 
-            def one(case, original, overlay, temp, compiler, modes, timeout, allowed, gc_stress):
+            def one(case, original, overlay, temp, compiler, modes, timeout, allowed, gc_stress, native=False):
                 # Really import the other corpus entry plus an outside-corpus helper.
                 # The ordinary Python oracle ignores pragmas; this probe observes exactly
                 # which file policies the compiled imported annotations will see.
@@ -392,6 +434,47 @@ class MainTests(unittest.TestCase):
             self.assertFalse((root / A).read_bytes().startswith(gate.PRAGMA))
             self.assertFalse((root / B).read_bytes().startswith(gate.PRAGMA))
             self.assertFalse(helper.read_bytes().startswith(gate.PRAGMA))
+
+    def test_native_suite_is_refused_with_gc_stress(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture(root)
+            with mock.patch.object(gate, "ROOT", root), mock.patch.object(gate, "one") as one, \
+                 contextlib.redirect_stderr(io.StringIO()) as stderr, self.assertRaises(SystemExit) as stop:
+                gate.main(["--compiler", "true", "--report", str(root / "build/report.json"),
+                           "--gc-stress", "--native-suite"])
+        self.assertEqual(stop.exception.code, 2)
+        self.assertIn("not with --gc-stress", stderr.getvalue())
+        one.assert_not_called()
+
+    def test_native_ir_rows_are_counted_not_listed_as_failures(self):
+        # (each case's rows: A's JIT check passes and its AOT check is left to tests-native; B's
+        # JIT check is an expected failure and its AOT check fails)
+        rows = {A: [("jit", "pass", ""), ("aot", "native-ir", "")],
+                B: [("jit", "expected-failure", DIAGNOSTIC), ("aot", "fail", "changed output")]}
+
+        def one(case, *args, native=False):
+            self.assertTrue(native)
+            return {"case": case, "oracle": True, "results": [
+                {"case": case, "mode": mode, "result": result, "diagnostic": diagnostic}
+                for mode, result, diagnostic in rows[case]]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture(root, [manifest_row(B)])
+            compiler = root / "compiler"
+            compiler.write_text("#!/bin/sh\nexit 0\n")
+            compiler.chmod(0o755)
+            with mock.patch.object(gate, "ROOT", root), mock.patch.object(gate, "one", side_effect=one), \
+                 mock.patch.object(gate.optin, "run", return_value=(0, "")), \
+                 contextlib.redirect_stdout(io.StringIO()) as stdout:
+                status = gate.main(["--compiler", str(compiler), "--report", str(root / "build/report.json"),
+                                    "--native-suite"])
+        self.assertTrue(status)
+        lines = stdout.getvalue().splitlines()
+        # (no line for A: its deferred AOT check is no failure)
+        self.assertEqual(lines[:-1], [f"EXPECTED-FAILURE {B} (jit): {DIAGNOSTIC}", f"FAIL {B} (aot): changed output"])
+        self.assertIn("1 AOT checks of unchanged IR left to tests-native", lines[-1])
 
     def test_complete_success_and_fail_closed_on_incomplete_workers(self):
         with tempfile.TemporaryDirectory() as tmp:

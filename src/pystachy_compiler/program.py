@@ -749,6 +749,8 @@ def gen_program(self, mods: list[Mod]) -> str:
         self.typevars.extend(m.deftps)
     if dynamic_program() and any(defines(m.body, "__len__") or defines(m.body, "__next__") for m in mods):
         self.eh = True  # dynamic next and length hints catch protocol exceptions
+    if any(defines(m.body, "__len__") for m in mods) and any(defines(m.body, "__iter__") for m in mods):
+        self.eh = True  # typed consumers also ignore TypeError from optional length hints
     if not self.eh and len([m for m in mods if defines(m.body, "__next__")]) > 0:
         # a __next__ method's StopIteration is caught where a loop (or unpacking, in, a consumer)
         # takes the items of an object through its __iter__ (obj_iterator, the only way to an

@@ -165,6 +165,63 @@ class IdentityScopeTests(unittest.TestCase):
                 self.assertEqual([g.idevent for g in generators], [""])
                 self.assertIn("", generators[0].idoff)
 
+    def test_typed_field_copies_do_not_start_lazy_identity_tracking(self):
+        source = """import scopelib
+class Cursor:
+    def __init__(self) -> None:
+        self.pos = 1000
+
+    def step(self, text: str) -> int:
+        i = self.pos
+        i += len(text)
+        self.pos = i
+        return i
+
+c = Cursor()
+print(c.step('abc'), c.pos)
+"""
+        ir, generators = self.compile(source)
+        final = generators[-1]
+        self.assertEqual([g.idevent for g in generators], [""])
+        self.assertIn("", final.idoff)
+        for fn in final.fns:
+            if final.fn_home(fn.f) == "":
+                self.assertEqual(fn.lazyflag, {})
+                self.assertEqual(fn.lazybit, {})
+        for body in self.main_functions(final, ir).values():
+            self.assertIsNone(BOXING.search(body))
+            self.assertNotIn(".box.", body)
+        # The same read/write-back shape still uses main's field-sharing optimization
+        # in a module that tracks identity, rather than disabling that optimization.
+        _, tracked = self.compile("# pystachy: dynamic-any\n" + source)
+        self.assertTrue(any(fn.lazyflag for fn in tracked[-1].fns if fn.f.ll == "@m.Cursor.step"))
+
+    def test_promoting_literals_and_chained_stores_follow_identity_scope(self):
+        source = """# pystachy: python-int
+import scopelib
+literal = 3000
+left = right = int('4000')
+print(literal, left, right)
+"""
+        ir, generators = self.compile(source)
+        final = generators[-1]
+        self.assertEqual([g.idevent for g in generators], [""])
+        self.assertIn("", final.idoff)
+        self.assertNotIn("@dbi.$3000", ir)
+        self.assertNotIn("@g.left.box", ir)
+        self.assertNotIn("@g.right.box", ir)
+        for body in self.main_functions(final, ir).values():
+            self.assertIsNone(BOXING.search(body))
+            self.assertNotIn(".box.", body)
+        crossed = source + "scopelib.keep(left)\nscopelib.keep(right)\nscopelib.keep(literal)\n"
+        ir, generators = self.compile(crossed)
+        self.assertTrue(generators[-1].idfull)
+        full, _ = self.compile(crossed, full=True)
+        self.assertEqual(ir, full)
+        self.assertIn("@dbi.$3000", ir)
+        self.assertIn("@g.left.box", ir)
+        self.assertIn("@g.right.box", ir)
+
     def test_crossings_track_identity_everywhere(self):
         # Each crossing alone: a number, an object, a function or a field of the code that does
         # not track identity reaching code that does, or the reverse

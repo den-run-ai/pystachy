@@ -1,0 +1,6 @@
+list display True True True
+list append True True True
+list replacement False False True
+list item copy True True True
+list pop True True True
+[exit 0]

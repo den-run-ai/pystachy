@@ -110,6 +110,7 @@ dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/dictprobe-rt.ll
 	$(LLVMBIN)clang -O2 -S -emit-llvm tools/dictprobe.c -o build/dictprobe.ll
+	@if grep -Eq '^define[^@]*@hobj[.(]' build/dictprobe.ll; then echo 'dictprobe: scalar-key hashing must inline hobj' >&2; exit 1; fi
 	$(LLVMBIN)llvm-link build/dictprobe-rt.ll build/dictprobe.ll -o build/dictprobe.bc
 	$(LLVMBIN)clang -O2 build/dictprobe.bc -o build/dictprobe -lm
 	build/dictprobe
@@ -187,6 +188,10 @@ streamprobe: pystachy
 # Inspect the bitcode passed to lli, then run it: dead functions must not reach code generation.
 jitprobe: pystachy
 	$(PY) tools/jitprobe.py
+
+# AOT drops opt-in runtime code only when neither the program nor an import opts in.
+aotprobe: pystachy
+	$(PY) tools/aotprobe.py
 
 # Opt-in Unicode porting checks, including cache reuse and GC-stress exception paths.
 unicode-audit: pystachy
@@ -363,4 +368,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

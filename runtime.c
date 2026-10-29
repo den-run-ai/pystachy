@@ -78,6 +78,24 @@ static TextHint text_hints[64];
 #ifndef TEXT_PROBE
 #define TEXT_PROBE() ((void)0)
 #endif
+/* A program that opts in to neither promoting ints (docs/python-int.md) nor dynamic Any
+   (docs/dynamic-any.md) makes none of the values that their code here serves: an int past 64
+   bits in a container (an Mpz in a list's BIGIDS companion, a dict's vb or kb, a set's kb), a
+   promoting int (descriptor J), or a list's identity companion (list_box: the small-int boxes).
+   Yet the code that walks lists, dicts, sets and descriptors (eqv, repr, hashing, lookups) reaches
+   theirs, which every AOT build would optimize and keep. So every path that only such a value
+   leads to calls opt_in() first: pystachy build defines pys_plain in the program's module, which
+   -O2 optimizes with the runtime (driver.py), 1 for such a program, else 0. opt_in() is then a
+   trap or nothing, and -O2 drops those paths and the static functions only they reach before it
+   optimizes them. Elsewhere (pystachy run's precompiled runtime, an extension module) this weak
+   definition's 0 holds, and opt_in() costs a load where such a value was found. A plain program
+   that reached the trap would show a compiler bug, not its own: it aborts */
+__attribute__((weak)) const I pys_plain = 0;
+static _Noreturn __attribute__((noinline, cold)) void opt_in_trap(void) {
+  fputs("pystachy: internal error: a value of a feature the program does not opt in to\n", stderr);
+  abort();
+}
+static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
 
 /* ---------- memory: conservative mark-and-sweep garbage collector ----------
    Non-moving, stop-the-world, single-threaded, and self-contained (only the C library).
@@ -1426,7 +1444,7 @@ Big pys_big_powmod(I alo, void *ahi, I blo, void *bhi, I mlo, void *mhi) {   /* 
    companion of kind BIGIDS (the list code's identity companion, which see) */
 enum { BIGIDS = 3 };
 #define NARROW "OverflowError: Python int too large to convert to C long"
-static int big_list(List *l) { return l->ids && (l->ids[0] & 3) == BIGIDS; }   /* may l hold an item past 64 bits */
+static int big_list(List *l) { return l->ids && (l->ids[0] & 3) == BIGIDS && opt_in(); }   /* may l hold an item past 64 bits */
 static Mpz *lbig(List *l, I i) { return l->a[i] == INT64_MIN && big_list(l) ? (Mpz *)l->ids[i + 1] : NULL; }
 static Big litem(List *l, I i) { Mpz *m = lbig(l, i); Big r = {m ? 0 : l->a[i], m}; return r; }   /* l[i] as a promoting int */
 /* A promoting int in a descriptor walk (descriptor J) is a pointer to two words, its slot and its
@@ -1436,15 +1454,15 @@ static Big litem(List *l, I i) { Mpz *m = lbig(l, i); Big r = {m ? 0 : l->a[i], 
    a tuple has wherever the item's slot holds -2**63 (the compiler copies a tuple of 64-bit ints
    that holds -2**63 where one of promoting ints is expected), so the walks hand them on as titem's
    two words; pys_refl_vars makes them of a field's {lo, hi} */
-static Big jbig(I v) { const I *w = (const I *)v; Mpz *m = w[0] == INT64_MIN ? (Mpz *)w[1] : NULL; Big r = {m ? 0 : w[0], m}; return r; }
+static Big jbig(I v) { const I *w = (const I *)v; Mpz *m = w[0] == INT64_MIN && opt_in() ? (Mpz *)w[1] : NULL; Big r = {m ? 0 : w[0], m}; return r; }
 static I titem(const I *t, I n, I i, const char *e, I *w) {   /* item i of tuple t of n items, of descriptor e: J's in w */
-  if (*e != 'J') return t[i];
+  if (*e != 'J' || !opt_in()) return t[i];
   w[0] = t[i]; w[1] = t[i] == INT64_MIN ? t[n + i] : 0;
   return (I)w;
 }
 /* and a set of ints holds an element past 64 bits as -2**63 or -2**63 + 1 in its slot, and its Mpz
    in that slot's word of kb (see sets) */
-static Mpz *sbig(Set *s, I j) { return s->keys[j] <= INT64_MIN + 1 && s->kb ? (Mpz *)s->kb[j] : NULL; }
+static Mpz *sbig(Set *s, I j) { return s->keys[j] <= INT64_MIN + 1 && s->kb && opt_in() ? (Mpz *)s->kb[j] : NULL; }
 static int list_has_big(List *l) {   /* does l hold an item past 64 bits */
   if (big_list(l)) for (I i = 0; i < l->len; i++) if (l->ids[i + 1]) return 1;
   return 0;
@@ -2212,7 +2230,7 @@ static int dlive(Dict *d, I e) {
    (pys_dict_big_val) */
 static inline void dbig_clear(Dict *d, I e) { if (d->vb) d->vb[e] = 0; }
 static void dbig_make(Dict *d) { if (!d->vb) d->vb = pys_alloc(d->size * 2 / 3 * 8); }
-static Mpz *dbig(Dict *d, I e) { return d->vb && d->vals[e] == INT64_MIN ? (Mpz *)d->vb[e] : NULL; }
+static Mpz *dbig(Dict *d, I e) { return d->vb && d->vals[e] == INT64_MIN && opt_in() ? (Mpz *)d->vb[e] : NULL; }
 static int dict_has_big(Dict *d) {   /* does d hold a value past 64 bits */
   if (d->vb) for (I e = 0; e < d->n; e++) if (d->vb[e] && dlive(d, e)) return 1;
   return 0;
@@ -2223,9 +2241,9 @@ static int dict_has_big(Dict *d) {   /* does d hold a value past 64 bits */
    null (a deletion clears its entry's, builds and copies make new arrays), so an insertion of a
    64-bit key writes none */
 static inline void kbig_clear(Dict *d, I e) { if (d->kb) d->kb[e] = 0; }
-static Mpz *kbig(Dict *d, I e) { return d->keys[e] == INT64_MIN && d->kb ? (Mpz *)d->kb[e] : NULL; }
+static Mpz *kbig(Dict *d, I e) { return d->keys[e] == INT64_MIN && d->kb && opt_in() ? (Mpz *)d->kb[e] : NULL; }
 static int dict_has_big_key(Dict *d) {   /* does d hold a key past 64 bits */
-  if (d->kb) for (I e = 0; e < d->n; e++) if (d->kb[e] && dlive(d, e)) return 1;
+  if (d->kb && opt_in()) for (I e = 0; e < d->n; e++) if (d->kb[e] && dlive(d, e)) return 1;
   return 0;
 }
 /* depth counts the recursive alias edges (R) followed: a recursive value can nest without bound,
@@ -2246,7 +2264,7 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
   case 'J': {                                       /* a promoting int's two words (jbig) */
-    Big x = jbig(v);
+    opt_in(); Big x = jbig(v);
     if (x.hi) { Str *s = mpz_digits(x.hi); if (!s) digits_deep(); put(b, s->s, s->len); }
     else { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)x.lo)); }
     return d;
@@ -2345,7 +2363,7 @@ Str *pys_refl_vars(ReflRec *r, char *o) {   /* repr(vars(o)): o's assigned field
     repr_str(&b, f->name); put(&b, ": ", 2);
     I v = 0, w[2];
     if (f->desc->s[0] == 'b') v = *(unsigned char *)(o + f->off) & 1;
-    else if (f->desc->s[0] == 'J') { memcpy(w, o + f->off, 16); if (w[1]) w[0] = INT64_MIN; v = (I)w; }   /* a promoting int's {lo, hi}: jbig's words */
+    else if (f->desc->s[0] == 'J' && opt_in()) { memcpy(w, o + f->off, 16); if (w[1]) w[0] = INT64_MIN; v = (I)w; }   /* a promoting int's {lo, hi}: jbig's words */
     else memcpy(&v, o + f->off, 8);
     repr(&b, v, f->desc->s);
   }
@@ -2388,7 +2406,7 @@ static int eqv(I a, I b, const char *d) {
   switch (*d) {
   case 'U': return eqpair(a, b, d, d);
   case 'A': return pys_dyn_eq((Dyn *)a, (Dyn *)b);
-  case 'J': { Big x = jbig(a), y = jbig(b); return pys_big_cmp(x.lo, x.hi, y.lo, y.hi) == 0; }
+  case 'J': { opt_in(); Big x = jbig(a), y = jbig(b); return pys_big_cmp(x.lo, x.hi, y.lo, y.hi) == 0; }
   case 'f': return dbl(a) == dbl(b);
   case 's': return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;   /* (None in a looked-up key, see hval) */
   case 'L': {   /* an __eq__ may change either list: as CPython's list_richcompare, re-read both
@@ -2481,7 +2499,7 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     depth++;
   }
   if (*x == 'n' || *y == 'n') return *x == *y;
-  if (*x == 'J' || *y == 'J') {   /* a promoting int (jbig) and a number, exactly; another type equals it never */
+  if ((*x == 'J' || *y == 'J') && opt_in()) {   /* a promoting int (jbig) and a number, exactly; another type equals it never */
     Big p = jbig(*x == 'J' ? a : b); I v = *x == 'J' ? b : a; const char *e = *x == 'J' ? y : x;
     if (*e == 'J') { Big q = jbig(v); return pys_big_cmp(p.lo, p.hi, q.lo, q.hi) == 0; }
     if (*e == 'f') return (p.hi ? mpz_cmp_float(p.hi, dbl(v)) : pys_cmp_if(p.lo, dbl(v))) == 0;   /* (allocating nothing) */
@@ -2559,7 +2577,7 @@ static int opv(I a, I b, const char *d, I op) {
     if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
     return cmpop((x->len > y->len) - (x->len < y->len), op);
   }
-  case 'J': { Big x = jbig(a), y = jbig(b); return cmpop(pys_big_cmp(x.lo, x.hi, y.lo, y.hi), op); }
+  case 'J': { opt_in(); Big x = jbig(a), y = jbig(b); return cmpop(pys_big_cmp(x.lo, x.hi, y.lo, y.hi), op); }
   case 'T': {
     I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
     for (I i = 0; i < n; i++, e = skip(e)) {
@@ -2721,9 +2739,11 @@ List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], 
    big_list and lbig are with the promoting ints' code.) */
 void pys_list_narrow(List *l) { list_narrow(l); }
 static I list_box(I value, I kind) {
+  opt_in();
   return (kind & 3) == BIGIDS ? 0 : (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value)));
 }
 static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
+  opt_in();
   if (!l->ids) {
     /* Companion allocation limits use the allocator's fatal MemoryError convention. */
     if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
@@ -2740,7 +2760,7 @@ void pys_list_identity(List *l, I kind) {
   if (!l->ids || (l->ids[0] & 4)) list_identity_slow(l, kind);
 }
 static void identity_pair(List *a, List *b) {   /* before list a takes list b's items */
-  if (a->ids || b->ids) {
+  if ((a->ids || b->ids) && opt_in()) {
     I kind = a->ids ? a->ids[0] : b->ids[0];
     if ((kind & 3) == BIGIDS) {   /* (promoting ints: a needs a companion where b has one) */
       if (b->ids) pys_list_identity(a, kind);
@@ -3591,8 +3611,14 @@ List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic 
 #ifndef DICT_KEYEQ
 #define DICT_KEYEQ()
 #endif
+#ifndef DICT_HASH_GENERIC
+#define DICT_HASH_GENERIC()
+#endif
+#define NONE_HASH 0xFCA86420                         /* hash(None) since CPython 3.12 */
 I pys_hash_str(Str *s);                  /* the hash functions are in runtime.py */
 I pys_hash_int(I k);
+static I hint(I k);
+static I hstr(Str *s);
 static uint64_t hsh(Dict *d, I k);
 static uint64_t hstrd(Str *s) {                      /* a str key's hash */
   if (!s->dict_hash) {                  /* zeroed allocations and writable literals start uncached */
@@ -3625,7 +3651,7 @@ static uint64_t hval(I k, const char *d) {
     I x = ((I *)k)[i]; uint64_t v;
     if (*e == 'i' || *e == 'b' || (*e == 'J' && x != INT64_MIN)) { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; e++; }
     else if (*e == 's' || (*e == '?' && e[1] == 's')) { v = x ? hstrd((Str *)x) : 0x9E3779B97F4A7C15ULL; e += 1 + (*e == '?'); }
-    else if (*e == 'J') { Mpz *m = (Mpz *)((I *)k)[d[1] - '0' + i]; v = (uint64_t)(m ? pys_mpz_hash(m) : pys_hash_int(x)); v = v ? v : 1; e++; }
+    else if (*e == 'J' && opt_in()) { Mpz *m = (Mpz *)((I *)k)[d[1] - '0' + i]; v = (uint64_t)(m ? pys_mpz_hash(m) : pys_hash_int(x)); v = v ? v : 1; e++; }
     else { v = hval(x, e); if (!v) return 0; e = skip(e); }
     h = (h ^ v) * 0x100000001B3ULL;
   }
@@ -3634,7 +3660,7 @@ static uint64_t hval(I k, const char *d) {
 }
 /* CPython's hash of a key whose descriptor d holds an H<id>; a call of its own, which keeps hsh as
    small as the lookups of int and str keys need */
-__attribute__((noinline)) static uint64_t hcls(I k, const char *d) { return (uint64_t)hitem(k, d); }
+__attribute__((noinline)) static uint64_t hcls(I k, const char *d) { DICT_HASH_GENERIC(); return (uint64_t)hitem(k, d); }
 static uint64_t hkey(I k, const char *d) {   /* a tuple or object key's, or an Any key's (hdyn) */
   if (*d == 'A' && !d[1]) return hdyn((Dyn *)k);
   uint64_t h = hval(k, d); return h ? h : hcls(k, d);
@@ -3645,8 +3671,20 @@ static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? 
    CPython's hash is never -2**63, so no 64-bit key's lookup meets an entry of a key past 64 bits
    (whose slot holds -2**63): only dbfind finds them */
 static uint64_t hbig(Mpz *m) { return hint1(pys_mpz_hash(m)); }
+/* The hash of key k of a table of kind > 1. Marked native str/int keys use the same
+   hashes as hitem, including None and -1 normalization, without its descriptor walk.
+   Other marked descriptors retain the general path and its callback behavior. */
+static inline __attribute__((always_inline)) uint64_t hobj(I kind, I k) {
+  const char *d = kraw(kind);
+  if (*d != '!') return hkey(k, d);
+  if (!d[2]) {
+    if (d[1] == 's') return (uint64_t)(k ? hstr((Str *)k) : NONE_HASH);
+    if (d[1] == 'i') return (uint64_t)hint(k);
+  }
+  return hcls(k, d + 1);
+}
 static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple or object key's descriptor */
-  return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? (*kraw(d->kind) == '!' ? (uint64_t)hitem(k, kdesc(d->kind)) : hkey(k, kdesc(d->kind))) : hint1(k);
+  return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? hobj(d->kind, k) : hint1(k);
 }
 /* items i of tuples x and y of n items, promoting ints (J) one of whose slots holds -2**63: equal,
    by their two words (titem); a call of its own, which keeps keq small */
@@ -3667,7 +3705,7 @@ static inline __attribute__((always_inline)) int keq(I a, I b, const char *d, in
       if (x[i] != y[i] && (!x[i] || !y[i] || !pys_str_eq((Str *)x[i], (Str *)y[i]))) return 0;
       e += 1 + (*e == '?');
     }
-    else if (*e == 'J') { if (x[i] == INT64_MIN || y[i] == INT64_MIN ? !jeq(x, y, d[1] - '0', i) : x[i] != y[i]) return 0; e++; }
+    else if (*e == 'J' && opt_in()) { if (x[i] == INT64_MIN || y[i] == INT64_MIN ? !jeq(x, y, d[1] - '0', i) : x[i] != y[i]) return 0; e++; }
     else { if (pure) return 2; if (!eqitem(x[i], y[i], e)) return 0; e = skip(e); }
   }
   return 1;
@@ -3729,7 +3767,11 @@ __attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) { r
 /* dfind of key k, which it hashes (hsh) into *hp first: one test of the kind for both */
 static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp, I *free) {
   if (d->kind == 1) return dfindi(d, k, *hp = hstrd((Str *)k), free);
-  if (d->kind > 1) return dfind(d, k, *hp = hsh(d, k), free);
+  if (d->kind > 1) {
+    *hp = hobj(d->kind, k);
+    if (!d->size) return -1;
+    return d->kind & KTAG ? dfindc(d, k, *hp, free) : dfind(d, k, *hp, free);
+  }
   return dfindi(d, k, *hp = hint1(k), free);
 }
 /* the idx slot of key m, an int past 64 bits whose hash is h (hbig), or -1, and *free as dlook's:
@@ -3873,7 +3915,7 @@ static I dtake(Dict *d, I i) {                       /* the value of the entry i
    them apart (kind > 1): the compiler calls pys_dict_pop for del of other keys */
 static inline __attribute__((always_inline)) I dpfind(Dict *d, I k) {
   if (d->kind == 1) return dfindi(d, k, hstrd((Str *)k), 0);
-  if (d->kind > 1) return d->len ? dfind(d, k, hsh(d, k), 0) : -1;
+  if (d->kind > 1) { uint64_t h; return d->len ? dhfind(d, k, &h, 0) : -1; }
   return dfindi(d, k, hint1(k), 0);
 }
 static I dpop(Dict *d, I k, I dflt, int has) {   /* d.pop(k) (has: d.pop(k, dflt)) */
@@ -4180,14 +4222,13 @@ Dict *pys_dict_fromkeys_dict(Dict *o, I v) {
    only sbfind compares Mpz. The operations that move elements from a table carry their Mpz (sbig),
    those of 64-bit elements (pys_set_add, ...) none. */
 #define LINEAR_PROBES 9
-#define NONE_HASH 0xFCA86420                         /* hash(None) since CPython 3.12 */
 static I hint(I v) {                                 /* long_hash */
   uint64_t u = v < 0 ? 0 - (uint64_t)v : (uint64_t)v;
   I h = (I)(u % ((1ULL << 61) - 1));
   h = v < 0 ? -h : h;
   return h == -1 ? -2 : h;
 }
-static I hstr(Str *s) { Dict t = {.kind = 1}; I h = (I)hsh(&t, (I)s); return h == -1 ? -2 : h; }
+static I hstr(Str *s) { I h = (I)hstrd(s); return h == -1 ? -2 : h; }   /* (hsh's for kind 1) */
 static I hptr(I p) { uint64_t y = (uint64_t)p; y = y >> 4 | y << 60; return (I)y == -1 ? -2 : (I)y; }   /* _Py_HashPointer */
 static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's is 0, as a float here has no identity */
   /* v is m * 2**e for an int m of 53 bits: m * 2**e modulo 2**61 - 1 (where 2**61 is 1), with
@@ -4233,7 +4274,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'P': case 'C': return hptr(k);   /* (an exception class's class object: by identity, as object's) */
   case 'H': return ohash(k, d);
   case 'A': return pys_dyn_hash((Dyn *)k);
-  case 'J': { Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */
+  case 'J': { opt_in(); Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */
   }
   return hint(k);
 }
@@ -5131,7 +5172,7 @@ __attribute__((noinline)) static void sdict_big(Set *s, Dict *d, int c, int op) 
 void pys_set_update_dict(Set *s, Dict *d) {
   int c = khash(d->kind);
   if ((s->fill + d->len) * 5 >= s->mask * 3) sresize(s, (s->len + d->len) * 2);
-  if (d->kb) { sdict_big(s, d, c, 0); return; }
+  if (d->kb && opt_in()) { sdict_big(s, d, c, 0); return; }
   for (I e = 0; e < d->n; e++) if (dlive(d, e)) sadd(s, d->keys[e], dhash(s, d, e, c));
 }
 /* s.union(..., o, ...) after the first: o, unless it is s itself (r: the union so far) */
@@ -5179,7 +5220,7 @@ Set *pys_set_sub_dict(Set *s, Dict *d) {
   int c = khash(d->kind);
   if ((s->len >> 2) > d->len) {
     Set *r = pys_set_copy(s);
-    if (d->kb) sdict_big(r, d, c, 1);
+    if (d->kb && opt_in()) sdict_big(r, d, c, 1);
     else for (I e = 0; e < d->n; e++) if (dlive(d, e)) sdiscard(r, d->keys[e], dhash(r, d, e, c));
     sshrink(r);
     return r;
@@ -5204,7 +5245,7 @@ void pys_set_ixor(Set *s, Set *o) { if (s == o) pys_set_clear(s); else ssymupd(s
 void pys_set_ixor_list(Set *s, List *l) { Set *o = pys_set_new(s->kind); pys_set_update_list(o, l); ssymupd(s, o); }
 void pys_set_ixor_dict(Set *s, Dict *d) {
   int c = khash(d->kind);
-  if (d->kb) { sdict_big(s, d, c, 2); return; }
+  if (d->kb && opt_in()) { sdict_big(s, d, c, 2); return; }
   for (I e = 0; e < d->n; e++) if (dlive(d, e)) { I k = d->keys[e], h = dhash(s, d, e, c); if (!sdiscard(s, k, h)) sadd(s, k, h); }
 }
 /* a op b for op 0..5 = < <= > >= == != (set_richcompare): subsets and equality */

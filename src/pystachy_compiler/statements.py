@@ -285,7 +285,7 @@ def gen_hoist(self, f: FnInfo) -> None:
                     value = self.coerce(v, f.dtypes[j])
                     self.mstore(f.dtypes[j], value.v, f.dglob[j])
                     if self.fn_identity(f) and numeric_identity(f.dtypes[j]):
-                        self.mstore("dyn", self.dyn_box(value).v, f.dglob[j] + ".box")
+                        self.mstore("dyn", self.dyn_id_box(value).v, f.dglob[j] + ".box")
                 continue
             if v.t == "None" and t == "":
                 f.dglob[j] = "=None"  # a None value is no global: calls pass None
@@ -294,7 +294,7 @@ def gen_hoist(self, f: FnInfo) -> None:
             value = self.coerce(v, t) if t != "" else v
             f.dglob[j] = self.hidden(f"@d.{f.ll[1:]}.{f.params[j]}", value)
             if self.fn_identity(f) and numeric_identity(value.t):
-                self.hidden(f.dglob[j] + ".box", self.dyn_box(value))
+                self.hidden(f.dglob[j] + ".box", self.dyn_id_box(value))
 
 def gen_default_problem(self, e: Node, t: str) -> str:
     # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
@@ -452,7 +452,7 @@ def gen_leave(self, depth: int) -> bool:
     cv = self.carried
     if len(self.exits) > depth and identity_abi(self.curfn) and self.idhere() and numeric_identity(cv.t):
         captured = Val(cv.v, cv.t).identity(cv)
-        captured.idfrom = self.dyn_box(cv).v
+        captured.idfrom = self.dyn_id_box(cv).v
         cv = captured
     ended = False
     for i in range(len(self.exits) - 1, depth - 1, -1):
@@ -581,6 +581,12 @@ def gen_with_cm(self, m: Val, it: Node, body: list[Node]) -> None:
     self.exits = self.exits[:n0]
 
 def gen_stmt(self, n: Node) -> None:
+    if len(self.fn.lazyobj) > 0 or len(self.fn.movebit) > 0:
+        self.id_stmt(n)  # (lazy field locals and moves: dynamic.py)
+    else:
+        self.stmt_main(n)
+
+def gen_stmt_main(self, n: Node) -> None:
     self.line = n.line
     k = n.kind
     if len(self.dmemo) > 0:
@@ -612,6 +618,8 @@ def gen_stmt(self, n: Node) -> None:
                 self.declare(n.kids[0].s, t)
             v = self.coerce(v, t)
         self.assign(n.kids[0], v)
+    elif k == "assign" and len(self.fn.lazyobj) + len(self.fn.lazyflag) > 0 and self.lazy_assign(n):
+        pass  # (x = o.f, o.f = x of a lazy numeric field local: dynamic.py)
     elif k == "assign":
         val = n.kids[-1]
         t0 = n.kids[0]
@@ -656,17 +664,25 @@ def gen_stmt(self, n: Node) -> None:
             else:
                 v = self.expr(val, self.target_type(t0))
             src = self.joinsrc
-            if n.s == "local-retype":
-                self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
-                self.store_name(t0.s, v, True)
-            else:
-                if len(n.kids) > 2 and (v.t == "int" or v.t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit and self.dyn_policy(n.line):
-                    # (x = y = f(): one object, whose box each target's binding holds: dyn_id_store)
-                    v.idfrom = self.dyn_box(v).v
-                for i in range(len(n.kids) - 1):
-                    tgt = n.kids[i]
-                    self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
-                    self.assign(tgt, v)
+            moving = self.fn.idmove
+            passing = self.fn.idpass
+            self.fn.idmove = len(n.kids) == 2 and v.idexact and (t0.kind == "name" or t0.kind == "attr")
+            self.fn.idpass = len(n.kids) == 2 and (t0.kind == "name" or t0.kind == "attr") and self.id_move(val)
+            try:
+                if n.s == "local-retype":
+                    self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
+                    self.store_name(t0.s, v, True)
+                else:
+                    if len(n.kids) > 2 and (v.t == "int" or v.t == BIG or v.t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit and self.idhere():
+                        # (x = y = f(): one object, whose box each target's binding holds: dyn_id_store)
+                        v.idfrom = self.dyn_id_box(v).v
+                    for i in range(len(n.kids) - 1):
+                        tgt = n.kids[i]
+                        self.joinsrc = val if tgt.kind == "name" or tgt.kind == "attr" else self.nokey  # (each target's: box[0] = u = f(u))
+                        self.assign(tgt, v)
+            finally:
+                self.fn.idmove = moving
+                self.fn.idpass = passing
             self.joinsrc = src
         self.copying = False
     elif k == "annassign" and self.tmpl_ann(n.kids[1]):
@@ -735,7 +751,7 @@ def gen_stmt(self, n: Node) -> None:
         if k == "for":
             self.for_(n, [])
         else:
-            self.while_(n)
+            self.lazy_while(n)
         self.elsekids = ek
         self.elsebrk = eb
         brks = self.elsebrks
@@ -749,7 +765,7 @@ def gen_stmt(self, n: Node) -> None:
             self.narrowed = meet(brks)
         self.place(lb)
     elif k == "while":
-        self.while_(n)
+        self.lazy_while(n)
     elif k == "for":
         self.for_(n, [])
     elif k == "return" and self.curfn.gen and not self.modlevel:
@@ -1224,13 +1240,22 @@ def gen_augassign(self, n: Node) -> None:
         self.glue_field(o, t.s)
         p = self.field(o, t.s, False)
         self.frozen(o.t, t.s)
-        cur = self.getfield(o, p, t.s)
-        ci = self.classes[o.t]
-        if ci.slotlimit and t.s not in ci.slots:
-            self.err(f"field '{t.s}' is outside __slots__ of '{short(ci.name)}'")
-        if t.s == "__slots__" and t.s not in ci.fpos:
-            self.err("rebinding __slots__ through an instance is not supported")
-        nv = self.inplace(op, cur, n.kids[1])
+        fn = self.fn
+        held = fn.scalar_reads
+        if not held and self.idhere() and op in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"] and self.plain_field(t) in ["int", "float", "bool"] and self.scalar_read_value(n.kids[1]):
+            # o.f op= v of a plain numeric field: as for a local (above), the old object
+            # is an arithmetic operand only, and the store keeps the result's provenance
+            fn.scalar_reads = True
+        try:
+            cur = self.getfield(o, p, t.s)
+            ci = self.classes[o.t]
+            if ci.slotlimit and t.s not in ci.slots:
+                self.err(f"field '{t.s}' is outside __slots__ of '{short(ci.name)}'")
+            if t.s == "__slots__" and t.s not in ci.fpos:
+                self.err("rebinding __slots__ through an instance is not supported")
+            nv = self.inplace(op, cur, n.kids[1])
+        finally:
+            fn.scalar_reads = held
         if not self.frozen_store(o, t.s):
             self.setfield(o, p, t.s, nv)
     elif t.kind == "slice":

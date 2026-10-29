@@ -1,0 +1,6 @@
+stored 1180591620717411303424
+Any field: Python int too large to convert to C long
+stored negative -1180591620717411303424
+negative Any field: Python int too large to convert to C long
+fits again 15000
+[exit 0]

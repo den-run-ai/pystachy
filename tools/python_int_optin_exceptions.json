@@ -2274,6 +2274,22 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/inference/dynany_identity_call_moves.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_identity_call_moves.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_identity_call_moves.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_identity_call_moves.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/inference/dynany_identity_call_none.py",
       "mode": "jit",
       "category": "dynamic-any-conflict",
@@ -2530,6 +2546,38 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/inference/dynany_identity_field_locals.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_identity_field_locals.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_identity_field_locals.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_identity_field_locals.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_identity_field_retired.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_identity_field_retired.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_identity_field_retired.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_identity_field_retired.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/inference/dynany_identity_fields.py",
       "mode": "jit",
       "category": "dynamic-any-conflict",
@@ -2782,6 +2830,22 @@
       "mode": "aot",
       "category": "dynamic-any-conflict",
       "diagnostic": "tests/programs/inference/dynany_identity_list_transfers.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_identity_method_proofs.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_identity_method_proofs.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_identity_method_proofs.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_identity_method_proofs.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
       "reason": "This fixture explicitly enables dynamic Any; adding python-int is rejected because a module cannot enable both representations.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
@@ -4255,22 +4319,6 @@
       "category": "unsupported-inference",
       "diagnostic": "tests/programs/language/flow_locals_deferred_read.py:9: error: expected int, got int | str",
       "reason": "A captured local rebound from str to promoting int keeps an int-or-str join that cannot satisfy the promoting-int return contract.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
-      "case": "tests/programs/library/lib_tomllib.py",
-      "mode": "jit",
-      "category": "dynamic-any-conflict",
-      "diagnostic": "tests/programs/library/lib_tomllib.py:95: error: a int value cannot become an Any value (compiling typed(dict[dyn,dyn]) for the call at tests/programs/library/lib_tomllib.py:114)",
-      "reason": "The opted-in typed TOML consumer tries to box a promoting int into dynamic Any; cross-module dynamic storage remains int64.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
-      "case": "tests/programs/library/lib_tomllib.py",
-      "mode": "aot",
-      "category": "dynamic-any-conflict",
-      "diagnostic": "tests/programs/library/lib_tomllib.py:95: error: a int value cannot become an Any value (compiling typed(dict[dyn,dyn]) for the call at tests/programs/library/lib_tomllib.py:114)",
-      "reason": "The opted-in typed TOML consumer tries to box a promoting int into dynamic Any; cross-module dynamic storage remains int64.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {

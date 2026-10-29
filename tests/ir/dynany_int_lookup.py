@@ -1,6 +1,7 @@
 # pystachy: dynamic-any
 # Integer queries of boxed-key tables retain the pure probe and boxed fallback.
-# The fallback reuses the immutable parameter's incoming box without allocating.
+# The fallback reuses the parameter's incoming box, or boxes once a new number that
+# its caller passed without one (a null companion).
 # Ordinary typed dicts and queries that are already Any keep their existing path.
 from typing import Any
 

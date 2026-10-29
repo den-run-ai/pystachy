@@ -230,14 +230,37 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   module that [tracks identity](#identity-scope) adds one pointer slot per numeric field
   (including one reserved for an unresolved `None` field), plus layout alignment, and
   reads/copies may materialize boxes. Other classes, and programs without dynamic `Any`,
-  retain their original class layouts.
+  retain their original class layouts. A read of a plain
+  numeric field (no property, method, `__getattr__` or `__getattribute__` in the class or a
+  subclass) through a local or parameter that only feeds arithmetic, a comparison, an index or
+  the old value of `o.f op= v` takes no snapshot. A local that copies such a field of a
+  parameter the function never rebinds (`i = self.pos`) shares the field's object without a
+  box: a runtime flag marks the sharing, and the field's slot keeps the object's box. Its first
+  read that is not such an operand gives the object its box in both slots, as the snapshot
+  would have. A statement that may run program code first does so for each sharing local that
+  a later statement may read, and ends the others' sharing. A store to the shared field of the
+  same object hands the local the field's slot; a write-back `self.pos = i` keeps a shared
+  field's slot, or shares the local's object from then on. Sharing starts only in the
+  function's own `if` and `while` blocks (not in loops whose test may run code, nor in `for`,
+  `with` or `try` statements), for one such local per field name, outside generators
+  (`dynany_identity_field_locals.py`, `tests/ir/dynany_field_locals.py`).
+
   Typed numeric parameters, definition-time defaults and numeric returns preserve the
   originating object, including calls into non-opt-in modules, closures, `Callable` values,
   virtual methods and dynamic calls. Internal calls in a graph using dynamic `Any` carry a
   companion box for numeric arguments and an output slot for a numeric result; arithmetic
   still uses raw numbers. Defaults keep rooted global or closure-environment companions.
   Numeric return values retain existing boxes and constants, while fresh computed results
-  defer boxing until observed. Argument snapshots precede later argument side effects, and
+  defer boxing until observed. A computed argument (no variable, field, item, `Any` or literal
+  provenance) passes a null companion, which the parameter boxes where it first crosses; a
+  lone assignment of a call's result takes its object as a return does; and a local's last
+  read before it is assigned again (no later read in the statement, not live after it) hands
+  its object to an argument or a copy without boxing it (`dynany_identity_call_moves.py`).
+  A method whose body only computes with numbers, its receiver's plain fields and locals
+  holding the receiver's `bytes` or `str` fields joins the numeric-body proof below: its
+  unreturned numeric arguments are read as operands and passed without companions, and a call
+  of it runs no other code (`dynany_identity_method_proofs.py`). Argument snapshots precede
+  later argument side effects, and
   returns keep their object across `finally` cleanup (`dynany_identity_call_args.py`,
   `dynany_identity_call_defaults.py`, `dynany_identity_call_returns.py`,
   `dynany_identity_call_indirect.py`, `dynany_identity_call_imports.py`,
@@ -715,8 +738,8 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   `Any` values yet.
 - Rejected at compile time where an argument is an `Any` value: `divmod()`, `round()`,
   `chr()`, `ord()`, `bin()`, `hex()`, `oct()`, `dict()`, `tuple()` (`tuple(list(x))` works),
-  `reversed()`, `iter()`, `next()`, `getattr()`, `hasattr()`, `setattr()` and `del` of an
-  attribute.
+  `getattr()`, `hasattr()`, `setattr()` and `del` of an attribute. The supported forms of
+  `iter()`, `next()` and `reversed()` are described in [Iteration](#iteration).
 
 ## Measurements
 

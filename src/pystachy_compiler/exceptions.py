@@ -1394,7 +1394,7 @@ def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
     if dynamic_program():
         if not self.idhere() and any(numeric_identity(v.t) for v in vals):
             self.identity_event("call of an exception class value")  # (it may be one of tracking code: dynamic.py)
-        i.a.extend([self.dyn_box(v) for v in vals if numeric_identity(v.t)])
+        i.a.extend([self.dyn_id_box(v) for v in vals if numeric_identity(v.t)])
     self.put(i, 1)
     e1 = self.cur
     self.br(l3)

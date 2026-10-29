@@ -330,6 +330,22 @@ class IFn:
         self.f = f  # f.ret is final once the IFn is complete
         self.numeric_only = False  # function_body proved local numeric identity unobservable
         self.scalar_reads = False  # scoped numeric arithmetic/comparison; no operand identity escapes
+        # Lazy numeric field locals (Gen.lazy_fields): local -> the parameter whose field it reads,
+        # that field, its bit in lazymasks, and its "shares the field's object" flag slot
+        self.lazyobj: dict[str, str] = {}
+        self.lazyfield: dict[str, str] = {}
+        self.lazybit: dict[str, int] = {}
+        self.lazyflag: dict[str, str] = {}
+        self.lazyreads: list[Node] = []  # the x = o.f statements that share without a box
+        self.lazywbs: list[Node] = []  # the o.f = x statements that write such a local back
+        self.lazylines: dict[int, list[Node]] = {}  # statements by line, and the lazy locals
+        self.lazymasks: dict[int, list[int]] = {}  # live where each starts (analysis.lazy_block)
+        self.lazyoff = 0  # inside a while loop whose test may run code: no sharing starts
+        self.lazywb = ""  # the local whose write-back setfield is compiling
+        self.idmove = False  # a lone assignment stores a call's result (dyn_id_store)
+        self.idpass = False  # a copy or argument moves a local (Gen.id_move)
+        self.movebit: dict[str, int] = {}  # locals a read may move: their bits in lazymasks
+        self.idstmt: Node | None = None  # the statement being compiled, where movebit has any
         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]
