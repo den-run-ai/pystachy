@@ -42,7 +42,7 @@
   <text x="55" y="458" class="body green">int64 / float / bool</text>
   <text x="55" y="485" class="body green">Typed slots and concrete fields</text>
   <text x="55" y="512" class="body green">Numeric arrays can be pointer-free.</text>
-  <text x="55" y="551" class="small green">No per-item scalar box for list[int].</text>
+  <text x="55" y="551" class="small green">Plain programs: no per-item boxes.</text>
   <rect x="430" y="390" width="340" height="184" rx="14" fill="#fff4ce" stroke="#ae7b00" stroke-width="2"/>
   <text x="450" y="426" class="head yellow">Tags and payloads</text>
   <text x="450" y="458" class="body yellow">Numeric locals may split into slots.</text>
@@ -86,5 +86,5 @@
   <rect x="35" y="1014" width="1130" height="70" rx="10" fill="#fce9e7" stroke="#ba4036"/>
   <text x="55" y="1042" class="body red" font-weight="700">R FIX · Missing comparison effects and remaining identity boundaries are correctness gaps (#803 / #858).</text>
   <text x="55" y="1068" class="small red">Narrowing is not a relayout of an aliased container or a complete fix for typed-boundary identity.</text>
-  <text x="35" y="1117" class="small">Snapshot 5b49dcf, 29 October 2026 · no automatic CPython fallback · evidence: docs/support-surface.md</text>
+  <text x="35" y="1117" class="small">Snapshot 9b50a385, 28 October 2026 (Pacific) · no automatic CPython fallback · evidence: docs/support-surface.md</text>
 </svg>

@@ -1,0 +1,17 @@
+orders int 13 13
+accumulator 1007
+bitwise 6 6 7 7 1 1
+result types int int int
+orders bool 7 7
+accumulator 1008
+bitwise 0 0 7 7 7 7
+result types int int int
+orders bool 6 6
+accumulator 1008
+bitwise 0 0 6 6 6 6
+result types int int int
+non-int str skip
+non-int float 1.25
+bool bitwise False True True
+bool types bool bool bool
+[exit 0]

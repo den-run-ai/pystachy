@@ -8,7 +8,7 @@ that fits, so equal values have one representation. See docs/python-int.md.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import first_use, local_names
-from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists, int_span
+from src.pystachy_compiler.diagnostics import dynamic_program, LINES, int_file, int_lists, int_span
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC, READ_HELPERS
@@ -380,7 +380,10 @@ def gen_to_big(self, v: Val) -> Val:
     # v, an int, bool or promoting int, as a promoting int
     if v.t == BIG:
         return v
-    return self.big(self.as_int(v))
+    r = self.big(self.as_int(v)).identity(v)
+    if dynamic_program() and v.lit and v.t == "int" and (int(v.v) < -5 or int(v.v) > 256):
+        r.idfrom = self.dyn_id_box(v).v
+    return r
 
 
 def gen_big_fits(self, vs: list[Val]) -> str:
@@ -573,7 +576,7 @@ def gen_big_narrow(self, v: Val) -> Val:
     if v.t != BIG:
         return v
     self.guard(self.scalar("xor", [Val(self.big_fits([v]), "bool"), Val("true", "bool")]), NARROW)
-    return self.big_lo(v)
+    return self.big_lo(v).identity(v)
 
 
 def gen_big_box(self, v: Val) -> Val:
