@@ -156,6 +156,7 @@ valgrind --tool=callgrind --callgrind-out-file=build/json_decode_any.callgrind b
 ```
 
 The optional argument is a positive iteration count (default 20,000); stdout is deterministic
-and stderr is the elapsed loop time in seconds. Interleave pinned-core baseline/candidate
+and stderr measures the loop, checksum assertion and final stdout print in seconds.
+Interleave pinned-core baseline/candidate
 runs and keep JIT startup separate. The control is intentionally standalone, not an added
 CI timing threshold or an entry in `perf_smoke.py`'s default matrix.
