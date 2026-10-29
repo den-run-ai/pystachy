@@ -77,5 +77,5 @@
   <text x="842" y="763" class="body red">General metaclasses / lookup hooks</text>
   <text x="842" y="817" class="small red">Runtime-named attribute values</text>
   <text x="40" y="910" class="sub">Arrows add implementation obligations within supported paths. Red boxes mark separate boundaries.</text>
-  <text x="40" y="938" class="small">Snapshot 9b50a385, 28 October 2026 (Pacific) · contracts and evidence: docs/support-surface.md</text>
+  <text x="40" y="938" class="small">Snapshot 9c38ee6c, 28 October 2026 (Pacific) · contracts and evidence: docs/support-surface.md</text>
 </svg>

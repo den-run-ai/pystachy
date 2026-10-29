@@ -1,0 +1,6 @@
+counter 499500 1000
+table True False True
+held True True False
+callback 5000!
+size 4 5000
+[exit 0]

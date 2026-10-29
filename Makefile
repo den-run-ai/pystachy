@@ -110,6 +110,7 @@ dictprobe: tools/dictprobe.c runtime.c runtime.py pystachy
 	mkdir -p build
 	./pystachy rt runtime.py -o build/dictprobe-rt.ll
 	$(LLVMBIN)clang -O2 -S -emit-llvm tools/dictprobe.c -o build/dictprobe.ll
+	@if grep -Eq '^define[^@]*@hobj[.(]' build/dictprobe.ll; then echo 'dictprobe: scalar-key hashing must inline hobj' >&2; exit 1; fi
 	$(LLVMBIN)llvm-link build/dictprobe-rt.ll build/dictprobe.ll -o build/dictprobe.bc
 	$(LLVMBIN)clang -O2 build/dictprobe.bc -o build/dictprobe -lm
 	build/dictprobe
@@ -338,6 +339,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p 'test_typed*.py'
 	$(PY) -m unittest discover -s tools -p 'test_json*.py'
 	$(PY) -m unittest discover -s tools -p test_numeric_identity.py
+	$(PY) -m unittest discover -s tools -p test_identity_scope.py
 	$(PY) -m unittest discover -s tools -p test_dynany_comparisons.py
 
 check-repository:

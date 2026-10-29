@@ -125,6 +125,9 @@ class FnInfo:
         self.uflags: dict[str, bool] = {}  # locals some read may find unassigned
         self.ret = "None"  # "" while a template's function is being compiled, before its first return
         self.mod = ""  # the dotted name of its module ("" for the main program)
+        # the identity policy of a closure, generator expression or Callable adapter: that of the
+        # code that made it ("-": its module's or its class's, Gen.fn_home)
+        self.home = "-"
         self.npos = -1  # how many parameters may be passed by position (-1: all; the rest are keyword-only)
         self.posonly = 0  # how many may only be passed by position
         # templates: a module-level function with an unannotated parameter, compiled per call for

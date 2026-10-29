@@ -1,7 +1,7 @@
 """Conversions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.diagnostics import dynamic_program, shown
+from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
@@ -169,7 +169,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
             return v
     if big_viewable(v.t, t):
         return self.big_tuple_view(v, t)  # (items that promote where t's do not, or the other way: the same tuple, bigints.py)
-    if dynamic_program() and v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) and ((is_sopt(t) and unopt(t) == v.t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))):
+    if self.idhere() and v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) and ((is_sopt(t) and unopt(t) == v.t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))):
         captured = Val(v.v, v.t).identity(v)
         captured.idfrom = self.dyn_id_box(v).v
         v = captured

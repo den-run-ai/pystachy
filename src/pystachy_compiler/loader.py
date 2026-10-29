@@ -336,22 +336,32 @@ class Loader:
                     b.kids = b.kids[:j] + out + b.kids[j + 1 :]
                     break
         self.intry = 0
-        if not self.rtmode and len(self.dirs) > 0 and RANGES not in self.mods and len([x for x in self.order if range_values(x.body, 0) and module_reads(x.body, "range")]) > 0:
+        # (each module that uses one of these modules of lib's depends on it as on an import: Mod.deps)
+        users = [x for x in self.order if range_values(x.body, 0) and module_reads(x.body, "range")] if not self.rtmode and len(self.dirs) > 0 and RANGES not in self.mods else []
+        if len(users) > 0:
             # range() as a value is an object of lib's class, whose module nothing imports: loaded
             # for a program that may use one (where a loop or a consumer takes the numbers at once,
             # the compiler steps through range(...) itself; the class's methods are compiled only
             # if the program calls them)
             self.load(RANGES, self.dirs[-1] + "/" + RANGES + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
-        if not self.rtmode and len(self.dirs) > 0 and OBJECTS not in self.mods and len([x for x in self.order if object_values(x.body) and module_reads(x.body, "object")]) > 0:
+            for x in users:
+                x.deps[RANGES] = True
+        users = [x for x in self.order if object_values(x.body) and module_reads(x.body, "object")] if not self.rtmode and len(self.dirs) > 0 and OBJECTS not in self.mods else []
+        if len(users) > 0:
             # object() makes an object of lib's class, whose module nothing imports (as range's)
             self.load(OBJECTS, self.dirs[-1] + "/" + OBJECTS + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
-        if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods and len([x for x in self.order if module_reads(x.body, "iter")]) > 0:
+            for x in users:
+                x.deps[OBJECTS] = True
+        users = [x for x in self.order if module_reads(x.body, "iter")] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
+        if len(users) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
             # nothing imports (it imports nothing either, so it comes first)
             self.load(ITERS, self.dirs[-1] + "/" + ITERS + ".py", "")
             self.order = [self.order[-1]] + self.order[:-1]
+            for x in users:
+                x.deps[ITERS] = True
         if not self.rtmode and len(self.dirs) > 0 and JSONANY not in self.mods and "json" in self.mods and self.mods["json"].path == self.dirs[-1] + "/json.py" and len(DYNFILES) > 0:
             # json.loads() and json.dumps() of Any values (#779), which the compiler calls in the
             # modules that compile Any as dynamic values (Gen.json_any): lib's, whose module nothing
@@ -2542,6 +2552,8 @@ class Loader:
                 checks.append(f"?{src.name} {x}" if k.startswith("a:") else f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
                 if not mine:
                     names.append(a.s)
+        for sub in inits.kids:
+            m.deps[sub.s] = True  # (whose code m's may read: Gen.identity_modules)
         at.append(len(inits.kids))
         cat.append(len(copies))
         binds: list[Node] = []  # (a from-import's copies, and the bound nodes of its names that have flags, in order)

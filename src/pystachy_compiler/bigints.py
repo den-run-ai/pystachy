@@ -8,7 +8,7 @@ that fits, so equal values have one representation. See docs/python-int.md.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import first_use, local_names
-from src.pystachy_compiler.diagnostics import dynamic_program, LINES, int_file, int_lists, int_span
+from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists, int_span
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC, READ_HELPERS
@@ -381,7 +381,7 @@ def gen_to_big(self, v: Val) -> Val:
     if v.t == BIG:
         return v
     r = self.big(self.as_int(v)).identity(v)
-    if dynamic_program() and v.lit and v.t == "int" and (int(v.v) < -5 or int(v.v) > 256):
+    if self.idhere() and v.lit and v.t == "int" and (int(v.v) < -5 or int(v.v) > 256):
         r.idfrom = self.dyn_id_box(v).v
     return r
 

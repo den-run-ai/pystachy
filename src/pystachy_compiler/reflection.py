@@ -521,7 +521,7 @@ def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> 
     o = self.expr(args[0], "")
     known = self.knownobj(args[0])  # (a template's parameter whose argument is no None)
     d = self.expr(args[2], "") if len(args) == 3 else Val("", "")  # (none: CPython's AttributeError)
-    if numeric_identity(d.t) and dynamic_program():
+    if numeric_identity(d.t) and self.idhere():
         # The default is evaluated before attribute lookup or a property's code.
         # Keep its object now; refl_phi cannot recover a retired lazy binding.
         captured = Val(d.v, d.t).identity(d)

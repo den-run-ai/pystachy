@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1135" viewBox="0 0 1200 1135" role="img" aria-labelledby="title desc">
   <title id="title">Representation determines the cost of the same Python syntax</title>
-  <desc id="desc">Supported syntax branches to concrete native storage, closed value unions including a separate recursive JSON prototype, and experimental dynamic Any. Execution costs include boxing, tag checks, collection and identity tracking. Imported opt-in modules can activate typed identity bookkeeping and Python-hash typed dictionaries (#969). The shared compilation lane separately identifies frontend work, generated IR volume and LLVM cost. No automatic CPython fallback is provided.</desc>
+  <desc id="desc">Supported syntax branches to concrete native storage, closed value unions including a separate recursive JSON prototype, and experimental dynamic Any. Execution costs include boxing, tag checks, collection and identity tracking. Identity bookkeeping is scoped to observing modules with conservative fallback; Python-hash typed dictionaries remain program-wide (#969). The shared compilation lane separately identifies frontend work, generated IR volume and LLVM cost. No automatic CPython fallback is provided.</desc>
   <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#66758a"/></marker></defs>
   <style>
     text { font-family: "DejaVu Sans", Arial, sans-serif; fill: #18263b; }
@@ -20,7 +20,7 @@
   <text x="35" y="79" class="sub">The source construct alone does not determine execution, heap, compiler or IR cost.</text>
   <rect x="35" y="110" width="1130" height="82" rx="14" fill="#f0f4fa" stroke="#b4c1d3" stroke-width="2"/>
   <text x="600" y="144" class="head" text-anchor="middle">Same supported syntax: a + b · xs[i] · obj.field · calls / loops</text>
-  <text x="600" y="172" class="body" text-anchor="middle">Types and module policy choose lowering; imported opt-in modules can activate typed identity work (#969).</text>
+  <text x="600" y="172" class="body" text-anchor="middle">Types and module policy choose lowering; identity scope limits bookkeeping with a conservative fallback.</text>
   <path d="M600 192 V214 H205 V240" class="edge"/>
   <path d="M600 214 V240" class="edge"/>
   <path d="M600 214 H995 V240" class="edge"/>
@@ -86,5 +86,5 @@
   <rect x="35" y="1014" width="1130" height="70" rx="10" fill="#fce9e7" stroke="#ba4036"/>
   <text x="55" y="1042" class="body red" font-weight="700">R FIX · Missing comparison effects and remaining identity boundaries are correctness gaps (#803 / #858).</text>
   <text x="55" y="1068" class="small red">Narrowing is not a relayout of an aliased container or a complete fix for typed-boundary identity.</text>
-  <text x="35" y="1117" class="small">Snapshot 9b50a385, 28 October 2026 (Pacific) · no automatic CPython fallback · evidence: docs/support-surface.md</text>
+  <text x="35" y="1117" class="small">Snapshot 9c38ee6c, 28 October 2026 (Pacific) · no automatic CPython fallback · evidence: docs/support-surface.md</text>
 </svg>

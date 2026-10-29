@@ -1,16 +1,16 @@
 # Identity-scope performance and mixed-policy checks, 28 October 2026
 
-The typed `Counter`/`tomllib` reproducer in [#969](https://github.com/den-run-ai/pystachy/issues/969)
-still has a material performance regression on the evaluated main. The identity-scope change
-in [#973](https://github.com/den-run-ai/pystachy/pull/973) restores this workload to alpha.3's
-measured range. The independent [#974](https://github.com/den-run-ai/pystachy/pull/974) change
-recovers much of the cost but remains **1.84x slower than alpha.3** here. These measurements
-do not establish that either candidate is ready to merge.
-
-#973's CI also exposes a pre-existing wrong result at the boundary between promoting ints and
-dynamic `Any`. It is reproduced below on current main and the candidate's integration tree.
-Keep #969 as a release blocker and retain the strict compatibility gate; a passing ordinary
-run or a faster benchmark does not clear the failing mixed-policy checks.
+**Historical checkpoint, superseded by the final combined verification.** The timings and
+mixed-policy failures below describe the pinned preparation sources in this report. The
+promoting-int/`Any` identity failure was subsequently repaired in
+[#981](https://github.com/den-run-ai/pystachy/pull/981), followed by the runtime fast path in
+[#980](https://github.com/den-run-ai/pystachy/pull/980) and module scoping in
+[#973](https://github.com/den-run-ai/pystachy/pull/973). See the
+[final correctness report](release-blocker-correctness-2026-10-29.md) for merged-source CI
+and the [combined performance report](release-blocker-performance-2026-10-29.md) for the
+accepted measurements. The typed-loop regression is substantially repaired; #969 remains
+open for residual JSON cost and the unavailable historical numeric workload. The original
+measurements, failures and scope below are retained as historical evidence.
 
 ## Evaluated sources
 
@@ -94,7 +94,7 @@ lines and two versus zero `pys_dyn_int_box` calls. The imported TOML implementat
 tracks identity: whole-program calls to that helper fall only from 1,153 to 1,149. The saving
 is in the hot typed loop, rather than eliminating the library's identity semantics.
 
-## Mixed promoting-int/Any correctness blocker
+## Historical mixed promoting-int/Any correctness blocker
 
 The ordinary, non-promoting forms of #973's new fixtures pass. Adding the `python-int` pragma
 to their entry modules, as the required compatibility gate does, exposes two existing gaps.
@@ -154,7 +154,7 @@ or a blanket rejection of currently correct value-only programs. Track this unde
 [#858](https://github.com/den-run-ai/pystachy/issues/858) and
 [#907](https://github.com/den-run-ai/pystachy/issues/907).
 
-## Validation scope and remaining gate
+## Historical validation scope and remaining gate
 
 [CI run 40764750069](https://github.com/den-run-ai/pystachy/actions/runs/40764750069), on the
 #973 integration tree above, fails `python-int-optin-0` and `python-int-optin-1` and therefore
@@ -179,7 +179,7 @@ numeric globals, inherited constructors and captured-number callbacks were revie
 fallback to full identity tracking. No additional PR-specific defect was found in that
 bounded review. No compatibility threshold, exception policy or default mode was changed.
 
-Before merge or release, repair the mixed-policy wrong result, validate the final combined
-source, and obtain a complete passing current-tree CI matrix. Recheck the typed-loop and JSON
-workloads after the correctness fix. #973 remains blocked; the residual #974-only performance
-cost keeps #969 open for the next alpha.
+At this historical checkpoint, the mixed-policy wrong result and failing CI blocked #973;
+the residual #974-only performance cost kept #969 open. Those failures prompted the later
+correctness fix, complete combined-source verification and Counter/JSON acceptance runs
+linked above. The final reports supersede this checkpoint’s merge-readiness conclusion.
