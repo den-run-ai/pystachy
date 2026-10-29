@@ -42,6 +42,8 @@ static long long dict_keyeqs;
 #define DICT_KEYEQ() (dict_keyeqs++)
 static long long dict_generic_hashes;
 #define DICT_HASH_GENERIC() (dict_generic_hashes++)
+static long long dict_empty_strings;
+#define DICT_STRING_EMPTY() (dict_empty_strings++)
 #define pys_hash_str counted_hash_str
 #include "../runtime.c"
 #undef pys_hash_str
@@ -290,6 +292,53 @@ static void marked_query(Dict *reference, I key, const char *desc) {
   dict_slots = 0;
   if (dpfind(dict, key) != expected || dict_slots != slots) marked_bad("pop lookup probes changed");
 }
+/* Empty first-slot insertions avoid a probe call; read-only lookups skip that
+   check, and deleted slots must still search past the hole for an equal key.
+   The generic reference above checks exact slot counts. */
+static void string_first_slot(void) {
+  for (I marked = 0; marked < 2; marked++) {
+    keys = pys_list_new(5);
+    Str *a = cache_key("first-a", 7), *b = cache_key("first-b", 7);
+    Str *equal = cache_key("first-b", 7), *missing = cache_key("absent", 6);
+    a->dict_hash = b->dict_hash = equal->dict_hash = 18; missing->dict_hash = 20;
+    dict = pys_dict_new(marked ? 1 | KTAG : 1, 0);
+    pys_dict_set(dict, (I)a, 10); pys_dict_set(dict, (I)b, 20);
+    dict_empty_strings = dict_slots = 0;
+    if (pys_dict_has(dict, (I)missing) || dict_empty_strings || dict_slots != 1)
+      marked_bad("read-only string lookup took the insertion shortcut");
+    pys_dict_pop(dict, (I)a);
+    dict_empty_strings = 0;
+    if (pys_dict_get(dict, (I)equal, -1) != 20) marked_bad("string hit behind a deleted first slot");
+    I entries = dict->n;
+    pys_dict_set(dict, (I)equal, 30);
+    if (dict->len != 1 || dict->n != entries || pys_dict_get(dict, (I)b, -1) != 30 || dict_empty_strings)
+      marked_bad("string update behind a deleted first slot");
+    dict_empty_strings = dict_slots = 0;
+    pys_dict_set(dict, (I)missing, 40);
+    if (dict_empty_strings != 1 || dict_slots != 1 || dict->len != 2)
+      marked_bad("empty first string insertion did not avoid the probe call");
+  }
+  printf("string first slots: empty inserts bypass probe calls, reads/tombstones retain normal lookup\n");
+}
+
+static void growth_boundary(void) {
+  Dict d = {0};
+  if (!dfull(&d)) marked_bad("empty table must grow");
+  for (I size = 8;; size *= 2) {
+    /* Check the last spare entry and the exact capacity, including popitem's cut
+       entries, through the largest positive power-of-two I. No huge allocation. */
+    I capacity = (I)((uint64_t)size * 2 / 3);
+    d.size = size; d.n = capacity - 1; d.cut = 0;
+    if (dfull(&d)) marked_bad("table grew before its capacity");
+    d.cut = 1;
+    if (!dfull(&d)) marked_bad("cut entry did not fill table");
+    d.n = capacity; d.cut = 0;
+    if (!dfull(&d)) marked_bad("full table did not grow");
+    if (size == (I)1 << 62) break;
+  }
+  printf("dictionary growth: exact two-thirds capacities and cut entries, no threshold overflow\n");
+}
+
 static void marked_scalars(void) {
   /* The int hash cases include zero, -1 normalization, INT64_MIN and equal hashes.
      Strings include distinct equal objects, None and cached 0/-1 sentinel results. */
@@ -574,6 +623,8 @@ int main(int argc, char **argv) {
   numeric_boxes();
   int_queries();
   marked_scalars();
+  string_first_slot();
+  growth_boundary();
   storage();
   values();
   if (argc == 2 && !strcmp(argv[1], "--hash-cache")) return 0;
