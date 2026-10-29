@@ -356,8 +356,12 @@ for a C `long`), where CPython goes on with the bigger int:
   bits with float items. `sum()`, `min()`, `max()`, `any()`, `all()`, `sorted()` and `list()` of
   a tuple take its items as a list holds them.
 - [Dynamic `Any`](dynamic-any.md) values, which another module that opts in to them may pass or
-  take: a promoting int becomes one as a 64-bit int, and comparing a promoting int with one is
-  rejected during compilation for now.
+  take: a promoting int becomes one as a 64-bit int, including a promoting field read
+  through `Any`. In-range values retain their numeric identity across supported bindings,
+  calls, fields and closures; bookkeeping for a wide typed value does not itself narrow it.
+  An actual wide field read or dynamic list display raises `OverflowError`
+  (`tests/deviations/python_int_any_field.py` and `python_int_any_list.py`). Comparing a promoting int with an `Any`
+  value is rejected during compilation for now.
 - `x in c` where the items of `c` are not ints (a `list[float]` may hold a float equal to an int
   past 64 bits). Membership in a list of ints is exact; in another container of ints, a `range`,
   a generator or an iterator object too: an int past 64 bits is not in it. An object's
@@ -372,11 +376,6 @@ for a C `long`), where CPython goes on with the bigger int:
   `x is None` and `x is not None` of an int are `False` and `True`.
 - A module cannot opt in to both promoting ints and [dynamic `Any`](dynamic-any.md) yet
   (`tests/errors/numbers/python_int_dynamic_any.py`).
-- Passing an in-range promoting int to another module's dynamic `Any` parameter can
-  lose alias identity: separate crossings create separate boxes even when the caller
-  passes the same binding twice. Numeric value conversion is not an identity guarantee.
-  Keep identity-sensitive values out of this mixed boundary or use CPython
-  ([#858](https://github.com/den-run-ai/pystachy/issues/858)).
 - A tuple of 64-bit ints that holds -2\*\*63, also in a tuple it holds (from a container, a
   builtin or a module that does not opt in), becomes a new tuple where a tuple of promoting ints
   is expected: `is` tells the two apart, where CPython has one object
