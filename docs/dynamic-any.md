@@ -165,8 +165,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   boxes; computed floats, including NaNs, are not interned
   (`tests/programs/inference/dynany_float_identity.py`). An int or float variable of typed code
   (a local, parameter, closure cell or comprehension variable of a module that opts in,
-  or any module's variable in a program where one does)
-  holds one object, as CPython's name does. Beside it is a box
+  or of another module whose code [tracks identity](#identity-scope), or any such module's
+  variable) holds one object, as CPython's name does. Beside it is a box
   slot, null until the variable has a box. Each time the variable becomes an `Any` value, it
   gives the slot's box where that box holds its value, else a new box, which the slot then
   holds. A value read before a store gives the variable a new binding (`x, y = y, x`) keeps the
@@ -179,8 +179,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   variable (`tests/programs/inference/dynany_identity_global_snapshot.py`). Proven single-binding
   integer constants and their from-import copies have their cached or literal box ready at
   initialization, so their reads only load it and cannot allocate
-  (`tests/programs/inference/dynany_identity_constants.py`). This applies to
-  numeric globals in imported typed modules too when the program uses dynamic `Any`. These
+  (`tests/programs/inference/dynany_identity_constants.py`). This applies to the
+  numeric globals of imported typed modules that [track identity](#identity-scope) too. These
   copies and global reads can allocate before an `Any` crossing, even if none follows.
   A numeric closure cell shares its box slot with every reader and nonlocal writer,
   including closures created before its first box. Its reads also snapshot before
@@ -226,10 +226,11 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   inherited fields keep the same companion slot through base-typed aliases. This also covers
   dataclasses, NamedTuples, exception classes and class-template specializations
   (`dynany_identity_fields.py`, `dynany_identity_field_defaults.py`,
-  `dynany_identity_field_kinds.py`). The raw numeric payload remains unboxed. A program that
-  uses dynamic `Any` adds one pointer slot per numeric field (including one reserved for an
-  unresolved `None` field), plus layout alignment, and reads/copies may materialize boxes.
-  Programs without dynamic `Any` retain their original class layouts. A read of a plain
+  `dynany_identity_field_kinds.py`). The raw numeric payload remains unboxed. A class of a
+  module that [tracks identity](#identity-scope) adds one pointer slot per numeric field
+  (including one reserved for an unresolved `None` field), plus layout alignment, and
+  reads/copies may materialize boxes. Other classes, and programs without dynamic `Any`,
+  retain their original class layouts. A read of a plain
   numeric field (no property, method, `__getattr__` or `__getattribute__` in the class or a
   subclass) through a local or parameter that only feeds arithmetic, a comparison, an index or
   the old value of `o.f op= v` takes no snapshot. A local that copies such a field of a
@@ -243,6 +244,7 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   function's own `if` and `while` blocks (not in loops whose test may run code, nor in `for`,
   `with` or `try` statements), for one such local per field name, outside generators
   (`dynany_identity_field_locals.py`, `tests/ir/dynany_field_locals.py`).
+
   Typed numeric parameters, definition-time defaults and numeric returns preserve the
   originating object, including calls into non-opt-in modules, closures, `Callable` values,
   virtual methods and dynamic calls. Internal calls in a graph using dynamic `Any` carry a
@@ -264,6 +266,8 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   `dynany_identity_call_indirect.py`, `dynany_identity_call_imports.py`,
   `dynany_identity_call_edges.py`). Foreign C and CPython extension entry points retain
   their native ABI; graphs without dynamic `Any` retain all ordinary calling conventions.
+  Code that does not [track identity](#identity-scope) keeps the graph's convention but
+  passes null companions and gives none back.
   Typed `list[int]` and `list[float]` items retain their original objects through stores,
   reads, iteration, copies, slices, repetition and reordering. Their raw numeric array keeps
   its existing layout; a separately scanned companion array holds the item boxes in a program
@@ -276,7 +280,9 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   (`dynany_identity_list_selectors.py`, `dynany_identity_list_callbacks.py`). Native numeric
   list producers establish one object per item before any sharing. This allocates a companion
   pointer per capacity slot and materializes numeric boxes; graphs without dynamic `Any`
-  allocate no companion arrays. Proven numeric arithmetic and comparisons can read only the
+  allocate no companion arrays, and code that does not [track identity](#identity-scope)
+  uses the plain list operations, which keep an existing companion consistent. Proven
+  numeric arithmetic and comparisons can read only the
   raw payload: their numeric-list receivers must be plain names and their integer indices
   must be inert expressions. Reads that escape through assignments, returns, identity tests,
   dynamic operands or callbacks still retain their item objects. Foreign C list calls follow
@@ -315,6 +321,31 @@ Two typed IR operations read a box: `dyn.type` its DynType pointer and `dyn.payl
 payload, declaring the type a test proved it holds. Neither has a memory effect: a box never
 changes. Runtime calls whose descriptor holds an `A` get every effect, as an `O` does, since a
 box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program's code.
+
+## Identity scope
+
+Only code that can observe a number's identity tracks it (#969). In a program where a module
+opts in, that is the code of the modules that opt in, of every module they import, directly
+or not, of lib's `range`, `object()` and `iter()` modules where one of those uses them, and the
+compiler's shared helpers. The code of every other module compiles as in a program without
+dynamic `Any`: its classes keep their layouts, with no companion slots, and its functions keep
+no box slots, take no snapshots and allocate no boxes for their calls. Typically such a module
+is the main program that does not opt in but imports `tomllib` or the json_repair port.
+
+Values cross from that code into tracking code only where they cannot carry a number's
+identity: it may pass strings, bools, `None`, `Any` values (which keep their boxes), and
+containers and `Callable` values of these, make `Any` values of these and of numeric
+literals, receive these and plain numbers, and read numbers from the variables and objects
+of tracking modules. Any other
+crossing compiles the program again from the start with every module tracking identity, which
+gives the same IR as before this split: one of its numbers or objects made an `Any` value, a
+call of a tracking module's function, constructor or method that takes or gives back anything
+else, or a store into a tracking module's variable, class attribute or object. A program whose
+main module opts in, or whose every module a module that opts in imports, is unaffected; one
+that falls back compiles its modules twice, the first time up to the crossing
+(`tests/programs/inference/dynany_identity_scope.py`, `dynany_identity_scope_fields.py`,
+`dynany_identity_scope_numbers.py`, `tests/ir/dynany_identity_scope.py`,
+`tools/test_identity_scope.py`).
 
 ## The typed/dynamic contract
 

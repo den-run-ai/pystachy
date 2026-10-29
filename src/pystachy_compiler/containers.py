@@ -38,7 +38,9 @@ from src.pystachy_compiler.utils import (
 def gen_list_id_kind(self, t: str) -> int:
     # A program graph opting into dynamic values preserves typed numeric item objects.
     # The raw payload stays in its existing atomic array; identity lives in scanned storage.
-    if self.rtmode or not dynamic_program():
+    # Code that does not track identity (Gen.identity_modules) uses the plain operations, which
+    # keep a list's companion consistent (runtime.c): such a list never reaches tracking code.
+    if self.rtmode or not self.idhere():
         return 0
     return 1 if t == "list[int]" else 2 if t == "list[float]" else 0
 

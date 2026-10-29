@@ -713,6 +713,7 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.dtypes = f.dtypes
     g.uflags = f.uflags
     g.mod = f.mod
+    g.home = f.home
     g.ret = want if yield_context else f.ret
     g.infer = f.ret == ""
     g.rctx = "" if yield_context else want

@@ -85,6 +85,11 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     libs = len(LIBS)
     linkdl = len(LINKDL)
     passes = 0
+    # In a program that uses dynamic Any, the code of modules that neither opt in nor are imported
+    # by one that does tracks no numeric identity (Gen.identity_modules), until a pass finds a
+    # crossing that could carry one (Gen.identity_event): the program is then compiled from the
+    # start with every module tracking it (idfull), as if that split had never been tried.
+    idfull = False
     while True:
         g = Gen()
         g.ext = ext
@@ -93,17 +98,24 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.hints = hints
         g.xnot = xnot
         g.final = passes >= JOINS
+        g.idfull = idfull
         ld = Loader(dirs)
         ld.ext = ext
         try:
             return g.program(ld.program(path, src))
         except Rejoin:
-            for k in g.newhints:
-                hints[k] = g.newhints[k]
-            if len([k for k in g.newx if k not in xnot]) == 0:
-                passes += 1
-            for k in g.newx:
-                xnot[k] = True
+            if g.idevent != "" and not idfull:
+                idfull = True
+                hints = {}
+                xnot = {}
+                passes = 0
+            else:
+                for k in g.newhints:
+                    hints[k] = g.newhints[k]
+                if len([k for k in g.newx if k not in xnot]) == 0:
+                    passes += 1
+                for k in g.newx:
+                    xnot[k] = True
             # (as parsing and lowering found them: the next pass numbers lambdas and
             # lists C libraries as the first did; Loader.program rebuilds its file-index space)
             LAMBDAS[0] = lambdas

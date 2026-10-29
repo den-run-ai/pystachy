@@ -1328,5 +1328,6 @@ def gen_genexp_value(self, n: Node) -> Val:
     self.ngenexp += 1
     g.ll = f"@f.genexpr.{self.ngenexp}"
     g.mod = f.mod
+    g.home = self.fn_home(f)  # (the identity policy of the code around it: dynamic.py)
     g.gfirst = own
     return self.call_fn(g, [], firsts + [mk("name", x, line, []) for x in caps])

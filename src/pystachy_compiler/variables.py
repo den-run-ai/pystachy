@@ -149,7 +149,8 @@ def gen_load_name(self, name: str) -> Val:
         if is_opt(t) or is_union(t):
             self.wide[self.curfn.ll + r] = True  # (not narrowed, see coerce)
         val = Val(r, t)
-        if name in self.gidbox and numeric_identity(t):
+        self.identity_global(name, t, False)  # (dynamic.py)
+        if name in self.gidbox and numeric_identity(t) and self.idhere():
             self.dyn_id_read(val, self.gidbox[name])
         return val
     if name == "__name__":
@@ -408,7 +409,7 @@ def gen_closure(self, n: Node) -> Val:
         if f.dtypes[j] == "":
             f.dtypes[j] = v.t
         value = self.coerce(v, f.dtypes[j])
-        if dynamic_program() and numeric_identity(value.t):
+        if self.idhere() and numeric_identity(value.t):
             captured = Val(value.v, value.t).identity(value)
             captured.idfrom = self.dyn_id_box(value).v
             value = captured
@@ -424,7 +425,7 @@ def gen_closure(self, n: Node) -> Val:
     for j in range(len(dvals)):
         a = self.maddr('int', env, f'{f.dglob[c.defs[j]][1:]}', True)
         self.mstore(dvals[j].t, dvals[j].v, a)
-        if dynamic_program() and numeric_identity(dvals[j].t):
+        if self.idhere() and numeric_identity(dvals[j].t):
             b = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + len(c.iflags) + j}', True)
             self.mstore('dyn', dvals[j].idfrom, b)
     for j in range(len(c.iflags)):
@@ -444,6 +445,7 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     f.ll = f"@c.{idx}"
     f.name = qual
     f.mod = outer.mod
+    f.home = self.fn_home(outer)  # (its cells' and env's identity policy is its maker's: dynamic.py)
     f.clo = idx
     f.generic = True
     f.ret = f.ret if d.kids[1].kind != "noann" else ""
@@ -506,7 +508,7 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
             c.nlw[x] = True
     # the defaults that are no constants: the env holds their values, after the cells
     for j in range(1, len(f.params)):
-        if not is_const(f.defaults[j]) or identity_default(f.defaults[j]):
+        if not is_const(f.defaults[j]) or (identity_default(f.defaults[j]) and self.idhere()):
             f.dglob[j] = f"&{len(c.caps) + len(c.defs)}"
             c.defs.append(j)
     lf: dict[str, bool] = {}
@@ -740,7 +742,8 @@ def gen_read(self, n: Node) -> Val:
         # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
         # folds the identity operation to a literal for opcode dispatch and other arithmetic.
         val = Val(self.scalar('add', [Val(self.intglobals[name], 'int'), Val('0', 'int')]), "int")
-        if name in self.gidbox:
+        self.identity_global(name, "int", False)  # (dynamic.py)
+        if name in self.gidbox and self.idhere():
             self.dyn_id_read(val, self.gidbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
     if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and self.classes[name].exc != "":
@@ -1666,9 +1669,9 @@ def gen_new_global(self, name: str, t: str) -> None:
     self.global_var(f"@g.{name}", t)
     if name in self.gflag:
         self.global_var(f"@g.{name}.def", "bool")
-    if numeric_identity(t) and dynamic_program():
+    if numeric_identity(t) and self.global_identity(name):
         # (the box of its binding as an Any value, as a local's: alloca; a root, as a dyn global is.
-        # Every module's, as a module that compiles Any as dyn may read it)
+        # Every tracking module's, as a module that compiles Any as dyn may read it: identity_modules)
         self.gidbox[name] = f"@g.{name}.box"
         self.global_var(self.gidbox[name], "dyn")
 
@@ -1729,6 +1732,7 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         was = self.join_at("global", name, t)  # (a value it does not take may widen it: join_hint)
         cv = self.coerce(v, t, self.assigned_to(v, t, name))
         self.join_at(was[0], was[1], was[2])
+        self.identity_global(name, t, True)  # (dynamic.py)
         self.mem_store(Val(f"@g.{name}", "*" + t), cv)
         if name in self.gflag:
             self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))

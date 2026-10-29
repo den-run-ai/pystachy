@@ -1,0 +1,9 @@
+@init.scopelib:
+@main.init: load:Counter+0 load:Counter+8
+@m.Counter.__init__: store:Counter+0 store:Counter+8
+@m.Counter.step: load:Counter+0 store:Counter+0 load:Counter+8 store:Counter+8
+@f.scopelib$same:
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main:

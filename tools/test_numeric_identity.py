@@ -645,6 +645,7 @@ class PromotingIntegerIdentityTests(unittest.TestCase):
             Path(tmp, "observer.py").write_text(
                 "# pystachy: dynamic-any\nfrom typing import Any\n"
                 "def observe(x: Any) -> None:\n    print(x is x)\n"
+                "def same(x: Any, y: Any) -> bool:\n    return x is y\n"
                 "def number() -> Any:\n    return int('2')\n")
             return driver.compile_program("promoting_identity_probe.py",
                                           "# pystachy: python-int\nimport observer\n" + source,
@@ -669,7 +670,7 @@ class PromotingIntegerIdentityTests(unittest.TestCase):
         self.assertIn("ptr %aid0", ir)
 
     def test_chained_assignment_shares_one_companion(self):
-        ir = self.compile("first = second = int('1000')\nprint(first, second)\n")
+        ir = self.compile("first = second = int('1000')\nprint(observer.same(first, second))\n")
         boxes = [re.search(r"store ptr ([^,]+), ptr @g\." + name + r"\.box", ir).group(1)
                  for name in ("first", "second")]
         self.assertEqual(boxes[0], boxes[1])
