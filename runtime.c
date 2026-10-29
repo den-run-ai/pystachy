@@ -3674,7 +3674,7 @@ static uint64_t hbig(Mpz *m) { return hint1(pys_mpz_hash(m)); }
 /* The hash of key k of a table of kind > 1. Marked native str/int keys use the same
    hashes as hitem, including None and -1 normalization, without its descriptor walk.
    Other marked descriptors retain the general path and its callback behavior. */
-static inline uint64_t hobj(I kind, I k) {
+static inline __attribute__((always_inline)) uint64_t hobj(I kind, I k) {
   const char *d = kraw(kind);
   if (*d != '!') return hkey(k, d);
   if (!d[2]) {
