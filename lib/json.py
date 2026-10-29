@@ -423,10 +423,13 @@ class _Parser:
             out.append(self.value(depth + 1))
             self.skip()
             i = self.pos
-            if i < self.n and data[i] == 93:
+            if i == self.n:
+                raise self.error("Expecting ',' delimiter", i)
+            token = data[i]
+            if i < self.n and token == 93:
                 self.pos = i + 1
                 return out
-            if i == self.n or data[i] != 44:
+            if token != 44:
                 raise self.error("Expecting ',' delimiter", i)
             self.pos = i + 1
             self.skip()
@@ -455,10 +458,13 @@ class _Parser:
             out[key] = self.value(depth + 1)
             self.skip()
             i = self.pos
-            if i < self.n and data[i] == 125:
+            if i == self.n:
+                raise self.error("Expecting ',' delimiter", i)
+            token = data[i]
+            if i < self.n and token == 125:
                 self.pos = i + 1
                 return out
-            if i == self.n or data[i] != 44:
+            if token != 44:
                 raise self.error("Expecting ',' delimiter", i)
             self.pos = i + 1
             self.skip()
