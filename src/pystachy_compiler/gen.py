@@ -118,6 +118,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_body as dynamic_dyn_body,
     gen_dyn_bound as dynamic_dyn_bound,
     gen_dyn_box as dynamic_dyn_box,
+    gen_dyn_id_box as dynamic_dyn_id_box,
     gen_dyn_boxable as dynamic_dyn_boxable,
     gen_dyn_builtin as dynamic_dyn_builtin,
     gen_dyn_builtin_methods as dynamic_dyn_builtin_methods,
@@ -1837,6 +1838,9 @@ class Gen:
 
     def dyn_box(self, v: Val) -> Val:
         return dynamic_dyn_box(self, v)
+
+    def dyn_id_box(self, v: Val) -> Val:
+        return dynamic_dyn_id_box(self, v)
 
     def json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
         return dynamic_json_any(self, name, args, want, resultsoft)

@@ -2,7 +2,7 @@
 from __future__ import annotations
 import os
 from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fail, where
-from src.pystachy_compiler.ir import ClassInfo, FnInfo
+from src.pystachy_compiler.ir import ClassInfo, Closure, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
@@ -648,7 +648,12 @@ def identity_abi(f: FnInfo) -> bool:
 def numeric_identity(t: str) -> bool:
     # Storage which may hold an int/float object's identity, including joined locals.
     u = unopt(t)
-    return u in ["int", "float"] or (is_union(u) and all(m in ["int", "float", "bool", "str"] for m in umembers(u)) and any(m in ["int", "float"] for m in umembers(u)))
+    return u in ["int", BIG, "float"] or (is_union(u) and all(m in ["int", "float", "bool", "str"] for m in umembers(u)) and any(m in ["int", "float"] for m in umembers(u)))
+
+
+def closure_default_slots(c: Closure) -> int:
+    # Closure defaults are values, including the two words of a promoting integer.
+    return sum(2 if c.f.dtypes[j] == BIG else 1 for j in c.defs)
 
 
 def folded_int(op: str, a: str, b: str) -> str:

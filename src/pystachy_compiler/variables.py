@@ -26,7 +26,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, 
 from src.pystachy_compiler.dynamic import XCMP, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import owner, short
-from src.pystachy_compiler.specs import BIG, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
@@ -47,6 +47,7 @@ from src.pystachy_compiler.utils import (
     is_vtuple,
     lt,
     numeric_identity,
+    closure_default_slots,
     same_kind,
     selem,
     targs,
@@ -130,7 +131,7 @@ def gen_load_name(self, name: str) -> Val:
                 self.lazy_resolve(name)  # (a lazy field local's object gets its box: dynamic.py)
             self.dyn_id_read(val, self.idbox[name])
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
-            if val.idfrom != "" and (is_opt(t) or is_union(t)):
+            if val.idfrom != "" and t != BIGOPT and (is_opt(t) or is_union(t)):
                 # A shared cell's snapshot may fill its adjacent identity cache.
                 # Read the checked member from that snapshot: storage proofs need
                 # not survive the cache write or another closure reading the cell.
@@ -397,6 +398,7 @@ def gen_closure(self, n: Node) -> Val:
     c = self.closures[self.clokeys[key]] if key in self.clokeys else self.new_closure(n, key)
     f = c.f
     dvals: list[Val] = []
+    offset = len(c.caps)
     for j in c.defs:
         t = f.ptypes[j]
         v = self.expr(f.defaults[j], t)
@@ -408,23 +410,25 @@ def gen_closure(self, n: Node) -> Val:
         value = self.coerce(v, f.dtypes[j])
         if dynamic_program() and numeric_identity(value.t):
             captured = Val(value.v, value.t).identity(value)
-            captured.idfrom = self.dyn_box(value).v
+            captured.idfrom = self.dyn_id_box(value).v
             value = captured
+        f.dglob[j] = f"&{offset}"
+        offset += 2 if value.t == "int+" else 1
         dvals.append(value)
-    env = self.rt("pys_alloc", "ptr", [f"i64 {8 * max(len(c.caps) + len(c.defs) + len(c.iflags) + (len(c.defs) if dynamic_program() else 0), 1)}"])
+    env = self.rt("pys_alloc", "ptr", [f"i64 {8 * max(len(c.caps) + closure_default_slots(c) + len(c.iflags) + (len(c.defs) if dynamic_program() else 0), 1)}"])
     for i in range(len(c.caps)):
         if c.ctypes[i] != "None":
             x = c.caps[i]
             a = self.maddr('%ptr', env, f'{i}', True)
             self.mstore('%ptr', self.cells[x] if x in self.cells else self.lreg[x], a)
     for j in range(len(dvals)):
-        a = self.maddr('int', env, f'{len(c.caps) + j}', True)
+        a = self.maddr('int', env, f'{f.dglob[c.defs[j]][1:]}', True)
         self.mstore(dvals[j].t, dvals[j].v, a)
         if dynamic_program() and numeric_identity(dvals[j].t):
-            b = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + len(c.iflags) + j}', True)
+            b = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + len(c.iflags) + j}', True)
             self.mstore('dyn', dvals[j].idfrom, b)
     for j in range(len(c.iflags)):
-        a = self.maddr('%ptr', env, f'{len(c.caps) + len(c.defs) + j}', True)
+        a = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
         self.mstore('%ptr', self.iflag[c.iflags[j]], a)
     self.nn[env] = True
     return Val(env, c.t)
@@ -1872,7 +1876,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
     k = t.kind
     if k == "index" and self.list_id_kind(self.ctype("list", [v.t])) != 0 and v.idslot != "":
         # The target and index can run callbacks after the RHS was read.
-        v.idfrom = self.dyn_box(v).v
+        v.idfrom = self.dyn_id_box(v).v
     if k == "badattr":
         self.err(t.s)
     if k in UNSUPPORTED:

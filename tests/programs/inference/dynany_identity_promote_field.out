@@ -1,0 +1,8 @@
+typed field True True True
+Any field True True True
+field self store True True True
+copied field True True True
+field replacement False False True
+field and local chain True True True
+chained Any field True True True
+[exit 0]

@@ -1,0 +1,10 @@
+definition time default True True True
+repeated default True True True
+rebound global False False True
+first captured default True True True
+second captured default True True True
+float captured default True True True
+first captured default True True True
+second captured default True True True
+float captured default True True True
+[exit 0]

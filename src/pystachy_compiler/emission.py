@@ -228,7 +228,7 @@ def gen_ret_(self, v: Val) -> None:
     if identity_abi(self.curfn) and numeric_identity(v.t):
         # Fresh arithmetic needs no box until its caller observes identity. An existing
         # binding/constant keeps its box, including the defining module's constant pool.
-        b = Val(v.idfrom, "dyn") if v.idfrom != "" else self.dyn_id_held(v) if v.idslot != "" else self.dyn_box(v) if v.lit or v.t not in ["int", "float"] else Val("null", "dyn")
+        b = Val(v.idfrom, "dyn") if v.idfrom != "" else self.dyn_id_held(v) if v.idslot != "" else self.dyn_id_box(v) if v.lit or v.t not in ["int", "int+", "float"] else Val("null", "dyn")
         self.mem_store(Val("%idret", "*dyn"), b)
     i = Ins("ret", "", "")
     if v.t != "None":
