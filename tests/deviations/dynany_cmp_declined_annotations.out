@@ -1,0 +1,16 @@
+0 __eq__() of Declared cannot compare an operand of type Declared
+cleanup 0
+1 __ne__() of Declared cannot compare an operand of type Declared
+cleanup 1
+2 __lt__() of Declared cannot compare an operand of type Declared
+cleanup 2
+3 __le__() of Declared cannot compare an operand of type Declared
+cleanup 3
+gt body
+ge body
+eq body
+False False True
+inverted __eq__() of Inverted cannot compare an operand of type Inverted
+True
+membership __eq__() of Declared cannot compare an operand of type Declared
+[exit 0]

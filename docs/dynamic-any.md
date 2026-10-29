@@ -633,8 +633,11 @@ cannot compile, the original typed call remains available to matching values
 guarded concrete-class body compiles, executing that cross-type call raises an explicit
 unsupported-comparison `TypeError`. It does not return an identity result or try a reflected
 method after skipping the selected body. An absent method still permits normal reflection
-and identity fallback. Typed calls and same-hierarchy comparison
-helpers retain their existing behavior.
+and identity fallback. Imported methods whose declarations are unsupported also report an
+explicit error when selected. Same-hierarchy dynamic comparisons retain their typed helpers;
+when the selected method cannot accept that operand type, those helpers raise `TypeError`
+rather than substituting identity or running a lower-priority reflected method. Unused
+methods, identity-first container matches and supported operand types remain available.
 A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
 methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
 rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
@@ -694,6 +697,12 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   longer suppress normal cross-type instance comparison methods. Unsupported bodies remain
   a compatibility limit tracked by #803; these cross-type calls cannot silently succeed
   (`tests/deviations/dynany_cmp_uncompiled_body.py`).
+- Same-hierarchy dynamic comparisons use typed helpers, so an incompatible concrete operand
+  annotation raises `TypeError` even where CPython runs that body. Imported comparison
+  declarations with unsupported annotations or return types also raise explicitly when
+  selected (`tests/deviations/dynany_cmp_declined_annotations.py`,
+  `tests/deviations/dynany_cmp_declined_declarations.py`). These methods are present for
+  dispatch: their inability to compile never permits a lower-priority method to run instead.
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.

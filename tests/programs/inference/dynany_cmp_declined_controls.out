@@ -1,0 +1,27 @@
+nullable eq True
+nullable eq True
+True True
+nullable eq True
+nullable eq True
+False False
+nullable eq False
+nullable eq False
+False True True
+nullable eq True
+nullable eq True
+True True
+child eq
+child eq
+child eq
+True True True
+child eq
+child eq
+child eq
+False False False
+child gt
+child gt
+True True
+base eq
+base lt
+False False
+[exit 0]
