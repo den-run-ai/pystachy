@@ -16,7 +16,7 @@ the program's classes, functions the compiler writes once every class that is bo
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, LINES, Rejoin, dynamic_file, dynamic_program
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, Rejoin, dynamic_file, dynamic_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, retoken, short
@@ -62,18 +62,30 @@ def gen_dyn_policy(self, line: int) -> bool:
 def gen_identity_modules(self, mods: list[Mod]) -> None:
     # The modules whose code tracks numeric identity in a program that uses dynamic Any
     # (docs/dynamic-any.md#identity-scope): those that opt in, lib's dynamic json module, and
-    # each module they import (their code may hold its numbers), lib's range, object and
+    # each module they import (their code may hold its numbers), except checked identity-inert
+    # hints (identity_inert and the crossing checks below), lib's range, object and
     # iterator modules included where they use them (Mod.deps). The others (idoff) keep their
     # classes' layouts and their functions' code: no box slots, companions or snapshots. Their
     # values reach tracking code only through the crossings identity_call, identity_global,
     # identity_field and identity_box check; one that could carry a number's identity makes
     # the driver compile the program again with every module tracking (idfull), as before.
     self.idoff = {}
+    self.idhint = {}
     if self.rtmode or self.idfull or not dynamic_program():
         return
     dyn: dict[str, bool] = {}
     for k in DYNFILES:
         dyn[FILES[k][2:] if FILES[k].startswith("./") else FILES[k]] = True
+    hinted: dict[str, bool] = {}
+    if self.idtry:
+        paths: dict[str, bool] = {}
+        for k in IDINERT:
+            if k not in DYNFILES and k not in INTFILES:
+                paths[FILES[k][2:] if FILES[k].startswith("./") else FILES[k]] = True
+        for m in mods:
+            p = m.path[2:] if m.path.startswith("./") else m.path
+            if p in paths:
+                hinted[m.name] = True
     on: dict[str, bool] = {}
     work: list[Mod] = []
     for m in mods:
@@ -84,12 +96,20 @@ def gen_identity_modules(self, mods: list[Mod]) -> None:
     byname: dict[str, Mod] = {}
     for m in mods:
         byname[m.name] = m
+    visited: dict[str, bool] = {}
     while len(work) > 0:
         m = work.pop()
+        if m.name in visited:
+            continue
+        visited[m.name] = True
         for d in m.deps:
-            if d not in on and d in byname:
-                on[d] = True
-                work.append(byname[d])
+            if d in byname:
+                if d in hinted:
+                    self.idhint[d] = True
+                else:
+                    on[d] = True
+                if d not in visited:
+                    work.append(byname[d])
     for m in mods:
         if m.name not in on:
             self.idoff[m.name] = True
@@ -123,6 +143,10 @@ def gen_idhere(self) -> bool:
 
 def gen_class_identity(self, ci: ClassInfo) -> bool:
     # do class ci's numeric fields and class attributes have companion boxes
+    if ci.base in self.classes:
+        base = self.classes[ci.base]
+        if (ci.mod in self.idhint or base.mod in self.idhint) and (ci.mod in self.idoff) != (base.mod in self.idoff):
+            self.identity_event(f"inheritance of {ci.name}")
     return dynamic_program() and ci.mod not in self.idoff
 
 
@@ -133,7 +157,8 @@ def gen_global_identity(self, name: str) -> bool:
 
 def gen_identity_event(self, why: str) -> None:
     # a crossing between code that tracks numeric identity and code that does not, which could
-    # carry a number's identity (identity_modules): the next pass tracks it everywhere
+    # carry a number's identity (identity_modules): retry without hints first, then
+    # with every module tracking if the ordinary split also finds such a crossing
     self.idevent = why
     raise Rejoin()
 
@@ -151,6 +176,31 @@ def gen_identity_free(self, t: str) -> bool:
     return False
 
 
+def gen_identity_inert(self, t: str, seen: list[str], handle: bool = False) -> bool:
+    # Identity-preserving scalars/list elements cannot cross a hinted boundary. A recursive
+    # tagged union such as JSONValue already erases its numeric member's companion; its
+    # containers share that same representation. This is a representation test, not a claim
+    # that arbitrary numeric containers cannot expose identity. Class handles are allowed
+    # only directly in calls: their scalar fields and dynamic boxing are checked separately.
+    u = unopt(t)
+    if u in seen:
+        return True
+    if u in ["str", "bytes", "bool", "None", DYN, DYNINT, NONEVAR]:
+        return True
+    if numeric_identity(u):
+        return False
+    if u in self.classes:
+        return handle and self.classes[u].mod in self.idhint
+    if u.startswith("rec["):
+        expanded = self.rec_type(u)
+        return expanded != u and self.identity_inert(expanded, seen + [u])
+    if is_union(u):
+        return all(m in ["int", "float"] or self.identity_inert(m, seen + [u]) for m in umembers(u))
+    if is_list(u) or is_dict(u) or is_set(u) or is_tuple(u) or is_vtuple(u):
+        return all(self.identity_inert(x, seen + [u]) for x in targs(u))
+    return False
+
+
 def gen_identity_call(self, f: FnInfo) -> None:
     # a call of f from code of the other side of identity_modules' split: from code that does
     # not track identity, f may take only what holds no number (identity_free) and give back that
@@ -160,6 +210,10 @@ def gen_identity_call(self, f: FnInfo) -> None:
         return
     home = self.fn_home(f)
     here = self.fn_home(self.curfn)
+    if (home in self.idhint) != (here in self.idhint):
+        if all(self.identity_inert(t, [], True) for t in f.ptypes) and self.identity_inert(f.ret, [], True):
+            return
+        self.identity_event(f"hinted call of {f.name}()")
     if home == "?" or here == "?" or (home in self.idoff) == (here in self.idoff):
         return
     if here in self.idoff and all(self.identity_free(t) for t in f.ptypes) and (self.identity_free(f.ret) or numeric_identity(f.ret)):
@@ -173,6 +227,10 @@ def gen_identity_global(self, name: str, t: str, store: bool) -> None:
     if len(self.idoff) == 0:
         return
     here = self.fn_home(self.curfn)
+    if (owner(name) in self.idhint) != (here in self.idhint):
+        if self.identity_inert(t, []):
+            return
+        self.identity_event(f"hinted module variable {name}")
     if here == "?" or (owner(name) in self.idoff) == (here in self.idoff):
         return
     if here in self.idoff and (self.identity_free(t) or (not store and numeric_identity(t))):
@@ -185,6 +243,10 @@ def gen_identity_field(self, ci: ClassInfo, t: str, store: bool) -> None:
     if len(self.idoff) == 0:
         return
     here = self.fn_home(self.curfn)
+    if (ci.mod in self.idhint) != (here in self.idhint):
+        if self.identity_inert(t, []):
+            return
+        self.identity_event(f"hinted attribute of {ci.name}")
     if here == "?" or (ci.mod in self.idoff) == (here in self.idoff):
         return
     if here in self.idoff and (self.identity_free(t) or (not store and numeric_identity(t))):
@@ -198,6 +260,8 @@ def gen_identity_box(self, v: Val, t: str) -> None:
     # and an object of a class whose code does not track identity, or of any class there, would
     # carry its fields' numbers
     here = self.fn_home(self.curfn)
+    if len(self.idhint) > 0 and (is_fn(t) or is_callable(t)):
+        self.identity_event("function as an Any value with identity-inert modules")
     if t in self.classes:
         if t not in self.idsplit:
             self.idsplit[t] = any(c.mod in self.idoff for c in self.classes.values() if c.name == t or self.derives(c.name, t))

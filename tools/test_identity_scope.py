@@ -268,5 +268,151 @@ print(literal, left, right)
                 IdentityScopeTests().test_crossings_track_identity_everywhere()
 
 
+
+INERTLIB = """# pystachy: identity-inert
+type Value = None | bool | int | str | list[Value] | dict[str, Value]
+LIMIT = 1000
+
+class Cursor:
+    def __init__(self, text: str) -> None:
+        self.pos = len(text)
+
+    def step(self, text: str) -> str:
+        i = self.pos
+        i += len(text)
+        self.pos = i
+        return str(i)
+
+    def number(self) -> int:
+        return self.pos
+
+def make(text: str) -> Cursor:
+    return Cursor(text)
+
+def decode(text: str) -> Value:
+    n = int(text)
+    return {"value": n, "again": n}
+
+def sequence(text: str) -> list[int]:
+    n = int(text)
+    return [n, n]
+
+def numeric(text: str) -> int:
+    return int(text)
+
+def same(text: str) -> str:
+    return text
+"""
+
+
+class IdentityInertTests(unittest.TestCase):
+    def compile(self, source, helper=INERTLIB, hints=True):
+        generators = []
+        original = driver.Gen
+        original_scope = gen.dynamic_identity_modules
+
+        def make_generator():
+            generator = original()
+            generators.append(generator)
+            return generator
+
+        def scope(generator, mods):
+            if not hints:
+                generator.idtry = False
+            original_scope(generator, mods)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "inertlib.py").write_text(helper)
+            with patch.object(driver, "Gen", make_generator), patch.object(gen, "dynamic_identity_modules", scope):
+                ir = driver.compile_program("identity_inert_probe.py", source, [tmp, str(ROOT / "lib")], "")
+        return ir, generators
+
+    def test_recursive_values_and_typed_handles_keep_the_hint(self):
+        source = """# pystachy: dynamic-any
+import inertlib
+p = inertlib.make('abc')
+print(p.step('def'), inertlib.decode('1000'))
+"""
+        ir, generations = self.compile(source)
+        self.assertEqual([g.idevent for g in generations], [""])
+        self.assertEqual(generations[-1].idhint, {"inertlib": True})
+        self.assertIn("%C.inertlib$Cursor = type {i64}", ir)
+        for fn in generations[-1].fns:
+            if generations[-1].fn_home(fn.f) == "inertlib":
+                self.assertIsNone(BOXING.search(functions(ir)[fn.f.ll]))
+        baseline, _ = self.compile(source, hints=False)
+        self.assertIn("%C.inertlib$Cursor = type {i64, ptr}", baseline)
+
+    def test_json_keeps_typed_parser_without_numeric_companions(self):
+        source = (ROOT / "bench/pyperformance/json_loads.py").read_text()
+        ir, generations = self.compile(source)
+        self.assertEqual([g.idevent for g in generations], [""])
+        self.assertIn("json", generations[-1].idhint)
+        self.assertIn("%C.json$_Parser = type {ptr, i1, ptr, i1, i1, i64, i64, i64, i64, ptr, ptr}", ir)
+        for fn in generations[-1].fns:
+            if generations[-1].fn_home(fn.f) == "json":
+                self.assertIsNone(BOXING.search(functions(ir)[fn.f.ll]), fn.f.ll)
+        # Scanner categories must not add generic string equality to each decoded
+        # value: that erased the identity savings in a real Any-result consumer.
+        for name, body in functions(ir).items():
+            if name.startswith("@f._pystachy_json_any$_value"):
+                self.assertNotIn("@pys_eq(", body)
+        baseline, _ = self.compile(source, hints=False)
+        self.assertIn("%C.json$_Parser = type {ptr, i1, ptr, i1, i1, i64, i64, i64, i64, ptr, ptr, ptr, ptr, ptr, ptr}", baseline)
+
+    def test_unsafe_boundaries_restore_the_unhinted_ir(self):
+        programs = [
+            "print(inertlib.numeric('1000'))\n",
+            "print(inertlib.sequence('1000'))\n",
+            "print(inertlib.LIMIT)\n",
+            "inertlib.LIMIT = int('2000')\nprint(inertlib.LIMIT)\n",
+            "p = inertlib.make('abc')\nprint(p.pos)\n",
+            "p = inertlib.make('abc')\np.pos = int('2000')\nprint(p.step('x'))\n",
+            "p = inertlib.make('abc')\nprint(getattr(p, 'pos'))\n",
+            "p = inertlib.make('abc')\nprint(dict(vars(p)))\n",
+            "p: Any = inertlib.make('abc')\nprint(p.pos)\n",
+            "f: Any = inertlib.same\nprint(f('x'))\n",
+            "class Child(inertlib.Cursor):\n    pass\np = Child('abc')\nprint(p.step('d'))\n",
+        ]
+        for body in programs:
+            source = "# pystachy: dynamic-any\nfrom typing import Any\nimport inertlib\n" + body
+            with self.subTest(body=body):
+                ir, generations = self.compile(source)
+                self.assertTrue(generations[0].idevent)
+                self.assertFalse(generations[-1].idtry)
+                self.assertFalse(generations[-1].idfull)
+                self.assertEqual(generations[-1].idhint, {})
+                baseline, _ = self.compile(source, hints=False)
+                self.assertEqual(ir, baseline)
+
+    def test_scalar_unions_are_not_identity_inert(self):
+        helper = INERTLIB + "\ndef scalar(text: str) -> int | str:\n    return int(text)\n"
+        source = "# pystachy: dynamic-any\nimport inertlib\nprint(inertlib.scalar('1000'))\n"
+        ir, generations = self.compile(source, helper=helper)
+        self.assertTrue(generations[0].idevent)
+        baseline, _ = self.compile(source, helper=helper, hints=False)
+        self.assertEqual(ir, baseline)
+
+    def test_internal_numeric_lists_restore_identity_tracking(self):
+        helper = INERTLIB + "\ndef observes() -> bool:\n    x = float('nan')\n    xs = [x]\n    return x in xs\n"
+        source = "# pystachy: dynamic-any\nimport inertlib\nprint(inertlib.observes())\n"
+        ir, generations = self.compile(source, helper=helper)
+        self.assertEqual(generations[0].idevent, "numeric list in an identity-inert module")
+        baseline, _ = self.compile(source, helper=helper, hints=False)
+        self.assertEqual(ir, baseline)
+
+    def test_feature_opt_ins_override_the_hint(self):
+        source = "# pystachy: dynamic-any\nimport inertlib\nprint(inertlib.numeric('1000'))\n"
+        for pragma in ["dynamic-any", "python-int"]:
+            with self.subTest(pragma=pragma):
+                _, generations = self.compile(source, helper="# pystachy: " + pragma + "\n" + INERTLIB)
+                self.assertEqual([g.idevent for g in generations], [""])
+                self.assertEqual(generations[-1].idhint, {})
+
+    def test_crossing_guard_negative_control(self):
+        with patch.object(gen, "dynamic_identity_call", lambda self, f: None):
+            with self.assertRaises(AssertionError):
+                IdentityInertTests().test_scalar_unions_are_not_identity_inert()
+
 if __name__ == "__main__":
     unittest.main()

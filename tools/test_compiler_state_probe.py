@@ -65,6 +65,7 @@ class StateProbeTests(unittest.TestCase):
                 self.newx = {}
                 self.gtypes = {}
                 self.idevent = ""
+                self.idhint = {}
                 generations.append(self)
 
             def program(self, source):
@@ -128,6 +129,7 @@ class StateProbeTests(unittest.TestCase):
                 self.newhints = {}
                 self.newx = {}
                 self.idevent = ""
+                self.idhint = {}
                 generations.append(self)
 
             def program(self, source):
@@ -155,6 +157,45 @@ class StateProbeTests(unittest.TestCase):
                 else:
                     target.clear()
                     target.update(value)
+
+    def test_identity_hint_retry_precedes_full_tracking(self):
+        generations = []
+        test = self
+
+        class FakeLoader:
+            def __init__(self, dirs):
+                pass
+
+            def program(self, path, source):
+                return source
+
+        class FakeGen:
+            def __init__(self):
+                self.newhints = {}
+                self.newx = {}
+                self.idevent = ""
+                self.idhint = {}
+                generations.append(self)
+
+            def program(self, source):
+                test.assertEqual(self.hints, {})
+                test.assertEqual(self.xnot, {})
+                test.assertFalse(self.final)
+                if len(generations) < 3:
+                    test.assertFalse(self.idfull)
+                    test.assertEqual(self.idtry, len(generations) == 1)
+                    self.idhint = {"hinted": True} if self.idtry else {}
+                    self.newhints["dirty"] = "int"
+                    self.newx["dirty"] = True
+                    self.idevent = "unsafe crossing"
+                    raise Rejoin()
+                test.assertFalse(self.idtry)
+                test.assertTrue(self.idfull)
+                return "full tracking"
+
+        with patch.dict(driver.compile_program.__globals__, Gen=FakeGen, Loader=FakeLoader):
+            self.assertEqual(driver.compile_program("probe.py", "", [], ""), "full tracking")
+        self.assertEqual(len(generations), 3)
 
     def test_each_missing_rewind_is_detected(self):
         source = inspect.getsource(driver.compile_program)

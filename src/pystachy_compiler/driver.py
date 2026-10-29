@@ -90,6 +90,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # crossing that could carry one (Gen.identity_event): the program is then compiled from the
     # start with every module tracking it (idfull), as if that split had never been tried.
     idfull = False
+    idtry = True
     while True:
         g = Gen()
         g.ext = ext
@@ -99,13 +100,17 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.xnot = xnot
         g.final = passes >= JOINS
         g.idfull = idfull
+        g.idtry = idtry
         ld = Loader(dirs)
         ld.ext = ext
         try:
             return g.program(ld.program(path, src))
         except Rejoin:
             if g.idevent != "" and not idfull:
-                idfull = True
+                if idtry and len(g.idhint) > 0:
+                    idtry = False  # retry today's dependency closure before full tracking
+                else:
+                    idfull = True
                 hints = {}
                 xnot = {}
                 passes = 0

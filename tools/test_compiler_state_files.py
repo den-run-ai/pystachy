@@ -19,7 +19,7 @@ class FileStateTests(unittest.TestCase):
     # Preserve the surrounding test process: these tests intentionally leave a
     # completed or rejected compilation's discoveries visible between calls.
     def setUp(self):
-        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.INTFILES, diagnostics.INTSPANS, LAMBDAS,
+        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.IDINERT, diagnostics.INTFILES, diagnostics.INTSPANS, LAMBDAS,
                       driver.RENAMED, driver.LIBS, driver.LINKDL, GLUE, SPECSHOW]
         self.saved = [value.copy() for value in self.roots]
         self.source = diagnostics.SRC
@@ -50,6 +50,8 @@ class FileStateTests(unittest.TestCase):
         diagnostics.FILES[:] = ["old-main.py", "old-import.py"]
         diagnostics.DYNFILES.clear()
         diagnostics.DYNFILES.update({0: True, 1: True, 5: True})
+        diagnostics.IDINERT.clear()
+        diagnostics.IDINERT.update({0: True, 1: True, 5: True})
         diagnostics.INTFILES.clear()
         diagnostics.INTFILES.update({0: True, 1: True, 5: True})
         diagnostics.INTSPANS[:] = [[1, 9]]
@@ -59,23 +61,32 @@ class FileStateTests(unittest.TestCase):
         self.assertEqual(diagnostics.DYNFILES, {})
         self.assertEqual(diagnostics.INTFILES, {})
         self.assertEqual(diagnostics.INTSPANS, [])
+        self.assertEqual(diagnostics.IDINERT, {})
         instance = loader.Loader([])
         program(instance, "dynamic.py", "# pystachy: dynamic-any\nprint(1)\n")
         self.assertEqual(diagnostics.FILES, ["dynamic.py"])
         self.assertEqual(diagnostics.DYNFILES, {0: True})
+        self.assertEqual(diagnostics.IDINERT, {})
         self.assertEqual(diagnostics.INTFILES, {})
         instance = loader.Loader([])
         program(instance, "promoting.py", "# pystachy: python-int\nprint(1)\n")
         self.assertEqual(diagnostics.FILES, ["promoting.py"])
         self.assertEqual(diagnostics.DYNFILES, {})
         self.assertEqual(diagnostics.INTFILES, {0: True})
+        self.assertEqual(diagnostics.IDINERT, {})
+        instance = loader.Loader([])
+        program(instance, "hinted.py", "# pystachy: identity-inert\nprint(1)\n")
+        self.assertEqual(diagnostics.FILES, ["hinted.py"])
+        self.assertEqual(diagnostics.IDINERT, {0: True})
+        self.assertEqual(diagnostics.DYNFILES, {})
+        self.assertEqual(diagnostics.INTFILES, {})
 
     def test_program_replaces_both_tables(self):
         self.file_contract(loader.Loader.program)
 
     def test_each_missing_reset_is_detected(self):
         source = textwrap.dedent(inspect.getsource(loader.Loader.program))
-        for reset in ("FILES.clear()", "DYNFILES.clear()", "INTFILES.clear()", "INTSPANS.clear()"):
+        for reset in ("FILES.clear()", "DYNFILES.clear()", "IDINERT.clear()", "INTFILES.clear()", "INTSPANS.clear()"):
             with self.subTest(reset=reset):
                 statement = "    " + reset + "\n"
                 self.assertEqual(source.count(statement), 1)
@@ -121,6 +132,26 @@ class FileStateTests(unittest.TestCase):
             self.assertIn(f"{module}:1: error:", failed[2])
             self.assertEqual(diagnostics.DYNFILES, {})
 
+    def test_identity_hints_are_reindexed_after_success_and_failure(self):
+        with tempfile.TemporaryDirectory() as temp:
+            module = Path(temp) / "dependency.py"
+            source = "# pystachy: dynamic-any\nimport dependency\nprint(dependency.value)\n"
+            dirs = [temp, str(ROOT / "lib")]
+            for hinted in (True, False, True):
+                module.write_text(("# pystachy: identity-inert\n" if hinted else "") + "value = 'ok'\n")
+                self.assertEqual(self.compile(source, dirs=dirs)[0], 0)
+                self.assertEqual(diagnostics.FILES, ["main.py", str(module)])
+                self.assertEqual(diagnostics.IDINERT, {1: True} if hinted else {})
+            module.write_text("# pystachy: identity-inert\nmissing_name\n")
+            self.assertEqual(self.compile(source, dirs=dirs)[0], 1)
+            self.assertEqual(diagnostics.IDINERT, {1: True})
+            self.assertEqual(self.compile("print(1)\n")[0], 0)
+            self.assertEqual(diagnostics.IDINERT, {})
+            runtime = "def pys_probe(a: int) -> int:\n    return a + 1\n"
+            self.assertEqual(self.compile("# pystachy: identity-inert\nunknown\n")[0], 1)
+            self.assertEqual(self.compile(runtime, "runtime-probe.py", runtime=True)[0], 0)
+            self.assertEqual(diagnostics.IDINERT, {})
+
     def test_import_int_opt_ins_are_reindexed(self):
         with tempfile.TemporaryDirectory() as temp:
             module = Path(temp) / "dependency.py"
@@ -147,10 +178,11 @@ class FileStateTests(unittest.TestCase):
         passes = []
 
         def restart_once(gen, modules):
-            passes.append((diagnostics.FILES.copy(), diagnostics.DYNFILES.copy()))
+            passes.append((diagnostics.FILES.copy(), diagnostics.DYNFILES.copy(), diagnostics.IDINERT.copy()))
             if len(passes) == 1:
                 diagnostics.FILES.append("abandoned.py")
                 diagnostics.DYNFILES[5] = True
+                diagnostics.IDINERT[5] = True
                 raise Rejoin()
             return original(gen, modules)
 
@@ -161,7 +193,7 @@ class FileStateTests(unittest.TestCase):
                 result = self.compile("import dependency\nprint(dependency.value)\n",
                                       dirs=[temp, str(ROOT / "lib")])
             self.assertEqual(result[0], 0)
-            self.assertEqual(passes, [(["main.py", str(module)], {1: True})] * 2)
+            self.assertEqual(passes, [(["main.py", str(module)], {1: True}, {})] * 2)
 
     def test_runtime_program_interleaving_and_failures(self):
         runtime = "def pys_probe(a: int) -> int:\n    return a + 1\n"

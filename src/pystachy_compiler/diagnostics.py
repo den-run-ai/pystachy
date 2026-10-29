@@ -30,6 +30,9 @@ RAW = "latin-1" if len("\xe9") == 1 else "utf-8"
 # their index in FILES: those whose lines before their first line of code hold DYNPRAGMA
 DYNFILES: dict[int, bool] = {}
 DYNPRAGMA = "# pystachy: dynamic-any"
+# Checked optimization hints, never a promise to ignore observable identity.
+IDINERT: dict[int, bool] = {}
+IDPRAGMA = "# pystachy: identity-inert"
 
 
 def dynamic_pragma(src: str) -> bool:
