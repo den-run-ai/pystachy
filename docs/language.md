@@ -6,6 +6,8 @@ annotations, inference and specialization give the compiler the types it needs.
 This guide covers the language you use to write and port programs. The detailed references
 cover [typing](language/typing.md), [imports and builtins](language/modules.md),
 [execution rules](language/semantics.md) and [CPython compatibility](language/compatibility.md).
+The [support-surface diagrams](support-surface.md) show the concrete native core, supported
+extensions and their compiler, runtime and IR costs.
 
 ## Types
 
