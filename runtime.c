@@ -3611,8 +3611,14 @@ List *pys_bytes_list(Str *s) {   /* list(b): a list[int], whose array is atomic 
 #ifndef DICT_KEYEQ
 #define DICT_KEYEQ()
 #endif
+#ifndef DICT_HASH_GENERIC
+#define DICT_HASH_GENERIC()
+#endif
+#define NONE_HASH 0xFCA86420                         /* hash(None) since CPython 3.12 */
 I pys_hash_str(Str *s);                  /* the hash functions are in runtime.py */
 I pys_hash_int(I k);
+static I hint(I k);
+static I hstr(Str *s);
 static uint64_t hsh(Dict *d, I k);
 static uint64_t hstrd(Str *s) {                      /* a str key's hash */
   if (!s->dict_hash) {                  /* zeroed allocations and writable literals start uncached */
@@ -3654,7 +3660,7 @@ static uint64_t hval(I k, const char *d) {
 }
 /* CPython's hash of a key whose descriptor d holds an H<id>; a call of its own, which keeps hsh as
    small as the lookups of int and str keys need */
-__attribute__((noinline)) static uint64_t hcls(I k, const char *d) { return (uint64_t)hitem(k, d); }
+__attribute__((noinline)) static uint64_t hcls(I k, const char *d) { DICT_HASH_GENERIC(); return (uint64_t)hitem(k, d); }
 static uint64_t hkey(I k, const char *d) {   /* a tuple or object key's, or an Any key's (hdyn) */
   if (*d == 'A' && !d[1]) return hdyn((Dyn *)k);
   uint64_t h = hval(k, d); return h ? h : hcls(k, d);
@@ -3665,10 +3671,18 @@ static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? 
    CPython's hash is never -2**63, so no 64-bit key's lookup meets an entry of a key past 64 bits
    (whose slot holds -2**63): only dbfind finds them */
 static uint64_t hbig(Mpz *m) { return hint1(pys_mpz_hash(m)); }
-/* the hash of key k of a table of kind > 1: an opt-in table of native scalar keys ('!') takes
-   CPython's hash out of line (hcls), which keeps this small enough to inline into the lookups of
-   tuple and Any keys (dhfind, dpfind), as hkey alone was before '!' */
-static inline uint64_t hobj(I kind, I k) { const char *d = kraw(kind); return *d == '!' ? hcls(k, d + 1) : hkey(k, d); }
+/* The hash of key k of a table of kind > 1. Marked native str/int keys use the same
+   hashes as hitem, including None and -1 normalization, without its descriptor walk.
+   Other marked descriptors retain the general path and its callback behavior. */
+static inline __attribute__((always_inline)) uint64_t hobj(I kind, I k) {
+  const char *d = kraw(kind);
+  if (*d != '!') return hkey(k, d);
+  if (!d[2]) {
+    if (d[1] == 's') return (uint64_t)(k ? hstr((Str *)k) : NONE_HASH);
+    if (d[1] == 'i') return (uint64_t)hint(k);
+  }
+  return hcls(k, d + 1);
+}
 static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple or object key's descriptor */
   return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? hobj(d->kind, k) : hint1(k);
 }
@@ -3753,7 +3767,11 @@ __attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) { r
 /* dfind of key k, which it hashes (hsh) into *hp first: one test of the kind for both */
 static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp, I *free) {
   if (d->kind == 1) return dfindi(d, k, *hp = hstrd((Str *)k), free);
-  if (d->kind > 1) return dfind(d, k, *hp = hobj(d->kind, k), free);
+  if (d->kind > 1) {
+    *hp = hobj(d->kind, k);
+    if (!d->size) return -1;
+    return d->kind & KTAG ? dfindc(d, k, *hp, free) : dfind(d, k, *hp, free);
+  }
   return dfindi(d, k, *hp = hint1(k), free);
 }
 /* the idx slot of key m, an int past 64 bits whose hash is h (hbig), or -1, and *free as dlook's:
@@ -3897,7 +3915,7 @@ static I dtake(Dict *d, I i) {                       /* the value of the entry i
    them apart (kind > 1): the compiler calls pys_dict_pop for del of other keys */
 static inline __attribute__((always_inline)) I dpfind(Dict *d, I k) {
   if (d->kind == 1) return dfindi(d, k, hstrd((Str *)k), 0);
-  if (d->kind > 1) return d->len ? dfind(d, k, hobj(d->kind, k), 0) : -1;
+  if (d->kind > 1) { uint64_t h; return d->len ? dhfind(d, k, &h, 0) : -1; }
   return dfindi(d, k, hint1(k), 0);
 }
 static I dpop(Dict *d, I k, I dflt, int has) {   /* d.pop(k) (has: d.pop(k, dflt)) */
@@ -4204,7 +4222,6 @@ Dict *pys_dict_fromkeys_dict(Dict *o, I v) {
    only sbfind compares Mpz. The operations that move elements from a table carry their Mpz (sbig),
    those of 64-bit elements (pys_set_add, ...) none. */
 #define LINEAR_PROBES 9
-#define NONE_HASH 0xFCA86420                         /* hash(None) since CPython 3.12 */
 static I hint(I v) {                                 /* long_hash */
   uint64_t u = v < 0 ? 0 - (uint64_t)v : (uint64_t)v;
   I h = (I)(u % ((1ULL << 61) - 1));

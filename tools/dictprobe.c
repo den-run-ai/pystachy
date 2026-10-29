@@ -30,6 +30,8 @@
    nothing else holds keep none of them alive (#210), and objects that are keys or elements stay.
    Integer queries in Any dictionaries also check the allocation-free guarded probe,
    including identical probe counts and fallback before any user comparison.
+   Marked native str/int keys compare hashes, table layouts and exact probe counts
+   against the generic descriptor path, and must never call its hash dispatcher.
    --hash-cache runs only these checks, also under GC stress.
    runtime.c's dict hash functions are in runtime.py, so the build links its IR (pystachy rt).
    usage: make dictprobe   (build/dictprobe [N...] or build/dictprobe --hash-cache) */
@@ -38,6 +40,8 @@ static long long dict_slots;          /* (not a name the runtime's code uses: th
 #define DICT_PROBE() (dict_slots++)
 static long long dict_keyeqs;
 #define DICT_KEYEQ() (dict_keyeqs++)
+static long long dict_generic_hashes;
+#define DICT_HASH_GENERIC() (dict_generic_hashes++)
 #define pys_hash_str counted_hash_str
 #include "../runtime.c"
 #undef pys_hash_str
@@ -253,6 +257,87 @@ static void int_queries(void) {
   if (e < 0 || pys_dict_val(dict, e) != 11 || int_guard_calls != 2 || int_guard_hashes || int_guard_seen != (I)query)
     any_bad("fallback lost query identity or comparison order");
   printf("Any integer probes: no allocations, unchanged slots, guarded fallback preserves query identity\n");
+}
+
+static _Noreturn void marked_bad(const char *what) { fprintf(stderr, "dictprobe: marked scalar keys: %s\n", what); exit(1); }
+static void marked_layout(Dict *a, Dict *b) {
+  if (a->len != b->len || a->n != b->n || a->size != b->size || a->cut != b->cut || a->kind != b->kind)
+    marked_bad("table shape changed");
+  if (a->size && (memcmp(a->idx, b->idx, a->size * 4) || memcmp(a->hs, b->hs, a->n * 8) ||
+                 memcmp(a->keys, b->keys, a->n * 8) || memcmp(a->vals, b->vals, a->n * 8)))
+    marked_bad("hashes, slots or insertion order changed");
+}
+static void marked_query(Dict *reference, I key, const char *desc) {
+  uint64_t expected_hash = (uint64_t)hitem(key, desc), actual_hash = 0;
+  I expected_free = -1, actual_free = -1;
+  dict_slots = 0;
+  I expected = dfind(reference, key, expected_hash, &expected_free), slots = dict_slots;
+  dict_slots = 0;
+  I actual = dhfind(dict, key, &actual_hash, &actual_free);
+  if (actual_hash != expected_hash || actual != expected || actual_free != expected_free || dict_slots != slots)
+    marked_bad("hash or lookup probes changed");
+  dict_slots = 0;
+  expected = reference->len ? dfind(reference, key, expected_hash, 0) : -1; slots = dict_slots;
+  dict_slots = 0;
+  if (dpfind(dict, key) != expected || dict_slots != slots) marked_bad("pop lookup probes changed");
+}
+static void marked_scalars(void) {
+  /* The int hash cases include zero, -1 normalization, INT64_MIN and equal hashes.
+     Strings include distinct equal objects, None and cached 0/-1 sentinel results. */
+  I ints[] = {0, -1, -2, INT64_MIN, INT64_MAX, ((I)1 << 61) - 1, ((I)1 << 61), -((I)1 << 61),
+              1000, 1008, 1016, 1024, 1032, 1040, 1048, 1056};
+  I n = sizeof ints / sizeof *ints;
+  for (I str = 0; str < 2; str++) {
+    keys = pys_list_new(2 * n + 2);
+    Str *descriptor = cstr(str ? "!s" : "!i"); pys_list_append(keys, (I)descriptor);
+    dict = pys_dict_new((I)descriptor, 0);
+    Dict *reference = pys_dict_new((I)descriptor, 0); pys_list_append(keys, (I)reference);
+    for (I i = 0; i < n; i++) {
+      char text[24]; I length = snprintf(text, sizeof text, "scalar-%lld", (long long)i);
+      I key = str ? i ? (I)pys_str(text, length) : 0 : ints[i];
+      I query = str ? i ? (I)pys_str(text, length) : 0 : ints[i];
+      if (str && i == 1) { ((Str *)key)->dict_hash = 1; ((Str *)query)->dict_hash = 1; }
+      if (str && i == 2) { ((Str *)key)->dict_hash = (uint64_t)-1; ((Str *)query)->dict_hash = (uint64_t)-1; }
+      pys_list_append(keys, key); pys_list_append(keys, query);
+    }
+    dict_generic_hashes = 0;
+    if (str) {
+      Str *cold = (Str *)keys->a[8];
+      hash_calls = hash_bytes = 0;
+      uint64_t hash = hobj((I)descriptor, (I)cold);
+      if (hash != hobj((I)descriptor, (I)cold) || hash != (uint64_t)hitem((I)cold, "s")) marked_bad("cold string hash changed");
+      hash_count(1, cold->len);
+    }
+    for (I round = 0; round < 2; round++) {
+      for (I i = 0; i < n; i++) {
+        I key = keys->a[2 + 2 * i];
+        marked_query(reference, key, descriptor->s + 1);   /* includes the empty table */
+        dict_slots = 0;
+        dset(reference, key, (uint64_t)hitem(key, descriptor->s + 1), i + round);
+        I slots = dict_slots; dict_slots = 0;
+        pys_dict_set(dict, key, i + round);
+        if (dict_slots != slots) marked_bad("insertion probes changed");
+        marked_layout(dict, reference);
+      }
+      for (I i = 0; i < n; i++) marked_query(reference, keys->a[3 + 2 * i], descriptor->s + 1);
+      for (I i = 0; i < n; i += 2) {
+        I key = keys->a[3 + 2 * i];
+        dict_slots = 0;
+        I slot = dfind(reference, key, (uint64_t)hitem(key, descriptor->s + 1), 0);
+        I expected = dtake(reference, slot), slots = dict_slots; dict_slots = 0;
+        if (pys_dict_pop(dict, key) != expected || dict_slots != slots) marked_bad("deletion probes changed");
+        marked_layout(dict, reference);
+      }
+      for (I i = 0; i < n; i++) marked_query(reference, keys->a[3 + 2 * i], descriptor->s + 1);
+    }
+    pys_dict_clear(dict); pys_dict_clear(reference);
+    marked_query(reference, keys->a[2], descriptor->s + 1);
+    pys_dict_set(dict, keys->a[2], 9);
+    dset(reference, keys->a[2], (uint64_t)hitem(keys->a[2], descriptor->s + 1), 9);
+    marked_layout(dict, reference);
+    if (dict_generic_hashes) marked_bad("native str/int keys reached the generic hash dispatcher");
+  }
+  printf("marked str/int keys: generic hashes, table layouts and probes preserved without generic hash calls\n");
 }
 
 #define MIB ((I)1 << 20)
@@ -478,6 +563,7 @@ int main(int argc, char **argv) {
   any_keys();
   numeric_boxes();
   int_queries();
+  marked_scalars();
   storage();
   values();
   if (argc == 2 && !strcmp(argv[1], "--hash-cache")) return 0;
