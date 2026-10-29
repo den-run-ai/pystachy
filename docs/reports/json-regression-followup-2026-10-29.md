@@ -98,7 +98,8 @@ semantics rather than recovering the old table layout indiscriminately.
 
 The final runtime-only source measured 1,326,402,110 instructions. That profile is
 from `912ea029eb2ee1ce6d2097c381a507d79e223874`; #983's final tree differs only in
-two opt-in exception manifests. The archived earlier runtime checkpoint is labeled
+two opt-in exception manifests. This isolated runtime trial was not CPU-pinned and
+makes no wall-time claim. The archived earlier runtime checkpoint is labeled
 separately and must not be mistaken for this result.
 
 The three 32-key controls now retain repeatable sources, but **none is the missing
