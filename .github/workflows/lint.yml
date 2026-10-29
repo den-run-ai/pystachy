@@ -111,6 +111,9 @@ jobs:
       - name: JSON benchmark evidence tests
         run: python3 -m unittest discover -s tools -p test_bench_json.py
 
+      - name: LLVM IR diagnostic inventory tests
+        run: python3 -m unittest discover -s tools -p test_ir_cost_report.py
+
       - name: DCO certification check tests
         run: python3 -m unittest discover -s tools -p test_dco_check.py
 

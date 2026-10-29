@@ -79,6 +79,84 @@ Cross-function exceptions require stack unwinding and can be expensive in hot lo
 Same-function handlers use branches. The [extended benchmark guide](extended-performance.md)
 measures these paths separately, along with object dispatch and allocation.
 
+## Inspecting emitted LLVM calls
+
+`tools/ir_cost_report.py` inventories static call sites by function, records the
+input bytes' SHA-256, and distinguishes runtime declarations from definitions.
+It accepts the canonical text produced by Pystachy and LLVM; it does not compile,
+run, or validate a program. Function headers and call instructions must be on one
+line. Unknown call targets are counted as `<unresolved>` with their line numbers.
+
+```sh
+./pystachy ir bench/sieve.py -o /tmp/sieve.raw.ll
+python3 tools/ir_cost_report.py --ir raw=/tmp/sieve.raw.ll \
+  --function '^(main|f\.|m\.)' -o /tmp/sieve.calls.json
+```
+
+Repeat `--ir LABEL=FILE` to compare raw, JIT, and AOT optimized modules in one
+report. Labels are supplied by the caller; record the source revision, toolchain
+versions, flags, and commands beside the report. Keep the exact module used by
+each compilation stage. `opt` on raw program IR cannot inline C helper bodies
+that are only declarations. AOT's driver links the needed runtime bitcode before
+running Clang's optimizer; a GCC object sidecar is a different experiment. The
+`runtime_symbols` entries expose headers and referenced attribute groups so this
+distinction can be checked for the helpers under investigation.
+
+For AOT, capture the driver's `prog.bc` at the `clang -O2 -c` invocation,
+after `llvm-link --only-needed`. The transparent Clang wrapper in
+[`tools/aotprobe.py`](../tools/aotprobe.py) demonstrates that capture; the
+driver normally deletes its temporary files. Do not select an arbitrary cached
+`runtime*.bc`, which may belong to another compiler or configuration. Once that
+module has been saved as `/tmp/program.linked.bc`, use the **same LLVM toolchain**:
+
+```sh
+llvm-dis /tmp/program.linked.bc -o /tmp/program.linked.ll
+clang -O2 -S -emit-llvm /tmp/program.linked.bc -o /tmp/program.aot-replay.ll
+python3 tools/ir_cost_report.py --ir raw=/tmp/program.raw.ll \
+  --ir linked=/tmp/program.linked.ll --ir aot-replay=/tmp/program.aot-replay.ll \
+  --function '^(main|f\.|m\.)' -o /tmp/program.calls.json
+```
+
+Here `/tmp/program.raw.ll` must be emitted from the same source and settings as
+the captured build. The Clang command replays the default AOT optimizer; preserve
+any extra compilation flags when investigating a non-default build. It does not
+capture machine-code instructions. For executed JIT bitcode, the `lli` wrapper
+in [`tools/jitprobe.py`](../tools/jitprobe.py) reads `/dev/fd/9` before execution;
+do not label raw-IR `opt -O2` output as the JIT pipeline.
+
+Read `modules[LABEL].functions[NAME].calls` for a specific function, and compare
+`runtime_symbols` to check whether its callees have bodies. A filter that matches
+nothing reports `selected_functions: 0`; check that field before drawing a
+conclusion. The `f.`/`m.` prefixes can also select linked runtime functions, so
+use exact function names when attributing a change to application code.
+
+Follow an interesting surviving call with a correctness check and a profile:
+
+```sh
+(
+  set -e
+  python3.13 bench/words.py > /tmp/words.expected
+  ./pystachy build bench/words.py -o /tmp/words
+  /tmp/words > /tmp/words.actual
+  cmp /tmp/words.expected /tmp/words.actual
+  valgrind --tool=callgrind --callgrind-out-file=/tmp/words.callgrind /tmp/words
+  callgrind_annotate --tree=both --inclusive=yes /tmp/words.callgrind
+)
+```
+
+An inclusive profile charges callees to their caller, so do not add overlapping
+subtrees. For example, `counts[w] = counts.get(w, 0) + 1` can leave one `get` and
+one `set` site, each executed once per word. The profile establishes whether the
+duplicate lookup matters; a single static site cannot establish its frequency.
+
+Counts are **static sites, not dynamic calls, allocations, or timings**. Inlining
+`pys_alloc` can leave free-list updates and `gc_slow` calls, and inlining list access
+can leave bounds checks and pointer reloads. Fewer helper calls do not prove less
+work. The function filter does not establish reachability, and attribute presence
+does not establish that adding those attributes to a collector would be safe.
+Use the existing correctness-gated benchmarks and profilers for execution cost.
+This inventory does not implement source-line annotations or explain missed passes.
+
 <a id="tuples-made-in-the-frame"></a>
 <a id="the-first-part-of-a-split"></a>
 <a id="inlining-under-the-jit"></a>
