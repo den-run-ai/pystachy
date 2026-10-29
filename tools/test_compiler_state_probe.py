@@ -65,6 +65,7 @@ class StateProbeTests(unittest.TestCase):
                 self.newx = {}
                 self.gtypes = {}
                 self.idevent = ""
+                self.idhint = {}
                 generations.append(self)
 
             def program(self, source):
@@ -128,6 +129,7 @@ class StateProbeTests(unittest.TestCase):
                 self.newhints = {}
                 self.newx = {}
                 self.idevent = ""
+                self.idhint = {}
                 generations.append(self)
 
             def program(self, source):

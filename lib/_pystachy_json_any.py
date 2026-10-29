@@ -12,23 +12,20 @@ and limits are json's (_Parser): strings, keys, numbers, 64-bit integers, 256 le
 """
 from typing import Any
 
-from json import JSONDecodeError, _Parser, _quote
+from json import _Parser, _quote
 
 
 def _value(p: _Parser, depth: int) -> Any:
-    i = p.pos
-    if i == p.n:
-        raise p.error("Expecting value", i)
-    c = p.data[i]
-    if c == 34:
+    token = p.next_token()
+    if token == '"':
         return p.string()
-    if c == 91 or c == 123:
+    if token == "[" or token == "{":
         if depth >= 256:
             raise RecursionError("maximum JSON nesting depth exceeded")
-        if c == 91:
+        if token == "[":
             return _array(p, depth)
         return _object(p, depth)
-    v = p.value(depth)  # (a number or a constant: one of json's scalars)
+    v = p.scalar()  # a number or a constant, in json's existing typed representation
     if isinstance(v, bool):
         return v
     if isinstance(v, int):
@@ -39,70 +36,30 @@ def _value(p: _Parser, depth: int) -> Any:
 
 
 def _array(p: _Parser, depth: int) -> list[Any]:
-    data = p.data
-    p.pos += 1
-    p.skip()
     out: list[Any] = []
-    if p.pos < p.n and data[p.pos] == 93:
-        p.pos += 1
+    if p.begin(b"]"):
         return out
     while True:
         out.append(_value(p, depth + 1))
-        p.skip()
-        i = p.pos
-        if i < p.n and data[i] == 93:
-            p.pos = i + 1
+        if not p.next_item(b"]", "array"):
             return out
-        if i == p.n or data[i] != 44:
-            raise p.error("Expecting ',' delimiter", i)
-        p.pos = i + 1
-        p.skip()
-        if p.pos < p.n and data[p.pos] == 93:
-            raise p.error("Illegal trailing comma before end of array", i)
 
 
 def _object(p: _Parser, depth: int) -> dict[str, Any]:
-    data = p.data
-    p.pos += 1
-    p.skip()
     out: dict[str, Any] = {}
-    if p.pos < p.n and data[p.pos] == 125:
-        p.pos += 1
+    if p.begin(b"}"):
         return out
     while True:
-        i = p.pos
-        if i == p.n or data[i] != 34:
-            raise p.error("Expecting property name enclosed in double quotes", i)
-        key = p.key()
-        p.skip()
-        i = p.pos
-        if i == p.n or data[i] != 58:
-            raise p.error("Expecting ':' delimiter", i)
-        p.pos = i + 1
-        p.skip()
+        key = p.object_key()
         out[key] = _value(p, depth + 1)
-        p.skip()
-        i = p.pos
-        if i < p.n and data[i] == 125:
-            p.pos = i + 1
+        if not p.next_item(b"}", "object"):
             return out
-        if i == p.n or data[i] != 44:
-            raise p.error("Expecting ',' delimiter", i)
-        p.pos = i + 1
-        p.skip()
-        if p.pos < p.n and data[p.pos] == 125:
-            raise p.error("Illegal trailing comma before end of object", i)
 
 
 def _parse(p: _Parser) -> Any:
-    data = p.data
-    if p.n >= 3 and data[0] == 0xEF and data[1] == 0xBB and data[2] == 0xBF:
-        raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)", p.doc, 0)
-    p.skip()
+    p.start_document()
     value = _value(p, 0)
-    p.skip()
-    if p.pos != p.n:
-        raise p.error("Extra data", p.pos)
+    p.end_document()
     return value
 
 

@@ -196,6 +196,7 @@ from src.pystachy_compiler.dynamic import (
     gen_identity_event as dynamic_identity_event,
     gen_identity_field as dynamic_identity_field,
     gen_identity_free as dynamic_identity_free,
+    gen_identity_inert as dynamic_identity_inert,
     gen_identity_global as dynamic_identity_global,
     gen_identity_modules as dynamic_identity_modules,
     gen_dyn_proven_int as dynamic_dyn_proven_int,
@@ -1320,6 +1321,8 @@ class Gen:
         # an object of a class whose code does not track it may be of (identity_box)
         self.idoff: dict[str, bool] = {}
         self.idfull = False
+        self.idtry = True  # try checked identity-inert module hints on this pass
+        self.idhint: dict[str, bool] = {}  # hinted modules excluded from tracking
         self.idevent = ""
         self.idsplit: dict[str, bool] = {}
         # the number of stores into each such slot (a new binding) that the compiler has emitted in
@@ -1858,6 +1861,9 @@ class Gen:
 
     def identity_free(self, t: str) -> bool:
         return dynamic_identity_free(self, t)
+
+    def identity_inert(self, t: str, seen: list[str], handle: bool = False) -> bool:
+        return dynamic_identity_inert(self, t, seen, handle)
 
     def identity_call(self, f: FnInfo) -> None:
         dynamic_identity_call(self, f)

@@ -1,3 +1,4 @@
+# pystachy: identity-inert
 """Native recursive JSON values and a bounded JSON text codec.
 
 This prototype implements loads(str), dumps(JSONValue) and the default JSONDecoder.
@@ -137,6 +138,62 @@ class _Parser:
                 break
             i += 1
         self.pos = i
+
+    # The dynamic decoder uses the scanner through typed, identity-inert boundaries.
+    # Keep numeric cursor fields private to these methods; direct external observations
+    # are still accepted and make the compiler restore identity tracking for the module.
+    def next_token(self) -> str:
+        if self.pos == self.n:
+            raise self.error("Expecting value", self.pos)
+        return chr(self.data[self.pos])
+
+    def scalar(self) -> JSONValue:
+        return self.value(0)
+
+    def begin(self, close: bytes) -> bool:
+        self.pos += 1
+        self.skip()
+        if self.pos < self.n and self.data[self.pos] == close[0]:
+            self.pos += 1
+            return True
+        return False
+
+    def next_item(self, close: bytes, kind: str) -> bool:
+        self.skip()
+        i = self.pos
+        if i < self.n and self.data[i] == close[0]:
+            self.pos = i + 1
+            return False
+        if i == self.n or self.data[i] != 44:
+            raise self.error("Expecting ',' delimiter", i)
+        self.pos = i + 1
+        self.skip()
+        if self.pos < self.n and self.data[self.pos] == close[0]:
+            raise self.error("Illegal trailing comma before end of " + kind, i)
+        return True
+
+    def object_key(self) -> str:
+        i = self.pos
+        if i == self.n or self.data[i] != 34:
+            raise self.error("Expecting property name enclosed in double quotes", i)
+        key = self.key()
+        self.skip()
+        i = self.pos
+        if i == self.n or self.data[i] != 58:
+            raise self.error("Expecting ':' delimiter", i)
+        self.pos = i + 1
+        self.skip()
+        return key
+
+    def start_document(self) -> None:
+        if self.n >= 3 and self.data[0] == 0xEF and self.data[1] == 0xBB and self.data[2] == 0xBF:
+            raise JSONDecodeError("Unexpected UTF-8 BOM (decode using utf-8-sig)", self.doc, 0)
+        self.skip()
+
+    def end_document(self) -> None:
+        self.skip()
+        if self.pos != self.n:
+            raise self.error("Extra data", self.pos)
 
     def hex4(self, at: int) -> int:
         # at names the 'u', which is CPython's error position for this escape.

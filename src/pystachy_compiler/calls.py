@@ -1138,7 +1138,8 @@ def gen_init_result(self, v: Val) -> None:
 def gen_new_obj(self, c: str) -> Val:
     # a new object of class c, which its __init__ initializes: it holds its class-body defaults
     # (but where @dataclass wrote __init__, which assigns every field itself)
-    self.identity_field(self.classes[c], c, True)  # (made by code of the other side of dynamic.py's identity split)
+    if self.classes[c].mod not in self.idhint:
+        self.identity_field(self.classes[c], c, True)  # (made by code of the other side of dynamic.py's identity split)
     o = self.alloc_fixed(c)
     self.nn[o.v] = True
     if self.classes[c].tag > 0:
