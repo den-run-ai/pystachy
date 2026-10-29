@@ -55,6 +55,7 @@ REWOUND = {
 RESET = {
     "diagnostics.FILES": "loader rebuilds the program file-index space before parsing",
     "diagnostics.DYNFILES": "loader resets file-index opt-ins with the file table",
+    "diagnostics.IDINERT": "loader rebuilds checked identity-inert hints with the file table on each load and retry",
     "diagnostics.INTFILES": "loader resets file-index python-int opt-ins with the file table",
     "diagnostics.INTSPANS": "loader resets the line spans of lib's promoting definitions with the file table",
 }
@@ -68,6 +69,7 @@ RETAINED = {
 WRITERS = {
     "diagnostics.FILES": {"loader.Loader.program", "loader.Loader.parse"},
     "diagnostics.DYNFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
+    "diagnostics.IDINERT": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.INTFILES": {"loader.Loader.program", "loader.Loader.pragmas"},
     "diagnostics.INTSPANS": {"loader.Loader.program", "loader.Loader.int_spans"},
     "syntax.LAMBDAS": {"parser.Parser.test1", "driver.compile_program"},
