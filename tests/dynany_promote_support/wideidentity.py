@@ -43,6 +43,7 @@ def run() -> None:
     alias = value
     left = right = value
     box = Box(value)
+    box.value = copied = int("1180591620717411303424")
     maybe: int | None = value
 
     def read() -> int:
@@ -56,6 +57,7 @@ def run() -> None:
     print("wide chained copy", LEFT, RIGHT, left, right)
     print("wide parameter/return", passed(value))
     print("wide field/optional", box.value, maybe)
+    print("wide field/local chain", box.value, copied)
     print("wide closure", read())
     default()
     # A wide slot may later hold an ordinary value whose identity must be retained.
