@@ -1,0 +1,51 @@
+cleanup comparison
+enter
+finally
+exit True
+cleanup comparison
+enter
+finally
+exit True
+cleanup comparison
+enter
+finally
+exit True
+True True False
+cleanup comparison
+enter
+caught index
+finally
+exit True
+cleanup comparison
+enter
+caught index
+finally
+exit True
+cleanup comparison
+enter
+caught index
+finally
+exit True
+False False True
+cleanup comparison
+enter
+caught missing
+finally
+exit True
+cleanup comparison
+enter
+caught missing
+finally
+exit True
+cleanup comparison
+enter
+caught missing
+finally
+exit True
+True True False
+cleanup comparison
+enter
+finally
+exit True
+True
+[exit 0]

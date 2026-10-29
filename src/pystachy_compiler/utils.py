@@ -1,11 +1,13 @@
 """Utils component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.diagnostics import fail, where
-from src.pystachy_compiler.ir import FnInfo
+from src.pystachy_compiler.diagnostics import FILES, LINES, dynamic_program, fail, where
+from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.llvm_abi import llvm_decl
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
+    BIG,
+    BIGOPT,
     CODECS,
     FSETMETHODS,
     FX,
@@ -15,12 +17,24 @@ from src.pystachy_compiler.specs import (
     INERT,
     METHODS,
     OPTS,
+    OPAQUE,
     RUNTIME,
     SETMETHODS,
     SPECIAL,
     SPECSHOW,
 )
 from src.pystachy_compiler.syntax import Node
+
+
+def lib_source(line: int, libdir: str, filename: str) -> bool:
+    # Private library behavior belongs to the shipped file, not a user module
+    # with the same import name. Loader strips a leading ./ from recorded paths.
+    path = libdir + "/" + filename
+    return libdir != "" and FILES[line // LINES] == (path[2:] if path.startswith("./") else path)
+
+
+def opaque_class(ci: ClassInfo, libdir: str) -> bool:
+    return ci.mod in OPAQUE or (ci.mod == "mpz" and lib_source(ci.node.line, libdir, "mpz.py"))
 
 
 def codec(e: str) -> int:
@@ -65,6 +79,8 @@ def lt(t: str) -> str:
         return "void"
     if t == "%slot":
         return "i64"  # (the IR's pseudo-type of a value in an 8-byte container slot)
+    if t == "int+":
+        return "{i64, ptr}"  # (a promoting int: its 64-bit value, and its Mpz or null, bigints.py)
     return "ptr"
 
 
@@ -184,6 +200,8 @@ def tname(t: str) -> str:
     # the CPython name of a type, for error messages
     if t == "None":
         return "NoneType"
+    if t == "int+":
+        return "int"
     if t == "file":
         return "TextIOWrapper"
     if is_vtuple(t):
@@ -319,6 +337,11 @@ def is_super(e: Node) -> bool:
     return e.kind == "call" and e.kids[0].kind == "name" and e.kids[0].s == "super"
 
 
+def identity_default(e: Node) -> bool:
+    # Numeric constants belong to the defining module, not whichever module calls it.
+    return dynamic_program() and (e.kind in ["int", "float"] or (e.kind == "unary" and e.s == "-" and e.kids[0].kind in ["int", "float"]))
+
+
 def is_const(e: Node) -> bool:
     # literals: re-evaluating them on every call is indistinguishable from evaluating once
     k = e.kind
@@ -354,8 +377,49 @@ def selem(t: str) -> str:
     return t[t.find("[") + 1 : -1]
 
 
+def builtin_key(t: str) -> bool:
+    # Immutable keys with no user equality/hash callbacks.
+    return t in ["int", "float", "bool", "str", "bytes"] or (is_tuple(t) and all(builtin_key(x) for x in targs(t)))
+
+
+def disjoint_keys(a: str, b: str) -> bool:
+    # Prove that no key of these types can equal the other. Numeric types overlap;
+    # tuple length or one disjoint component suffices only without user callbacks.
+    if not builtin_key(a) or not builtin_key(b):
+        return False
+    if is_tuple(a) and is_tuple(b):
+        xs = targs(a)
+        ys = targs(b)
+        return len(xs) != len(ys) or any(disjoint_keys(xs[i], ys[i]) for i in range(len(xs)))
+    if is_tuple(a) or is_tuple(b):
+        return True
+    return a != b and not (a in ["int", "float", "bool"] and b in ["int", "float", "bool"])
+
+
+def disjoint_sets(a: str, b: str) -> bool:
+    return is_set(a) and is_set(b) and disjoint_keys(selem(a), selem(b))
+
+
 def is_tuple(t: str) -> bool:
     return t.startswith("tuple[")
+
+
+def tslots(t: str) -> int:
+    # the 8-byte slots of fixed tuple type t: one per item, then, where it has promoting int items
+    # (bigints.py), one more per item up to its last such: item i's Mpz word is slot len + i
+    # (hislot), whatever the other items are, so tuple types that differ in which items promote
+    # agree on where it is, and the first slots are the tuple of their 64-bit ints
+    ts = targs(t)
+    last = -1
+    for i in range(len(ts)):
+        if ts[i] == BIG:
+            last = i
+    return len(ts) + last + 1
+
+
+def hislot(t: str, i: int) -> int:
+    # the slot of item i's Mpz word, for promoting int item i of fixed tuple type t (tslots)
+    return len(targs(t)) + i
 
 
 def is_gen(t: str) -> bool:
@@ -380,8 +444,9 @@ def unopt(t: str) -> str:
 
 
 def is_sopt(t: str) -> bool:
-    # int, float or bool | None: a pointer to an immutable box of the value (runtime.c's pys_box)
-    return t == "opt[int]" or t == "opt[float]" or t == "opt[bool]"
+    # int, float or bool | None: a pointer to an immutable box of the value (runtime.c's pys_box),
+    # also of a promoting int (BIGOPT: bigints.py)
+    return t == "opt[int]" or t == "opt[float]" or t == "opt[bool]" or t == BIGOPT
 
 
 def pure_arg(e: Node) -> bool:
@@ -513,7 +578,7 @@ def typestr(t: str) -> str:
     # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
     # opt[T] is T | None, a builtin exception BaseException, a class its own name, a function value
     # the function (fn_shown)
-    t = recnames(t.replace("[?,?]", "").replace("[?]", ""))
+    t = recnames(t.replace("[?,?]", "").replace("[?]", "").replace("int+", "int"))
     while "vtuple[" in t:
         a = t.find("vtuple[")
         b = a + 7
@@ -572,6 +637,58 @@ def optnames(t: str) -> str:
         x = t[a + 4 : b - 1]
         t = t[:a] + (x if x == "None" else x + " | None") + t[b:]
     return t
+
+
+def identity_abi(f: FnInfo) -> bool:
+    # Internal Python calls in a graph with dynamic values carry numeric provenance.
+    # Foreign/runtime entry points and compiler-written dispatcher signatures keep their ABI.
+    return dynamic_program() and not f.extern and not f.export and not f.pyexport and f.node.kind == "def"
+
+
+def numeric_identity(t: str) -> bool:
+    # Storage which may hold an int/float object's identity, including joined locals.
+    u = unopt(t)
+    return u in ["int", "float"] or (is_union(u) and all(m in ["int", "float", "bool", "str"] for m in umembers(u)) and any(m in ["int", "float"] for m in umembers(u)))
+
+
+def folded_int(op: str, a: str, b: str) -> str:
+    # A bounded integer-literal operation that CPython folds into its constant pool.
+    # Never fold names/calls or an intermediate outside this compiler's int64 subset.
+    # Bound shifts/powers before evaluating them in the hosted compiler; the native
+    # compiler raises on overflow instead. Both leave errors for the program to run.
+    x = int(a)
+    y = int(b)
+    if op not in ["+", "-", "*", "//", "%", "**", "<<", ">>", "&", "|", "^"]:
+        return ""
+    if op in ["**", "<<", ">>"] and (y < 0 or y > 63):
+        return ""
+    try:
+        r = 0
+        if op == "+":
+            r = x + y
+        elif op == "-":
+            r = x - y
+        elif op == "*":
+            r = x * y
+        elif op == "//":
+            r = x // y
+        elif op == "%":
+            r = x % y
+        elif op == "**":
+            r = x ** y
+        elif op == "<<":
+            r = x << y
+        elif op == ">>":
+            r = x >> y
+        elif op == "&":
+            r = x & y
+        elif op == "|":
+            r = x | y
+        elif op == "^":
+            r = x ^ y
+        return str(r) if int_fits(str(r)) else ""
+    except (OverflowError, ZeroDivisionError):
+        return ""
 
 
 def literal(e: Node) -> bool:
@@ -724,6 +841,16 @@ def holds_dyn(t: str) -> bool:
     return t == "dyn" or "[dyn" in t or ",dyn" in t
 
 
+def contains_typed_vtuple(t: str) -> bool:
+    # Boxing converts fixed tuple/union/optional leaves recursively, but a typed
+    # variadic tuple has no box conversion yet (except the canonical Any tuple).
+    if is_vtuple(t):
+        return t != "vtuple[dyn]"
+    if is_opt(t):
+        return contains_typed_vtuple(unopt(t))
+    return (is_tuple(t) or is_union(t)) and any(contains_typed_vtuple(x) for x in targs(t))
+
+
 def any_item(t: str) -> bool:
     # is t an Any value (dyn) or one of Any's containers, which a container holds as a box: then a
     # list or dict of it has Any's container layout too (Gen.ctype)
@@ -830,8 +957,7 @@ def stack_keyed(f: FnInfo) -> bool:
 
 def clone(n: Node) -> Node:
     # a copy of tree n (a class method's def, compiled again for a class that inherits it)
-    c = Node(n.kind, n.s, n.line)
-    c.kids = [clone(k) for k in n.kids]
+    c = Node(n.kind, n.s, n.line, [clone(k) for k in n.kids])
     c.chk = n.chk
     c.mchk = n.mchk
     c.depth = n.depth

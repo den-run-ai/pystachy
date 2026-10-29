@@ -1,5 +1,7 @@
 # pystachy: dynamic-any
 # Closed numeric functions need no identity boxes; an observable copy still does.
+# Numeric parameters reuse incoming boxes through their slots (a caller passes a
+# new number without one); local aliases remain lazy.
 from typing import Any
 
 

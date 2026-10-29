@@ -15,7 +15,20 @@ class Val:
         self.idgen = 0  # the stores into that slot that the compiler had emitted then (idstores)
         self.idcounter = ""  # local binding generation slot (possibly selected by a phi)
         self.idversion = ""  # that slot's generation at the read
+        self.idexact = False  # private call-result slot is null or this exact numeric object
         self.idfrom = ""  # the box of the Any value that an int or float was read from (dyn_box)
+
+    def identity(self, source: Val) -> Val:
+        # A representation-only extraction keeps the binding that owns its number.
+        # Arithmetic and conversions that change the Python value must not use this.
+        self.idslot = source.idslot
+        self.idheld = source.idheld
+        self.idgen = source.idgen
+        self.idcounter = source.idcounter
+        self.idversion = source.idversion
+        self.idfrom = source.idfrom
+        self.idexact = source.idexact
+        return self
 
 
 class Data:
@@ -49,6 +62,7 @@ class Reduce:
         self.stt = stt  # sum's start: its type, or "" where none is given
         self.t = ""  # the items' type
         self.acc = ""  # the sum so far, or the item kept (or the list of the items, collect)
+        self.identity = ""  # min/max numeric selected item's box in a dynamic program graph
         self.comp = ""  # a float sum's compensation, as runtime.c's fsum keeps it (Neumaier's)
         self.first = ""  # no item yet: min and max, and a float sum from an int start
         self.collect = False  # min() or max() of items runtime.c compares (pys_list_minmax)
@@ -101,6 +115,9 @@ class FnInfo:
         self.ll = ll
         self.node = node
         self.cls = cls
+        self.scalar_args = False  # closed body permits eliding unreturned parameter boxes
+        self.scalar_only = False  # numeric_proof: no identity observations except returned aliases
+        self.idnames: dict[str, bool] = {}  # numeric locals/parameters whose objects can leave
         self.params: list[str] = []
         self.ptypes: list[str] = []
         self.defaults: list[Node] = []
@@ -123,6 +140,9 @@ class FnInfo:
         self.rlocals: list[str] = []  # proven straight-line aliases forwarding a fresh result
         self.noret = False  # a template's function that has no return and cannot end (it raises, or loops)
         self.inst = False  # a template's function, compiled for one list of argument types
+        self.cmprebind = ""  # native reference union for a comparison operand rebound across control flow
+        self.cmpops = False  # isolated comparison helpers raise guaranteed builtin TypeErrors at runtime
+        self.cmptypes: dict[str, str] = {}  # guarded comparison missing-read layouts, inherited by isolated helper specializations
         self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
         self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
         self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
@@ -306,7 +326,23 @@ class IFn:
     def __init__(self, f: FnInfo):
         self.f = f  # f.ret is final once the IFn is complete
         self.numeric_only = False  # function_body proved local numeric identity unobservable
-        self.scalar_reads = False  # scoped arithmetic consumer; no identity escapes its operands
+        self.scalar_reads = False  # scoped numeric arithmetic/comparison; no operand identity escapes
+        # Lazy numeric field locals (Gen.lazy_fields): local -> the parameter whose field it reads,
+        # that field, its bit in lazymasks, and its "shares the field's object" flag slot
+        self.lazyobj: dict[str, str] = {}
+        self.lazyfield: dict[str, str] = {}
+        self.lazybit: dict[str, int] = {}
+        self.lazyflag: dict[str, str] = {}
+        self.lazyreads: list[Node] = []  # the x = o.f statements that share without a box
+        self.lazywbs: list[Node] = []  # the o.f = x statements that write such a local back
+        self.lazylines: dict[int, list[Node]] = {}  # statements by line, and the lazy locals
+        self.lazymasks: dict[int, list[int]] = {}  # live where each starts (analysis.lazy_block)
+        self.lazyoff = 0  # inside a while loop whose test may run code: no sharing starts
+        self.lazywb = ""  # the local whose write-back setfield is compiling
+        self.idmove = False  # a lone assignment stores a call's result (dyn_id_store)
+        self.idpass = False  # a copy or argument moves a local (Gen.id_move)
+        self.movebit: dict[str, int] = {}  # locals a read may move: their bits in lazymasks
+        self.idstmt: Node | None = None  # the statement being compiled, where movebit has any
         self.ps: list[int] = []  # the indices of its parameters that are passed (a None-typed one is not)
         self.slots: list[Ins] = []  # entry-block storage ("slot" ops)
         self.blocks: list[Blk] = [Blk("entry")]
@@ -481,7 +517,10 @@ class ClassInfo:
         self.slots: list[str] = []  # literal __slots__, including inherited slots
         self.slotlimit = False  # every ordinary base and this class omit an instance dict
         self.fglob: dict[str, str] = {}
+        self.fextra: dict[str, bool] = {}  # statically reserved comparison writes, absent until assigned
         self.fflag: dict[str, int] = {}  # field -> index of its "is assigned" flag in the struct
+        self.fbox: dict[str, int] = {}  # numeric field -> its companion identity-box index
+        self.nbox = 0  # own companion boxes after the assignment flags
         self.fsure: dict[str, bool] = {}  # the flagged fields that no read finds unassigned (hasattr tests them)
         self.methods: dict[str, FnInfo] = {}
         self.mod = ""

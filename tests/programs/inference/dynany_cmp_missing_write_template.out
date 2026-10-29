@@ -1,0 +1,12 @@
+{'value': 7} {'value': 'seven'}
+{'value': '8'} {'value': 'eight'}
+False False
+body
+body
+body
+body
+True True True True
+7 seven 8 eight
+True True
+[3, 4] [3, 4] [3, 4] [3, 4]
+[exit 0]

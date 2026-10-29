@@ -1,0 +1,14 @@
+'utf-8' codec can't decode byte 0xff in position 1: bad byte UnicodeDecodeError('utf-8', b'a\xff', 1, 2, 'bad byte')
+'utf-8' codec can't decode bytes in position -1--1: bad byte UnicodeDecodeError('utf-8', b'a\xff', -1, 0, 'bad byte')
+'ascii' codec can't encode character '\xe9' in position 1: bad character UnicodeEncodeError('ascii', 'aé', 1, 2, 'bad character')
+'ascii' codec can't encode characters in position 0-1: bad character UnicodeEncodeError('ascii', 'aé', 0, 2, 'bad character')
+UnicodeDecodeError('x', b'x', True, False, 'bool arguments')
+decode start: Python int too large to convert to C ssize_t
+decode end: Python int too large to convert to C ssize_t
+encode start: Python int too large to convert to C ssize_t
+encode end: Python int too large to convert to C ssize_t
+decode start: Python int too large to convert to C ssize_t
+decode end: Python int too large to convert to C ssize_t
+encode start: Python int too large to convert to C ssize_t
+encode end: Python int too large to convert to C ssize_t
+[exit 0]

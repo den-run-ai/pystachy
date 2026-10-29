@@ -1,0 +1,17 @@
+identity True True True
+iterator True
+start
+2
+middle
+4
+end
+done
+None None
+[0, 1, 4, 9] []
+None snow 雪 2.5 end
+generator True
+True 1
+mutated [1, 'two', 3]
+True [1, 'two', 3]
+False
+[exit 0]

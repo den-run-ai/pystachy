@@ -1,0 +1,40 @@
+comparison
+getter 1
+comparison
+getter 2
+comparison
+getter 3
+comparison
+getter 4
+False False True False
+comparison
+getter 5
+False ['three', 'four'] [3]
+comparison
+True
+comparison
+getter 1
+comparison
+getter 2
+comparison
+getter 3
+comparison
+getter 4
+True True False True
+comparison
+getter 5
+False ['four'] []
+comparison
+True
+comparison
+getter 1
+getter error
+comparison
+first error
+comparison
+template getter
+True
+comparison
+template getter
+False
+[exit 0]

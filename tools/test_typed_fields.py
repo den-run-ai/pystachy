@@ -54,6 +54,19 @@ class TypedFieldTests(unittest.TestCase):
                 g.lower_ins(function(i), i)
                 self.assertEqual(g.out, [f"  %t1 = getelementptr %C.Box, ptr %a0, i32 0, i32 {index}"])
 
+    def test_numeric_companion_boxes_are_scanned_pointer_members(self):
+        g = fixture()
+        ci = g.classes["Box"]
+        ci.fbox = {"value": 4}
+        ci.nbox = 1
+        g.verify(function(address(4, "*dyn")), False)
+        g.fgep(Val("%a0", "Box"), 4)
+        self.assertEqual(g.fn.blocks[0].code[-1].t, "*dyn")
+        error = StringIO()
+        with redirect_stderr(error), self.assertRaises(SystemExit):
+            g.verify(function(address(4, "*int")), False)
+        self.assertIn("declared member type", error.getvalue())
+
     def test_invalid_layout_index_type_shape_and_metadata(self):
         cases = [("k", -1), ("k", 4), ("t", "int"), ("t", "*float"),
                  ("s", "value"), ("x", "int"), ("b", ["entry"]),

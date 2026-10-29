@@ -60,10 +60,12 @@ typedef struct { I len; uint64_t dict_hash; I chars1; char s[]; } Str; /* UTF-8 
 _Static_assert(offsetof(Str, len) == 0 && offsetof(Str, dict_hash) == 8 &&
                offsetof(Str, chars1) == 16 && offsetof(Str, s) == 24 && sizeof(Str) == 24,
                "Str ABI: len, dict_hash, chars1, bytes");
-typedef struct { I len, cap; I *a; } List;
+typedef struct { I len, cap; I *a, *ids; } List; /* optional scanned numeric identity companion: kind, then boxes */
+_Static_assert(offsetof(List, len) == 0 && offsetof(List, cap) == 8 && offsetof(List, a) == 16 &&
+               offsetof(List, ids) == 24 && sizeof(List) == 32, "List ABI: raw prefix and identity companion");
 typedef struct { I len; I a[]; } VTuple;                /* immutable homogeneous tuple, counted inline slots */
-typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; I cut, vatomic; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple or object keys; vatomic: the values are ints, floats or bools, whose arrays are atomic; see dicts */
-typedef struct { I len, kind, fill, mask, finger; I *keys, *hs; } Set; /* a set or frozenset, kind as Dict's; see sets */
+typedef struct { I len, kind, n, size; I *keys, *vals; uint64_t *hs; int32_t *idx; I cut, vatomic; I *vb, *kb; } Dict; /* kind 0: int keys, 1: str, else a Str *: the descriptor of tuple or object keys; vatomic: the values are ints, floats or bools, whose arrays are atomic; vb: the Mpz of each value past 64 bits of a dict of ints, or null (dbig); kb: of each key past 64 bits of int keys, or null (kbig); see dicts */
+typedef struct { I len, kind, fill, mask, finger; I *keys, *hs, *kb; } Set; /* a set or frozenset, kind as Dict's; kb: the Mpz of each element past 64 bits of a set of ints, or null (sbig); see sets */
 typedef struct { char *p; I n, cap; } Buf;
 typedef struct Exc Exc;                                /* a raised exception (see exceptions) */
 #define NONE INT64_MIN                                 /* omitted slice bound */
@@ -76,6 +78,24 @@ static TextHint text_hints[64];
 #ifndef TEXT_PROBE
 #define TEXT_PROBE() ((void)0)
 #endif
+/* A program that opts in to neither promoting ints (docs/python-int.md) nor dynamic Any
+   (docs/dynamic-any.md) makes none of the values that their code here serves: an int past 64
+   bits in a container (an Mpz in a list's BIGIDS companion, a dict's vb or kb, a set's kb), a
+   promoting int (descriptor J), or a list's identity companion (list_box: the small-int boxes).
+   Yet the code that walks lists, dicts, sets and descriptors (eqv, repr, hashing, lookups) reaches
+   theirs, which every AOT build would optimize and keep. So every path that only such a value
+   leads to calls opt_in() first: pystachy build defines pys_plain in the program's module, which
+   -O2 optimizes with the runtime (driver.py), 1 for such a program, else 0. opt_in() is then a
+   trap or nothing, and -O2 drops those paths and the static functions only they reach before it
+   optimizes them. Elsewhere (pystachy run's precompiled runtime, an extension module) this weak
+   definition's 0 holds, and opt_in() costs a load where such a value was found. A plain program
+   that reached the trap would show a compiler bug, not its own: it aborts */
+__attribute__((weak)) const I pys_plain = 0;
+static _Noreturn __attribute__((noinline, cold)) void opt_in_trap(void) {
+  fputs("pystachy: internal error: a value of a feature the program does not opt in to\n", stderr);
+  abort();
+}
+static inline int opt_in(void) { if (pys_plain) opt_in_trap(); return 1; }
 
 /* ---------- memory: conservative mark-and-sweep garbage collector ----------
    Non-moving, stop-the-world, single-threaded, and self-contained (only the C library).
@@ -136,6 +156,7 @@ static TextHint text_hints[64];
 #define CHUNK 65536                    /* small-object chunk */
 #define ARENA 16                       /* chunks per calloc'd arena */
 #define SMALL 8200                     /* largest size class */
+#define MQ 16                          /* ranges marking prefetches before it scans them (a power of two) */
 #define NK 80                          /* free lists: 40 classes x {scanned, atomic} */
 #define GC_MIN ((I)32 << 20)           /* least allocation between collections */
 #define BIG_MIN ((I)4 << 20)           /* least pointer-free large-object allocation between them */
@@ -178,6 +199,9 @@ static I **gc_roots, gc_nroots;        /* addresses of the program's pointer-typ
 /* GC_NO_ROOT(mstk): temporary collector work stack, consumed during marking. */
 static uintptr_t *mstk;                /* mark stack of (address, bytes) ranges */
 static I msp, mcap;
+/* the (address, bytes) ranges that left the mark stack, prefetched, which marking scans next:
+   static, so that no collection's stack scan finds an earlier one's (collect) */
+static uintptr_t mq[2 * MQ];
 /* GC_ROOT(ch1): cached single-byte strings retained for later reads. */
 static Str *ch1[256];                  /* runtime statics that hold heap pointers (roots) */
 /* GC_ROOT(args): command-line argument list retained by the runtime. */
@@ -337,10 +361,24 @@ __attribute__((noinline)) static void collect(void) {
   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
   if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
   mark_roots();
-  while (msp) {                        /* trace; big arrays in 4 KiB slices keep the stack short */
-    I n = (I)mstk[msp - 1]; const W *p = (const W *)mstk[msp - 2];
-    if (n > 4096) { mstk[msp - 2] = (uintptr_t)(p + 512); mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
-    else msp -= 2;
+  /* trace; big arrays in 4 KiB slices keep the stack short. A range off the stack waits in mq,
+     its first 128 bytes prefetched, while the MQ - 1 before it are scanned: the cache misses of
+     reading the objects, most of what collecting a big heap costs, overlap. The same objects are
+     marked */
+  unsigned qh = 0, qc = 0;
+  while (msp || qc) {
+    if (msp && qc < MQ) {
+      I n = (I)mstk[msp - 1]; const W *p = (const W *)mstk[msp - 2];
+      if (n > 4096) { mstk[msp - 2] = (uintptr_t)(p + 512); mstk[msp - 1] = (uintptr_t)(n - 4096); n = 4096; }
+      else msp -= 2;
+      __builtin_prefetch(p);
+      if (n > 64) __builtin_prefetch(p + 8);
+      unsigned t = 2 * ((qh + qc++) & (MQ - 1));
+      mq[t] = (uintptr_t)p; mq[t + 1] = (uintptr_t)n;
+      continue;
+    }
+    const W *p = (const W *)mq[2 * qh]; I n = (I)mq[2 * qh + 1];
+    qh = (qh + 1) & (MQ - 1); qc--;
     scan(p, p + n / 8);
   }
   weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
@@ -1114,6 +1152,9 @@ I pys_int_str(Str *s, I base) {               /* CPython's PyLong_FromString on 
   if (ovf) pys_fail("OverflowError: int() result does not fit in 64 bits");
   return neg ? (I)(0 - u) : (I)u;
 }
+/* Explicit arbitrary-precision integers; ordinary int keeps its checked i64 ABI. */
+#include "mpz/mpz.c"
+
 double pys_float_str(Str *s) {
   Str *t = asciinum(s);
   const char *p = t->s, *e = t->s + t->len;
@@ -1212,6 +1253,299 @@ I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a
   double t = trunc(d); I j = (I)t;
   if (i != j) return i < j ? -1 : 1;
   return d > t ? -1 : d < t ? 1 : 0;
+}
+/* ---------- promoting ints (# pystachy: python-int, docs/python-int.md) ----------
+   An int of a module that opts in is two words, {lo, hi}: hi is NULL and lo the value where it
+   fits in 64 bits; otherwise hi is the value's immutable Mpz, which never fits, and lo is 0.
+   Compiled code does 64-bit operands and results inline and calls these for the rest. Every
+   result is demoted where it fits, so a value has one representation: values whose hi is NULL
+   are equal where their lo are, and a value with an Mpz never equals one without. */
+typedef struct { I lo; void *hi; } Big;
+static Big big_small(I v) { Big r = {v, NULL}; return r; }
+static Big big_of(Mpz *m) {                    /* m's value, demoted where it fits */
+  I n = zn(m);
+  if (n < 3 || (n == 3 && m->d[2] < 16)) {     /* at most 64 bits of magnitude */
+    uint64_t u = 0;
+    for (I i = n; i; i--) u = (u << 30) | m->d[i - 1];
+    if (m->size >= 0 && u <= INT64_MAX) return big_small((I)u);
+    if (m->size < 0 && u <= UINT64_C(1) << 63) return big_small((I)(0 - u));
+  }
+  Big r = {0, m}; return r;
+}
+static Big big_wide(__int128 v) {              /* an exact 128-bit result of two 64-bit operands */
+  if (v >= INT64_MIN && v <= INT64_MAX) return big_small((I)v);
+  unsigned __int128 u = v < 0 ? -(unsigned __int128)v : (unsigned __int128)v; I n = 0;
+  Mpz *m = zalloc(5);                          /* 2^127 has 128 bits: five 30-bit digits */
+  for (; u; u >>= 30) m->d[n++] = (uint32_t)(u & 0x3FFFFFFF);
+  m->size = v < 0 ? -n : n; Big r = {0, m}; return r;
+}
+/* room in the caller's frame for the Mpz of a value that fits (three 30-bit digits hold 64 bits),
+   whose size and digits are written and read as the union's Mpz */
+typedef union { Mpz m; uint64_t words[3]; } MpzTmp;
+/* a value as an Mpz: its own, or one that fits written into tmp. The pys_mpz_* functions only read
+   their operands and return fresh values or the shared zero (a shift by 0 returns its operand,
+   which big_of then demotes), so none of tmp outlives the call that made it */
+static Mpz *big_mpz(I lo, void *hi, MpzTmp *tmp) {
+  if (hi) return hi;
+  Mpz *t = &tmp->m; uint64_t u = lo < 0 ? 0 - (uint64_t)lo : (uint64_t)lo; I n = 0;
+  for (; u; u >>= 30) t->d[n++] = (uint32_t)(u & 0x3FFFFFFF);
+  t->size = lo < 0 ? -n : n; return t;
+}
+static int big_pow64(I a, I b, I *out) {       /* a ** b for b >= 0, where it fits in 64 bits */
+  I r = 1, x = a;
+  if (a == 0 || a == 1) { *out = b ? a : 1; return 1; }
+  if (a == -1) { *out = b & 1 ? -1 : 1; return 1; }
+  for (;;) {                                   /* |a| >= 2: past 63 steps it no longer fits */
+    if ((b & 1) && __builtin_mul_overflow(r, x, &r)) return 0;
+    if (!(b >>= 1)) { *out = r; return 1; }
+    if (__builtin_mul_overflow(x, x, &x)) return 0;
+  }
+}
+/* a op b; op is pys_mpz_binop's 0 + 1 - 2 * 3 // 4 % 5 & 6 | 7 ^, or 8 <<, 9 >>, 10 ** */
+Big pys_big_op(I alo, void *ahi, I blo, void *bhi, I op) {
+  if (!ahi && !bhi) {                          /* both fit: where the compiled 64-bit step overflowed */
+    I r;
+    switch (op) {
+    case 0: return big_wide((__int128)alo + blo);
+    case 1: return big_wide((__int128)alo - blo);
+    case 2: return big_wide((__int128)alo * blo);
+    case 3: return blo == -1 ? big_wide(-(__int128)alo) : big_small(pys_floordiv(alo, blo));
+    case 4: return big_small(pys_mod(alo, blo));
+    case 5: return big_small(alo & blo);
+    case 6: return big_small(alo | blo);
+    case 7: return big_small(alo ^ blo);
+    case 8:
+      if (blo < 0) pys_fail("ValueError: negative shift count");
+      if (!alo) return big_small(0);
+      if (blo < 64 && (r = (I)((uint64_t)alo << blo)) >> blo == alo) return big_small(r);
+      break;
+    case 9: return big_small(pys_shr(alo, blo));
+    case 10:
+      if (blo < 0) pys_fail(alo ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
+      if (big_pow64(alo, blo, &r)) return big_small(r);
+      break;
+    default: pys_fail("ValueError: invalid int operation");
+    }
+  }
+  MpzTmp ta, tb;
+  Mpz *a = big_mpz(alo, ahi, &ta);
+  if (op <= 7) return big_of(pys_mpz_binop(a, big_mpz(blo, bhi, &tb), op));
+  int negative = bhi ? ((Mpz *)bhi)->size < 0 : blo < 0;
+  if (op == 8 || op == 9) {
+    if (negative) pys_fail("ValueError: negative shift count");
+    /* a left shift by 2**62 or more of a nonzero value needs more memory than there is: CPython's
+       MemoryError, where pys_mpz_shift's size check would raise OverflowError near 2**63 */
+    if (!bhi && (op == 9 || !zn(a) || blo < (I)1 << 62)) return big_of(pys_mpz_shift(a, blo, op == 9));
+    if (op == 9 || !zn(a)) return big_small(op == 9 && a->size < 0 ? -1 : 0);
+    pys_fail("MemoryError");                   /* a count past 64 bits: CPython runs out of memory */
+  }
+  if (op != 10) pys_fail("ValueError: invalid int operation");
+  if (negative) pys_fail(zn(a) ? "ValueError: negative exponent for int ** int" : "ZeroDivisionError: 0.0 cannot be raised to a negative power");
+  if (!bhi) return big_of(pys_mpz_pow(a, blo));
+  /* an exponent past 64 bits: only 0, 1 and -1 have a power that fits in memory */
+  if (!ahi && (alo == 0 || alo == 1)) return big_small(alo);
+  if (!ahi && alo == -1) return big_small(((Mpz *)bhi)->d[0] & 1 ? -1 : 1);
+  pys_fail("MemoryError");
+}
+I pys_big_cmp(I alo, void *ahi, I blo, void *bhi) {   /* -1, 0 or 1 */
+  if (!ahi && !bhi) return (alo > blo) - (alo < blo);
+  if (ahi && bhi) return pys_mpz_cmp(ahi, bhi);
+  /* one Mpz, which never fits: its sign orders it past every 64-bit value */
+  return ahi ? (((Mpz *)ahi)->size < 0 ? -1 : 1) : (((Mpz *)bhi)->size < 0 ? 1 : -1);
+}
+I pys_big_cmp_float(I lo, void *hi, double d) {   /* exactly, as CPython: -1, 0, 1, or 2 where d is a NaN */
+  if (!hi) return pys_cmp_if(lo, d);
+  if (isnan(d)) return 2;
+  Mpz *a = hi;
+  if (isinf(d)) return d > 0 ? -1 : 1;
+  if (fabs(d) < 9223372036854775808.0) return a->size < 0 ? -1 : 1;   /* a is past 2^63 */
+  int e; double m = frexp(fabs(d), &e);        /* |d| = m * 2^e, 0.5 <= m < 1, an integer here */
+  Mpz *t = pys_mpz_shift(pys_mpz_from_int((I)ldexp(m, 53)), e - 53, 0);
+  return pys_mpz_cmp(a, d < 0 ? pys_mpz_unary(t, 0) : t);
+}
+Str *pys_big_str(I lo, void *hi) { return hi ? pys_mpz_str(hi) : pys_str_int(lo); }
+Big pys_big_from_str(Str *s, I base) { return big_of(pys_mpz_from_str(s, base)); }
+Big pys_big_from_float(double d) {             /* int(d): truncated toward zero, exactly */
+  if (isnan(d)) pys_fail("ValueError: cannot convert float NaN to integer");
+  if (isinf(d)) pys_fail("OverflowError: cannot convert float infinity to integer");
+  if (d > -9223372036854775808.0 && d < 9223372036854775808.0) return big_small((I)d);
+  int e; double m = frexp(fabs(d), &e);        /* |d| = m * 2^e: an integer, 53 bits shifted left */
+  Mpz *t = pys_mpz_shift(pys_mpz_from_int((I)ldexp(m, 53)), e - 53, 0);
+  return big_of(d < 0 ? pys_mpz_unary(t, 0) : t);
+}
+I pys_big_hash(I lo, void *hi) {               /* CPython's: the magnitude modulo 2^61 - 1, then the sign */
+  if (hi) return pys_mpz_hash(hi);
+  uint64_t m = (lo < 0 ? 0 - (uint64_t)lo : (uint64_t)lo) % ((UINT64_C(1) << 61) - 1);
+  I r = lo < 0 ? -(I)m : (I)m; return r == -1 ? -2 : r;
+}
+I pys_big_bit_length(I lo, void *hi) { return hi ? pys_mpz_bit_length(hi) : pys_int_bit_length(lo); }
+I pys_big_bit_count(I lo, void *hi) {          /* the ones of |x| */
+  if (!hi) return pys_int_bit_count(lo);
+  Mpz *a = hi; I c = 0;
+  for (I i = zn(a); i; i--) c += __builtin_popcount(a->d[i - 1]);
+  return c;
+}
+Str *pys_format_int(I v, I isbool, Str *spec);
+Str *pys_format_float(double x, Str *spec);
+Str *pys_format_bigdigits(I neg, Str *digits, Str *spec);
+double pys_big_float(I lo, void *hi);
+Str *pys_big_format(I lo, void *hi, Str *spec) {   /* format(x, spec), as CPython formats an int */
+  if (!hi) return pys_format_int(lo, 0, spec);
+  /* the type is the spec's last character, where it is a letter or %: a fill character is
+     followed by its alignment */
+  int t = spec->len ? (unsigned char)spec->s[spec->len - 1] : 0;
+  if (t && strchr("eEfFgG%", t)) return pys_format_float(pys_big_float(lo, hi), spec);
+  if (t == 'c') pys_fail("OverflowError: Python int too large to convert to C long");   /* (CPython's, for a code past 64 bits) */
+  Mpz *a = hi; int bits = t == 'b' ? 1 : t == 'o' ? 3 : t == 'x' || t == 'X' ? 4 : 0;
+  Str *digits;
+  if (!bits) digits = pys_mpz_str(pys_mpz_unary(a, 1));   /* (CPython's 4300-digit limit applies) */
+  else {                                       /* |x| in base 2, 8 or 16, from its bits */
+    const char *hex = t == 'X' ? "0123456789ABCDEF" : "0123456789abcdef";
+    I nbits = pys_mpz_bit_length(a), nd = (nbits + bits - 1) / bits;
+    char *buf = pys_alloc_atomic(nd + 1);
+    for (I k = 0; k < nd; k++) {               /* digit k from the least significant */
+      unsigned v = 0;
+      for (int j = bits - 1; j >= 0; j--) {
+        I bit = k * bits + j, w = bit / 30;
+        v = v << 1 | (w < zn(a) ? (a->d[w] >> (bit % 30)) & 1 : 0);
+      }
+      buf[nd - 1 - k] = hex[v];
+    }
+    digits = pys_str(buf, nd);
+  }
+  return pys_format_bigdigits(a->size < 0, digits, spec);
+}
+Big pys_big_powmod(I alo, void *ahi, I blo, void *bhi, I mlo, void *mhi) {   /* pow(a, b, m), as CPython's long_pow */
+  if (!ahi && !bhi && !mhi) return big_small(pys_powmod(alo, blo, mlo));
+  MpzTmp ta, tb, tm;
+  Mpz *a = big_mpz(alo, ahi, &ta), *b = big_mpz(blo, bhi, &tb), *m = big_mpz(mlo, mhi, &tm);
+  if (!zn(m)) pys_fail("ValueError: pow() 3rd argument cannot be 0");
+  Mpz *n = pys_mpz_unary(m, 1), *x = a;        /* n = |m| */
+  if (zn(n) == 1 && n->d[0] == 1) return big_small(0);
+  if (b->size < 0) {                           /* a negative exponent: the power of a's inverse modulo n */
+    Mpz *p = x, *q = n, *s = pys_mpz_from_int(1), *t = pys_mpz_from_int(0);   /* long_invmod: Euclid */
+    while (zn(q)) {
+      Mpz *d = pys_mpz_binop(p, q, 3), *u = pys_mpz_binop(p, pys_mpz_binop(d, q, 2), 1), *w = pys_mpz_binop(s, pys_mpz_binop(d, t, 2), 1);
+      p = q; q = u; s = t; t = w;
+    }
+    if (zn(p) != 1 || p->size < 0 || p->d[0] != 1) pys_fail("ValueError: base is not invertible for the given modulus");
+    x = s; b = pys_mpz_unary(b, 1);
+  }
+  x = pys_mpz_binop(x, n, 4);                  /* 0 <= x < n */
+  Mpz *r = pys_mpz_from_int(1);
+  for (I i = pys_mpz_bit_length(b); i; i--) {  /* left to right: square, then multiply where the bit is set */
+    r = pys_mpz_binop(pys_mpz_binop(r, r, 2), n, 4);
+    if ((b->d[(i - 1) / 30] >> ((i - 1) % 30)) & 1) r = pys_mpz_binop(pys_mpz_binop(r, x, 2), n, 4);
+  }
+  if (m->size < 0 && zn(r)) r = pys_mpz_binop(r, n, 1);   /* the result has the sign of m */
+  return big_of(r);
+}
+/* A list of ints holds an item past 64 bits as -2**63 in its slot and the item's Mpz in a
+   companion of kind BIGIDS (the list code's identity companion, which see) */
+enum { BIGIDS = 3 };
+#define NARROW "OverflowError: Python int too large to convert to C long"
+static int big_list(List *l) { return l->ids && (l->ids[0] & 3) == BIGIDS && opt_in(); }   /* may l hold an item past 64 bits */
+static Mpz *lbig(List *l, I i) { return l->a[i] == INT64_MIN && big_list(l) ? (Mpz *)l->ids[i + 1] : NULL; }
+static Big litem(List *l, I i) { Mpz *m = lbig(l, i); Big r = {m ? 0 : l->a[i], m}; return r; }   /* l[i] as a promoting int */
+/* A promoting int in a descriptor walk (descriptor J) is a pointer to two words, its slot and its
+   Mpz: the value and null where it fits, else -2**63 and the Mpz, as the box of an int | None of a
+   module that opts in holds it (pys_big_box; -2**63 itself has a null Mpz). A fixed tuple holds its
+   promoting int item i of n so: the slot is the item's, and the Mpz word is slot n + i, which such
+   a tuple has wherever the item's slot holds -2**63 (the compiler copies a tuple of 64-bit ints
+   that holds -2**63 where one of promoting ints is expected), so the walks hand them on as titem's
+   two words; pys_refl_vars makes them of a field's {lo, hi} */
+static Big jbig(I v) { const I *w = (const I *)v; Mpz *m = w[0] == INT64_MIN && opt_in() ? (Mpz *)w[1] : NULL; Big r = {m ? 0 : w[0], m}; return r; }
+static I titem(const I *t, I n, I i, const char *e, I *w) {   /* item i of tuple t of n items, of descriptor e: J's in w */
+  if (*e != 'J' || !opt_in()) return t[i];
+  w[0] = t[i]; w[1] = t[i] == INT64_MIN ? t[n + i] : 0;
+  return (I)w;
+}
+/* and a set of ints holds an element past 64 bits as -2**63 or -2**63 + 1 in its slot, and its Mpz
+   in that slot's word of kb (see sets) */
+static Mpz *sbig(Set *s, I j) { return s->keys[j] <= INT64_MIN + 1 && s->kb && opt_in() ? (Mpz *)s->kb[j] : NULL; }
+static int list_has_big(List *l) {   /* does l hold an item past 64 bits */
+  if (big_list(l)) for (I i = 0; i < l->len; i++) if (l->ids[i + 1]) return 1;
+  return 0;
+}
+static void list_narrow(List *l) { if (list_has_big(l)) pys_fail(NARROW); }   /* l's ints for 64-bit code */
+/* In a program whose lists hold promoting ints, its lists, dicts (keys and values) and sets hold a
+   tuple of ints in the layout of a tuple of promoting ints (the compiler's bigints.held): a tuple of
+   theirs whose int, also one of a tuple it holds, is -2**63 has that int's Mpz word (titem), which
+   a tuple of 64-bit ints lacks, so the compiler stores a copy of such a tuple there */
+static I mpz_cmp_float(Mpz *m, double d) {   /* m, past 64 bits, against d, exactly and allocating nothing: -1, 0, 1, or 2 for a NaN */
+  if (isnan(d)) return 2;
+  if (isinf(d)) return d > 0 ? -1 : 1;
+  if (fabs(d) < 9223372036854775808.0) return m->size < 0 ? -1 : 1;   /* (|m| >= 2**63 > |d|) */
+  int e; double f = frexp(fabs(d), &e);        /* |d| = f * 2**e, 0.5 <= f < 1: an int of mant << (e - 53) */
+  union { Mpz m; uint64_t words[1 + 18]; } t;  /* (its 30-bit digits: at most 35 below 2**1024) */
+  I sh = e - 53, k = sh / 30, n = 0;
+  unsigned __int128 v = (unsigned __int128)(uint64_t)ldexp(f, 53) << (sh % 30);
+  for (; n < k; n++) t.m.d[n] = 0;
+  for (; v; v >>= 30) t.m.d[n++] = (uint32_t)(v & 0x3FFFFFFF);
+  t.m.size = d < 0 ? -n : n;
+  return pys_mpz_cmp(m, &t.m);
+}
+Big pys_big_sum(List *l, I slo, void *shi) {   /* sum(l, start) of a list of ints: past 64 bits, exactly */
+  I i = 0, big = big_list(l);
+  if (!shi) {                                  /* 64-bit additions until one overflows or an item is past 64 bits */
+    I s = slo, t;
+    for (; i < l->len; i++) { if ((big && lbig(l, i)) || __builtin_add_overflow(s, l->a[i], &t)) break; s = t; }
+    if (i == l->len) return big_small(s);
+    slo = s;
+  }
+  Big acc = {slo, shi};
+  for (; i < l->len; i++) { Big x = litem(l, i); acc = pys_big_op(acc.lo, acc.hi, x.lo, x.hi, 0); }
+  return acc;
+}
+enum { TD_MANT = 53, TD_MIN_EXP = -1021, TD_MAX_EXP = 1024 };   /* <float.h>'s DBL_MANT_DIG, DBL_MIN_EXP, DBL_MAX_EXP */
+/* a / b, rounded once: CPython 3.13.16's long_true_divide (Objects/longobject.c), whose steps and
+   rounding of the low digit this follows on the Mpz core, used under the Python Software Foundation
+   License Version 2 (THIRD_PARTY_NOTICES) */
+double pys_big_truediv(I alo, void *ahi, I blo, void *bhi) {
+  if (!ahi && !bhi) return pys_idiv(alo, blo);
+  MpzTmp ta, tb;
+  Mpz *a = big_mpz(alo, ahi, &ta), *b = big_mpz(blo, bhi, &tb);
+  if (!zn(b)) pys_fail("ZeroDivisionError: division by zero");
+  int negate = (a->size < 0) != (b->size < 0);
+  if (!zn(a)) return negate ? -0.0 : 0.0;
+  /* x = |a| * 2**-shift, with shift chosen so that x // |b| has DBL_MANT_DIG + 2 or 3 bits (or
+     fewer, for a subnormal result); the bits shifted or divided away make the sticky bit */
+  I diff = pys_mpz_bit_length(a) - pys_mpz_bit_length(b);
+  if (diff > TD_MAX_EXP) goto overflow;
+  if (diff < TD_MIN_EXP - TD_MANT - 1) return negate ? -0.0 : 0.0;
+  I shift = (diff > TD_MIN_EXP ? diff : TD_MIN_EXP) - TD_MANT - 2;
+  Mpz *m = pys_mpz_unary(a, 1), *x;              /* |a|: fresh */
+  int inexact = 0;
+  if (shift <= 0) x = pys_mpz_shift(m, -shift, 0);
+  else { x = pys_mpz_shift(m, shift, 1); inexact = pys_mpz_cmp(pys_mpz_shift(x, shift, 0), m) != 0; }
+  Mpz *d = pys_mpz_unary(b, 1), *q = pys_mpz_binop(x, d, 3);   /* q: a fresh quotient, never 0 */
+  if (zn(pys_mpz_binop(x, d, 4))) inexact = 1;
+  I qbits = pys_mpz_bit_length(q);
+  I extra = (qbits > TD_MIN_EXP - shift ? qbits : TD_MIN_EXP - shift) - TD_MANT;   /* 2 or 3 */
+  uint32_t mask = (uint32_t)1 << (extra - 1), low = q->d[0] | (uint32_t)inexact;
+  if ((low & mask) && (low & (3U * mask - 1U))) low += mask;   /* round half to even (a carry stays in the digit) */
+  q->d[0] = low & ~(2U * mask - 1U);
+  double dq = 0;                                 /* exact: at most 54 bits */
+  for (I i = zn(q); i; i--) dq = dq * 1073741824.0 + q->d[i - 1];
+  if (shift + qbits >= TD_MAX_EXP && (shift + qbits > TD_MAX_EXP || dq == ldexp(1.0, (int)qbits))) goto overflow;
+  double r = ldexp(dq, (int)shift);
+  return negate ? -r : r;
+overflow:
+  pys_fail("OverflowError: integer division result too large for a float");
+}
+double pys_big_float(I lo, void *hi) {         /* rounded once, to nearest even, as CPython's int.__float__ */
+  if (!hi) return (double)lo;
+  Mpz *a = hi; I n = zn(a), k = n < 3 ? n : 3, bits = pys_mpz_bit_length(a);
+  if (bits > 1024) pys_fail("OverflowError: int too large to convert to float");
+  /* the top digits, at most 90 bits, then 64 of them with a sticky bit for the rest */
+  unsigned __int128 top = 0; int sticky = 0;
+  for (I i = n; i > n - k; i--) top = (top << 30) | a->d[i - 1];
+  for (I i = n - k; i && !sticky; i--) sticky = a->d[i - 1] != 0;
+  I e = (n - k) * 30, tb = bits - e, s = tb > 64 ? tb - 64 : 0;
+  if (s) { sticky |= (top & (((unsigned __int128)1 << s) - 1)) != 0; top >>= s; e += s; }
+  double r = ldexp((double)((uint64_t)top | (uint64_t)sticky), (int)e);   /* 64 bits: the sticky bit is below the rounding */
+  if (isinf(r)) pys_fail("OverflowError: int too large to convert to float");
+  return a->size < 0 ? -r : r;
 }
 /* no_builtin("pow") keeps pow a call of libm's, as in CPython's float_pow and math.pow. The AOT tier's
    whole-program -O2 would otherwise rewrite a call with a constant argument: pow(x, 2.0) as x * x,
@@ -1717,7 +2051,9 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
    U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
    R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
    A a dynamic value's box (see dynamic values), walked by its DynType's descriptor, Z the
-   function a box holds, which compares and hashes by identity.
+   function a box holds, which compares and hashes by identity; J a promoting int (a fixed
+   tuple's item, the box of an int | None of a module that opts in, a field), its two words
+   (jbig).
    skip treats R as a leaf; value operations follow it without changing the slot layout.
    A dict's key kind and a set's element kind (Dict.kind) and their tuples' items have P<id> and
    H<id> where the type is a class: P where no class its objects may be of defines __eq__ or
@@ -1728,18 +2064,22 @@ I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
 typedef struct DynType DynType;   /* (see dynamic values) */
-struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; };
-typedef struct { const DynType *t; I v; } Dyn;
+typedef struct Dyn Dyn;
+struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; Dyn *(*iter)(Dyn *); Dyn *(*next)(Dyn *); I (*len)(Dyn *); };
+struct Dyn { const DynType *t; I v; };
 _Static_assert(sizeof(Dyn) == 16, "a dynamic value's box is gc_box's 16 bytes");
 typedef struct DynIter DynIter;
 I pys_dyn_eq(Dyn *a, Dyn *b);
 I pys_dyn_cmp(Dyn *a, Dyn *b, I op);
 I pys_dyn_hash(Dyn *x);
+Dyn *pys_dyn_int(I v);
+Dyn *pys_dyn_float(double x);
 static int dyn_eqitem(Dyn *a, Dyn *b);
 static int dyn_keyeq(Dyn *a, Dyn *b);
 static uint64_t hdyn(Dyn *x);
 DynIter *pys_dyn_iter(Dyn *o);
 Dyn *pys_dyn_next(DynIter *it);
+static I dyn_user_len(Dyn *o);
 static I ocls(const char *d) {   /* three digits, then those of an id of 1000 or more */
   I c = (d[0] - '0') * 100 + (d[1] - '0') * 10 + d[2] - '0';
   for (d += 3; *d >= '0' && *d <= '9'; d++) c = c * 10 + *d - '0';
@@ -1761,8 +2101,15 @@ I pys_repr_enter(void *p) {
 }
 void pys_repr_leave(void *p) { unbusy(p); if (eh) unwind_pop(); }
 /* An int | None, float | None or bool | None (descriptor ?i, ?f, ?b) is a pointer to an immutable
-   box of its value's 8 bytes (a bool's 0 or 1), and None is null */
-void *pys_box(I v) { I *p = pys_alloc_atomic(8); *p = v; return p; }
+   box of its value's 8 bytes (a bool's 0 or 1), and None is null. The box's second word is null,
+   so that every int's box is also one of a promoting int (docs/python-int.md) */
+void *pys_box(I v) { I *p = gc_box(1); p[0] = v; p[1] = 0; return p; }
+/* the box of a promoting int, {lo, hi}: pys_box's where it fits; past 64 bits, -2**63 and its
+   Mpz, in a box the collector scans */
+void *pys_big_box(I lo, void *hi) {
+  if (!hi) return pys_box(lo);
+  I *p = gc_box(0); p[0] = INT64_MIN; ((void **)p)[1] = hi; return p;
+}
 /* Closed union: a program-wide tag and the value's 8-byte slot. The collector
    scans the box for str, container or native reference payloads. None remains null. */
 void *pys_ubox(I tag, I v) { I *p = gc_box(0); p[0] = tag; p[1] = v; return p; }
@@ -1794,6 +2141,11 @@ static const char *recdesc(const char *d) {
    calls it: tools/check_runtime.py gives what reaches it R?, which the compiler makes R where the
    op's descriptor holds an R (Gen.opfx); other descriptors never get here */
 static _Noreturn void rec_deep(const char *m) { pys_fail(m); }
+/* a list's int past 64 bits (BIGIDS), a set's (sbig) or a dict's (dbig), with more digits than
+   CPython's limit for an int's text, in repr_depth: its ValueError, which the compiler's RUNTIME
+   counts as rec_deep's (R?: Gen.opfx makes it R where a descriptor holds a list, set or dict of ints,
+   in a program whose lists, sets and dicts hold promoting ints) */
+static _Noreturn void digits_deep(void) { pys_fail(DIGITS_LIMIT); }
 static const char *utype(I tag, const char *d) {
   d++;
   for (I n = unum(&d); n > 0; n--) { if (unum(&d) == tag) return d; d = skip(d); }
@@ -1860,10 +2212,40 @@ static void repr_str(Buf *b, Str *s) {
    its idx has CPython's size slots. build sets it at a table's first build, since the compiler may
    store a descriptor into an empty dict (typed_empty); kdesc is the descriptor of a kind > 1 */
 #define KTAG 2
-static const char *kdesc(I kind) { return ((Str *)(kind & ~(I)KTAG))->s; }
-/* is entry e no hole: a hole has hash 0 and no key (an H kind's key, an object or a tuple, may hash
-   to 0; another's hash is never 0) */
-static int dlive(Dict *d, I e) { return d->hs[e] || d->keys[e]; }
+/* ! asks for Python's hash/probe scheme even for native scalar keys in an
+   opt-in Dynamic Any program. It is a Dict.kind marker, not a value descriptor. */
+static const char *kraw(I kind) { return ((Str *)(kind & ~(I)KTAG))->s; }
+static const char *kdesc(I kind) { const char *d = kraw(kind); return d + (*d == '!'); }
+/* Is entry e live? Legacy tables use hash 0/key 0 as a hole; Python-hash
+   tables reserve hash -1 so native integer zero remains a live key. */
+static int dlive(Dict *d, I e) {
+  /* Python hash -1 is reserved (normalized to -2), whereas a live native 0
+     key has both hash and slot 0. Legacy tables retain their zero holes. */
+  return d->kind & KTAG ? d->hs[e] != (uint64_t)-1 : d->hs[e] || d->keys[e];
+}
+/* A value past 64 bits of a dict of ints holds -2**63 in its slot, as a list's item does, and its
+   Mpz in the entry's word of vb, an array as long as the entries' that the collector scans, which
+   the first such value makes (dbig_make); every other entry's word is null, and every store of a
+   value clears its entry's word (dbig_clear). Compiled code reads the Mpz where it reads -2**63
+   (pys_dict_big_val) */
+static inline void dbig_clear(Dict *d, I e) { if (d->vb) d->vb[e] = 0; }
+static void dbig_make(Dict *d) { if (!d->vb) d->vb = pys_alloc(d->size * 2 / 3 * 8); }
+static Mpz *dbig(Dict *d, I e) { return d->vb && d->vals[e] == INT64_MIN && opt_in() ? (Mpz *)d->vb[e] : NULL; }
+static int dict_has_big(Dict *d) {   /* does d hold a value past 64 bits */
+  if (d->vb) for (I e = 0; e < d->n; e++) if (d->vb[e] && dlive(d, e)) return 1;
+  return 0;
+}
+/* and a key past 64 bits of a dict of int keys holds -2**63 in its slot, and its Mpz in the entry's
+   word of kb, which the first such key makes (dbput), as vb holds a value's; its hash is hbig's
+   (see dicts), so the lookups of 64-bit keys never find it. The words of entries past the last are
+   null (a deletion clears its entry's, builds and copies make new arrays), so an insertion of a
+   64-bit key writes none */
+static inline void kbig_clear(Dict *d, I e) { if (d->kb) d->kb[e] = 0; }
+static Mpz *kbig(Dict *d, I e) { return d->keys[e] == INT64_MIN && d->kb && opt_in() ? (Mpz *)d->kb[e] : NULL; }
+static int dict_has_big_key(Dict *d) {   /* does d hold a key past 64 bits */
+  if (d->kb && opt_in()) for (I e = 0; e < d->n; e++) if (d->kb[e] && dlive(d, e)) return 1;
+  return 0;
+}
 /* depth counts the recursive alias edges (R) followed: a recursive value can nest without bound,
    so following more than 512 raises RecursionError, as CPython's repr does for deep nesting; other
    reprs, a class's own __repr__ among them, are limited only by the native stack. A local depth
@@ -1877,8 +2259,16 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
   }
   case 'U': { const char *end = skip(d - 1), *member = umember(&v, d - 1); repr_depth(b, v, member, depth); return end; }
   case 'A': { Dyn *x = (Dyn *)v; repr_depth(b, x->v, x->t->desc->s, depth); return d; }
+  case 'G': put(b, "<generator object>", 18); return d;
+  case 'Q': put(b, "<iterator object>", 17); return d;
   case 'Z': put(b, "<function>", 10); return d;   /* (a dynamic value's function: by identity, unnamed) */
   case 'i': { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)v)); return d; }
+  case 'J': {                                       /* a promoting int's two words (jbig) */
+    opt_in(); Big x = jbig(v);
+    if (x.hi) { Str *s = mpz_digits(x.hi); if (!s) digits_deep(); put(b, s->s, s->len); }
+    else { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)x.lo)); }
+    return d;
+  }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
   case 's': if (v) repr_str(b, (Str *)v); else put(b, "None", 4); return d;   /* (see hval) */
@@ -1887,7 +2277,11 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
     List *l = (List *)v;
     if (!pys_repr_enter(l)) { put(b, "[...]", 5); return skip(d); }
     put(b, "[", 1);
-    for (I i = 0; i < l->len; i++) { if (i) put(b, ", ", 2); repr_depth(b, l->a[i], d, depth); }
+    for (I i = 0; i < l->len; i++) {
+      if (i) put(b, ", ", 2);
+      Mpz *m = lbig(l, i);   /* (an int past 64 bits: BIGIDS) */
+      if (m) { Str *s = mpz_digits(m); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, l->a[i], d, depth);
+    }
     put(b, "]", 1); pys_repr_leave(l); return skip(d);
   }
   case 'D': {
@@ -1898,7 +2292,10 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
       if (!dlive(m, e)) continue;
       if (k++) put(b, ", ", 2);
       I key = m->keys[e], val = m->vals[e];         /* (a key's __repr__ may empty the dict) */
-      repr_depth(b, key, d, depth); put(b, ": ", 2); repr_depth(b, val, dv, depth);
+      Mpz *big = dbig(m, e), *kbm = kbig(m, e);     /* (a value, a key past 64 bits) */
+      if (kbm) { Str *s = mpz_digits(kbm); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, key, d, depth);
+      put(b, ": ", 2);
+      if (big) { Str *s = mpz_digits(big); if (!s) digits_deep(); put(b, s->s, s->len); } else repr_depth(b, val, dv, depth);
     }
     put(b, "}", 1); pys_repr_leave(m); return skip(dv);
   }
@@ -1906,13 +2303,17 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
     Set *s = (Set *)v; int f = d[-1] == 'F';
     if (!s->len) { put(b, f ? "frozenset()" : "set()", f ? 11 : 5); return skip(d); }
     put(b, f ? "frozenset({" : "{", f ? 11 : 1);
-    for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) { if (n++) put(b, ", ", 2); repr_depth(b, s->keys[i], d, depth); }
+    for (I i = 0, n = 0; i <= s->mask; i++) if (s->hs[i] != -1) {
+      if (n++) put(b, ", ", 2);
+      Mpz *m = sbig(s, i);   /* (an int past 64 bits: kb) */
+      if (m) { Str *t = mpz_digits(m); if (!t) digits_deep(); put(b, t->s, t->len); } else repr_depth(b, s->keys[i], d, depth);
+    }
     put(b, f ? "})" : "}", f ? 2 : 1); return skip(d);
   }
   case 'T': {
     if (!v) { put(b, "None", 4); return skip(d - 1); }
-    int n = *d++ - '0'; I *t = (I *)v; put(b, "(", 1);
-    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr_depth(b, t[i], d, depth); }
+    int n = *d++ - '0'; I *t = (I *)v, w[2]; put(b, "(", 1);
+    for (int i = 0; i < n; i++) { if (i) put(b, ", ", 2); d = repr_depth(b, titem(t, n, i, d, w), d, depth); }
     put(b, n == 1 ? ",)" : ")", n == 1 ? 2 : 1); return d;
   }
   case 'V': {
@@ -1960,8 +2361,10 @@ Str *pys_refl_vars(ReflRec *r, char *o) {   /* repr(vars(o)): o's assigned field
     if (f->flag >= 0 && !*(unsigned char *)(o + f->flag)) continue;
     if (k++) put(&b, ", ", 2);
     repr_str(&b, f->name); put(&b, ": ", 2);
-    I v = 0;
-    if (f->desc->s[0] == 'b') v = *(unsigned char *)(o + f->off) & 1; else memcpy(&v, o + f->off, 8);
+    I v = 0, w[2];
+    if (f->desc->s[0] == 'b') v = *(unsigned char *)(o + f->off) & 1;
+    else if (f->desc->s[0] == 'J' && opt_in()) { memcpy(w, o + f->off, 16); if (w[1]) w[0] = INT64_MIN; v = (I)w; }   /* a promoting int's {lo, hi}: jbig's words */
+    else memcpy(&v, o + f->off, 8);
     repr(&b, v, f->desc->s);
   }
   put(&b, "}", 1);
@@ -1970,9 +2373,20 @@ Str *pys_refl_vars(ReflRec *r, char *o) {   /* repr(vars(o)): o's assigned field
 }
 static I entry(Dict *d, I k);
 static I dfind(Dict *d, I k, uint64_t h, I *free);
+static I dbfind(Dict *d, Mpz *m, uint64_t h, I *free);
 I pys_set_cmp(Set *a, Set *b, I op);
+static int list_same_item(List *a, I i, List *b, I j) {
+  return a->ids && b->ids && ((a == b && i == j) ||
+         (a->ids[i + 1] && a->ids[i + 1] == b->ids[j + 1]));
+}
 static int eqv(I a, I b, const char *d);
 static int eqpair(I a, I b, const char *x, const char *y);
+static int eqitem(I a, I b, const char *d);
+static int list_item_eq(List *x, I i, List *y, I j, const char *d) {   /* x[i] == y[j] of lists of one type */
+  Mpz *m = lbig(x, i), *n = lbig(y, j);   /* (ints past 64 bits, BIGIDS: equal to their values only) */
+  if (m || n) return m && n && pys_mpz_cmp(m, n) == 0;
+  return list_same_item(x, i, y, j) || eqitem(x->a[i], y->a[j], d);
+}
 /* Container items use identity before equality (PyObject_RichCompareBool). Keep this
    separate from direct comparison: equal unboxed float bits need not compare equal,
    and an optional scalar's box does not give that scalar Python object identity. */
@@ -1992,13 +2406,14 @@ static int eqv(I a, I b, const char *d) {
   switch (*d) {
   case 'U': return eqpair(a, b, d, d);
   case 'A': return pys_dyn_eq((Dyn *)a, (Dyn *)b);
+  case 'J': { opt_in(); Big x = jbig(a), y = jbig(b); return pys_big_cmp(x.lo, x.hi, y.lo, y.hi) == 0; }
   case 'f': return dbl(a) == dbl(b);
   case 's': return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;   /* (None in a looked-up key, see hval) */
   case 'L': {   /* an __eq__ may change either list: as CPython's list_richcompare, re-read both
                    lengths at every step, and once a list has no item left, compare them */
     List *x = (List *)a, *y = (List *)b; I i = 0;
     if (x->len != y->len) return 0;
-    while (i < x->len && i < y->len && eqitem(x->a[i], y->a[i], d + 1)) i++;
+    while (i < x->len && i < y->len && list_item_eq(x, i, y, i, d + 1)) i++;
     return (i >= x->len || i >= y->len) && x->len == y->len;
   }
   case 'D': {   /* (as CPython's dict_equal, with the hashes x keeps, where y's are of the same kind) */
@@ -2007,16 +2422,22 @@ static int eqv(I a, I b, const char *d) {
     if (x->len != y->len) return 0;
     for (I e = 0; e < x->n; e++) {
       if (!dlive(x, e)) continue;
-      I val = x->vals[e], f = same ? dfind(y, x->keys[e], x->hs[e], 0) : entry(y, x->keys[e]);   /* (a key's __eq__ may empty x) */
-      if (same && f >= 0) f = y->idx[f] - 1;
-      if (f < 0 || !eqitem(val, y->vals[f], dv)) return 0;
+      I val = x->vals[e]; Mpz *xb = dbig(x, e), *xk = kbig(x, e);   /* (a key past 64 bits: dbfind) */
+      I f = xk ? dbfind(y, xk, x->hs[e], 0) : same ? dfind(y, x->keys[e], x->hs[e], 0) : entry(y, x->keys[e]);   /* (a key's __eq__ may empty x) */
+      if ((xk || same) && f >= 0) f = y->idx[f] - 1;
+      if (f < 0) return 0;
+      Mpz *yb = dbig(y, f);   /* (values past 64 bits: equal to their values only) */
+      if (xb || yb ? !(xb && yb && pys_mpz_cmp(xb, yb) == 0) : !eqitem(val, y->vals[f], dv)) return 0;
     }
     return 1;
   }
   case 'T': {
-    I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
+    I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
     if (!x || !y) return x == y;
-    for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqitem(x[i], y[i], e)) return 0;
+    for (I i = 0; i < n; i++, e = skip(e)) {
+      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) { if (x[i] != y[i]) return 0; continue; }   /* (promoting ints that fit: their slots) */
+      if (!eqitem(titem(x, n, i, e, wx), titem(y, n, i, e, wy), e)) return 0;
+    }
     return 1;
   }
   case 'V': {
@@ -2048,6 +2469,10 @@ static EqValue eqresolve(I v, const char *d) {
   }
   return (EqValue){v, d, edge};
 }
+static int big_eq(Mpz *m, I b, const char *y) {   /* the int m past 64 bits == value b of descriptor y */
+  EqValue r = eqresolve(b, y);
+  return *r.desc == 'f' && mpz_cmp_float(m, dbl(r.value)) == 0;   /* (no 64-bit int or bool equals it) */
+}
 static int same_desc(const char *x, const char *y) {
   size_t n = (size_t)(skip(x) - x);
   return n == (size_t)(skip(y) - y) && !memcmp(x, y, n);
@@ -2074,6 +2499,12 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     depth++;
   }
   if (*x == 'n' || *y == 'n') return *x == *y;
+  if ((*x == 'J' || *y == 'J') && opt_in()) {   /* a promoting int (jbig) and a number, exactly; another type equals it never */
+    Big p = jbig(*x == 'J' ? a : b); I v = *x == 'J' ? b : a; const char *e = *x == 'J' ? y : x;
+    if (*e == 'J') { Big q = jbig(v); return pys_big_cmp(p.lo, p.hi, q.lo, q.hi) == 0; }
+    if (*e == 'f') return (p.hi ? mpz_cmp_float(p.hi, dbl(v)) : pys_cmp_if(p.lo, dbl(v))) == 0;   /* (allocating nothing) */
+    return (*e == 'i' || *e == 'b') && !p.hi && p.lo == v;
+  }
   int nx = *x == 'i' || *x == 'b', ny = *y == 'i' || *y == 'b';
   if (nx && ny) return a == b;
   if (nx && *y == 'f') return pys_cmp_if(a, dbl(b)) == 0;
@@ -2084,7 +2515,11 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   if (*x == 'L') {
     List *p = (List *)a, *q = (List *)b;
     if (p->len != q->len) return 0;
-    for (I i = 0; i < p->len; i++) if (!eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
+    for (I i = 0; i < p->len; i++) {
+      Mpz *m = lbig(p, i), *n = lbig(q, i);   /* (ints past 64 bits: BIGIDS) */
+      if (m || n) { if (m && n ? pys_mpz_cmp(m, n) != 0 : !big_eq(m ? m : n, m ? q->a[i] : p->a[i], m ? y + 1 : x + 1)) return 0; continue; }
+      if (!list_same_item(p, i, q, i) && !eqpair_depth(p->a[i], q->a[i], x + 1, y + 1, depth)) return 0;
+    }
     return 1;
   }
   if (*x == 'D') {
@@ -2094,10 +2529,14 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     int lookup = same_desc(kx, ky) || ((*kx == 'i' || *kx == 'b') && (*ky == 'i' || *ky == 'b'));
     for (I i = 0; i < p->n; i++) {
       if (!dlive(p, i)) continue;
-      I j = -1;
-      if (lookup) j = entry(q, p->keys[i]);
-      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth)) { j = k; break; }
-      if (j < 0 || !eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth)) return 0;
+      I j = -1; Mpz *pk = kbig(p, i);
+      if (pk) { j = dbfind(q, pk, p->hs[i], 0); if (j >= 0) j = q->idx[j] - 1; }   /* (a key past 64 bits equals such a key only) */
+      else if (lookup) j = entry(q, p->keys[i]);
+      else for (I k = 0; k < q->n; k++) if (dlive(q, k) && !kbig(q, k) && eqpair_depth(p->keys[i], q->keys[k], kx, ky, depth)) { j = k; break; }
+      if (j < 0) return 0;
+      Mpz *m = dbig(p, i), *n = dbig(q, j);   /* (values past 64 bits: dbig) */
+      if (m || n) { if (m && n ? pys_mpz_cmp(m, n) != 0 : !big_eq(m ? m : n, m ? q->vals[j] : p->vals[i], m ? vy : vx)) return 0; continue; }
+      if (!eqpair_depth(p->vals[i], q->vals[j], vx, vy, depth)) return 0;
     }
     return 1;
   }
@@ -2105,10 +2544,10 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
     if (!a || !b) return a == b;
     I nx = *x == 'T' ? x[1] - '0' : ((VTuple *)a)->len, ny = *y == 'T' ? y[1] - '0' : ((VTuple *)b)->len;
     if (nx != ny) return 0;
-    I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a;
+    I *p = *x == 'T' ? (I *)a : ((VTuple *)a)->a, *q = *y == 'T' ? (I *)b : ((VTuple *)b)->a, wx[2], wy[2];
     const char *ex = x + (*x == 'T' ? 2 : 1), *ey = y + (*y == 'T' ? 2 : 1);
     for (I i = 0; i < nx; i++) {
-      if (!eqpair_depth(p[i], q[i], ex, ey, depth)) return 0;
+      if (!eqpair_depth(*x == 'T' ? titem(p, nx, i, ex, wx) : p[i], *y == 'T' ? titem(q, ny, i, ey, wy) : q[i], ex, ey, depth)) return 0;
       if (*x == 'T') ex = skip(ex);
       if (*y == 'T') ey = skip(ey);
     }
@@ -2131,13 +2570,24 @@ static int opv(I a, I b, const char *d, I op) {
   case 's': return cmpop(pys_str_cmp((Str *)a, (Str *)b), op);
   case 'L': {
     List *x = (List *)a, *y = (List *)b; I i = 0;
-    while (i < x->len && i < y->len && eqitem(x->a[i], y->a[i], d + 1)) i++;
+    while (i < x->len && i < y->len && list_item_eq(x, i, y, i, d + 1)) i++;
+    if (i < x->len && i < y->len && (lbig(x, i) || lbig(y, i))) {   /* (an int past 64 bits: BIGIDS) */
+      Big p = litem(x, i), q = litem(y, i); return cmpop(pys_big_cmp(p.lo, p.hi, q.lo, q.hi), op);
+    }
     if (i < x->len && i < y->len) return opv(x->a[i], y->a[i], d + 1, op);
     return cmpop((x->len > y->len) - (x->len < y->len), op);
   }
+  case 'J': { opt_in(); Big x = jbig(a), y = jbig(b); return cmpop(pys_big_cmp(x.lo, x.hi, y.lo, y.hi), op); }
   case 'T': {
-    I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
-    for (int i = 0; i < d[1] - '0'; i++, e = skip(e)) if (!eqitem(x[i], y[i], e)) return opv(x[i], y[i], e, op);
+    I *x = (I *)a, *y = (I *)b, n = d[1] - '0', wx[2], wy[2]; const char *e = d + 2;
+    for (I i = 0; i < n; i++, e = skip(e)) {
+      if (*e == 'J' && x[i] != INT64_MIN && y[i] != INT64_MIN) {   /* (as eqv's) */
+        if (x[i] != y[i]) return cmpop((x[i] > y[i]) - (x[i] < y[i]), op);
+        continue;
+      }
+      I p = titem(x, n, i, e, wx), q = titem(y, n, i, e, wy);
+      if (!eqitem(p, q, e)) return opv(p, q, e, op);
+    }
     return cmpop(0, op);
   }
   case 'V': {
@@ -2203,6 +2653,7 @@ VTuple *pys_vtuple_from(I *src, I count) {
 }
 VTuple *pys_vtuple_new(List *src) {
   if (!src) pys_fail("TypeError: 'NoneType' object is not iterable");
+  list_narrow(src);   /* (a tuple[int, ...] holds 64-bit ints: BIGIDS) */
   return pys_vtuple_from(src->a, src->len);
 }
 /* Immutable widening from int/float/bool to the same scalar | None. The
@@ -2254,6 +2705,8 @@ I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len; 
    the kind of the arrays they copy (atomic_items), so a list keeps its kind for its lifetime,
    and an emptied list keeps it in the sentinel it is left with. */
 static I empty_list[1];                /* valid even for zero-byte copies; distinct from sort's sentinel */
+static I empty_identity_int[1] = {1}, empty_identity_float[1] = {2}, empty_identity_big[1] = {3};
+static I *empty_identity(I kind) { return (kind & 3) == 1 ? empty_identity_int : (kind & 3) == 2 ? empty_identity_float : empty_identity_big; }
 static I empty_atomic[1];              /* the same, for a list whose array was atomic */
 static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, from the page map */
   uintptr_t w = (uintptr_t)a; Seg **m, *s;
@@ -2261,16 +2714,70 @@ static int atomic_items(const I *a) {  /* is the item array a atomic? its kind, 
   return w - gc_lo < gc_hi - gc_lo && (m = pmap[w >> 30]) && (s = m[w >> 12 & 0x3ffff]) && (s->k & 1);
 }
 static void empty(List *l) {           /* detach an empty list's historical storage without allocating */
-  if (l->cap) { l->cap = 0; l->a = atomic_items(l->a) ? empty_atomic : empty_list; }   /* cap 0 during sort: preserve its mutation marker */
+  if (l->cap) { l->cap = 0; l->a = atomic_items(l->a) ? empty_atomic : empty_list; if (l->ids) l->ids = empty_identity(l->ids[0]); }   /* cap 0 during sort: preserve its mutation marker */
 }
 static I *item_array(I n, int atomic) { return atomic ? pys_alloc_atomic(n * 8) : pys_alloc(n * 8); }
 static List *list_new(I cap, int atomic) {
-  List *l = pys_alloc(sizeof(List));
+  /* The allocator adds one slack byte. Request the full 32-byte header without
+     promoting it to the next size class; the former 24-byte header used 32 too. */
+  List *l = pys_alloc(sizeof(List) - 1);
   l->cap = cap > 4 ? cap : 4;
   l->a = item_array(l->cap, atomic); return l;
 }
 List *pys_list_new(I cap) { return list_new(cap, 0); }
 List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], list[float] or list[bool] */
+/* Only dynamic program graphs request this companion. The numeric array remains raw and
+   atomic, preserving its C ABI. A raw in-place store clears its companion without allocating;
+   a later observation or sharing operation materializes that new object. Pure moves carry
+   the null marker with the value. Bit 2 of the companion header marks pending entries.
+   Copies must materialize before sharing, so separate reads
+   of copied items cannot create unrelated boxes.
+   A list of ints of a program that opts in to promoting ints (docs/python-int.md), and not to
+   dynamic Any, keeps the Mpz of an item past 64 bits in a companion of kind BIGIDS instead, the
+   item's slot holding -2**63, as a tuple's does, and the entries of its other items (-2**63 among
+   them) null: list_box makes none, so the code above and below keeps it in step as it is. (BIGIDS,
+   big_list and lbig are with the promoting ints' code.) */
+void pys_list_narrow(List *l) { list_narrow(l); }
+static I list_box(I value, I kind) {
+  opt_in();
+  return (kind & 3) == BIGIDS ? 0 : (I)((kind & 3) == 1 ? pys_dyn_int(value) : pys_dyn_float(dbl(value)));
+}
+static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
+  opt_in();
+  if (!l->ids) {
+    /* Companion allocation limits use the allocator's fatal MemoryError convention. */
+    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((l->cap + 1) * sizeof(I));
+    ids[0] = kind & 3; l->ids = ids;
+  }
+  for (I i = 0; i < l->len; i++)
+    if (!l->ids[i + 1]) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
+  l->ids[0] &= 3;
+}
+void pys_list_identity(List *l, I kind) {
+  /* Keep the clean check small enough to inline into getters/stores in the
+     precompiled JIT runtime as well as AOT. Only missing/dirty storage calls out. */
+  if (!l->ids || (l->ids[0] & 4)) list_identity_slow(l, kind);
+}
+static void identity_pair(List *a, List *b) {   /* before list a takes list b's items */
+  if ((a->ids || b->ids) && opt_in()) {
+    I kind = a->ids ? a->ids[0] : b->ids[0];
+    if ((kind & 3) == BIGIDS) {   /* (promoting ints: a needs a companion where b has one) */
+      if (b->ids) pys_list_identity(a, kind);
+      return;
+    }
+    pys_list_identity(a, kind); pys_list_identity(b, kind);
+  }
+}
+void pys_list_forget_identity(List *l) {
+  /* The CPython FFI twin copies every native array element back after a call. Even an
+     unchanged numeric payload becomes a fresh Python value there. */
+  if (l->ids && !big_list(l)) {
+    for (I i = 0; i < l->len; i++) l->ids[i + 1] = list_box(l->a[i], l->ids[0]);
+    l->ids[0] &= 3;
+  }
+}
+
 List *pys_m_ufloats(List *l, Str *d) {   /* math.fsum()'s floats of a list of a union's numbers (d the union's) */
   List *r = pys_list_new_atomic(l->len);
   for (I i = 0; i < l->len; i++) {
@@ -2293,41 +2800,138 @@ static void reserve(List *l, I n) {
   I c = l->cap * 2 > n ? l->cap * 2 : n;
   if (c < 4) c = 4;
   I *a = item_array(c, atomic_items(l->a));
-  memcpy(a, l->a, l->len * 8); l->a = a; l->cap = c;
+  memcpy(a, l->a, l->len * 8); l->a = a;
+  if (l->ids) {
+    if (c > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((c + 1) * sizeof(I));
+    memcpy(ids, l->ids, (l->len + 1) * sizeof(I)); l->ids = ids;
+  }
+  l->cap = c;
 }
 /* element access through a distinct struct type: TBAA then knows a store to an element
    never changes l->len or l->a, so LLVM hoists those loads out of loops */
 typedef struct { I v; } Slot;
 #define AT(l, i) (((Slot *)(l)->a)[i].v)
-void pys_list_append(List *l, I v) { if (l->len == l->cap) reserve(l, l->len + 1); AT(l, l->len++) = v; }
+void pys_list_append(List *l, I v) {
+  I id = l->ids ? list_box(v, l->ids[0]) : 0;
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  if (l->ids) l->ids[l->len + 1] = id;
+  AT(l, l->len++) = v;
+}
+void pys_list_append_identity(List *l, I v, Dyn *id, I kind) {
+  pys_list_identity(l, kind);
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  l->ids[l->len + 1] = (I)id; AT(l, l->len++) = v;
+}
+Dyn *pys_list_get_identity(List *l, I i, I kind) {
+  i = idx(i, l->len, "IndexError: list index out of range");
+  pys_list_identity(l, kind); return (Dyn *)l->ids[i + 1];
+}
 I pys_list_get(List *l, I i) { return AT(l, idx(i, l->len, "IndexError: list index out of range")); }
-void pys_list_set(List *l, I i, I v) { AT(l, idx(i, l->len, "IndexError: list assignment index out of range")) = v; }
+void pys_list_set(List *l, I i, I v) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  if (l->ids) { l->ids[i + 1] = 0; if (!big_list(l)) l->ids[0] |= 4; }   /* pending fresh identity; no allocation (an int that fits: BIGIDS) */
+  AT(l, i) = v;
+}
+void pys_list_set_identity(List *l, I i, I v, Dyn *id, I kind) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  pys_list_identity(l, kind); l->ids[i + 1] = (I)id; AT(l, i) = v;
+}
 /* a slot a list no longer uses is zeroed: the collector scans the whole array, so a stale
    pointer there would keep the removed item alive (and a removed file open) */
 I pys_list_pop(List *l, I i) {
   if (!l->len) pys_fail("IndexError: pop from empty list");
   i = idx(i, l->len, "IndexError: pop index out of range");
-  I v = l->a[i]; memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0;
+  I v = l->a[i];
+  if (l->ids) { memmove(l->ids + i + 1, l->ids + i + 2, (l->len - i - 1) * 8); l->ids[l->len] = 0; }
+  memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0;
   if (!l->len) empty(l);
   return v;
 }
-void pys_list_del(List *l, I i) { i = idx(i, l->len, "IndexError: list assignment index out of range"); memmove(l->a + i, l->a + i + 1, (l->len - i - 1) * 8); l->a[--l->len] = 0; if (!l->len) empty(l); }
+Dyn *pys_list_pop_identity(List *l, I i, I kind) {
+  if (!l->len) pys_fail("IndexError: pop from empty list");
+  i = idx(i, l->len, "IndexError: pop index out of range");
+  pys_list_identity(l, kind); Dyn *id = (Dyn *)l->ids[i + 1];
+  pys_list_pop(l, i); return id;
+}
+void pys_list_del(List *l, I i) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  pys_list_pop(l, i);
+}
 void pys_list_insert(List *l, I i, I v) {
   if (i < 0 && (i += l->len) < 0) i = 0;
   if (i > l->len) i = l->len;
-  reserve(l, l->len + 1); memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
+  I id = l->ids ? list_box(v, l->ids[0]) : 0;
+  reserve(l, l->len + 1);
+  if (l->ids) { memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = id; }
+  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
 }
-void pys_list_extend(List *l, List *m) { I n = m->len; reserve(l, l->len + n); memcpy(l->a + l->len, m->a, n * 8); l->len += n; }
+void pys_list_insert_identity(List *l, I i, I v, Dyn *id, I kind) {
+  if (i < 0 && (i += l->len) < 0) i = 0;
+  if (i > l->len) i = l->len;
+  pys_list_identity(l, kind); reserve(l, l->len + 1);
+  memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = (I)id;
+  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = v; l->len++;
+}
+/* An item past 64 bits of a list of ints (BIGIDS, above): its slot holds -2**63, and its entry
+   in the companion, which the first such item makes, its Mpz. Compiled code stores an int that
+   fits as before (the stores above clear its entry), and reads the Mpz where it reads -2**63 */
+static void big_companion(List *l) {
+  if (!l->ids) {
+    if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
+    I *ids = pys_alloc((l->cap + 1) * sizeof(I));
+    ids[0] = BIGIDS; l->ids = ids;
+  } else if (!big_list(l)) pys_fail(NARROW);   /* (one that dynamic code gave identities holds 64-bit ints) */
+}
+void pys_list_set_big(List *l, I i, Mpz *m) {
+  i = idx(i, l->len, "IndexError: list assignment index out of range");
+  big_companion(l); l->ids[i + 1] = (I)m; AT(l, i) = INT64_MIN;
+}
+void pys_list_append_big(List *l, Mpz *m) {
+  big_companion(l);
+  if (l->len == l->cap) reserve(l, l->len + 1);
+  l->ids[l->len + 1] = (I)m; AT(l, l->len++) = INT64_MIN;
+}
+void pys_list_insert_big(List *l, I i, Mpz *m) {
+  if (i < 0 && (i += l->len) < 0) i = 0;
+  if (i > l->len) i = l->len;
+  big_companion(l); reserve(l, l->len + 1);
+  memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = (I)m;
+  memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = INT64_MIN; l->len++;
+}
+Mpz *pys_list_big_at(List *l, I i) {   /* the Mpz of the item at index i (as pys_list_get takes it) whose slot holds -2**63, or NULL */
+  if (i < 0) i += l->len;
+  return big_list(l) ? (Mpz *)l->ids[i + 1] : NULL;
+}
+Big pys_list_big_pop(List *l, I i) {   /* l.pop(i) of a list of ints, as a promoting int */
+  if (!l->len) pys_fail("IndexError: pop from empty list");
+  i = idx(i, l->len, "IndexError: pop index out of range");
+  Big r = litem(l, i);
+  pys_list_pop(l, i); return r;
+}
+void pys_list_extend(List *l, List *m) {
+  identity_pair(l, m); I n = m->len; reserve(l, l->len + n);
+  if (l->ids) { if (m->ids) memcpy(l->ids + l->len + 1, m->ids + 1, n * 8); else memset(l->ids + l->len + 1, 0, n * 8); }   /* (m's ints fit) */
+  memcpy(l->a + l->len, m->a, n * 8); l->len += n;
+}
 List *pys_list_slice(List *l, I lo, I hi) {
   span(&lo, &hi, l->len);
-  List *r = list_new(hi - lo, atomic_items(l->a)); memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
+  if (l->ids) pys_list_identity(l, l->ids[0]);
+  List *r = list_new(hi - lo, atomic_items(l->a));
+  if (l->ids) { pys_list_identity(r, l->ids[0]); memcpy(r->ids + 1, l->ids + lo + 1, (hi - lo) * 8); }
+  memcpy(r->a, l->a + lo, (hi - lo) * 8); r->len = hi - lo; return r;
 }
 List *pys_list_copy(List *l) { return pys_list_slice(l, NONE, NONE); }
-void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); l->len = 0; empty(l); }
+void pys_list_clear(List *l) { memset(l->a, 0, l->len * 8); if (l->ids) memset(l->ids + 1, 0, l->len * 8); l->len = 0; empty(l); }
 List *pys_list_slice_step(List *l, I lo, I hi, I st) {
   I n = sspan(&lo, hi, &st, l->len);
+  if (l->ids) pys_list_identity(l, l->ids[0]);
   List *r = list_new(n, atomic_items(l->a));
-  for (I i = 0; i < n; i++) r->a[i] = l->a[lo + i * st];
+  if (l->ids) pys_list_identity(r, l->ids[0]);
+  for (I i = 0; i < n; i++) {
+    r->a[i] = l->a[lo + i * st];
+    if (l->ids) r->ids[i + 1] = l->ids[lo + i * st + 1];
+  }
   r->len = n; return r;
 }
 /* l[lo:hi:st] = v and del l[lo:hi:st], as CPython's list_ass_subscript: with a step of 1, any
@@ -2337,13 +2941,22 @@ List *pys_list_slice_step(List *l, I lo, I hi, I st) {
 void pys_list_set_slice(List *l, I lo, I hi, I st, List *v) {
   I n = l->len, k = sspan(&lo, hi, &st, n), m = v->len;
   if (v == l) v = pys_list_copy(l);
+  identity_pair(l, v);
   if (st != 1) {
     if (m != k) failf("ValueError: attempt to assign sequence of size %lld to extended slice of size %lld", (long long)m, (long long)k);
-    for (I i = 0; i < k; i++) l->a[lo + i * st] = v->a[i];
+    for (I i = 0; i < k; i++) {
+      l->a[lo + i * st] = v->a[i];
+      if (l->ids) l->ids[lo + i * st + 1] = v->ids ? v->ids[i + 1] : 0;   /* (v's ints fit) */
+    }
     return;
   }
   if (n + m - k == 0) { pys_list_clear(l); return; }
   if (m > k) reserve(l, n + m - k);
+  if (l->ids) {
+    memmove(l->ids + lo + m + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
+    if (m < k) memset(l->ids + n + m - k + 1, 0, (k - m) * 8);
+    if (v->ids) memcpy(l->ids + lo + 1, v->ids + 1, m * 8); else memset(l->ids + lo + 1, 0, m * 8);
+  }
   memmove(l->a + lo + m, l->a + lo + k, (n - lo - k) * 8);
   if (m < k) memset(l->a + n + m - k, 0, (k - m) * 8);
   memcpy(l->a + lo, v->a, m * 8);
@@ -2351,18 +2964,23 @@ void pys_list_set_slice(List *l, I lo, I hi, I st, List *v) {
 }
 void pys_list_del_slice(List *l, I lo, I hi, I st) {
   I n = l->len, k = sspan(&lo, hi, &st, n), w = n - k;
-  if (st == 1) memmove(l->a + lo, l->a + lo + k, (n - lo - k) * 8);
+  if (st == 1) {
+    memmove(l->a + lo, l->a + lo + k, (n - lo - k) * 8);
+    if (l->ids) memmove(l->ids + lo + 1, l->ids + lo + k + 1, (n - lo - k) * 8);
+  }
   else if (k) {
     if (st < 0) { lo += st * (k - 1); st = -st; }   /* the same items, first to last */
     w = lo;
     for (I i = lo, j = 0; i < n; i++)
       if (j < k && i == lo + j * st) j++;
-      else l->a[w++] = l->a[i];
+      else { l->a[w] = l->a[i]; if (l->ids) l->ids[w + 1] = l->ids[i + 1]; w++; }
   }
   memset(l->a + w, 0, k * 8);
+  if (l->ids) memset(l->ids + w + 1, 0, k * 8);
   if (!(l->len = w)) empty(l);
 }
 List *pys_list_add(List *a, List *b) {
+  if ((a->ids && !big_list(a)) || (b->ids && !big_list(b))) identity_pair(a, b);   /* (identities: the extends carry promoting ints') */
   List *r = list_new(a->len + b->len, atomic_items(a->a) && atomic_items(b->a));
   pys_list_extend(r, a); pys_list_extend(r, b); return r;
 }
@@ -2375,8 +2993,10 @@ void pys_list_imul(List *l, I n) {               /* xs *= n, in place */
   I m = l->len;
   if (n <= 0 || !m) { pys_list_clear(l); return; }
   if (m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
+  if (l->ids) pys_list_identity(l, l->ids[0]);
   reserve(l, m * n);
   repeat_items(l->a, m, m * n);
+  if (l->ids) repeat_items(l->ids + 1, m, m * n);
   l->len = m * n;
 }
 List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items are zero, so one item of
@@ -2384,19 +3004,24 @@ List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items a
   I m = a->len;
   if (!m) n = 0;
   if (n > 0 && m > (INT64_MAX >> 4) / n) pys_fail("MemoryError");
+  if (a->ids) pys_list_identity(a, a->ids[0]);
   List *r = list_new(n > 0 ? m * n : 0, atomic_items(a->a));
   if (n > 0 && (m > 1 || a->a[0])) { memcpy(r->a, a->a, m * 8); repeat_items(r->a, m, m * n); }
+  if (a->ids) {
+    pys_list_identity(r, a->ids[0]);
+    if (n > 0) { memcpy(r->ids + 1, a->ids + 1, m * 8); repeat_items(r->ids + 1, m, m * n); }
+  }
   r->len = n > 0 ? m * n : 0; return r;
 }
-I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (eqitem(l->a[i], v, d->s)) return i; return -1; }
+I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i; return -1; }
 I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
-  for (I i = 0; i < l->len; i++) if (eqpair(l->a[i], v, d->s, vd->s)) return i;
+  for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m ? big_eq(m, v, vd->s) : eqpair(l->a[i], v, d->s, vd->s)) return i; }
   return -1;
 }
 static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
   if (st < 0 && (st += l->len) < 0) st = 0;
   if (en < 0 && (en += l->len) < 0) en = 0;
-  for (I j = st; j < en && j < l->len; j++) if (eqitem(l->a[j], v, d)) return j;
+  for (I j = st; j < en && j < l->len; j++) if (!lbig(l, j) && eqitem(l->a[j], v, d)) return j;
   return -1;
 }
 static _Noreturn void not_in_list(I x, const char *xd) {
@@ -2413,14 +3038,67 @@ I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd) {  /* 
   if (i < 0) not_in_list(x, xd->s);
   return i;
 }
-I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += eqitem(l->a[i], v, d->s); return c; }
+I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s); return c; }
 void pys_list_remove(List *l, I v, Str *d) {
   I i = pys_list_find(l, v, d);
   if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
   if (i < l->len) pys_list_del(l, i);              /* an __eq__ that shrank the list past i: CPython deletes nothing */
 }
+/* x in l (op 0: x's first index, or -1), l.count(x) (1), l.index(x, st, en) (2) and l.remove(x) (3)
+   of a list of ints l in a program that opts in to promoting ints, where x is a promoting int
+   ({lo, hi}) or, where isf, a float (of bits lo), which an int past 64 bits may equal: exactly */
+static int big_item_is(List *l, I i, I lo, Mpz *hi, I isf) {
+  Mpz *m = lbig(l, i);
+  if (isf) return m ? pys_big_cmp_float(0, m, dbl(lo)) == 0 : pys_cmp_if(l->a[i], dbl(lo)) == 0;
+  return m || hi ? m && hi && pys_mpz_cmp(m, hi) == 0 : l->a[i] == lo;
+}
+I pys_list_big_find(List *l, I lo, Mpz *hi, I isf, I op, I st, I en) {
+  if (op != 2) { st = 0; en = INT64_MAX; }
+  if (st < 0 && (st += l->len) < 0) st = 0;
+  if (en < 0 && (en += l->len) < 0) en = 0;
+  I c = 0;
+  for (I i = st; i < en && i < l->len; i++) {
+    if (!big_item_is(l, i, lo, hi, isf)) continue;
+    if (op == 1) { c++; continue; }
+    if (op == 3) pys_list_del(l, i);
+    return i;
+  }
+  if (op == 1) return c;
+  if (op == 3) pys_fail("ValueError: list.remove(x): x not in list");
+  if (op == 2) {
+    Str *s = isf ? pys_str_float(dbl(lo)) : pys_big_str(lo, hi);
+    Buf b = {0}; put(&b, "ValueError: ", 12); put(&b, s->s, s->len); put(&b, " is not in list", 16); pys_fail(b.p);
+  }
+  return -1;
+}
+/* Numeric queries retain the query's identity as well as its raw value. This is
+   observable for NaNs in membership, count/index/remove and sequence comparison. */
+I pys_list_find_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
+  pys_list_identity(l, kind);
+  for (I i = 0; i < l->len; i++)
+    if (l->ids[i + 1] == (I)id || eqpair(l->a[i], v, d->s, vd->s)) return i;
+  return -1;
+}
+I pys_list_index_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind, I st, I en) {
+  pys_list_identity(l, kind);
+  if (st < 0 && (st += l->len) < 0) st = 0;
+  if (en < 0 && (en += l->len) < 0) en = 0;
+  for (I i = st; i < en && i < l->len; i++)
+    if (l->ids[i + 1] == (I)id || eqpair(l->a[i], v, d->s, vd->s)) return i;
+  not_in_list(v, vd->s);
+}
+I pys_list_count_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
+  pys_list_identity(l, kind); I n = 0;
+  for (I i = 0; i < l->len; i++) n += l->ids[i + 1] == (I)id || eqpair(l->a[i], v, d->s, vd->s);
+  return n;
+}
+void pys_list_remove_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
+  I i = pys_list_find_identity(l, v, id, d, vd, kind);
+  if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
+  if (i < l->len) pys_list_del(l, i);
+}
 static void rev(I *a, I n) { for (I i = 0, j = n - 1; i < j; i++, j--) { I t = a[i]; a[i] = a[j]; a[j] = t; } }
-void pys_list_reverse(List *l) { rev(l->a, l->len); }
+void pys_list_reverse(List *l) { rev(l->a, l->len); if (l->ids) rev(l->ids + 1, l->len); }
 /* Portions derived from CPython's Objects/listobject.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
 /* list.sort is CPython 3.13's timsort (Objects/listobject.c, designed in listsort.txt), ported
@@ -2639,7 +3317,78 @@ static void sort_undo(void *p) {
   u->l->len = u->n; u->l->cap = u->cap; u->l->a = u->a;
   keep_u = u->outer;
 }
+List *pys_list_keyed(List *l, List *keys, I taken);
+void pys_list_unkey(List *l, List *p);
+static I big_cmp_items(const Big *x, const Big *y) { return pys_big_cmp(x->lo, x->hi, y->lo, y->hi); }
+static void big_sift(Big *v, I i, I n) {   /* heapsort's sift of v[i] down the max-heap v[0, n) */
+  for (I c; (c = 2 * i + 1) < n; i = c) {
+    if (c + 1 < n && big_cmp_items(&v[c], &v[c + 1]) < 0) c++;
+    if (big_cmp_items(&v[i], &v[c]) >= 0) return;
+    Big t = v[i]; v[i] = v[c]; v[c] = t;
+  }
+}
+static List *big_ranks(List *k) {   /* k's ints, some past 64 bits (BIGIDS), as their ranks: 64-bit ints in their order */
+  I n = k->len, m = 0;
+  if (n > INT64_MAX / (I)sizeof(Big)) oom();
+  Big *v = pys_alloc(n * sizeof(Big));        /* (scanned: Mpz pointers) */
+  for (I i = 0; i < n; i++) v[i] = litem(k, i);
+  for (I i = n / 2; i--;) big_sift(v, i, n);   /* (an int's comparisons run no code of the program's) */
+  for (I i = n; i-- > 1;) { Big t = v[0]; v[0] = v[i]; v[i] = t; big_sift(v, 0, i); }
+  for (I i = 0; i < n; i++) if (!m || big_cmp_items(&v[i], &v[m - 1])) v[m++] = v[i];
+  List *r = pys_list_new_atomic(n);
+  for (I i = 0; i < n; i++) {
+    Big x = litem(k, i); I lo = 0, hi = m - 1;
+    while (lo < hi) { I mid = lo + (hi - lo) / 2; if (big_cmp_items(&v[mid], &x) < 0) lo = mid + 1; else hi = mid; }
+    r->a[i] = lo;
+  }
+  r->len = n; return r;
+}
+void pys_list_sort_r(List *l, Str *d, I reverse);
+static void big_merge_sort(Mpz **v, Mpz **t, I n) {   /* v[0, n) by value, through t (n slots) */
+  for (I w = 1; w < n; w *= 2) {
+    for (I lo = 0; lo < n; lo += 2 * w) {
+      I mid = lo + w < n ? lo + w : n, hi = lo + 2 * w < n ? lo + 2 * w : n, i = lo, j = mid, k = lo;
+      while (i < mid && j < hi) t[k++] = pys_mpz_cmp(v[j], v[i]) < 0 ? v[j++] : v[i++];
+      while (i < mid) t[k++] = v[i++];
+      while (j < hi) t[k++] = v[j++];
+    }
+    memcpy(v, t, n * sizeof(Mpz *));
+  }
+}
+static void big_sort(List *l, Str *d, I reverse) {
+  /* sort() of a list of ints that holds some past 64 bits (BIGIDS): those that are negative go
+     before every 64-bit int and the others after them, so the 64-bit ints sort as before and
+     only the others are compared as Mpzs. (An int's comparisons run no code of the program's,
+     and equal ints cannot be told apart, so this order is the sort's.) */
+  I n = l->len, k = 0, nb = 0, neg = 0, *ids = l->ids;
+  if (n > INT64_MAX / (I)(2 * sizeof(Mpz *))) oom();
+  Mpz **b = pys_alloc(2 * n * sizeof(Mpz *));   /* (scanned: the Mpzs, then the merge's room) */
+  for (I i = 0; i < n; i++) {
+    Mpz *m = lbig(l, i);
+    if (m) { b[nb++] = m; neg += m->size < 0; } else l->a[k++] = l->a[i];
+  }
+  l->len = k; l->ids = NULL; pys_list_sort_r(l, d, 0); l->len = n; l->ids = ids;
+  big_merge_sort(b, b + nb, nb);
+  memmove(l->a + neg, l->a, k * 8);
+  for (I i = 0; i < n; i++) {
+    Mpz *m = i < neg ? b[i] : i >= neg + k ? b[i - k] : NULL;
+    if (m) l->a[i] = INT64_MIN;
+    ids[i + 1] = (I)m;
+  }
+  if (reverse) { rev(l->a, n); rev(ids + 1, n); }
+}
 void pys_list_sort_r(List *l, Str *d, I reverse) {
+  if (big_list(l) && !list_has_big(l)) {   /* (promoting ints that fit: no companion entry to move) */
+    I *ids = l->ids; l->ids = NULL; pys_list_sort_r(l, d, reverse); l->ids = ids; return;
+  }
+  if (big_list(l)) { big_sort(l, d, reverse); return; }
+  if (l->ids) {
+    /* Numeric comparisons cannot call user code. Move a record containing the number
+       and its box through the same stable timsort, preserving NaN comparison order. */
+    List *p = pys_list_keyed(l, l, 0);
+    struct { I len; uint64_t hash; I chars1; char text[3]; } kd = {2, 0, 3, {'K', *d->s, 0}};
+    pys_list_sort_r(p, (Str *)&kd, reverse); pys_list_unkey(l, p); return;
+  }
   I n = l->len, cap = l->cap, *a = l->a, m = n, r = 0, c = *d->s;
   MS ms = {.d = d->s, .kind = c == 'i' || c == 'b' ? INT : c == 'f' ? FLOAT : c == 's' ? STR : c == 'O' ? OBJ : 0,
            .cls = c == 'O' ? ocls(d->s + 1) : 0, .a = a, .n = n, .min_gallop = MIN_GALLOP};
@@ -2687,26 +3436,38 @@ void pys_list_sort(List *l, Str *d) { pys_list_sort_r(l, d, 0); }
 typedef struct { List t; List *l, *p; } Taken;     /* the items l gave up, and the records sorting them */
 static void untake(void *p) {
   Taken *k = p;
-  if (k->p) for (I i = 0; i < k->p->len; i++) k->t.a[i] = ((I *)k->p->a[i])[1];
-  k->l->len = k->t.len; k->l->cap = k->t.cap; k->l->a = k->t.a;
+  if (k->p) pys_list_unkey(&k->t, k->p);
+  k->l->len = k->t.len; k->l->cap = k->t.cap; k->l->a = k->t.a; k->l->ids = k->t.ids;
 }
 List *pys_list_take(List *l) {
-  Taken *k = pys_alloc(sizeof(Taken));
+  Taken *k = pys_alloc(sizeof(Taken) - 1);   /* the allocator adds its slack byte */
   k->t = *l; k->l = l; k->p = 0;
+  if (l->ids) l->ids = empty_identity(l->ids[0]);
   l->len = l->cap = 0; l->a = sorting;
   if (eh) unwind_push(untake, k);
   return &k->t;
 }
 List *pys_list_keyed(List *l, List *keys, I taken) {   /* the records of l's items and their keys */
-  I n = l->len, *r = pys_alloc(n * 16 + 8);
+  if (l->ids) pys_list_identity(l, l->ids[0]);
+  if (list_has_big(keys)) keys = big_ranks(keys);   /* (ints past 64 bits: sorted by their ranks) */
+  I n = l->len, width = l->ids ? 3 : 2;
+  if (l->ids && n > (INT64_MAX - 8) / (width * 8)) oom();
+  I *r = pys_alloc(n * width * 8 + 8);
   List *p = pys_list_new(n);
-  for (I i = 0; i < n; i++) { r[2 * i] = keys->a[i]; r[2 * i + 1] = l->a[i]; p->a[i] = (I)(r + 2 * i); }
+  for (I i = 0; i < n; i++) {
+    r[width * i] = keys->a[i]; r[width * i + 1] = l->a[i];
+    if (l->ids) r[width * i + 2] = l->ids[i + 1];
+    p->a[i] = (I)(r + width * i);
+  }
   p->len = n;
   if (taken) ((Taken *)l)->p = p;                    /* (l is what pys_list_take returned) */
   return p;
 }
 void pys_list_unkey(List *l, List *p) {
-  for (I i = 0; i < p->len; i++) l->a[i] = ((I *)p->a[i])[1];
+  for (I i = 0; i < p->len; i++) {
+    l->a[i] = ((I *)p->a[i])[1];
+    if (l->ids) l->ids[i + 1] = ((I *)p->a[i])[2];
+  }
 }
 void pys_list_give(List *t) {
   Taken *k = (Taken *)t;
@@ -2717,13 +3478,30 @@ void pys_list_give(List *t) {
 }
 I pys_list_minmax(List *l, Str *d, I max) {   /* keeps the item it compared, whatever the comparison did to l */
   if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
+  list_narrow(l);
   I m = l->a[0];
   for (I i = 1; i < l->len; i++) { I v = l->a[i]; if (opv(v, m, d->s, max ? 2 : 0)) m = v; }   /* item > max / item < min */
   return m;
 }
+Big pys_list_big_minmax(List *l, I max) {   /* min(l) or max(l) of a list of ints, as a promoting int: the first of equal ones */
+  if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
+  Big m = litem(l, 0);
+  for (I i = 1; i < l->len; i++) {
+    Big v = litem(l, i);
+    I c = v.hi || m.hi ? pys_big_cmp(v.lo, v.hi, m.lo, m.hi) : (v.lo > m.lo) - (v.lo < m.lo);
+    if (max ? c > 0 : c < 0) m = v;
+  }
+  return m;
+}
+Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
+  if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
+  pys_list_identity(l, kind); I at = 0;
+  for (I i = 1; i < l->len; i++) if (opv(l->a[i], l->a[at], d->s, max ? 2 : 0)) at = i;
+  return (Dyn *)l->ids[at + 1];
+}
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
 I pys_all(List *l) { for (I i = 0; i < l->len; i++) if (!l->a[i]) return 0; return 1; }
-I pys_sum_int(List *l, I s) { for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
+I pys_sum_int(List *l, I s) { list_narrow(l); for (I i = 0; i < l->len; i++) if (__builtin_add_overflow(s, l->a[i], &s)) pys_fail(OVF); return s; }
 static double fsum(List *l, I i, double s) {  /* CPython 3.12's compensated (Neumaier) sum of l[i:] */
   double c = 0;
   for (; i < l->len; i++) {
@@ -2846,7 +3624,7 @@ static uint64_t hstrd(Str *s) {                      /* a str key's hash */
 static I ohash(I k, const char *d) { return pys_obj_eq(-1 - ocls(d + 1), k, 0); }   /* hash(k) of an H<id> */
 static I hitem(I k, const char *d);
 static uint64_t dmask(Dict *d) { return (uint64_t)(d->kind & KTAG ? d->size : d->size * 2) - 1; }   /* idx's slots, less one */
-static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (strchr(kdesc(kind), 'H') || strchr(kdesc(kind), 'A'))); }   /* keys hashed by CPython's hash */
+static int khash(I kind) { return (kind & KTAG) || (kind > 1 && (*kraw(kind) == '!' || strchr(kdesc(kind), 'H') || strchr(kdesc(kind), 'A'))); }   /* keys hashed by CPython's hash */
 /* a tuple or object key's hash (or its item's), by its descriptor d, never 0; 0 where d holds an
    H<id> (khash), before any item is hashed by its class: hsh then takes CPython's hash. The items
    before it are ints, strs, None, objects by identity and such tuples, which run no code */
@@ -2862,10 +3640,12 @@ static uint64_t hval(I k, const char *d) {
   for (int i = 0; i < d[1] - '0'; i++) {
     /* an int, bool, str or str | None item (a key's tuple holds only those, objects and such
        tuples) is hashed in place, as the call for it would hash it, without walking its
-       descriptor again */
+       descriptor again; a promoting int (J) too, by its slot, or where that holds -2**63 by its
+       Mpz word's hash (titem's; -2**63 itself has none) */
     I x = ((I *)k)[i]; uint64_t v;
-    if (*e == 'i' || *e == 'b') { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; e++; }
+    if (*e == 'i' || *e == 'b' || (*e == 'J' && x != INT64_MIN)) { v = (uint64_t)pys_hash_int(x); v = v ? v : 1; e++; }
     else if (*e == 's' || (*e == '?' && e[1] == 's')) { v = x ? hstrd((Str *)x) : 0x9E3779B97F4A7C15ULL; e += 1 + (*e == '?'); }
+    else if (*e == 'J' && opt_in()) { Mpz *m = (Mpz *)((I *)k)[d[1] - '0' + i]; v = (uint64_t)(m ? pys_mpz_hash(m) : pys_hash_int(x)); v = v ? v : 1; e++; }
     else { v = hval(x, e); if (!v) return 0; e = skip(e); }
     h = (h ^ v) * 0x100000001B3ULL;
   }
@@ -2880,21 +3660,38 @@ static uint64_t hkey(I k, const char *d) {   /* a tuple or object key's, or an A
   uint64_t h = hval(k, d); return h ? h : hcls(k, d);
 }
 static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? h : 1; }   /* an int key's: 0 marks a hole */
+/* the hash of an int key past 64 bits (kbig), its Mpz m: hint1 of CPython's hash of it. hint1 gives
+   -2**63 a hash of its own (pys_hash_int is a bijection, and is 1 for no int that 0 is not), and
+   CPython's hash is never -2**63, so no 64-bit key's lookup meets an entry of a key past 64 bits
+   (whose slot holds -2**63): only dbfind finds them */
+static uint64_t hbig(Mpz *m) { return hint1(pys_mpz_hash(m)); }
+/* the hash of key k of a table of kind > 1: an opt-in table of native scalar keys ('!') takes
+   CPython's hash out of line (hcls), which keeps this small enough to inline into the lookups of
+   tuple and Any keys (dhfind, dpfind), as hkey alone was before '!' */
+static inline uint64_t hobj(I kind, I k) { const char *d = kraw(kind); return *d == '!' ? hcls(k, d + 1) : hkey(k, d); }
 static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple or object key's descriptor */
-  return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? hkey(k, kdesc(d->kind)) : hint1(k);
+  return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? hobj(d->kind, k) : hint1(k);
+}
+/* items i of tuples x and y of n items, promoting ints (J) one of whose slots holds -2**63: equal,
+   by their two words (titem); a call of its own, which keeps keq small */
+__attribute__((noinline)) static int jeq(const I *x, const I *y, I n, I i) {
+  I wx[2], wy[2]; return eqv(titem(x, n, i, "J", wx), titem(y, n, i, "J", wy), "J");
 }
 /* tuple keys of descriptor d: eqv's answer; pure: 2 instead at the first item whose comparison
-   may run the program's code (an object, a tuple of its own), before comparing it */
-static int keq(I a, I b, const char *d, int pure) {
+   may run the program's code (an object, a tuple of its own), before comparing it. Inlined into
+   the probes (dlook), whose loop so compares tuples of ints, bools and strs without a call */
+static inline __attribute__((always_inline)) int keq(I a, I b, const char *d, int pure) {
   I *x = (I *)a, *y = (I *)b; const char *e = d + 2;
   if (!x || !y) return x == y;
   for (int i = 0; i < d[1] - '0'; i++) {
-    /* an int, bool, str or str | None item in place, another as eqitem compares it */
+    /* an int, bool, str or str | None item in place, a promoting int (J) too, by its slots where
+       neither is -2**63 (else jeq), another as eqitem compares it */
     if (*e == 'i' || *e == 'b') { if (x[i] != y[i]) return 0; e++; }
     else if (*e == 's' || (*e == '?' && e[1] == 's')) {
       if (x[i] != y[i] && (!x[i] || !y[i] || !pys_str_eq((Str *)x[i], (Str *)y[i]))) return 0;
       e += 1 + (*e == '?');
     }
+    else if (*e == 'J' && opt_in()) { if (x[i] == INT64_MIN || y[i] == INT64_MIN ? !jeq(x, y, d[1] - '0', i) : x[i] != y[i]) return 0; e++; }
     else { if (pure) return 2; if (!eqitem(x[i], y[i], e)) return 0; e = skip(e); }
   }
   return 1;
@@ -2904,7 +3701,7 @@ static int keyeq(I a, I b, const char *d) {   /* keys of descriptor d: an Any ke
 }
 static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
 static I *keymem(I kind, I n) {      /* the key array of a dict or set of this kind: an int key holds no pointer */
-  return kind ? pys_alloc(n * 8) : pys_alloc_atomic(n * 8);
+  return kind && !(kind > 1 && (*kdesc(kind) == 'i' || *kdesc(kind) == 'b')) ? pys_alloc(n * 8) : pys_alloc_atomic(n * 8);
 }
 /* is d's key x, of entry e, equal to k (kind > 1): 1 or 0, or -1 where an __eq__ changed the table
    or that entry, after which CPython's lookdict starts again. Out of dfind's loop, which compares
@@ -2956,8 +3753,21 @@ __attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) { r
 /* dfind of key k, which it hashes (hsh) into *hp first: one test of the kind for both */
 static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp, I *free) {
   if (d->kind == 1) return dfindi(d, k, *hp = hstrd((Str *)k), free);
-  if (d->kind > 1) return dfind(d, k, *hp = hkey(k, kdesc(d->kind)), free);
+  if (d->kind > 1) return dfind(d, k, *hp = hobj(d->kind, k), free);
   return dfindi(d, k, *hp = hint1(k), free);
+}
+/* the idx slot of key m, an int past 64 bits whose hash is h (hbig), or -1, and *free as dlook's:
+   an entry of that hash whose key's Mpz (kbig) is equal to m */
+static I dbfind(Dict *d, Mpz *m, uint64_t h, I *free) {
+  if (!d->size) return -1;
+  I f = -1;
+  for (uint64_t k = dmask(d), i = h & k, p = h;; p >>= 5, i = (i * 5 + p + 1) & k) {
+    DICT_PROBE();
+    int32_t e = d->idx[i];
+    if (!e) { if (free) *free = f < 0 ? (I)i : f; return -1; }
+    if (e < 0) { if (f < 0) f = i; }
+    else if (d->hs[e - 1] == h) { Mpz *x = kbig(d, e - 1); if (x && (x == m || pys_mpz_cmp(x, m) == 0)) return (I)i; }
+  }
 }
 static I dempty(Dict *d, uint64_t h) {               /* find_empty_slot: hash h's first idx slot that is a hole or empty */
   for (uint64_t m = dmask(d), p = h, i = p & m;; p >>= 5, i = (i * 5 + p + 1) & m) { DICT_PROBE(); if (d->idx[i] <= 0) return (I)i; }
@@ -2965,18 +3775,21 @@ static I dempty(Dict *d, uint64_t h) {               /* find_empty_slot: hash h'
 static void build(Dict *d, Dict *src, I size) {      /* d := src's items in a table of this size, holes dropped */
   if (khash(d->kind)) d->kind |= KTAG;
   I u = size * 2 / 3, *k = keymem(d->kind, u), *v = item_array(u, (int)d->vatomic), n = 0, m = d->kind & KTAG ? size - 1 : size * 2 - 1;
+  I *vb = src->vb ? pys_alloc(u * 8) : 0, *kb = src->kb ? pys_alloc(u * 8) : 0;
   uint64_t *hs = pys_alloc_atomic(u * 8); int32_t *ix = pys_alloc_atomic((m + 1) * 4);
+  if (vb || kb)   /* (the live entries' words, in their new order: a pass of its own) */
+    for (I e = 0, j = 0; e < src->n; e++) if (dlive(src, e)) { if (vb) vb[j] = src->vb[e]; if (kb) kb[j] = src->kb[e]; j++; }
   for (I e = 0; e < src->n; e++) {
     uint64_t h = src->hs[e], p = h, i = p & m;
-    if (!h && !src->keys[e]) continue;
+    if (!dlive(src, e)) continue;
     DICT_PROBE();
     while (ix[i]) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
     k[n] = src->keys[e]; v[n] = src->vals[e]; hs[n] = h; ix[i] = (int32_t)++n;
   }
-  d->len = n; d->n = n; d->cut = 0; d->size = size; d->keys = k; d->vals = v; d->hs = hs; d->idx = ix;
+  d->len = n; d->n = n; d->cut = 0; d->size = size; d->keys = k; d->vals = v; d->hs = hs; d->idx = ix; d->vb = vb; d->kb = kb;
 }
 static Dict *dict_new(I kind, I n, I vatomic) {      /* a display of n items is presized, as in CPython */
-  Dict *d = pys_alloc(sizeof(Dict)); d->kind = kind; d->vatomic = vatomic;
+  Dict *d = pys_alloc(sizeof(Dict) - 1); d->kind = kind; d->vatomic = vatomic;   /* (the allocator adds its byte of slack: 96 bytes, as before kb) */
   if (n > 5) build(d, d, n > 87381 ? 1 << 17 : keysize((n * 3 + 1) / 2));
   return d;
 }
@@ -3001,29 +3814,82 @@ LOOKUP I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d
    pys_dict_val reads that entry's value, and entry_set writes it as pys_dict_set overwrites one,
    which moves no entry */
 LOOKUP I pys_dict_find(Dict *d, I k) { return entry(d, k); }
+/* Equality reuses the source entry's stored hash: rerunning __hash__ here
+   would add effects and could hide a key whose hash changed since insertion.
+   The source key/value can disappear during lookup; snapshot its key/hash
+   before dfind, which restarts when a callback changes the target table. */
+LOOKUP I pys_dict_eq_find(Dict *d, Dict *source, I e) {
+  I k = source->keys[e]; uint64_t h = source->hs[e]; Mpz *m = kbig(source, e);
+  I i = m ? dbfind(d, m, h, 0) : dfind(d, k, h, 0);
+  return i < 0 ? -1 : d->idx[i] - 1;
+}
+/* A pair of key layouts supplies its own equality callback. Both tables use
+   Python's hash/probe scheme from construction; the query keeps its stored
+   hash. With unequal hashes the callback tests identity alone: a native and
+   boxed key may share one object whose hash changed between insertions. Raw
+   slot identity is not valid across distinct layouts. As lookdict, retry if
+   a callback replaces the table or its current key. */
+LOOKUP I pys_dict_eq_pair_find(Dict *d, Dict *source, I e, I (*equal)(I, I, I)) {
+  I k = source->keys[e]; uint64_t h = source->hs[e];
+  if (kbig(source, e)) return -1;   /* (a key past 64 bits: d's keys, of another type, hold 64-bit ints) */
+restart:
+  if (!d->size) return -1;
+  for (uint64_t m = dmask(d), i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
+    int32_t entry = d->idx[i];
+    if (!entry) return -1;
+    if (entry < 0 || kbig(d, entry - 1)) continue;
+    I x = d->keys[entry - 1]; int32_t *ix = d->idx;
+    I eq = equal(x, k, d->hs[entry - 1] == h);
+    if (d->idx != ix || d->idx[i] != entry || d->keys[entry - 1] != x) goto restart;
+    if (eq) return entry - 1;
+  }
+}
 LOOKUP I pys_dict_entry(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d, k); return e; }
-void pys_dict_entry_set(Dict *d, I e, I v) { d->vals[e] = v; }
+void pys_dict_entry_set(Dict *d, I e, I v) { d->vals[e] = v; dbig_clear(d, e); }
+void pys_dict_entry_set_big(Dict *d, I e, I lo, Mpz *m) {   /* entry_set of a promoting int (pys_dict_set_big) */
+  if (!m) { pys_dict_entry_set(d, e, lo); return; }
+  d->vals[e] = INT64_MIN; dbig_make(d); d->vb[e] = (I)m;
+}
 LOOKUP I pys_dict_get(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : d->vals[e]; }
 __attribute__((noinline)) static I dgrow(Dict *d, uint64_t h) {   /* insertion_resize: hash h's idx slot in the larger table */
   build(d, d, keysize(d->len * 3)); return dempty(d, h);
 }
 static inline __attribute__((always_inline)) void dadd(Dict *d, I k, uint64_t h, I v, I f) {   /* k, which d has not, into idx slot f (dfind's *free) */
   if (d->n + d->cut >= d->size * 2 / 3) f = dgrow(d, h);    /* (full; popitem's cut entries still count) */
-  d->keys[d->n] = k; d->vals[d->n] = v; d->hs[d->n] = h; d->idx[f] = (int32_t)++d->n; d->len++;
+  dbig_clear(d, d->n); d->keys[d->n] = k; d->vals[d->n] = v;   /* (kb's word: null past the entries, kbig) */ d->hs[d->n] = h; d->idx[f] = (int32_t)++d->n; d->len++;
 }
-static void dset(Dict *d, I k, uint64_t h, I v) {   /* d[k] = v, k's hash h */
+static I dset(Dict *d, I k, uint64_t h, I v) {   /* d[k] = v, k's hash h: the entry */
   I f = -1, i = dfind(d, k, h, &f);
-  if (i >= 0) d->vals[d->idx[i] - 1] = v;
-  else dadd(d, k, h, v, f);
+  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); return e; }
+  dadd(d, k, h, v, f); return d->n - 1;
 }
 LOOKUP void pys_dict_set(Dict *d, I k, I v) {
   uint64_t h; I f = -1, i = dhfind(d, k, &h, &f);
-  if (i >= 0) d->vals[d->idx[i] - 1] = v;
+  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); }
   else dadd(d, k, h, v, f);
+}
+/* d[k] = {lo, m}, a promoting int: past 64 bits, -2**63 and its Mpz (dbig) */
+LOOKUP void pys_dict_set_big(Dict *d, I k, I lo, Mpz *m) {
+  if (!m) { pys_dict_set(d, k, lo); return; }
+  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f), e;
+  if (i >= 0) { e = d->idx[i] - 1; d->vals[e] = INT64_MIN; }
+  else { dadd(d, k, h, INT64_MIN, f); e = d->n - 1; }
+  dbig_make(d); d->vb[e] = (I)m;
+}
+/* d[k] = v of key k past 64 bits, its Mpz m, whose hash is h (hbig): its entry */
+static I dbadd(Dict *d, Mpz *m, uint64_t h, I v, I f) {   /* and of key m, which d has not, into idx slot f (dbfind's *free) */
+  dadd(d, INT64_MIN, h, v, f);
+  if (!d->kb) d->kb = pys_alloc(d->size * 2 / 3 * 8);
+  d->kb[d->n - 1] = (I)m; return d->n - 1;
+}
+static I dbput(Dict *d, Mpz *m, uint64_t h, I v) {
+  I f = -1, i = dbfind(d, m, h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; d->vals[e] = v; dbig_clear(d, e); return e; }
+  return dbadd(d, m, h, v, f);
 }
 static I dtake(Dict *d, I i) {                       /* the value of the entry in idx slot i, which is deleted */
   I e = d->idx[i] - 1, v = d->vals[e];
-  d->idx[i] = -1; d->hs[e] = 0; d->keys[e] = d->vals[e] = 0; d->len--;
+  d->idx[i] = -1; d->hs[e] = d->kind & KTAG ? (uint64_t)-1 : 0; d->keys[e] = d->vals[e] = 0; dbig_clear(d, e); kbig_clear(d, e); d->len--;
   return v;
 }
 /* d.pop(k)'s lookup (dhfind's), as CPython's dict_pop, which does not hash k where d is empty;
@@ -3031,7 +3897,7 @@ static I dtake(Dict *d, I i) {                       /* the value of the entry i
    them apart (kind > 1): the compiler calls pys_dict_pop for del of other keys */
 static inline __attribute__((always_inline)) I dpfind(Dict *d, I k) {
   if (d->kind == 1) return dfindi(d, k, hstrd((Str *)k), 0);
-  if (d->kind > 1) return d->len ? dfind(d, k, hkey(k, kdesc(d->kind)), 0) : -1;
+  if (d->kind > 1) return d->len ? dfind(d, k, hobj(d->kind, k), 0) : -1;
   return dfindi(d, k, hint1(k), 0);
 }
 static I dpop(Dict *d, I k, I dflt, int has) {   /* d.pop(k) (has: d.pop(k, dflt)) */
@@ -3041,39 +3907,156 @@ static I dpop(Dict *d, I k, I dflt, int has) {   /* d.pop(k) (has: d.pop(k, dflt
 }
 I pys_dict_pop(Dict *d, I k) { return dpop(d, k, 0, 0); }
 I pys_dict_pop_default(Dict *d, I k, I dflt) { return dpop(d, k, dflt, 1); }
+/* entry e's (key, value) tuple; big: of promoting ints (bigints.py, utils.tslots), whose key or
+   value past 64 bits holds -2**63 and its Mpz in slot 2 or 3, else of 64-bit ints. (That tuple is
+   one of promoting ints too, where neither slot holds -2**63: only there is an Mpz word read) */
+static inline I *dpair(Dict *d, I e, int big) {
+  I *t;
+  if (big && (d->keys[e] == INT64_MIN || d->vals[e] == INT64_MIN)) { t = pys_alloc(32); t[2] = (I)kbig(d, e); t[3] = (I)dbig(d, e); }
+  else t = pys_alloc(16);
+  t[0] = d->keys[e]; t[1] = d->vals[e];
+  return t;
+}
 /* d.popitem() (dict_popitem_impl): the last entry's (key, value) tuple. The entries end where it
    was, as CPython sets dk_nentries, so the holes before it are not walked again: popping every
    item takes linear time. Its idx slot is found by its position (lookdict_index), not its key,
    and stays deleted, so the entries cut off still fill the table until it is rebuilt (CPython
-   does not give dk_usable back): otherwise inserts after pops would use up its empty slots */
-I *pys_dict_popitem(Dict *d) {
+   does not give dk_usable back): otherwise inserts after pops would use up its empty slots.
+   big: the tuple of promoting ints (dpair) */
+static inline __attribute__((always_inline)) I *dpopitem(Dict *d, int big) {
   if (!d->len) pys_fail("KeyError: 'popitem(): dictionary is empty'");
   I e = d->n - 1;
   while (!dlive(d, e)) e--;   /* (a class's key may hash to 0: see dlive) */
+  if (!big && (dbig(d, e) || kbig(d, e))) pys_fail(NARROW);
   uint64_t h = d->hs[e], m = dmask(d), i = h & m, p = h;
   DICT_PROBE();
   while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & m; DICT_PROBE(); }
-  I *t = pys_alloc(16); t[0] = d->keys[e]; t[1] = d->vals[e];
-  d->idx[i] = -1; d->hs[e] = 0; d->keys[e] = d->vals[e] = 0; d->len--; d->cut += d->n - e; d->n = e;
+  I *t = dpair(d, e, big);
+  d->idx[i] = -1; d->hs[e] = d->kind & KTAG ? (uint64_t)-1 : 0; d->keys[e] = d->vals[e] = 0; dbig_clear(d, e); kbig_clear(d, e); d->len--; d->cut += d->n - e; d->n = e;
   return t;
 }
+I *pys_dict_popitem(Dict *d) { return dpopitem(d, 0); }
+I *pys_dict_big_popitem(Dict *d) { return dpopitem(d, 1); }   /* (of a dict of ints or of int keys) */
 I pys_dict_del(Dict *d, I k) { uint64_t h; I i = dhfind(d, k, &h, 0); if (i < 0) keyerr(d, k); return dtake(d, i); }
 /* d.get(k) and d.pop(k, None) of int, float and bool values: the value's box, or dflt (None or a box) */
-LOOKUP I pys_dict_getbox(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : (I)pys_box(d->vals[e]); }
-LOOKUP I pys_dict_popbox(Dict *d, I k, I dflt) { I i = dpfind(d, k); return i < 0 ? dflt : (I)pys_box(dtake(d, i)); }
+LOOKUP I pys_dict_getbox(Dict *d, I k, I dflt) { I e = entry(d, k); return e < 0 ? dflt : (I)pys_big_box(d->vals[e], dbig(d, e)); }
+LOOKUP I pys_dict_popbox(Dict *d, I k, I dflt) {
+  I i = dpfind(d, k);
+  if (i < 0) return dflt;
+  Mpz *m = dbig(d, d->idx[i] - 1);
+  return (I)pys_big_box(dtake(d, i), m);
+}
 LOOKUP I pys_dict_setdefault(Dict *d, I k, I v) {   /* one hash and one lookup, as CPython's */
   uint64_t h; I f = -1, i = dhfind(d, k, &h, &f);
   if (i >= 0) return d->vals[d->idx[i] - 1];
   dadd(d, k, h, v, f); return v;
 }
-void pys_dict_clear(Dict *d) { d->len = d->n = d->cut = d->size = 0; d->keys = d->vals = 0; d->hs = 0; d->idx = 0; }
+/* d.pop(k) (has: d.pop(k, {lo, m})) and d.setdefault(k, {lo, m}) of a dict of ints, whose value
+   may be past 64 bits: the promoting int */
+Big pys_dict_big_pop(Dict *d, I k, I has, I lo, Mpz *m) {
+  I i = dpfind(d, k);
+  if (i < 0) { if (!has) keyerr(d, k); Big r = {lo, m}; return r; }
+  Mpz *b = dbig(d, d->idx[i] - 1);
+  I v = dtake(d, i);
+  Big r = {b ? 0 : v, b}; return r;
+}
+LOOKUP Big pys_dict_big_setdefault(Dict *d, I k, I lo, Mpz *m) {
+  uint64_t h; I f = -1, i = dhfind(d, k, &h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
+  dadd(d, k, h, m ? INT64_MIN : lo, f);
+  if (m) { dbig_make(d); d->vb[d->n - 1] = (I)m; }
+  Big r = {lo, m}; return r;
+}
+void pys_dict_narrow(Dict *d) { if (dict_has_big(d)) pys_fail(NARROW); }   /* d's values for 64-bit code (items()) */
+void pys_dict_clear(Dict *d) { d->len = d->n = d->cut = d->size = 0; d->keys = d->vals = d->vb = d->kb = 0; d->hs = 0; d->idx = 0; }
+/* the entry of key {lo, m} of a dict of int keys, a promoting int (past 64 bits, its Mpz m: kbig):
+   find's, or -1; entry's, or KeyError; put's, which adds the key with the value 0 where d has none
+   (the compiler stores the value next: pys_dict_entry_set); and del d[k] */
+static _Noreturn void bkeyerr(Mpz *m) {   /* the KeyError of a dict's key or a set's element m, past 64 bits */
+  Str *t = mpz_digits(m);   /* (past CPython's 4300 digits: what its traceback prints, which cannot write it) */
+  Buf b = {0}; put(&b, "KeyError: ", 10);
+  if (t) put(&b, t->s, t->len); else put(&b, "<exception str() failed>", 24);
+  put(&b, "", 1); pys_fail(b.p);
+}
+LOOKUP I pys_dict_big_find(Dict *d, I lo, Mpz *m) {
+  if (!m) return entry(d, lo);
+  I i = dbfind(d, m, hbig(m), 0); return i < 0 ? -1 : d->idx[i] - 1;
+}
+LOOKUP I pys_dict_big_entry(Dict *d, I lo, Mpz *m) { I e = pys_dict_big_find(d, lo, m); if (e < 0) { if (m) bkeyerr(m); keyerr(d, lo); } return e; }
+LOOKUP I pys_dict_big_put(Dict *d, I lo, Mpz *m) {
+  if (m) return dbput(d, m, hbig(m), 0);
+  uint64_t h; I f = -1, i = dhfind(d, lo, &h, &f);
+  if (i >= 0) return d->idx[i] - 1;
+  dadd(d, lo, h, 0, f); return d->n - 1;
+}
+void pys_dict_big_del(Dict *d, I lo, Mpz *m) {
+  if (!m) { pys_dict_del(d, lo); return; }
+  I i = dbfind(d, m, hbig(m), 0);
+  if (i < 0) bkeyerr(m);
+  dtake(d, i);
+}
+/* get(k), pop(k), setdefault(k, v) and their boxes, as the functions above without bkey_, of a
+   dict of int keys and a promoting int key {lo, m}: one that fits as theirs; past 64 bits, by the
+   idx slot dbfind finds. bkey_big_pop and bkey_big_setdefault are big_pop's and big_setdefault's */
+LOOKUP I pys_dict_bkey_get(Dict *d, I lo, Mpz *m, I dflt) {
+  if (!m) return pys_dict_get(d, lo, dflt);
+  I i = dbfind(d, m, hbig(m), 0); return i < 0 ? dflt : d->vals[d->idx[i] - 1];
+}
+LOOKUP I pys_dict_bkey_getbox(Dict *d, I lo, Mpz *m, I dflt) {
+  if (!m) return pys_dict_getbox(d, lo, dflt);
+  I i = dbfind(d, m, hbig(m), 0); if (i < 0) return dflt;
+  I e = d->idx[i] - 1; return (I)pys_big_box(d->vals[e], dbig(d, e));
+}
+static I dbpop(Dict *d, Mpz *m, I dflt, int has) {   /* (dpop's) */
+  I i = dbfind(d, m, hbig(m), 0);
+  if (i < 0) { if (!has) bkeyerr(m); return dflt; }
+  return dtake(d, i);
+}
+LOOKUP I pys_dict_bkey_pop(Dict *d, I lo, Mpz *m) { return m ? dbpop(d, m, 0, 0) : pys_dict_pop(d, lo); }
+LOOKUP I pys_dict_bkey_pop_default(Dict *d, I lo, Mpz *m, I dflt) { return m ? dbpop(d, m, dflt, 1) : pys_dict_pop_default(d, lo, dflt); }
+LOOKUP I pys_dict_bkey_popbox(Dict *d, I lo, Mpz *m, I dflt) {
+  if (!m) return pys_dict_popbox(d, lo, dflt);
+  I i = dbfind(d, m, hbig(m), 0); if (i < 0) return dflt;
+  Mpz *b = dbig(d, d->idx[i] - 1);
+  return (I)pys_big_box(dtake(d, i), b);
+}
+LOOKUP I pys_dict_bkey_setdefault(Dict *d, I lo, Mpz *m, I v) {
+  if (!m) return pys_dict_setdefault(d, lo, v);
+  uint64_t h = hbig(m); I f = -1, i = dbfind(d, m, h, &f);
+  if (i >= 0) return d->vals[d->idx[i] - 1];
+  dbadd(d, m, h, v, f); return v;
+}
+LOOKUP Big pys_dict_bkey_big_pop(Dict *d, I klo, Mpz *km, I has, I lo, Mpz *m) {
+  if (!km) return pys_dict_big_pop(d, klo, has, lo, m);
+  I i = dbfind(d, km, hbig(km), 0);
+  if (i < 0) { if (!has) bkeyerr(km); Big r = {lo, m}; return r; }
+  Mpz *b = dbig(d, d->idx[i] - 1);
+  I v = dtake(d, i);
+  Big r = {b ? 0 : v, b}; return r;
+}
+LOOKUP Big pys_dict_bkey_big_setdefault(Dict *d, I klo, Mpz *km, I lo, Mpz *m) {
+  if (!km) return pys_dict_big_setdefault(d, klo, lo, m);
+  uint64_t h = hbig(km); I f = -1, i = dbfind(d, km, h, &f);
+  if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
+  I e = dbadd(d, km, h, m ? INT64_MIN : lo, f);
+  if (m) { dbig_make(d); d->vb[e] = (I)m; }
+  Big r = {lo, m}; return r;
+}
 /* for loops: entry e's key and value; the next entry from e (reversed: the previous one), or
    -1 at the end, failing like CPython's dict iterators when the dict changed meanwhile:
    used = len when the loop started, count = items produced so far. As in CPython 3.13.16, a
    reversed loop also ends at a position past the entries (a rebuild made the table smaller) */
 I pys_dict_key(Dict *d, I e) { return d->keys[e]; }
 I pys_dict_val(Dict *d, I e) { return d->vals[e]; }
+Mpz *pys_dict_big_val(Dict *d, I e) { return dbig(d, e); }   /* the Mpz of entry e's value, where pys_dict_val gave -2**63 */
+Mpz *pys_dict_big_key(Dict *d, I e) { return kbig(d, e); }   /* and of its key, where pys_dict_key gave -2**63 */
 I pys_dict_end(Dict *d) { return d->n; }
+/* Equality walks current live entries after each value comparison. Unlike an
+   iterator, callbacks may clear or resize the dict without a mutation error. */
+I pys_dict_eq_next(Dict *d, I e) {
+  while (e < d->n && !dlive(d, e)) e++;
+  return e < d->n ? e : -1;
+}
 static void changed(Dict *d, I used) { if (d->len != used) pys_fail("RuntimeError: dictionary changed size during iteration"); }
 I pys_dict_next(Dict *d, I e, I used, I count) {
   changed(d, used);
@@ -3091,14 +4074,28 @@ I pys_dict_prev(Dict *d, I e, I used, I count) {
 }
 static List *col(Dict *d, I *a) {    /* the keys or values in a list whose array is of a's kind (an int key's: atomic) */
   List *l = list_new(d->len, atomic_items(a));
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = a[e];
+  I *b = a == d->vals ? d->vb : d->kb;   /* (an int past 64 bits, -2**63 in a: dbig, kbig) */
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) {
+    Mpz *m = b && a[e] == INT64_MIN ? (Mpz *)b[e] : NULL;   /* (the new list's BIGIDS companion) */
+    if (m && !l->ids) { l->ids = pys_alloc((l->cap + 1) * sizeof(I)); l->ids[0] = BIGIDS; }
+    if (m) l->ids[l->len + 1] = (I)m;
+    l->a[l->len++] = a[e];
+  }
   return l;
 }
 List *pys_dict_keys(Dict *d) { return col(d, d->keys); }
 List *pys_dict_values(Dict *d) { return col(d, d->vals); }
 List *pys_dict_items(Dict *d) {
+  if (dict_has_big_key(d)) pys_fail(NARROW);   /* (a tuple's int is a 64-bit one here: and its values, pys_dict_narrow) */
   List *l = pys_list_new(d->len);
-  for (I e = 0; e < d->n; e++) if (dlive(d, e)) { I *t = pys_alloc(16); t[0] = d->keys[e]; t[1] = d->vals[e]; l->a[l->len++] = (I)t; }
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = (I)dpair(d, e, 0);
+  return l;
+}
+/* and those of a dict of ints or of int keys, in a program whose lists hold promoting ints (the
+   compiler's bigints.big_items): an int key or value past 64 bits has its Mpz word (dpair) */
+List *pys_dict_big_items(Dict *d) {
+  List *l = pys_list_new(d->len);
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) l->a[l->len++] = (I)dpair(d, e, 1);
   return l;
 }
 /* copies, as CPython 3.13 makes them, since their tables decide what a loop that changes the copy
@@ -3114,6 +4111,8 @@ static void retable(Dict *r, Dict *d) {              /* r := d's table, holes in
   r->keys = keymem(r->kind, u); r->vals = item_array(u, (int)r->vatomic); r->hs = pys_alloc_atomic(u * 8); r->idx = pys_alloc_atomic(x);
   memcpy(r->keys, d->keys, d->n * 8); memcpy(r->vals, d->vals, d->n * 8); memcpy(r->hs, d->hs, d->n * 8);
   memcpy(r->idx, d->idx, x); r->len = d->len; r->n = d->n; r->cut = d->cut; r->size = d->size;
+  r->vb = d->vb ? memcpy(pys_alloc(u * 8), d->vb, d->n * 8) : 0;
+  r->kb = d->kb ? memcpy(pys_alloc(u * 8), d->kb, d->n * 8) : 0;
 }
 static Dict *clone(Dict *d) { Dict *r = dict_new(d->kind, 0, d->vatomic); retable(r, d); return r; }
 static int clean(Dict *d) { return d->len && d->len == d->n && (d->size == 8 || d->size / 2 * 2 / 3 < d->len); }
@@ -3135,7 +4134,9 @@ void pys_dict_update(Dict *d, Dict *o) {
   if ((d->size ? d->size : 8) * 2 / 3 < o->len) build(d, d, keysize(((d->len + o->len) * 3 + 1) / 2));
   I used = o->len;
   for (I e = 0; e < o->n; e++) if (dlive(o, e)) {
-    dset(d, o->keys[e], o->hs[e], o->vals[e]);
+    Mpz *m = dbig(o, e), *k = kbig(o, e);
+    I f = k ? dbput(d, k, o->hs[e], o->vals[e]) : dset(d, o->keys[e], o->hs[e], o->vals[e]);
+    if (m) { dbig_make(d); d->vb[f] = (I)m; }
     /* A key comparison can mutate o. Check after insertion, as dict_dict_merge does,
        so a callback's own exception wins and value-only changes remain allowed. */
     if (o->len != used) pys_fail("RuntimeError: dict mutated during update");
@@ -3144,12 +4145,32 @@ void pys_dict_update(Dict *d, Dict *o) {
 /* d.update(pairs) of a list of (key, value) tuples, and dict.fromkeys(keys, v) of a list: one
    insertion per item, as PyDict_MergeFromSeq2 and _PyDict_FromKeys make them */
 void pys_dict_update_pairs(Dict *d, List *l) { for (I i = 0; i < l->len; i++) { I *t = (I *)l->a[i]; pys_dict_set(d, t[0], t[1]); } }
-Dict *pys_dict_fromkeys(I kind, List *l, I v) { Dict *d = pys_dict_new(kind, 0); for (I i = 0; i < l->len; i++) pys_dict_set(d, l->a[i], v); return d; }
+/* and of such a list that a program's lists hold as tuples of promoting ints (bigints.held), into a
+   dict of ints or of int keys: kj (vj) says that the key (the value) is an int, whose Mpz past 64
+   bits is in the tuple's slot 2 (3), read where its slot holds -2**63 (dpair's layout) */
+void pys_dict_update_pairs_big(Dict *d, List *l, I kj, I vj) {
+  for (I i = 0; i < l->len; i++) {
+    I *t = (I *)l->a[i];
+    Mpz *k = kj && t[0] == INT64_MIN ? (Mpz *)t[2] : NULL, *m = vj && t[1] == INT64_MIN ? (Mpz *)t[3] : NULL;
+    if (k) { I e = dbput(d, k, hbig(k), t[1]); if (m) { dbig_make(d); d->vb[e] = (I)m; } }
+    else if (m) pys_dict_set_big(d, t[0], 0, m);
+    else pys_dict_set(d, t[0], t[1]);
+  }
+}
+__attribute__((noinline)) static void fromkeys_big(Dict *d, List *l, I v) {   /* of a list of ints that may hold one past 64 bits (BIGIDS: kbig) */
+  for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m) dbput(d, m, hbig(m), v); else pys_dict_set(d, l->a[i], v); }
+}
+Dict *pys_dict_fromkeys(I kind, List *l, I v) {
+  Dict *d = pys_dict_new(kind, 0);
+  if (big_list(l)) fromkeys_big(d, l, v);   /* (a path of its own, so that the others' loop stays as it was) */
+  else for (I i = 0; i < l->len; i++) pys_dict_set(d, l->a[i], v);
+  return d;
+}
 /* dict.fromkeys(o, v) of a dict o: sized for o's keys at once, as dict_dict_fromkeys does */
 Dict *pys_dict_fromkeys_dict(Dict *o, I v) {
   Dict *d = pys_dict_new(o->kind, 0);
   build(d, d, keysize((o->len * 3 + 1) / 2));
-  for (I e = 0; e < o->n; e++) if (dlive(o, e)) dset(d, o->keys[e], o->hs[e], v);
+  for (I e = 0; e < o->n; e++) if (dlive(o, e)) { Mpz *k = kbig(o, e); if (k) dbput(d, k, o->hs[e], v); else dset(d, o->keys[e], o->hs[e], v); }
   return d;
 }
 
@@ -3173,7 +4194,15 @@ Dict *pys_dict_fromkeys_dict(Dict *o, I v) {
    CPython's of its address (which no run repeats). kind is Dict.kind: 0 int elements, 1 str,
    else a Str *, the descriptor of tuple or object elements; equality is a dict key's, and an
    __eq__ that changes the table or the element it compares makes the lookup start again, as in
-   CPython. A frozenset is a set that the compiler gives no method that changes it. */
+   CPython. A frozenset is a set that the compiler gives no method that changes it.
+   An element past 64 bits of a set of ints (in a program that opts in to promoting ints) has
+   CPython's hash (pys_mpz_hash), and its Mpz is in its slot's word of kb, an array as long as the
+   table that the collector scans, which the first such element makes (sbput); a slot that holds
+   no such element has a null word there (a new table has no kb, a removal clears its word). Its
+   slot holds a sentinel (ssent): -2**63, or -2**63 + 1 where its hash is -2**63's (-4), so that no
+   64-bit element of its hash is its sentinel: the lookups of 64-bit elements never meet it, and
+   only sbfind compares Mpz. The operations that move elements from a table carry their Mpz (sbig),
+   those of 64-bit elements (pys_set_add, ...) none. */
 #define LINEAR_PROBES 9
 #define NONE_HASH 0xFCA86420                         /* hash(None) since CPython 3.12 */
 static I hint(I v) {                                 /* long_hash */
@@ -3182,7 +4211,7 @@ static I hint(I v) {                                 /* long_hash */
   h = v < 0 ? -h : h;
   return h == -1 ? -2 : h;
 }
-static I hstr(Str *s) { Dict t = {.kind = 1}; I h = (I)hsh(&t, (I)s); return h == -1 ? -2 : h; }
+static I hstr(Str *s) { I h = (I)hstrd(s); return h == -1 ? -2 : h; }   /* (hsh's for kind 1) */
 static I hptr(I p) { uint64_t y = (uint64_t)p; y = y >> 4 | y << 60; return (I)y == -1 ? -2 : (I)y; }   /* _Py_HashPointer */
 static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's is 0, as a float here has no identity */
   /* v is m * 2**e for an int m of 53 bits: m * 2**e modulo 2**61 - 1 (where 2**61 is 1), with
@@ -3201,9 +4230,11 @@ static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's 
 }
 static I hitem(I k, const char *d);
 static I htuple(I *t, I n, const char *e, int each) {   /* tuplehash of n items, of descriptors from e on (each), or all e */
-  uint64_t acc = 2870177450012600261ULL;
+  uint64_t acc = 2870177450012600261ULL; I w[2];
   for (I i = 0; i < n; i++) {
-    acc += (uint64_t)hitem(t[i], e) * 14029467366897019727ULL;
+    /* (an int item's hash, and a promoting int's that fits, in place: hitem's) */
+    I x = t[i], h = each && (*e == 'i' || (*e == 'J' && x != INT64_MIN)) ? hint(x) : hitem(each ? titem(t, n, i, e, w) : x, e);
+    acc += (uint64_t)h * 14029467366897019727ULL;
     acc = acc << 31 | acc >> 33;
     acc *= 11400714785074694791ULL;
     if (each) e = skip(e);
@@ -3226,6 +4257,7 @@ static I hitem(I k, const char *d) {                 /* the hash of a value k (a
   case 'P': case 'C': return hptr(k);   /* (an exception class's class object: by identity, as object's) */
   case 'H': return ohash(k, d);
   case 'A': return pys_dyn_hash((Dyn *)k);
+  case 'J': { opt_in(); Big x = jbig(k); return x.hi ? pys_mpz_hash(x.hi) : hint(x.lo); }   /* (a promoting int's two words) */
   }
   return hint(k);
 }
@@ -3264,8 +4296,8 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    makes each int literal's), and the other numbers' boxes atomic, so that boxing a number
    allocates nothing the collector scans. An int's, a float's and a bound method's box is its
    identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
-enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC };
-enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32 };   /* a class's ==, ordering, hash and != run the program's
+enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN };
+enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);
                                                                      the class's comparison methods take a value of any type (dobj) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
@@ -3273,7 +4305,7 @@ DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_float, "f");
 DSTR(dd_list, "LA"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
 DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
 DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
-#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
+#define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0, 0, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
 DTYPE(pys_dyntype_none, DK_NONE, dd_none, dn_none); DTYPE(pys_dyntype_bool, DK_BOOL, dd_bool, dn_bool);
 DTYPE(pys_dyntype_int, DK_INT, dd_int, dn_int); DTYPE(pys_dyntype_float, DK_FLOAT, dd_float, dn_float);
 DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
@@ -3295,6 +4327,10 @@ Dyn *pys_dyn_int(I v) {
   Dyn *d = gc_box(1); d->t = &pys_dyntype_int; d->v = v; return d;
 }
 Dyn *pys_dyn_float(double x) { Dyn *d = gc_box(1); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
+/* The compiler proves that box is null or exactly this numeric object's box.
+   Taking its value (never its slot address) leaves all binding writes in the caller. */
+Dyn *pys_dyn_int_box(I value, Dyn *box) { return box ? box : pys_dyn_int(value); }
+Dyn *pys_dyn_float_box(double value, Dyn *box) { return box ? box : pys_dyn_float(value); }
 static Dyn *dbool(I b) { return (Dyn *)(b ? &pys_dyn_true_box : &pys_dyn_false_box); }
 /* a reference of type t: None where it is null (an object of a class type may be None) */
 Dyn *pys_dyn_ref(const DynType *t, void *p) {
@@ -3312,11 +4348,17 @@ static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) 
    when a concrete comparison-operand annotation matches. */
 I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
 /* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
-   type): the same DynType, or both a function's or both a bound method's, as each def's boxes
-   have a DynType of their own, but CPython's type of each is function (or method) */
+   type). Generators, functions and builtin iterators can have distinct storage descriptors
+   for one Python type. Only compiler-owned builtin iterator classes carry DF_ITER: a user
+   class with the same name remains distinct. This does not make their payloads interchangeable. */
 I pys_dyn_same_type(const DynType *a, const DynType *b) {
   if (a == b) return 1;
-  return a && b && a->kind == DK_FUNC && b->kind == DK_FUNC && strcmp(a->name->s, b->name->s) == 0;
+  if (!a || !b) return 0;
+  if (a->kind == DK_GEN && b->kind == DK_GEN) return 1;
+  if (a->kind == DK_FUNC && b->kind == DK_FUNC) return strcmp(a->name->s, b->name->s) == 0;
+  int ai = a->kind == DK_ITER || (a->kind == DK_OBJ && (a->flags & DF_ITER));
+  int bi = b->kind == DK_ITER || (b->kind == DK_OBJ && (b->flags & DF_ITER));
+  return ai && bi && strcmp(a->name->s, b->name->s) == 0;
 }
 /* x as a value of type t, which the compiler expects: its payload (None's is 0) where x has that
    type (pys_dyn_isa), else TypeError, where CPython would not check the annotation
@@ -3437,7 +4479,7 @@ I pys_dyn_hash(Dyn *x) {
   case DK_STR: return hstr((Str *)x->v);
   case DK_TUPLE: return htuple(((VTuple *)x->v)->a, ((VTuple *)x->v)->len, "A", 0);
   case DK_OBJ: return x->t->flags & DF_HASH ? pys_obj_eq(-1 - x->t->cls, x->v, 0) : hptr(x->v);
-  case DK_FUNC: return hptr(x->v);
+  case DK_FUNC: case DK_ITER: case DK_GEN: return hptr(x->v);
   }
   failf("TypeError: unhashable type: '%s'", DNAME(x));
 }
@@ -3551,12 +4593,10 @@ Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
   if (DKIND(a) == DK_LIST && op == 0) {
     if (DKIND(b) == DK_LIST) { pys_list_extend((List *)a->v, (List *)b->v); return a; }
     if (DKIND(b) == DK_TUPLE) { VTuple *t = (VTuple *)b->v; for (I i = 0; i < t->len; i++) pys_list_append((List *)a->v, t->a[i]); return a; }
-    if (DKIND(b) == DK_DICT || DKIND(b) == DK_STR) {   /* (list += iterable: its items, a dict's keys, a str's characters) */
-      DynIter *it = pys_dyn_iter(b);
-      for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append((List *)a->v, (I)x);
-      return a;
-    }
-    failf("TypeError: '%s' object is not iterable", DNAME(b));
+    DynIter *it = pys_dyn_iter(b);   /* list += iterable: consume each item before requesting the next */
+    if (b->t->len && dyn_user_len(b) > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");   /* hint after __iter__, before any item */
+    for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append((List *)a->v, (I)x);
+    return a;
   }
   if (DKIND(a) == DK_LIST && op == 2) {
     if (!dnum(b)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(b));
@@ -3630,35 +4670,140 @@ I pys_dyn_contains(Dyn *o, Dyn *k) {   /* k in o */
     if (DKIND(k) != DK_STR) failf("TypeError: 'in <string>' requires string as left operand, not %s", DNAME(k));
     return pys_str_contains((Str *)o->v, (Str *)k->v);
   }
-  failf("TypeError: argument of type '%s' is not iterable", DNAME(o));
+  if (DKIND(o) != DK_ITER && !o->t->iter) failf("TypeError: argument of type '%s' is not iterable", DNAME(o));
+  DynIter *it = pys_dyn_iter(o);
+  for (Dyn *v; (v = pys_dyn_next(it));) if (dyn_eqitem(v, k)) return 1;
+  return 0;
 }
-/* an iterator over a list's items, a tuple's, a dict's keys or a str's characters: i is the next
-   item's index (a str's byte, a dict's entry), used and count what a dict's loop checks (see
-   pys_dict_next). A list's length is read at every step, as CPython's list iterator reads it */
-struct DynIter { Dyn *o; I i, used, count; };
-DynIter *pys_dyn_iter(Dyn *o) {
-  int k = DKIND(o);
-  if (k != DK_LIST && k != DK_DICT && k != DK_TUPLE && k != DK_STR) failf("TypeError: '%s' object is not iterable", DNAME(o));
-  DynIter *it = pys_alloc(sizeof(DynIter)); it->o = o;
-  if (k == DK_DICT) it->used = ((Dict *)o->v)->len;
+/* Builtin iterators retain the original container and read its live items. Exhaustion is
+   sticky, and releases that container. A custom iterator can recover after StopIteration;
+   its callback therefore receives every next() call, even after it returned null. */
+struct DynIter { Dyn *o; I i, used, count, step; uint64_t left; int reverse, range, done; };
+DSTR(dd_iter, "Q");
+DSTR(dn_listiter, "list_iterator"); DSTR(dn_tupleiter, "tuple_iterator");
+DSTR(dn_dictiter, "dict_keyiterator"); DSTR(dn_striter, "str_ascii_iterator");
+DSTR(dn_listrev, "list_reverseiterator"); DSTR(dn_dictrev, "dict_reversekeyiterator");
+DSTR(dn_reverse, "reversed"); DSTR(dn_rangeiter, "range_iterator");
+/* GC_NO_ROOT(dt_listiter, dt_tupleiter, dt_dictiter, dt_striter, dt_listrev, dt_dictrev,
+   dt_reverse, dt_rangeiter): immutable iterator descriptors reference only static strings. */
+DTYPE(dt_listiter, DK_ITER, dd_iter, dn_listiter); DTYPE(dt_tupleiter, DK_ITER, dd_iter, dn_tupleiter);
+DTYPE(dt_dictiter, DK_ITER, dd_iter, dn_dictiter); DTYPE(dt_striter, DK_ITER, dd_iter, dn_striter);
+DTYPE(dt_listrev, DK_ITER, dd_iter, dn_listrev); DTYPE(dt_dictrev, DK_ITER, dd_iter, dn_dictrev);
+DTYPE(dt_reverse, DK_ITER, dd_iter, dn_reverse); DTYPE(dt_rangeiter, DK_ITER, dd_iter, dn_rangeiter);
+/* These wrappers are user-code boundaries, also tracked by check_runtime.py. */
+static Dyn *dyn_user_iter(Dyn *o) { return o->t->iter(o); }
+static Dyn *dyn_user_next(Dyn *o) { return o->t->next(o); }
+static I dyn_user_len(Dyn *o) { return o->t->len(o); }
+static int dyn_builtin_iterable(Dyn *o) {
+  I k = DKIND(o);
+  return k == DK_LIST || k == DK_TUPLE || k == DK_DICT || k == DK_STR;
+}
+static int dyn_iterable(Dyn *o) { return dyn_builtin_iterable(o) || DKIND(o) == DK_ITER || o->t->iter; }
+Dyn *pys_dyn_iter_check(Dyn *o) {
+  if (DKIND(o) != DK_ITER && !o->t->next) failf("TypeError: iter() returned non-iterator of type '%s'", DNAME(o));
+  return o;
+}
+static DynIter *dyn_builtin_iter(Dyn *o, int reverse) {
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->o = o; it->reverse = reverse;
+  I k = DKIND(o);
+  if (k == DK_DICT) {
+    Dict *d = (Dict *)o->v;
+    it->used = d->len;
+    if (reverse) it->i = d->n - 1;
+  } else if (reverse) {
+    it->i = k == DK_LIST ? ((List *)o->v)->len - 1 : k == DK_TUPLE ? ((VTuple *)o->v)->len - 1 : ((Str *)o->v)->len;
+  }
   return it;
 }
+Dyn *pys_dyn_iter_box(Dyn *o) {
+  if (DKIND(o) == DK_ITER) return o;
+  if (dyn_builtin_iterable(o)) {
+    const DynType *t = DKIND(o) == DK_LIST ? &dt_listiter : DKIND(o) == DK_TUPLE ? &dt_tupleiter : DKIND(o) == DK_DICT ? &dt_dictiter : &dt_striter;
+    return pys_dyn_ref(t, dyn_builtin_iter(o, 0));
+  }
+  if (o->t->iter) return pys_dyn_iter_check(dyn_user_iter(o));
+  failf("TypeError: '%s' object is not iterable", DNAME(o));
+}
+DynIter *pys_dyn_iter(Dyn *o) {
+  if (DKIND(o) == DK_ITER) return (DynIter *)o->v;
+  if (dyn_builtin_iterable(o)) return dyn_builtin_iter(o, 0);
+  o = pys_dyn_iter_box(o);
+  if (DKIND(o) == DK_ITER) return (DynIter *)o->v;
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->o = o;
+  return it;
+}
+Dyn *pys_dyn_next_box(Dyn *o) {
+  if (DKIND(o) == DK_ITER) return pys_dyn_next((DynIter *)o->v);
+  if (o->t->next) return dyn_user_next(o);
+  failf("TypeError: '%s' object is not an iterator", DNAME(o));
+}
 Dyn *pys_dyn_next(DynIter *it) {   /* the next item, or null at the end */
+  if (it->done) return 0;
+  if (it->range) {
+    if (!it->left) { it->done = 1; return 0; }
+    I v = it->i; it->left--;
+    it->i = (I)((uint64_t)it->i + (uint64_t)it->step);
+    return pys_dyn_int(v);
+  }
   Dyn *o = it->o;
+  if (o->t->next) return dyn_user_next(o);
   switch (DKIND(o)) {
-  case DK_LIST: { List *l = (List *)o->v; return it->i < l->len ? (Dyn *)l->a[it->i++] : 0; }
-  case DK_TUPLE: { VTuple *t = (VTuple *)o->v; return it->i < t->len ? (Dyn *)t->a[it->i++] : 0; }
+  case DK_LIST: {
+    List *l = (List *)o->v;
+    if (it->i >= 0 && it->i < l->len) {
+      Dyn *v = (Dyn *)l->a[it->i]; it->i += it->reverse ? -1 : 1; return v;
+    }
+    break;
+  }
+  case DK_TUPLE: {
+    VTuple *t = (VTuple *)o->v;
+    if (it->i >= 0 && it->i < t->len) {
+      Dyn *v = (Dyn *)t->a[it->i]; it->i += it->reverse ? -1 : 1; return v;
+    }
+    break;
+  }
   case DK_DICT: {
-    Dict *d = (Dict *)o->v; I e = pys_dict_next(d, it->i, it->used, it->count);
-    if (e < 0) return 0;
-    it->i = e + 1; it->count++;
+    Dict *d = (Dict *)o->v;
+    if (it->used != d->len) it->used = -1;   /* a size error stays an error even if the size is restored */
+    /* A size error stays live, but a keys-changed error exhausts the iterator.
+       Check the count here, after locating an entry, so both directions can
+       release their source before raising, as CPython does. */
+    I e = it->reverse ? pys_dict_prev(d, it->i, it->used, -1) : pys_dict_next(d, it->i, it->used, -1);
+    if (e < 0) break;
+    if (it->count >= it->used) {
+      it->done = 1; it->o = 0;
+      pys_fail("RuntimeError: dictionary keys changed during iteration");
+    }
+    it->i = e + (it->reverse ? -1 : 1); it->count++;
     return (Dyn *)d->keys[e];
   }
+  case DK_STR: {
+    Str *s = (Str *)o->v;
+    if (it->reverse) {
+      if (it->i <= 0) break;
+      it->i = pys_text_prev(s, it->i);
+      return dstr(pys_text_at(s, it->i));
+    }
+    if (it->i >= s->len) break;
+    Str *c = pys_text_at(s, it->i); it->i = pys_text_next(s, it->i);
+    return dstr(c);
   }
-  Str *s = (Str *)o->v;
-  if (it->i >= s->len) return 0;
-  Str *c = pys_text_at(s, it->i); it->i = pys_text_next(s, it->i);
-  return dstr(c);
+  default: return pys_dyn_next_box(o);
+  }
+  it->done = 1; it->o = 0;
+  return 0;
+}
+Dyn *pys_dyn_reversed(Dyn *o) {
+  if (!dyn_builtin_iterable(o)) failf("TypeError: '%s' object is not reversible", DNAME(o));
+  const DynType *t = DKIND(o) == DK_LIST ? &dt_listrev : DKIND(o) == DK_DICT ? &dt_dictrev : &dt_reverse;
+  return pys_dyn_ref(t, dyn_builtin_iter(o, 1));
+}
+Dyn *pys_dyn_range_iter(I start, I stop, I step, I reverse) {
+  uint64_t n = (uint64_t)pys_range_len(start, stop, step);
+  DynIter *it = pys_alloc(sizeof(DynIter)); it->range = 1; it->left = n;
+  it->i = reverse && n ? (I)((uint64_t)start + (n - 1) * (uint64_t)step) : start;
+  it->step = reverse ? (I)(-(uint64_t)step) : step;
+  return pys_dyn_ref(&dt_rangeiter, it);
 }
 /* the box of slot v of descriptor d, of a fresh result that a builtin method gave (a str's split, a
    dict's items): a number, a str, a box, None or a value, a tuple of these (made one of boxes) */
@@ -3680,8 +4825,11 @@ static Dyn *dyn_of(I v, const char *d) {
   failf("TypeError: a value of descriptor %s cannot become an Any value", d);
 }
 List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, of descriptor d */
+  list_narrow(src);   /* (a dynamic value's int is a 64-bit int: BIGIDS) */
+  int ids = src->ids && !big_list(src);
+  if (ids) pys_list_identity(src, src->ids[0]);
   List *l = pys_list_new(src->len);
-  for (I i = 0; i < src->len; i++) pys_list_append(l, (I)dyn_of(src->a[i], d->s));
+  for (I i = 0; i < src->len; i++) pys_list_append(l, ids ? src->ids[i + 1] : (I)dyn_of(src->a[i], d->s));
   return l;
 }
 /* a slice's bound (or, not bound, its step) that is an Any value: None is an omitted one (NONE, a
@@ -3718,38 +4866,44 @@ Dyn *pys_dyn_slice(Dyn *o, Dyn *lo, Dyn *hi, Dyn *st) {
 List *pys_dyn_list(Dyn *o);
 void pys_dyn_update(Dict *d, Dyn *x) {
   if (DKIND(x) == DK_DICT) { pys_dict_update(d, (Dict *)x->v); return; }
-  if (DKIND(x) != DK_LIST && DKIND(x) != DK_TUPLE && DKIND(x) != DK_STR) failf("TypeError: '%s' object is not iterable", DNAME(x));
   DynIter *it = pys_dyn_iter(x);
   I n = 0;
   for (Dyn *e; (e = pys_dyn_next(it)); n++) {
-    int k = DKIND(e);
-    if (k != DK_LIST && k != DK_TUPLE && k != DK_STR && k != DK_DICT) failf("TypeError: cannot convert dictionary update sequence element #%lld to a sequence", (long long)n);
-    List *kv = pys_dyn_list(e);
+    if (!dyn_iterable(e)) failf("TypeError: cannot convert dictionary update sequence element #%lld to a sequence", (long long)n);
+    /* PySequence_Fast uses a builtin list/tuple directly; otherwise it materializes the
+       iterator, calling that iterator's __iter__ and length hint, not the original pair's. */
+    List *kv = pys_dyn_list(DKIND(e) == DK_LIST || DKIND(e) == DK_TUPLE ? e : pys_dyn_iter_box(e));
     if (kv->len != 2) failf("ValueError: dictionary update sequence element #%lld has length %lld; 2 is required", (long long)n, (long long)kv->len);
     pys_dict_set(d, kv->a[0], kv->a[1]);
   }
 }
 /* list(o): a new list of o's items; str.join's items, which must be strs (CPython's message) */
 List *pys_dyn_list(Dyn *o) {
-  List *l = pys_list_new(DKIND(o) == DK_LIST ? ((List *)o->v)->len : 0);
-  DynIter *it = pys_dyn_iter(o);
+  DynIter *it = pys_dyn_iter(o);   /* __iter__ and its validation precede __len__'s hint */
+  I cap = o->t->len ? dyn_user_len(o) : DKIND(o) == DK_LIST ? ((List *)o->v)->len : 0;
+  if (cap < 0) cap = 0;   /* TypeError in a length hint is declined, unlike a negative __len__ */
+  if (cap > INT64_MAX / (I)sizeof(I)) pys_fail("MemoryError");
+  List *l = pys_list_new(cap);
   for (Dyn *x; (x = pys_dyn_next(it));) pys_list_append(l, (I)x);
   return l;
 }
 List *pys_dyn_strs(Dyn *o) {
-  if (DKIND(o) != DK_LIST && DKIND(o) != DK_DICT && DKIND(o) != DK_TUPLE && DKIND(o) != DK_STR) pys_fail("TypeError: can only join an iterable");
-  List *l = pys_list_new(0);
-  DynIter *it = pys_dyn_iter(o);
-  for (Dyn *x; (x = pys_dyn_next(it));) {
-    if (DKIND(x) != DK_STR) failf("TypeError: sequence item %lld: expected str instance, %s found", (long long)l->len, DNAME(x));
-    pys_list_append(l, x->v);
+  if (!dyn_iterable(o)) pys_fail("TypeError: can only join an iterable");
+  /* PySequence_Fast first obtains an iterator, then materializes that iterator. The
+     second __iter__ and length hint belong to the iterator, not the original iterable.
+     Builtin lists/tuples need no protocol calls. Validate items only after consumption;
+     the private fresh list's scanned slots can then hold the strings themselves. */
+  List *l = pys_dyn_list(DKIND(o) == DK_LIST || DKIND(o) == DK_TUPLE ? o : pys_dyn_iter_box(o));
+  for (I i = 0; i < l->len; i++) {
+    Dyn *x = (Dyn *)l->a[i];
+    if (DKIND(x) != DK_STR) failf("TypeError: sequence item %lld: expected str instance, %s found", (long long)i, DNAME(x));
+    l->a[i] = x->v;
   }
   return l;
 }
 /* a, b = o: o's items, which must be n, all taken before the first is stored (CPython's unpack_iterable) */
 VTuple *pys_dyn_unpack(Dyn *o, I n) {
-  if (DKIND(o) != DK_LIST && DKIND(o) != DK_DICT && DKIND(o) != DK_TUPLE && DKIND(o) != DK_STR)
-    failf("TypeError: cannot unpack non-iterable %s object", DNAME(o));
+  if (!dyn_iterable(o)) failf("TypeError: cannot unpack non-iterable %s object", DNAME(o));
   VTuple *t = pys_alloc(sizeof(VTuple) + n * sizeof(I)); t->len = n;
   DynIter *it = pys_dyn_iter(o); I k = 0;
   for (Dyn *x; (x = pys_dyn_next(it));) {
@@ -3786,9 +4940,10 @@ static void stable(Set *s, I size) {                 /* an empty table of size s
      come at its first insertion, so a dict needs no such care) */
   s->keys = size > 8 ? keymem(s->kind, size) : pys_alloc(size * 8);
   s->hs = pys_alloc_atomic(size * 8); memset(s->hs, 0xff, size * 8);
-  s->mask = size - 1; s->fill = 0;
+  s->mask = size - 1; s->fill = 0; s->kb = 0;
 }
-Set *pys_set_new(I kind) { Set *s = pys_alloc(sizeof(Set)); s->kind = kind; stable(s, 8); return s; }
+/* (the allocator adds its byte of slack: the header keeps 64 bytes, as before kb) */
+Set *pys_set_new(I kind) { Set *s = pys_alloc(sizeof(Set) - 1); s->kind = kind; stable(s, 8); return s; }
 static I slook(Set *s, I k, I h) {                   /* set_lookkey: k's slot, else the empty one that ends its probes */
   uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
   for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
@@ -3809,7 +4964,7 @@ static I slook(Set *s, I k, I h) {                   /* set_lookkey: k's slot, e
     }
   }
 }
-static void sclean(Set *s, I k, I h) {               /* set_insert_clean: k into a table that has no dummy, nor k */
+static uint64_t sclean(Set *s, I k, I h) {           /* set_insert_clean: k into a table that has no dummy, nor k; its slot */
   uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h, e;
   for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
     if (s->hs[e = i] == -1) break;
@@ -3820,13 +4975,37 @@ static void sclean(Set *s, I k, I h) {               /* set_insert_clean: k into
     }
   }
   s->keys[e] = k; s->hs[e] = h;
+  return e;
+}
+/* the slot of element m, an int past 64 bits of hash h, else -1 less the empty slot that ends its
+   probes, and *free the last dummy they passed (set_lookkey and set_add_entry for m) */
+static I sbfind(Set *s, Mpz *m, I h, I *free) {
+  I k = h == -4 ? INT64_MIN + 1 : INT64_MIN;          /* (its sentinel: ssent) */
+  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
+  *free = -1;
+  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
+    I probes = i + LINEAR_PROBES <= mask ? LINEAR_PROBES : 0;
+    for (uint64_t j = i;; j++) {
+      DICT_PROBE();
+      if (s->hs[j] == h && s->keys[j] == k) { Mpz *x = sbig(s, j); if (x && (x == m || pys_mpz_cmp(x, m) == 0)) return (I)j; }
+      else if (s->hs[j] == -1 && s->keys[j]) *free = (I)j;
+      else if (s->hs[j] == -1) return -1 - (I)j;
+      if (!probes--) break;
+    }
+  }
+}
+/* slot j's element is past 64 bits: its Mpz m, in kb (out of the loops that store elements) */
+__attribute__((noinline, cold)) static void sbput(Set *s, uint64_t j, Mpz *m) {
+  if (!s->kb) s->kb = pys_alloc((s->mask + 1) * 8);
+  s->kb[j] = (I)m;
 }
 static void sresize(Set *s, I minused) {             /* set_table_resize: the first size > minused, without dummies */
-  I size = 8, m = s->mask, *keys = s->keys, *hs = s->hs;
+  I size = 8, m = s->mask, *keys = s->keys, *hs = s->hs, *kb = s->kb;
   while (size <= minused) size <<= 1;
   if (size == 8 && m == 7 && s->fill == s->len) return;   /* (the small table without dummies stays as it is) */
   stable(s, size); s->fill = s->len;
-  for (I i = 0; i <= m; i++) if (hs[i] != -1) sclean(s, keys[i], hs[i]);
+  if (!kb) { for (I i = 0; i <= m; i++) if (hs[i] != -1) sclean(s, keys[i], hs[i]); return; }
+  for (I i = 0; i <= m; i++) if (hs[i] != -1) { uint64_t e = sclean(s, keys[i], hs[i]); if (keys[i] <= INT64_MIN + 1 && kb[i]) sbput(s, e, (Mpz *)kb[i]); }
 }
 /* set_add_entry: k, whose hash is h, unless an equal element is there; into the last dummy its
    probes passed, else the empty slot that ends them. An __eq__ that changed the table or the slot
@@ -3868,19 +5047,40 @@ static int sdiscard(Set *s, I k, I h) {              /* set_discard_entry: was k
   return 1;
 }
 static int shas(Set *s, I k, I h) { I j = slook(s, k, h); return s->hs[j] != -1; }   /* (s->hs once slook is done: an __eq__ may replace it) */
+/* sadd, sdiscard and shas of m, an int past 64 bits of hash h (sbfind) */
+static void sbadd(Set *s, Mpz *m, I h) {
+  I free, j = sbfind(s, m, h, &free), k = h == -4 ? INT64_MIN + 1 : INT64_MIN;
+  if (j >= 0) return;
+  if (free >= 0) { s->keys[free] = k; s->hs[free] = h; sbput(s, free, m); s->len++; return; }
+  j = -1 - j; s->keys[j] = k; s->hs[j] = h; sbput(s, j, m); s->len++;
+  if ((uint64_t)++s->fill * 5 >= (uint64_t)s->mask * 3) sresize(s, s->len > 50000 ? s->len * 2 : s->len * 4);
+}
+static int sbdiscard(Set *s, Mpz *m, I h) {
+  I free, j = sbfind(s, m, h, &free);
+  if (j < 0) return 0;
+  s->keys[j] = 1; s->hs[j] = -1; s->kb[j] = 0; s->len--;
+  return 1;
+}
+static int sbhas(Set *s, Mpz *m, I h) { I free; return sbfind(s, m, h, &free) >= 0; }
+/* the same of element k of hash h, past 64 bits where its Mpz m is not null: for an element taken
+   from a table (sbig) or a list (lbig), whose 64-bit ones take the paths above */
+static void saddm(Set *s, I k, I h, Mpz *m) { if (m) sbadd(s, m, h); else sadd(s, k, h); }
+static int sdiscardm(Set *s, I k, I h, Mpz *m) { return m ? sbdiscard(s, m, h) : sdiscard(s, k, h); }
+static int shasm(Set *s, I k, I h, Mpz *m) { return m ? sbhas(s, m, h) : shas(s, k, h); }
 static void smerge(Set *s, Set *o) {                 /* set_merge: o's elements into s */
   if (o == s || !o->len) return;
   if ((s->fill + o->len) * 5 >= s->mask * 3) sresize(s, (s->len + o->len) * 2);
   if (!s->fill && s->mask == o->mask && o->fill == o->len) {   /* tables of one size, o's without dummies: a copy */
     memcpy(s->keys, o->keys, (o->mask + 1) * 8); memcpy(s->hs, o->hs, (o->mask + 1) * 8);
+    if (o->kb) s->kb = memcpy(pys_alloc((o->mask + 1) * 8), o->kb, (o->mask + 1) * 8);   /* (s, with no fill, has no kb) */
     s->fill = o->fill; s->len = o->len; return;
   }
   if (!s->fill) {
     s->fill = s->len = o->len;
-    for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) sclean(s, o->keys[i], o->hs[i]);
+    for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) { uint64_t e = sclean(s, o->keys[i], o->hs[i]); Mpz *m = sbig(o, i); if (m) sbput(s, e, m); }
     return;
   }
-  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) sadd(s, o->keys[i], o->hs[i]);
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) saddm(s, o->keys[i], o->hs[i], sbig(o, i));
 }
 static void sshrink(Set *s) {                        /* after a difference: a rebuild once a quarter of the slots are dummies */
   if ((uint64_t)(s->fill - s->len) > (uint64_t)s->mask / 4) sresize(s, s->len > 50000 ? s->len * 2 : s->len * 4);
@@ -3888,11 +5088,11 @@ static void sshrink(Set *s) {                        /* after a difference: a re
 /* (an element's __eq__ may change the sets these loops go through: each takes an element and its
    hash before it looks them up) */
 static void ssymupd(Set *s, Set *o) {                /* set_symmetric_difference_update_set */
-  for (I i = 0; i <= o->mask; i++) { I k = o->keys[i], h = o->hs[i]; if (h != -1 && !sdiscard(s, k, h)) sadd(s, k, h); }
+  for (I i = 0; i <= o->mask; i++) { I k = o->keys[i], h = o->hs[i]; if (h == -1) continue; Mpz *m = sbig(o, i); if (!sdiscardm(s, k, h, m)) saddm(s, k, h, m); }
 }
 static int ssubset(Set *a, Set *b) {                 /* set_issubset of a set */
   if (a->len > b->len) return 0;
-  for (I i = 0; i <= a->mask; i++) if (a->hs[i] != -1 && !shas(b, a->keys[i], a->hs[i])) return 0;
+  for (I i = 0; i <= a->mask; i++) if (a->hs[i] != -1 && !shasm(b, a->keys[i], a->hs[i], sbig(a, i))) return 0;
   return 1;
 }
 LOOKUP void pys_set_add(Set *s, I k) { sadd(s, k, shash(s, k)); }
@@ -3906,9 +5106,29 @@ I pys_set_pop(Set *s) {                              /* set_pop: the first eleme
   if (!s->len) pys_fail("KeyError: 'pop from an empty set'");
   I i = s->finger & s->mask;
   while (s->hs[i] == -1) if (++i > s->mask) i = 0;
+  if (sbig(s, i)) pys_fail(NARROW);   /* (pys_set_big_pop's) */
   I k = s->keys[i];
   s->keys[i] = 1; s->hs[i] = -1; s->len--; s->finger = i + 1;
   return k;
+}
+/* s.add(x), x in s, s.discard(x) and s.remove(x) of a set of ints and a promoting int x, {lo, m}: one
+   that fits as its 64-bit int; past 64 bits, its Mpz m, of CPython's hash (sbfind) */
+LOOKUP void pys_set_big_add(Set *s, I lo, Mpz *m) { if (m) sbadd(s, m, pys_mpz_hash(m)); else pys_set_add(s, lo); }
+LOOKUP I pys_set_big_has(Set *s, I lo, Mpz *m) { return m ? sbhas(s, m, pys_mpz_hash(m)) : pys_set_has(s, lo); }
+LOOKUP void pys_set_big_discard(Set *s, I lo, Mpz *m) { if (m) sbdiscard(s, m, pys_mpz_hash(m)); else pys_set_discard(s, lo); }
+LOOKUP void pys_set_big_remove(Set *s, I lo, Mpz *m) {
+  if (!m) { pys_set_remove(s, lo); return; }
+  if (!sbdiscard(s, m, pys_mpz_hash(m))) bkeyerr(m);
+}
+Mpz *pys_set_big_key(Set *s, I i) { return sbig(s, i); }   /* the Mpz of the element in slot i, where pys_set_key gave -2**63 or -2**63 + 1 */
+Big pys_set_big_pop(Set *s) {                        /* s.pop() of a set of ints, as a promoting int */
+  if (!s->len) pys_fail("KeyError: 'pop from an empty set'");
+  I i = s->finger & s->mask;
+  while (s->hs[i] == -1) if (++i > s->mask) i = 0;
+  Mpz *m = sbig(s, i); I k = s->keys[i];
+  if (m) s->kb[i] = 0;
+  s->keys[i] = 1; s->hs[i] = -1; s->len--; s->finger = i + 1;
+  Big r = {m ? 0 : k, m}; return r;
 }
 void pys_set_clear(Set *s) { stable(s, 8); s->len = 0; }
 /* set(o), s.copy() and frozenset(o) of a set o: o merged into a new set */
@@ -3916,12 +5136,26 @@ Set *pys_set_copy(Set *s) { Set *r = pys_set_new(s->kind); smerge(r, s); return 
 /* s.update(o) (s |= o) of a set o; of a list (any other iterable's items), one insertion per item;
    of a dict, one resize for all its keys, then theirs in order */
 void pys_set_update(Set *s, Set *o) { smerge(s, o); }
-void pys_set_update_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) pys_set_add(s, l->a[i]); }
+/* item i of list l as an element of s: *k, and *m the Mpz of an int past 64 bits (BIGIDS); its hash,
+   taken before a lookup (an __eq__ may change l) */
+static I lelem(Set *s, List *l, I i, I *k, Mpz **m) { *k = l->a[i]; *m = lbig(l, i); return *m ? pys_mpz_hash(*m) : shash(s, *k); }
+void pys_set_update_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); saddm(s, k, h, m); } }
 /* the set's hash of d's key e: CPython's takes the dict's, which an H kind's is (c: khash) */
 static I dhash(Set *s, Dict *d, I e, int c) { return c ? (I)d->hs[e] : shash(s, d->keys[e]); }
+/* s.update(d) (op 0), the removal of d's keys from s (1) and s ^= d (2) of a dict of int keys that
+   may hold a key past 64 bits (d->kb: kbig), whose hash is CPython's of it: a path of its own, so
+   that the loops of the others stay as they were */
+__attribute__((noinline)) static void sdict_big(Set *s, Dict *d, int c, int op) {
+  for (I e = 0; e < d->n; e++) if (dlive(d, e)) {
+    Mpz *m = kbig(d, e); I k = d->keys[e], h = m ? pys_mpz_hash(m) : dhash(s, d, e, c);
+    if (op && sdiscardm(s, k, h, m)) continue;
+    if (op != 1) saddm(s, k, h, m);
+  }
+}
 void pys_set_update_dict(Set *s, Dict *d) {
   int c = khash(d->kind);
   if ((s->fill + d->len) * 5 >= s->mask * 3) sresize(s, (s->len + d->len) * 2);
+  if (d->kb && opt_in()) { sdict_big(s, d, c, 0); return; }
   for (I e = 0; e < d->n; e++) if (dlive(d, e)) sadd(s, d->keys[e], dhash(s, d, e, c));
 }
 /* s.union(..., o, ...) after the first: o, unless it is s itself (r: the union so far) */
@@ -3933,35 +5167,35 @@ Set *pys_set_and(Set *a, Set *b) {
   if (a == b) return pys_set_copy(a);
   Set *r = pys_set_new(a->kind);
   if (b->len > a->len) { Set *t = a; a = b; b = t; }
-  for (I i = 0; i <= b->mask; i++) { I k = b->keys[i], h = b->hs[i]; if (h != -1 && shas(a, k, h)) sadd(r, k, h); }
+  for (I i = 0; i <= b->mask; i++) { I k = b->keys[i], h = b->hs[i]; if (h == -1) continue; Mpz *m = sbig(b, i); if (shasm(a, k, h, m)) saddm(r, k, h, m); }
   return r;
 }
 Set *pys_set_and_list(Set *s, List *l) {
   Set *r = pys_set_new(s->kind);
   for (I i = 0; i < l->len; i++) {
-    I k = l->a[i], h = shash(s, k);
-    if (shas(s, k, h)) { sadd(r, k, h); if (r->len >= s->len) break; }
+    I k; Mpz *m; I h = lelem(s, l, i, &k, &m);
+    if (shasm(s, k, h, m)) { saddm(r, k, h, m); if (r->len >= s->len) break; }
   }
   return r;
 }
 /* s &= o and s.intersection_update(...): s takes the table of the intersection (set_swap_bodies) */
-void pys_set_assign(Set *s, Set *t) { s->len = t->len; s->fill = t->fill; s->mask = t->mask; s->keys = t->keys; s->hs = t->hs; }
+void pys_set_assign(Set *s, Set *t) { s->len = t->len; s->fill = t->fill; s->mask = t->mask; s->keys = t->keys; s->hs = t->hs; s->kb = t->kb; }
 /* s -= o and s.difference_update(o) (set_difference_update_internal): o's elements discarded (those
    of s & o, if o is more than 8 times larger); a list's items in order */
 void pys_set_isub(Set *s, Set *o) {
   if (s == o) { pys_set_clear(s); return; }
   if ((o->len >> 3) > s->len) o = pys_set_and(s, o);
-  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) sdiscard(s, o->keys[i], o->hs[i]);
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) sdiscardm(s, o->keys[i], o->hs[i], sbig(o, i));
   sshrink(s);
 }
-void pys_set_isub_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) pys_set_discard(s, l->a[i]); sshrink(s); }
+void pys_set_isub_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); sdiscardm(s, k, h, m); } sshrink(s); }
 /* s - o (set_difference): a copy of s less o's elements if s has more than 4 times as many, else
    the elements of s that o has not, inserted into a new set; of a list, the copy less its items;
    of a dict, as of a set, with its keys */
 Set *pys_set_sub(Set *a, Set *b) {
   if ((a->len >> 2) > b->len) { Set *r = pys_set_copy(a); pys_set_isub(r, b); return r; }
   Set *r = pys_set_new(a->kind);
-  for (I i = 0; i <= a->mask; i++) { I k = a->keys[i], h = a->hs[i]; if (h != -1 && !shas(b, k, h)) sadd(r, k, h); }
+  for (I i = 0; i <= a->mask; i++) { I k = a->keys[i], h = a->hs[i]; if (h == -1) continue; Mpz *m = sbig(a, i); if (!shasm(b, k, h, m)) saddm(r, k, h, m); }
   return r;
 }
 Set *pys_set_sub_list(Set *s, List *l) { Set *r = pys_set_copy(s); pys_set_isub_list(r, l); return r; }
@@ -3969,14 +5203,17 @@ Set *pys_set_sub_dict(Set *s, Dict *d) {
   int c = khash(d->kind);
   if ((s->len >> 2) > d->len) {
     Set *r = pys_set_copy(s);
-    for (I e = 0; e < d->n; e++) if (dlive(d, e)) sdiscard(r, d->keys[e], dhash(r, d, e, c));
+    if (d->kb && opt_in()) sdict_big(r, d, c, 1);
+    else for (I e = 0; e < d->n; e++) if (dlive(d, e)) sdiscard(r, d->keys[e], dhash(r, d, e, c));
     sshrink(r);
     return r;
   }
   Set *r = pys_set_new(s->kind);
   for (I i = 0; i <= s->mask; i++) {
     I k = s->keys[i], h = s->hs[i];
-    if (h != -1 && (c ? dfind(d, k, (uint64_t)h, 0) : entry(d, k)) < 0) sadd(r, k, h);
+    if (h == -1) continue;
+    Mpz *m = sbig(s, i);   /* (an int past 64 bits: a key past 64 bits, dbfind) */
+    if ((m ? dbfind(d, m, hbig(m), 0) : c ? dfind(d, k, (uint64_t)h, 0) : entry(d, k)) < 0) saddm(r, k, h, m);
   }
   return r;
 }
@@ -3991,6 +5228,7 @@ void pys_set_ixor(Set *s, Set *o) { if (s == o) pys_set_clear(s); else ssymupd(s
 void pys_set_ixor_list(Set *s, List *l) { Set *o = pys_set_new(s->kind); pys_set_update_list(o, l); ssymupd(s, o); }
 void pys_set_ixor_dict(Set *s, Dict *d) {
   int c = khash(d->kind);
+  if (d->kb && opt_in()) { sdict_big(s, d, c, 2); return; }
   for (I e = 0; e < d->n; e++) if (dlive(d, e)) { I k = d->keys[e], h = dhash(s, d, e, c); if (!sdiscard(s, k, h)) sadd(s, k, h); }
 }
 /* a op b for op 0..5 = < <= > >= == != (set_richcompare): subsets and equality */
@@ -4006,14 +5244,14 @@ I pys_set_cmp(Set *a, Set *b, I op) {
 }
 /* s.issubset(l), s.issuperset(l) and s.isdisjoint(...) */
 I pys_set_le_list(Set *s, List *l) { return pys_set_and_list(s, l)->len == s->len; }
-I pys_set_ge_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) if (!pys_set_has(s, l->a[i])) return 0; return 1; }
+I pys_set_ge_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); if (!shasm(s, k, h, m)) return 0; } return 1; }
 I pys_set_isdisjoint(Set *a, Set *b) {
   if (a == b) return !a->len;
   if (b->len > a->len) { Set *t = a; a = b; b = t; }
-  for (I i = 0; i <= b->mask; i++) if (b->hs[i] != -1 && shas(a, b->keys[i], b->hs[i])) return 0;
+  for (I i = 0; i <= b->mask; i++) if (b->hs[i] != -1 && shasm(a, b->keys[i], b->hs[i], sbig(b, i))) return 0;
   return 1;
 }
-I pys_set_isdisjoint_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) if (pys_set_has(s, l->a[i])) return 0; return 1; }
+I pys_set_isdisjoint_list(Set *s, List *l) { for (I i = 0; i < l->len; i++) { I k; Mpz *m; I h = lelem(s, l, i, &k, &m); if (shasm(s, k, h, m)) return 0; } return 1; }
 /* for loops: the slot of the next element from slot i, or -1 at the end, failing like CPython's set
    iterator when the set changed size meanwhile (used: its len when the loop started) */
 I pys_set_next(Set *s, I i, I used) {
@@ -4025,7 +5263,12 @@ I pys_set_key(Set *s, I i) { return s->keys[i]; }
 /* list(s), sorted(s), ...: the elements in the order a loop sees them */
 List *pys_set_list(Set *s) {
   List *l = list_new(s->len, atomic_items(s->keys));   /* (an int set's table past 8 slots is atomic) */
-  for (I i = 0; i <= s->mask; i++) if (s->hs[i] != -1) l->a[l->len++] = s->keys[i];
+  for (I i = 0; i <= s->mask; i++) if (s->hs[i] != -1) {
+    Mpz *m = sbig(s, i);   /* (an int past 64 bits: -2**63 and the list's BIGIDS companion) */
+    if (m && !l->ids) { l->ids = pys_alloc((l->cap + 1) * sizeof(I)); l->ids[0] = BIGIDS; }
+    if (m) l->ids[l->len + 1] = (I)m;
+    l->a[l->len++] = m ? INT64_MIN : s->keys[i];
+  }
   return l;
 }
 
@@ -4043,7 +5286,7 @@ static I u8enc(char *o, I c) {
   o[0] = 0xF0 | c >> 18; o[1] = 0x80 | (c >> 12 & 63); o[2] = 0x80 | (c >> 6 & 63); o[3] = 0x80 | (c & 63); return 4;
 }
 static const char *tyname(char d) {
-  return d == 'i' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' ? "type" : "object";
+  return d == 'i' || d == 'J' ? "int" : d == 'b' ? "bool" : d == 'f' ? "float" : d == 's' ? "str" : d == 'L' ? "list" : d == 'D' ? "dict" : d == 'T' || d == 'V' ? "tuple" : d == 'S' ? "set" : d == 'F' ? "frozenset" : d == 'C' ? "type" : "object";
 }
 /* The mini-language itself is in runtime.py (pys_format_str, _int, _float); pys_format picks one
    by the descriptor, and pys_fmt_float writes the digits of a float for a presentation type with
@@ -4055,7 +5298,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
   const char *ds = desc->s;
   if (*ds == 'A') {   /* (a dynamic value: its own; an object's or a function's with a spec: object.__format__'s error) */
     Dyn *x = (Dyn *)v;
-    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
+    if ((DKIND(x) == DK_OBJ || DKIND(x) == DK_FUNC || DKIND(x) == DK_ITER || DKIND(x) == DK_GEN) && spec->len) failf("TypeError: unsupported format string passed to %s.__format__", DNAME(x));
     v = x->v; ds = x->t->desc->s;
   }
   if (*ds == '?') {                            /* None or a value */
@@ -5275,6 +6518,7 @@ static int select_fds(List *fds, fd_set *set, int maxfd) {
   return maxfd;
 }
 void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
+  list_narrow(r); list_narrow(w); list_narrow(x);   /* (file descriptors past 64 bits: BIGIDS) */
   if (!blocking) {
     if (isnan(timeout)) pys_fail("ValueError: Invalid value NaN (not a number)");
     if (timeout >= 9223372036.854776 || timeout <= -9223372036.854776)
@@ -5326,8 +6570,13 @@ void **pys_select(List *r, List *w, List *x, double timeout, I blocking) {
   for (int k = 0; k < 3; k++) {
     List *src = inputs[k], *dst = pys_list_new_atomic(src->len);
     out[k] = dst;
+    int ids = src->ids && !big_list(src);   /* (a list of promoting ints' companion holds no identities: BIGIDS) */
+    if (ids) pys_list_identity(src, src->ids[0]);
     for (I i = 0; i < src->len; i++)
-      if (FD_ISSET((int)src->a[i], &ready[k])) pys_list_append(dst, src->a[i]);
+      if (FD_ISSET((int)src->a[i], &ready[k])) {
+        if (ids) pys_list_append_identity(dst, src->a[i], (Dyn *)src->ids[i + 1], src->ids[0]);
+        else pys_list_append(dst, src->a[i]);
+      }
   }
   return out;
 }
@@ -5880,6 +7129,7 @@ I pys_c_check(I v, I k) {              /* @ffi.extern: an int as C's int (0), un
 }
 void pys_c_str(Str *s) { if (nul(s)) pys_fail("ValueError: embedded null character"); }   /* a str passed as const char * */
 void *pys_c_at(List *l, I k) {         /* ffi.at(xs, k), a list passed from its index k: its items from there */
+  list_narrow(l);   /* (C reads 64-bit ints: BIGIDS) */
   if (k < 0 || k > l->len) {
     char b[112]; snprintf(b, 112, "IndexError: ffi.at() index %lld is out of range for a list of %lld items", (long long)k, (long long)l->len); pys_fail(b);
   }

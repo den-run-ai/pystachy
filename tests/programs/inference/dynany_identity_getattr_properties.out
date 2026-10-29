@@ -1,0 +1,8 @@
+getter False True 1
+getter True True 1
+optional False True
+optional True True
+union False True
+union True True
+propagated
+[exit 0]

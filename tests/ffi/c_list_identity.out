@@ -1,0 +1,11 @@
+before True True 1
+readonly True False False False
+stable True True 2
+copy True True
+offset False 6.0 True
+alias [4.0, 3.0, 3.0, 4.0] False False False
+alias stable True True
+integer before True True
+sum 2000
+integer after False False True
+[exit 0]

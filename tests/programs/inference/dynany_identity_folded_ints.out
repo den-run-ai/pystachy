@@ -1,0 +1,30 @@
+add True True
+subtract True True
+multiply True True
+floor divide True True
+remainder True True
+power True True
+left shift True True
+right shift True True
+bit and True True
+bit or True True
+bit xor True True
+invert True True
+nested sign True True
+nested operators True True
+masked operators True True
+masked shift True True
+masked nested True True
+minimum True True
+negative floor True True
+negative modulo True True
+runtime operand False False
+runtime equal results False False
+conversion call False False
+power outside fold bound True True
+repeated folded return True True
+folded return literal True True
+division still raises 0
+division still raises 1
+negative shift still raises
+[exit 0]

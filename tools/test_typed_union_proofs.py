@@ -1058,6 +1058,28 @@ class UnionProofTests(unittest.TestCase):
                             c.g.verify(c.fn, False)
                         self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
 
+    def test_hidden_global_box_uses_declared_storage_after_calls(self):
+        for declared in ("int", "float", ""):
+            for tag in ("int", "float"):
+                with self.subTest(declared=declared, tag=tag):
+                    c = Case("hidden_default_box", ["%ptr"])
+                    c.g.runtime("pys_ubox")
+                    if declared:
+                        c.g.global_var("@d.default", declared)
+                    c.op("icall", "None", a=[("%a0", "%ptr")])
+                    # The load's annotation alone cannot prove the stored scalar kind.
+                    value = c.op("mach.load", "int", a=[("@d.default", "%ptr")])
+                    c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (value, "*T")])
+                    c.ret()
+                    errors = StringIO()
+                    with redirect_stderr(errors):
+                        if declared == tag:
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+                            self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
+
     def test_machine_tag_read_requires_a_nonnull_source(self):
         optional = "opt[" + U + "]"
         for loaded in (False, True):

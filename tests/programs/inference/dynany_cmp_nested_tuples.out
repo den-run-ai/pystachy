@@ -1,0 +1,34 @@
+leaf True
+leaf True
+leaf True
+leaf True
+leaf True
+leaf True
+fixed True True False
+leaf True
+different lengths False
+leaf True
+leaf True
+leaf True
+leaf True
+fixed variable True True
+leaf True
+leaf True
+variable lengths False False
+leaf True
+leaf True
+variable longer False
+leaf False
+short circuit False
+leaf True
+leaf True
+nullable True True
+different None False
+comparison ran
+leaf True
+comparison ran
+leaf True
+comparison ran
+leaf True
+boxed True True False
+[exit 0]

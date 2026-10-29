@@ -1,10 +1,10 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
-from src.pystachy_compiler.specs import FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, umembers
+from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, NONEVAR, RAWR, RAWW, RUNTIME
+from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, lt, same_kind, targs, tslots, umembers
 
 # Fixed SSA result counts printed by each lowering (gen_nums handles calls).
 RESULT_NUMBERS: dict[str, int] = {
@@ -16,6 +16,7 @@ RESULT_NUMBERS: dict[str, int] = {
     "union.tag": 1, "num.cast": 1, "num.cmp": 1, "alloc.fixed": 1,
     "tuple.store": 1, "mem.load": 1, "int.ucmp": 1, "ptr.cmp": 1,
     "empty.kind": 1, "gen.yield": 2, "gen.ret": 2, "gen.promise": 1,
+    "big.make": 2, "big.lo": 1, "big.hi": 1,
 }
 
 
@@ -96,6 +97,14 @@ class EffectSummaries:
         # recursion nor an iteration cutoff.
         self.direct = [m for m in direct]
         self.calls = [[c for c in cs] for cs in calls]
+
+
+def big_digits(d: str) -> bool:
+    # may a value of descriptor d hold an int whose repr runtime.c's walks write from its digits, in
+    # a program whose lists, dicts and sets of ints hold promoting ints (int_lists): a list's int
+    # (Li), a set's (Si, Fi) or a dict's (D, its value: any dict whose descriptor holds an int),
+    # whose repr raises CPython's ValueError past 4300 digits (digits_deep)
+    return "Li" in d or "Si" in d or "Fi" in d or ("D" in d and "i" in d)
 
 
 def has_machine_union_tag(fn: IFn) -> bool:
@@ -253,9 +262,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if i.a[0].t not in self.classes:
                     self.bad_ir(fn, b, "field.addr needs a declared class layout")
                 ci = self.classes[i.a[0].t]
-                if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values()):
-                    self.bad_ir(fn, b, "field.addr needs a declared field or assignment flag index")
-                t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "bool"
+                if i.k < 0 or (i.k >= len(ci.fields) and i.k not in ci.fflag.values() and i.k not in ci.fbox.values()):
+                    self.bad_ir(fn, b, "field.addr needs a declared field, assignment flag or identity box index")
+                t = ci.ftypes[ci.fields[i.k]] if i.k < len(ci.fields) else "dyn" if i.k in ci.fbox.values() else "bool"
                 if i.t != "*" + t and not (i.t == "*" + NONEVAR and lt(t) == "ptr"):
                     # (but a field compiled while only None had been given to it: Gen.none_field)
                     self.bad_ir(fn, b, "field.addr result must address the declared member type")
@@ -264,9 +273,11 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
                 t = i.a[0].t
                 ts = targs(t) if is_tuple(t) and t.endswith("]") and t.count("[") == t.count("]") else []
-                if "" in ts or "..." in ts or i.k < 0 or i.k >= len(ts):
+                if "" in ts or "..." in ts or i.k < 0 or i.k >= tslots(t):
                     self.bad_ir(fn, b, f"{i.op} needs a fixed tuple and an in-range item index")
-                if i.s != ts[i.k] or i.s.startswith("%") or i.s.startswith("*") or i.s == "#" or ((i.s == "T" or i.s == "K" or i.s == "V" or i.s == "S") and i.s not in self.classes):
+                if i.k >= len(ts) and (i.s != BIG or ts[i.k - len(ts)] != BIG):
+                    self.bad_ir(fn, b, f"{i.op} of a slot past the items needs a promoting int item's Mpz word")  # (tslots)
+                if i.k < len(ts) and (i.s != ts[i.k] or i.s.startswith("%") or i.s.startswith("*") or i.s == "#" or ((i.s == "T" or i.s == "K" or i.s == "V" or i.s == "S") and i.s not in self.classes)):
                     self.bad_ir(fn, b, f"{i.op} needs the declared native item type")
                 if (i.op == "tuple.load" and i.t != "%slot") or (i.op == "tuple.store" and (i.t != "" or i.a[1].t != "%slot")):
                     self.bad_ir(fn, b, f"{i.op} needs an opaque item slot")
@@ -322,6 +333,12 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     self.bad_ir(fn, b, f"{i.op} needs one dyn operand and no extra metadata")
                 if (i.op == "dyn.type" and (i.t != "dyntype" or i.s != "")) or (i.op == "dyn.payload" and (i.t != "%slot" or i.s == "" or i.s == "dyn" or i.s.startswith("%"))):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or payload type")
+            if i.op == "big.make" or i.op == "big.lo" or i.op == "big.hi":
+                # a promoting int's two words: big.make (int, %ptr) -> int+, big.lo -> int, big.hi -> %ptr
+                ts = ["int", "%ptr"] if i.op == "big.make" else ["int+"]
+                rt = "int+" if i.op == "big.make" else "int" if i.op == "big.lo" else "%ptr"
+                if len(i.a) != len(ts) or [a.t for a in i.a] != ts or i.t != rt or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
+                    self.bad_ir(fn, b, f"{i.op} has invalid operands, result type or metadata")
             if i.op.startswith("gen."):
                 self.verify_gen(fn, b, i, j)
             n = self.nums(i)
@@ -368,7 +385,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     effects = self.opfx(i, fn.fa)
                     writes[key] = effects & (RAWW | FXBIT["wG"]) != 0
                     raises[key] = effects & FXBIT["R"] != 0
-        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises)
+        proof = UnionProof(fn, self.utags, writes, self.gtypes, raises, self.globs)
         proof.run()
         for j in range(len(proof.bad)):
             self.bad_ir(fn, fn.blocks[at[proof.badblocks[j]]], proof.bad[j])
@@ -376,7 +393,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
 def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # a generator op (docs/internals.md#generators): gen.start ends the entry block of a
     # generator function (IFn.coro) and names it (a str); gen.yield (a %slot, k 0 or 1) and
-    # gen.ret (none, or a %slot) suspend one, gen.promise without an operand is its own promise;
+    # gen.ret (none, or a %slot) suspend one, with the %ptr of a promoting int after the slot in a
+    # program that opts in to them (specs.GENVALP); gen.promise without an operand is its own promise;
     # gen.promise, gen.resume and gen.drop of a handle take a generator
     own = i.op == "gen.start" or i.op == "gen.yield" or i.op == "gen.ret" or (i.op == "gen.promise" and len(i.a) == 0)
     if own and not fn.coro:
@@ -385,9 +403,10 @@ def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
         self.bad_ir(fn, b, f"{i.op} with extra metadata")
     if i.op == "gen.start" and (b is not fn.blocks[0] or len(i.a) != 1 or i.a[0].t != "str" or len(i.b) != 1 or i.t != ""):
         self.bad_ir(fn, b, "gen.start must end the entry block, with the generator's name and its first block")
-    if i.op == "gen.yield" and (len(i.a) != 1 or i.a[0].t != "%slot" or len(i.b) != 1 or i.t != ""):
+    hi = len(i.a) == 2 and i.a[1].t == "%ptr" and int_program()
+    if i.op == "gen.yield" and ((len(i.a) != 1 and not hi) or i.a[0].t != "%slot" or len(i.b) != 1 or i.t != ""):
         self.bad_ir(fn, b, "gen.yield needs the value's slot and the block where it resumes")
-    if i.op == "gen.ret" and (len(i.a) > 1 or (len(i.a) == 1 and i.a[0].t != "%slot") or len(i.b) != 0 or i.t != ""):
+    if i.op == "gen.ret" and ((len(i.a) > 1 and not hi) or (len(i.a) > 0 and i.a[0].t != "%slot") or len(i.b) != 0 or i.t != ""):
         self.bad_ir(fn, b, "gen.ret needs the slot of its value, if any")
     if i.op == "gen.promise" and (i.t != "%ptr" or len(i.a) > 1 or (len(i.a) == 1 and not is_gen(i.a[0].t)) or len(i.b) != 0):
         self.bad_ir(fn, b, "gen.promise needs a generator or none (its own)")
@@ -448,8 +467,10 @@ def gen_opfx(self, i: Ins, fa: dict[str, bool]) -> int:
         # its __repr__ where a KeyError names it; a recursive alias's edge, R, lets a value nest
         # past the depth guard of the runtime's descriptor walks)
         f = self.rtfns[i.s]
-        # (and a dynamic value, A, may hold any of these: dynamic.py)
-        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x) else 0)
+        # (and a dynamic value, A, may hold any of these: dynamic.py; a list, set or dict of ints may
+        # hold one whose text is past CPython's limit, in a program whose lists, sets and dicts hold
+        # promoting ints: big_digits, bigints.py; and so may a promoting int, J, of a tuple or a box)
+        fx = f.fx | (FXBIT["R"] if f.rq and ("R" in i.x or "A" in i.x or "J" in i.x or (big_digits(i.x) and int_lists())) else 0)
         u = "O" in i.x or "H" in i.x or "A" in i.x or ("P" in i.x and fx & FXBIT["R"] != 0) or ("E" in i.x and len(self.xcls) > 0)
         return FXALL if f.q and u else fx
     if i.op == "mem.load" or i.op == "mem.store" or i.op == "mach.load" or i.op == "mach.store":

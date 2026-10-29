@@ -1,0 +1,10 @@
+iter
+len
+[2, 1, 3]
+iter
+len
+[1, 2, 3]
+iter
+len
+[0, 2, 1, 3]
+[exit 0]

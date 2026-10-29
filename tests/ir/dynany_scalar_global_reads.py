@@ -1,5 +1,6 @@
 # pystachy: dynamic-any
 # Numeric consumers need no global snapshot; escaping reads still need one.
+# A returned literal carries its canonical object through the numeric call ABI.
 from typing import Any
 
 G = 0

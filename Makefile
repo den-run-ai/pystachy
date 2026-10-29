@@ -4,7 +4,7 @@ PY ?= $(shell command -v python3.13 || command -v python3)
 export PYSTACHY_LLVM ?= $(shell $(PY) -c 'import pystachy; print(pystachy.llvm_dir())')
 COMPILER_SOURCES := pystachy.py $(wildcard src/*.py src/pystachy_compiler/*.py)
 
-pystachy: $(COMPILER_SOURCES) runtime.c runtime.py
+pystachy: $(COMPILER_SOURCES) runtime.c runtime.py $(wildcard ryu/*.c ryu/*.h mpz/*.c)
 	mkdir -p build
 	$(PY) pystachy.py build pystachy.py -o build/pystachy1
 	build/pystachy1 build pystachy.py -o build/pystachy2
@@ -188,6 +188,10 @@ streamprobe: pystachy
 jitprobe: pystachy
 	$(PY) tools/jitprobe.py
 
+# AOT drops opt-in runtime code only when neither the program nor an import opts in.
+aotprobe: pystachy
+	$(PY) tools/aotprobe.py
+
 # Opt-in Unicode porting checks, including cache reuse and GC-stress exception paths.
 unicode-audit: pystachy
 	$(PY) tools/unicode_audit.py
@@ -209,7 +213,7 @@ verify:
 
 # IR oracle for refactors (tools/irsame.sh): ./pystachy must emit what the compiler of commit REF (default
 # HEAD) emits -- IR, messages, exit status -- for every corpus program, or for FILES; irsame-py compares the
-# CPython-hosted compilers. build/ref holds REF's pystachy.py, src/, runtime.c (with ryu/, which it includes),
+# CPython-hosted compilers. build/ref holds REF's pystachy.py, src/, runtime.c (with ryu/ and mpz/, which it includes),
 # lib/ and stage-2 compiler, built as above and rebuilt only for another commit; each compiler uses the
 # runtime.c and lib/ beside it.
 REF ?= HEAD
@@ -231,6 +235,7 @@ ref:
 	  { ! git cat-file -e $$c:runtime.py 2> /dev/null || git show $$c:runtime.py > build/ref/runtime.py; } && \
 	  { ! git cat-file -e $$c:lib 2> /dev/null || git archive $$c lib | tar -xf - -C build/ref; } && \
 	  { ! git cat-file -e $$c:ryu 2> /dev/null || git archive $$c ryu | tar -xf - -C build/ref; } && \
+	  { ! git cat-file -e $$c:mpz 2> /dev/null || git archive $$c mpz | tar -xf - -C build/ref; } && \
 	  PYSTACHY_HOME= $(PY) build/ref/pystachy.py build build/ref/pystachy.py -o build/ref/pystachy1 && \
 	  PYSTACHY_HOME= build/ref/pystachy1 build build/ref/pystachy.py -o build/ref/pystachy && \
 	  echo $$c > build/ref/commit; \
@@ -292,6 +297,18 @@ DYNANY_OPTIN ?=
 dynany-optin: pystachy
 	$(PY) tools/dynany_optin.py --compiler ./pystachy --modes jit aot --report build/dynany-optin.json $(DYNANY_OPTIN)
 
+# Opt the program corpus in to promoting ints the same way (tools/python_int_optin.py): a report of
+# every check, which PYTHON_INT_OPTIN="--compare BASE" compares with an earlier one, BASE, failing
+# where a check that passes there fails now (docs/testing.md)
+PYTHON_INT_OPTIN ?=
+python-int-optin: pystachy
+	$(PY) tools/python_int_optin.py --compiler ./pystachy --modes jit aot --report build/python-int-optin.json $(PYTHON_INT_OPTIN)
+
+# Enforce the reviewed promoting-int compatibility baseline, including every case and both modes.
+PYTHON_INT_GATE ?=
+python-int-gate: pystachy
+	$(PY) tools/python_int_gate.py --compiler ./pystachy --modes jit aot --report build/python-int-gate.json $(PYTHON_INT_GATE)
+
 # lib/re, run by CPython, must enter its matcher and make contexts no more often than fixed limits
 # allow for textwrap's patterns, with CPython's results (tools/re_probe.py: deterministic counts);
 # RE_PROBE="--time ./pystachy" also times tools/re_bench.py compiled and under CPython
@@ -319,7 +336,7 @@ lint-python:
 check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_function_summaries.py
 	$(PY) -m unittest discover -s tools -p 'test_typed*.py'
-	$(PY) -m unittest discover -s tools -p test_json_any_loader.py
+	$(PY) -m unittest discover -s tools -p 'test_json*.py'
 	$(PY) -m unittest discover -s tools -p test_numeric_identity.py
 	$(PY) -m unittest discover -s tools -p test_dynany_comparisons.py
 
@@ -349,4 +366,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-ffi bench bench-extended bench-extended-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install

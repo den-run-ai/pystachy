@@ -1,0 +1,11 @@
+tuples True True False False True
+empty True True False
+union False False True False False True
+tuples True True False False True
+empty True True False
+union False False True False False True
+tuple sets False True True False False True True True True True True
+numeric overlap True
+tuple sets True False False True True False False False False False False
+numeric overlap True
+[exit 0]

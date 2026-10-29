@@ -1,9 +1,9 @@
 """How compile time grows with the size of the program: generated programs, timed IR generation.
 
 usage: python3 tools/scaling.py [-c LABEL=COMMAND]... [-s SHAPE,...] [-x SHAPE,...] [-n N,...] [-r RUNS] [--ops] [--check]
-                                [--keep DIR]
+                                [--keep DIR] [-j JOBS]
        (defaults: the checkout's -c "hosted=python3 pystachy.py" -c "native=./pystachy", every shape,
-       -n 1000,2000,4000, -r 3)
+       -n 1000,2000,4000, -r 3, -j 1)
 Each shape is a family of programs whose size grows with N:
   funcs    N small annotated functions and 10 global variables
   globals  N global variables and 10 functions
@@ -47,7 +47,11 @@ times as fast as N (a superlinear pass): tests/verify.sh runs it on N = 500 and 
 --keep DIR writes the generated programs to DIR/SHAPE-N/ instead of a temporary directory.
 -x leaves the shapes it names out of those -s gives (default: all), so that tests/verify.sh's
 scaling-1 checks every shape its scaling-0 does not, a new one too.
+-j measures JOBS shapes at a time (0: one per CPU) and prints the table in the same order. The
+counts --check compares do not depend on the machine or its load; the seconds do, so measure
+timings with -j 1 (tests/verify.sh's checks use -j: there the seconds are informational only).
 """
+import concurrent.futures
 import glob
 import importlib.util
 import json
@@ -296,8 +300,15 @@ def count(out, script, args):
     depth = [0]
     work = {id(f) for f in [dict, list, tuple, sorted, dict.copy, list.copy, list.index, list.count, list.insert, list.remove]}
 
+    # whether a code object is the compiler's, by its file, found once per file: os.path.abspath at
+    # each of the hundreds of millions of events cost more than counting them
+    mine = {}
+
     def line(c, _):
-        if os.path.abspath(c.co_filename) not in compiler_files:
+        inside = mine.get(c.co_filename)
+        if inside is None:
+            inside = mine[c.co_filename] = os.path.abspath(c.co_filename) in compiler_files
+        if not inside:
             return mon.DISABLE
         n["lines"] += 1
         if depth[0] > 0:
@@ -305,7 +316,10 @@ def count(out, script, args):
 
     def call(c, _, f, arg0):
         # (a method's arg0 is the object it is called on)
-        if os.path.abspath(c.co_filename) not in compiler_files:
+        inside = mine.get(c.co_filename)
+        if inside is None:
+            inside = mine[c.co_filename] = os.path.abspath(c.co_filename) in compiler_files
+        if not inside:
             return mon.DISABLE
         if id(f) in work and hasattr(arg0, "__len__"):
             n["items"] += len(arg0)
@@ -332,11 +346,38 @@ def count(out, script, args):
             json.dump(n, f)
 
 
+def measure(s, sizes, cols, runs, tmp):
+    # the table's rows of shape s, the failures (by compiler and shape) and the counts that grew too fast
+    rows, errors, fast = [], {}, []
+    prev = {}
+    prevn = 0
+    for n in sizes:
+        prog = write(os.path.join(tmp, f"{s}-{n}"), SHAPES[s](n))
+        row = f"| {s} | {n} |"
+        for k, (label, cmd, isops) in enumerate(cols):
+            r = ops(cmd, prog) if isops else timed(cmd, prog, runs)
+            if isinstance(r, str):
+                errors[(label, s)] = f"{label} on {s} {n}: {r}"
+                row += " failed | | | | | |" if isops else " failed | |"
+                prev.pop(k, None)
+                continue
+            vals = [r["lines"], r["flow"], r["items"]] if isops else [r]
+            for j, v in enumerate(vals):
+                grow = f"{v / prev[k][j]:.1f}" if k in prev and prev[k][j] > 0 else ""
+                row += f" {v} | {grow} |" if isops else f" {v:.3f} | {grow} |"
+                if isops and grow and v / prev[k][j] > 1.1 * n / prevn:
+                    fast.append(f"{label} on {s}: {['lines', 'flow', 'items'][j]} grew {grow} times from N = {prevn} to {n}")
+            prev[k] = vals
+        prevn = n
+        rows.append(row)
+    return rows, errors, fast
+
+
 def main():
     argv = sys.argv[1:]
     if argv[:1] == ["--count"]:
         return count(argv[1], argv[2], argv[3:])
-    comps, shapes, excluded, sizes, runs, want_ops, check, keep = [], list(SHAPES), [], [1000, 2000, 4000], 3, False, False, ""
+    comps, shapes, excluded, sizes, runs, want_ops, check, keep, jobs = [], list(SHAPES), [], [1000, 2000, 4000], 3, False, False, "", 1
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -364,6 +405,8 @@ def main():
             runs = int(v)
         elif a == "--keep":
             keep = v
+        elif a == "-j":
+            jobs = int(v) or os.cpu_count() or 1
         else:
             sys.exit(__doc__)
         i += 2
@@ -389,28 +432,15 @@ def main():
     errors = {}
     fast = []
     with tempfile.TemporaryDirectory() as tmp:
-        for s in shapes:
-            prev = {}
-            prevn = 0
-            for n in sizes:
-                prog = write(os.path.join(keep or tmp, f"{s}-{n}"), SHAPES[s](n))
-                row = f"| {s} | {n} |"
-                for k, (label, cmd, isops) in enumerate(cols):
-                    r = ops(cmd, prog) if isops else timed(cmd, prog, runs)
-                    if isinstance(r, str):
-                        errors[(label, s)] = f"{label} on {s} {n}: {r}"
-                        row += " failed | | | | | |" if isops else " failed | |"
-                        prev.pop(k, None)
-                        continue
-                    vals = [r["lines"], r["flow"], r["items"]] if isops else [r]
-                    for j, v in enumerate(vals):
-                        grow = f"{v / prev[k][j]:.1f}" if k in prev and prev[k][j] > 0 else ""
-                        row += f" {v} | {grow} |" if isops else f" {v:.3f} | {grow} |"
-                        if isops and grow and v / prev[k][j] > 1.1 * n / prevn:
-                            fast.append(f"{label} on {s}: {['lines', 'flow', 'items'][j]} grew {grow} times from N = {prevn} to {n}")
-                    prev[k] = vals
-                prevn = n
-                print(row, flush=True)
+        # (each shape is measured on its own, its sizes in order, so shapes can run side by side)
+        with concurrent.futures.ThreadPoolExecutor(max(1, jobs)) as ex:
+            measured = [ex.submit(measure, s, sizes, cols, runs, keep or tmp) for s in shapes]
+            for m in measured:
+                rows, errs, fasts = m.result()
+                for row in rows:
+                    print(row, flush=True)
+                errors.update(errs)
+                fast += fasts
     for e in errors.values():
         print(e)
     for e in fast:

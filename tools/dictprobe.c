@@ -10,7 +10,9 @@
      longest  the most slots that one of those lookups visited
    A last row sweeps the shifts, keys i << s and -(i << s) for every s up to 56 (8000 keys, fewer
    where 2N of them do not fit in 63 bits), and shows each column's worst: a cheap hash can
-   spread i << 46 and still cluster at another shift. It checks the values, the insertion order
+   spread i << 46 and still cluster at another shift. The tuples (i << 64, 0) hold promoting ints
+   past 64 bits (descriptor J, the compiler's bigints.held), whose slots all hold -2**63: they
+   spread only where the hash reads the ints' values. It checks the values, the insertion order
    and the deletions on the way. The counts depend on nothing but the runtime, so they are the
    same on every machine, and the run fails if a pattern averages more than LIMIT slots per
    lookup: a hash that behaved randomly would average at most 1.5 per miss and 2 per lookup
@@ -65,7 +67,7 @@ Str *pys_obj_repr(I c, I a, I b) { (void)c; (void)a; (void)b; return cstr("<obje
 
 static const char *pats[] = {"i", "-i", "i << 46", "i << 32", "i * 1000", "(i // 128) << 32 | i % 128",
   "random", "f\"k{i}\"", "f\"{i:08}\"", "\"x\" * 64 + str(i)", "str(i) + \"x\" * 64", "letter case of i's bits",
-  "objects, by identity", "i << s, -(i << s): s <= 56"};
+  "objects, by identity", "(i << 64, 0): promoting ints", "i << s, -(i << s): s <= 56"};
 #define NPAT (I)(sizeof pats / sizeof *pats - 1)   /* the last one is the sweep's */
 #define MAXN 65536                     /* 2N keys i << 46 fit in 63 bits */
 static List *keys;                     /* the collector's roots */
@@ -144,6 +146,35 @@ static void hash_cache(void) {
 /* dict[Any, ...] (descriptor A): its keys are boxes, each probe here a new box of a new str or of
    an int above the small ints, so none is found as itself */
 static _Noreturn void any_bad(const char *what) { fprintf(stderr, "dictprobe: Any keys: %s\n", what); exit(1); }
+/* Exact lazy boxes share existing objects, including NaNs, without allocation.
+   Missing boxes preserve integer limits and all float payload bits. The existing
+   --hash-cache GC-stress run executes these checks too. */
+static void numeric_boxes(void) {
+  I ints[] = {-5, 0, 256, 257, -1000, INT64_MIN, INT64_MAX};
+  uint64_t bits[] = {0, UINT64_C(0x8000000000000000), UINT64_C(0x7ff8000000000001), UINT64_C(0xfff8000000000002)};
+  keys = pys_list_new(16);
+  for (I i = 0; i < (I)(sizeof ints / sizeof *ints); i++) {
+    Dyn *box = pys_dyn_int_box(ints[i], NULL);
+    pys_list_append(keys, (I)box);
+    if (box->t != &pys_dyntype_int || box->v != ints[i]) any_bad("lazy integer box value");
+    I tick = gc_tick;
+    for (I j = 0; j < 8; j++) if (pys_dyn_int_box(ints[i], box) != box) any_bad("lazy integer box identity");
+    if (gc_tick != tick) any_bad("cached integer box allocates");
+  }
+  for (I i = 0; i < (I)(sizeof bits / sizeof *bits); i++) {
+    double value; memcpy(&value, &bits[i], 8);
+    Dyn *box = pys_dyn_float_box(value, NULL);
+    pys_list_append(keys, (I)box);
+    if (box->t != &pys_dyntype_float || (uint64_t)box->v != bits[i]) any_bad("lazy float box bits");
+    I tick = gc_tick;
+    for (I j = 0; j < 8; j++) if (pys_dyn_float_box(value, box) != box) any_bad("lazy float box identity");
+    if (gc_tick != tick) any_bad("cached float box allocates");
+    Dyn *fresh = pys_dyn_float_box(value, NULL);
+    if (fresh == box || (uint64_t)fresh->v != bits[i]) any_bad("distinct float box or bits");
+  }
+  printf("Any numeric boxes: exact payloads, shared identities, no cached allocations\n");
+}
+
 static Str *any_str(I i) { char s[24]; I n = snprintf(s, sizeof s, "any-%lld", (long long)i); return pys_str(s, n); }
 static void any_keys(void) {
   dict = pys_dict_new((I)cstr("A"), 0);
@@ -206,7 +237,7 @@ static void int_queries(void) {
   /* A colliding user key comes before the integer. The guarded probe must stop
      there without callbacks; the normal fallback observes the original query. */
   DSTR(desc, "O091"); DSTR(name, "IntProbeKey");
-  static const DynType type = {DK_OBJ, (Str *)&desc, (Str *)&name, 91, 0, DF_HASH | DF_X};
+  static const DynType type = {DK_OBJ, (Str *)&desc, (Str *)&name, 91, 0, DF_HASH | DF_X, NULL, NULL, NULL};
   dict = pys_dict_new((I)cstr("A"), 0);
   Dyn *object = pys_dyn_ref(&type, (void *)1);
   pys_dict_set(dict, (I)object, 9);
@@ -300,6 +331,21 @@ static void storage(void) {
     set_kinds(s, ints, "a set that grew");
     set_kinds(pys_set_copy(s), ints, "set.copy()");
   }
+  /* Dynamic programs mark native builtin dict kinds for Python hash/probes.
+     The marker must not turn integer payloads into conservative GC roots. */
+  for (I kind = 0; kind < 2; kind++) {
+    Dict *d = pys_dict_new((I)cstr(kind ? "!s" : "!i"), 10);
+    dict_kinds(d, !kind, "a marked presized dict");
+    for (I i = 0; i < 100; i++) pys_dict_set(d, skey(kind, i), i);
+    dict_kinds(d, !kind, "a marked dict that grew");
+    for (I i = 1; i < 100; i += 2) pys_dict_pop(d, skey(kind, i));
+    Dict *c = pys_dict_copy(d), *f = pys_dict_from(d);
+    dict_kinds(c, !kind, "a marked copy with holes");
+    dict_kinds(f, !kind, "a marked constructor with holes");
+    if (!(d->kind & KTAG) || c->len != 50 || f->len != 50 || pys_dict_getitem(c, skey(kind, 0)) != 0) storage_bad("marked live zero/copy");
+    pys_dict_clear(d); pys_dict_set(d, skey(kind, 0), 0);
+    dict_kinds(d, !kind, "a marked dict filled after clear");
+  }
   addresses(); scrub_collect(); scrub_collect();
   if (gc_live >= 4 * MIB) storage_bad("ints that are the addresses of strs kept them alive");
   Dict *d = (Dict *)keys->a[0]; Set *s = (Set *)keys->a[1];
@@ -380,7 +426,11 @@ static I key(I p, I i) {               /* key i of pattern p; the 2N keys of a p
   case 9: return (I)pys_str(b, snprintf(b, sizeof b, "%s%lld", X64, (long long)i));
   case 10: return (I)pys_str(b, snprintf(b, sizeof b, "%lld%s", (long long)i, X64));
   case 12: { I *o = pys_alloc(24); o[0] = i; return (I)o; }   /* (an object of three fields: P000) */
-  case 13: return sign * (i << shift);
+  case 13: {   /* a tuple of promoting ints (T2Ji, the compiler's bigints.held): past 64 bits, -2**63 and its Mpz in slot 2 */
+    Big b = pys_big_op(i, NULL, 64, NULL, 8); I *t = pys_alloc(24);
+    t[0] = b.hi ? INT64_MIN : b.lo; t[2] = (I)b.hi; return (I)t;
+  }
+  case 14: return sign * (i << shift);
   default: for (int j = 0; j < 20; j++) b[j] = (char)('a' + j - (i >> j & 1) * 32);   /* "aBcD..." */
     return (I)pys_str(b, 20);
   }
@@ -395,7 +445,7 @@ static _Noreturn void bad(I p, I n, const char *what) { fprintf(stderr, "dictpro
 static double run(I p, I n, long long c[4]) {  /* c: slots visited by insert, hit, miss, deleted */
   double t = 1e9;
   for (int r = 0; r < 3; r++) {
-    dict = pys_dict_new(p == 12 ? (I)cstr("P000") : p >= 7 && p < NPAT, 0);
+    dict = pys_dict_new(p == 12 ? (I)cstr("P000") : p == 13 ? (I)cstr("T2Ji") : p >= 7 && p < NPAT, 0);
     dict_slots = 0; double t0 = now();
     for (I i = 0; i < n; i++) pys_dict_set(dict, keys->a[i], i);
     c[0] = dict_slots; dict_slots = 0;
@@ -426,6 +476,7 @@ int main(int argc, char **argv) {
   gc_init(__builtin_frame_address(0), roots, 2);
   hash_cache();
   any_keys();
+  numeric_boxes();
   int_queries();
   storage();
   values();

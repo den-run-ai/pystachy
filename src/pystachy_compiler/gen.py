@@ -21,6 +21,92 @@ from src.pystachy_compiler.memory_ir import (
     gen_mstore as memory_ir_mstore,
     gen_maddr as memory_ir_maddr,
 )
+from src.pystachy_compiler.bigints import (
+    gen_big_builtin as bigints_big_builtin,
+    gen_big_method as bigints_big_method,
+    gen_big_compare as bigints_big_compare,
+    gen_big_binop as bigints_big_binop,
+    gen_int_policy as bigints_int_policy,
+    gen_int_again as bigints_int_again,
+    gen_read_policy as bigints_read_policy,
+    gen_big as bigints_big,
+    gen_big_lo as bigints_big_lo,
+    gen_big_hi as bigints_big_hi,
+    gen_to_big as bigints_to_big,
+    gen_big_fits as bigints_big_fits,
+    gen_big_call as bigints_big_call,
+    gen_big_arith as bigints_big_arith,
+    gen_big_known as bigints_big_known,
+    gen_big_truediv as bigints_big_truediv,
+    gen_big_unary as bigints_big_unary,
+    gen_big_abs as bigints_big_abs,
+    gen_big_cmp as bigints_big_cmp,
+    gen_big_float_cmp as bigints_big_float_cmp,
+    gen_big_truth as bigints_big_truth,
+    gen_big_str as bigints_big_str,
+    gen_big_hash as bigints_big_hash,
+    gen_big_float as bigints_big_float,
+    gen_big_narrow as bigints_big_narrow,
+    gen_big_parse as bigints_big_parse,
+    gen_big_item as bigints_big_item,
+    gen_big_tuple_hash as bigints_big_tuple_hash,
+    gen_big_tuple_view as bigints_big_tuple_view,
+    gen_big_view_test as bigints_big_view_test,
+    gen_big_tuple_narrow as bigints_big_tuple_narrow,
+    gen_big_box as bigints_big_box,
+    gen_big_unbox as bigints_big_unbox,
+    gen_big_opt_narrow as bigints_big_opt_narrow,
+    gen_big_opt_str as bigints_big_opt_str,
+    gen_big_opt_hash as bigints_big_opt_hash,
+    gen_big_opt_or as bigints_big_opt_or,
+    gen_big_status as bigints_big_status,
+    gen_big_len as bigints_big_len,
+    gen_big_slot as bigints_big_slot,
+    gen_big_list_value as bigints_big_list_value,
+    gen_item_type as bigints_item_type,
+    gen_big_list_store as bigints_big_list_store,
+    gen_list_coerce as bigints_list_coerce,
+    gen_list_hold as bigints_list_hold,
+    gen_big_items as bigints_big_items,
+    gen_update_pairs as bigints_update_pairs,
+    gen_search_hold as bigints_search_hold,
+    gen_held_read as bigints_held_read,
+    gen_held_default as bigints_held_default,
+    gen_held_pair as bigints_held_pair,
+    gen_key_hold as bigints_key_hold,
+    gen_held_value as bigints_held_value,
+    gen_dict_int as bigints_dict_int,
+    gen_big_dict_value as bigints_big_dict_value,
+    gen_dict_bigkey as bigints_dict_bigkey,
+    gen_key_coerce as bigints_key_coerce,
+    gen_key_slot as bigints_key_slot,
+    gen_big_key_entry as bigints_big_key_entry,
+    gen_dict_key_args as bigints_dict_key_args,
+    gen_dict_key_fn as bigints_dict_key_fn,
+    gen_dict_put as bigints_dict_put,
+    gen_big_key as bigints_big_key,
+    gen_dict_value as bigints_dict_value,
+    gen_dict_key as bigints_dict_key,
+    gen_big_dict_key as bigints_big_dict_key,
+    gen_dict_box as bigints_dict_box,
+    gen_big_dict_method as bigints_big_dict_method,
+    gen_big_dict_call as bigints_big_dict_call,
+    gen_big_popitem as bigints_big_popitem,
+    gen_dict_store as bigints_dict_store,
+    gen_set_int as bigints_set_int,
+    gen_big_set_value as bigints_big_set_value,
+    gen_set_value as bigints_set_value,
+    gen_set_coerce as bigints_set_coerce,
+    gen_set_store as bigints_set_store,
+    gen_big_set_method as bigints_big_set_method,
+    gen_big_list_minmax as bigints_big_list_minmax,
+    gen_big_list_find as bigints_big_list_find,
+    gen_big_list_method as bigints_big_list_method,
+    gen_big_hashed as bigints_big_hashed,
+    gen_bool_numeric as bigints_bool_numeric,
+    gen_big_tuple_repr as bigints_big_tuple_repr,
+    gen_big_literal as bigints_big_literal,
+)
 from src.pystachy_compiler.dynamic import (
     gen_dyn_again as dynamic_dyn_again,
     gen_dyn_ahead as dynamic_dyn_ahead,
@@ -66,7 +152,22 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_hash as dynamic_dyn_hash,
     gen_json_any as dynamic_json_any,
     gen_dyn_id_held as dynamic_dyn_id_held,
+    gen_lazy_field as dynamic_lazy_field,
+    gen_proven_call as dynamic_proven_call,
+    gen_id_move as dynamic_id_move,
+    gen_id_stmt as dynamic_id_stmt,
+    gen_lazy_fields as dynamic_lazy_fields,
+    gen_lazy_test as dynamic_lazy_test,
+    gen_lazy_value as dynamic_lazy_value,
+    gen_lazy_inert as dynamic_lazy_inert,
+    gen_lazy_barrier as dynamic_lazy_barrier,
+    gen_lazy_resolve as dynamic_lazy_resolve,
+    gen_lazy_store as dynamic_lazy_store,
+    gen_lazy_assign as dynamic_lazy_assign,
+    gen_lazy_while as dynamic_lazy_while,
     gen_dyn_id_read as dynamic_dyn_id_read,
+    gen_dyn_id_fresh as dynamic_dyn_id_fresh,
+    gen_dyn_id_arg as dynamic_dyn_id_arg,
     gen_dyn_id_store as dynamic_dyn_id_store,
     gen_dyn_identity as dynamic_dyn_identity,
     gen_dyn_int as dynamic_dyn_int,
@@ -319,6 +420,7 @@ from src.pystachy_compiler.calls import (
     gen_open_call as calls_open_call,
     gen_pat_arg as calls_pat_arg,
     gen_pcoerce as calls_pcoerce,
+    gen_scalar_call_types as calls_scalar_call_types,
     gen_print_star as calls_print_star,
     gen_replace as calls_replace,
     gen_nt_make as calls_nt_make,
@@ -332,6 +434,13 @@ from src.pystachy_compiler.calls import (
     gen_virtual_call as calls_virtual_call,
 )
 from src.pystachy_compiler.containers import (
+    gen_list_id_kind as containers_list_id_kind,
+    gen_list_find as containers_list_find,
+    gen_list_identity as containers_list_identity,
+    gen_list_item as containers_list_item,
+    gen_list_value as containers_list_value,
+    gen_list_store as containers_list_store,
+    gen_list_minmax as containers_list_minmax,
     gen_none_container as containers_none_container,
     gen_affix_any as containers_affix_any,
     gen_bool_find as containers_bool_find,
@@ -605,6 +714,9 @@ from src.pystachy_compiler.expressions import (
     gen_list_hint_type as expressions_list_hint_type,
     gen_argtype as expressions_argtype,
     gen_arith as expressions_arith,
+    gen_masked as expressions_masked,
+    gen_wexpr as expressions_wexpr,
+    gen_wflag as expressions_wflag,
     gen_boolop as expressions_boolop,
     gen_cat as expressions_cat,
     gen_class_attr as expressions_class_attr,
@@ -644,6 +756,11 @@ from src.pystachy_compiler.expressions import (
     gen_exc_id as expressions_exc_id,
     gen_expr as expressions_expr,
     gen_scalar_read_value as expressions_scalar_read_value,
+    gen_scalar_read_index as expressions_scalar_read_index,
+    gen_plain_field as expressions_plain_field,
+    gen_class_field as expressions_class_field,
+    gen_scalar_receiver as expressions_scalar_receiver,
+    gen_seq_index as expressions_seq_index,
     gen_fmt_error as expressions_fmt_error,
     gen_fmt_raise as expressions_fmt_raise,
     gen_format_arg as expressions_format_arg,
@@ -659,6 +776,7 @@ from src.pystachy_compiler.expressions import (
     gen_format_ as expressions_format_,
     gen_has as expressions_has,
     gen_ifexp as expressions_ifexp,
+    gen_numeric_phi as expressions_numeric_phi,
     gen_index as expressions_index,
     gen_isinst as expressions_isinst,
     gen_class_matches as expressions_class_matches,
@@ -715,6 +833,8 @@ from src.pystachy_compiler.expressions import (
     gen_subscript as expressions_subscript,
     gen_tget as expressions_tget,
     gen_tstore as expressions_tstore,
+    gen_tput as expressions_tput,
+    gen_tslot as expressions_tslot,
     gen_truth as expressions_truth,
     gen_tuple_ as expressions_tuple_,
     gen_dict_merge as expressions_dict_merge,
@@ -722,6 +842,12 @@ from src.pystachy_compiler.expressions import (
     gen_pick as expressions_pick,
     gen_iter_static as expressions_iter_static,
     gen_tuple_order as expressions_tuple_order,
+    gen_list_pair_eq as expressions_list_pair_eq,
+    gen_container_pair_type as expressions_container_pair_type,
+    gen_pair_item_eq as expressions_pair_item_eq,
+    gen_container_pair_eq as expressions_container_pair_eq,
+    gen_tuple_pair_eq as expressions_tuple_pair_eq,
+    gen_dict_pair_eq as expressions_dict_pair_eq,
     gen_unary as expressions_unary,
 )
 from src.pystachy_compiler.flow import (
@@ -778,6 +904,12 @@ from src.pystachy_compiler.generators import (
     gen_gen_type as generators_gen_type,
     gen_yield_value as generators_yield_value,
     gen_yield_from_proto as generators_yield_from_proto,
+    gen_gen_keep as generators_gen_keep,
+    gen_gen_slots as generators_gen_slots,
+    gen_gen_words as generators_gen_words,
+    gen_gen_value as generators_gen_value,
+    gen_gen_value_type as generators_gen_value_type,
+    gen_gen_returned as generators_gen_returned,
     gen_gen_stop as generators_gen_stop,
     gen_gen_raised as generators_gen_raised,
     gen_gen_close as generators_gen_close,
@@ -793,6 +925,8 @@ from src.pystachy_compiler.functions import (
     gen_externtype as functions_externtype,
     gen_function as functions_function,
     gen_function_body as functions_function_body,
+    gen_receiver_fields as functions_receiver_fields,
+    gen_numeric_proof as functions_numeric_proof,
     gen_materialize as functions_materialize,
     gen_untold as functions_untold,
 )
@@ -946,6 +1080,7 @@ from src.pystachy_compiler.statements import (
     gen_stop_classes as statements_stop_classes,
     gen_drain as statements_drain,
     gen_stmt as statements_stmt,
+    gen_stmt_main as statements_stmt_main,
     gen_stmts as statements_stmts,
     gen_str_append as statements_str_append,
     gen_unhashable as statements_unhashable,
@@ -1180,6 +1315,9 @@ class Gen:
         self.n = 0
         self.cur = "entry"
         self.term = False
+        # the block convert_at's value reaches its phi from, which its caller reads at once (a
+        # conversion's test may end it in a block of its own): no state a pass or dry() keeps
+        self.convedge = ""
         self.line = 0
         self.curfn = FnInfo("<module>", "@main.init", mk("block", "", 0, []), "")
         self.fn = IFn(self.curfn)  # the function being built
@@ -1419,6 +1557,259 @@ class Gen:
         self.dmemo: list[Node] = []
         self.dmemot: list[str] = []
 
+    # ---- promoting ints (bigints.py)
+    def int_again(self, f: FnInfo, before: list[int]) -> bool:
+        return bigints_int_again(self, f, before)
+
+    def int_policy(self, line: int) -> bool:
+        return bigints_int_policy(self, line)
+
+    def read_policy(self) -> bool:
+        return bigints_read_policy(self)
+
+    def big(self, lo: Val, hi: str = "null") -> Val:
+        return bigints_big(self, lo, hi)
+
+    def big_lo(self, v: Val) -> Val:
+        return bigints_big_lo(self, v)
+
+    def big_hi(self, v: Val) -> Val:
+        return bigints_big_hi(self, v)
+
+    def to_big(self, v: Val) -> Val:
+        return bigints_to_big(self, v)
+
+    def big_fits(self, vs: list[Val]) -> str:
+        return bigints_big_fits(self, vs)
+
+    def big_call(self, op: str, x: Val, y: Val) -> Val:
+        return bigints_big_call(self, op, x, y)
+
+    def big_arith(self, op: str, a: Val, b: Val) -> Val:
+        return bigints_big_arith(self, op, a, b)
+
+    def big_known(self, op: str, x: Val, y: Val) -> str:
+        return bigints_big_known(self, op, x, y)
+
+    def big_truediv(self, x: Val, y: Val) -> Val:
+        return bigints_big_truediv(self, x, y)
+
+    def big_unary(self, op: str, v: Val) -> Val:
+        return bigints_big_unary(self, op, v)
+
+    def big_abs(self, v: Val) -> Val:
+        return bigints_big_abs(self, v)
+
+    def big_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return bigints_big_cmp(self, op, a, b)
+
+    def big_float_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return bigints_big_float_cmp(self, op, a, b)
+
+    def big_truth(self, v: Val) -> str:
+        return bigints_big_truth(self, v)
+
+    def big_str(self, v: Val) -> Val:
+        return bigints_big_str(self, v)
+
+    def big_hash(self, v: Val) -> Val:
+        return bigints_big_hash(self, v)
+
+    def big_float(self, v: Val) -> Val:
+        return bigints_big_float(self, v)
+
+    def big_narrow(self, v: Val) -> Val:
+        return bigints_big_narrow(self, v)
+
+    def big_parse(self, s: Val, base: Val) -> Val:
+        return bigints_big_parse(self, s, base)
+
+    def big_tuple_narrow(self, v: Val) -> Val:
+        return bigints_big_tuple_narrow(self, v)
+
+    def big_box(self, v: Val) -> Val:
+        return bigints_big_box(self, v)
+
+    def big_unbox(self, v: Val) -> Val:
+        return bigints_big_unbox(self, v)
+
+    def big_opt_narrow(self, v: Val) -> Val:
+        return bigints_big_opt_narrow(self, v)
+
+    def big_opt_str(self, v: Val) -> Val:
+        return bigints_big_opt_str(self, v)
+
+    def big_opt_hash(self, v: Val) -> Val:
+        return bigints_big_opt_hash(self, v)
+
+    def big_opt_or(self, v: Val, none: str) -> Val:
+        return bigints_big_opt_or(self, v, none)
+
+    def big_status(self, v: Val) -> Val:
+        return bigints_big_status(self, v)
+
+    def big_len(self, v: Val) -> Val:
+        return bigints_big_len(self, v)
+
+    def big_slot(self, raw: str, fn: str, args: list[str], two: bool = False) -> Val:
+        return bigints_big_slot(self, raw, fn, args, two)
+
+    def big_list_value(self, o: Val, i: str, raw: str) -> Val:
+        return bigints_big_list_value(self, o, i, raw)
+
+    def item_type(self, t: str) -> str:
+        return bigints_item_type(self, t)
+
+    def big_list_store(self, o: Val, v: Val, method: str, index: str) -> None:
+        bigints_big_list_store(self, o, v, method, index)
+
+    def list_coerce(self, v: Val, et: str) -> Val:
+        return bigints_list_coerce(self, v, et)
+
+    def list_hold(self, v: Val, et: str) -> Val:
+        return bigints_list_hold(self, v, et)
+
+    def big_items(self, o: Val) -> Val:
+        return bigints_big_items(self, o)
+
+    def update_pairs(self, d: str, v: Val, kv: list[str]) -> None:
+        bigints_update_pairs(self, d, v, kv)
+
+    def held_value(self, v: Val) -> Val:
+        return bigints_held_value(self, v)
+
+    def search_hold(self, v: Val, et: str, t: str) -> Val:
+        return bigints_search_hold(self, v, et, t)
+
+    def held_read(self, v: Val) -> Val:
+        return bigints_held_read(self, v)
+
+    def held_default(self, v: Val, et: str, vt: str) -> Val:
+        return bigints_held_default(self, v, et, vt)
+
+    def held_pair(self, v: Val) -> Val:
+        return bigints_held_pair(self, v)
+
+    def key_hold(self, k: Val, kt: str) -> Val:
+        return bigints_key_hold(self, k, kt)
+
+    def dict_int(self, t: str) -> bool:
+        return bigints_dict_int(self, t)
+
+    def big_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
+        return bigints_big_dict_value(self, d, e, keep)
+
+    def dict_bigkey(self, t: str) -> bool:
+        return bigints_dict_bigkey(self, t)
+
+    def key_coerce(self, k: Val, kt: str) -> Val:
+        return bigints_key_coerce(self, k, kt)
+
+    def key_slot(self, k: Val) -> str:
+        return bigints_key_slot(self, k)
+
+    def big_key_entry(self, d: Val, k: Val, fn: str) -> str:
+        return bigints_big_key_entry(self, d, k, fn)
+
+    def dict_key_args(self, kx: Val, k: str) -> list[str]:
+        return bigints_dict_key_args(self, kx, k)
+
+    def dict_key_fn(self, fn: str, kx: Val) -> str:
+        return bigints_dict_key_fn(self, fn, kx)
+
+    def big_key(self, k: Val) -> Val:
+        return bigints_big_key(self, k)
+
+    def dict_put(self, d: Val, k: Val, ks: str, v: Val, kv: list[str]) -> None:
+        bigints_dict_put(self, d, k, ks, v, kv)
+
+    def dict_value(self, d: Val, e: str) -> Val:
+        return bigints_dict_value(self, d, e)
+
+    def dict_key(self, d: Val, e: str) -> Val:
+        return bigints_dict_key(self, d, e)
+
+    def big_dict_key(self, d: Val, e: str) -> Val:
+        return bigints_big_dict_key(self, d, e)
+
+    def dict_box(self, b: str) -> Val:
+        return bigints_dict_box(self, b)
+
+    def big_dict_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return bigints_big_dict_method(self, o, m, args)
+
+    def big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, x: str) -> Val:
+        return bigints_big_dict_call(self, o, m, kx, k, d, has, x)
+
+    def big_popitem(self, o: Val) -> Val:
+        return bigints_big_popitem(self, o)
+
+    def dict_store(self, d: str, key: str, v: Val, kv: list[str], e: str = "") -> None:
+        return bigints_dict_store(self, d, key, v, kv, e)
+
+    def set_int(self, t: str) -> bool:
+        return bigints_set_int(self, t)
+
+    def big_set_value(self, s: Val, j: str) -> Val:
+        return bigints_big_set_value(self, s, j)
+
+    def set_value(self, s: Val, j: str) -> Val:
+        return bigints_set_value(self, s, j)
+
+    def set_coerce(self, v: Val, et: str) -> Val:
+        return bigints_set_coerce(self, v, et)
+
+    def set_store(self, s: str, v: Val, et: str) -> None:
+        bigints_set_store(self, s, v, et)
+
+    def big_set_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return bigints_big_set_method(self, o, m, args)
+
+    def big_list_minmax(self, o: Val, maximum: bool) -> Val:
+        return bigints_big_list_minmax(self, o, maximum)
+
+    def big_list_find(self, o: Val, x: Val, op: int, st: str, en: str) -> Val:
+        return bigints_big_list_find(self, o, x, op, st, en)
+
+    def big_list_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return bigints_big_list_method(self, o, m, args)
+
+    def big_hashed(self, v: Val) -> Val:
+        return bigints_big_hashed(self, v)
+
+    def bool_numeric(self, f: FnInfo, j: int) -> bool:
+        return bigints_bool_numeric(self, f, j)
+
+    def big_item(self, v: Val, lo: Val, k: int, j: str) -> Val:
+        return bigints_big_item(self, v, lo, k, j)
+
+    def big_view_test(self, v: Val, t: str) -> str:
+        return bigints_big_view_test(self, v, t)
+
+    def big_tuple_view(self, v: Val, t: str) -> Val:
+        return bigints_big_tuple_view(self, v, t)
+
+    def big_tuple_repr(self, v: Val) -> Val:
+        return bigints_big_tuple_repr(self, v)
+
+    def big_tuple_hash(self, v: Val) -> Val:
+        return bigints_big_tuple_hash(self, v)
+
+    def big_literal(self, text: str) -> Val:
+        return bigints_big_literal(self, text)
+
+    def big_binop(self, op: str, a: Val, b: Val, shown: str='') -> Val:
+        return bigints_big_binop(self, op, a, b, shown)
+
+    def big_compare(self, op: str, a: Val, b: Val) -> Val:
+        return bigints_big_compare(self, op, a, b)
+
+    def big_builtin(self, name: str, vals: list[Val]) -> Val:
+        return bigints_big_builtin(self, name, vals)
+
+    def big_method(self, v: Val, m: str) -> Val:
+        return bigints_big_method(self, v, m)
+
     # ---- dynamic values (dynamic.py)
     def dyn_policy(self, line: int) -> bool:
         return dynamic_dyn_policy(self, line)
@@ -1453,8 +1844,50 @@ class Gen:
     def dyn_id_held(self, v: Val) -> Val:
         return dynamic_dyn_id_held(self, v)
 
+    def lazy_field(self, o: str, f: str, line: int) -> str:
+        return dynamic_lazy_field(self, o, f, line)
+
+    def id_move(self, e: Node) -> bool:
+        return dynamic_id_move(self, e)
+
+    def id_stmt(self, n: Node) -> None:
+        return dynamic_id_stmt(self, n)
+
+    def lazy_fields(self, f: FnInfo, body: list[Node]) -> None:
+        return dynamic_lazy_fields(self, f, body)
+
+    def lazy_test(self, e: Node) -> bool:
+        return dynamic_lazy_test(self, e)
+
+    def lazy_value(self, e: Node) -> bool:
+        return dynamic_lazy_value(self, e)
+
+    def lazy_inert(self, n: Node) -> bool:
+        return dynamic_lazy_inert(self, n)
+
+    def lazy_barrier(self, n: Node) -> None:
+        return dynamic_lazy_barrier(self, n)
+
+    def lazy_resolve(self, x: str) -> None:
+        return dynamic_lazy_resolve(self, x)
+
+    def lazy_store(self, o: Val, box: str, name: str) -> bool:
+        return dynamic_lazy_store(self, o, box, name)
+
+    def lazy_assign(self, n: Node) -> bool:
+        return dynamic_lazy_assign(self, n)
+
+    def lazy_while(self, n: Node) -> None:
+        return dynamic_lazy_while(self, n)
+
     def dyn_id_read(self, v: Val, slot: str) -> None:
         return dynamic_dyn_id_read(self, v, slot)
+
+    def dyn_id_fresh(self, v: Val) -> bool:
+        return dynamic_dyn_id_fresh(self, v)
+
+    def dyn_id_arg(self, v: Val) -> Val:
+        return dynamic_dyn_id_arg(self, v)
 
     def dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         return dynamic_dyn_id_store(self, slot, v, t)
@@ -1722,8 +2155,8 @@ class Gen:
     def refl_may_none(self, v: Val) -> bool:
         return reflection_refl_may_none(self, v)
 
-    def refl_split(self, v: Val, nonnull: bool = False) -> list[RLeaf]:
-        return reflection_refl_split(self, v, nonnull)
+    def refl_split(self, v: Val, nonnull: bool = False, guarded: bool = False) -> list[RLeaf]:
+        return reflection_refl_split(self, v, nonnull, guarded)
 
     def refl_split_class(self, v: Val) -> list[RLeaf]:
         return reflection_refl_split_class(self, v)
@@ -1770,8 +2203,8 @@ class Gen:
     def refl_catch_attr(self, x: Val, a: str, d: Val, vals: list[Val], blocks: list[str], end: str, truth: bool = False) -> None:
         return reflection_refl_catch_attr(self, x, a, d, vals, blocks, end, truth)
 
-    def refl_getattr(self, args: list[Node], want: str) -> Val:
-        return reflection_refl_getattr(self, args, want)
+    def refl_getattr(self, args: list[Node], want: str, split: bool = False) -> Val:
+        return reflection_refl_getattr(self, args, want, split)
 
     def refl_setattr(self, args: list[Node]) -> Val:
         return reflection_refl_setattr(self, args)
@@ -2073,8 +2506,8 @@ class Gen:
     def alloca(self, t: str, name: str) -> str:
         return emission_alloca(self, t, name)
 
-    def to_slot(self, v: Val) -> str:
-        return conversions_to_slot(self, v)
+    def to_slot(self, v: Val, keep: bool = False) -> str:
+        return conversions_to_slot(self, v, keep)
 
     def from_slot(self, s: str, t: str) -> Val:
         return conversions_from_slot(self, s, t)
@@ -2499,8 +2932,8 @@ class Gen:
     def uorders(self, a: str, b: str) -> bool:
         return union_arithmetic_uorders(self, a, b)
 
-    def ucmp(self, op: str, a: Val, b: Val) -> Val:
-        return union_arithmetic_ucmp(self, op, a, b)
+    def ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
+        return union_arithmetic_ucmp(self, op, a, b, nonnull)
 
     def join_hint(self, t: str, vt: str) -> bool:
         return unions_join_hint(self, t, vt)
@@ -2725,6 +3158,9 @@ class Gen:
     def function(self, f: FnInfo, body: list[Node]) -> None:
         return functions_function(self, f, body)
 
+    def numeric_proof(self, f: FnInfo, body: list[Node]) -> None:
+        functions_numeric_proof(self, f, body)
+
     def function_body(self, f: FnInfo, body: list[Node]) -> None:
         return functions_function_body(self, f, body)
 
@@ -2801,8 +3237,8 @@ class Gen:
     def gen_stream(self, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
         return generators_gen_stream(self, name, v, args, want, resultsoft)
 
-    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "") -> None:
-        return generators_gen_suspend(self, slot, k, sub, thrown)
+    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
+        return generators_gen_suspend(self, slot, k, sub, thrown, hi)
 
     def yield_from_iter(self, what: str) -> None:
         return generators_yield_from_iter(self, what)
@@ -2815,6 +3251,24 @@ class Gen:
 
     def yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) -> Val:
         return generators_yield_from_proto(self, v, t, y, callee)
+
+    def gen_keep(self, w: list[str], ys: str, yh: str) -> None:
+        return generators_gen_keep(self, w, ys, yh)
+
+    def gen_slots(self, v: Val, y: str) -> list[str]:
+        return generators_gen_slots(self, v, y)
+
+    def gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> list[str]:
+        return generators_gen_words(self, p, t, y, owned)
+
+    def gen_value(self, p: str, t: str) -> Val:
+        return generators_gen_value(self, p, t)
+
+    def gen_value_type(self, t: str) -> str:
+        return generators_gen_value_type(self, t)
+
+    def gen_returned(self, h: Val, r: str) -> Val:
+        return generators_gen_returned(self, h, r)
 
     def gen_stop(self) -> None:
         return generators_gen_stop(self)
@@ -3371,6 +3825,9 @@ class Gen:
     def stmt(self, n: Node) -> None:
         return statements_stmt(self, n)
 
+    def stmt_main(self, n: Node) -> None:
+        return statements_stmt_main(self, n)
+
     def nonemix(self, f: FnInfo, t: str) -> str:
         return statements_nonemix(self, f, t)
 
@@ -3512,8 +3969,29 @@ class Gen:
     def expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool = False) -> Val:
         return expressions_expr(self, n, want, returnctx, resultsoft)
 
+    def scalar_read_index(self, n: Node) -> bool:
+        return expressions_scalar_read_index(self, n)
+
     def scalar_read_value(self, n: Node) -> bool:
         return expressions_scalar_read_value(self, n)
+
+    def plain_field(self, n: Node) -> str:
+        return expressions_plain_field(self, n)
+
+    def class_field(self, c: str, f: str) -> str:
+        return expressions_class_field(self, c, f)
+
+    def receiver_fields(self, c: str, me: str, body: list[Node], names: dict[str, bool]) -> dict[str, str]:
+        return functions_receiver_fields(self, c, me, body, names)
+
+    def proven_call(self, e: Node) -> bool:
+        return dynamic_proven_call(self, e)
+
+    def scalar_receiver(self, n: Node) -> str:
+        return expressions_scalar_receiver(self, n)
+
+    def seq_index(self, n: Node, msg: str) -> Val:
+        return expressions_seq_index(self, n, msg)
 
     def list_hint_type(self, a: str, b: str) -> str:
         return expressions_list_hint_type(self, a, b)
@@ -3671,11 +4149,38 @@ class Gen:
     def tstore(self, v: Val, index: int, slot: str) -> None:
         expressions_tstore(self, v, index, slot)
 
+    def tput(self, v: Val, index: int, x: Val) -> None:
+        expressions_tput(self, v, index, x)
+
+    def tslot(self, v: Val, k: int) -> Val:
+        return expressions_tslot(self, v, k)
+
     def index(self, n: Node, want: str = "") -> Val:
         return expressions_index(self, n, want)
 
     def subscript(self, n: Node, o: Val, want: str = "") -> Val:
         return expressions_subscript(self, n, o, want)
+
+    def list_find(self, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
+        return containers_list_find(self, o, v, method, start, stop)
+
+    def list_id_kind(self, t: str) -> int:
+        return containers_list_id_kind(self, t)
+
+    def list_identity(self, v: Val) -> Val:
+        return containers_list_identity(self, v)
+
+    def list_item(self, o: Val, i: Val) -> Val:
+        return containers_list_item(self, o, i)
+
+    def list_value(self, o: Val, i: str, raw: str) -> Val:
+        return containers_list_value(self, o, i, raw)
+
+    def list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
+        containers_list_store(self, o, v, method, index)
+
+    def list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
+        return containers_list_minmax(self, o, desc, maximum)
 
     def list_read(self, o: Val, i: Val) -> Val:
         return expressions_list_read(self, o, i)
@@ -3709,6 +4214,9 @@ class Gen:
 
     def ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
         return expressions_ifexp(self, n, want, resultsoft)
+
+    def numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> Val:
+        return expressions_numeric_phi(self, result, values, edges)
 
     def boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
         return expressions_boolop(self, n, ascond, want, resultsoft)
@@ -3785,6 +4293,15 @@ class Gen:
     def arith(self, op: str, a: Val, b: Val, shown: str='') -> Val:
         return expressions_arith(self, op, a, b, shown)
 
+    def masked(self, n: Node, want: str, resultsoft: bool) -> Val:
+        return expressions_masked(self, n, want, resultsoft)
+
+    def wexpr(self, e: Node, want: str, resultsoft: bool) -> list[Val]:
+        return expressions_wexpr(self, e, want, resultsoft)
+
+    def wflag(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_wflag(self, op, a, b)
+
     def compare(self, n: Node) -> Val:
         return expressions_compare(self, n)
 
@@ -3799,6 +4316,24 @@ class Gen:
 
     def titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
         return expressions_titem_eq(self, item, a, hit, ph, value)
+
+    def list_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_list_pair_eq(self, op, a, b)
+
+    def container_pair_type(self, a: str, b: str) -> bool:
+        return expressions_container_pair_type(self, a, b)
+
+    def pair_item_eq(self, a: Val, b: Val, hit: str) -> None:
+        return expressions_pair_item_eq(self, a, b, hit)
+
+    def container_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_container_pair_eq(self, op, a, b)
+
+    def tuple_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_tuple_pair_eq(self, op, a, b)
+
+    def dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_dict_pair_eq(self, op, a, b)
 
     def tuple_order(self, op: str, a: Val, b: Val) -> Val:
         return expressions_tuple_order(self, op, a, b)
@@ -3931,6 +4466,9 @@ class Gen:
 
     def pcoerce(self, v: Val, t: str, f: FnInfo, j: int) -> Val:
         return calls_pcoerce(self, v, t, f, j)
+
+    def scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
+        return calls_scalar_call_types(self, f, args)
 
     def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "") -> Val:
         return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs)
@@ -4104,10 +4642,10 @@ class Gen:
         return builtins_consume(self, n, want, arg, resultsoft)
 
     def as_list(self, v: Val, name: str) -> Val:
-        return builtins_as_list(self, v, name)
+        return self.list_identity(builtins_as_list(self, v, name))
 
     def typed_list(self, v: Val, want: str) -> Val:
-        return builtins_typed_list(self, v, want)
+        return self.list_identity(builtins_typed_list(self, v, want))
 
     def reverse_arg(self, n: Node, name: str) -> str:
         return builtins_reverse_arg(self, n, name)
@@ -4238,8 +4776,8 @@ class Gen:
     def optdefault(self, d: Val, t: str) -> str:
         return containers_optdefault(self, d, t)
 
-    def key_kind(self, kt: str) -> str:
-        return containers_key_kind(self, kt)
+    def key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -> str:
+        return containers_key_kind(self, kt, dictionary, built)
 
     def key_class(self, t: str) -> bool:
         return containers_key_class(self, t)

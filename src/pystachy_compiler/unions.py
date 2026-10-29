@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import ann_target
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import NONEVAR, OPTTYPES
+from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
 from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
@@ -52,10 +52,12 @@ def gen_uop(self, v: Val, op: str) -> Val:
         return self.refl_union_str(v, "__str__")  # (each class's: reflection.py)
     if not self.value_union(v.t):
         self.err("closed reference union operations require narrowing with isinstance() first")
-    t = "bool" if op == "truth" else "str"
+    t = "bool" if op == "truth" else "int" if op == "len" else "str"
+    if op == "len":
+        self.notnone(v, "TypeError: object of type 'NoneType' has no len()")
     end = self.label()
     ph = Ins("phi", t, "")
-    if is_opt(v.t):
+    if is_opt(v.t) and op != "len":
         arm = self.label()
         self.incoming(ph, "false" if op == "truth" else self.sconst("None"), self.cur)
         self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, end, arm)
@@ -69,7 +71,7 @@ def gen_uop(self, v: Val, op: str) -> Val:
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(members[i])), "int")).v, arm, nxt)
             self.place(arm)
         item = self.uget(Val(v.v, unopt(v.t)), members[i])
-        result = Val(self.truth(item), "bool") if op == "truth" else self.to_str(item)
+        result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.to_str(item)
         self.incoming(ph, result.v, self.cur)
         self.br(end)
         if nxt != "":
@@ -80,7 +82,15 @@ def gen_uop(self, v: Val, op: str) -> Val:
 def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     # Both operands are already evaluated. Boxes of a narrower union keep their
     # pointers and tags; a concrete scalar is boxed only at this dynamic boundary.
+    # A tuple of promoting ints compares as its 64-bit ints, as a union holds them (bigints.py).
+    a = self.big_tuple_narrow(a) if is_tuple(a.t) and BIG in a.t else a
+    b = self.big_tuple_narrow(b) if is_tuple(b.t) and BIG in b.t else b
     t = self.union_type([a.t, b.t])
+    if t.startswith("!") and self.ueq_type(a.t) and self.ueq_type(b.t):
+        # A tuple need not become a union member just to compare with a union.
+        # Each descriptor keeps its own layout, including optional/union boxes.
+        r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(a.t, '=='))}", f"ptr {self.sconst(self.desc(b.t, '=='))}"])
+        return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
     if t.startswith("!") or not self.ueq_type(t):
         self.err("closed union equality requires builtin scalar, list, dict or tuple values")
     a = self.coerce(a, t)
@@ -116,6 +126,12 @@ def gen_union_type(self, ts: list[str]) -> str:
         for m in umembers(t) if is_union(t) else [t]:
             if m not in ms:
                 ms.append(m)
+    if BIG in ms and "int" in ms:
+        ms.remove("int")  # (a promoting int holds a 64-bit one: bigints.py)
+    if len(ms) > 1 and BIG in ms and BIGOPT in ts and BIG not in ts:
+        # (an int | None of a module that opts in, with other types: their union, which holds a 64-bit
+        # int, as the 64-bit int | None it holds makes one: bigints.py)
+        ms[ms.index(BIG)] = "int"
     if len(ms) == 0:
         return "None"
     if len(ms) == 1:
@@ -157,7 +173,7 @@ def gen_uget(self, u: Val, m: str) -> Val:
     i = Ins("union.payload", "%slot", m)
     i.a = [u]
     self.put(i, 2)
-    return self.from_slot(f"%t{i.r[1]}", m)
+    return self.from_slot(f"%t{i.r[1]}", m).identity(u)
 
 def gen_utest(self, u: Val, ms: list[str], may_none: bool) -> str:
     # i1: does the union's box u (null where it is None, if may_none) hold a value of one of types ms
@@ -200,7 +216,7 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
             if self.join_hint(t, v.t):
                 return Val("undef", t)  # (see join_hint)
             self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
-        return Val(v.v, t)
+        return Val(v.v, t).identity(v)
     if src not in ms:
         bases = [m for m in ms if src in self.classes and m in self.classes and self.derives(src, m)]
         if len(bases) != 1:
@@ -211,14 +227,14 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
         src = bases[0]
         v = self.coerce(v, src)
     if not is_opt(v.t):
-        return Val(self.ubox(v, src), t)
+        return Val(self.ubox(v, src), t).identity(v)
     if not none_ok:
         if self.join_hint(t, v.t):
             return Val("undef", t)  # (see join_hint)
         self.err(f"{what if what != '' else 'a value used as ' + typestr(t)} may be None ({typestr(v.t)}); test it with 'is not None' first")
     # an optional value: None stays null, any other value is boxed (with no branch, so that
     # convert_in can make it at the end of a block); an int | None's value is in its box
-    return Val(self.rt("pys_ubox_opt", "ptr", [f"i64 {self.utag(src)}", f"ptr {v.v}", f"i64 {1 if is_sopt(v.t) else 0}"]), t)
+    return Val(self.rt("pys_ubox_opt", "ptr", [f"i64 {self.utag(src)}", f"ptr {v.v}", f"i64 {1 if is_sopt(v.t) else 0}"]), t).identity(v)
 
 def gen_narrow_val(self, v: Val, nt: str) -> Val:
     # v, a local's value of its own type, as of the type nt a test or an assignment narrowed it
@@ -235,10 +251,10 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
     if nt == "None":
         return Val("null", "None")
     if is_union(unopt(nt)):
-        return Val(v.v, nt)  # (the same box)
+        return Val(v.v, nt).identity(v)  # (the same box)
     m = unopt(nt)
     if m not in self.classes and not is_opt(nt):
-        return self.uget(Val(v.v, unopt(v.t)), m)
+        return self.uget(Val(v.v, unopt(v.t)).identity(v), m)
     # a class's object, or a value that may be None: null stays None
     l0 = self.cur
     lget = self.label()
@@ -252,7 +268,7 @@ def gen_narrow_val(self, v: Val, nt: str) -> Val:
     ph = Ins("phi", nt, "")
     self.incoming(ph, "null", l0)
     self.incoming(ph, x.v, l1)
-    return Val(self.phi(ph), nt)
+    return Val(self.phi(ph), nt).identity(v)
 
 def gen_unarrowed(self, v: Val) -> str:
     # the hint for an error about value v that only some of its types support, where it is a
@@ -511,6 +527,11 @@ def gen_join_type(self, a: str, b: str) -> str:
         return self.ctype("tuple", ts)
     if a == b:
         return a
+    if (a == BIG and b == "int") or (b == BIG and a == "int"):
+        return BIG  # (a promoting int holds both: bigints.py)
+    if (a == BIG and b in ["bool", "float", "str"]) or (b == BIG and a in ["bool", "float", "str"]):
+        # (with a bool, a float or a str, their union, which holds 64-bit ints, as in other modules)
+        a, b = "int" if a == BIG else a, "int" if b == BIG else b
     j = self.union_type([a, b])
     return j if not j.startswith("!") and self.joinable(j) else ""
 

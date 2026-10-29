@@ -1,0 +1,34 @@
+element 0 True
+element 0 True
+element 0 True
+True True False
+element 0 False
+element 0 False
+False True
+different lengths False
+empty True
+element 1 False
+mutation 1 False True 0 0
+element 1 True
+mutation 1 True True 0 0
+element 2 False
+mutation 2 False False 0 1
+element 2 True
+mutation 2 True False 0 1
+element 3 False
+mutation 3 False False 2 2
+element 3 True
+element 0 True
+mutation 3 True True 2 2
+element 4 True
+element comparison
+boxed numbers True True
+boxed lengths True
+same nan True True
+distinct nan False False
+boxed strings True True
+bytes versus strings False False
+reflected None True
+reflected None True
+null class True True
+[exit 0]

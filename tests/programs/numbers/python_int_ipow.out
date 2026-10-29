@@ -1,0 +1,10 @@
+exponent
+inplace 1180591620717411303424
+1180591620717411303425 True
+inplace 2
+1180591620717411303427 True
+exponent
+variadic (1180591620717411303424,)
+small exponent
+unsupported operand type(s) for **=: 'NoneType' and 'int'
+[exit 0]

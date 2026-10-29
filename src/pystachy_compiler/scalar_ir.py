@@ -8,7 +8,7 @@ SCALAR_BIN = ["add", "sub", "mul", "udiv", "urem", "shl", "lshr", "ashr", "and",
 SCALAR_FLOAT = ["fadd", "fsub", "fmul", "fdiv", "fneg"]
 SCALAR_ICMP = ["eq", "ne", "slt", "sle", "sgt", "sge", "ult", "ule", "ugt", "uge"]
 SCALAR_FCMP = ["oeq", "one", "olt", "ole", "ogt", "oge", "ueq", "une", "ult", "ule", "ugt", "uge", "ord", "uno"]
-SCALAR_CASTS = ["zext:bool:int", "zext:%byte:int", "trunc:int:bool", "trunc:int:%byte", "trunc:int:%i32", "sitofp:int:float", "fptosi:float:int", "ptrtoint:%ptr:int"]
+SCALAR_CASTS = ["zext:bool:int", "zext:%byte:int", "trunc:int:bool", "trunc:int:%byte", "trunc:int:%i32", "sitofp:int:float", "fptosi:float:int", "ptrtoint:%ptr:int", "inttoptr:int:%ptr"]
 
 
 def gen_scalar(self, op: str, args: list[Val], flags: str = "") -> str:

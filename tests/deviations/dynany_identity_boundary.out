@@ -1,11 +1,4 @@
-an argument False False
-a return value False False
-a typed list's item False False
-a typed field False False
-a class variable False False
-a parameter's default value False False
-a folded constant False False
-inferred starred reads before a taken store False
-retyped dict values False False
-retyped NaN keys 3
+a typed tuple's item False False
+an optional list's item False False
+a union list's item False False
 [exit 0]

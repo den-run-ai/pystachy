@@ -1,0 +1,11 @@
+inner cleanup
+result [1, 2, 3, 4]
+done True [1, 2, 3, 4]
+[1, 2]
+inner cleanup
+[1, 2]
+inner cleanup
+caught stop
+return channel [9, 'still dynamic']
+[[8]]
+[exit 0]

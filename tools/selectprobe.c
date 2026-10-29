@@ -93,8 +93,15 @@ int main(void) {
   restored_mask();
   if (((List *)out[0])->len || ((List *)out[1])->len != 1 || ((List *)out[1])->a[0] != p[1]) bad("empty pipe readiness");
   if (write(p[1], "x", 1) != 1) bad("pipe write");
+  pys_list_identity(r, 1);
+  I untouched = r->ids[2];
+  pys_list_set(r, 0, p[0]);  /* a raw replacement leaves its new identity pending */
+  if (r->ids[1]) bad("raw replacement did not invalidate identity");
   out = pys_select(r, x, x, 0, 1);
   if (((List *)out[0])->len != 2 || ((List *)out[0])->a[0] != p[0] || ((List *)out[0])->a[1] != p[0]) bad("readable duplicates");
+  List *ready = out[0];
+  if (!r->ids[1] || !ready->ids || ready->ids[1] != r->ids[1] || ready->ids[2] != untouched)
+    bad("readiness result lost pending or retained numeric identity");
   char byte;
   if (read(p[0], &byte, 1) != 1 || byte != 'x') bad("pipe read");
 
@@ -133,6 +140,6 @@ int main(void) {
   int status;
   if (waitpid(child, &status, 0) != child || status || nread != 3) bad("producer exit");
   close(p[0]);
-  printf("selectprobe: pipe readiness, duplicate descriptors, EOF, pending SIGINT, EINTR deadline and blocking retry passed (%.3fs timeout)\n", elapsed);
+  printf("selectprobe: pipe readiness, numeric identity, duplicate descriptors, EOF, pending SIGINT, EINTR deadline and blocking retry passed (%.3fs timeout)\n", elapsed);
   return 0;
 }

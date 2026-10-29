@@ -1,10 +1,10 @@
 """Lowering component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, IFn, Ins, Val
 from src.pystachy_compiler.lower_module import struct_types
-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENSLOTS, GENSLOTSX, GENSTATE, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
-from src.pystachy_compiler.utils import atomic_dict, atomic_list, is_dict, is_tuple, lt, selem, takes_self, targs
+from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
 def gen_lower(self, fn: IFn) -> None:
@@ -12,6 +12,10 @@ def gen_lower(self, fn: IFn) -> None:
     f = fn.f
     # a method's receiver is never None (callers check it)
     ps = [f"{lt(f.ptypes[j])}{' nonnull' if j == 0 and takes_self(f) else ''} %a{j}" for j in fn.ps]
+    if identity_abi(f):
+        ps.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
+        if numeric_identity(f.ret):
+            ps.append("ptr %idret")
     # tupleret: a function that returns its tuple's slots by value (Gen.tuple_rets) is lowered as
     # @v.<its symbol>, returning them as an LLVM aggregate, and its own symbol is a wrapper below
     n = self.vrets.get(f.ll, 0)
@@ -26,14 +30,14 @@ def gen_lower(self, fn: IFn) -> None:
     o.append("entry:")
     self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
     if fn.coro:
-        o.append(f"  %coro.promise = alloca [{GENSLOTSX if self.gproto else GENSLOTS} x i64], align 8")
+        o.append(f"  %coro.promise = alloca [{promise_slots(self.gproto)} x i64], align 8")
         self.coros = True
     for i in fn.slots:
         if i.k == 1:
             o.append(f"  %{i.s}.def.{i.r[0]} = alloca i1")
             o.append(f"  store i1 false, ptr %{i.s}.def.{i.r[0]}")
         elif i.k == 2:
-            o.append(f"  %stk.{i.r[0]} = alloca [{len(targs(i.t))} x i64], align 8")  # (a tuple: stack_tuple)
+            o.append(f"  %stk.{i.r[0]} = alloca [{tslots(i.t)} x i64], align 8")  # (a tuple: stack_tuple)
         else:
             r = f"%{i.s or 'h'}.{i.r[0]}"
             o.append(f"  {r} = alloca {lt(i.t)}")
@@ -63,7 +67,12 @@ def gen_lower(self, fn: IFn) -> None:
         # its symbol, for every other use: the tuple, made from the slots the body returns
         o.append(f"define internal ptr {f.ll}({', '.join(ps)}) {{")
         o.append("entry:")
-        o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join([f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps])})")
+        forwarded = [f'{lt(f.ptypes[j])} %a{j}' for j in fn.ps]
+        if identity_abi(f):
+            forwarded.extend([f"ptr %aid{j}" for j in fn.ps if numeric_identity(f.ptypes[j])])
+            if numeric_identity(f.ret):
+                forwarded.append("ptr %idret")
+        o.append(f"  %v = call {agg} @v.{f.ll[1:]}({', '.join(forwarded)})")
         o.append(f"  %p = call ptr @{self.rtfns['alloc'].sym}(i64 {8 * n})")
         for k in range(n):
             o.append(f"  %v{k} = extractvalue {agg} %v, {k}")
@@ -84,7 +93,7 @@ def gen_tuple_rets(self) -> None:
     fns: dict[str, int] = {}
     for fn in self.fns:
         if len(fresh_rets(fn)) > 0:
-            fns[fn.f.ll] = len(targs(fn.f.ret))
+            fns[fn.f.ll] = tslots(fn.f.ret)
     for fn in self.fns:
         calls: dict[str, str] = {}
         used: dict[str, bool] = {}  # (values that an op reads other than as a tuple.load's tuple)
@@ -152,7 +161,7 @@ def gen_field_tag(self, c: str, k: int) -> str:
     # of classes neither of which lays out the other's (Gen.disjoint's rule). The tags have a
     # root of their own: no access of runtime.c's or of runtime.py's is told apart from them
     ci = self.classes[c]
-    while ci.base in self.classes and k < len(self.classes[ci.base].fields) + self.classes[ci.base].nflag:
+    while ci.base in self.classes and k < len(self.classes[ci.base].fields) + self.classes[ci.base].nflag + self.classes[ci.base].nbox:
         ci = self.classes[ci.base]
     key = f"{ci.name} {k}"
     if key not in self.tbaa:
@@ -193,7 +202,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "alloc.fixed":
         self.rangeused = self.rangeused or i.t == RANGEC
         self.objectused = self.objectused or i.t == OBJECTC
-        size = str(8 * len(targs(i.t))) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
+        size = str(8 * tslots(i.t)) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
         if f"%t{i.r[0]}" not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
             o.append(f"  %t{i.r[0]} = call ptr @{self.rtfns['alloc'].sym}(i64 {size})")
     elif op == "tuple.store" and i.a[0].v in self.vtuples:
@@ -233,6 +242,11 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  %t{i.r[1]} = load i64, ptr %t{i.r[0]}")
     elif op == "dyn.type":
         o.append(f"  %t{i.r[0]} = load ptr, ptr {i.a[0].v}")
+    elif op == "big.make":
+        o.append(f"  %t{i.r[0]} = insertvalue {{i64, ptr}} undef, i64 {i.a[0].v}, 0")
+        o.append(f"  %t{i.r[1]} = insertvalue {{i64, ptr}} %t{i.r[0]}, ptr {i.a[1].v}, 1")
+    elif op == "big.lo" or op == "big.hi":
+        o.append(f"  %t{i.r[0]} = extractvalue {{i64, ptr}} {i.a[0].v}, {0 if op == 'big.lo' else 1}")
     elif op == "br":
         o.append(f"  br label %{i.b[0]}")
     elif op == "cbr":
@@ -255,7 +269,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "ret" and len(i.a) > 0 and i.a[0].v in self.vtuples:
         # the tuple's slots, by value (tupleret): what its tuple.stores gave each, else the zero
         # of the tuple that alloc.fixed would have made
-        n = len(targs(fn.f.ret))
+        n = tslots(fn.f.ret)
         agg = "{" + ", ".join(["i64" for _ in range(n)]) + "}"
         cur = "zeroinitializer"
         for k in range(n):
@@ -285,7 +299,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             # the key kind of a dict (the element kind of a set) created empty: what its first
             # use showed (0 if nothing did; refine made a tuple key's descriptor a string constant)
             h = self.holes[i.k]
-            vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h)) if h != '' else '0'}"
+            vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h), is_dict(h)) if h != '' else '0'}"
         c = self.invoke(f"call {ll[0]} @{f.sym}({', '.join(vs)})", i)
         o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
     elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} %t{i.r[0]}" in self.vcalls:
@@ -307,7 +321,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # Only fresh empty results may change their dict/set key layout. A later
         # return can resolve the hole; an outer caller types an unresolved result.
         t = self.holes[i.k] if i.k > 0 else i.a[0].t
-        kind = self.key_kind(targs(t)[0] if is_dict(t) else selem(t)) if t != "" else "0"
+        kind = self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t), True) if t != "" else "0"
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 1")
         o.append(f"  store i64 {kind}, ptr %t{i.r[0]}")
     elif op == "list.len":
@@ -346,7 +360,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("coro.begin:")
         o.append(f"  %coro.frame = phi ptr [null, %{self.lowblk}], [%coro.mem, %coro.alloc]")
         o.append("  %coro.hdl = call ptr @llvm.coro.begin(token %coro.id, ptr %coro.frame)")
-        o.append(f"  store [{GENSLOTSX if self.gproto else GENSLOTS} x i64] zeroinitializer, ptr %coro.promise")
+        o.append(f"  store [{promise_slots(self.gproto)} x i64] zeroinitializer, ptr %coro.promise")
         o.append(f"  %coro.name = getelementptr i64, ptr %coro.promise, i64 {GENNAME}")
         o.append(f"  store ptr {i.a[0].v}, ptr %coro.name")
         if self.gproto:
@@ -356,8 +370,12 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append("  %coro.first = call i8 @llvm.coro.suspend(token none, i1 false)")
         o.append(f"  switch i8 %coro.first, label %coro.ret [i8 0, label %{i.b[0]} i8 1, label %coro.cleanup]")
     elif op == "gen.yield":
-        # the value in the promise, the state (k: whether closing it here runs code of its), suspend
+        # the value in the promise (and an int's pointer, GENVALP), the state (k: whether closing it
+        # here runs code of its), suspend
         o.append(f"  store i64 {i.a[0].v}, ptr %coro.promise")
+        if len(i.a) > 1:
+            o.append(f"  %t{i.r[0]}.hi = getelementptr i64, ptr %coro.promise, i64 {GENVALP}")
+            o.append(f"  store ptr {i.a[1].v}, ptr %t{i.r[0]}.hi")
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr %coro.promise, i64 {GENSTATE}")
         o.append(f"  store i64 {i.k}, ptr %t{i.r[0]}")
         o.append(f"  %t{i.r[1]} = call i8 @llvm.coro.suspend(token none, i1 false)")
@@ -367,6 +385,13 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  %t{i.r[0]} = getelementptr i64, ptr %coro.promise, i64 {GENRET}")
         if len(i.a) > 0:
             o.append(f"  store i64 {i.a[0].v}, ptr %t{i.r[0]}")
+        elif fn.f.gret == "dyn":
+            # A bare return/fallthrough yields None, a real box in an Any
+            # return channel. The final type may be inferred after this op.
+            o.append(f"  store ptr {self.rtdata('pys_dyn_none_box')}, ptr %t{i.r[0]}")
+        if len(i.a) > 1:
+            o.append(f"  %t{i.r[0]}.hi = getelementptr i64, ptr %coro.promise, i64 {GENRETP}")
+            o.append(f"  store ptr {i.a[1].v}, ptr %t{i.r[0]}.hi")
         o.append(f"  %t{i.r[1]} = getelementptr i64, ptr %coro.promise, i64 {GENSTATE}")
         o.append(f"  store i64 {GENDONE}, ptr %t{i.r[1]}")
         o.append("  br label %coro.final")
@@ -382,6 +407,11 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         self.gendrops = True
     else:
         fail(f"internal error: no lowering for IR op {op}", 0)
+
+def promise_slots(gproto: bool) -> int:
+    # the i64 slots of a generator's promise (specs.GENSLOTS): seven in a program that uses send()
+    # or throw(), nine where a module opts in to promoting ints
+    return GENSLOTSB if int_program() else GENSLOTSX if gproto else GENSLOTS
 
 def gen_invoke(self, c: str, i: Ins) -> str:
     # the call c of op i, an invoke if the exception passes made it one (Ins.b: [next, landing])

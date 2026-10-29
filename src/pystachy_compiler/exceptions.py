@@ -9,10 +9,12 @@ from src.pystachy_compiler.analysis import (
     has_finally,
     reads,
 )
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Data, Exit, FnInfo, Ins, Try, Val
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
+    BIG,
+    BIGOPT,
     EXCBASES,
     FROZENERR,
     EXCEPTIONS,
@@ -22,7 +24,7 @@ from src.pystachy_compiler.specs import (
     exc_derives,
     is_excname,
 )
-from src.pystachy_compiler.syntax import Node, mk
+from src.pystachy_compiler.syntax import NOKIDS, Node, mk
 from src.pystachy_compiler.utils import (
     is_const,
     is_opt,
@@ -30,6 +32,7 @@ from src.pystachy_compiler.utils import (
     is_tuple,
     is_union,
     meet,
+    numeric_identity,
     pure_arg,
     targs,
     tname,
@@ -121,7 +124,7 @@ def gen_try_(self, n: Node) -> None:
             self.line = h.line
             if h.s != "" and not self.modlevel and h.s in self.gdecl:
                 self.err(f"except ... as {h.s}, of the global '{h.s}', in a function is not supported: the end of the clause deletes the global, as del would")
-            for c in h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]] if h.kids[0].kind == "name" else h.kids[:0]:
+            for c in h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]] if h.kids[0].kind == "name" else NOKIDS:
                 self.modchk(c)  # (read through an import that may have raised)
                 if (c.chk or self.foreign(c.s)) and c.s in self.gflag and c.s in self.classes:
                     # a class whose class statement may not have run yet
@@ -728,9 +731,9 @@ def gen_os_error(self, name: str, vals: list[Val]) -> list[str]:
     # Gives its kind, str(e) and what repr(e) shows between its parentheses
     no = vals[0]
     kind = self.sconst(name) if name in EXCBASES else ""  # (an exception class of the program's is its own)
-    if name == "OSError" and (no.t == "int" or no.t == "bool"):
-        kind = self.rt("pys_exc_errcls", "ptr", [f"i64 {self.as_int(no).v}"])
-    elif name == "OSError" and is_sopt(no.t) and (unopt(no.t) == "int" or unopt(no.t) == "bool"):
+    if name == "OSError" and (no.t == "int" or no.t == "bool" or no.t == BIG):
+        kind = self.rt("pys_exc_errcls", "ptr", [f"i64 {self.big_status(no).v}"])  # (past 64 bits, no errno's: bigints.py)
+    elif name == "OSError" and is_sopt(no.t) and (unopt(no.t) == "int" or unopt(no.t) == "bool" or no.t == BIGOPT):
         # (an errno that may be None: OSError itself if it is)
         l1 = self.label()
         l2 = self.label()
@@ -739,7 +742,7 @@ def gen_os_error(self, name: str, vals: list[Val]) -> list[str]:
         self.place(l1)
         self.br(l3)
         self.place(l2)
-        k = self.rt("pys_exc_errcls", "ptr", [f"i64 {self.as_int(self.deref(no)).v}"])
+        k = self.rt("pys_exc_errcls", "ptr", [f"i64 {self.big_status(self.deref(no)).v}"])
         b2 = self.cur
         self.br(l3)
         self.place(l3)
@@ -772,15 +775,24 @@ def gen_unicode_error(self, name: str, vals: list[Val]) -> list[str]:
     want = ["str", "bytes" if dec else "str", "int", "int", "str"]
     for i in range(5):
         # (CPython's TypeErrors)
-        if (vals[i].t if vals[i].t != "bool" else "int") == want[i]:
+        if ("int" if vals[i].t == "bool" or vals[i].t == BIG else vals[i].t) == want[i]:
             continue
         if i == 1 and dec:
             self.err(f"a bytes-like object is required, not '{tname(vals[i].t)}'")
         if i == 2 or i == 3:
             self.err(f"'{tname(vals[i].t)}' object cannot be interpreted as an integer")
         self.err(f"argument {i + 1} must be {want[i]}, not {tname(vals[i].t)}")
+    bounds: list[Val] = []
+    for i in [2, 3]:
+        v = vals[i]
+        if v.t == BIG:
+            self.guard(self.scalar("xor", [Val(self.big_fits([v]), "bool"), Val("true", "bool")]),
+                       "OverflowError: Python int too large to convert to C ssize_t")
+            bounds.append(self.big_lo(v))
+        else:
+            bounds.append(self.as_int(v))
     msg = self.rt("pys_unicode_error_str", "ptr", [f"i64 {1 if dec else 0}", f"ptr {vals[0].v}", f"ptr {vals[1].v}",
-                                                   f"i64 {self.as_int(vals[2]).v}", f"i64 {self.as_int(vals[3]).v}", f"ptr {vals[4].v}"])
+                                                   f"i64 {bounds[0].v}", f"i64 {bounds[1].v}", f"ptr {vals[4].v}"])
     args = self.rt("pys_str_slice", "ptr", [f"ptr {self.repr(self.tuple_(vals)).v}", "i64 1", "i64 -1"])
     return [msg, args]
 
@@ -846,8 +858,8 @@ def gen_exit_(self, vals: list[Val], sysx: bool) -> None:
         self.rt("pys_exit_msg", "void", [f"ptr {self.repr(self.tuple_(vals)).v}"])
     elif len(vals) == 0 or vals[0].t == "None":
         self.rt("pys_exit", "void", ["i64 0"])
-    elif vals[0].t == "int" or vals[0].t == "bool":
-        self.rt("pys_exit", "void", [f"i64 {self.as_int(vals[0]).v}"])
+    elif vals[0].t == "int" or vals[0].t == "bool" or vals[0].t == BIG:
+        self.rt("pys_exit", "void", [f"i64 {self.big_status(vals[0]).v}"])  # (a promoting int's: bigints.py)
     else:
         if vals[0].t in self.classes or is_opt(vals[0].t):
             # an object that is None at run time is status 0 too
@@ -882,9 +894,9 @@ def gen_exit_value(self, vals: list[Val]) -> Val:
     # is SystemExit(), but SystemExit(None) shows its None: str(e) "None")
     if len(vals) == 0:
         return self.no_code()
-    if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool" or vals[0].t == "None"):
+    if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool" or vals[0].t == "None" or vals[0].t == BIG):
         s = self.to_str(vals[0]).v
-        return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.as_int(vals[0]).v if vals[0].t != 'None' else '0'}", f"ptr {s}", f"ptr {s}"]), "exc")
+        return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.big_status(vals[0]).v if vals[0].t != 'None' else '0'}", f"ptr {s}", f"ptr {s}"]), "exc")
     if len(vals) == 1 and is_opt(vals[0].t):
         # a value that may be None: SystemExit(None), or the exception of the value it holds
         l1 = self.label()
@@ -959,9 +971,12 @@ def gen_class_defaults(self, o: Val) -> None:
         if fl in ci.fdefault and o.t + "." + fl not in self.cvars:
             h = self.default_home(ci, fl)
             t = ci.ftypes[fl]
-            if not is_const(ci.fdefault[fl]):
+            identity = fl in ci.fbox and numeric_identity(t)
+            if not is_const(ci.fdefault[fl]) or identity:
                 self.class_default(h, fl)  # (compiled before the class statement runs)
             v = Val(self.mload(t, h.fglob[fl]), t) if fl in h.fglob else self.coerce(self.expr(ci.fdefault[fl], t), t)
+            if identity:
+                self.dyn_id_read(v, h.fglob[fl] + ".box")
             self.setfield(o, self.field(o, fl), fl, v)
 
 def gen_exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:
@@ -991,21 +1006,21 @@ def gen_exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:
         code = "0"
         hc = "true" if len(vals) == 0 or not coded else "false"
         t = vals[0].t if len(vals) == 1 and coded else ""
-        if t == "int" or t == "bool":
-            code = self.as_int(vals[0]).v
+        if t == "int" or t == "bool" or t == BIG:
+            code = self.big_status(vals[0]).v  # (a promoting int's: bigints.py)
         if t != "":
             # (an int | None or a bool | None is a status, 0 if it is None; another value that
             # may be None is one only if it is None)
-            st = t == "int" or t == "bool" or t == "None" or (is_sopt(t) and (unopt(t) == "int" or unopt(t) == "bool"))
+            st = t == "int" or t == "bool" or t == BIG or t == "None" or (is_sopt(t) and (unopt(t) == "int" or unopt(t) == "bool" or t == BIGOPT))
             hc = "true" if st else self.isnull(vals[0]) if t in self.classes or is_opt(t) else "false"
         self.setfield(o, self.field(o, " code"), " code", Val(code, "int"))
         self.setfield(o, self.field(o, " hc"), " hc", Val(hc, "bool"))
-        if is_sopt(t) and (unopt(t) == "int" or unopt(t) == "bool"):
+        if is_sopt(t) and (unopt(t) == "int" or unopt(t) == "bool" or t == BIGOPT):
             l1 = self.label()
             l2 = self.label()
             self.cbr(self.isnull(vals[0]), l2, l1)
             self.place(l1)
-            self.setfield(o, self.field(o, " code"), " code", self.as_int(self.deref(vals[0])))
+            self.setfield(o, self.field(o, " code"), " code", self.big_status(self.deref(vals[0])))
             self.place(l2)
 
 def gen_exc_of(self, v: Val) -> Val:
@@ -1376,6 +1391,8 @@ def gen_exc_call(self, c: Val, args: list[Node], how: int = 0) -> Val:
     self.place(l1)
     i = Ins("icall", "exc", "")
     i.a = [Val(fp, "env")] + [v for v in vals if v.t != "None"]  # (an argument that is None is not passed)
+    if dynamic_program():
+        i.a.extend([self.dyn_box(v) for v in vals if numeric_identity(v.t)])
     self.put(i, 1)
     e1 = self.cur
     self.br(l3)
@@ -1422,12 +1439,12 @@ def gen_exc_make(self, c: Val, vals: list[Val], how: int = 0) -> Val:
     else:
         flags = self.select(self.truth(v), Val("2", "int"), Val("0", "int"))
     code = "0"
-    if v.t == "int" or v.t == "bool" or v.t == "None":
+    if v.t == "int" or v.t == "bool" or v.t == "None" or v.t == BIG:
         flags = self.scalar('or', [Val(flags, "int"), Val("4", "int")])
-        code = self.as_int(v).v if v.t != "None" else "0"
-    elif is_sopt(v.t) and (unopt(v.t) == "int" or unopt(v.t) == "bool"):
+        code = self.big_status(v).v if v.t != "None" else "0"  # (a promoting int's: bigints.py)
+    elif is_sopt(v.t) and (unopt(v.t) == "int" or unopt(v.t) == "bool" or v.t == BIGOPT):
         flags = self.scalar('or', [Val(flags, "int"), Val("4", "int")])
-        code = self.optint(v, "0")
+        code = self.big_status(v).v if v.t == BIGOPT else self.optint(v, "0")
     if how != 0:
         flags = self.scalar('or', [Val(flags, "int"), Val(str(how), "int")])
     return Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 1", f"ptr {s}", f"ptr {r}", f"i64 {flags}", f"i64 {code}"]), "exc")

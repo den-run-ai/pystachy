@@ -1,0 +1,10 @@
+conditional True False 1
+optional True True
+union True True
+boolean True True False
+zero True True
+literal True
+rebind True True
+one edge True
+branch
+[exit 0]

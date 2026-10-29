@@ -73,6 +73,12 @@ HEX = "0123456789ABCDEF"
 # only comparisons with None may read until a binding of another value types it
 NONEVAR = "opt[None]"
 NONE_ITEM = "opt[?]"  # the item type of a container that holds only None so far (Gen.none_container)
+# the type of an int in a module that opts in to promoting ints (# pystachy: python-int): two words,
+# an LLVM {i64, ptr} (bigints.py). Its "+" keeps it apart from every class name
+BIG = "int+"
+# an int | None of such a module (bigints.py): a box of the promoting int, which is also one of a
+# 64-bit int, opt[int], where the value fits
+BIGOPT = "opt[int+]"
 IOPS: dict[str, str] = {"&": "and", "|": "or", "^": "xor"}
 CHECKED: dict[str, str] = {"+": "sadd", "-": "ssub", "*": "smul"}  # llvm.*.with.overflow
 IRT: dict[str, str] = {"//": "pys_floordiv", "%": "pys_mod", "**": "pys_pow", "<<": "pys_shl", ">>": "pys_shr"}
@@ -302,6 +308,16 @@ for _k in ("ABCMeta EllipsisType FunctionType GenericAlias _CallableGenericAlias
 ABCSOTHER = "collections.abc.NAME is not supported: Pystachy's collections.abc (which _collections_abc is too) has only the ABCs"
 CLASSVAR = "typing.ClassVar (a class attribute) is not supported"
 ITERS = "_pystachy_iterators"  # lib's module of the iterator classes iter() makes objects of (Loader.program)
+# lib's modules that hand a container's items on as they are: their reads of a list's, a dict's or a
+# set's ints, and of its tuples of ints, and of a generator's values, give promoting ints in a program
+# whose containers hold them (bigints.read_policy), though their own ints stay 64-bit
+READ_HELPERS: list[str] = [ITERS, "heapq", "bisect"]
+# lib's definitions that compile as if their module opted in to promoting ints, in a program where a
+# module does and none opts in to dynamic Any (bigints.int_policy, Loader.int_spans): Counter, whose
+# counts are ints of its own (its dict's values and its methods' parameters and results), the key by
+# which most_common() sorts them, and the function by which it counts an iterable's items, which
+# reads them (a Counter's keys are promoting ints where its type variable binds an int, specialize)
+INT_HELPERS: dict[str, list[str]] = {"collections": ["Counter", "_count", "_count_elements"]}
 TEXTVIEW = "re"  # lib's regex engine, which reads a str whose every byte is a code point in place (__pys_text_bytes)
 RANGES = "_pystachy_range"  # lib's module of the class of range objects, range() as a value (Loader.program)
 RANGEC = "_pystachy_range$range"  # (that class)
@@ -599,6 +615,7 @@ IROPS: dict[str, str] = {
     "empty.kind": "wD",
     "union.tag": "rL rD rO", "union.payload": "rL rD rO", "union.raw": "rL rD rO",
     "dyn.type": "", "dyn.payload": "",
+    "big.make": "", "big.lo": "", "big.hi": "",
     "landing": "T", "throw": "T R N", "exc.match": "",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
     # generator function's entry block (the frame, its promise and the initial suspend), gen.yield
@@ -618,7 +635,9 @@ IROPS: dict[str, str] = {
 # into it (throw()); a generator that has not started yet is in state new there, so that a
 # send() of a value other than None and a throw() can tell it from one suspended at a yield.
 # Commands: close (a loop that owns it drops it: what closing raises is reported), close()
-# (raised by close()), throw() (raised at the yield)
+# (raised by close()), throw() (raised at the yield). In a program where a module opts in to
+# promoting ints (diagnostics.int_program), nine: also the pointers of the promoting ints it
+# yielded last and returned (null where they fit, docs/python-int.md)
 GENVAL = 0
 GENRET = 1
 GENSTATE = 2
@@ -628,6 +647,9 @@ GENSLOTS = 5
 GENSEND = 5
 GENEXC = 6
 GENSLOTSX = 7
+GENVALP = 7
+GENRETP = 8
+GENSLOTSB = 9
 GENCLEAN = 1
 GENDONE = 2
 GENRUN = 3
@@ -659,7 +681,8 @@ LOOKUPS = 32
 # their second; 3, each value of tuple.load and tuple.store
 VALUE_AT: dict[str, int] = {"select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
                             "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
-                            "ptr.cmp": 1, "dyn.type": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2, "tuple.load": 3, "tuple.store": 3}
+                            "ptr.cmp": 1, "dyn.type": 1, "big.lo": 1, "big.hi": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2,
+                            "big.make": 2, "tuple.load": 3, "tuple.store": 3}
 # Types are serialized strings. Bound their size before joining children, and the active
 # template signatures before making keys or call contexts; a depth limit alone misses
 # exponential width growth such as f((x, x)). These are compiler resource limits.
@@ -679,7 +702,9 @@ TEMPLATE_RETAINED = 16777216
 # running out of memory ends the program); U may run user code, and so has every other letter (U?:
 # when the static type, the descriptor of a # parameter or a dict's keys, Ins.x, holds a class; R?:
 # R when Ins.x holds a recursive alias's edge, R<n>:, of which runtime.c's descriptor walks follow
-# at most 512 before raising RecursionError, in rec_deep); I
+# at most 512 before raising RecursionError, in rec_deep, or a list, set or dict of ints, in a program
+# whose lists, sets and dicts hold promoting ints (int_lists), of which repr raises CPython's
+# ValueError for one past 4300 digits, in digits_deep: ircheck.big_digits); I
 # does I/O, or uses the process or global runtime state; rL wL, rD wD, rO wO, rG wG, rF wF read or
 # write lists, dicts, objects' fields and flags, globals and their flags, files. Strings and tuples
 # are immutable, slots are never address-taken, dict keys are ints, strs, objects, or tuples of
@@ -705,22 +730,58 @@ for _j in range(len(FX)):
 # graphs show). A function of runtime.py has R where it may raise in the linked runtime: a raise
 # statement, or an overflow check that opt -O2 keeps, as in find's index arithmetic and for a
 # result too long in join and replace, where CPython raises OverflowError too
+# the runtime functions that take a list's ints as 64-bit ints and do not test them (they raise
+# nothing for it): a program whose lists may hold promoting ints past 64 bits (int_lists) narrows
+# their lists first (pys_list_narrow, Gen.rt), as other 64-bit storage takes a promoting int, and
+# their dicts too (pys_dict_narrow): dict.items, whose tuples hold 64-bit ints, and the get(), pop()
+# and setdefault() of 64-bit values (also by a promoting int key: bkey_), which a dict of ints
+# compiles so only for what Gen.big_dict_method leaves (pop() of a key that may be None, or of a
+# bool without a default)
+NARROWED: list[str] = [
+    "dict.bkey_get", "dict.bkey_pop", "dict.bkey_pop_default", "dict.bkey_setdefault", "dict.get", "dict.items", "dict.pop",
+    "dict.pop_default", "dict.setdefault", "m.floats", "m.prod_int", "sum.int_float",
+]
 RUNTIME: dict[str, str] = {
+    # Explicit arbitrary-precision integers. Handles are immutable atomic objects;
+    # the library's scanned wrapper keeps their pointer alive.
+    "mpz.from_int": "%ptr:int|R A|", "mpz.from_str": "%ptr:str,int|R A|",
+    "mpz.binop": "%ptr:%ptr,%ptr,int|R A|", "mpz.unary": "%ptr:%ptr,int|R A|",
+    "mpz.shift": "%ptr:%ptr,int,int|R A|", "mpz.pow": "%ptr:%ptr,int|R A|",
+    "mpz.cmp": "int:%ptr,%ptr||", "mpz.hash": "int:%ptr||",
+    "mpz.to_int": "int:%ptr|R|", "mpz.bit_length": "int:%ptr||", "mpz.str": "str:%ptr|R A|",
+    # promoting ints (bigints.py): each takes a value as its two words, int and %ptr, and returns
+    # one as an int+, {i64, ptr}; a result that fits in 64 bits is demoted
+    "big.op": "int+:int,%ptr,int,%ptr,int|R A|", "big.cmp": "int:int,%ptr,int,%ptr||",
+    "big.cmp_float": "int:int,%ptr,float|R A|", "big.str": "str:int,%ptr|R A|",
+    "big.from_str": "int+:str,int|R A|", "big.from_float": "int+:float|R A|", "big.hash": "int:int,%ptr||",
+    "big.float": "float:int,%ptr|R|", "big.truediv": "float:int,%ptr,int,%ptr|R A|",
+    "big.bit_length": "int:int,%ptr||", "big.bit_count": "int:int,%ptr||", "big.format": "str:int,%ptr,str|R A|",
+    "big.powmod": "int+:int,%ptr,int,%ptr,int,%ptr|R A|", "big.sum": "int+:list[int],int,%ptr|R A rL|",
+    "big.box": "%ptr:int,%ptr|A|",
+    # a list of ints whose items may be promoting ints past 64 bits (runtime.c's BIGIDS: -2**63 in
+    # the item's slot, its Mpz in the list's companion), in a program where int_lists() holds
+    "list.set_big": "None:S,int,%ptr|R A rL wL|", "list.append_big": "None:S,%ptr|R A rL wL|",
+    "list.insert_big": "None:S,int,%ptr|R A rL wL|", "list.big_at": "%ptr:S,int|rL|",
+    "list.big_pop": "int+:S,int|R rL wL|", "list.big_minmax": "int+:S,bool|R rL|",
+    "list.big_find": "int:S,int,%ptr,bool,int,int,int|R A rL wL|", "list.narrow": "None:S|R rL|",
     # dynamic values (docs/dynamic-any.md): pointers to immutable {DynType *, payload} boxes, of
     # any type, so that an operation on one may run the program's code (an object's __repr__,
     # __eq__, __lt__ or __hash__: U) and raise; boxing a number allocates (A), but the boxes of
     # -5..256 are constants
     "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A|",
+    "dyn.int_box": "%ptr:int,%ptr|A|", "dyn.float_box": "%ptr:float,%ptr|A|",
     "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
     "dyn.binop": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary": "%ptr:%ptr,int|R A|",
     "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
-    "dyn.iter": "%ptr:%ptr|R A rD|", "dyn.next": "%ptr:%ptr|R A I rL rD|",
-    "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I rL rD|",
+    "dyn.iter": "%ptr:%ptr|R A I U rL rD|", "dyn.next": "%ptr:%ptr|R A I U rL rD|",
+    "dyn.iter_box": "%ptr:%ptr|R A I U rL rD|", "dyn.next_box": "%ptr:%ptr|R A I U rL rD|", "dyn.iter_check": "%ptr:%ptr|R|",
+    "dyn.reversed": "%ptr:%ptr|R A rL rD|", "dyn.range_iter": "%ptr:int,int,int,int|R A|",
+    "dyn.int_of": "int:%ptr|R A|", "dyn.float_of": "float:%ptr|R A|", "dyn.unpack": "%ptr:%ptr,int|R A I U rL rD|",
     "dyn.slice": "%ptr:%ptr,%ptr,%ptr,%ptr|R A I U|", "dyn.update": "None:%ptr,%ptr|R A I U|",
-    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I rL rD|", "dyn.strs": "list[str]:%ptr|R A I rL rD|", "dyn.id": "int:%ptr||",
+    "dyn.list_of": "%ptr:%ptr,%ptr|R A rL|", "dyn.list": "list[T]:%ptr|R A I U rL rD|", "dyn.strs": "list[str]:%ptr|R A I U rL rD|", "dyn.id": "int:%ptr||",
     # weakref handles are atomic GC objects; reads depend on collections (I prevents CSE), as does
     # the queue of the fire functions of references whose referents a collection found dead
     "weakref.new": "%ptr:%ptr,%ptr|A I|", "weakref.get": "%ptr:%ptr|I|", "weakref.fired": "%ptr:|I|",
@@ -732,10 +793,10 @@ RUNTIME: dict[str, str] = {
     # lists
     "list.new": "list[T]:int|A|", "list.new_atomic": "list[T]:int|A|", "list.get": "*T:S,int|R rL|", "list.set": "None:S,int,*T|R rL wL|",
     "list.append": "None:S,*T|A rL wL|", "list.pop": "*T:S,int|R rL wL|", "list.del": "None:S,int|R rL wL|",
-    "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL|",
-    "list.slice_step": "S:S,int,int,int|R A rL|", "list.set_slice": "None:S,int,int,int,S|R A rL wL|",
+    "list.insert": "None:S,int,*T|A rL wL|", "list.extend": "None:S,S|A rL wL|", "list.slice": "S:S,int,int|A rL wL|",
+    "list.slice_step": "S:S,int,int,int|R A rL wL|", "list.set_slice": "None:S,int,int,int,S|R A rL wL|",
     "list.del_slice": "None:S,int,int,int|R rL wL|",
-    "list.copy": "S:S|A rL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL|", "list.mul": "S:S,int|R A rL|",
+    "list.copy": "S:S|A rL wL|", "list.clear": "None:S|rL wL|", "list.add": "S:S,S|A rL wL|", "list.mul": "S:S,int|R A rL wL|",
     "list.imul": "None:S,int|R A rL wL|", "list.reverse": "None:S|rL wL|", "list.find": "int:S,*T,#|R? rL rD U?|",
     "list.find_pair": "int:S,*T,%ptr,%ptr|rL rD U|",
     "list.index": "int:S,*T,#,int,int|R A I rL rD U?|", "list.index_as": "int:S,*T,#,int,int,bool,int,%ptr|R A I rL rD U?|", "list.count": "int:S,*T,#|R? rL rD U?|", "list.remove": "None:S,*T,#|R rL wL rD U?|",
@@ -745,6 +806,15 @@ RUNTIME: dict[str, str] = {
     "any": "bool:list[T]|rL|", "all": "bool:list[T]|rL|", "sum.int": "int:list[T],int|R rL|",
     "sum.float": "float:list[float],float|rL|", "sum.float_int": "float:list[float],int|rL|", "sum.int_float": "float:list[T],float|rL|",
     "range.len": "int:int,int,int|R|", "range.has": "bool:int,int,int,int|R|", "range.list": "list[int]:int,int,int|R A|",
+    "list.identity": "None:S,int|R A rL wL|", "list.get_identity": "dyn:S,int,int|R A rL wL|",
+    "list.append_identity": "None:S,*T,dyn,int|R A rL wL|", "list.set_identity": "None:S,int,*T,dyn,int|R A rL wL|",
+    "list.insert_identity": "None:S,int,*T,dyn,int|R A rL wL|", "list.pop_identity": "dyn:S,int,int|R A rL wL|",
+    "list.minmax_identity": "dyn:S,#,bool,int|R A rL wL rD U?|",
+    "list.find_identity": "int:S,*T,dyn,%ptr,%ptr,int|R A rL wL rD U|",
+    "list.index_identity": "int:S,*T,dyn,%ptr,%ptr,int,int,int|R A I rL wL rD U|",
+    "list.count_identity": "int:S,*T,dyn,%ptr,%ptr,int|R A rL wL rD U|",
+    "list.remove_identity": "None:S,*T,dyn,%ptr,%ptr,int|R A rL wL rD U|",
+    "list.forget_identity": "None:S|A rL wL|",
     # dicts: keys are ints, strs, objects, or tuples of int, bool, str, None, objects and such tuples
     # (Dict.kind 0, 1, or the key's descriptor, passed as an int), which hash, compare and print (a
     # KeyError's message) without user code but an object's: U? holds where the op's Ins.x, the key
@@ -756,9 +826,35 @@ RUNTIME: dict[str, str] = {
     "dict.setdefault": "*V:S,*K,*V|R? A rD wD U?|", "dict.clear": "None:S|wD|",
     "dict.getbox": "*V:S,*K,*V|R? A rD U?|", "dict.popbox": "*V:S,*K,*V|R A I rD wD U?|",
     "dict.copy": "S:S|R A rD U?|", "dict.from": "S:S|R A rD U?|", "dict.keys": "list[K]:S|A rD|", "dict.values": "list[V]:S|A rD|",
-    "dict.items": "list[tuple[K,V]]:S|A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
+    "dict.items": "list[tuple[K,V]]:S|R A rD|", "dict.end": "int:S|rD|", "dict.next": "int:S,int,int,int|R rD|",
+    "dict.eq_next": "int:S,int|rD|",
+    "dict.eq_find": "int:S,S,int|R? rD U?|",
+    "dict.eq_pair_find": "int:S,S,int,%ptr|R A I rD wD U|",
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
     "dict.find": "int:S,*K|R? rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
+    # a dict of ints whose values may be past 64 bits (int_lists, runtime.c's dbig): a store of a
+    # promoting int, the Mpz of an entry's value that reads -2**63, pop() and setdefault() of
+    # promoting ints, and narrow, which raises OverflowError where a value is past 64 bits
+    "dict.set_big": "None:S,*K,int,%ptr|R? A rD wD U?|", "dict.entry_set_big": "None:S,int,int,%ptr|A rD wD|",
+    "dict.big_val": "%ptr:S,int|rD|", "dict.big_pop": "int+:S,*K,bool,int,%ptr|R A I rD wD U?|",
+    "dict.big_setdefault": "int+:S,*K,int,%ptr|R? A rD wD U?|", "dict.narrow": "None:S|R rD|",
+    # and a dict of int keys whose keys may be past 64 bits (runtime.c's kbig): the entry of a
+    # promoting int key (find: -1 where d has none; entry: KeyError; put: added with the value 0,
+    # which the compiler stores next), del of one, and the Mpz of an entry's key that reads -2**63
+    "dict.big_find": "int:S,int,%ptr|R? rD U?|", "dict.big_entry": "int:S,int,%ptr|R A I rD U?|",
+    "dict.big_put": "int:S,int,%ptr|R? A rD wD U?|", "dict.big_del": "None:S,int,%ptr|R A I rD wD U?|",
+    "dict.big_key": "%ptr:S,int|rD|",
+    # popitem() and items() of a dict of ints or of int keys: tuples of promoting ints
+    # (utils.tslots); and update() of such a dict by pairs, by whether the key, the value is an int
+    "dict.big_popitem": "tuple[K,V]:S|R A rD wD|", "dict.big_items": "list[tuple[K,V]]:S|A rD|",
+    "dict.update_pairs_big": "None:S,list[T],bool,bool|R? A rL rD wD U?|",
+    # get(), pop(), setdefault() and their boxes by such a key, as get, getbox, pop, pop_default,
+    # popbox, setdefault, big_pop and big_setdefault by a 64-bit key (bigints.py's BKEY)
+    "dict.bkey_get": "*V:S,int,%ptr,*V|R? rD U?|", "dict.bkey_getbox": "*V:S,int,%ptr,*V|R? A rD U?|",
+    "dict.bkey_pop": "*V:S,int,%ptr|R A I rD wD U?|", "dict.bkey_pop_default": "*V:S,int,%ptr,*V|R A I rD wD U?|",
+    "dict.bkey_popbox": "*V:S,int,%ptr,*V|R A I rD wD U?|", "dict.bkey_setdefault": "*V:S,int,%ptr,*V|R? A rD wD U?|",
+    "dict.bkey_big_pop": "int+:S,int,%ptr,bool,int,%ptr|R A I rD wD U?|",
+    "dict.bkey_big_setdefault": "int+:S,int,%ptr,int,%ptr|R? A rD wD U?|",
     "dict.find_int_nobox": "int:S,int|rD|",
     "dict.update": "None:S,S|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
     "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",
@@ -777,6 +873,10 @@ RUNTIME: dict[str, str] = {
     "set.cmp": "int:S,S,int|R? rD U?|", "set.le_list": "bool:S,list[T]|R? A rL rD U?|", "set.ge_list": "bool:S,list[T]|R? rL rD U?|",
     "set.isdisjoint": "bool:S,S|R? rD U?|", "set.isdisjoint_list": "bool:S,list[T]|R? rL rD U?|", "set.next": "int:S,int,int|R rD|",
     "set.key": "*T:S,int|rD|", "set.list": "list[T]:S|A rD|",
+    # a set of ints whose elements may be past 64 bits (bigints.py, runtime.c's sbig)
+    "set.big_add": "None:S,int,%ptr|R? A rD wD U?|", "set.big_has": "bool:S,int,%ptr|R? rD U?|",
+    "set.big_discard": "None:S,int,%ptr|R? rD wD U?|", "set.big_remove": "None:S,int,%ptr|R A I rD wD U?|",
+    "set.big_key": "%ptr:S,int|rD|", "set.big_pop": "int+:S|R rD wD|",
     # Public Unicode operations over UTF-8 storage, separate from runtime.py's raw byte helpers.
     "text.len": "int:str||", "text.chr": "str:int|R A|",
     "text.get": "str:str,int|R A|", "text.at": "str:str,int|R A|",
@@ -867,7 +967,7 @@ RUNTIME: dict[str, str] = {
     "getsize": "int:str|R A I|", "getmtime": "float:str|R A I|", "getctime": "float:str|R A I|",
     "mkdtemp": "str:|R A I|", "time": "float:|I|", "time_ns": "int:|I|", "monotonic": "float:|I|", "monotonic_ns": "int:|I|",
     "process_time": "float:|I|", "process_time_ns": "int:|I|", "sleep": "None:float|R I|", "sleep_int": "None:int|R I|",
-    "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL|",
+    "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL wL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
     # exceptions (runtime.c's "exceptions"); a landing's pys_exc_begin runs the unwind actions: it
     # closes with-files (which may raise) and gives a list being sorted its items back. str() and
@@ -910,7 +1010,7 @@ RUNTIME: dict[str, str] = {
 # the runtime's data that programs name (docs/dynamic-any.md): the DynTypes of the builtin types
 # and the constant boxes of None, True and False, with their LLVM types; a module declares those
 # it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
-DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64}"
+DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}"
 RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
 for _k in "none bool int float str list dict tuple".split():
     RTDATA["pys_dyntype_" + _k] = DYNTYPE_LL

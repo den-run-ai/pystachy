@@ -14,6 +14,8 @@ The upstream PSF license is [CPYTHON-LICENSE.txt](CPYTHON-LICENSE.txt).
 | [upstream_dict_dynamic_values.py](../programs/upstream/upstream_dict_dynamic_values.py) | `Lib/test/test_dict.py`: fragments of `test_setdefault`, `test_pop`, `test_repr`, and `test_hash_collision_remove_add` | Restore heterogeneous defaults/values, recursive repr, and the original identity-based `CustomHash` keys with 64 distinct hashes plus a collision. Use explicit storage annotations, omit unused nondeterministic repr, and pass the default `None` explicitly to `setdefault`; its omitted-default form remains unsupported ([#774](https://github.com/den-run-ai/pystachy/issues/774)). Error-arity and callback-exception parts are not included. |
 | [upstream_deque_dynamic.py](../programs/upstream/upstream_deque_dynamic.py) | `Lib/test/test_deque.py`: comparison fragments of `test_count`, full-deque insertion from `test_insert_bug_26194`, `test_copy_method` | Explicit `deque[Any]` and `list[Any]` preserve heterogeneous values. User comparisons must run and propagate exceptions; mutation must be detected. Spell `list('ABC')` as `['A', 'B', 'C']` because a typed `list[str]` does not implicitly become `list[Any]`. Add shallow-alias assertions. |
 | [upstream_difflib_context.py](../programs/upstream/upstream_difflib_context.py) | `Lib/test/test_difflib.py`: context-diff halves of `TestOutputFormat.test_tab_delimiter` and `test_no_trailing_tab_on_empty_filedate`, plus full `test_range_format_context` | Preserve context-diff expected strings; replace unittest scaffolding with assertions. Add 11 bounded public-API boundary scenarios. Unified-diff halves already have coverage elsewhere. |
+| [upstream_shlex_punctuation.py](../programs/upstream/upstream_shlex_punctuation.py) | `Lib/test/test_shlex.py`: `testSyntaxSplitAmpersandAndPipe`, `testSyntaxSplitSemicolon`, `testSyntaxSplitRedirect`, `testSyntaxSplitParen`, `testSyntaxSplitCustom`, `testTokenTypes`, `testPunctuationInWordChars`, `testPunctuationWithWhitespaceSplit`, `testPunctuationWithPosix`, `testEmptyStringHandling`, `testUnicodeHandling`, `testQuote`, `testJoin`, `testLinenoAfterNewLine`, `testLinenoAfterComment`, `testPushToken`, `testPushTokenLifo`, `testPushSourceString`, `testPushSourceStream`, `testErrorLeaderTracksPosition`, `testErrorLeaderOverrides`, `testNoClosingQuotation`, `testNoEscapedCharacter` | Every input and assertion is kept; `subTest` becomes a loop. `testTokenTypes` adds `t is None` to its EOF test because comparing with `s.eof` does not narrow `get_token()`'s `str \| None`; non-POSIX shlex returns `''` at EOF, so behaviour is unchanged. `unittest.mock` debug-output, file/sourcehook and read-only-property methods are excluded. |
+| [upstream_posixpath_strings.py](../programs/upstream/upstream_posixpath_strings.py) | `Lib/test/test_posixpath.py`: str halves of `test_join`, `test_split`, `test_splitext` (`splitextTest`), `test_splitroot`, `test_isabs`, `test_basename`, `test_dirname`, and `test_normpath` with all 50 `NORMPATH_CASES` | Every str input and assertion is kept. Bytes halves are excluded because `lib/posixpath` supports str paths; file-system, `realpath`, `expanduser`, `relpath` and `commonpath` methods are excluded. |
 
 All inputs stay small: no interpreter recursion-limit manipulation, large-memory
 fixtures, networking, subprocess services or optional extension dependencies.
@@ -41,17 +43,19 @@ methods. The adaptations above do not execute the upstream unittest scaffolding.
 | `test_dict.py` | `ab8c3107f3390867750c19a3024c0284c34c62fb6f2297024627b1c66b48d406` |
 | `test_deque.py` | `15578b602865dfa5c80baa64006d64c5875765aab457d5b4bedd73a5e8436d73` |
 | `test_difflib.py` | `dc6b140c8dd31e6971888070ea5175a0ab72ecadbdc96956071ceb062f34e636` |
+| `test_shlex.py` | `943ddf74ffa1da625169221d17e84f386314016da36bc3696ebcdb9ca88b039d` |
+| `test_posixpath.py` | `34ada45f0e4f0e2b8326404b7e7dbf1416a079081f6e0a1f90ab9d691e9a8be8` |
 
 ## Reproduction
 
 Use the repository's pinned Python to record expectations, then the normal
 native differential harness. The `upstream_json_*` selector currently names
-these three JSON cases; the other selectors name the dictionary, deque and context-diff cases.
+these three JSON cases; the other selectors name the dictionary, deque, context-diff, shlex and posixpath cases.
 
 ```sh
-PYTHON=python3.13 tests/record.sh upstream_json_decode_core upstream_json_encode_dynamic upstream_json_recursion_dynamic upstream_dict_dynamic_values upstream_deque_dynamic upstream_difflib_context
-PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/upstream/upstream_json_*.py tests/programs/upstream/upstream_dict_dynamic_values.py tests/programs/upstream/upstream_deque_dynamic.py tests/programs/upstream/upstream_difflib_context.py
-PYSTACHY_GC_STRESS_PROGRAM=1 PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/upstream/upstream_json_*.py tests/programs/upstream/upstream_dict_dynamic_values.py tests/programs/upstream/upstream_deque_dynamic.py tests/programs/upstream/upstream_difflib_context.py
+PYTHON=python3.13 tests/record.sh upstream_json_decode_core upstream_json_encode_dynamic upstream_json_recursion_dynamic upstream_dict_dynamic_values upstream_deque_dynamic upstream_difflib_context upstream_shlex_punctuation upstream_posixpath_strings
+PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/upstream/upstream_json_*.py tests/programs/upstream/upstream_dict_dynamic_values.py tests/programs/upstream/upstream_deque_dynamic.py tests/programs/upstream/upstream_difflib_context.py tests/programs/upstream/upstream_shlex_punctuation.py tests/programs/upstream/upstream_posixpath_strings.py
+PYSTACHY_GC_STRESS_PROGRAM=1 PYSTACHY_JOBS=2 tests/run.sh ./pystachy 'jit aot' tests/programs/upstream/upstream_json_*.py tests/programs/upstream/upstream_dict_dynamic_values.py tests/programs/upstream/upstream_deque_dynamic.py tests/programs/upstream/upstream_difflib_context.py tests/programs/upstream/upstream_shlex_punctuation.py tests/programs/upstream/upstream_posixpath_strings.py
 ```
 
 The normal corpus discovery includes these programs in hosted/native, JIT/AOT,

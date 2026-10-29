@@ -1,0 +1,24 @@
+reflected arithmetic True
+open arithmetic 7
+reflected comparison True
+open comparison True
+bare read True
+named expression True
+identity True
+membership True
+index callback
+callback read True
+property callback
+reflected arithmetic True
+property arithmetic 7
+getitem callback
+reflected arithmetic True
+protocol arithmetic 7
+scalar 1002 True 6
+scalar float False
+after scalar True
+first exception []
+scalar first exception
+comparison first exception
+after errors True
+[exit 0]

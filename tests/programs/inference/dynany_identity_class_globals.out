@@ -1,0 +1,23 @@
+mods: init mods
+mods.shapes: init mods.shapes
+class alias True True
+class repeated True True
+class inherited True True
+different classes False False
+class literal True True
+class float literal True True
+class NaN True True
+class callback False False
+class replacement False False
+inherited replacement True True
+class float True True
+equal distinct False False
+class None True True
+imported class literal True True
+imported class float True True
+different module literal False False
+different module float False False
+class not bound
+early declaration True True
+class box survives GC True
+[exit 0]

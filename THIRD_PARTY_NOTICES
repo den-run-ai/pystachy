@@ -3,6 +3,33 @@ Third-party notices
 
 Pystachy is distributed under the MIT License (LICENSE), except for the parts below.
 
+MicroPython arbitrary-precision integer core (mpz/mpz.c)
+------------------------------------------------------
+
+The multiply-add adapts
+MicroPython v1.26.1 py/mpz.c, Copyright (c) 2013, 2014 Damien P. George,
+under the MIT license reproduced in mpz/mpz.c. Pystachy supplies immutable
+single-allocation values, collector integration, parsing, Python sign/bitwise
+semantics, hashing and conversion adapters. mpz/README.md records upstream
+source identity and changes.
+
+MicroPython's integer tests (tests/programs/upstream/upstream_micropython_*.py)
+-------------------------------------------------------------------------------
+
+These are 35 of MicroPython's tests/basics/ integer tests at commit
+a39e77f08d1daf13658ccae99b763003a8218bdf, each unchanged after a header that opts
+it in to promoting ints, Copyright (c) 2013-2026 Damien P. George, under the MIT
+license reproduced in tests/upstream/MICROPYTHON-LICENSE.txt.
+tests/upstream/micropython.md records each file's SHA-256.
+
+Its text conversion and arithmetic follow CPython 3.13.16's Objects/longobject.c
+at commit cbc944f4bc59639a444dd971c737788ba2283a91 (long_from_binary_base,
+long_from_non_binary_base, long_to_decimal_string_internal, x_add, x_sub, v_iadd,
+v_isub, x_mul, kmul_split, k_mul, k_lopsided_mul, x_divrem and divrem1), as does
+runtime.c's true division of promoting ints (long_true_divide); those parts are
+derived from Python and are used under the Python Software Foundation License
+Version 2 and copyright notice below.
+
 Karpathy microGPT benchmark (bench/microgpt/, bench/smoke/ml.py)
 --------------------------------------------
 
@@ -17,6 +44,23 @@ The benchmark README documents the source hash and adaptations. The names datase
 is supplied separately by the benchmark user and is not included here.
 The smoke kernel retains only scalar add/multiply and reverse-mode traversal;
 its deterministic DAG and dense/softmax drivers are original project code.
+
+CPython's arbitrary-precision integer regression cases
+------------------------------------------------------
+
+tests/programs/numbers/mpz_cpython_long.py, mpz_cpython_long_division.py,
+mpz_cpython_long_bitops.py, mpz_cpython_int.py and mpz_cpython_text.py adapt selected
+methods of Lib/test/test_long.py and Lib/test/test_int.py from CPython 3.13.16,
+commit cbc944f4bc59639a444dd971c737788ba2283a91. They use the Python Software
+Foundation License Version 2; the complete license and copyright notices are
+retained in tests/upstream/CPYTHON-LICENSE.txt. tests/upstream/mpz.md records the
+original source hashes, preserved cases, adaptations and exclusions.
+
+The adaptations replace unittest scaffolding with standalone assertions, use
+explicit mpz values and decimal strings for oversized literals, replace divmod,
+abs and pow with supported operations, and bound deterministic or seeded loops.
+These selected cases do not claim unchanged execution of CPython's complete int
+tests.
 
 CPython's port acceptance fixtures (tests/upstream/ports/)
 ---------------------------------------------------------
@@ -995,3 +1039,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+json_repair port and parity inputs (ports/json_repair/, tests/upstream/json_repair/)
+---------------------------------------------------------------------------------
+
+Adapted from json_repair v0.64.1, commit ace9b23cb7fc6757775d5fafbfaaa9a88363a573:
+https://github.com/mangiucugna/json_repair
+Copyright (c) 2023 Stefano Baccianella. MIT licensed; the full license is retained
+in ports/json_repair/LICENSE and tests/upstream/json_repair/LICENSE. The port guide
+records scope and adaptations; the parity manifest pins original source/test hashes.

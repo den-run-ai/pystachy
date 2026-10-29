@@ -5,7 +5,9 @@ import io
 from functools import lru_cache
 import hashlib
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -18,13 +20,106 @@ contracts bootstrap check-ir
 """
 COMMIT = "a" * 40
 BUNDLE = "d" * 64
+# The corpus of the reports below: its cases (which the GC suites' shards hold between them, and the
+# gc-ir halves and tests-cpython compile) and its syntax cases
+CORPUS_CASES = 60
+SYNTAX_CASES = 2
+
+
+def gc_suite(name):
+    """The fields of GC suite NAME: its shard of CORPUS_CASES (halves in JIT, thirds in AOT), of which
+    the stressed sample takes the positions of its mode's offset modulo GC_SAMPLE_EVERY and the
+    program-stressed run the others, and a share of the mode's 10 checks, 1 of them in the sample."""
+    mode = "aot" if name.startswith("gc-aot") else "jit"
+    count, index = merge.SHARDED_STEPS[name], int(name[-1])
+    offset = merge.GC_SAMPLE_OFFSETS[mode]
+    shard = CORPUS_CASES // count + (index < CORPUS_CASES % count)
+    sample = len(range(offset, shard, merge.GC_SAMPLE_EVERY))
+    checks = 10 // count + (index < 10 % count) - 1
+    return {"tests_compiler_interval": 0, "tests_interval": 1, "modes": [mode], "passed": checks, "expected": checks,
+            "shard_cases": shard, "cases": shard - sample,
+            "stressed_sample": {"every": merge.GC_SAMPLE_EVERY, "offset": offset, "cases": sample, "tests_interval": 1,
+                                "tests_compiler_interval": merge.GC_COMPILER_INTERVAL,
+                                "passed": 1, "failed": 0, "expected": 1, "failures": []}}
+
+
+def resize_gc_shard(step, shard):
+    """Make STEP's shard SHARD cases, its sample and other cases consistent with it."""
+    sample = step["stressed_sample"]
+    sample["cases"] = len(range(sample["offset"], shard, sample["every"]))
+    step.update(shard_cases=shard, cases=shard - sample["cases"])
+
+
+# A GC suite's sample, which runs end to end with the compiler GC-stressed too, must be the shard's
+# cases at its mode's offset modulo the period, the others the program-stressed run's (each case of the
+# shard in one of them), at the compiler's interval, and complete
+SAMPLE_MUTATIONS = [lambda step: step.pop("stressed_sample"),
+                    lambda step: step.update(stressed_sample=[]),
+                    lambda step: step["stressed_sample"].update(every=merge.GC_SAMPLE_EVERY // 2),
+                    lambda step: step["stressed_sample"].update(every=merge.GC_SAMPLE_EVERY * 2),
+                    lambda step: step["stressed_sample"].update(every=str(merge.GC_SAMPLE_EVERY)),
+                    lambda step: step["stressed_sample"].pop("every"),
+                    lambda step: step["stressed_sample"].update(offset=step["stressed_sample"]["offset"] + 1),
+                    lambda step: step["stressed_sample"].update(   # (the other mode's)
+                        offset=merge.GC_SAMPLE_OFFSETS["aot" if step["modes"] == ["jit"] else "jit"]),
+                    lambda step: step["stressed_sample"].pop("offset"),
+                    lambda step: step["stressed_sample"].update(cases=step["stressed_sample"]["cases"] + 1),
+                    lambda step: step["stressed_sample"].update(cases=step["stressed_sample"]["cases"] - 1),
+                    lambda step: step["stressed_sample"].update(cases=0),
+                    lambda step: step["stressed_sample"].pop("cases"),
+                    lambda step: step.update(cases=step["cases"] + 1),   # (a case run twice)
+                    lambda step: step.update(cases=step["cases"] - 1),   # (a case never run)
+                    lambda step: step.update(cases=0, shard_cases=step["stressed_sample"]["cases"]),
+                    lambda step: step.pop("cases"),
+                    lambda step: step.update(shard_cases=step["shard_cases"] + 1),
+                    lambda step: step.update(shard_cases=0, cases=0),
+                    lambda step: step.update(shard_cases=str(step["shard_cases"])),
+                    lambda step: step.pop("shard_cases"),
+                    # (a sample of a size other than the shard's positions at that offset)
+                    lambda step: step.update(shard_cases=step["shard_cases"] + merge.GC_SAMPLE_EVERY,
+                                             cases=step["cases"] + merge.GC_SAMPLE_EVERY),
+                    lambda step: step.update(shard_cases=step["shard_cases"] - merge.GC_SAMPLE_EVERY,
+                                             cases=step["cases"] - merge.GC_SAMPLE_EVERY),
+                    lambda step: step["stressed_sample"].update(tests_compiler_interval=0),
+                    lambda step: step["stressed_sample"].update(tests_compiler_interval=5000),
+                    lambda step: step["stressed_sample"].pop("tests_compiler_interval"),
+                    lambda step: step["stressed_sample"].update(tests_interval=2),
+                    lambda step: step["stressed_sample"].pop("tests_interval"),
+                    lambda step: step["stressed_sample"].update(passed=0),
+                    lambda step: step["stressed_sample"].update(passed=0, expected=0),
+                    lambda step: step["stressed_sample"].pop("expected"),
+                    lambda step: step["stressed_sample"].update(failed=1),
+                    lambda step: step["stressed_sample"].update(failures=["lost case"]),
+                    lambda step: step["stressed_sample"].pop("failures")]
+# The gc-ir halves: the stressed compiler's IR, messages, status and checks identical to stage 2's
+GC_IR_MUTATIONS = [lambda step: step.update(ir_identical=False),
+                   lambda step: step.update(ir_identical="true"),
+                   lambda step: step.pop("ir_identical"),
+                   lambda step: step.update(runtime_identical=False),
+                   lambda step: step.pop("runtime_identical"),
+                   lambda step: step.update(reference="stage1"),
+                   lambda step: step.update(compiler_interval=5000),
+                   lambda step: step.update(compiler_interval=0),
+                   lambda step: step.pop("compiler_interval"),
+                   lambda step: step.update(ir_cases=0),
+                   lambda step: step.update(ir_cases=True),
+                   lambda step: step.pop("ir_cases"),
+                   lambda step: step.update(check_cases=-1),
+                   lambda step: step.pop("check_cases"),
+                   lambda step: step.update(check_identical=False),
+                   lambda step: step.update(check_identical="true"),
+                   lambda step: step.pop("check_identical"),
+                   lambda step: step.update(shard_index=1 - step["shard_index"]),
+                   lambda step: step.pop("shard_index"),
+                   lambda step: step.update(shard_count=3),
+                   lambda step: step.update(result="fail")]
 
 
 @lru_cache(maxsize=4)
 def optin_report(index):
     tool = merge.dynany_optin
     corpus = tool.programs()
-    selected = corpus[index::4]
+    selected = corpus[index::merge.DYNANY_SHARDS]
     allowed = tool.exceptions(tool.ROOT, corpus)
     rows = []
     for case in selected:
@@ -37,10 +132,69 @@ def optin_report(index):
     return {"schema": 1, "corpus_cases": len(corpus),
             "corpus_sha256": tool.corpus_digest(tool.ROOT, corpus),
             "exceptions_sha256": hashlib.sha256((tool.ROOT / tool.MANIFEST).read_bytes()).hexdigest(),
-            "shard_index": index, "shard_count": 4, "modes": list(tool.MODES),
+            "shard_index": index, "shard_count": merge.DYNANY_SHARDS, "modes": list(tool.MODES), "native_suite": True,
             "cases": selected, "subset": False, "oracle_cases": len(selected),
             "expected_checks": len(rows), "completed_checks": len(rows),
-            "passed_checks": len(rows) - known, "expected_failures": known,
+            "passed_checks": len(rows) - known, "expected_failures": known, "native_ir_checks": 0,
+            "failures": [], "results": rows}
+
+
+@lru_cache(maxsize=1)
+def hosted_strata():
+    """The first program of the checkout's corpus of each kind tests-cpython samples (merge.HOSTED_STRATA)."""
+    programs = merge.dynany_optin.programs()
+    return {kind: next(case for case in programs if merge.hosted_stratum(kind, case))
+            for kind in merge.HOSTED_STRATA}
+
+
+@lru_cache(maxsize=1)
+def hosted_corpus():
+    """The checkout's corpus as tests/verify.sh lists it for tests-cpython: tests/corpus.sh's, in C order."""
+    return subprocess.run(["sh", "-c", ". tests/corpus.sh; corpus"], cwd=merge.ROOT, env={**os.environ, "LC_ALL": "C"},
+                          check=True, capture_output=True, text=True).stdout.splitlines()
+
+
+def hosted_cases(index=0):
+    """tests-cpython's sample as tests/verify.sh draws it from the checkout's corpus, if from shard INDEX
+    of HOSTED_SAMPLE_OF (sample_cases), with the first program of each kind, in the corpus's order."""
+    strata = set(hosted_strata().values())
+    return [case for position, case in enumerate(hosted_corpus())
+            if position % merge.HOSTED_SAMPLE_OF == index or case in strata]
+
+
+def hosted_sample(step, *cases, strata=None):
+    """Make CASES tests-cpython's sample, and STRATA its strata if given."""
+    step.update(sample=list(cases), sample_cases=len(cases))
+    if strata is not None:
+        step.update(sample_strata=strata)
+
+
+COMPILER_BYTES = b"verified test compiler\n"
+
+
+def python_int_report(index):
+    tool = merge.python_int_gate
+    corpus = tool.programs()
+    selected = corpus[index::merge.PYTHON_INT_SHARDS]
+    allowed = tool.exceptions(tool.ROOT, corpus)
+    rows = []
+    for case in selected:
+        for mode in tool.MODES:
+            exception = allowed.get((case, mode))
+            rows.append({"case": case, "mode": mode,
+                         "result": "expected-failure" if exception else "pass",
+                         "diagnostic": exception["diagnostic"] if exception else ""})
+    known = sum(row["result"] == "expected-failure" for row in rows)
+    return {"schema": 1, "kind": "python-int-gate", "pragma": tool.PRAGMA.decode().strip(),
+            "python": (tool.ROOT / ".python-version").read_text().strip(),
+            "compiler_sha256": hashlib.sha256(COMPILER_BYTES).hexdigest(),
+            "source_sha256": tool.source_digest(tool.ROOT), "gc_stress": False,
+            "corpus_cases": len(corpus), "corpus_sha256": tool.optin.corpus_digest(tool.ROOT, corpus),
+            "exceptions_sha256": tool.sha256(tool.ROOT / tool.MANIFEST),
+            "shard_index": index, "shard_count": merge.PYTHON_INT_SHARDS, "modes": list(tool.MODES),
+            "native_suite": True, "cases": selected, "subset": False, "oracle_cases": len(selected),
+            "expected_checks": len(rows), "completed_checks": len(rows),
+            "passed_checks": len(rows) - known, "expected_failures": known, "native_ir_checks": 0,
             "failures": [], "results": rows}
 
 
@@ -55,14 +209,21 @@ def report(group, steps):
                 step["bootstrap_reused"] = True
         if name in merge.SUITE_STEPS:
             step.update(passed=10, failed=0, expected=10, failures=[])
-        if name in ("tests-native-0", "tests-native-1", "tests-opt-off-0", "tests-opt-off-1", "gc-jit-0", "gc-jit-1"):
-            step.update(passed=5, expected=5)   # halves of a 10-check suite
-        if name in ("tests-cpython-0", "tests-cpython-1", "tests-cpython-2", "python-free-0", "python-free-1",
-                    "python-free-2", "gc-aot-0", "gc-aot-1", "gc-aot-2"):
+        if name.startswith(("tests-native-", "tests-opt-off-")):   # thirds of a 10-check suite
+            share = 10 // merge.SHARDED_STEPS[name] + (int(name[-1]) < 10 % merge.SHARDED_STEPS[name])
+            step.update(passed=share, expected=share)
+        if name.startswith("tests-native"):
+            step.update(compiler="stage2", modes=["jit", "aot"])
+        if name == "tests-cpython":   # every case's IR identical, its sample run end to end
+            step.update(reference="stage2", ir_identical=True, ir_cases=CORPUS_CASES, check_cases=SYNTAX_CASES,
+                        check_identical=True, modes=["jit", "aot"], sample_index=0,
+                        sample_count=merge.HOSTED_SAMPLE_OF)
+            hosted_sample(step, *hosted_cases(), strata=dict(hosted_strata()))
+        if name in ("python-free-0", "python-free-1", "python-free-2"):
             count = 4 if name.endswith("-0") else 3   # thirds of a 10-check suite
             step.update(passed=count, expected=count)
-        if name in ("ubsan-0", "ubsan-1", "ubsan-2"):
-            count = 6 if name == "ubsan-2" else 7   # thirds of a suite of 10 checks in each of two modes
+        if name in ("ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"):
+            count = 5   # quarters of a suite of 10 checks in each of two modes
             step.update(passed=count, expected=count)
         if name.startswith("tests-opt-off"):
             step.update(PYSTACHY_OPT=["-all"])
@@ -71,11 +232,18 @@ def report(group, steps):
         if name == "dynany-fuzz":
             step.update(programs=3, cases=540, parity_cases=90, modes=["jit", "aot", "jit-gc", "aot-gc"],
                         program_gc_interval=1, mismatches=0)
+        if name == "aot-dead-code":
+            step.update(opt_in_symbols=7, programs=["plain", "python-int", "dynamic-any", "python-int-import", "dynamic-any-import"],
+                        compilers=["CPython-hosted", "stage2"])
         if name.startswith("dynany-optin-"):
             step["optin"] = copy.deepcopy(optin_report(int(name[-1])))
+        if name.startswith("python-int-optin-"):
+            step["python_int_optin"] = copy.deepcopy(python_int_report(int(name[-1])))
         if name in merge.GC_STEPS:
-            step.update(tests_compiler_interval=1000, tests_interval=1,
-                        modes=["jit" if name.startswith("gc-jit") else "aot"])
+            step.update(gc_suite(name))
+        if name in merge.GC_IR_STEPS:   # halves of the corpus's cases and its 2 syntax cases
+            step.update(compiler_interval=merge.GC_COMPILER_INTERVAL, reference="stage2", ir_identical=True,
+                        runtime_identical=True, ir_cases=CORPUS_CASES // 2, check_cases=1, check_identical=True)
         if name in merge.SHARDED_STEPS:
             step.update(shard_index=int(name[-1]), shard_count=merge.SHARDED_STEPS[name])
         if name in merge.SCALING_STEPS:
@@ -84,25 +252,54 @@ def report(group, steps):
     return {"project": "Pystachy", "group": group, "result": "pass",
             "summary": {"steps": len(steps), "passed": len(steps), "failed": 0, "seconds": 6.0},
             "git": {"commit": COMMIT, "dirty": False},
-            "sources": {"pystachy.py": {"sha256": "c" * 64}, "test_programs": 5, "suite_checks": 10, "mode_checks": 10},
+            "sources": {"pystachy.py": {"sha256": "c" * 64}, "test_programs": 5, "suite_checks": 10, "mode_checks": 10,
+                        "corpus_cases": CORPUS_CASES, "syntax_cases": SYNTAX_CASES},
             "toolchain": {"llvm": "LLVM 18", "python": "Python 3.13"},
             "platform": {"machine": "x86_64"}, "steps": checks}
 
 
 class ContractTests(unittest.TestCase):
+    def setUp(self):
+        # The gate's own tests cover filesystem hashing. These aggregate controls vary the
+        # reported digest, without rescanning the complete checkout for every mutation.
+        corpus = merge.dynany_optin.programs()
+        digest = merge.dynany_optin.corpus_digest(merge.ROOT, corpus)
+        for module, name, value in ((merge.python_int_gate, "source_digest", "e" * 64),
+                                    (merge.python_int_gate, "programs", corpus),
+                                    (merge.dynany_optin, "programs", corpus),
+                                    (merge.dynany_optin, "corpus_digest", digest)):
+            patch = mock.patch.object(module, name, return_value=value)
+            patch.start()
+            self.addCleanup(patch.stop)
+
     def test_real_plan_requires_native_suites_and_every_gc_job(self):
         groups = merge.load_groups()
-        for alias in ("gc-stress", "gc-jit", "gc-aot", "hosted", "ubsan", "native", "opt-off", "python-free", "scaling"):
+        for alias in ("gc-stress", "gc-ir", "gc-jit", "gc-aot", "ubsan", "native", "opt-off", "python-free", "scaling-1",
+                      "python-int-optin"):
             self.assertNotIn(alias, groups)  # Compatibility aliases must not duplicate CI work.
-        for group in ("gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
-                      "ubsan-2", "python-free-0", "python-free-1", "python-free-2", "runtime-cache", "scaling-1"):
+        for group in ("gc-self", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
+                      "ubsan-2", "ubsan-3", "python-free-0", "python-free-1", "python-free-2", "runtime-cache"):
             self.assertEqual(groups[group], ["bootstrap", group])
+        # the stressed compiler's identity, half by half, in the JIT jobs; AOT in three thirds
+        for shard in ("0", "1"):
+            self.assertEqual(groups["gc-jit-" + shard], ["bootstrap", "gc-ir-" + shard, "gc-jit-" + shard])
+        for gone in ("gc-aot-3", "gc-ir-0", "gc-ir-1"):
+            self.assertNotIn(gone, groups)
+        self.assertEqual(groups["hosted"], ["bootstrap", "tests-cpython"])  # one job: the IR oracle and its sample
         for shard in ("0", "1", "2"):
-            self.assertEqual(groups["hosted-" + shard], ["bootstrap", "tests-cpython-" + shard])
+            self.assertNotIn("hosted-" + shard, groups)
         for shard in ("0", "1"):
             self.assertEqual(groups["native-" + shard], ["bootstrap", "tests-native-" + shard])
             self.assertEqual(groups["opt-off-" + shard], ["bootstrap", "tests-opt-off-" + shard])
-        self.assertEqual(groups["benchmarks"], ["bootstrap", "benchmarks", "scaling-0"])
+        self.assertEqual(groups["benchmarks"], ["bootstrap", "benchmarks"])
+        self.assertEqual(groups["scaling"], ["bootstrap", "scaling-0", "scaling-1"])
+        # (all lists the steps in the order a run of all records them: the contracts' steps in their
+        # group's order, as the lanes report them, after the opt-in sweeps and before scaling)
+        contracts = groups["contracts"][1:]
+        at = groups["all"].index(contracts[0])
+        self.assertEqual(groups["all"][at:at + len(contracts)], contracts)
+        self.assertTrue(groups["all"][at - 1].startswith("python-int-optin-"))
+        self.assertEqual(groups["all"][at + len(contracts):], groups["scaling"][1:])
         for group in ("all", "contracts"):
             self.assertIn("select-io", groups[group])
             self.assertIn("weakrefs", groups[group])
@@ -118,17 +315,18 @@ class ContractTests(unittest.TestCase):
                 path.write_text(json.dumps(report(group, steps)))
             result = merge.merge_reports(directory, groups, COMMIT)
             self.assertEqual([step["name"] for step in result["steps"]], groups["all"])
-            for group in ("opt-off-0", "opt-off-1", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
-                          "hosted-0", "hosted-1", "hosted-2", "native-0", "native-1", "python-free-0", "python-free-1",
-                          "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "runtime-cache", "contracts", "benchmarks",
-                          "scaling-1", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2", "dynany-optin-3"):
+            for group in ("opt-off-0", "opt-off-1", "opt-off-2", "gc-self", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
+                          "hosted", "native-0", "native-1", "native-2", "python-free-0", "python-free-1",
+                          "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "runtime-cache", "contracts", "benchmarks",
+                          "scaling", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2",
+                          *(f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS))):
                 path = directory / f"verification-{group}" / "verification.json"
                 original = path.read_text()
                 path.unlink()
                 with self.subTest(missing=group), self.assertRaisesRegex(ValueError, f"missing report groups.*{group}"):
                     merge.merge_reports(directory, groups, COMMIT)
                 path.write_text(original)
-            for group in ("gc-aot-0", "gc-aot-2", "hosted-1", "hosted-2", "native-0", "opt-off-1", "python-free-1",
+            for group in ("gc-jit-1", "gc-aot-0", "gc-aot-2", "native-0", "opt-off-1", "python-free-1",
                           "python-free-2", "ubsan-0"):
                 path = directory / f"verification-{group}" / "verification.json"
                 original = path.read_text()
@@ -141,12 +339,12 @@ class ContractTests(unittest.TestCase):
                             self.assertRaisesRegex(ValueError, "same full-suite check count"):
                         merge.merge_reports(directory, groups, COMMIT)
                 path.write_text(original)
-            # opt-off's halves run the corpus once per PYSTACHY_OPT setting, the same settings in both
-            for settings, scale, error in (([["-all", "-inline"]] * 2, 2, None),
-                                           ([["-all", "-inline"]] * 2, 1, "same full-suite check count"),
-                                           ([["-all"], ["-inline"]], 1, "same PYSTACHY_OPT settings"),
-                                           ([[], []], 1, "same PYSTACHY_OPT settings")):
-                for index in (0, 1):
+            # opt-off's thirds run the corpus once per PYSTACHY_OPT setting, the same settings in each
+            for settings, scale, error in (([["-all", "-inline"]] * 3, 2, None),
+                                           ([["-all", "-inline"]] * 3, 1, "same full-suite check count"),
+                                           ([["-all"], ["-all"], ["-inline"]], 1, "same PYSTACHY_OPT settings"),
+                                           ([[], [], []], 1, "same PYSTACHY_OPT settings")):
+                for index in (0, 1, 2):
                     data = report(f"opt-off-{index}", groups[f"opt-off-{index}"])
                     count = data["steps"][-1]["expected"] * scale
                     data["steps"][-1].update(passed=count, expected=count, PYSTACHY_OPT=settings[index])
@@ -157,7 +355,7 @@ class ContractTests(unittest.TestCase):
                     else:
                         with self.assertRaisesRegex(ValueError, error):
                             merge.merge_reports(directory, groups, COMMIT)
-            for index in (0, 1):
+            for index in (0, 1, 2):
                 (directory / f"verification-opt-off-{index}" / "verification.json").write_text(
                     json.dumps(report(f"opt-off-{index}", groups[f"opt-off-{index}"])))
             # the shards of each JIT and AOT suite make the checks of the whole corpus (sources.suite_checks)
@@ -181,12 +379,39 @@ class ContractTests(unittest.TestCase):
                     with self.subTest(mode_checks=checks), self.assertRaisesRegex(ValueError, error):
                         merge.merge_reports(directory, groups, COMMIT)
             merge.merge_reports(directory, groups, COMMIT)
+            # the gc-ir halves compile every corpus case once (sources.corpus_cases) and check every syntax
+            # case (sources.syntax_cases); a GC suite's stressed sample counts toward its mode's checks,
+            # and its shards hold every corpus case between them
+            for group, mutate, error in (
+                    ("gc-jit-0", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 2 - 1), "gc-ir halves"),
+                    ("gc-jit-1", lambda data: data["steps"][1].update(ir_cases=CORPUS_CASES // 2 + 1), "gc-ir halves"),
+                    ("gc-jit-1", lambda data: data["steps"][1].update(check_cases=0), "gc-ir halves"),
+                    ("gc-jit-0", lambda data: data["steps"][1].update(check_cases=2), "gc-ir halves"),
+                    ("gc-jit-0", lambda data: data["steps"][-1]["stressed_sample"].update(passed=2, expected=2),
+                     "GC JIT shards must cover"),
+                    ("gc-aot-1", lambda data: data["steps"][-1]["stressed_sample"].update(passed=2, expected=2),
+                     "GC AOT shards must cover"),
+                    ("gc-aot-0", lambda data: data["steps"][-1].update(passed=4, expected=4), "GC AOT shards must cover"),
+                    ("gc-jit-1", lambda data: resize_gc_shard(data["steps"][-1], data["steps"][-1]["shard_cases"] - 1),
+                     "GC JIT shards must hold every corpus case"),
+                    ("gc-aot-2", lambda data: resize_gc_shard(data["steps"][-1], data["steps"][-1]["shard_cases"] + 1),
+                     "GC AOT shards must hold every corpus case")):
+                path = directory / f"verification-{group}" / "verification.json"
+                original = path.read_text()
+                data = report(group, groups[group])
+                mutate(data)
+                merge.validate_report(data, group, groups[group])   # (each report alone is consistent)
+                path.write_text(json.dumps(data))
+                with self.subTest(group=group, error=error), self.assertRaisesRegex(ValueError, error):
+                    merge.merge_reports(directory, groups, COMMIT)
+                path.write_text(original)
+            merge.merge_reports(directory, groups, COMMIT)
             # scaling-0 and scaling-1 check every shape of tools/scaling.py once
-            path = directory / "verification-scaling-1" / "verification.json"
+            path = directory / "verification-scaling" / "verification.json"
             original = path.read_text()
             shapes = merge.scaling_shapes()
             for wrong in (shapes[1::2][1:], shapes[1::2] + shapes[:1], shapes[1::2] + ["unknown"]):
-                data = report("scaling-1", groups["scaling-1"])
+                data = report("scaling", groups["scaling"])
                 data["steps"][-1].update(shapes=wrong)
                 path.write_text(json.dumps(data))
                 with self.subTest(shapes=wrong), self.assertRaisesRegex(ValueError, "every shape of tools/scaling.py"):
@@ -200,14 +425,18 @@ class ContractTests(unittest.TestCase):
                         lambda step: step.pop("compiler_interval"),
                         lambda step: step.update(ir_identical=False),
                         lambda step: step.pop("ir_identical")],
-            "gc-jit-0": [lambda step: step.update(tests_compiler_interval=1001),
+            # program stress alone, honestly reported, and the sample with the compiler stressed too
+            "gc-jit-0": [lambda step: step.update(tests_compiler_interval=1000),
+                         lambda step: step.update(tests_compiler_interval=1001),
+                         lambda step: step.pop("tests_compiler_interval"),
                          lambda step: step.update(tests_interval=2),
                          lambda step: step.pop("tests_interval"),
                          lambda step: step.update(modes=["aot"]),
                          lambda step: step.update(modes=["jit", "aot"]),
                          lambda step: step.pop("modes"),
                          lambda step: step.update(passed=9),
-                         lambda step: step.pop("expected")],
+                         lambda step: step.pop("expected"),
+                         *SAMPLE_MUTATIONS],
         }
         shard_mutations = [lambda step: step.update(shard_index=1 - step["shard_index"]),
                            lambda step: step.update(shard_index=False),
@@ -215,26 +444,77 @@ class ContractTests(unittest.TestCase):
                            lambda step: step.update(shard_count=step["shard_count"] + 1),
                            lambda step: step.update(shard_count=str(step["shard_count"])),
                            lambda step: step.pop("shard_count")]
-        for group in ("hosted-0", "hosted-1", "hosted-2", "native-0", "native-1", "opt-off-0", "opt-off-1",
-                      "python-free-0", "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2"):
+        for group in ("native-0", "native-1", "native-2", "opt-off-0", "opt-off-1", "opt-off-2",
+                      "python-free-0", "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"):
             mutations[group] = shard_mutations + [lambda step: step.update(passed=step["expected"] - 1),
                                                   lambda step: step.update(failed=1),
                                                   lambda step: step.pop("expected")]
-        for group in ("gc-aot-0", "gc-aot-1", "gc-aot-2"):
-            mutations[group] = [lambda step: step.update(tests_compiler_interval=1001),
+        # the CPython-hosted compiler: identical on every case and syntax check, its sample run end to end
+        mutations["hosted"] = [lambda step: step.update(ir_identical=False),
+                               lambda step: step.pop("ir_identical"),
+                               lambda step: step.update(ir_identical="true"),
+                               lambda step: step.update(reference="stage1"),
+                               lambda step: step.update(ir_cases=CORPUS_CASES - 1),
+                               lambda step: step.update(ir_cases=CORPUS_CASES + 1),
+                               lambda step: step.pop("ir_cases"),
+                               lambda step: step.update(check_cases=1),
+                               lambda step: step.update(check_cases=0),
+                               lambda step: step.update(modes=["jit"]),
+                               lambda step: step.update(sample_index=1),
+                               lambda step: step.update(sample_count=merge.HOSTED_SAMPLE_OF * 2),
+                               lambda step: step.pop("sample_count"),
+                               lambda step: step.update(passed=step["expected"] - 1),
+                               lambda step: step.update(failed=1),
+                               lambda step: step.pop("expected"),
+                               lambda step: step.update(check_identical=False),
+                               lambda step: step.pop("check_identical"),
+                               # its sample: a program of each kind, which it holds, once each
+                               lambda step: step.pop("sample_strata"),
+                               lambda step: step.pop("sample"),
+                               lambda step: step.update(sample_cases=step["sample_cases"] + 1),
+                               lambda step: step["sample_strata"].pop("sigint"),
+                               lambda step: step["sample_strata"].update(sigint=None),
+                               lambda step: step["sample_strata"].update(extra=step["sample"][0]),
+                               lambda step: hosted_sample(step, *step["sample"], step["sample"][0]),
+                               lambda step: hosted_sample(step, *(case for case in step["sample"]
+                                                                  if case != step["sample_strata"]["ffi"])),
+                               # (the strata alone, padded with junk or with other cases, out of order, or a
+                               # case of shard 0 lost or one of another shard added)
+                               lambda step: hosted_sample(step, *(case for case in step["sample"]
+                                                                  if case in step["sample_strata"].values())),
+                               lambda step: hosted_sample(step, *(
+                                   case if case in step["sample_strata"].values() else f"tests/programs/x/junk{index}.py"
+                                   for index, case in enumerate(step["sample"]))),
+                               lambda step: hosted_sample(step, *hosted_cases(1)),
+                               lambda step: hosted_sample(step, *reversed(step["sample"])),
+                               lambda step: hosted_sample(step, *step["sample"][1:]),
+                               lambda step: hosted_sample(step, *step["sample"], hosted_corpus()[-1]),
+                               # (a program of another kind, a rejection, a missing or an outside file)
+                               lambda step: step["sample_strata"].update(
+                                   full=next(case for case in step["sample"] if not merge.hosted_stratum("full", case))),
+                               lambda step: hosted_sample(step, *step["sample"], "tests/errors/syntax/x.py", strata={
+                                   **step["sample_strata"], "path": "tests/errors/syntax/x.py"}),
+                               lambda step: hosted_sample(step, *step["sample"], "tests/programs/x/missing.py", strata={
+                                   **step["sample_strata"], "in": "tests/programs/x/missing.py"}),
+                               lambda step: hosted_sample(step, *step["sample"], "tests/programs/../../x.py", strata={
+                                   **step["sample_strata"], "in": "tests/programs/../../x.py"})]
+        for group in ("gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2"):
+            mutations[group] = [lambda step: step.update(tests_compiler_interval=1000),
+                                lambda step: step.update(tests_compiler_interval=1001),
                                 lambda step: step.update(tests_interval=2),
                                 lambda step: step.pop("tests_compiler_interval"),
-                                lambda step: step.update(modes=["jit"]),
+                                lambda step: step.update(modes=["aot" if step["modes"] == ["jit"] else "jit"]),
                                 lambda step: step.update(modes=[]),
                                 lambda step: step.update(failed=1),
                                 lambda step: step.pop("passed"),
-                                lambda step: step.update(shard_index=(step["shard_index"] + 1) % 3),
+                                lambda step: step.update(shard_index=(step["shard_index"] + 1) % step["shard_count"]),
                                 lambda step: step.update(shard_index=False),
                                 lambda step: step.pop("shard_index"),
-                                lambda step: step.update(shard_count=2),
-                                lambda step: step.update(shard_count="3"),
-                                lambda step: step.pop("shard_count")]
-        for group in ("benchmarks", "scaling-1"):
+                                lambda step: step.update(shard_count=step["shard_count"] + 1),
+                                lambda step: step.update(shard_count=str(step["shard_count"])),
+                                lambda step: step.pop("shard_count"),
+                                *SAMPLE_MUTATIONS]
+        for group in ("scaling",):
             mutations[group] = [lambda step: step.pop("shapes"),
                                 lambda step: step.update(shapes=[]),
                                 lambda step: step.update(shapes="chain"),
@@ -247,6 +527,50 @@ class ContractTests(unittest.TestCase):
                 mutate(data["steps"][-1])
                 with self.subTest(group=group, mutation=index), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
+        # (scaling-0, the scaling group's first step, too)
+        valid = report("scaling", groups["scaling"])
+        self.assertEqual(valid["steps"][1]["name"], "scaling-0")
+        for index, mutate in enumerate(mutations["scaling"]):
+            data = copy.deepcopy(valid)
+            mutate(data["steps"][1])
+            with self.subTest(step="scaling-0", mutation=index), self.assertRaises(ValueError):
+                merge.validate_report(data, "scaling", groups["scaling"])
+        # each JIT job's first step is its gc-ir half
+        for group in ("gc-jit-0", "gc-jit-1"):
+            valid = report(group, groups[group])
+            self.assertEqual(valid["steps"][1]["name"], "gc-ir-" + group[-1])
+            for index, mutate in enumerate(GC_IR_MUTATIONS):
+                data = copy.deepcopy(valid)
+                mutate(data["steps"][1])
+                with self.subTest(group=group, gc_ir_mutation=index), self.assertRaises(ValueError):
+                    merge.validate_report(data, group, groups[group])
+
+    def test_gc_suites_require_both_complete_gc_ir_halves(self):
+        # The GC suites run code compiled by stage 2 unstressed: even a contract without the gc-ir
+        # halves, or with one of them, cannot drop the stressed compiler's identity.
+        aot = "gc-aot-0 bootstrap gc-aot-0\ngc-aot-1 bootstrap gc-aot-1\ngc-aot-2 bootstrap gc-aot-2\n"
+        full = merge.parse_groups("all bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
+                                  "gc-jit-0 bootstrap gc-ir-0 gc-jit-0\ngc-jit-1 bootstrap gc-ir-1 gc-jit-1\n" + aot)
+        without = merge.parse_groups("all bootstrap gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
+                                     "gc-jit-0 bootstrap gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
+        half = merge.parse_groups("all bootstrap gc-ir-0 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2\n"
+                                  "gc-jit-0 bootstrap gc-ir-0 gc-jit-0\ngc-jit-1 bootstrap gc-jit-1\n" + aot)
+        alone = merge.parse_groups("all bootstrap gc-ir-0\ngc-jit-0 bootstrap gc-ir-0\n")
+        for groups, error in ((full, None), (without, "gc-ir halves"), (half, "gc-ir halves"),
+                              (alone, "gc-ir halves")):
+            with self.subTest(groups=groups), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp)
+                for name in groups:
+                    if name == "all":
+                        continue
+                    path = directory / f"verification-{name}" / "verification.json"
+                    path.parent.mkdir()
+                    path.write_text(json.dumps(report(name, groups[name])))
+                if error is None:
+                    merge.merge_reports(directory, groups, COMMIT)
+                else:
+                    with self.assertRaisesRegex(ValueError, error):
+                        merge.merge_reports(directory, groups, COMMIT)
 
     def test_dynany_fuzz_requires_full_budget_modes_stress_and_zero_mismatches(self):
         groups = merge.load_groups()
@@ -258,6 +582,23 @@ class ContractTests(unittest.TestCase):
             for missing in (False, True):
                 data = copy.deepcopy(valid)
                 step = next(s for s in data["steps"] if s["name"] == "dynany-fuzz")
+                if missing:
+                    del step[key]
+                else:
+                    step[key] = wrong
+                with self.subTest(key=key, value=wrong, missing=missing), self.assertRaises(ValueError):
+                    merge.validate_report(data, "contracts", groups["contracts"])
+
+    def test_aot_probe_requires_symbol_controls_imports_and_both_compilers(self):
+        groups = merge.load_groups()
+        valid = report("contracts", groups["contracts"])
+        merge.validate_report(valid, "contracts", groups["contracts"])
+        for key, wrong in (("opt_in_symbols", 0), ("opt_in_symbols", True),
+                           ("programs", ["plain", "python-int", "dynamic-any"]),
+                           ("compilers", ["CPython-hosted"]), ("compilers", ["stage2"])):
+            for missing in (False, True):
+                data = copy.deepcopy(valid)
+                step = next(s for s in data["steps"] if s["name"] == "aot-dead-code")
                 if missing:
                     del step[key]
                 else:
@@ -281,12 +622,12 @@ class ContractTests(unittest.TestCase):
 
     def test_optin_reports_require_exact_shard_modes_and_complete_evidence(self):
         groups = merge.load_groups()
-        for index in range(4):
+        for index in range(merge.DYNANY_SHARDS):
             group = f"dynany-optin-{index}"
             self.assertEqual(groups[group], ["bootstrap", group])
             valid = report(group, groups[group])
             merge.validate_report(valid, group, groups[group])
-            mutations = [lambda d: d.update(shard_count=3),
+            mutations = [lambda d: d.update(shard_count=merge.DYNANY_SHARDS + 1),
                          lambda d: d.update(shard_index=True),
                          lambda d: d.update(modes=["jit"]),
                          lambda d: d.update(subset=True),
@@ -303,6 +644,102 @@ class ContractTests(unittest.TestCase):
                 mutate(data["steps"][-1]["optin"])
                 with self.subTest(group=group, mutation=mutate), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
+
+    def test_python_int_reports_require_exact_modes_shards_and_source_identity(self):
+        groups = merge.load_groups()
+        for index in range(merge.PYTHON_INT_SHARDS):
+            group = f"python-int-optin-{index}"
+            self.assertEqual(groups[group], ["bootstrap", group])
+            valid = report(group, groups[group])
+            merge.validate_report(valid, group, groups[group])
+            mutations = [lambda d: d.update(shard_count=8),
+                         lambda d: d.update(shard_index=True),
+                         lambda d: d.update(modes=["jit"]),
+                         lambda d: d.update(subset=True),
+                         lambda d: d.update(gc_stress=True),
+                         lambda d: d.update(python="3.13.0"),
+                         lambda d: d.update(kind="exploratory-sweep"),
+                         lambda d: d.update(compiler_sha256=""),
+                         lambda d: d.update(source_sha256="0" * 64),
+                         lambda d: d.update(oracle_cases=d["oracle_cases"] - 1),
+                         lambda d: d.update(completed_checks=d["completed_checks"] - 1),
+                         lambda d: d.update(corpus_sha256="0" * 64),
+                         lambda d: d.update(exceptions_sha256="0" * 64),
+                         lambda d: d["cases"].pop(),
+                         lambda d: d["results"].pop(),
+                         lambda d: d["results"][0].update(mode="aot"),
+                         lambda d: d.update(failures=["incomplete"])]
+            for mutate in mutations:
+                data = copy.deepcopy(valid)
+                mutate(data["steps"][-1]["python_int_optin"])
+                with self.subTest(group=group, mutation=mutate), self.assertRaises(ValueError):
+                    merge.validate_report(data, group, groups[group])
+
+    def test_python_int_aggregate_binds_all_shards_to_one_compiler(self):
+        names = [f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS)]
+        # (with the tests-native suite the shards' --native-suite deferral needs)
+        groups = merge.parse_groups("all bootstrap tests-native-0 tests-native-1 tests-native-2 " + " ".join(names) + "\n" +
+                                    "native-0 bootstrap tests-native-0\nnative-1 bootstrap tests-native-1\nnative-2 bootstrap tests-native-2\n" +
+                                    "\n".join(f"{name} bootstrap {name}" for name in names))
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            for name in groups:
+                if name == "all":
+                    continue
+                path = directory / f"verification-{name}" / "verification.json"
+                path.parent.mkdir()
+                path.write_text(json.dumps(report(name, groups[name])))
+            merge.merge_reports(directory, groups, COMMIT)
+            path = directory / f"verification-{names[0]}" / "verification.json"
+            changed = report(names[0], groups[names[0]])
+            changed["steps"][-1]["python_int_optin"]["compiler_sha256"] = "f" * 64
+            path.write_text(json.dumps(changed))
+            with self.assertRaisesRegex(ValueError, "compiler identity differs"):
+                merge.merge_reports(directory, groups, COMMIT)
+            path.unlink()
+            with self.assertRaisesRegex(ValueError, "missing report groups"):
+                merge.merge_reports(directory, groups, COMMIT)
+            # Even a weakened contract that lists only one otherwise-valid shard fails.
+            for old in directory.glob("verification-*/verification.json"):
+                old.unlink()
+            path.write_text(json.dumps(report(names[0], groups[names[0]])))
+            partial = merge.parse_groups(f"all bootstrap {names[0]}\n{names[0]} bootstrap {names[0]}\n")
+            with self.assertRaisesRegex(ValueError, f"all {merge.PYTHON_INT_SHARDS} shards"):
+                merge.merge_reports(directory, partial, COMMIT)
+
+    def test_optin_sweeps_deferring_to_tests_native_require_its_complete_suite(self):
+        # The opt-in sweeps leave expected failures' baselines and AOT checks of byte-identical IR
+        # to tests-native (--native-suite): even a contract without its groups cannot drop it.
+        names = [f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS)]
+        native = "native-0 bootstrap tests-native-0\nnative-1 bootstrap tests-native-1\nnative-2 bootstrap tests-native-2\n"
+        full = merge.parse_groups("all bootstrap tests-native-0 tests-native-1 tests-native-2 " + " ".join(names) + "\n" + native +
+                                  "\n".join(f"{name} bootstrap {name}" for name in names))
+        without = merge.parse_groups("all bootstrap " + " ".join(names) + "\n" +
+                                     "\n".join(f"{name} bootstrap {name}" for name in names))
+        for groups, local, error in ((full, False, None), (without, True, None),
+                                     (without, False, "defers to tests-native")):
+            with self.subTest(groups=list(groups), local=local), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp)
+                for name in groups:
+                    if name == "all":
+                        continue
+                    data = report(name, groups[name])
+                    if local and name.startswith("python-int-optin-"):
+                        data["steps"][-1]["python_int_optin"]["native_suite"] = False
+                    path = directory / f"verification-{name}" / "verification.json"
+                    path.parent.mkdir()
+                    path.write_text(json.dumps(data))
+                if error is None:
+                    merge.merge_reports(directory, groups, COMMIT)
+                else:
+                    with self.assertRaisesRegex(ValueError, error):
+                        merge.merge_reports(directory, groups, COMMIT)
+                if groups is full:
+                    data = report("native-1", groups["native-1"])
+                    data["steps"][-1].update(modes=["jit"])
+                    (directory / "verification-native-1" / "verification.json").write_text(json.dumps(data))
+                    with self.assertRaisesRegex(ValueError, "defers to tests-native"):
+                        merge.merge_reports(directory, groups, COMMIT)
 
     def test_missing_duplicate_or_unknown_checks_cannot_weaken_the_gate(self):
         contracts = [CONTRACT.replace("contracts bootstrap check-ir", "contracts bootstrap"),

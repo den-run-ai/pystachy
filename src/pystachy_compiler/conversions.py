@@ -1,10 +1,11 @@
 """Conversions component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import dynamic_program, shown
 from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
     elem,
     is_callable,
@@ -27,7 +28,16 @@ from src.pystachy_compiler.utils import (
 )
 
 
-def gen_to_slot(self, v: Val) -> str:
+def gen_to_slot(self, v: Val, keep: bool = False) -> str:
+    # v in an 8-byte slot. A slot holds a 64-bit int, so a promoting int is narrowed, and so is a
+    # tuple of them, into the tuple of their 64-bit ints, which is the same tuple (bigints.py), as
+    # the runtime reads it; but kept (keep) as an item of a tuple of its type
+    if v.t == BIG:
+        v = self.big_narrow(v)  # (an 8-byte slot holds a 64-bit int: bigints.py)
+    if v.t == BIGOPT:
+        v = self.big_opt_narrow(v)  # (and an int | None the box of one: bigints.py)
+    if is_tuple(v.t) and BIG in v.t and not keep:
+        v = self.big_tuple_narrow(v)
     if v.t == "int":
         return v.v
     i = Ins("slot.pack", "%slot", "")
@@ -61,11 +71,15 @@ def gen_rres(self, r: str, t: str) -> Val:
 def gen_as_int(self, v: Val) -> Val:
     if v.t == "bool":
         return self.num_cast(v, "int")
+    if v.t == BIG:
+        return self.big_narrow(v)  # (a promoting int, where a 64-bit int is needed: bigints.py)
     return v
 
 def gen_as_float(self, v: Val) -> Val:
     if v.t == "int" or v.t == "bool":
         return self.num_cast(v, "float")
+    if v.t == BIG:
+        return self.big_float(v)  # (rounded once, as CPython converts an int operand of a float operation)
     return v
 
 def gen_num_cast(self, v: Val, t: str) -> Val:
@@ -131,6 +145,34 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
+    if t == BIG and v.t == "int":
+        return self.to_big(v)  # (a promoting int: bigints.py; a bool is rejected, as in a module that does not opt in)
+    if t == BIGOPT and (v.t == BIG or v.t == "int"):
+        return self.big_box(self.to_big(v))  # (an int | None of a module that opts in: bigints.py)
+    if v.t == BIGOPT and t != "":
+        if t == "opt[int]" and self.join_hint(t, v.t):
+            return Val("undef", t)  # (as an inferred int location becomes a promoting int: see join_hint)
+        v = self.big_opt_narrow(v)  # (into 64-bit storage: the same box, where the value fits)
+        if v.t == t:
+            return v
+    if v.t == BIG:
+        if (t == "int" or t == "bool") and self.join_hint(t, v.t):
+            return Val("undef", t)  # (an inferred int location becomes a promoting int: the next pass, see join_hint)
+        v = self.big_narrow(v)  # (into 64-bit storage, or as an int: bigints.py)
+        if v.t == t:
+            return v
+    if is_tuple(v.t) and BIG in v.t and t != "" and BIG not in t:
+        if is_tuple(t) and self.join_hint(t, v.t):
+            return Val("undef", t)  # (as an int location becomes a promoting int)
+        v = self.big_tuple_narrow(v)  # (a tuple of promoting ints into 64-bit storage: the same tuple, bigints.py)
+        if v.t == t:
+            return v
+    if big_viewable(v.t, t):
+        return self.big_tuple_view(v, t)  # (items that promote where t's do not, or the other way: the same tuple, bigints.py)
+    if dynamic_program() and v.lit and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))) and ((is_sopt(t) and unopt(t) == v.t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))):
+        captured = Val(v.v, v.t).identity(v)
+        captured.idfrom = self.dyn_box(v).v
+        v = captured
     if t == "dyn":
         return self.dyn_box(v)  # (into dynamic storage: dynamic.py)
     if v.t == "dyn":
@@ -155,13 +197,13 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
     if v.t == "exc" and t in self.classes and self.classes[t].exc != "":
         self.err(f"expected an object of {short(t)}, got a builtin exception, which is not converted to a class of the program (catch it as one: except {short(t)} as e)")
     if self.widens(v.t, t):
-        return Val(v.v, t)
+        return Val(v.v, t).identity(v)
     if is_union(unopt(t)) and v.t != "None":
         return self.to_union(v, t, what)
     if is_fn(v.t) and is_callable(unopt(t)):
         return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
     if is_sopt(t) and v.t == unopt(t):
-        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t)  # (a new box)
+        return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t).identity(v)  # representation-only boxing
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
@@ -203,8 +245,10 @@ def gen_plain_desc(self, t: str, use: str) -> str:
     # ("<", ">", ...; a list or tuple compares its items with == first)
     if t == "dyn":
         return "A"  # (a dynamic value's box, walked by its own DynType's descriptor)
-    if t == "int":
-        return "i"
+    if t == "int" or t == BIG:
+        return "i"  # (a promoting int as a container holds it: 64-bit, bigints.py)
+    if t == BIGOPT:
+        return "?J"  # (an int | None of a module that opts in: a box of a promoting int's two words, runtime.c's jbig)
     if t == "float":
         return "f"
     if t == "bool":
@@ -219,20 +263,21 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         return "?s"  # (always None: a tuple's item)
     sub = use if use == "repr" or use == "==" else "== " + use
     if is_list(t):
-        return "L" + self.desc(elem(t), sub)
+        return "L" + self.desc(held(elem(t)), sub)  # (a tuple of ints as a list holds it: bigints.held)
     if is_vtuple(t):
         return "V" + self.desc(targs(t)[0], sub)
     if is_dict(t):
         a = targs(t)
-        return "D" + self.desc(a[0], use) + self.desc(a[1], use if use == "repr" else "==")
+        return "D" + self.desc(held(a[0]), use) + self.desc(held(a[1]), use if use == "repr" else "==")  # (a tuple of ints as the dict holds it: bigints.held)
     if is_set(t):
         # (S<e> a set, F<e> a frozenset: equal, or ordered as subsets, by their elements)
-        return ("F" if is_fset(t) else "S") + self.desc(selem(t), "repr" if use == "repr" else "==")
+        return ("F" if is_fset(t) else "S") + self.desc(held(selem(t)), "repr" if use == "repr" else "==")  # (a tuple of ints as the set holds it: bigints.held)
     if is_tuple(t):
         a = targs(t)
         if len(a) > 9:
             self.err("tuples are limited to 9 elements")
-        return "T" + str(len(a)) + "".join([self.desc(x, sub) for x in a])
+        # (J: a promoting int item, its slot and its Mpz word past the items, utils.tslots)
+        return "T" + str(len(a)) + "".join(["J" if x == BIG else self.desc(x, sub) for x in a])
     if t == "exc":
         return "E"  # (repr: pys_exc_repr; equality: identity)
     if t == "exctype":
@@ -324,18 +369,18 @@ def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: in
             out += gen_rec_desc(self, m, use, active, offset + len(out))
         return out
     if is_list(t):
-        return "L" + gen_rec_desc(self, elem(t), use, active, offset + 1)
+        return "L" + gen_rec_desc(self, held(elem(t)), use, active, offset + 1)
     if is_dict(t):
         ts = targs(t)
-        out = "D" + gen_rec_desc(self, ts[0], use, active, offset + 1)
-        return out + gen_rec_desc(self, ts[1], use, active, offset + len(out))
+        out = "D" + gen_rec_desc(self, held(ts[0]), use, active, offset + 1)
+        return out + gen_rec_desc(self, held(ts[1]), use, active, offset + len(out))
     if is_tuple(t):
         ts = targs(t)
         if len(ts) > 9:
             self.err("tuples are limited to 9 elements")
         out = "T" + str(len(ts))
         for m in ts:
-            out += gen_rec_desc(self, m, use, active, offset + len(out))
+            out += "J" if m == BIG else gen_rec_desc(self, m, use, active, offset + len(out))
         return out
     return gen_plain_desc(self, t, use)  # (not self.desc, which would hand t back here)
 

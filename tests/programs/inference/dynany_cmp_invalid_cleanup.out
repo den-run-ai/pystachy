@@ -1,0 +1,43 @@
+enter 0
+IndexError list index out of range
+cleanup 0
+True
+enter 1
+left operand
+IndexError list index out of range
+cleanup 1
+True
+enter 2
+left operand
+right operand
+TypeError unsupported operand type(s) for +: 'int' and 'str'
+cleanup 2
+True
+enter 3
+left operand
+right operand
+TypeError unsupported operand type(s) for +: 'int' and 'str'
+cleanup 3
+True
+enter 4
+cleanup 4
+True
+enter 5
+left operand
+right operand
+TypeError unsupported operand type(s) for +: 'int' and 'str'
+cleanup 5
+True
+enter 6
+left operand
+right operand
+TypeError unsupported operand type(s) for +: 'int' and 'str'
+cleanup 6
+True
+enter 7
+left operand
+right operand
+TypeError unsupported operand type(s) for +: 'int' and 'str'
+cleanup 7
+False
+[exit 0]

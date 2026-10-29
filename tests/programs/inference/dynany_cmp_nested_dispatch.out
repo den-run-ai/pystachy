@@ -1,0 +1,14 @@
+comparison ran
+leaf list
+leaf dict
+leaf tuple
+comparison ran
+leaf list
+leaf dict
+leaf tuple
+comparison ran
+leaf list
+leaf dict
+leaf tuple
+True True False
+[exit 0]

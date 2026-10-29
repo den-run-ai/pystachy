@@ -12,6 +12,7 @@ from src.pystachy_compiler import driver, functions  # noqa: E402
 from src.pystachy_compiler.diagnostics import Rejoin  # noqa: E402
 from src.pystachy_compiler.gen import Gen  # noqa: E402
 from src.pystachy_compiler.syntax import mk  # noqa: E402
+from src.pystachy_compiler.utils import folded_int  # noqa: E402
 
 
 class NumericIdentityTests(unittest.TestCase):
@@ -80,7 +81,6 @@ class NumericIdentityTests(unittest.TestCase):
             "items = [n]\nreturn items[0]",
             "print(n)\nreturn m",
             "annotated: int = n\nreturn annotated",
-            "return GLOBAL + m",
             "global GLOBAL\nGLOBAL = n\nreturn m",
             "if x < 0:\n    raise ValueError('negative')\nreturn m",
             "try:\n    return m // x\nexcept ZeroDivisionError:\n    return n",
@@ -89,6 +89,22 @@ class NumericIdentityTests(unittest.TestCase):
         for body in bodies:
             source = (prefix + "def target(x: int) -> int:\n    n = x + 1000\n    m = n\n" +
                       "\n".join("    " + line for line in body.splitlines()) + "\nprint(target(2))\n")
+            with self.subTest(body=body):
+                self.assertFalse(self.decision(source))
+
+    def test_numeric_global_reads_keep_scalar_argument_proof(self):
+        for body in ["return GLOBAL + x", "return GLOBAL if x < GLOBAL else x + 1", "return GLOBAL"]:
+            source = ("GLOBAL = 1000\ndef target(x: int) -> int:\n    " + body +
+                      "\nprint(target(1))\n")
+            with self.subTest(body=body):
+                self.assertTrue(self.decision(source))
+
+    def test_numeric_globals_do_not_admit_writes_or_callbacks(self):
+        prefix = ("GLOBAL = 1000\ndef mutate() -> int:\n    global GLOBAL\n"
+                  "    GLOBAL += 1\n    return 0\n")
+        for body in ["global GLOBAL\nGLOBAL = x\nreturn GLOBAL", "return GLOBAL + mutate() + x"]:
+            source = (prefix + "def target(x: int) -> int:\n" +
+                      "\n".join("    " + line for line in body.splitlines()) + "\nprint(target(1))\n")
             with self.subTest(body=body):
                 self.assertFalse(self.decision(source))
 
@@ -134,6 +150,258 @@ class NumericIdentityTests(unittest.TestCase):
         with patch.object(functions, "numeric_statement", return_value=True):
             with self.assertRaises(AssertionError):
                 NumericIdentityTests().test_observable_or_open_bodies_keep_slots()
+
+
+class NumericCallIdentityTests(unittest.TestCase):
+    def compile(self, source):
+        return driver.compile_program("numeric_call_identity.py", "# pystachy: dynamic-any\n" + source,
+                                      [str(ROOT / "lib")], "")
+
+    def function_ir(self, ir, name):
+        return re.search(r"^define [^\n]*@" + re.escape(name) + r"\([^\n]*\n.*?^}", ir,
+                         re.MULTILINE | re.DOTALL).group(0)
+
+    def test_shared_finally_constant_returns_reload_their_identity(self):
+        source = (ROOT / "tests/programs/inference/dynany_identity_finally_constants.py").read_text()
+        ir = driver.compile_program("finally_identity.py", source, [str(ROOT / "lib")], "")
+        body = self.function_ir(ir, "f.literals")
+        returns = 0
+        for block in re.split(r"(?m)^\w[\w.]*:\n", body):
+            returned = re.search(r"store ptr (%[\w.]+), ptr %idret\n", block)
+            if returned:
+                returns += 1
+                # Every continuation has multiple incoming control paths from the
+                # shared finally. Its returned box must be reloaded locally, not
+                # use an SSA box defined only on one incoming return branch.
+                self.assertIn(returned[1] + " = load ptr, ptr %", block)
+        self.assertEqual(returns, 2)
+
+    def signature(self, body, annotation="int"):
+        generators = []
+        original = driver.Gen
+
+        def make_generator():
+            generator = original()
+            generators.append(generator)
+            return generator
+
+        source = ("# pystachy: dynamic-any\ndef target(x: int) -> " + annotation + ":\n" +
+                  "\n".join("    " + line for line in body.splitlines()) + "\nprint(target(1000))\n")
+        with patch.object(driver, "Gen", make_generator):
+            ir = driver.compile_program("numeric_call_identity.py", source, [str(ROOT / "lib")], "")
+        fn = next(fn for fn in generators[-1].fns if fn.f.node.s == "target")
+        return fn, ir
+
+    def test_return_aliases_keep_their_parameter_provenance(self):
+        for body, names in [
+            ("return x", {"x"}),
+            ("alias = x\nreturn alias", {"x", "alias"}),
+            ("alias = x\nwhile alias < 1002:\n    alias += 1\nreturn alias", {"x", "alias"}),
+            ("return int(x)", {"x"}),
+        ]:
+            with self.subTest(body=body):
+                fn, _ = self.signature(body)
+                self.assertTrue(fn.numeric_only)
+                self.assertEqual(set(fn.f.idnames), names)
+
+    def test_fresh_arithmetic_keeps_argument_boxing_elided(self):
+        for body in ["return x + 1", "copy = x\nreturn copy + 1"]:
+            fn, ir = self.signature(body)
+            self.assertTrue(fn.f.scalar_args)
+            self.assertFalse(fn.f.idnames)
+            self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+
+    def test_selected_numeric_returns_keep_boxes_lazy(self):
+        for typ, value in [("int", "1000"), ("float", "1.5")]:
+            for expression in ["x if x else -x", "x or -x", "x and -x"]:
+                source = ("# pystachy: dynamic-any\ndef target(x: " + typ + ") -> " + typ + ":\n" +
+                          "    selected = " + expression + "\n    copied = selected\n    return copied\n" +
+                          "print(target(" + value + "))\n")
+                with self.subTest(typ=typ, expression=expression):
+                    ir = driver.compile_program("selected_identity.py", source, [str(ROOT / "lib")], "")
+                    self.assertIn("ptr %aid0", ir)
+                    self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+
+    def test_getattr_property_keeps_return_box_lazy(self):
+        ir = self.compile("class C:\n    @property\n    def item(self) -> float:\n"
+                          "        return 1.5 + 0.25\n"
+                          "def target(obj: C) -> float:\n    return getattr(obj, 'item', 2.5)\n"
+                          "print(target(C()))\n")
+        body = self.function_ir(ir, "f.target")
+        self.assertIn("phi ptr", body)
+        self.assertIn("ptr %idret", body)
+        self.assertNotRegex(body, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+
+    def test_numeric_annotation_argument_proof_is_separate(self):
+        fn, ir = self.signature("value: int | float = 0\nfor i in range(x):\n    value += i\nreturn value", "int | float")
+        self.assertFalse(fn.numeric_only)
+        self.assertTrue(fn.f.scalar_args)
+        self.assertNotIn("x", fn.f.idnames)
+        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+
+    def test_foreign_code_has_no_companion_signature(self):
+        source = "def target(x: int) -> int:\n    return x\nprint(target(1000))\n"
+        ir = driver.compile_program("ordinary_numeric_call.py", source, [str(ROOT / "lib")], "")
+        self.assertNotIn("%aid", ir)
+        self.assertNotIn("%idret", ir)
+
+    def test_exact_current_local_boxing_uses_outlined_helper(self):
+        for scalar, value in [("int", "1000"), ("float", "1.5")]:
+            ir = self.compile("from typing import Any\ndef target(seed: str) -> Any:\n"
+                              "    x = " + scalar + "(seed)\n    return x\nprint(target('" + value + "'))\n")
+            body = self.function_ir(ir, "f.target")
+            # The unchanged, exact local cannot contain another type or payload.
+            # Keep allocation lazy without emitting the general stale-read CFG.
+            self.assertNotIn("br i1", body)
+            self.assertNotIn("@pys_dyntype_" + scalar, body)
+            self.assertEqual(body.count("call ptr @pys_dyn_" + scalar + "_box("), 1)
+
+    def test_numeric_call_result_boxing_uses_outlined_helper(self):
+        for scalar, value in [("int", "1000"), ("float", "nan")]:
+            prefix = ("from typing import Any, Callable\n"
+                      "def make(seed: str) -> " + scalar + ":\n    return " + scalar + "(seed)\n")
+            bodies = [
+                ("def target(seed: str) -> Any:\n    return make(seed)\n",
+                 "target('" + value + "')"),
+                ("def target(fn: Callable[[str], " + scalar + "], seed: str) -> Any:\n"
+                 "    return fn(seed)\n", "target(make, '" + value + "')"),
+            ]
+            for target, call in bodies:
+                with self.subTest(scalar=scalar, target=target):
+                    ir = self.compile(prefix + target + "print(" + call + ")\n")
+                    body = self.function_ir(ir, "f.target")
+                    self.assertNotIn("br i1", body)
+                    self.assertNotIn("@pys_dyntype_" + scalar, body)
+                    self.assertEqual(body.count("call ptr @pys_dyn_" + scalar + "_box("), 1)
+
+    def test_numeric_call_result_conversion_does_not_reuse_original_box(self):
+        ir = self.compile("from typing import Any\n"
+                          "def make(seed: str) -> int:\n    return int(seed)\n"
+                          "def target(seed: str) -> Any:\n    return float(make(seed))\n"
+                          "print(target('1000'))\n")
+        body = self.function_ir(ir, "f.target")
+        self.assertIn("sitofp", body)
+        self.assertEqual(body.count("call ptr @pys_dyn_float("), 1)
+        self.assertNotIn("br i1", body)
+
+    def test_immutable_numeric_parameter_reuses_incoming_box(self):
+        # A caller passes a new number's companion as null (dyn_id_arg), so the parameter's
+        # slot starts with the incoming companion and its crossing reuses that box, or boxes
+        # the new number once; it never allocates unconditionally.
+        for scalar, value in [("int", "1000"), ("float", "1.5")]:
+            ir = self.compile("from typing import Any\ndef target(x: " + scalar +
+                              ") -> Any:\n    return x\nprint(target(" + value + "))\n")
+            body = self.function_ir(ir, "f.target")
+            self.assertRegex(body, r"store ptr %aid0, ptr %x\.box\.")
+            self.assertEqual(body.count("call ptr @pys_dyn_" + scalar + "_box("), 1)
+            self.assertNotIn("call ptr @pys_dyn_" + scalar + "(", body)
+
+    def test_rebound_numeric_parameter_keeps_slot_provenance(self):
+        ir = self.compile("from typing import Any\ndef target(x: int) -> Any:\n"
+                          "    x = x + 1\n    return x\nprint(target(1000))\n")
+        body = self.function_ir(ir, "f.target")
+        self.assertIn("@pys_dyn_int", body)
+        self.assertRegex(body, r"load [^\n]*%x\.box\.")
+
+    def test_call_snapshots_leave_shared_vnodes_unchanged(self):
+        positions = {"call_callable": 1, "virtual_call": 2, "refl_getattr": 0}
+        seen = dict.fromkeys(positions, 0)
+
+        def checked(method, original):
+            def invoke(generator, *args, **kwargs):
+                shared = []
+                for node in args[positions[method]]:
+                    node = node.kids[0] if node.kind == "kw" else node
+                    if node.kind == "val":
+                        value = generator.vnodes[int(node.s)]
+                        if value.t in ("int", "float"):
+                            shared.append((value, vars(value).copy()))
+                result = original(generator, *args, **kwargs)
+                seen[method] += len(shared)
+                for value, before in shared:
+                    self.assertEqual(vars(value), before, method)
+                return result
+            return invoke
+
+        with patch.object(Gen, "call_callable", checked("call_callable", Gen.call_callable)), \
+                patch.object(Gen, "virtual_call", checked("virtual_call", Gen.virtual_call)), \
+                patch.object(Gen, "refl_getattr", checked("refl_getattr", Gen.refl_getattr)):
+            source = (ROOT / "tests/programs/inference/dynany_identity_call_branch_snapshots.py").read_text()
+            self.compile(source)
+        self.assertTrue(all(seen.values()), seen)
+
+    def test_mutating_shared_call_arguments_is_detected(self):
+        positions = {"call_callable": 1, "virtual_call": 2, "refl_getattr": 0}
+        for method in positions:
+            original = getattr(Gen, method)
+
+            def mutate(generator, *args, original=original, method=method, **kwargs):
+                result = original(generator, *args, **kwargs)
+                for node in args[positions[method]]:
+                    node = node.kids[0] if node.kind == "kw" else node
+                    if node.kind == "val" and generator.vnodes[int(node.s)].t in ("int", "float"):
+                        generator.vnodes[int(node.s)].idfrom = "%branch.only"
+                return result
+
+            with self.subTest(method=method), patch.object(Gen, method, mutate):
+                with self.assertRaises(AssertionError):
+                    NumericCallIdentityTests().test_call_snapshots_leave_shared_vnodes_unchanged()
+
+    def test_scalar_local_operands_do_not_load_identity_slots(self):
+        ir = self.compile("from typing import Any\ndef target(x: int) -> Any:\n"
+                          "    return x + 1\nprint(target(1000))\n")
+        body = self.function_ir(ir, "f.target")
+        self.assertNotRegex(body, r"load [^\n]*%x\.box(?:gen)?\.")
+
+    def test_narrowed_union_keeps_general_box_validation(self):
+        ir = self.compile("from typing import Any\ndef target(x: int | float) -> Any:\n"
+                          "    if isinstance(x, int):\n        return x\n"
+                          "    return 0\nprint(target(1000))\n")
+        self.assertIn("@pys_dyntype_int", self.function_ir(ir, "f.target"))
+
+    def test_global_return_keeps_its_box_while_scalar_arguments_are_elided(self):
+        ir = self.compile("GLOBAL = 1000\ndef target(x: int) -> int:\n"
+                          "    return GLOBAL if x < GLOBAL else x + 1\nprint(target(1))\n")
+        body = self.function_ir(ir, "f.target")
+        self.assertIn("@g.GLOBAL.box", body)
+        self.assertNotIn("@pys_dyn_int", self.function_ir(ir, "main.init"))
+
+    def test_inferred_scalar_calls_elide_known_argument_boxes(self):
+        source = ("def target(x, flag):\n    value = x if flag else x + 1\n    print(value)\n"
+                  "target(0, True)\ntarget(flag=False, x=0.0)\n")
+        ir = self.compile(source)
+        self.assertNotRegex(ir, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+        # The existing whole-fixture guard must retain its empty @main.init call list.
+        source = (ROOT / "tests/ir/dynany_identity_scalar_expressions.py").read_text()
+        ir = self.compile(source)
+        self.assertNotIn("@pys_", self.function_ir(ir, "main.init"))
+
+    def test_inferred_scalar_calls_accept_already_bound_numeric_names(self):
+        ir = self.compile("def target(x, flag):\n    print(x if flag else x + 1)\n"
+                          "def caller(value: int) -> None:\n    target(value, flag=True)\ncaller(0)\n")
+        self.assertNotIn("@pys_dyn_int", self.function_ir(ir, "f.caller"))
+
+    def test_unknown_arguments_keep_early_identity_snapshots(self):
+        ir = self.compile("def callback() -> int:\n    return 1\n"
+                          "def target(x, y):\n    print(x + y)\ntarget(0, callback())\n")
+        main = self.function_ir(ir, "main.init")
+        # Even a scalar callee must not speculate about an argument callback's type.
+        self.assertIn("@pys_dyn_int(i64 0)", main)
+        self.assertLess(main.index("@pys_dyn_int(i64 0)"), main.index("@f.callback("))
+
+    def test_nonnumeric_arguments_block_early_specialization(self):
+        ir = self.compile("def target(x, y):\n    print(x, y)\ntarget(0, 'text')\n")
+        self.assertIn("@pys_dyn_int(i64 0)", self.function_ir(ir, "main.init"))
+
+    def test_accepting_unchecked_argument_types_is_detected(self):
+        original = Gen.scalar_call_types
+
+        def unchecked(generator, function, args):
+            return ["int", "int"] if function.node.s == "target" else original(generator, function, args)
+
+        with patch.object(Gen, "scalar_call_types", unchecked):
+            with self.assertRaises(AssertionError):
+                NumericCallIdentityTests().test_unknown_arguments_keep_early_identity_snapshots()
 
 
 class ScalarGlobalIdentityTests(unittest.TestCase):
@@ -237,6 +505,77 @@ class ScalarGlobalIdentityTests(unittest.TestCase):
                 ScalarGlobalIdentityTests().test_open_or_publishing_consumers_keep_snapshots()
 
 
+class ScalarListIdentityTests(unittest.TestCase):
+    def target_ir(self, body, item="int", extra=""):
+        source = ("# pystachy: dynamic-any\nfrom typing import Any\n" + extra +
+                  "def callback() -> int:\n    return 0\n" +
+                  "def target(xs: list[" + item + "], i: int, other: Any) -> Any:\n" +
+                  "\n".join("    " + line for line in body.splitlines()) + "\n")
+        ir = driver.compile_program("scalar_list_identity.py", source, [str(ROOT / "lib")], "")
+        target = re.search(r"define[^\n]*@f\.target\([^\n]*\n(.*?)\n}", ir, re.S)
+        self.assertIsNotNone(target)
+        return target[1]
+
+    def test_closed_arithmetic_and_comparisons_use_payloads(self):
+        for item in ["int", "float"]:
+            for body in ["return xs[i] + 1", "return xs[i] < 2", "return 0 < xs[i] <= 2",
+                         "return xs[int(i / 2)] * 3", "total = " + ("0.0" if item == "float" else "0") + "\ntotal += xs[i]\nreturn total"]:
+                with self.subTest(item=item, body=body):
+                    ir = self.target_ir(body, item)
+                    self.assertNotIn("@pys_list_get_identity", ir)
+                    self.assertNotIn("@pys_dyn_unbox", ir)
+                    self.assertIn("@pys_list_get", ir)  # its slow path keeps Python bounds checks
+
+    def test_escaping_values_and_open_operands_keep_objects(self):
+        bodies = ["return xs[i]", "value: Any = xs[i]\nreturn value + 1",
+                  "return (saved := xs[i]) + 1", "return xs[i] + other",
+                  "return xs[i] + callback()", "return xs[callback()] + 1",
+                  "return xs[i] == other", "return xs[i] == callback()",
+                  "return xs[i] is other", "return 0 < xs[i] is other",
+                  "return 0 < xs[i] < callback()", "return xs[i] in [other]",
+                  "return xs[other] + 1"]
+        for body in bodies:
+            with self.subTest(body=body):
+                self.assertIn("@pys_list_get_identity", self.target_ir(body))
+        cast = "def cast(value: Any) -> int:\n    return 0\n"
+        self.assertIn("@pys_list_get_identity", self.target_ir("int = cast\nreturn int(xs[i]) + 1", extra=cast))
+
+    def test_receiver_and_index_proof_rejects_protocols_and_unknown_types(self):
+        generator = Gen()
+        generator.ltype.update({"xs": "list[int]", "fs": "list[float]", "i": "int", "b": "bool",
+                               "f": "float", "any": "dyn", "optional": "opt[list[int]]", "obj": "Box"})
+        def name(text):
+            return mk("name", text, 0, [])
+        for receiver in [name("optional"), name("obj"), mk("attr", "items", 0, [name("obj")])]:
+            self.assertFalse(generator.scalar_read_value(mk("index", "", 0, [receiver, name("i")])))
+        for index in [name("f"), name("any"), mk("binop", "/", 0, [name("i"), mk("int", "2", 0, [])]),
+                      mk("index", "", 0, [name("fs"), name("i")]), mk("call", "", 0, [name("callback")])]:
+            self.assertFalse(generator.scalar_read_value(mk("index", "", 0, [name("xs"), index])))
+        for index in [name("i"), name("b"), mk("index", "", 0, [name("xs"), name("i")])]:
+            self.assertTrue(generator.scalar_read_value(mk("index", "", 0, [name("xs"), index])))
+
+    def test_unchecked_operand_proof_is_detected(self):
+        with patch.object(Gen, "scalar_read_value", return_value=True):
+            with self.assertRaises(AssertionError):
+                ScalarListIdentityTests().test_escaping_values_and_open_operands_keep_objects()
+
+    def test_exceptions_restore_the_scalar_scope(self):
+        original = Gen.list_read
+        for expression in ["xs[i] + 1", "xs[i] < 2"]:
+            held = []
+            def fail(generator, *args, held=held):
+                if generator.curfn.node.s == "target" and generator.fn.scalar_reads:
+                    held.append(generator.fn)
+                    raise RuntimeError("probe")
+                return original(generator, *args)
+            with self.subTest(expression=expression), patch.object(Gen, "list_read", fail):
+                with self.assertRaises(RuntimeError):
+                    self.target_ir("return " + expression)
+            self.assertEqual(len(held), 1)
+            self.assertFalse(held[0].scalar_reads)
+            self.assertIn("@pys_list_get_identity", self.target_ir("return xs[i]"))
+
+
 class CellIdentityAllocationTests(unittest.TestCase):
     def test_cells_keep_the_existing_allocation_class(self):
         path = ROOT / "tests/ir/dynany_identity_cells.py"
@@ -248,6 +587,91 @@ class CellIdentityAllocationTests(unittest.TestCase):
             # cell requests 15 bytes to use the allocator's 16-byte scanned slot;
             # requesting 16 would silently grow it into the 24-byte class.
             self.assertEqual(re.findall(r"@pys_alloc\(i64 (\d+)\)", body[1]), ["15", "8"])
+
+
+class JoinedIdentityCostTests(unittest.TestCase):
+    def test_union_arithmetic_stays_raw_and_dynamic_typed_stars_keep_objects(self):
+        source = '''# pystachy: dynamic-any
+def arithmetic(n: int) -> int | float:
+    value: int | float = 0
+    for i in range(n):
+        value = value + i
+    return value
+
+def typed_star() -> list[int]:
+    value = int("1000")
+    return [value, *[2], value]
+
+print(arithmetic(2), typed_star())
+'''
+        ir = driver.compile_program("joined_identity_cost.py", source, [str(ROOT / "lib")], "")
+        arithmetic = re.search(r"define[^\n]*@f\.arithmetic\([^\n]*\n(.*?)\n}", ir, re.S)
+        starred = re.search(r"define[^\n]*@f\.typed_star\([^\n]*\n(.*?)\n}", ir, re.S)
+        self.assertIsNotNone(arithmetic)
+        self.assertIsNotNone(starred)
+        self.assertNotRegex(arithmetic[1], r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+        self.assertEqual(starred[1].count("@pys_list_append_identity("), 3)
+        self.assertNotIn("@pys_list_append(", starred[1])
+        # Numeric list identity is opt-in at graph level; ordinary typed stars still box nothing.
+        ordinary = driver.compile_program("ordinary_joined_cost.py", source.replace("# pystachy: dynamic-any\n", ""), [str(ROOT / "lib")], "")
+        self.assertNotRegex(ordinary, r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+        self.assertNotIn("@pys_list_append_identity", ordinary)
+
+    def test_non_boxable_union_cells_remain_accepted(self):
+        # Reading a numeric member must not box a different, typed-container member
+        # merely because the same cell can hold either representation.
+        source = '''# pystachy: dynamic-any
+def outer() -> int:
+    value: int | list[int] = [7]
+    def read() -> int:
+        if isinstance(value, int):
+            return value
+        return value[0]
+    return read()
+print(outer())
+'''
+        ir = driver.compile_program("joined_identity_boundary.py", source, [str(ROOT / "lib")], "")
+        read = re.search(r"define[^\n]*@c\.0\.1\([^\n]*\n(.*?)\n}", ir, re.S)
+        self.assertIsNotNone(read)
+        self.assertNotRegex(read[1], r"(?:call|invoke) ptr @pys_dyn_(?:int|float)(?:_box)?\(")
+        # The list member's items have boxes from construction; reading one returns that object.
+        self.assertIn("@pys_list_get_identity", read[1])
+
+
+class FoldedIntegerIdentityTests(unittest.TestCase):
+    def test_literal_operations_match_cpython_with_int64_boundaries(self):
+        values = [-2**63, -2**63 + 1, -1000, -1, 0, 1, 3, 1000, 2**63 - 1]
+        for op in ["+", "-", "*", "//", "%", "**", "<<", ">>", "&", "|", "^"]:
+            for a in values:
+                for b in values if op not in ["**", "<<", ">>"] else [-1, 0, 1, 3, 62, 63, 64]:
+                    with self.subTest(op=op, a=a, b=b):
+                        got = folded_int(op, str(a), str(b))
+                        if op in ["**", "<<", ">>"] and not 0 <= b <= 63:
+                            self.assertEqual(got, "")
+                            continue
+                        try:
+                            expected = eval(f"({a}) {op} ({b})")
+                        except (ValueError, ZeroDivisionError):
+                            self.assertEqual(got, "")
+                            continue
+                        self.assertEqual(got, str(expected) if -2**63 <= expected < 2**63 else "")
+
+    def test_large_exponents_and_counts_are_not_evaluated(self):
+        for op in ["**", "<<", ">>"]:
+            self.assertEqual(folded_int(op, "2", str(2**63 - 1)), "")
+        self.assertEqual(folded_int("/", "1000", "2"), "")
+
+    def test_non_boxable_global_unions_remain_accepted(self):
+        source = '''# pystachy: dynamic-any
+value: int | list[int] = [7]
+def read() -> int:
+    local = value
+    if isinstance(local, int):
+        return local
+    return local[0]
+print(read())
+'''
+        driver.compile_program("global_identity_boundary.py", source, [str(ROOT / "lib")], "")
 
 
 if __name__ == "__main__":

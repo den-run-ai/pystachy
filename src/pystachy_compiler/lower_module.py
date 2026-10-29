@@ -4,7 +4,7 @@ These serializers are the backend boundary for module data, native ABI adapters,
 object dispatch and process/extension entry points. They do not create IR operations.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import fail, dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
@@ -38,8 +38,8 @@ def address_runtime_ir(ir: str) -> str:
 
 def struct_types(ci: ClassInfo) -> list[str]:
     # the LLVM types of the members of class ci's struct, %C.<name>: its fields', then its "is
-    # assigned" flags
-    return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)]
+    # assigned" flags and numeric identity companions
+    return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)] + ["ptr" for _ in range(ci.nbox)]
 
 
 def gen_tbaa_nodes(self) -> list[str]:
@@ -117,12 +117,16 @@ def lower_data(d: Data) -> str:
         es: list[str] = ["{ptr, i64} {ptr " + d.refs[j] + ", i64 " + d.items[j].v + "}" for j in range(len(d.refs))]
         return f"{d.name} = internal constant [{len(es)} x {{ptr, i64}}] [{', '.join(es)}], align 8"
     if d.kind == "dyntype":
-        # a class's DynType (dynamic.py): kind, descriptor, name, O<id>, base's DynType, flags, as
+        # a class's DynType (dynamic.py): kind, descriptor, name, O<id>, base's DynType, flags,
+        # and optional iter/next/len callbacks, as
         # runtime.c's struct DynType lays them out. Internal, and its address is the class's
         # identity to a dynamic value's box: never merged
         r = d.refs
+        it = r[3] if len(r) > 3 else "null"
+        nxt = r[4] if len(r) > 4 else "null"
+        length = r[5] if len(r) > 5 else "null"
         return (f"{d.name} = internal constant {DYNTYPE_LL} {{i64 {d.items[0].v}, ptr {r[0]}, ptr {r[1]}, "
-                f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}}}, align 8")
+                f"i64 {d.items[1].v}, ptr {r[2]}, i64 {d.items[2].v}, ptr {it}, ptr {nxt}, ptr {length}}}, align 8")
     if d.kind == "dynbox":
         # a constant dynamic value (dynamic.py): its DynType and, as its payload, the address of its
         # last ref: a def's own DynType, or a str constant
@@ -191,6 +195,10 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
             offs.append(f"i64 %o{j}")
             cts.append("ptr")
         elif c == "list[float]" or c == "list[c_int64]":
+            if c == "list[c_int64]" and int_lists():
+                # (an item past 64 bits, whose slot holds -2**63: OverflowError, as pys_c_at raises)
+                self.runtime("pys_list_narrow")
+                code.append(f"  call void @pys_list_narrow(ptr %a{j})")
             code.append(f"  %l{j} = getelementptr inbounds {{i64, i64, ptr}}, ptr %a{j}, i64 0, i32 2")  # (List.a: runtime.c's {len, cap, a})
             code.append(f"  %p{j} = load ptr, ptr %l{j}")
             cts.append("ptr")
@@ -233,6 +241,14 @@ def gen_cextern(self, f: FnInfo, at: bool = False) -> None:
             self.runtime("pys_c_check")
             code.append("  %y = call i64 @pys_c_check(i64 %x, i64 3)")
         code.append(f"  ret i64 {'%y' if k == '2' else '%x'}")
+    if dynamic_program():
+        changed = [j for j in range(len(f.ptypes)) if f.ptypes[j] in ["list[int]", "list[float]"]]
+        if len(changed) > 0:
+            # The CPython ffi twin replaces the numeric list's items after C returns,
+            # including read-only calls. Keep raw aliases during C, then renew objects.
+            self.runtime("pys_list_forget_identity")
+            call_at = code.index(f"  {cl}" if r == "void" else f"  %r = {cl}")
+            code = code[:call_at + 1] + [f"  call void @pys_list_forget_identity(ptr %a{j})" for j in changed] + code[call_at + 1:]
     if at:
         self.externs[f.ll + ".at"] = f"define internal {lt(f.ret)} {f.ll}.at({', '.join(ps + offs)}) {{\n" + "\n".join(code) + "\n}"
         return  # (the C function's declaration and address are the stub's: see below)

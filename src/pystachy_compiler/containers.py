@@ -1,11 +1,12 @@
 """Containers component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.analysis import none_display
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.analysis import none_display, walrus_names
+from src.pystachy_compiler.bigints import big_tree, held, narrow_type
+from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
-from src.pystachy_compiler.syntax import Node, made_var, mk
+from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
+from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
     atomic_list,
     bool_for_int,
@@ -32,6 +33,81 @@ from src.pystachy_compiler.utils import (
     typestr,
     unopt,
 )
+
+
+def gen_list_id_kind(self, t: str) -> int:
+    # A program graph opting into dynamic values preserves typed numeric item objects.
+    # The raw payload stays in its existing atomic array; identity lives in scanned storage.
+    if self.rtmode or not dynamic_program():
+        return 0
+    return 1 if t == "list[int]" else 2 if t == "list[float]" else 0
+
+
+def gen_list_identity(self, v: Val) -> Val:
+    k = self.list_id_kind(v.t)
+    if k != 0:
+        self.rt("pys_list_identity", "void", [f"ptr {v.v}", f"i64 {k}"])
+    return v
+
+
+def gen_list_item(self, o: Val, i: Val) -> Val:
+    k = self.list_id_kind(o.t)
+    if k != 0:
+        b = self.rt("pys_list_get_identity", "ptr", [f"ptr {o.v}", f"i64 {i.v}", f"i64 {k}"])
+        return self.dyn_unbox(Val(b, "dyn"), elem(o.t))
+    return self.list_value(o, i.v, self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]))
+
+
+def gen_list_value(self, o: Val, i: str, raw: str) -> Val:
+    # raw, the slot of list o at index i (as pys_list_get takes it), as the item it holds: where the
+    # program's lists of ints may hold promoting ints past 64 bits, an int through big_list_value
+    if elem(o.t) == "int" and int_lists():
+        return self.big_list_value(o, i, raw)
+    return self.held_value(self.from_slot(raw, elem(o.t)))  # (a tuple of ints: held, bigints.py)
+
+
+def gen_list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
+    # v has already been coerced to the list's item type (list_coerce: a promoting int stays one
+    # where the list may hold it, big_list_store). Its source box must survive
+    # the store: equal payloads can name different objects, including distinct NaNs.
+    if v.t == BIG and elem(o.t) == "int" and int_lists():
+        self.big_list_store(o, v, method, index)
+        return
+    k = self.list_id_kind(o.t)
+    args = [f"ptr {o.v}"]
+    if index != "":
+        args.append(f"i64 {index}")
+    args.append("i64 " + self.to_slot(v))
+    if k != 0:
+        args.extend([f"ptr {self.dyn_box(v).v}", f"i64 {k}"])
+    symbols = {"append": "pys_list_append", "set": "pys_list_set", "insert": "pys_list_insert"}
+    identities = {"append": "pys_list_append_identity", "set": "pys_list_set_identity", "insert": "pys_list_insert_identity"}
+    self.rt(identities[method] if k != 0 else symbols[method], "void", args)
+
+
+def gen_list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
+    args = [f"ptr {o.v}", f"ptr {desc}", f"i64 {1 if maximum else 0}"]
+    k = self.list_id_kind(o.t)
+    if k != 0:
+        args.append(f"i64 {k}")
+        b = self.rt("pys_list_minmax_identity", "ptr", args)
+        return self.dyn_unbox(Val(b, "dyn"), elem(o.t))
+    if elem(o.t) == "int" and int_lists():
+        return self.big_list_minmax(o, maximum)
+    return self.held_value(self.from_slot(self.rt("pys_list_minmax", "i64", args), elem(o.t)))
+
+
+def gen_list_find(self, o: Val, v: Val, method: str, start: str = "", stop: str = "") -> Val:
+    # Queries keep their actual numeric type; coercing a float query to an integer
+    # would lose both out-of-range behavior and its object's identity.
+    args = [f"ptr {o.v}", "i64 " + self.to_slot(v), f"ptr {self.dyn_box(v).v}",
+            f"ptr {self.sconst(self.desc(elem(o.t), '=='))}", f"ptr {self.sconst(self.desc(v.t, '=='))}",
+            f"i64 {self.list_id_kind(o.t)}"]
+    if method == "index":
+        args.extend(["i64 " + start, "i64 " + stop])
+    symbols = {"find": "pys_list_find_identity", "index": "pys_list_index_identity", "count": "pys_list_count_identity", "remove": "pys_list_remove_identity"}
+    r = self.rt(symbols[method], "void" if method == "remove" else "i64", args)
+    return Val("null", "None") if method == "remove" else Val(r, "int")
 
 
 def repr_name(c: str) -> str:
@@ -73,7 +149,7 @@ def gen_none_container(self, e: Node) -> Val:
         ks.append(k)
     if self.key_problem(kt) != "":
         self.err(self.key_problem(kt))
-    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt)}", f"i64 {len(ks)}"])
+    r = self.rt("pys_dict_new", "ptr", [f"i64 {self.key_kind(kt, True)}", f"i64 {len(ks)}"])
     for k in ks:
         self.rt("pys_dict_set", "void", [f"ptr {r}", "i64 " + self.to_slot(self.store_key(k, kt)), "i64 0"], self.key_fx(kt))
     return Val(r, self.ctype("dict", [kt, NONE_ITEM]))
@@ -132,10 +208,10 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
         self.err(self.elem_problem(et))
     if const:
         self.globs[gi].t = self.ctype("frozenset", [et])
-    items = [self.store_elem(v, et) for v in items]
+    items = [self.set_coerce(v, et) for v in items]
     r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
     for v in items:
-        self.rt("pys_set_add", "void", [f"ptr {r}", "i64 " + self.to_slot(v)], self.key_fx(et))
+        self.set_store(r, v, et)
     if folded or (len(items) > 2 and folds(mk("tuple", "", n.line, n.kids))):
         c = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
         self.rt("pys_set_update_list", "void", [f"ptr {c}", f"ptr {self.rt('pys_set_list', 'ptr', [f'ptr {r}'])}"], self.key_fx(et))
@@ -188,11 +264,31 @@ def gen_star_display(self, n: Node, want: str) -> Val:
     # with. A tuple display of items alone is a tuple of them; with a list's, a runtime-length one
     w = unopt(want)
     ew = elem(w) if n.kind == "list" and is_list(w) and "?" not in w else targs(w)[0] if n.kind == "tuple" and is_vtuple(w) else ""
+    capture = ew == "dyn"
+    if want == "" and self.drying == 0 and self.dyn_policy(n.line):
+        # Discover the resulting storage before later items can retire a binding.
+        # Reuse the statement's dry-type cache; do not change contextual typing.
+        # A walrus may first bind or retype a name here. Dry typing does not make
+        # those stores, so only inspect expansions independent of every such name.
+        rebound: dict[str, bool] = {}
+        walrus_names(n, rebound)
+        if len(rebound) == 0 and self.typed_now(n):
+            capture = self.dyn_dry(n) in ["list[dyn]", "vtuple[dyn]"]
+        else:
+            for x in n.kids:
+                if x.kind == "starred":
+                    e = x.kids[0]
+                    # Only a standalone, already typed expansion is evidence here;
+                    # iterator calls and generators need their consuming context.
+                    if self.iterator_call(e) or self.is_mapcall(e) or (e.kind == "listcomp" and e.s == "gen"):
+                        continue
+                    if not mentions(e, list(rebound)) and self.typed_now(e) and self.dyn_dry(e) in ["list[dyn]", "vtuple[dyn]"]:
+                        capture = True
     parts: list[Val] = []
     lists: list[bool] = []
     for x in n.kids:
         v = self.star_items(x.kids[0]) if x.kind == "starred" else self.expr(x, ew)
-        if x.kind != "starred" and ew == "dyn" and v.idslot != "":
+        if x.kind != "starred" and (capture or self.list_id_kind(self.ctype("list", [v.t])) != 0) and v.idslot != "":
             v.idfrom = self.dyn_box(v).v
         if x.kind == "starred" and is_tuple(v.t):
             for i in range(len(targs(v.t))):
@@ -228,10 +324,10 @@ def gen_star_display(self, n: Node, want: str) -> Val:
         if lists[i]:
             self.rt("pys_list_extend", "void", [f"ptr {r}", f"ptr {parts[i].v}"])
         else:
-            self.rt("pys_list_append", "void", [f"ptr {r}", "i64 " + self.to_slot(self.coerce(parts[i], et))])
+            self.list_store(Val(r, self.ctype("list", [et])), self.list_hold(parts[i], et), "append")
     if n.kind == "list":
         return Val(r, self.ctype("list", [et]))
-    if unopt(et) not in ["int", "float", "bool", "str", "dyn"]:
+    if unopt(et) not in ["int", "float", "bool", "str", "dyn", BIG]:
         self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
     return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {r}"]), self.ctype("vtuple", [et]))
 
@@ -295,6 +391,9 @@ def gen_sdiscard(self, ov: str, v: Val, et: str) -> None:
     # set ov (of elements of type et) discards v, which it holds or not; None is no element (but
     # where the elements are objects, which may be None)
     if v.t == "None" and et not in self.classes:
+        return
+    if v.t == BIG and et == "int" and int_lists():
+        self.rt("pys_set_big_discard", "void", [ov, f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}"])  # (bigints.py)
         return
     if is_opt(v.t) and unopt(v.t) == et:
         l1 = self.label()
@@ -417,12 +516,15 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
     ov = f"ptr {o.v}"
     kx = self.key_fx(et)  # (Ins.x of the ops that hash or compare elements)
     none = Val("null", "None")
+    if self.set_int(o.t) and m in ["add", "pop", "discard", "remove"]:
+        bm = self.big_set_method(o, m, args)  # (elements past 64 bits: bigints.py)
+        if bm.t != "":
+            return bm
     if m == "add":
-        v = self.store_elem(self.expr(args[0], et), et)
-        self.rt("pys_set_add", "void", [ov, "i64 " + self.to_slot(v)], kx)
+        self.set_store(o.v, self.set_coerce(self.expr(args[0], et), et), et)
         return none
     if m == "discard" or m == "remove":
-        v = self.expr(args[0], et)
+        v = self.big_opt_narrow(self.expr(args[0], et))  # (an element holds a 64-bit int: bigints.py)
         if (v.t == "None" or (is_opt(v.t) and unopt(v.t) == et)) and et not in self.classes:
             # None is no element (but an object's): discard() does nothing, remove() raises
             # KeyError: None
@@ -449,7 +551,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         self.rt("pys_set_discard" if m == "discard" else "pys_set_remove", "void", [ov, "i64 " + self.to_slot(k)], kx)
         return none
     if m == "pop":
-        return self.from_slot(self.rt("pys_set_pop", "i64", [ov]), et)
+        return self.held_value(self.from_slot(self.rt("pys_set_pop", "i64", [ov]), et))  # (a tuple of ints: bigints.held)
     if m == "clear":
         self.rt("pys_set_clear", "void", [ov])
         return none
@@ -559,8 +661,8 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
     if v.t == "None" and self.optional(V) != V:
         self.err(f"dict.fromkeys(keys{', None' if len(args) == 2 else ''}) needs values that can be None ({OPTTYPES}), not {typestr(V)}: give a value")
     V = v.t if V == "" else V
-    v = self.coerce(v, V)
     t = self.ctype("dict", [K, V])
+    v = self.list_hold(v, targs(t)[1]) if held(targs(t)[1]) != targs(t)[1] else self.coerce(v, V)  # (a tuple of ints as the dict holds it: bigints.held)
     if t == "dict[dyn,dyn]" and (K != "dyn" or V != "dyn"):
         # (a dict of Any containers holds boxes, keys too, ctype: the keys and the value boxed first)
         if is_dict(xs.t):
@@ -572,7 +674,7 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
         v = self.coerce(v, "dyn")
     if is_dict(xs.t):
         return Val(self.rt("pys_dict_fromkeys_dict", "ptr", [f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
-    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
+    return Val(self.rt("pys_dict_fromkeys", "ptr", [f"i64 {self.key_kind(K, True)}", f"ptr {xs.v}", "i64 " + self.to_slot(v)], self.key_fx(K)), t)
 
 def gen_affix_any(self, tup: Val, m: str, av: list[str], base: str = "str") -> Val:
     # s.startswith((a, b, ...), start, end) (or endswith), as CPython's loop over the tuple: each
@@ -601,12 +703,29 @@ def gen_optdefault(self, d: Val, t: str) -> str:
         return self.optional(t)
     return t
 
-def gen_key_kind(self, kt: str) -> str:
+def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -> str:
     # the key kind of a new dict whose keys have type kt (runtime.c's Dict.kind): 0 int, 1 str,
     # or a tuple or object key's type descriptor (hash_desc)
-    if kt == "int" or kt == "str" or kt == "bytes":
+    # Every module in a Dynamic Any program shares the dictionary hash scheme:
+    # a later comparison may look up a native key in a differently typed dict.
+    # The marker preserves the original slots and records Python's hash/probe
+    # scheme from insertion, including deletions; equality never rehashes keys.
+    kt = "int" if kt == BIG else held(narrow_type(kt))  # (a promoting int's container holds ints, a tuple of them as a list holds it: bigints.py)
+    if dictionary and dynamic_program() and not self.rtmode:
+        d = self.hash_desc(kt)
+        d = d if "H" in d or "A" in d else "!" + d
+    elif kt == "int" or kt == "str" or kt == "bytes":
         return "0" if kt == "int" else "1"  # (bytes keys are hashed and compared as strs of their bytes)
-    return f"ptrtoint (ptr {self.sconst(self.hash_desc(kt))} to i64)"
+    else:
+        d = self.hash_desc(kt)
+    if built and dictionary and (d.startswith("!") or "H" in d or "A" in d):
+        # built: what empty.kind stores into a dict result that may already hold a table (a
+        # call cycle's forwarded result, filled once the cycle recurses). Keys that CPython's
+        # hash places (runtime.c's khash) gave that table KTAG at its first build: the kind
+        # keeps it, as clear() keeps it on a dict without a table, where build sets it anyway.
+        # The descriptor alone would make its lookups and insertions probe twice its slots.
+        return f"ptrtoint (ptr getelementptr (i8, ptr {self.sconst(d)}, i64 2) to i64)"
+    return f"ptrtoint (ptr {self.sconst(d)} to i64)"
 
 def gen_key_class(self, t: str) -> bool:
     # can objects of class t be dict keys and set elements: those of the program's classes, but
@@ -626,6 +745,7 @@ def gen_key_items(self, t: str) -> bool:
 def gen_key_problem(self, t: str) -> str:
     # why t cannot be a dict's key type, or "" (utils.key_problem): objects too, and dynamic values
     # (hashed by their types at run time: TypeError: unhashable type)
+    t = narrow_type(t)  # (a promoting int, also a tuple's, is a key as a 64-bit int: bigints.py)
     if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
         return ""
     if t in self.nts:
@@ -676,7 +796,7 @@ def gen_hash_desc(self, t: str) -> str:
     if is_opt(t) and t != NONEVAR:
         return "?" + self.hash_desc(unopt(t))
     if is_tuple(t) and len(targs(t)) <= 9:
-        return "T" + str(len(targs(t))) + "".join([self.hash_desc(x) for x in targs(t)])
+        return "T" + str(len(targs(t))) + "".join(["J" if x == BIG else self.hash_desc(x) for x in targs(t)])  # (desc's J)
     return self.desc(t, "==")
 
 def gen_key_fx(self, kt: str) -> str:
@@ -696,6 +816,12 @@ def gen_key_repr(self, t: str) -> bool:
 def gen_dkey(self, k: Val, kt: str) -> Val:
     # a key to look up in a dict whose keys have type kt: one that may be None stays optional
     # (see nonekey), and a bool or a tuple with what CPython finds as such a key (lookable) is one
+    # (a tuple of ints in the layout in which the dict holds it, key_hold: bigints.held)
+    if (is_tuple(k.t) or (is_opt(k.t) and unopt(k.t) == kt)) and held(narrow_type(kt)) != narrow_type(kt):
+        return self.key_hold(k, narrow_type(kt))
+    if is_tuple(k.t) and BIG in k.t and BIG not in kt:
+        k = self.big_tuple_narrow(k)  # (a key holds 64-bit ints: bigints.py)
+    k = self.big_opt_narrow(k)  # (and an int | None the box of one)
     if is_opt(k.t) and unopt(k.t) == kt:
         return k
     if k.t == "bool" and kt == "int":
@@ -751,14 +877,14 @@ def gen_store_key(self, k: Val, kt: str) -> Val:
     # looks up, pops and deletes the int key it equals: dkey)
     if bool_for_int(k.t, kt):
         self.err(f"a {typestr(k.t)} key is stored into a dict with {typestr(kt)} keys, where CPython keeps a key it adds as the bool it is (True, not 1): convert the bool with int()")
-    return self.coerce(k, kt)
+    return self.list_hold(k, kt) if held(narrow_type(kt)) != narrow_type(kt) else self.coerce(k, kt)  # (a tuple of ints as the dict holds it: bigints.held)
 
 def gen_store_elem(self, k: Val, et: str) -> Val:
     # k as an element added to a set whose elements have type et (s.add(k), a display, a
     # comprehension): as store_key, a bool is rejected where the elements are ints
     if bool_for_int(k.t, et):
         self.err(f"a {typestr(k.t)} element is added to a set of {typestr(et)} elements, where CPython keeps an element it adds as the bool it is (True, not 1): convert the bool with int()")
-    return self.coerce(k, et)
+    return self.list_hold(k, et) if held(narrow_type(et)) != narrow_type(et) else self.coerce(k, et)  # (a tuple of ints as the set holds it: bigints.held)
 
 def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
     # the slot fn(av) returns, a dict lookup of key k (x: key_fx of the dict's keys); a key that
@@ -767,13 +893,13 @@ def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
         return self.rt(fn, "i64", av, x)
     if none == "":
         self.guard(self.ptr_cmp('==', k, Val('null', 'None')).v, "KeyError: None")
-        return self.rt(fn, "i64", self.keyed(k, av), x)
+        return self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x)
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
     self.cbr(self.ptr_cmp('==', k, Val('null', 'None')).v, l1, l2)
     self.place(l2)
-    r = self.rt(fn, "i64", self.keyed(k, av), x)
+    r = self.rt(self.dict_key_fn(fn, k), "i64", self.keyed(k, av), x)
     e2 = self.cur
     self.br(l3)
     self.place(l1)
@@ -786,7 +912,10 @@ def gen_nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
 
 def gen_keyed(self, k: Val, av: list[str]) -> list[str]:
     # the arguments av of a dict lookup by key k (av[1]), which is not None here: an int key
-    # that may be None is the int its box holds
+    # that may be None is the int its box holds, and a promoting int's (of a dict of int keys) is its
+    # {lo, m}, which the function's twin takes (bigints.py's dict_key_fn)
+    if k.t == BIGOPT:
+        return [av[0]] + self.dict_key_args(self.big_unbox(k), "") + av[2:]
     if not is_sopt(k.t):
         return av
     return [av[0], "i64 " + self.to_slot(self.deref(k))] + av[2:]
@@ -813,6 +942,8 @@ def gen_to_str(self, v: Val) -> Val:
         return self.kw_repr(v)
     if t == "int":
         return Val(self.rt("pys_str_int", "ptr", [f"i64 {v.v}"]), "str")
+    if t == BIG:
+        return self.big_str(v)
     if t == "float":
         return Val(self.rt("pys_str_float", "ptr", [f"double {v.v}"]), "str")
     if t == "bool":
@@ -942,7 +1073,8 @@ def gen_obj_hash(self, v: Val) -> Val:
         if k == "id":
             r = Val(self.rt("pys_hash_id", "i64", [f"ptr {v.v}"]), "int")
         elif k == "user":
-            h = self.as_int(self.call_fn(c.methods["__hash__"], [Val(v.v, c.name)], [], direct=True))
+            h = self.call_fn(c.methods["__hash__"], [Val(v.v, c.name)], [], direct=True)
+            h = self.big_hashed(h) if h.t == BIG else self.as_int(h)
             r = Val(self.select(self.num_cmp('==', h, Val('-1', 'int')).v, Val('-2', 'int'), h), "int")
         else:
             self.raise_("TypeError", self.sconst(f"unhashable type: '{short(c.name)}'"))
@@ -966,6 +1098,15 @@ def gen_hash_value(self, v: Val) -> Val:
     t = v.t
     if t == "dyn":
         return self.dyn_hash(v)  # (by its box's type: dynamic.py)
+    if t == BIG:
+        return self.big_hash(v)  # (CPython's, as hint gives a 64-bit int's: bigints.py)
+    if t == BIGOPT:
+        return self.big_opt_hash(v)  # (None's, or a promoting int's: bigints.py)
+    if is_tuple(t) and BIG in t and big_tree(t) and self.hashable(t):
+        # (of promoting ints, whose items runtime.c's hitem reads: desc's J)
+        return Val(self.rt("pys_hash", "i64", ["i64 " + self.to_slot(v, True), f"ptr {self.sconst(self.hash_desc(t))}"]), "int")
+    if is_tuple(t) and BIG in t:
+        return self.big_tuple_hash(v)  # (of promoting ints, item by item: bigints.py)
     if self.key_class(t):
         return self.obj_hash(v)
     if t == "None":
@@ -987,13 +1128,22 @@ def gen_hashable(self, t: str) -> bool:
     # can hash() take a value of type t (but an object's, obj_hash): a number, a str, None, an
     # object, a tuple of such items, or one of these that may be None
     u = unopt(t)
-    if u == "int" or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
+    if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
         return True
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
 def gen_repr(self, v: Val) -> Val:
     if is_kw(v.t):
         return self.kw_repr(v)
+    if v.t == BIG:
+        return self.big_str(v)  # (an int's repr is its str: bigints.py)
+    if v.t == BIGOPT:
+        return self.big_opt_str(v)  # (None, or a promoting int: bigints.py)
+    if is_tuple(v.t) and BIG in v.t and big_tree(v.t):
+        # (of promoting ints, whose items runtime.c's repr reads: desc's J)
+        return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v, True), f"ptr {self.sconst(self.desc(v.t, 'repr'))}"]), "str")
+    if is_tuple(v.t) and BIG in v.t:
+        return self.big_tuple_repr(v)  # (of promoting ints, item by item: bigints.py)
     if self.reference_union(v.t):
         return self.refl_union_str(v, "__repr__")  # (each class's: reflection.py)
     if v.t in self.classes:

@@ -7,8 +7,10 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-STAGE = (ROOT / "tests/verify.sh").read_text().split("# ---- dynany-fuzz:", 1)[1].split("# ---- dynany-optin:", 1)[0]
+# (the step's block, from its condition to its fi: it runs in a lane of the contracts' steps)
+STAGE = (ROOT / "tests/verify.sh").read_text().split("# ---- dynany-fuzz:", 1)[1]
 STAGE = STAGE[STAGE.index("if want dynany-fuzz;"):]
+STAGE = STAGE[:STAGE.index("\nfi\n") + len("\nfi\n")]
 
 
 class DynanyFuzzStageTests(unittest.TestCase):

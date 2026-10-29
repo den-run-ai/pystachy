@@ -6,6 +6,7 @@ stable. It keeps one state per block, not a product of whole-function execution 
 """
 from __future__ import annotations
 from src.pystachy_compiler.ir import IFn, Ins, Val
+from src.pystachy_compiler.specs import BIG
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join
 from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
 
@@ -228,7 +229,7 @@ def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None
 
 
 class UnionProof:
-    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None):
+    def __init__(self, fn: IFn, utags: dict[str, int], writes: dict[str, bool] | None = None, globals: dict[str, str] | None = None, raises: dict[str, bool] | None = None, declarations: list[Val] | None = None):
         self.fn = fn
         self.writes: dict[str, bool] = {} if writes is None else writes
         self.raises: dict[str, bool] = {} if raises is None else raises
@@ -261,6 +262,12 @@ class UnionProof:
             for v in globals:
                 self.typebase("MU:@g." + v, globals[v])
                 self.memtypes["@g." + v] = globals[v]
+        if declarations is not None:
+            # Hidden defaults and class storage have the same declared native types
+            # as named globals. A call can change their values, not their layouts.
+            for declaration in declarations:
+                self.typebase("MU:" + declaration.v, declaration.t)
+                self.memtypes[declaration.v] = declaration.t
         for n in range(len(fn.f.ptypes)):
             t = fn.f.ptypes[n]
             v = "%a" + str(n)
@@ -634,6 +641,8 @@ class UnionProof:
                 # Container typing proves its scalar kind; this proof must not invent
                 # a more precise member from the runtime signature's T/V placeholders.
                 s.set("U:" + r, ["bool", "float", "int"])
+        elif op == "rt" and i.s == "big.box":
+            s.set("U:" + r, [BIG])  # (a promoting int's box, never None: bigints.py)
         elif op == "rt" and (i.s == "ubox" or i.s == "ubox_opt"):
             t = self.tag(s, a[0].v)
             d = s.dom(t)

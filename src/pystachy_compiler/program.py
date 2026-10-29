@@ -4,7 +4,8 @@ import os
 import sys
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
-from src.pystachy_compiler.diagnostics import Rejoin, fail, shown
+from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
+from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
@@ -129,8 +130,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             # Clone the declaration only. Its immutable body is shared until the method
             # is needed; declaring and flowing a copy per subclass costs body * subclasses
             # even when no inherited method is called.
-            d = Node(f.orig.kind, f.orig.s, f.orig.line)
-            d.kids = [f.orig.kids[i] if i == 2 else clone(f.orig.kids[i]) for i in range(len(f.orig.kids))]
+            d = Node(f.orig.kind, f.orig.s, f.orig.line, [f.orig.kids[i] if i == 2 else clone(f.orig.kids[i]) for i in range(len(f.orig.kids))])
             g = self.declare_fn(d, ci.name, True)
             g.orig = f.orig
             g.clsuse = True
@@ -746,12 +746,16 @@ def gen_program(self, mods: list[Mod]) -> str:
         for q in m.taliases:
             self.taliases[q] = m.taliases[q]
         self.typevars.extend(m.deftps)
+    if dynamic_program() and any(defines(m.body, "__len__") or defines(m.body, "__next__") for m in mods):
+        self.eh = True  # dynamic next and length hints catch protocol exceptions
+    if any(defines(m.body, "__len__") for m in mods) and any(defines(m.body, "__iter__") for m in mods):
+        self.eh = True  # typed consumers also ignore TypeError from optional length hints
     if not self.eh and len([m for m in mods if defines(m.body, "__next__")]) > 0:
         # a __next__ method's StopIteration is caught where a loop (or unpacking, in, a consumer)
         # takes the items of an object through its __iter__ (obj_iterator, the only way to an
         # iterator object's), and by next(it, default) (not range's __iter__, which steps through
         # a list)
-        self.eh = len([m for m in mods if (defines(m.body, "__iter__") and m.name != RANGES) or module_reads(m.body, "next")]) > 0
+        self.eh = dynamic_program() or len([m for m in mods if (defines(m.body, "__iter__") and m.name != RANGES) or module_reads(m.body, "next")]) > 0
     for m in mods:
         self.generic_aliases(m.body.kids)
     for m in mods:
@@ -936,10 +940,13 @@ def gen_program(self, mods: list[Mod]) -> str:
         # which specialize declares itself)
         self.selfcls = ci.name
         self.declare_fields(ci)
+        if self.dyn_policy(ci.node.line):
+            comparison_properties(ci)
         self.selfcls = ""
         ci.bad = ci.bad if ci.bad != "" else ci.hook  # (after the problems declare_fields finds, see hoist_class)
         for f in ci.methods.values():
             self.check_special(f)
+    comparison_storage(self)
     for m in mods:
         self.cvar_stores(m.body.kids)
     for m in mods:
@@ -1084,11 +1091,11 @@ def gen_program(self, mods: list[Mod]) -> str:
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
-                if c in self.ocmp:
+                if c in self.ocmp and c not in cmped:
                     cmped[c] = True
                     self.obj_helpers(c, [0, 1, 2])  # (in the order of a class's helpers before ocmp)
                 else:
-                    self.obj_helpers(c, [2])
+                    self.obj_helpers(c, [2])  # (and @o.eq and @o.cmp, where ocmp, made by a pass before)
         for c in [x for x in self.ocmp]:
             if c not in cmped:
                 cmped[c] = True
@@ -1130,7 +1137,9 @@ def gen_program(self, mods: list[Mod]) -> str:
     for nm in self.flagged:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)
-    if len(self.newhints) > 0 and not self.final:
+    # Finite comparison field discoveries only grow (incompatible joins are
+    # terminal). Finish these even if earlier fields used the ordinary join budget.
+    if len(self.newhints) > 0 and (not self.final or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
         raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
     # the whole program is built: its functions are printed in the order they were completed
     for j in range(len(self.fns)):

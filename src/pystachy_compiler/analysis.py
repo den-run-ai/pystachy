@@ -2,40 +2,54 @@
 from __future__ import annotations
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.specs import ABCS, ABCSMORE, CALLS, CTYPES, ERRNO, FUTURE, MODATTRS, MODFUNCS, MODULES, NOREF, RANGE_METHODS, RANGE_TAKERS, TYPING
-from src.pystachy_compiler.syntax import Node, comp_names, has_kind, mentions, mk, names_in, starred_target
+from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mentions, mk, names_in, starred_target
 from src.pystachy_compiler.utils import int_fits
 
 
-def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool]) -> bool:
+def numeric_value(n: Node, names: dict[str, bool], blocked: dict[str, bool], own: dict[str, str]) -> bool:
     # A closed scalar expression: nothing can expose a number's object identity or call
     # user code. Names are exclusively numeric parameters/locals; every store is checked
-    # by numeric_statement. Unknown syntax is deliberately outside this proof.
+    # by numeric_statement. Unknown syntax is deliberately outside this proof. In a
+    # method, own names its receiver ("@") and that object's plain fields ("." + field:
+    # their types), which read no code, and the locals that hold one of its bytes or str
+    # fields ("#" + name), which only len() and indexes read
     k = n.kind
     if k in ["int", "float", "True", "False"]:
         return True
     if k == "name":
         return n.s in names
     if k == "walrus":
-        return n.s in names and numeric_value(n.kids[0], names, blocked)
+        return n.s in names and numeric_value(n.kids[0], names, blocked, own)
+    if k == "attr":
+        return len(n.kids) == 1 and n.kids[0].kind == "name" and "@" in own and n.kids[0].s == own["@"] and own.get("." + n.s, "") in ["int", "float", "bool"]
+    if k == "index":
+        return len(n.kids) == 2 and n.kids[0].kind == "name" and own.get("#" + n.kids[0].s, "") == "bytes" and numeric_value(n.kids[1], names, blocked, own)
     if k == "call":
         if len(n.kids) != 2 or n.kids[0].kind != "name":
             return False
         callee = n.kids[0].s
-        return callee in ["int", "float", "bool"] and callee not in names and callee not in blocked and numeric_value(n.kids[1], names, blocked)
+        if callee == "len" and n.kids[1].kind == "name" and ("#" + n.kids[1].s) in own:
+            return callee not in names and callee not in blocked
+        return callee in ["int", "float", "bool"] and callee not in names and callee not in blocked and numeric_value(n.kids[1], names, blocked, own)
     allowed = (k == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) or (k == "unary" and n.s in ["+", "-", "~", "not"]) or k == "ifexp" or (k == "boolop" and n.s in ["and", "or"])
     if k == "cmp":
         allowed = all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(","))
-    return allowed and all(numeric_value(x, names, blocked) for x in n.kids)
+    return allowed and all(numeric_value(x, names, blocked, own) for x in n.kids)
 
 
-def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool], noresult: bool = False) -> bool:
+def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool], own: dict[str, str], noresult: bool = False, annotations: bool = False) -> bool:
     # A bounded body whose local numbers only feed scalar operations and the existing
-    # typed numeric return ABI. No globals, containers, callbacks, closures or Any storage.
+    # typed numeric return ABI. No globals, containers, callbacks, closures or Any storage
+    # (but, in a method, its receiver's plain fields and locals holding its bytes or str
+    # fields: numeric_value's own).
     k = n.kind
     if k in ["pass", "break", "continue"]:
         return True
     if k == "block":
-        return all(numeric_statement(x, names, blocked, noresult) for x in n.kids)
+        return all(numeric_statement(x, names, blocked, own, noresult, annotations) for x in n.kids)
+    if k == "assign" and len(n.kids) == 2 and n.kids[0].kind == "name" and ("#" + n.kids[0].s) in own:
+        v = n.kids[1]
+        return v.kind == "attr" and len(v.kids) == 1 and v.kids[0].kind == "name" and v.kids[0].s == own["@"] and own.get("." + v.s, "") == own["#" + n.kids[0].s]
     if noresult and k == "return":
         return len(n.kids) == 0 or (len(n.kids) == 1 and n.kids[0].kind == "None")
     if noresult and k == "expr" and len(n.kids) == 1:
@@ -43,21 +57,73 @@ def numeric_statement(n: Node, names: dict[str, bool], blocked: dict[str, bool],
         if value.kind == "call" and len(value.kids) > 0 and value.kids[0].kind == "name" and value.kids[0].s == "print":
             # Builtin print consumes scalar values without exposing their objects.
             # Keyword/expanded arguments, shadowed calls and other values fail closed.
-            return "print" not in names and "print" not in blocked and all(x.kind == "str" or numeric_value(x, names, blocked) for x in value.kids[1:])
+            return "print" not in names and "print" not in blocked and all(x.kind == "str" or numeric_value(x, names, blocked, own) for x in value.kids[1:])
     if k in ["return", "expr"]:
-        return len(n.kids) == 1 and numeric_value(n.kids[0], names, blocked)
+        return len(n.kids) == 1 and numeric_value(n.kids[0], names, blocked, own)
+    if annotations and k == "annassign":
+        ann = n.kids[1]
+        parts = [ann]
+        valid = True
+        while len(parts) > 0:
+            a = parts.pop()
+            if a.kind == "binop" and a.s == "|":
+                parts.extend(a.kids)
+            elif a.kind != "name" or a.s not in ["int", "float", "bool"] or a.s in blocked:
+                valid = False
+        return valid and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s in names and numeric_value(n.kids[2], names, blocked, own)
     if k in ["assign", "augassign"]:
         if len(n.kids) != 2 or n.kids[0].kind != "name" or n.kids[0].s not in names:
             return False
-        return (k == "assign" or n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) and numeric_value(n.kids[1], names, blocked)
+        return (k == "assign" or n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]) and numeric_value(n.kids[1], names, blocked, own)
     if k in ["if", "while"]:
-        return numeric_value(n.kids[0], names, blocked) and all(numeric_statement(x, names, blocked, noresult) for x in n.kids[1:])
+        return numeric_value(n.kids[0], names, blocked, own) and all(numeric_statement(x, names, blocked, own, noresult, annotations) for x in n.kids[1:])
     if k == "for":
         it = n.kids[1]
         if n.kids[0].kind != "name" or n.kids[0].s not in names or it.kind != "call" or it.kids[0].kind != "name" or it.kids[0].s != "range":
             return False
-        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked, noresult) for x in n.kids[2:])
+        return "range" not in names and "range" not in blocked and 2 <= len(it.kids) <= 4 and all(numeric_value(x, names, blocked, own) for x in it.kids[1:]) and all(numeric_statement(x, names, blocked, own, noresult, annotations) for x in n.kids[2:])
     return False
+
+
+def numeric_aliases(n: Node, out: dict[str, bool]) -> None:
+    # Names whose object (rather than only numeric payload) can be the expression's value.
+    if n.kind == "name":
+        out[n.s] = True
+    elif n.kind == "walrus" or (n.kind == "unary" and n.s == "+"):
+        numeric_aliases(n.kids[0], out)
+    elif n.kind == "ifexp":
+        for k in n.kids[1:]:
+            numeric_aliases(k, out)
+    elif n.kind == "boolop":
+        for k in n.kids:
+            numeric_aliases(k, out)
+    elif n.kind == "call" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s in ["int", "float"]:
+        numeric_aliases(n.kids[1], out)
+
+
+def numeric_return_names(body: list[Node]) -> dict[str, bool]:
+    # Backward closure of aliases that may leave a closed numeric function. Arithmetic
+    # breaks provenance; assignments/branches and same-type conversions preserve it.
+    pending = list(body)
+    stores: list[Node] = []
+    out: dict[str, bool] = {}
+    while len(pending) > 0:
+        n = pending.pop()
+        if n.kind == "return" and len(n.kids) > 0:
+            numeric_aliases(n.kids[0], out)
+        elif n.kind in ["assign", "annassign", "walrus"]:
+            stores.append(n)
+        if n.kind != "def" and n.kind != "lambda":
+            pending.extend(n.kids)
+    changed = True
+    while changed:
+        before = len(out)
+        for n in stores:
+            name = n.s if n.kind == "walrus" else n.kids[0].s
+            if name in out:
+                numeric_aliases(n.kids[0] if n.kind == "walrus" else n.kids[-1], out)
+        changed = len(out) != before
+    return out
 
 
 def target_names(t: Node, out: dict[str, bool]) -> None:
@@ -98,7 +164,7 @@ def none_sites(body: list[Node], out: dict[str, list[Node]]) -> None:
         if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
             continue
         names: dict[str, bool] = {}
-        for t in st.kids[:-1] if st.kind == "assign" else st.kids[:0]:
+        for t in st.kids[:-1] if st.kind == "assign" else NOKIDS:
             for x in t.kids if t.kind == "tuple" or t.kind == "list" else [t]:
                 if x.kind == "name":
                     names[x.s] = True
@@ -183,7 +249,7 @@ def attr_fills(body: list[Node], name: str, out: list[Node]) -> None:
         if st.kind == "def" or st.kind == "class" or st.kind == "subclass":
             continue
         e = st.kids[-1] if st.kind == "assign" else st
-        for t in st.kids[:-1] if st.kind == "assign" else st.kids[:0]:
+        for t in st.kids[:-1] if st.kind == "assign" else NOKIDS:
             if t.kind == "attr" and t.s == name:
                 out.append(t.kids[0])
                 out.append(e)
@@ -447,7 +513,7 @@ def catches_import(st: Node) -> bool:
     for h in st.kids[1:]:
         if h.kind == "except" and h.kids[0].kind == "omit":
             return True
-        for t in (h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]]) if h.kind == "except" else h.kids[:0]:
+        for t in (h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]]) if h.kind == "except" else NOKIDS:
             if t.kind == "name" and (t.s == "ImportError" or t.s == "ModuleNotFoundError" or t.s == "Exception" or t.s == "BaseException"):
                 return True
     return False
@@ -486,7 +552,7 @@ def may_end(n: Node, bare: bool) -> bool:
     # os._exit() or os.abort()
     if n.kind == "raise" and (len(n.kids) == 0 or not bare):
         return True
-    for x in n.kids[:1] if n.kind == "call" and not bare else n.kids[:0]:
+    for x in n.kids[:1] if n.kind == "call" and not bare else NOKIDS:
         if (x.kind == "name" and (x.s == "exit" or x.s == "quit")) or (x.kind == "attr" and (x.s == "exit" or x.s == "_exit" or x.s == "abort")):
             return True
     if n.kind == "def" or n.kind == "class" or n.kind == "subclass":
@@ -537,8 +603,8 @@ def binds(body: list[Node], out: dict[str, bool], special: bool, pkg: str = "", 
 def builtin_try(st: Node) -> bool:
     # an optional import of builtin modules only (try: from typing import TYPE_CHECKING / except
     # ImportError: TYPE_CHECKING = False), whose except clauses never run (Loader.optional())
-    for x in st.kids[0].kids if accel_try(st) else st.kids[:0]:
-        for a in x.kids if x.kind == "import" else x.kids[:0]:
+    for x in st.kids[0].kids if accel_try(st) else NOKIDS:
+        for a in x.kids if x.kind == "import" else NOKIDS:
             if x.s.startswith("from.") or not (builtin_import(x, a) or a.kids[1].s == "typing_extensions"):
                 return False
     return accel_try(st)
@@ -576,13 +642,13 @@ def specials(m: Mod, body: list[Node], top: int, sure: bool = False) -> None:
     # top-level statement with the first that binds each for sure
     for i in range(len(body)):
         st = body[i]
-        for a in st.kids if st.kind == "import" else st.kids[:0]:
+        for a in st.kids if st.kind == "import" else NOKIDS:
             if special_import(st, a):
                 t = a.kids[0].s if st.s == "" else "typing.TYPE_CHECKING"
                 m.spec[a.s] = t if m.spec.get(a.s, t) == t else ""
                 if (top < 0 or sure) and a.s not in m.specat:
                     m.specat[a.s] = i if top < 0 else top
-        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else NOKIDS:
             if kid.kind == "block":
                 specials(m, kid.kids, i if top < 0 else top, top < 0 and kid is st.kids[0] and builtin_try(st))
             elif kid.kind == "except":
@@ -675,7 +741,7 @@ def bound_in(n: Node, out: dict[str, bool]) -> None:
     if n.kind == "walrus" or n.kind == "typealias" or n.kind == "pattern":
         for nm in n.s.split():
             out[nm] = True
-    for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else n.kids[:0]:
+    for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else NOKIDS:
         bound_in(k, out)
 
 
@@ -767,26 +833,33 @@ def top_bindings(body: list[Node]) -> dict[str, int]:
     return count
 
 
+# the kinds of the nodes that may bind a name, which constant_writes counts (targets' and its own)
+BINDERS: dict[str, bool] = {"assign": True, "annassign": True, "augassign": True, "for": True, "compfor": True, "with": True,
+                            "def": True, "class": True, "subclass": True, "except": True, "walrus": True, "typealias": True,
+                            "global": True, "import": True, "del": True}
+
+
 def constant_writes(n: Node, count: dict[str, int]) -> None:
     # Count every binding in the qualified program, including module-attribute stores in other
     # modules. Local bindings with the same spelling as a main-module name conservatively count
     # too. A global declaration or deletion excludes a name even without an accompanying store.
-    names: dict[str, bool] = {}
-    targets(n, names, False)  # (this traversal counts each walrus node itself, once)
-    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "except" or n.kind == "walrus" or n.kind == "typealias":
-        if n.s != "":
-            names[n.s] = True
-    if n.kind == "global" or n.kind == "import":
-        for k in n.kids:
-            names[k.s] = True
-    if n.kind == "del":
-        gone: list[str] = []
-        for k in n.kids:
-            names_in(k, gone)
-        for nm in gone:
-            names[nm] = True
-    for nm in names:
-        count[nm] = count.get(nm, 0) + 1
+    if n.kind in BINDERS:  # (no dict made at the other nodes, which bind none)
+        names: dict[str, bool] = {}
+        targets(n, names, False)  # (this traversal counts each walrus node itself, once)
+        if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "except" or n.kind == "walrus" or n.kind == "typealias":
+            if n.s != "":
+                names[n.s] = True
+        if n.kind == "global" or n.kind == "import":
+            for k in n.kids:
+                names[k.s] = True
+        if n.kind == "del":
+            gone: list[str] = []
+            for k in n.kids:
+                names_in(k, gone)
+            for nm in gone:
+                names[nm] = True
+        for nm in names:
+            count[nm] = count.get(nm, 0) + 1
     for k in n.kids:
         constant_writes(k, count)
 
@@ -989,7 +1062,7 @@ def object_values(n: Node) -> bool:
 
 def builtins_names(n: Node, out: dict[str, bool]) -> None:
     # the names that an import of the builtins module in n binds (import builtins as b)
-    for a in n.kids if n.kind == "import" and n.s == "" else n.kids[:0]:
+    for a in n.kids if n.kind == "import" and n.s == "" else NOKIDS:
         if a.kids[0].s == "builtins":
             out[a.s] = True
     for k in n.kids:
@@ -1095,12 +1168,12 @@ def local_types(body: list[Node], out: dict[str, Node]) -> None:
         if v.kind == "unary" and v.s == "-":
             v = mk("int", "", v.line, []) if v.kids[0].kind == "True" or v.kids[0].kind == "False" else v.kids[0]  # (-True is -1)
         t = v.kind if v.kind == "int" or v.kind == "float" or v.kind == "str" else "bool" if v.kind == "True" or v.kind == "False" else ""
-        for x in st.kids[:-1] if st.kind == "assign" and t != "" else st.kids[:0]:
+        for x in st.kids[:-1] if st.kind == "assign" and t != "" else NOKIDS:
             if x.kind == "name" and x.s not in out:
                 out[x.s] = mk("name", t, st.line, [])
         if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[0].s not in out:
             out[st.kids[0].s] = st.kids[1]
-        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+        for kid in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else NOKIDS:
             if kid.kind == "block":
                 local_types(kid.kids, out)
             elif kid.kind == "except":
@@ -1164,7 +1237,7 @@ def all_imports(body: list[Node], out: list[str]) -> None:
 def imports_user(n: Node) -> bool:
     # does code n (also in its functions and classes) import a module that is not builtin, whose
     # code, or that of the modules it imports, may run there
-    for a in n.kids if n.kind == "import" else n.kids[:0]:
+    for a in n.kids if n.kind == "import" else NOKIDS:
         if n.s.startswith("from.") or not (builtin_import(n, a) or a.kids[1].s == "typing_extensions"):
             return True
     for k in n.kids:
@@ -1270,7 +1343,7 @@ def free_reads(n: Node, bound: dict[str, bool], out: dict[str, bool]) -> None:
         for p in n.kids[0].kids:
             free_reads(p.kids[1], bound, out)
             free_reads(p.kids[0], bound, out)
-        for x in n.kids[1:2] + n.kids[3:] if k == "def" else n.kids[:0]:
+        for x in n.kids[1:2] + n.kids[3:] if k == "def" else NOKIDS:
             if x.kind == "deco":
                 root = x.s[: x.s.find(".")] if "." in x.s else x.s
                 if root not in bound:
@@ -1334,7 +1407,7 @@ def comp_unbound(c: Node, names: list[str]) -> str:
     # only that clause's target or a later one binds, which CPython finds unbound (UnboundLocalError)
     bound: list[str] = []
     nm = target_unbound(c.kids[1], names, bound)
-    for x in c.kids[3:] if len(c.kids) > 3 and (c.kids[3].kind == "compfor" or c.kids[3].kind == "compif") else c.kids[:0]:
+    for x in c.kids[3:] if len(c.kids) > 3 and (c.kids[3].kind == "compfor" or c.kids[3].kind == "compif") else NOKIDS:
         if nm != "":
             break
         out: dict[str, bool] = {}
@@ -1634,7 +1707,7 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
             if nm not in sure:
                 closed[nm] = True
         return
-    for a in n.kids if n.kind == "import" else n.kids[:0]:
+    for a in n.kids if n.kind == "import" else NOKIDS:
         sure[a.s] = True
         if n.s.startswith("from.") or not (builtin_import(n, a) or a.kids[1].s == "typing_extensions"):
             user[a.s] = True
@@ -1653,10 +1726,10 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
             for nm in then:
                 sure[nm] = True
         return
-    for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else n.kids[:0]:
+    for k in n.kids if n.kind != "def" and n.kind != "class" and n.kind != "subclass" and n.kind != "lambda" else NOKIDS:
         import_reads(k, dict(sure) if k.kind == "block" and n.kind != "with" else sure, out, user, closed)
     first = n.kids[0].kids[0] if n.kind == "try" and len(n.kids[0].kids) > 0 else n
-    for a in first.kids if first.kind == "import" else first.kids[:0]:
+    for a in first.kids if first.kind == "import" else NOKIDS:
         # try: import m as x / ... (or from m import x): after the statement, x is bound unless the
         # import raised, which a read of it checks as it runs (Loader.fragile, Gen.modchk)
         sure[a.s] = True
@@ -1785,7 +1858,7 @@ def only_none(body: list[Node], name: str) -> bool:
             continue
         if stmt_binds(st, name) and not (st.kind == "assign" and nonexpr(st.kids[-1]) and assigns(st, name)):
             return False  # (also a, name = None, None)
-        for a in st.kids if st.kind == "import" else st.kids[:0]:
+        for a in st.kids if st.kind == "import" else NOKIDS:
             if a.s == name:
                 return False  # (import m as name, which stmt_binds() leaves out)
         for kid in st.kids:
@@ -1809,7 +1882,7 @@ def bind_count(body: list[Node], name: str) -> int:
             n += 1 if st.kind == "assign" else 2
         if has_kind(st, "walrus"):
             n += 2
-        for a in st.kids if st.kind == "import" else st.kids[:0]:
+        for a in st.kids if st.kind == "import" else NOKIDS:
             n += 2 if a.s == name else 0
         for kid in st.kids:
             if kid.kind == "block":
@@ -1830,10 +1903,10 @@ def binds_other(body: list[Node], name: str) -> bool:
     for st in body:
         if stmt_binds(st, name) or ((st.kind == "def" or st.kind == "class" or st.kind == "subclass") and st.s == name):
             return True
-        for a in st.kids if st.kind == "import" else st.kids[:0]:
+        for a in st.kids if st.kind == "import" else NOKIDS:
             if a.s == name:
                 return True
-        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else NOKIDS:
             if (k.kind == "block" and binds_other(k.kids, name)) or (k.kind == "except" and binds_other(k.kids[1].kids, name)):
                 return True
     return False
@@ -1853,7 +1926,7 @@ def has_finally(body: list[Node]) -> bool:
 def binds_as(body: list[Node], name: str) -> bool:
     # does an except clause in code body bind name (not in the functions and classes it defines)
     for st in body:
-        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else st.kids[:0]:
+        for k in st.kids if st.kind != "def" and st.kind != "class" and st.kind != "subclass" else NOKIDS:
             if (k.kind == "block" and binds_as(k.kids, name)) or (k.kind == "except" and (k.s == name or binds_as(k.kids[1].kids, name))):
                 return True
     return False
@@ -1924,3 +1997,111 @@ def shows_items(n: Node, name: str) -> bool:
         if shows_items(k, name):
             return True
     return False
+
+
+# Lazy numeric field locals (Gen.lazy_fields): a local x that reads a plain numeric field,
+# x = o.f, may share the field's object without a box until identity is observed.
+
+
+def lazy_sites(body: list[Node], reads: list[Node], wbs: list[Node]) -> None:
+    # the statements x = o.f (reads) and o.f = x (write-backs) of names x and o, in body and
+    # the blocks of its if and while statements, not those of for, with and try statements or
+    # of the functions and classes it defines
+    for st in body:
+        if st.kind == "assign" and len(st.kids) == 2:
+            t = st.kids[0]
+            v = st.kids[1]
+            if t.kind == "name" and v.kind == "attr" and len(v.kids) == 1 and v.kids[0].kind == "name":
+                reads.append(st)
+            elif t.kind == "attr" and len(t.kids) == 1 and t.kids[0].kind == "name" and v.kind == "name":
+                wbs.append(st)
+        elif st.kind == "if" or st.kind == "while":
+            for kid in st.kids[1:]:
+                if kid.kind == "block":
+                    lazy_sites(kid.kids, reads, wbs)
+
+
+def name_bits(n: Node, bits: dict[str, int]) -> int:
+    # the bits of the names of bits that code n mentions anywhere, read or bound
+    m = 0
+    pending = [n]
+    while len(pending) > 0:
+        x = pending.pop()
+        if x.kind == "name" and x.s in bits:
+            m = m | bits[x.s]
+        pending.extend(x.kids)
+    return m
+
+
+def lazy_targets(t: Node, bits: dict[str, int], acc: list[int]) -> None:
+    # an assignment target's bits: acc[0] those it binds, acc[1] those its other parts read
+    if t.kind == "name":
+        if t.s in bits:
+            acc[0] = acc[0] | bits[t.s]
+    elif t.kind == "tuple" or t.kind == "list" or t.kind == "starred":
+        for k in t.kids:
+            lazy_targets(k, bits, acc)
+    else:
+        acc[1] = acc[1] | name_bits(t, bits)
+
+
+def lazy_block(body: list[Node], bits: dict[str, int], out: int, brk: int, cont: int, lines: dict[int, list[Node]], masks: dict[int, list[int]], record: bool) -> int:
+    # the bits of the names live where body starts: read before they are assigned again on some
+    # path, out after body, brk at a break and cont at a continue (of the innermost loop). With
+    # record, each statement's own (lazy_stmt) are kept by its line: lines and masks
+    live = out
+    i = len(body) - 1
+    while i >= 0:
+        live = lazy_stmt(body[i], bits, live, brk, cont, lines, masks, record)
+        i -= 1
+    return live
+
+
+def lazy_stmt(n: Node, bits: dict[str, int], out: int, brk: int, cont: int, lines: dict[int, list[Node]], masks: dict[int, list[int]], record: bool) -> int:
+    # lazy_block for statement n. Assignments, if and while statements, returns, raises, breaks
+    # and continues are followed; any other statement keeps every name it mentions live, and
+    # every name live after it or where a break or continue in it goes. Recorded for n: the
+    # names live where it starts, then those live after it (masks[line][2j], [2j + 1])
+    k = n.kind
+    live = 0
+    if k == "block":
+        live = lazy_block(n.kids, bits, out, brk, cont, lines, masks, record)
+    elif (k == "assign" and len(n.kids) >= 2) or (k == "annassign" and len(n.kids) == 3):
+        acc = [0, 0]
+        for t in n.kids[:-1] if k == "assign" else [n.kids[0]]:
+            lazy_targets(t, bits, acc)
+        live = name_bits(n.kids[-1], bits) | acc[1] | (out & ~acc[0])
+    elif k == "if" and len(n.kids) == 3:
+        live = name_bits(n.kids[0], bits) | lazy_stmt(n.kids[1], bits, out, brk, cont, lines, masks, record) | lazy_stmt(n.kids[2], bits, out, brk, cont, lines, masks, record)
+    elif k == "while" and (len(n.kids) == 2 or len(n.kids) == 3):
+        after = out
+        if len(n.kids) == 3:
+            after = lazy_stmt(n.kids[2], bits, out, brk, cont, lines, masks, record)  # (else: where the test fails)
+        test = name_bits(n.kids[0], bits)
+        head = test | after
+        while True:
+            again = test | after | lazy_stmt(n.kids[1], bits, head, out, head, lines, masks, False)
+            if again == head:
+                break
+            head = again
+        if record:
+            lazy_stmt(n.kids[1], bits, head, out, head, lines, masks, True)
+        live = head
+    elif k == "return" or k == "raise":
+        live = name_bits(n, bits)
+    elif k == "break":
+        live = brk
+    elif k == "continue":
+        live = cont
+    elif k == "pass":
+        live = out
+    else:
+        live = out | name_bits(n, bits) | brk | cont
+    if record:
+        if n.line not in lines:
+            lines[n.line] = []
+            masks[n.line] = []
+        lines[n.line].append(n)
+        masks[n.line].append(live)
+        masks[n.line].append(out)
+    return live

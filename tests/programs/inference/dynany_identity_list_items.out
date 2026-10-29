@@ -1,0 +1,11 @@
+original True True True
+nan cardinality 2
+search True True 2 2
+copy True True True
+reverse True True
+mutate True True True
+pop True
+remove 3 0
+select True True
+iteration 2
+[exit 0]

@@ -49,7 +49,7 @@ from src.pystachy_compiler.analysis import (
     top_bindings,
     walrus_names,
 )
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, LINES, MODDUNDERS, RAW, dynamic_pragma, fail
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, short
@@ -62,6 +62,7 @@ from src.pystachy_compiler.specs import (
     CTYPES,
     GENERICS,
     GLUE,
+    INT_HELPERS,
     ITERS,
     JSONANY,
     MODNAMES,
@@ -80,7 +81,7 @@ from src.pystachy_compiler.specs import (
     VERSIONINFO,
     is_excname,
 )
-from src.pystachy_compiler.syntax import Node, comp_names, has_kind, mk, names_in
+from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, has_kind, mk, names_in
 from src.pystachy_compiler.utils import clone, int_fits, is_const
 
 
@@ -296,11 +297,12 @@ class Loader:
         # the main parser starts at file zero, and old opt-ins must not apply to new files.
         FILES.clear()
         DYNFILES.clear()
+        INTFILES.clear()
+        INTSPANS.clear()
         m = Mod("", path, "")
-        if dynamic_pragma(src):
-            DYNFILES[len(FILES)] = True
+        self.pragmas(src, len(FILES), 1)
         FILES.append(path)
-        m.body = Parser(Lexer(src, 1).file()).module()
+        m.body = self.parse_source(src, 1)
         tb_import(m.body)
         cm_methods(m.body, cm_names(m.body))
         self.prescan(m)
@@ -595,6 +597,8 @@ class Loader:
         self.mods[name] = m
         m.body = self.parse(path)
         del self.parsed[path]  # (m rewrites its tree: the file imported under another name is parsed again)
+        if name in INT_HELPERS and self.in_lib(path):
+            self.int_spans(m.body.kids, INT_HELPERS[name])
         self.prescan(m)
         r: list[Node] = []
         if self.init_raise(m, m.body.kids, r, True):
@@ -619,6 +623,16 @@ class Loader:
         self.order.append(m)
         return m
 
+    def int_spans(self, body: list[Node], names: list[str]) -> None:
+        # the lines of the definitions names among the top-level statements body of a module of lib/,
+        # whose ints promote where a module of the program opts in (specs.INT_HELPERS): each from its
+        # first line to the line before the next statement's, or to the last line of its file
+        for i in range(len(body)):
+            st = body[i]
+            if (st.kind == "def" or st.kind == "class" or st.kind == "subclass") and st.s in names:
+                last = body[i + 1].line - 1 if i + 1 < len(body) else (st.line // LINES + 1) * LINES - 1
+                INTSPANS.append([st.line, last])
+
     def in_lib(self, path: str) -> bool:
         # a file of Pystachy's own lib/ (the last directory of the module path)
         lib = self.dirs[-1] if len(self.dirs) > 0 else ""
@@ -635,12 +649,27 @@ class Loader:
         f.close()
         k = len(FILES)
         FILES.append(path[2:] if path.startswith("./") else path)
-        if dynamic_pragma(src):
-            DYNFILES[k] = True
-        self.parsed[path] = Parser(Lexer(src, k * LINES + 1).file()).module()
+        self.pragmas(src, k, k * LINES + 1)
+        self.parsed[path] = self.parse_source(src, k * LINES + 1)
         tb_import(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
         return self.parsed[path]
+
+    def pragmas(self, src: str, k: int, line: int) -> None:
+        # the opt-ins of file k, whose source is src: dynamic Any, and promoting ints
+        if dynamic_pragma(src):
+            DYNFILES[k] = True
+        if int_pragma(src):
+            if k in DYNFILES:
+                fail("a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet", line)
+            INTFILES[k] = True
+
+    def parse_source(self, src: str, line: int) -> Node:
+        # the module that source src, whose first line is line, holds; a module whose ints promote
+        # keeps the digits of a literal past 64 bits (Parser.exact_ints)
+        p = Parser(Lexer(src, line).file())
+        p.exact_ints = (line // LINES) in INTFILES
+        return p.module()
 
     def bindings(self, m: Mod) -> None:
         # the names m's top-level code binds (imports of user modules are added by imports())
@@ -935,7 +964,7 @@ class Loader:
                 for d in st.kids if st.kind == "class" else st.kids[0].kids:
                     if d.kind == "deco":
                         return False
-                for base in st.kids[1:] if st.kind == "subclass" else st.kids[:0]:
+                for base in st.kids[1:] if st.kind == "subclass" else NOKIDS:
                     if base.kind == "typeparams" or (base.kind == "name" and base.s == "object" and x.kinds.get("object", "") == ""):
                         continue
                     b = self.base_class(x, base)
@@ -1423,7 +1452,7 @@ class Loader:
                 out.extend(b.kids)
             else:
                 out.append(st)
-                for a in st.kids if st.kind == "import" and blk is not m.body else st.kids[:0]:
+                for a in st.kids if st.kind == "import" and blk is not m.body else NOKIDS:
                     if special_import(st, a) and a.s not in self.fsure:
                         self.fsure[a.s] = True
                         added.append(a.s)
@@ -1724,7 +1753,7 @@ class Loader:
             e = x.kids[-1] if x.kind == "assign" or x.kind == "expr" else x
             names = [e] if e.kind == "name" else e.kids if e.kind == "tuple" or e.kind == "list" else e.kids[:0]
             pure = pure and len(names) > 0
-            for t in x.kids[:-1] if x.kind == "assign" else x.kids[:0]:
+            for t in x.kids[:-1] if x.kind == "assign" else NOKIDS:
                 pure = pure and t.kind == "name"
             for nm in names:
                 if nm.kind != "name" and j == 0:
@@ -1750,7 +1779,7 @@ class Loader:
             return False
         for h in st.kids[1:]:
             catch = False
-            for x in (h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]]) if h.kind == "except" else h.kids[:0]:
+            for x in (h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]]) if h.kind == "except" else NOKIDS:
                 if x.kind == "omit" or (x.kind == "name" and x.s in ["NameError", "Exception", "BaseException"] and x.s not in m.rebound):
                     catch = True
                 elif x.kind != "name" or x.s not in PYBUILTINS or x.s in m.rebound:
@@ -2008,7 +2037,7 @@ class Loader:
                     seen[x.s] = True
                     if self.imports_mod(self.mods[x.s].body, name, seen, fns):
                         return True
-        for k in n.kids if fns or n.kind != "def" else n.kids[:0]:
+        for k in n.kids if fns or n.kind != "def" else NOKIDS:
             if self.imports_mod(k, name, seen, fns):
                 return True
         return False
@@ -2055,7 +2084,7 @@ class Loader:
                     msg = f"'from {t.name} import *' binds '{x}' to the submodule '{sub}' only if an import of it has run before, and Pystachy cannot tell whether one has (not supported)"
                     sure = False
                     for st in t.body.kids:
-                        for y in st.kids if st.kind == "uimport" else st.kids[:0]:
+                        for y in st.kids if st.kind == "uimport" else NOKIDS:
                             sure = sure or y.s == sub
                     k = m.kinds.get(x, "m:" + sub)
                     if sure and k == "m:" + sub:
@@ -2080,7 +2109,7 @@ class Loader:
         if x in t.fnglobal:
             return False
         for st in t.body.kids:
-            for y in st.kids if st.kind == "uimport" else st.kids[:0]:
+            for y in st.kids if st.kind == "uimport" else NOKIDS:
                 if y.s == t.name + "." + x:
                     return True
             names: dict[str, bool] = {}
@@ -2400,7 +2429,7 @@ class Loader:
         cat: list[int] = []
         flags: list[str] = []
         checks: list[str] = []  # each from-imported alias must exist in its source module too
-        for a in st.kids if infn else st.kids[:0]:
+        for a in st.kids if infn else NOKIDS:
             same = "b:" + a.kids[0].s if builtin_import(st, a) else "m:" + a.kids[0].s if st.s == "" and builtin_module(a.kids[1].s) else ""
             if a.s in self.fgl.get(self.curdef, {}) and (same == "" or m.kinds.get(a.s, "") != same):
                 # (CPython binds the module's global, which then names one module or another; but
@@ -2535,7 +2564,7 @@ class Loader:
                 b.mchk = checks[i]
                 binds.append(b)
         inits.s = " ".join(names)  # (the names the statement binds, for deftime())
-        for sub in inits.kids if self.intry > 0 else inits.kids[:0]:
+        for sub in inits.kids if self.intry > 0 else NOKIDS:
             if "." in sub.s:
                 self.trysubs[sub.s] = True
         if len(keep.kids) > 0:
@@ -2689,7 +2718,7 @@ class Loader:
                 nm = r.s.split(".")[0]
                 fail(what + ("is read here in between" if nm == name else f"'{nm}', which uses it, may run in between") + " (not supported)", r.line)
             c = st.kids[0] if st.kind == "subclass" else st
-            for dx in c.kids[3:] if st.kind == "def" else c.kids[1:] if st.kind == "class" or st.kind == "subclass" else st.kids[:0]:
+            for dx in c.kids[3:] if st.kind == "def" else c.kids[1:] if st.kind == "class" or st.kind == "subclass" else NOKIDS:
                 if dx.kind == "deco" and dx.s != "async" and (st.s in fns or (i == d and first_use(st, uses, False) is not None)):
                     fail(what + "a decorator here may run a function or class that uses it in between (not supported)", dx.line)
         return True
@@ -2868,17 +2897,14 @@ class Loader:
                     n.s = f"a def inside a function reads enclosing import '{root.s}', which may be unbound (not supported)"
                     n.kids = []
                     return
-            chks: list[str] = []
-            if root.kind == "name" and self.fragile_chk(m, root.s, loc) != "":
-                chks.append(self.fragile_chk(m, root.s, loc))
-            self.subchk = []
+            fc = self.fragile_chk(m, root.s, loc) if root.kind == "name" else ""
+            self.subchk.clear()  # (no list made at each read: few have a check)
             mod = self.qmod(m, n, loc)
-            chks.extend(self.subchk)
             r = n
             while r.kind == "attr":
                 r = r.kids[0]  # (m.C.k: the name qmod() made of m.C is what is read)
-            if len(chks) > 0 and (r.kind == "name" or r.kind == "str"):
-                r.mchk = ";".join(chks)
+            if (fc != "" or len(self.subchk) > 0) and (r.kind == "name" or r.kind == "str"):
+                r.mchk = ";".join(([fc] if fc != "" else []) + self.subchk)
             if mod != "":
                 n.kind = "badattr"
                 n.s = f"module '{mod}' cannot be used as a value"
@@ -2997,8 +3023,8 @@ class Loader:
     def fragile_chk(self, m: Mod, x: str, loc: dict[str, bool]) -> str:
         # the check (Node.mchk) of a read of name x in m, where an import in a try statement binds
         # it: its flag, x and whether it is a function's (L) or module code's (G); "" elsewhere
-        if x in loc:
-            return ""
+        if x in loc or len(self.fragile) == 0:
+            return ""  # (and no key made where no import is fragile)
         inf = x in self.fk
         key = f"{m.name} {self.fkey if inf else ''} {x}"
         return f"{self.fragile[key]} {x} {'L' if inf else 'G'}" if key in self.fragile else ""

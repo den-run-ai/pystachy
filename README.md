@@ -147,7 +147,7 @@ binary I/O with `io.BytesIO`.
 See [library coverage and port notes](lib/README.md) for supported APIs and remaining limits.
 The [CPython support map](docs/support-surface.md) diagrams the native core, bounded features
 and the compiler, runtime and IR costs of broader compatibility.
-There are also [13 third-party ports](ports/README.md), with scoped APIs and documented adaptations.
+There are also [14 third-party ports](ports/README.md), with scoped APIs and documented adaptations.
 The [compatibility audit](docs/reports/compatibility-updates.md) records measured coverage and blockers.
 
 For numerical work, the [float64 array example](examples/ndarray/README.md) provides
@@ -169,9 +169,19 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
   native `bytearray` and binary filesystem I/O remain unsupported. `io.BytesIO` is supported.
   See the [class rules](docs/language/typing.md#single-inheritance).
 - Dynamic `Any` remains experimental and opt-in. Unsupported cross-type comparison bodies
-  can skip user code, and numeric identity can change at remaining typed boundaries. Read the
+  can still skip user code outside the proven operation surface. Supported paths now include
+  finite missing-field writes, known helper calls and escapes, operand rebinding, inferred
+  getters and nested container comparisons with user callbacks. They preserve effects,
+  native storage and aliases within the [comparison acceptance matrix](docs/dynamic-any.md#operations).
+  [Iteration through Any](docs/dynamic-any.md#iteration) supports custom iterators,
+  ranges and boxable generators, with lazy advancement and preserved aliases.
+  Numeric identity still has limitations at some typed storage boundaries. Read the
   [dynamic contract and deviations](docs/dynamic-any.md#deviations) before enabling it.
-- Integers are checked 64-bit values; overflow raises `OverflowError`.
+- Ordinary integers are checked 64-bit values; overflow raises `OverflowError`. A module that
+  opts in to the experimental [promoting ints](docs/python-int.md) gets CPython's `int` in its
+  variables, arguments, returns, fields, tuples and generators and in lists, dicts and sets of
+  ints and of tuples of ints, while other containers keep 64-bit ints. The explicit
+  experimental [`mpz`](docs/mpz.md) type provides arbitrary-precision integer arithmetic.
 - Strings store UTF-8 with code-point lengths, indexing, slicing and search offsets; Unicode case mapping remains incomplete.
   Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)
   to flag byte-oriented operations on non-ASCII input.

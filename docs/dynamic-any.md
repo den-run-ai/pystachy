@@ -92,7 +92,7 @@ module that does not opt in. These annotation forms retain inference:
 program (`box: Box[Any] = Box(3)`: a specialization is its constructor call's), `*args: Any` and
 `**kwargs: Any` of an `__init__` (its class is a class template), the parameters of `__exit__`,
 which a `with` statement gives an exception class and an exception (no `Any` value holds one yet),
-and the return of `__iter__` and of a generator, whose objects no `Any` value holds yet either
+and a bare `Any` return annotation on `__iter__` or a generator, which retains its concrete iterator or yield-channel inference
 (`tests/programs/inference/dynany_inferred_annotations.py`, `tests/programs/inference/dynany_exit.py`,
 `tests/programs/inference/dynany_init_varargs.py`, `tests/programs/inference/dynany_iter_any.py`). `Annotated[Any, ...]` is `Any`
 (`tests/programs/inference/dynany_annotated.py`). The items of a display that hold an empty display (or
@@ -206,18 +206,105 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   object together, and a repeated NaN key or set item stays one entry even when a
   later item rebinds its name. Later items and hashing retain their evaluation order
   (`tests/programs/inference/dynany_identity_display_reads.py`).
+  Inferred starred list and runtime-length tuple displays also capture their numeric
+  items when their resulting dynamic storage can be determined before evaluation
+  (`tests/programs/inference/dynany_identity_inferred_stars.py`). This lookahead keeps
+  first-binding assignment expressions valid and does not change the display's inferred type.
+  Optional numeric locals and scalar-union locals containing ints or floats keep the
+  same lazy identity slots across assignments, narrowing and copies. Shared closure
+  cells retain and snapshot these identities too, including after the outer function
+  returns (`dynany_identity_joined_locals.py`, `dynany_identity_joined_cells.py`).
+  Optional and scalar-union globals also retain these objects, including imported typed
+  modules and from-import copies. Reads snapshot before callback rebinding, and their
+  box slots are collector roots (`dynany_identity_joined_globals.py`). Numeric class
+  attributes read through the class share a rooted box with their defining class,
+  including inherited attributes and constants imported from another module
+  (`dynany_identity_class_globals.py`). Numeric instance fields, including optional/scalar-union
+  fields, have companion box slots in the object's GC-scanned allocation. Stores retain the
+  source's box, and reads snapshot it before another operand can change the field. Defaults
+  read through an instance share the defining class's box until an instance assignment;
+  inherited fields keep the same companion slot through base-typed aliases. This also covers
+  dataclasses, NamedTuples, exception classes and class-template specializations
+  (`dynany_identity_fields.py`, `dynany_identity_field_defaults.py`,
+  `dynany_identity_field_kinds.py`). The raw numeric payload remains unboxed. A program that
+  uses dynamic `Any` adds one pointer slot per numeric field (including one reserved for an
+  unresolved `None` field), plus layout alignment, and reads/copies may materialize boxes.
+  Programs without dynamic `Any` retain their original class layouts. A read of a plain
+  numeric field (no property, method, `__getattr__` or `__getattribute__` in the class or a
+  subclass) through a local or parameter that only feeds arithmetic, a comparison, an index or
+  the old value of `o.f op= v` takes no snapshot. A local that copies such a field of a
+  parameter the function never rebinds (`i = self.pos`) shares the field's object without a
+  box: a runtime flag marks the sharing, and the field's slot keeps the object's box. Its first
+  read that is not such an operand gives the object its box in both slots, as the snapshot
+  would have. A statement that may run program code first does so for each sharing local that
+  a later statement may read, and ends the others' sharing. A store to the shared field of the
+  same object hands the local the field's slot; a write-back `self.pos = i` keeps a shared
+  field's slot, or shares the local's object from then on. Sharing starts only in the
+  function's own `if` and `while` blocks (not in loops whose test may run code, nor in `for`,
+  `with` or `try` statements), for one such local per field name, outside generators
+  (`dynany_identity_field_locals.py`, `tests/ir/dynany_field_locals.py`).
+  Typed numeric parameters, definition-time defaults and numeric returns preserve the
+  originating object, including calls into non-opt-in modules, closures, `Callable` values,
+  virtual methods and dynamic calls. Internal calls in a graph using dynamic `Any` carry a
+  companion box for numeric arguments and an output slot for a numeric result; arithmetic
+  still uses raw numbers. Defaults keep rooted global or closure-environment companions.
+  Numeric return values retain existing boxes and constants, while fresh computed results
+  defer boxing until observed. A computed argument (no variable, field, item, `Any` or literal
+  provenance) passes a null companion, which the parameter boxes where it first crosses; a
+  lone assignment of a call's result takes its object as a return does; and a local's last
+  read before it is assigned again (no later read in the statement, not live after it) hands
+  its object to an argument or a copy without boxing it (`dynany_identity_call_moves.py`).
+  A method whose body only computes with numbers, its receiver's plain fields and locals
+  holding the receiver's `bytes` or `str` fields joins the numeric-body proof below: its
+  unreturned numeric arguments are read as operands and passed without companions, and a call
+  of it runs no other code (`dynany_identity_method_proofs.py`). Argument snapshots precede
+  later argument side effects, and
+  returns keep their object across `finally` cleanup (`dynany_identity_call_args.py`,
+  `dynany_identity_call_defaults.py`, `dynany_identity_call_returns.py`,
+  `dynany_identity_call_indirect.py`, `dynany_identity_call_imports.py`,
+  `dynany_identity_call_edges.py`). Foreign C and CPython extension entry points retain
+  their native ABI; graphs without dynamic `Any` retain all ordinary calling conventions.
+  Typed `list[int]` and `list[float]` items retain their original objects through stores,
+  reads, iteration, copies, slices, repetition and reordering. Their raw numeric array keeps
+  its existing layout; a separately scanned companion array holds the item boxes in a program
+  graph using dynamic `Any`. Copies share those boxes, and rebinding an item replaces only
+  its own box. Searching, equality and ordering use Python's identical-item shortcut before
+  numeric comparison, including NaNs (`dynany_identity_list_items.py`,
+  `dynany_identity_list_mutations.py`, `dynany_identity_list_transfers.py`,
+  `dynany_identity_list_queries.py`). Unpacking and min/max selection retain the selected
+  object; sorting carries the companions through key callbacks and exception restoration
+  (`dynany_identity_list_selectors.py`, `dynany_identity_list_callbacks.py`). Native numeric
+  list producers establish one object per item before any sharing. This allocates a companion
+  pointer per capacity slot and materializes numeric boxes; graphs without dynamic `Any`
+  allocate no companion arrays. Proven numeric arithmetic and comparisons can read only the
+  raw payload: their numeric-list receivers must be plain names and their integer indices
+  must be inert expressions. Reads that escape through assignments, returns, identity tests,
+  dynamic operands or callbacks still retain their item objects. Foreign C list calls follow
+  the CPython FFI twin's copy-back
+  contract: the list remains the same object, while all its numeric items are replaced after
+  C returns, including read-only calls and calls using `ffi.at()` (`tests/ffi/c_list_identity.py`).
+  Integer-literal arithmetic whose operands and result fit int64 shares the module's
+  constant box: `999 + 1` is the same object as its `1000` literal. This covers `+`, `-`,
+  `*`, `//`, `%`, bit operations and bounded shifts/powers (counts from 0 through 63),
+  plus unary signs and inversion. Runtime operands and calls remain fresh objects;
+  invalid or overflowing operations retain runtime evaluation and errors
+  (`dynany_identity_folded_ints.py`). Other constant-folding forms remain outside this
+  identity guarantee, including float arithmetic and larger shift/power counts.
+  Union/optional numeric payload layouts remain unchanged; their companion boxes follow
+  representation-only conversions. Copies can materialize a box as they do for concrete locals.
   Comprehension targets have their own box slots, renewed for each iteration and
   restored to the enclosing scope after shadowing, including empty comprehensions
   and short-circuit reductions (`tests/programs/inference/dynany_identity_comprehensions.py`).
   Closed functions with explicit numeric parameters and numeric return types omit local box
-  slots when their entire body only uses scalar arithmetic, comparisons, control flow, `range`,
-  and numeric conversions. Functions proven to return only `None`, including inferred numeric
+  slots unrelated to a returned object's identity when their entire body only uses scalar
+  arithmetic, comparisons, control flow, `range`, and numeric conversions. A backward alias
+  proof retains slots and argument boxes for names that can reach a return unchanged;
+  arithmetic breaks that dependency. A separate numeric-body proof can omit unreturned
+  argument boxes through explicitly annotated numeric/union local storage. Functions proven to return only `None`, including inferred numeric
   specializations, may also omit them and print numeric
   values and literal strings through the unshadowed builtin, without keyword or expanded
   arguments (`tests/ir/dynany_identity_scalar_expressions.py`). Identity tests, `Any` storage, globals, containers, closures and
-  other calls prevent that proof (`tests/ir/dynany_numeric_locals.py`). This relies on the
-  existing typed numeric return boundary; extending identity preservation across that
-  boundary must revisit this proof. Any
+  other calls prevent that proof (`tests/ir/dynany_numeric_locals.py`). Any
   other value, such as an int computed there, is a new object, which its first crossing, copy
   or global or closure-cell read boxes. A float that `isinstance()` narrows an
   `Any` value to is that value's box again where it becomes one
@@ -248,6 +335,26 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   (`tests/errors/inference/dynany_store_display_typed.py`). Fresh lists that a builtin method returns
   (`str.split()`, `dict.items()` of an `Any` dict) are converted, since nothing else refers to
   them yet.
+- **Delegated generator channels**: `yield from` boxes compatible typed yields into
+  an `Any` yield channel and checks/unboxes `Any` yields into a compatible concrete
+  channel. Object and dynamic-container references keep their identity. Incompatible
+  native mutable-container layouts still reject; a value of the wrong runtime type raises
+  the same annotation `TypeError` as other typed/dynamic crossings
+  (`tests/deviations/dynany_generator_channel_check.py`).
+- **Fresh generator yields**: a direct call to a generator declared to yield `list[Any]`
+  can use a concrete `list[T]` yield channel when every yield is a fresh list display or a
+  direct `yield from` call that satisfies the same rule. The caller's generator annotation
+  or an enclosing `yield from` supplies that context. Each list is allocated in its requested
+  layout from the start; it is never copied or reinterpreted. Ordinary calls still yield
+  `list[Any]`, and the send and return channels retain their independent declarations.
+  Existing generators and stored lists cannot cross layouts this way
+  (`tests/programs/inference/dynany_generator_context.py`,
+  `tests/programs/inference/dynany_generator_context_protocol.py`). A bare return or falling
+  off a generator with an `Any` return channel supplies boxed `None`, including where the
+  return type is inferred after an earlier bare return
+  (`tests/programs/inference/dynany_generator_return_none.py`). An `Any` send channel
+  likewise receives boxed `None` from `next()` and loops; explicit `send()` values retain
+  their boxes (`dynany_generator_send_none.py`, `dynany_generator_send_protocol.py`).
 - **Between tuple types**: a tuple whose items one side holds as `Any` values and the other as
   typed ones converts item by item into a new tuple: a typed item is boxed where an `Any` item is
   declared (`tuple[int, str]` returned as `tuple[int, Any]`), and an `Any` item is checked and
@@ -262,6 +369,48 @@ box may hold an object whose `__eq__`, `__hash__` or `__repr__` runs the program
   `TypeError: expected int, got str` where CPython, which does not check annotations, would go
   on: the one kind of runtime error that CPython never raises, a [deviation](#deviations).
 
+## Iteration
+
+An `Any` value can hold a range, a builtin iterator, a user iterator or a generator
+whose yielded values are boxable. `iter()` preserves an iterator's identity and
+`next()` advances its original state; the default is evaluated before advancement.
+A `for` loop, membership fallback, `any()`, `all()` and reductions consume items as
+they arrive. Builtin iterators remain exhausted after their first exhaustion;
+user iterators may resume after raising `StopIteration`. `__contains__` takes
+precedence over iteration. A custom `__iter__` may return an iterator without its
+own `__iter__`, or a generator. `list()` and list extension request the source's
+available `__len__` after obtaining its iterator. Sequence-fast consumers such as
+`str.join()` and dictionary-pair conversion instead request the returned iterator's
+hint. TypeError declines a hint after its effects; negative lengths and other
+exceptions propagate. Inferred length results are checked before allocation, with
+a separate specialization that leaves ordinary typed `len()` rules unchanged.
+
+`reversed()` supports boxed lists, tuples, dictionaries, strings and ranges, and
+objects defining `__reversed__`. Native iterators retain their containers and
+observe mutations as they advance; range iteration uses constant storage even for
+ranges too large to materialize. Generator boxing retains the coroutine handle,
+without advancing or copying it. The original typed alias and the boxed alias
+therefore share advancement, cleanup and yielded mutable values.
+
+This remains a bounded protocol surface: legacy `__getitem__` iteration and the
+`__len__`/`__getitem__` reverse fallback are unsupported, as in typed code.
+`__length_hint__`, generator `send`/`throw`/`close` through `Any`, and generator
+`StopIteration.value` are not added here. A generator yielding aliased typed mutable
+containers cannot box them; use a boxable yield channel such as `list[Any]` from
+the start. `str.join()` and dictionary-pair conversion preserve a `TypeError`
+raised by user `__iter__` rather than replacing its message as CPython does.
+Explicit special-method annotations still follow the typed declaration rules.
+If an iteration or length method's body cannot compile in the supported subset,
+calling it through `Any` raises an explicit unsupported-operation error; merely
+boxing an unrelated instance does not invoke that body.
+
+The differential fixtures `dynany_iteration.py`, `dynany_iter_builtins.py`,
+`dynany_iter_range.py`, `dynany_iter_errors.py`, `dynany_iter_object.py`,
+`dynany_iter_sequence_fast.py`, `dynany_iter_key.py`, `dynany_iter_unused.py` and
+`dynany_generator_*.py` exercise these paths; the separate
+[iteration benchmark](../bench/smoke/README.md)
+checks laziness and checksums before timing.
+
 ## Operations
 
 Arithmetic, comparisons, truth, `is`, `in`, indexing, slicing (of a `str`, list or tuple, with
@@ -270,7 +419,7 @@ receiver tested, the step first; a dict's slice hashes the slice, then raises it
 item assignment and deletion, `len()`, `str()`, `repr()`, `int()`, `float()`, `bool()`, `abs()`, `hash()`,
 `id()`, `sum()` (also of a generator), `sorted()`, `min()`, `max()`, `list()`, `str.join()`,
 `dict.update()` (of a dict or of pairs, each an iterable of two), f-strings and `format()`,
-iteration, unpacking, augmented assignment, `type(x).__name__`,
+iteration, `iter()`, `next()` (including a default), `reversed()`, unpacking, augmented assignment, `type(x).__name__`,
 `__qualname__` and `__module__`, and `type(x) is C` and `type(x) == type(y)` (exact types: a
 bool's is no int's, and every function's is `function`; a typed `y`'s by the value it holds,
 `NoneType` for a `list[int] | None` that is `None`: `tests/programs/inference/dynany_type_is_value.py`,
@@ -279,6 +428,19 @@ results and errors: `int / int` and `2 ** -1` give floats, `True & False` is a b
 `int`/`float` comparisons are exact, and the error messages are CPython's
 (`TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
 `TypeError: can only concatenate str (not "int") to str`, `KeyError: 'k'`, ...).
+
+`int()` and `float()` call a boxed object's `__int__` and `__float__`, respectively,
+falling back to `__index__` only when that method is absent. Return values are checked
+before use, and exceptions propagate without trying the fallback. Builtin list, tuple and
+str indexing and slice bounds call a boxed index object's `__index__`; list assignment and
+deletion do too. Dictionary keys and user-defined `__getitem__` arguments retain the original
+object. Slice conversion preserves receiver validation and step/start/stop ordering
+(`tests/programs/inference/dynany_numeric_protocols.py`,
+`tests/programs/inference/dynany_index_protocol.py`). These conversions keep the existing
+signed-64-bit dynamic integer representation; typed object conversions remain unsupported.
+An imported promoting-int method's integer result narrows at that existing boundary.
+Invalid typed-container or `None` members of a union result raise only when returned
+(`dynany_numeric_union_protocol.py`, `dynany_numeric_promoted_protocol.py`).
 
 `abs()` calls a boxed object's `__abs__` method, including inherited methods. Builtin bools
 give ints, nonnegative ints keep their identity, and floats give new float objects with a
@@ -327,32 +489,85 @@ else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `_
 (`tests/programs/inference/dynany_eq_any_param.py`). One whose parameter has no annotation, or
 `object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
 list compared with an `Any` value's field), the compiler also tries the body against the
-concrete classes of boxed operands, behind exact `DynType` guards. This bounded adapter requires
-the operand to be used exclusively through direct instance fields. Present fields must have the
-same types as the annotated operand class (or the receiver class for an unannotated parameter),
-or both types must be closed builtin value trees: numbers, strings, `None`, and lists, dicts
-or tuples of these, including optional and union members. A field with a different type
-may only appear as a direct `==` or `!=` operand against another closed builtin instance
-field. Arithmetic, indexing, calls and other uses of that field retain the fallback.
-The new allowance also excludes top-level union and variable-length tuple operands,
-whose existing comparison coercions can reject a different field type; these types
-may still occur inside a supported container field.
-Equality reads each tree with
-its own descriptor, so differently typed empty containers can be equal and numeric leaves
-retain exact comparison. It neither converts nor copies their storage. Existing tuple-shape
-conversion restrictions and unboxed numeric identity limitations still apply.
-A missing field read raises `AttributeError` only when execution reaches that read, preserving
-earlier effects and exceptions and branches that never read it. This uses a separate concrete
-specialization and does not change an ordinary typed call. Properties, custom attribute lookup,
-missing-field writes, whole-operand uses, nested scopes and unsupported syntax retain the fallback.
-A canonical field-typed body is checked once; unsupported field types and uses of differently
-typed fields are filtered before specialization, avoiding a failed whole-program restart per
-boxed class. A concrete body that needs an unsupported operation still retains the fallback. Typed container fields keep
-their existing storage and aliases: these adapters neither copy nor box their items
-(`tests/programs/inference/dynany_cmp_concrete_body.py`, `dynany_cmp_builtin_fields.py`
-and `dynany_cmp_incompatible_body.py`). Missing reads, their evaluation order,
-and reflected comparisons are covered by `tests/programs/inference/dynany_cmp_missing_fields.py`,
-`dynany_cmp_missing_effects.py` and `dynany_cmp_missing_order.py`. Adapters are emitted only when the generic
+concrete classes of boxed operands, behind exact `DynType` guards. The adapter proves
+field uses and known helper/alias flows before specializing: the receiver and operand retain
+their actual layouts, including captured references and supported rebinding. The proof does
+not replace the emitted helper calls or getter bodies, so their effects and exceptions keep
+their execution order. A canonical body is checked once; unsupported
+shapes are filtered before trying each boxed class. Failed concrete attempts have separate
+retry keys and cannot remove a working typed call.
+
+The maintained acceptance matrix is deliberately narrower than arbitrary Python method bodies:
+
+| Comparison-body operation | Supported boundary and regression |
+| --- | --- |
+| Closed builtin field equality | Numbers, strings, `None`, lists/dicts, unions and fixed/variadic tuples use separate descriptors; no source storage conversion (`dynany_cmp_builtin_fields.py`, `dynany_cmp_union_fields.py`). |
+| Set equality | Matching element layouts or provably disjoint builtin key trees, including tuple keys; set/frozenset pairs (`dynany_cmp_scalar_sets.py`, `dynany_cmp_tuple_sets.py`). |
+| Arithmetic and indexed comparisons | Numeric expressions, list repetition, fixed-tuple concatenation and fresh mixed-list concatenation, including `len` and indexing of the result (`dynany_cmp_mixed_list_arithmetic.py`). |
+| Definitely invalid builtin operations | Exact builtin operand pairs evaluate normally, then raise CPython's `TypeError` at the invalid arithmetic, unary, ordering or indexing operation; catches, cleanup and earlier errors retain their order (`dynany_cmp_invalid_operations.py`, `dynany_cmp_invalid_cleanup.py`). User protocols and unsupported valid operations are not reclassified. |
+| Mixed-list element equality | Scalar, boxed or native class elements retain identity-first comparison and reload lengths after callbacks; nullable class elements and reflected methods are respected (`dynany_cmp_mixed_list_items.py`). Guarded adapters require compatible declared leaf methods, not arbitrary generic leaf bodies or unsupported subclass layouts. |
+| Nested container equality | List, tuple and dict trees recursively compare their existing native values, including class callbacks and mixed native/boxed leaves (`dynany_cmp_nested_lists.py`, `dynany_cmp_nested_tuples.py`, `dynany_cmp_nested_dicts.py`, `dynany_cmp_nested_dispatch.py`). Dict key lookup retains stored hashes, identity-first matching and callback order, and checks mutations before reusing entries (`dynany_cmp_nested_object_keys.py`, `dynany_cmp_nested_key_mutation.py`). |
+| Nested object fields | List/dict/tuple indexing and nested field/property reads lead to supported scalar or builtin-container comparisons without changing object layouts (`dynany_cmp_nested_fields.py`). |
+| Properties | Annotated getters and opt-in getters using ordinary native return inference, including local aliases, helper calls, branches, arithmetic and `try`/`finally`; actual calls retain effects, exceptions and aliases (`dynany_cmp_getter_bodies.py`, `dynany_cmp_getter_arithmetic.py`). The getter body must compile for its concrete receiver. |
+| Helpers and escapes | Known module/local helpers and captured operands retain their concrete origins; recursive and mutually recursive calls are supported when their finite origin mapping can be proved. Saving the object to an `Any` global or appending to a global `list[Any]` retains identity (`dynany_cmp_local_helpers.py`, `dynany_cmp_recursive_helpers.py`, `dynany_cmp_global_escape.py`, `dynany_cmp_helper_escapes.py`). |
+| Helper results | A proven helper's unique final return can supply an operand or its field/container/property value for a later comparison or mutation. Local aliases and supported `try`/`finally` regions retain the original calls, first exceptions and cleanup (`dynany_cmp_helper_results.py`, `dynany_cmp_helper_result_cleanup.py`). |
+| Missing reads | Raise `AttributeError` at the executed read, including stable aliases and captured operands; earlier effects, first exceptions, cleanup and untaken branches are preserved (`dynany_cmp_missing_captures.py`). |
+| Missing writes | Literal fields used by proven comparisons reserve native storage only on boxed candidate classes; assignment flags preserve absence until the first store. Aliases, inheritance and compatible closed-union storage retain original object identity; slots/frozen objects raise at the store after the RHS runs (`dynany_cmp_missing_write*.py`). |
+| Operand rebinding | Sequential rebinding can preserve observed aliases and escapes. Supported branches and loops select native reference-union members without changing either object's layout; field/property reads, assignments and augmented setters run on the selected object (`dynany_cmp_observed_rebinding.py`, `dynany_cmp_control_rebinding.py`, `dynany_cmp_rebinding_getters.py`, `dynany_cmp_rebinding_stores.py`). Existing native fields retain their store contract. |
+| Control flow and mutation | Existing loops, assertions, context managers and cleanup remain supported; differing list/dict/set fields may call `clear()` before a supported comparison. |
+
+Fixture names in the table are under `tests/programs/inference/`. Eligibility proves the
+comparison consumer as well as each input, following known helper results and native getter
+return inference. Unknown call targets and arbitrary stores into annotated locals are not
+inferred by this proof. New helper-result aliases within a protected `try` body are supported
+when handlers, cleanup and following statements do not read those aliases, and the protected
+body does not rebind an existing alias, receiver or operand. More general branch/exception
+alias merges remain outside this proof. Source containers retain storage and aliases.
+Mixed-list `+` in an opt-in module allocates a fresh `list[Any]` only when the two layouts
+cannot use the existing native concatenation path and every item can be boxed safely.
+Numeric item identity and mutable item aliases survive; typed nested containers and typed
+variable-length tuples are not copied into boxes.
+
+Still outside this proof: arbitrary runtime-name field creation, helper or alias flows whose
+operand origins cannot be resolved, and native bodies or layout pairs without a supported
+operation. The proof also has a size bound. It projects a helper's body once per binding state
+and shares that body between calls in the same state, but still counts it at every call. More
+than 4,096 bodies, or helpers nested more than 16 calls deep, exceed the bound. Differing
+unsupported `NamedTuple` element layouts and equality between
+`list[bytes]` and `list[Any]` retain their explicit rejections
+(`tests/errors/inference/dynany_cmp_mixed_namedtuple_lists*.py`,
+`tests/errors/inference/dynany_list_bytes_boxed_eq.py`,
+`tests/errors/inference/dynany_list_boxed_bytes_eq.py`). Reserved fields use
+shared compilation retries across discovered candidates; they do not change an
+existing field's type or reinterpret source containers. Multiple compatible stored layouts
+use a closed union, not a widened container. Immutable objects retain assignment-time
+errors. Descendants that already declare a same-named field/property retain their native
+layout; hidden base storage preserves the inherited physical prefix. Direct base-typed access
+to a newly created field raises explicit `TypeError` when the concrete subclass shadows it;
+narrow to that concrete class before the access
+(`tests/deviations/dynany_cmp_field_shadow.py`). Unknown field types remain outside this proof.
+Statically named writes can introduce fields absent even from the comparison's own class;
+the compiler records the actual RHS type, including computed results and successive values
+of different native layouts (`dynany_cmp_missing_write_computed.py`). Specialized generic
+peer classes reserve the same fields before their layouts are fixed, and constructor calls
+sharing one original layout share their reservation hints (`dynany_cmp_missing_write_template.py`).
+An outside typed read of a wholly undeclared computed field can still be rejected before
+the comparison body discovers it; declare the field for typed consumers, or read a boxable
+value through `Any`. This is an explicit rejection, not a comparison fallback.
+
+`vars()` and `__dict__` keep their original order and value types while all reserved
+fields are unassigned. Peer classes imported from ordinary typed modules are eligible
+when a dynamic caller boxes them; their existing fields and methods keep their types
+(`dynany_cmp_missing_write_import.py`). After one of these fields is created, these dictionary consumers
+raise an explicit `TypeError` until runtime insertion order is supported (#486), including
+deferred text conversion; `hasattr` and `dir` use the normal assignment flags. Iteration
+already in progress retains its dictionary-size mutation check. This boundary is recorded
+in `tests/deviations/dynany_cmp_field_reflection.py`.
+Custom `__getattr__`/`__getattribute__` methods remain explicit compile-time rejections,
+not new supported lookup paths. This matrix does not establish a complete comparison
+contract or implement the broader operation-table design in #803.
+
+Adapters are emitted only when the generic
 dynamic body failed, and follow classes discovered by later dispatcher generation. Failed
 concrete attempts have separate `Gen.xnot` keys, so they do not suppress a working adapter or
 typed call (`tests/programs/inference/dynany_eq_template.py`). A normal instance comparison method with
@@ -407,35 +622,46 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
   [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
+- A comparison operand rebound across control flow keeps either object's native field
+  storage. An executed store of `list[int]` into the original operand's `list[str]`
+  field raises the typed-boundary `TypeError` after evaluating its value and target;
+  the same check applies to a selected property's typed setter parameter before its
+  body runs. CPython instead accepts these values. An untaken incompatible store does not block
+  a valid store into the rebound receiver. Existing containers and aliases retain
+  their layouts (`tests/deviations/dynany_cmp_rebinding_native_store.py`).
 - A cross-type comparison method whose body cannot compile for an `Any` operand and falls
   outside the supported guarded concrete adapter still does
   not run with that operand: the comparison is identity's, or `TypeError` for an ordering, where
   CPython runs the method, whose body may give another result or raise another error
-  (`tests/deviations/dynany_cmp_uncompiled_body.py`, whose operand has an incompatible typed
-  set field). Closed builtin container-field comparisons and missing-field reads now execute
-  through guarded concrete adapters. Concrete operand annotations alone no
+  (the comparison acceptance matrix above defines the proven cases). Supported helper calls,
+  escapes and returned aliases, native operand rebinding, inferred getters, nested container
+  callbacks and finite literal missing-field writes are covered by that matrix. Unknown
+  helper/alias origins and unsupported native body or layout pairs still need further work,
+  and a proof past its size bound falls back in the same way
+  (`tests/deviations/dynany_cmp_proof_bound.py`). Concrete operand annotations alone no
   longer suppress normal instance comparison methods; the remaining unsupported-body fallback
-  is a correctness gap tracked by #803, not a stable comparison contract.
-- An object is not iterable through an `Any` value yet (iteration of objects is under
-  [next steps](#next-steps)): a `for` loop over one, and a pair of `dict.update()` that is one,
-  raise `TypeError` where CPython calls its `__iter__` (`tests/deviations/dynany_iter_object.py`).
+  is a correctness gap tracked by #803, not a stable comparison contract
+  (`tests/deviations/dynany_cmp_uncompiled_body.py`).
 - `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
   as the container's item type, raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
 - An int or float of typed code that no variable's box slot holds is a new object where it
-  becomes an `Any` value, where CPython's names, containers and classes hold one object: an
-  argument or a parameter's default value (the parameter receives a new object), a return
-  value, an item of a typed container, a typed field or class variable, and the name
-  that `from m import x` binds. So is an expression
-  of literals, which CPython's compiler folds into a constant (`999 + 1` is the object of the
-  literal `1000` there) (`tests/deviations/dynany_identity_boundary.py`). Displays
-  whose dynamic item storage is known before evaluating their items preserve the
-  int- or float-typed binding objects; this does not change typed container storage
-  or calling conventions. Numeric locals whose inferred storage joins different
-  types can still lose identity in displays. An inferred starred display that discovers dynamic storage only
-  after evaluating its items can still split repeated reads before rebinding:
-  `[x, *dynamic_items, x, (x := value)]`. An explicit `list[Any]` destination avoids
-  this remaining display case.
+  becomes an `Any` value, where CPython's names, containers and classes hold one object: a
+  numeric item of a typed tuple, dict or set, including typed variadic argument tuples,
+  or of a typed list whose item type is optional or a union (`list[float | None]`,
+  `list[int | float]`),
+  or a typed numeric generator's yielded item (`Iterator[float]`, for example).
+  Yielding into dynamic item storage (`Iterator[Any]`) retains the source box.
+  The typed-tuple case remains in `tests/deviations/dynany_identity_boundary.py`;
+  typed numeric lists now retain their item objects as described above.
+  Numeric optional/scalar-union locals, closure cells, globals, instance fields and class
+  attributes retain their identity. Module-level and function-local from-import copies
+  retain the source global's object, including imports in non-opt-in functions.
+  Constant-folding forms beyond the
+  bounded integer arithmetic above also remain gaps. Starred displays capture numeric objects when their dynamic
+  result can be inferred before evaluation, or an already typed expansion supplies
+  dynamic items. Displays whose element types depend on earlier first bindings
+  within that same expression can still need an explicit `list[Any]` destination.
 - A function value prints as `<function>`; builtin functions and methods (`len`, `"".join`)
   cannot become `Any` values yet.
 - Calls of `Any` values and their methods take positional and keyword arguments, and what a
@@ -469,21 +695,20 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   (`tests/programs/inference/dynany_namedtuple.py`), but it is no sequence there: `len()`, indexing and
   iteration raise `TypeError`, and an object of another NamedTuple class compares with it by
   identity (an ordering raises `TypeError`), where CPython compares their fields.
-- An object is not iterable through an `Any` value yet: `for`, `list()` and `in` (where its
-  class has no `__contains__`) raise `TypeError` instead of calling `__iter__`. `int()` and
-  `float()` of an object raise `TypeError` instead of calling `__int__`, `__index__` or
-  `__float__`.
 - A static or class method read through an `Any` value without a call raises `AttributeError`
   (typed code rejects a static method as a value at compile time), and so does a call of a
   property's value (`x.p(...)`). A field's value is called as a function value is.
-- Assigning an attribute that the object's class does not have raises `AttributeError` (a
-  class's fields are fixed), as for typed objects.
+- Outside the proven literal comparison writes, assigning an attribute that the object's
+  class does not have raises `AttributeError` (the native layout remains fixed).
+  `vars()` and `__dict__` after a comparison-created field raise explicit `TypeError`
+  (`tests/deviations/dynany_cmp_field_reflection.py`); general late-field insertion order
+  remains unsupported (#486).
 - `set`, `bytes` and exception objects, and typed containers other than tuples, cannot become
   `Any` values yet.
 - Rejected at compile time where an argument is an `Any` value: `divmod()`, `round()`,
   `chr()`, `ord()`, `bin()`, `hex()`, `oct()`, `dict()`, `tuple()` (`tuple(list(x))` works),
-  `reversed()`, `iter()`, `next()`, `getattr()`, `hasattr()`, `setattr()` and `del` of an
-  attribute.
+  `getattr()`, `hasattr()`, `setattr()` and `del` of an attribute. The supported forms of
+  `iter()`, `next()` and `reversed()` are described in [Iteration](#iteration).
 
 ## Measurements
 
@@ -555,7 +780,8 @@ lines.
   allocation of every alias of a container that may flow into `Any` storage.
 - **Calls**: an `Any` value unpacked into a call's arguments, through a generic binding entry;
   builtin functions as values; `type(x)` as a class object.
-- **Protocols**: iteration of objects (`__iter__`), `__int__`/`__index__`/`__float__`, and the
+- **Protocols**: legacy sequence iteration through `__getitem__`, reverse iteration through
+  `__len__`/`__getitem__`, `__length_hint__`, and the
   builtins listed under [deviations](#deviations) that do not take `Any` values yet.
 - **Guarded variants and inline caches** only where measurements justify them (#392): a
   dispatcher with one dominant case is a candidate for a guarded direct call.

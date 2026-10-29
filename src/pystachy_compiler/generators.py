@@ -12,9 +12,11 @@ docs/internals.md#generators.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import closure_free, comp_shared, comp_unbound
+from src.pystachy_compiler.diagnostics import int_program
 from src.pystachy_compiler.ir import Exit, FnInfo, Ins, IterArg, SeqStart, Try, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
+    BIG,
     EXCBASES,
     GENCLEAN,
     GENCLOSEC,
@@ -24,14 +26,16 @@ from src.pystachy_compiler.specs import (
     GENNAME,
     GENNEW,
     GENRET,
+    GENRETP,
     GENRUN,
     GENSEND,
     GENSTATE,
     GENTHROWC,
+    GENVALP,
     exc_derives,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, has_kind, made_var, mk, names_in
-from src.pystachy_compiler.utils import gelem, gsend, is_gen, typestr
+from src.pystachy_compiler.utils import gelem, gsend, is_gen, is_list, typestr
 
 
 def with_yield(body: list[Node]) -> bool:
@@ -155,6 +159,29 @@ def comp_clauses(c: Node, body: list[Node], inline: bool) -> list[Node]:
         else:
             body = [mk("if", "", line, [x.kids[0] if x.kind == "compif" else x, inner, mk("block", "", line, [])])]
     return body
+
+
+def fresh_list_yields(n: Node) -> bool:
+    # A yield context may choose a fresh list's layout before it exists. Existing
+    # objects must keep their layout and aliases; nested functions have their own
+    # callers. A forwarding yield-from call checks its callee by the same rule.
+    if n.kind == "yield":
+        return len(n.kids) == 1 and ((n.s != "from" and n.kids[0].kind == "list") or (n.s == "from" and n.kids[0].kind == "call"))
+    for k in n.kids:
+        if k.kind not in ["def", "class", "subclass", "lambda"] and not fresh_list_yields(k):
+            return False
+    return True
+
+
+def fresh_yield_context(f: FnInfo, want: str) -> bool:
+    # Generator[list[Any], S, R] -> Generator[list[T], S, R] only for fresh
+    # yielded displays, allocated directly in the requested storage. This is a
+    # specialization of a call, never a conversion of an existing generator/list.
+    if not f.gen or not is_gen(f.ret) or not is_gen(want) or "?" in want:
+        return False
+    if gelem(f.ret) != "list[dyn]" or not is_list(gelem(want)) or gelem(want) == "list[dyn]" or gsend(f.ret) != gsend(want):
+        return False
+    return fresh_list_yields(f.orig.kids[2] if f.pending else f.node.kids[2])
 
 
 def gen_gen_declare(self, f: FnInfo, d: Node) -> str:
@@ -374,7 +401,9 @@ def gen_gen_ret(self, v: Val) -> None:
     # the generator being compiled finishes, returning v: its final suspend
     self.gen_unhandle()
     i = Ins("gen.ret", "", "")
-    if v.t != "None":
+    if v.t == BIG:
+        i.a = [Val(self.big_lo(v).v, "%slot"), Val(self.big_hi(v).v, "%ptr")]  # (GENRETP)
+    elif v.t != "None":
         i.a = [Val(self.to_slot(v), "%slot")]
     self.put(i, 2)
     self.term = True
@@ -442,8 +471,9 @@ def gen_gen_cleanup(self) -> int:
     return 0
 
 
-def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "") -> None:
-    # the generator being compiled yields the value in slot, then goes on where it is resumed.
+def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
+    # the generator being compiled yields the value in slot (with hi, the pointer of an int in a
+    # program where a module opts in to promoting ints: gen_slots), then goes on where it is resumed.
     # k: closing it here runs code of its (gen_cleanup), so a close raises GeneratorExit here,
     # having closed sub first, the generator a yield from delegates to (or none: Val("", "")):
     # what closing sub raises is raised here (PEP 380). In a program that uses throw()
@@ -456,7 +486,7 @@ def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "") -> None
     self.gen_unhandle()
     res = self.label()
     i = Ins("gen.yield", "", "")
-    i.a = [Val(slot, "%slot")]
+    i.a = [Val(slot, "%slot")] + ([Val(hi, "%ptr")] if hi != "" else [])
     i.k = k
     i.b = [res]
     self.put(i, 2)
@@ -507,9 +537,16 @@ def gen_yield_value(self, n: Node) -> Val:
     if self.term:
         return Val("undef", t)
     if not self.gproto:
-        return Val("null", t)  # (a program without send(): next() and its loops resume it)
+        # next() and loops send None: dynamic storage needs its box, not null.
+        return Val(self.rtdata("pys_dyn_none_box") if t == "dyn" else "null", t)
     p = self.gen_promise(Val("", ""))
-    return self.from_slot(self.mload("int", self.maddr("int", p, str(GENSEND))), t)
+    v = self.from_slot(self.mload("int", self.maddr("int", p, str(GENSEND))), t)
+    if t == "dyn":
+        # next()/throw() clear the shared send slot to zero. An explicit send()
+        # has already boxed its argument; only the implicit None needs boxing.
+        empty = self.ptr_cmp("==", v, Val("null", "dyn")).v
+        return Val(self.select(empty, Val(self.rtdata("pys_dyn_none_box"), "dyn"), v), "dyn")
+    return v
 
 
 def gen_yield_stmt(self, n: Node) -> None:
@@ -528,14 +565,15 @@ def gen_yield_stmt(self, n: Node) -> None:
             self.err(f"cannot infer what {short(f.name)}() yields from an empty {typestr(v.t)}; annotate it -> Iterator[T]")
         y = v.t
         f.ret = self.gen_type(y, f.gsend)
-    elif v.t != y:
+    elif v.t != y and not (v.t == BIG and y == "int"):
         v = self.coerce(v, y)
     if dead:
         # (return v; yield: the yield makes a generator function, which never suspends there,
         # so the code after it is not reached either: not an end without a value, gen_end)
         self.unreachable()
         return
-    self.gen_suspend("0" if y == "None" else self.to_slot(v), self.gen_cleanup(), Val("", ""))
+    w = ["0", ""] if y == "None" else self.gen_slots(v, gelem(f.ret))
+    self.gen_suspend(w[0], self.gen_cleanup(), Val("", ""), "", w[1])
 
 
 def gen_yield_from(self, x: Node) -> Val:
@@ -567,7 +605,7 @@ def gen_yield_from(self, x: Node) -> Val:
         self.hidden_loop(mk("for", "", x.line, [it, x, mk("block", "", x.line, [mk("expr", "", x.line, [mk("yield", "", x.line, [mk("name", "__yf", x.line, [])])])])]), ["__yf"], ["__yf"])
         return Val("null", "None")
     self.gencall = ""
-    v = self.expr(x, "")
+    v = self.expr(x, self.gen_type(y, f.gsend) if y != "" and self.dyn_policy(x.line) else "")
     callee = self.gencallf if v.v == self.gencall and self.gencall != "" else None
     if not is_gen(v.t):
         self.yield_from_iter(typestr(v.t))
@@ -578,7 +616,8 @@ def gen_yield_from(self, x: Node) -> Val:
     if y == "":
         y = t
         f.ret = self.gen_type(y, f.gsend)
-    if t != y and not self.widens(t, y):
+    dynamic = (y == "dyn" and self.dyn_boxable(t) == "") or (t == "dyn" and self.dyn_unboxable(y))
+    if t != y and not self.widens(t, y) and not dynamic:
         self.err(f"{short(f.name)}() yields {typestr(y)}, but yield from delegates to a generator that yields {typestr(t)}")
     if self.gproto:
         return self.yield_from_proto(v, t, y, callee)
@@ -587,17 +626,14 @@ def gen_yield_from(self, x: Node) -> Val:
     self.br(head)
     self.place(head)
     p = self.gen_next(v, done)
-    s = self.mload("int", p)
-    if t != y:
-        s = self.to_slot(self.coerce(self.from_slot(s, t), y))
-    self.gen_suspend(s, 1 if self.eh else 0, v if self.eh else Val("", ""))
+    w = self.gen_words(p, t, y, v if callee is not None else None)
+    self.gen_suspend(w[0], 1 if self.eh else 0, v if self.eh else Val("", ""), "", w[1])
     self.br(head)
     self.place(done)
     r = callee.gret if callee is not None else ""
     res = Val("null", "None") if r == "None" else Val("", "")
     if r != "" and r != "None":
-        pr = self.gen_promise(v)
-        res = self.from_slot(self.mload("int", self.maddr("int", pr, str(GENRET))), r)
+        res = self.gen_returned(v, r)
     if callee is not None:
         self.gen_drop(v)  # (it has finished: destroyed, LLVM may put its frame in this one's)
     return res
@@ -614,6 +650,7 @@ def gen_yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) ->
     if fs != "None" and gsend(v.t) != fs:
         self.err(f"{short(f.name)}() takes {typestr(fs)} from send(), which yield from sends on to a generator that takes {typestr(gsend(v.t))}: annotate them with the same send type")
     ys = self.alloca("int", "")
+    yh = self.alloca("%ptr", "") if y == "int" and int_program() else ""  # (the pointer: gen_slots)
     head = self.label()
     done = self.label()
     susp = self.label()
@@ -623,13 +660,10 @@ def gen_yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) ->
     p = self.gen_next(v, done)
     if fs != "None":
         self.mstore("int", "0", self.maddr("int", p, str(GENSEND)))  # (taken where v resumed)
-    s = self.mload("int", p)
-    if t != y:
-        s = self.to_slot(self.coerce(self.from_slot(s, t), y))
-    self.mstore("int", s, ys)
+    self.gen_keep(self.gen_words(p, t, y, v if callee is not None else None), ys, yh)
     self.br(susp)
     self.place(susp)
-    self.gen_suspend(self.mload("int", ys), 1 if self.eh else 0, v if self.eh else Val("", ""), thrown)
+    self.gen_suspend(self.mload("int", ys), 1 if self.eh else 0, v if self.eh else Val("", ""), thrown, self.mload("%ptr", yh) if yh != "" else "")
     if fs != "None":
         own = self.gen_promise(Val("", ""))
         x = self.mload("int", self.maddr("int", own, str(GENSEND)))
@@ -648,20 +682,97 @@ def gen_yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) ->
         self.throw(e)
         self.place(lt)
         p2 = self.gen_throw_into(v, e, done)
-        s2 = self.mload("int", p2)
-        if t != y:
-            s2 = self.to_slot(self.coerce(self.from_slot(s2, t), y))
-        self.mstore("int", s2, ys)
+        self.gen_keep(self.gen_words(p2, t, y, v if callee is not None else None), ys, yh)
         self.br(susp)
     self.place(done)
     r = callee.gret if callee is not None else ""
     res = Val("null", "None") if r == "None" else Val("", "")
     if r != "" and r != "None":
-        pr = self.gen_promise(v)
-        res = self.from_slot(self.mload("int", self.maddr("int", pr, str(GENRET))), r)
+        res = self.gen_returned(v, r)
     if callee is not None:
         self.gen_drop(v)
     return res
+
+
+def gen_gen_keep(self, w: list[str], ys: str, yh: str) -> None:
+    # the slot and pointer w of the value a yield from yields (gen_words) in ys and yh (if any)
+    self.mstore("int", w[0], ys)
+    if yh != "":
+        self.mstore("%ptr", w[1], yh)
+
+
+def gen_gen_slots(self, v: Val, y: str) -> list[str]:
+    # v as the promise of a generator that yields y holds it: its slot, and where y is an int in
+    # a program where a module opts in to promoting ints (int_program), its pointer (GENVALP; null
+    # where it fits, as every yield of an int writes it), else ""
+    if y != "int" or not int_program():
+        return [self.to_slot(v), ""]
+    if v.t == BIG:
+        return [self.big_lo(v).v, self.big_hi(v).v]
+    return [self.to_slot(v), "null"]
+
+
+def gen_gen_words(self, p: str, t: str, y: str, owned: Val | None = None) -> list[str]:
+    # the value in the promise at p of a generator that yields t, as the promise of one that yields
+    # y holds it (yield from: gen_slots): an int's pointer goes on with its slot
+    s = self.mload("int", p)
+    hi = self.mload("%ptr", self.maddr("int", p, str(GENVALP))) if t == "int" and int_program() else ""
+    if t == y:
+        return [s, hi]
+    # A dynamic conversion can raise before gen_suspend installs the delegate's
+    # close path. Drop a freshly owned delegate on that exceptional edge; an
+    # existing generator belongs to its caller and must remain resumable.
+    outer = self.handler
+    failed = ""
+    slot = ""
+    mark = Val("", "")
+    if owned is not None and self.eh and (t == "dyn" or y == "dyn"):
+        mark = Val(self.rt("pys_try_mark", "i64", []), "int")
+        if self.fn.gbase != "":
+            mark = Val(self.scalar("sub", [mark, Val(self.mload("int", self.fn.gbase), "int")]), "int")
+        slot = self.alloca("exc", "")
+        failed = self.label()
+        tr = Try(self.label())
+        tr.final = failed
+        self.fn.tries.append(tr)
+        self.handler = failed
+        self.place(tr.body)
+    result = self.gen_slots(self.coerce(self.big(Val(s, "int"), hi) if hi != "" else self.from_slot(s, t), y), y)
+    if failed != "" and owned is not None:
+        self.handler = outer
+        done = self.label()
+        self.br(done)
+        error = self.landing(failed, slot, mark)
+        self.gen_drop(owned)
+        self.throw(error)
+        self.place(done)
+    return result
+
+
+def gen_gen_value(self, p: str, t: str) -> Val:
+    # the value in the promise at p of a generator that yields t: where t is an int in a program
+    # where a module opts in, the promoting int of its slot and pointer (GENVALP), narrowed in a
+    # module that does not opt in but for lib's READ_HELPERS (bigints.read_policy, gen_value_type)
+    s = self.mload("int", p)
+    if t != "int" or not int_program():
+        return self.from_slot(s, t)
+    v = self.big(Val(s, "int"), self.mload("%ptr", self.maddr("int", p, str(GENVALP))))
+    return v if self.read_policy() else self.big_narrow(v)
+
+
+def gen_gen_value_type(self, t: str) -> str:
+    # the type of the value that gen_value reads of a generator that yields t, here
+    return BIG if t == "int" and int_program() and self.read_policy() else t
+
+
+def gen_gen_returned(self, h: Val, r: str) -> Val:
+    # the value that finished generator h returned, of type r (the value of a yield from): a
+    # promoting int's pointer is in GENRETP
+    pr = self.gen_promise(h)
+    s = self.mload("int", self.maddr("int", pr, str(GENRET)))
+    if r == BIG:
+        return self.big(Val(s, "int"), self.mload("%ptr", self.maddr("int", pr, str(GENRETP))))
+    return self.from_slot(s, r)
 
 
 def gen_yield_from_iter(self, what: str) -> None:
@@ -852,16 +963,16 @@ def gen_gen_unpack(self, t: Node, g: Val) -> None:
         elif y == "None":
             items.append(Val("null", "None"))
         else:
-            sl = self.alloca(y, "")
-            self.mstore(y, self.from_slot(self.mload("int", p), y).v, sl)
-            items.append(Val(sl, y))
+            sl = self.alloca(self.gen_value_type(y), "")
+            self.mstore(self.gen_value_type(y), self.gen_value(p, y).v, sl)
+            items.append(Val(sl, self.gen_value_type(y)))
     self.place(few)
     k = self.to_str(Val(self.mload("int", got), "int"))
     msg = self.cat(self.cat(Val(self.sconst(f"not enough values to unpack (expected {n}, got "), "str"), k), Val(self.sconst(")"), "str"))
     self.raise_("ValueError", msg.v)
     self.place(ok)
     for i in range(n):
-        self.assign(t.kids[i], items[i] if y == "None" else Val(self.mload(y, items[i].v), y))
+        self.assign(t.kids[i], items[i] if y == "None" else Val(self.mload(items[i].t, items[i].v), items[i].t))
 
 
 def gen_gen_contains(self, x: Val, g: Val) -> Val:
@@ -903,7 +1014,8 @@ def gen_gen_next_value(self, g: Val, dflt: Val) -> Val:
     y = gelem(g.t)
     done = self.label()
     p = self.gen_next(g, done)
-    v = self.from_slot(self.mload("int", p), y)
+    v = self.gen_value(p, y)
+    y = BIG if v.t == BIG else y
     t = y if dflt.v == "" else self.join(y, dflt.t)
     if t == "":
         self.err(f"next() of a generator of {typestr(y)} with a default of {typestr(dflt.t)}: they need one type")
@@ -1063,7 +1175,7 @@ def gen_gen_throw(self, g: Val, args: list[Node]) -> Val:
     e = self.exc_operand(args[0])
     done = self.label()
     p = self.gen_throw_into(g, e, done)
-    v = self.from_slot(self.mload("int", p), gelem(g.t))
+    v = self.gen_value(p, gelem(g.t))
     end = self.label()
     self.br(end)
     self.place(done)
@@ -1101,7 +1213,7 @@ def gen_gen_send(self, g: Val, args: list[Node]) -> Val:
     done = self.label()
     self.gen_next(g, done)
     self.mstore("int", "0", sa)  # (taken where g resumed)
-    r = self.from_slot(self.mload("int", p), gelem(g.t))
+    r = self.gen_value(p, gelem(g.t))
     end = self.label()
     self.br(end)
     self.place(done)
