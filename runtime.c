@@ -2214,7 +2214,8 @@ static void repr_str(Buf *b, Str *s) {
 #define KTAG 2
 /* ! asks for Python's hash/probe scheme even for native scalar keys in an
    opt-in Dynamic Any program. It is a Dict.kind marker, not a value descriptor. */
-static const char *kraw(I kind) { return ((Str *)(kind & ~(I)KTAG))->s; }
+/* 1|KTAG is the immediate str/bytes kind: the same layout and hash scheme as !s. */
+static const char *kraw(I kind) { return kind == (1 | KTAG) ? "!s" : ((Str *)(kind & ~(I)KTAG))->s; }
 static const char *kdesc(I kind) { const char *d = kraw(kind); return d + (*d == '!'); }
 /* Is entry e live? Legacy tables use hash 0/key 0 as a hole; Python-hash
    tables reserve hash -1 so native integer zero remains a live key. */
@@ -2812,10 +2813,16 @@ static void reserve(List *l, I n) {
    never changes l->len or l->a, so LLVM hoists those loads out of loops */
 typedef struct { I v; } Slot;
 #define AT(l, i) (((Slot *)(l)->a)[i].v)
-void pys_list_append(List *l, I v) {
-  I id = l->ids ? list_box(v, l->ids[0]) : 0;
+static __attribute__((noinline)) void list_append_boxed(List *l, I v) {
+  I id = list_box(v, l->ids[0]);
   if (l->len == l->cap) reserve(l, l->len + 1);
-  if (l->ids) l->ids[l->len + 1] = id;
+  l->ids[l->len + 1] = id; AT(l, l->len++) = v;
+}
+void pys_list_append(List *l, I v) {
+  /* Leave the ordinary append small enough for LLVM to inline, including in an
+     opt-in program. The companion path retains allocation order and GC roots. */
+  if (l->ids) { list_append_boxed(l, v); return; }
+  if (l->len == l->cap) reserve(l, l->len + 1);
   AT(l, l->len++) = v;
 }
 void pys_list_append_identity(List *l, I v, Dyn *id, I kind) {
@@ -3623,7 +3630,7 @@ static uint64_t hsh(Dict *d, I k);
 static uint64_t hstrd(Str *s) {                      /* a str key's hash */
   if (!s->dict_hash) {                  /* zeroed allocations and writable literals start uncached */
     uint64_t h = (uint64_t)pys_hash_str(s);
-    s->dict_hash = h ? h : 1;           /* cache the dictionary's normalized hash, also for tuple items */
+    s->dict_hash = h == (uint64_t)-1 ? (uint64_t)-2 : h ? h : 1;   /* cache both sentinel normalizations, also for tuple items */
   }
   return s->dict_hash;
 }
@@ -3684,7 +3691,7 @@ static inline __attribute__((always_inline)) uint64_t hobj(I kind, I k) {
   return hcls(k, d + 1);
 }
 static uint64_t hsh(Dict *d, I k) {                  /* kind: 0 int keys, 1 str keys, else a tuple or object key's descriptor */
-  return d->kind == 1 ? hstrd((Str *)k) : d->kind > 1 ? hobj(d->kind, k) : hint1(k);
+  return (d->kind & ~(I)KTAG) == 1 ? hstrd((Str *)k) : d->kind > 1 ? hobj(d->kind, k) : hint1(k);
 }
 /* items i of tuples x and y of n items, promoting ints (J) one of whose slots holds -2**63: equal,
    by their two words (titem); a call of its own, which keeps keq small */
@@ -3715,7 +3722,7 @@ static int keyeq(I a, I b, const char *d) {   /* keys of descriptor d: an Any ke
 }
 static I keysize(I n) { I s = 8; while (s < n) s *= 2; return s; }   /* calculate_log2_keysize */
 static I *keymem(I kind, I n) {      /* the key array of a dict or set of this kind: an int key holds no pointer */
-  return kind && !(kind > 1 && (*kdesc(kind) == 'i' || *kdesc(kind) == 'b')) ? pys_alloc(n * 8) : pys_alloc_atomic(n * 8);
+  return kind && !(kind > (1 | KTAG) && (*kdesc(kind) == 'i' || *kdesc(kind) == 'b')) ? pys_alloc(n * 8) : pys_alloc_atomic(n * 8);
 }
 /* is d's key x, of entry e, equal to k (kind > 1): 1 or 0, or -1 where an __eq__ changed the table
    or that entry, after which CPython's lookdict starts again. Out of dfind's loop, which compares
@@ -3726,6 +3733,7 @@ __attribute__((noinline)) static int dkeyeq(Dict *d, I e, I x, I k) {
   return d->idx != ix || d->keys[e] != x ? -1 : eq;
 }
 static I dfindc(Dict *d, I k, uint64_t h, I *free);
+static I dfinds(Dict *d, I k, uint64_t h, I *free);
 static I dempty(Dict *d, uint64_t h);
 /* the probes for key k, whose hash is h, over idx's m + 1 slots: k's idx slot or -1, and *free
    where to insert it (the first hole or empty slot they met; after an __eq__, which may have
@@ -3733,7 +3741,8 @@ static I dempty(Dict *d, uint64_t h);
    objs: d's keys may be tuples or objects (kind > 1, compared by keq or dkeyeq, an Any key's by
    dyn_keyeq first), else they are ints or strs; 2: they are hashed by CPython's hash (KTAG), so a
    key is found as itself before its hash is compared, as compare_generic does, whatever the hash
-   its __hash__ gives now */
+   its __hash__ gives now; 3: immediate str keys, with that same table but no user comparison.
+   Immutable strings retain their hash, so 3 can test it before reading/comparing a key. */
 static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I *free, uint64_t m, int objs) {
   I f = -1; int ran = 0;
   for (uint64_t i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
@@ -3744,8 +3753,8 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
     else if (objs == 2 && d->keys[e - 1] == k) return i;
     else if (d->hs[e - 1] == h) {
       I x = d->keys[e - 1];
-      if (x == k || (d->kind == 1 && pys_str_eq((Str *)x, (Str *)k))) return i;
-      if (objs && d->kind > 1) {
+      if (x == k || ((d->kind == 1 || objs == 3) && pys_str_eq((Str *)x, (Str *)k))) return i;
+      if (objs && objs != 3 && d->kind > 1) {
         const char *s = kdesc(d->kind);
         int eq = *s == 'T' ? keq(x, k, s, 1) : *s == 'A' && !s[1] ? dyn_keyeq((Dyn *)x, (Dyn *)k) : 2;
         if (eq == 2) { eq = dkeyeq(d, e - 1, x, k); ran = 1; }
@@ -3759,14 +3768,21 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
    (dfindc), another's 2*size; dfindi is dfind for int and str keys, which have no KTAG */
 static I dfind(Dict *d, I k, uint64_t h, I *free) {
   if (!d->size) return -1;
+  if (d->kind == (1 | KTAG)) return dfinds(d, k, h, free);
   if (d->kind & KTAG) return dfindc(d, k, h, free);
   return dlook(d, k, h, free, d->size * 2 - 1, 1);
 }
 __attribute__((noinline)) static I dfindi(Dict *d, I k, uint64_t h, I *free) { return d->size ? dlook(d, k, h, free, d->size * 2 - 1, 0) : -1; }
 __attribute__((noinline)) static I dfindc(Dict *d, I k, uint64_t h, I *free) { return dlook(d, k, h, free, d->size - 1, 2); }
+/* The string probe has no callbacks; keep its register saves separate from the generic probe. */
+__attribute__((noinline)) static I dfinds(Dict *d, I k, uint64_t h, I *free) { return dlook(d, k, h, free, d->size - 1, 3); }
 /* dfind of key k, which it hashes (hsh) into *hp first: one test of the kind for both */
 static inline __attribute__((always_inline)) I dhfind(Dict *d, I k, uint64_t *hp, I *free) {
-  if (d->kind == 1) return dfindi(d, k, *hp = hstrd((Str *)k), free);
+  if ((d->kind & ~(I)KTAG) == 1) {
+    *hp = hstrd((Str *)k);
+    if (!d->size) return -1;
+    return d->kind & KTAG ? dfinds(d, k, *hp, free) : dfindi(d, k, *hp, free);
+  }
   if (d->kind > 1) {
     *hp = hobj(d->kind, k);
     if (!d->size) return -1;
@@ -3874,7 +3890,10 @@ __attribute__((noinline)) static I dgrow(Dict *d, uint64_t h) {   /* insertion_r
 }
 static inline __attribute__((always_inline)) void dadd(Dict *d, I k, uint64_t h, I v, I f) {   /* k, which d has not, into idx slot f (dfind's *free) */
   if (d->n + d->cut >= d->size * 2 / 3) f = dgrow(d, h);    /* (full; popitem's cut entries still count) */
-  dbig_clear(d, d->n); d->keys[d->n] = k; d->vals[d->n] = v;   /* (kb's word: null past the entries, kbig) */ d->hs[d->n] = h; d->idx[f] = (int32_t)++d->n; d->len++;
+  /* Both companion words are already null past n: allocation zeroes them, and
+     deletion/popitem clear them before an entry can be reused. Existing-key stores
+     still clear vb, since they may replace a value past 64 bits. */
+  d->keys[d->n] = k; d->vals[d->n] = v; d->hs[d->n] = h; d->idx[f] = (int32_t)++d->n; d->len++;
 }
 static I dset(Dict *d, I k, uint64_t h, I v) {   /* d[k] = v, k's hash h: the entry */
   I f = -1, i = dfind(d, k, h, &f);
@@ -4228,7 +4247,7 @@ static I hint(I v) {                                 /* long_hash */
   h = v < 0 ? -h : h;
   return h == -1 ? -2 : h;
 }
-static I hstr(Str *s) { I h = (I)hstrd(s); return h == -1 ? -2 : h; }   /* (hsh's for kind 1) */
+static I hstr(Str *s) { return (I)hstrd(s); }   /* hstrd caches both sentinel normalizations */
 static I hptr(I p) { uint64_t y = (uint64_t)p; y = y >> 4 | y << 60; return (I)y == -1 ? -2 : (I)y; }   /* _Py_HashPointer */
 static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's is 0, as a float here has no identity */
   /* v is m * 2**e for an int m of 53 bits: m * 2**e modulo 2**61 - 1 (where 2**61 is 1), with

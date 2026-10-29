@@ -148,7 +148,13 @@ for supported object methods. A dict's or set's descriptor of its keys tells obj
 identity (their addresses, which the non-moving collector keeps stable) from those hashed by
 their class's `__hash__`; a dict of the latter keeps CPython's hashes and an index of CPython's
 size (other dicts' have twice the slots), so that its lookups probe CPython's slots in CPython's
-order and call `__eq__` as often. Specialized code still has static types; these descriptors
+order and call `__eq__` as often. Dynamic-`Any` programs also mark native dictionaries for
+that hash/probe scheme (`!` before their key descriptor), since a comparison can look up a
+key from a different static type. Their `str`/`bytes` dictionaries use immediate kind `3`
+(`1 | KTAG`), with the same hashes, table size and probes as `!s`; string hashing and equality
+skip generic descriptor dispatch. The cached string hash normalizes zero to one and minus
+one to minus two, so native strings and boxed strings share stored hashes. `bytes` uses
+string storage here but has no dynamic-`Any` box. Specialized code still has static types; these descriptors
 do not by themselves make storage dynamic. Experimental opt-in `Any` uses the
 [separate boxes and dispatchers](dynamic-any.md#representation) described below.
 

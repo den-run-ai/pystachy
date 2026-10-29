@@ -48,11 +48,11 @@ static long long dict_generic_hashes;
 
 I pys_hash_str(Str *s);
 static I hash_calls, hash_bytes;
-static Str *zero_hash_key;
+static Str *zero_hash_key, *minus_one_hash_key;
 I counted_hash_str(Str *s) {
   hash_calls++; hash_bytes += s->len;
-  /* Exercise the rare zero-result sentinel branch without changing the production hash. */
-  return s == zero_hash_key ? 0 : pys_hash_str(s);
+  /* Exercise the rare sentinel results without changing the production hash. */
+  return s == zero_hash_key ? 0 : s == minus_one_hash_key ? -1 : pys_hash_str(s);
 }
 
 #define LIMIT 3.0
@@ -144,7 +144,15 @@ static void hash_cache(void) {
   for (I i = 0; i < 100; i++) if (pys_dict_get(dict, (I)zero_hash_key, -1) != 17) cache_bad("normalized hash lookup");
   hash_count(69, bytes + 11);
   zero_hash_key = 0;
-  printf("string cache: one hash per string, cached hits/misses/tuples, zero hash normalized\n");
+  minus_one_hash_key = cache_key("forced-minus-one", 16);
+  dict = pys_dict_new(1 | KTAG, 0);
+  pys_dict_set(dict, (I)minus_one_hash_key, 23);
+  if (minus_one_hash_key->dict_hash != (uint64_t)-2) cache_bad("minus-one hash is not normalized before caching");
+  for (I i = 0; i < 100; i++)
+    if (pys_dict_get(dict, (I)minus_one_hash_key, -1) != 23) cache_bad("minus-one normalized hash lookup");
+  hash_count(70, bytes + 11 + 16);
+  minus_one_hash_key = 0;
+  printf("string cache: one hash per string, cached hits/misses/tuples, zero/minus-one hashes normalized\n");
 }
 
 /* dict[Any, ...] (descriptor A): its keys are boxes, each probe here a new box of a new str or of
@@ -261,7 +269,8 @@ static void int_queries(void) {
 
 static _Noreturn void marked_bad(const char *what) { fprintf(stderr, "dictprobe: marked scalar keys: %s\n", what); exit(1); }
 static void marked_layout(Dict *a, Dict *b) {
-  if (a->len != b->len || a->n != b->n || a->size != b->size || a->cut != b->cut || a->kind != b->kind)
+  if (a->len != b->len || a->n != b->n || a->size != b->size || a->cut != b->cut ||
+      (a->kind & KTAG) != (b->kind & KTAG) || strcmp(kdesc(a->kind), kdesc(b->kind)))
     marked_bad("table shape changed");
   if (a->size && (memcmp(a->idx, b->idx, a->size * 4) || memcmp(a->hs, b->hs, a->n * 8) ||
                  memcmp(a->keys, b->keys, a->n * 8) || memcmp(a->vals, b->vals, a->n * 8)))
@@ -287,17 +296,18 @@ static void marked_scalars(void) {
   I ints[] = {0, -1, -2, INT64_MIN, INT64_MAX, ((I)1 << 61) - 1, ((I)1 << 61), -((I)1 << 61),
               1000, 1008, 1016, 1024, 1032, 1040, 1048, 1056};
   I n = sizeof ints / sizeof *ints;
-  for (I str = 0; str < 2; str++) {
+  /* str=2 uses the immediate compatible kind; !s remains the independent reference. */
+  for (I str = 0; str < 3; str++) {
     keys = pys_list_new(2 * n + 2);
     Str *descriptor = cstr(str ? "!s" : "!i"); pys_list_append(keys, (I)descriptor);
-    dict = pys_dict_new((I)descriptor, 0);
+    dict = pys_dict_new(str == 2 ? 1 | KTAG : (I)descriptor, 0);
     Dict *reference = pys_dict_new((I)descriptor, 0); pys_list_append(keys, (I)reference);
     for (I i = 0; i < n; i++) {
       char text[24]; I length = snprintf(text, sizeof text, "scalar-%lld", (long long)i);
-      I key = str ? i ? (I)pys_str(text, length) : 0 : ints[i];
-      I query = str ? i ? (I)pys_str(text, length) : 0 : ints[i];
+      I key = str ? i || str == 2 ? (I)pys_str(text, length) : 0 : ints[i];
+      I query = str ? i || str == 2 ? (I)pys_str(text, length) : 0 : ints[i];
       if (str && i == 1) { ((Str *)key)->dict_hash = 1; ((Str *)query)->dict_hash = 1; }
-      if (str && i == 2) { ((Str *)key)->dict_hash = (uint64_t)-1; ((Str *)query)->dict_hash = (uint64_t)-1; }
+      if (str && i == 2) { ((Str *)key)->dict_hash = (uint64_t)-2; ((Str *)query)->dict_hash = (uint64_t)-2; }
       pys_list_append(keys, key); pys_list_append(keys, query);
     }
     dict_generic_hashes = 0;
@@ -337,7 +347,7 @@ static void marked_scalars(void) {
     marked_layout(dict, reference);
     if (dict_generic_hashes) marked_bad("native str/int keys reached the generic hash dispatcher");
   }
-  printf("marked str/int keys: generic hashes, table layouts and probes preserved without generic hash calls\n");
+  printf("marked str/int and immediate str keys: generic hashes, table layouts and probes preserved without generic hash calls\n");
 }
 
 #define MIB ((I)1 << 20)

@@ -714,6 +714,8 @@ def gen_key_kind(self, kt: str, dictionary: bool = False, built: bool = False) -
     # scheme from insertion, including deletions; equality never rehashes keys.
     kt = "int" if kt == BIG else held(narrow_type(kt))  # (a promoting int's container holds ints, a tuple of them as a list holds it: bigints.py)
     if dictionary and dynamic_program() and not self.rtmode:
+        if kt == "str" or kt == "bytes":
+            return "3"  # 1 | KTAG: !s hashes, slots and probes, without a descriptor walk
         d = self.hash_desc(kt)
         d = d if "H" in d or "A" in d else "!" + d
     elif kt == "int" or kt == "str" or kt == "bytes":
