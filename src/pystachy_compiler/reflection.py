@@ -532,6 +532,12 @@ def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> 
     vals: list[Val] = []
     blocks: list[str] = []
     end = self.label()
+    if o.t == "dyn" and d.t != "":
+        # The default is evaluated before lookup. Dynamic attribute reads already
+        # preserve the original value and raise AttributeError for a missing name;
+        # catch only that exception, just as for a typed property's getter.
+        self.refl_catch_attr(o, a, self.dyn_box(d), vals, blocks, end)
+        return self.refl_phi(vals, blocks, end, f"getattr(o, '{a}', default)")
     narrow = dict(self.narrowed)
     for lf in self.refl_split(o, known, split):
         self.place(lf.label)

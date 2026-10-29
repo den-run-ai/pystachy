@@ -638,6 +638,10 @@ explicit error when selected. Same-hierarchy dynamic comparisons retain their ty
 when the selected method cannot accept that operand type, those helpers raise `TypeError`
 rather than substituting identity or running a lower-priority reflected method. Unused
 methods, identity-first container matches and supported operand types remain available.
+A literal-name `getattr(value, "field", default)` through `Any` evaluates its default before
+lookup and catches only `AttributeError`, including from a property getter. Comparison
+bodies using it execute normally; a missing field is not a reason to skip the method
+(`tests/programs/inference/dynany_cmp_getattr_default.py`).
 A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
 methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
 rejects: no method can return `NotImplemented`, so the first one that runs gives the result.

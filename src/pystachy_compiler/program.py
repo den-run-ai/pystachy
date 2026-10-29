@@ -747,8 +747,10 @@ def gen_program(self, mods: list[Mod]) -> str:
         for q in m.taliases:
             self.taliases[q] = m.taliases[q]
         self.typevars.extend(m.deftps)
-    if dynamic_program() and any(defines(m.body, "__len__") or defines(m.body, "__next__") for m in mods):
-        self.eh = True  # dynamic next and length hints catch protocol exceptions
+    if dynamic_program() and any(defines(m.body, "__len__") or defines(m.body, "__next__") or module_reads(m.body, "getattr") for m in mods):
+        # Dynamic next, length hints and getattr(default) catch protocol exceptions.
+        # module_reads also finds qualified/imported/aliased builtin references.
+        self.eh = True
     if any(defines(m.body, "__len__") for m in mods) and any(defines(m.body, "__iter__") for m in mods):
         self.eh = True  # typed consumers also ignore TypeError from optional length hints
     if not self.eh and len([m for m in mods if defines(m.body, "__next__")]) > 0:
