@@ -14,14 +14,23 @@ runtime caches, toolchain installations or the full generated IR corpus. Its
 | Main before follow-up | `1540bb222fa5f82a7c24f6bb19aaf6db363898dd` | `c9867785a56313861fb1819c5369eb4aff3a5d8e` |
 | Early runtime profile, not final #983 | `e67dd309c1b222ccdd7e3d218eb70480f0a9aea5` | `e00e77bc50931963ee05d487bd280d27cde86450` |
 | Final runtime-only profile | `912ea029eb2ee1ce6d2097c381a507d79e223874` | `cddfa38684a8af14c54141fa51b4716e416f865b` |
-| Measured combined source | `40a2c5ddeab50ffdbcc54dc987577c9127d84470` | `92519c59b2777022e6a8b09649584659316ef775` |
+| Measured combined source (local historical commit) | `40a2c5ddeab50ffdbcc54dc987577c9127d84470` | `92519c59b2777022e6a8b09649584659316ef775` |
 | Runtime #983 final head | `9975692d3d81253cd63d878e372315d39dca9826` | `7ba7f35b47b7995fe85924a37af7c467c4737f0e` |
-| Identity #984 measured-code head | `83eceba77b582749f4e1ff9269b0d8c0c6a72969` | `94b69c9ed8d3d53ac27d0e2e79da6b95f87de99b` |
+| Combined #984 final head / replay target | `11f7ec5f44ca20d8ec53010cb8279b4eb2fa2abc` | `686db1794cfd702678d59bae5507629dbf4eec75` |
 
-The branch starts after #983's merge, `b8e5c2d3`; the archive's metadata pins the older
-sources actually measured. #984's subsequent `11f7ec5` audit-only update changes
-ownership/reset tests, not the compiled implementation measured here. Its final CI
-and merge status belong in the PR and curated report, not inferred from this archive.
+The branch starts after #983's merge, `b8e5c2d3`; the archive's metadata pins the
+sources actually measured. Final #984 head `11f7ec5` integrates runtime head `9975692d`;
+it differs from measured combined `40a2c5dd` only in `tools/compiler_state_globals.py`
+and `tools/test_compiler_state_files.py`. Compiler, runtime, library and corpus bytes
+are identical. Earlier identity head `83eceba7` lacked the final runtime changes and
+is not a replay target for the combined measurements.
+
+Use reachable remote commits `9975692d` for runtime-only replay and `11f7ec5` for
+combined replay. Historical `912ea029` and `40a2c5dd` are local source identities,
+retained verbatim in the immutable metadata. This outer README corrects the provisional
+#984 source mapping in the README enclosed in `evidence.zip`; the archive and its
+recorded measurements are unchanged. Final CI/merge status belongs in the PR and
+curated report, not inferred from this archive.
 
 ## Contents
 
@@ -65,7 +74,9 @@ CPU 0. Clear inherited `PYSTACHY_*`, `PYTHONPATH` and `PYTHONHOME` settings, the
 restore only the intended LLVM path and cache. Run one profiling/timing job at a time.
 
 For the broader JSON workload, unpack the archive, set absolute source/tool paths,
-and use identical arguments for the `build` and `profile` stages:
+check out `11f7ec5f44ca20d8ec53010cb8279b4eb2fa2abc` at `/path/combined`, and use
+identical arguments for the `build` and `profile` stages. Runtime-only replay uses
+`9975692d3d81253cd63d878e372315d39dca9826` at a separate checkout:
 
 ```sh
 python3.13 scripts/json_acceptance.py build --variant alpha3=/path/alpha3 \
@@ -88,7 +99,7 @@ replay. Check every stdout byte against CPython before interpreting a measuremen
 Regenerate the full IR oracle with the archived `compare_ir.py`, `--baseline` and
 `--candidate` checkouts, explicit `--old`/`--new` hosted-compiler commands,
 `--old-build-sha 1540bb222fa5f82a7c24f6bb19aaf6db363898dd`,
-`--new-build-sha 40a2c5ddeab50ffdbcc54dc987577c9127d84470`, a new `--out` directory,
+`--new-build-sha 11f7ec5f44ca20d8ec53010cb8279b4eb2fa2abc`, a new `--out` directory,
 `--jobs 2` and no case selectors. Run `classify_ir_oracle.py`, `classify_ir_semantics.py`,
 then `finalize_ir_classification.py`, each with that output directory. The final step
 records the reviewed JSON/inert/diagnostic classifications; review them anew after any
