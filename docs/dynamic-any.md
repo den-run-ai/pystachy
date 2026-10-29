@@ -340,12 +340,32 @@ of tracking modules. Any other
 crossing compiles the program again from the start with every module tracking identity, which
 gives the same IR as before this split: one of its numbers or objects made an `Any` value, a
 call of a tracking module's function, constructor or method that takes or gives back anything
-else, or a store into a tracking module's variable, class attribute or object. A program whose
+else, or a store into a tracking module's variable, class attribute or object. Without an identity-inert hint, a program whose
 main module opts in, or whose every module a module that opts in imports, is unaffected; one
 that falls back compiles its modules twice, the first time up to the crossing
 (`tests/programs/inference/dynany_identity_scope.py`, `dynany_identity_scope_fields.py`,
 `dynany_identity_scope_numbers.py`, `tests/ir/dynany_identity_scope.py`,
 `tools/test_identity_scope.py`).
+
+A module that opts in to neither dynamic `Any` nor promoting ints may start with `# pystachy: identity-inert` to request checked removal of
+numeric identity bookkeeping even when tracking code imports it. This is an optimization hint,
+not a change in semantics or a promise the compiler trusts. The compiler keeps tracking the
+module's dependencies. Calls may exchange strings, bytes, bools, `None`, boxed values and
+representations that already carry no numeric companion, including recursive `JSONValue`
+storage. Numeric scalars, scalar unions and numeric lists do not qualify. A hinted class may
+cross directly as a typed handle; observing its numeric fields, boxing it, mixing tracked and
+hinted inheritance, or boxing a function makes the compiler discard the hint. Numeric list
+operations inside the module also discard it, because searches and equality can observe a
+shared NaN even when nothing numeric crosses a module boundary. Globals, fields and reflection
+use the same checked boundaries.
+
+The first unsafe operation restarts compilation with hints disabled and the ordinary dependency
+policy above. If that policy also finds an unsafe crossing, its existing full-tracking restart
+still applies. No new runtime error or rejected program is introduced. The shipped `json`
+module uses this hint: the dynamic decoder calls scanner methods without borrowing its numeric
+cursor fields. Direct access to those fields remains accepted and restores tracking. The
+regressions in `tools/test_identity_scope.py` pin the parser layout, test independent synthetic
+modules and require unsafe cases to produce the same IR as compiling with hints disabled.
 
 ## The typed/dynamic contract
 

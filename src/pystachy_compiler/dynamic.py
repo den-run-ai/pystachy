@@ -16,7 +16,7 @@ the program's classes, functions the compiler writes once every class that is bo
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, LINES, Rejoin, dynamic_file, dynamic_program
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, Rejoin, dynamic_file, dynamic_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, retoken, short
@@ -62,7 +62,8 @@ def gen_dyn_policy(self, line: int) -> bool:
 def gen_identity_modules(self, mods: list[Mod]) -> None:
     # The modules whose code tracks numeric identity in a program that uses dynamic Any
     # (docs/dynamic-any.md#identity-scope): those that opt in, lib's dynamic json module, and
-    # each module they import (their code may hold its numbers), lib's range, object and
+    # each module they import (their code may hold its numbers), except checked identity-inert
+    # hints (identity_inert and the crossing checks below), lib's range, object and
     # iterator modules included where they use them (Mod.deps). The others (idoff) keep their
     # classes' layouts and their functions' code: no box slots, companions or snapshots. Their
     # values reach tracking code only through the crossings identity_call, identity_global,
@@ -77,9 +78,13 @@ def gen_identity_modules(self, mods: list[Mod]) -> None:
         dyn[FILES[k][2:] if FILES[k].startswith("./") else FILES[k]] = True
     hinted: dict[str, bool] = {}
     if self.idtry:
+        paths: dict[str, bool] = {}
+        for k in IDINERT:
+            if k not in DYNFILES and k not in INTFILES:
+                paths[FILES[k][2:] if FILES[k].startswith("./") else FILES[k]] = True
         for m in mods:
             p = m.path[2:] if m.path.startswith("./") else m.path
-            if any(FILES[k] == p for k in IDINERT) and p not in dyn:
+            if p in paths:
                 hinted[m.name] = True
     on: dict[str, bool] = {}
     work: list[Mod] = []
@@ -91,17 +96,23 @@ def gen_identity_modules(self, mods: list[Mod]) -> None:
     byname: dict[str, Mod] = {}
     for m in mods:
         byname[m.name] = m
+    visited: dict[str, bool] = {}
     while len(work) > 0:
         m = work.pop()
+        if m.name in visited:
+            continue
+        visited[m.name] = True
         for d in m.deps:
-            if d not in on and d in byname and d not in hinted:
-                on[d] = True
-                work.append(byname[d])
+            if d in byname:
+                if d in hinted:
+                    self.idhint[d] = True
+                else:
+                    on[d] = True
+                if d not in visited:
+                    work.append(byname[d])
     for m in mods:
         if m.name not in on:
             self.idoff[m.name] = True
-            if m.name in hinted:
-                self.idhint[m.name] = True
 
 
 def gen_fn_home(self, f: FnInfo) -> str:
@@ -146,7 +157,8 @@ def gen_global_identity(self, name: str) -> bool:
 
 def gen_identity_event(self, why: str) -> None:
     # a crossing between code that tracks numeric identity and code that does not, which could
-    # carry a number's identity (identity_modules): the next pass tracks it everywhere
+    # carry a number's identity (identity_modules): retry without hints first, then
+    # with every module tracking if the ordinary split also finds such a crossing
     self.idevent = why
     raise Rejoin()
 

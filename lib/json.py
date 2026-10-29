@@ -145,7 +145,8 @@ class _Parser:
     def next_token(self) -> str:
         if self.pos == self.n:
             raise self.error("Expecting value", self.pos)
-        return chr(self.data[self.pos])
+        token = self.data[self.pos]
+        return '"' if token == 34 else "[" if token == 91 else "{" if token == 123 else ""
 
     def scalar(self) -> JSONValue:
         return self.value(0)

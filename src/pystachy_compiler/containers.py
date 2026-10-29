@@ -40,6 +40,10 @@ def gen_list_id_kind(self, t: str) -> int:
     # The raw payload stays in its existing atomic array; identity lives in scanned storage.
     # Code that does not track identity (Gen.identity_modules) uses the plain operations, which
     # keep a list's companion consistent (runtime.c): such a list never reaches tracking code.
+    if t in ["list[int]", "list[float]"] and self.fn_home(self.curfn) in self.idhint:
+        # Internal searches/equality can observe shared NaNs even when no numeric
+        # value leaves the module. A hint cannot suppress these companions.
+        self.identity_event("numeric list in an identity-inert module")
     if self.rtmode or not self.idhere():
         return 0
     return 1 if t == "list[int]" else 2 if t == "list[float]" else 0

@@ -1321,6 +1321,8 @@ class Gen:
         # an object of a class whose code does not track it may be of (identity_box)
         self.idoff: dict[str, bool] = {}
         self.idfull = False
+        # Fixed for a compilation pass; dry traversal retains these program policies,
+        # and a restart makes a fresh Gen before disabling hints or tracking everything.
         self.idtry = True  # try checked identity-inert module hints on this pass
         self.idhint: dict[str, bool] = {}  # hinted modules excluded from tracking
         self.idevent = ""
