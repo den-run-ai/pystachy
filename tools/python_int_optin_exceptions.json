@@ -4322,22 +4322,6 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
-      "case": "tests/programs/library/lib_tomllib.py",
-      "mode": "jit",
-      "category": "dynamic-any-conflict",
-      "diagnostic": "tests/programs/library/lib_tomllib.py:95: error: a int value cannot become an Any value (compiling typed(dict[dyn,dyn]) for the call at tests/programs/library/lib_tomllib.py:114)",
-      "reason": "The opted-in typed TOML consumer tries to box a promoting int into dynamic Any; cross-module dynamic storage remains int64.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
-      "case": "tests/programs/library/lib_tomllib.py",
-      "mode": "aot",
-      "category": "dynamic-any-conflict",
-      "diagnostic": "tests/programs/library/lib_tomllib.py:95: error: a int value cannot become an Any value (compiling typed(dict[dyn,dyn]) for the call at tests/programs/library/lib_tomllib.py:114)",
-      "reason": "The opted-in typed TOML consumer tries to box a promoting int into dynamic Any; cross-module dynamic storage remains int64.",
-      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
-    },
-    {
       "case": "tests/programs/library/lib_tomllib_dynamic.py",
       "mode": "jit",
       "category": "dynamic-any-conflict",

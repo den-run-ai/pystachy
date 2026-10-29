@@ -644,7 +644,8 @@ class PromotingIntegerIdentityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             Path(tmp, "observer.py").write_text(
                 "# pystachy: dynamic-any\nfrom typing import Any\n"
-                "def observe(x: Any) -> None:\n    print(x is x)\n")
+                "def observe(x: Any) -> None:\n    print(x is x)\n"
+                "def number() -> Any:\n    return int('2')\n")
             return driver.compile_program("promoting_identity_probe.py",
                                           "# pystachy: python-int\nimport observer\n" + source,
                                           [tmp, str(ROOT / "lib")], "")
@@ -683,6 +684,12 @@ class PromotingIntegerIdentityTests(unittest.TestCase):
                           "observer.observe(carry(1000))\n")
         self.assertIn("@dbi.", ir)
         self.assertIn("ptr %aid0", ir)
+
+    def test_narrowed_any_arithmetic_does_not_box_a_wide_accumulator(self):
+        ir = self.compile("def add(value):\n    total = int('1180591620717411303424')\n"
+                          "    if isinstance(value, int):\n        total += value\n"
+                          "    return total\nprint(add(observer.number()))\n")
+        self.assertNotIn("Python int too large to convert to C long", ir)
 
 
 class FoldedIntegerIdentityTests(unittest.TestCase):
