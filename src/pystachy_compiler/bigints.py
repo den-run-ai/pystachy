@@ -381,7 +381,7 @@ def gen_to_big(self, v: Val) -> Val:
     if v.t == BIG:
         return v
     r = self.big(self.as_int(v)).identity(v)
-    if dynamic_program() and v.lit and v.t == "int":
+    if dynamic_program() and v.lit and v.t == "int" and (int(v.v) < -5 or int(v.v) > 256):
         r.idfrom = self.dyn_id_box(v).v
     return r
 

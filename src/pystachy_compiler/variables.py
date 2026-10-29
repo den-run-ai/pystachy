@@ -26,7 +26,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, 
 from src.pystachy_compiler.dynamic import XCMP, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val
 from src.pystachy_compiler.names import owner, short
-from src.pystachy_compiler.specs import BIG, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
@@ -131,7 +131,7 @@ def gen_load_name(self, name: str) -> Val:
                 self.lazy_resolve(name)  # (a lazy field local's object gets its box: dynamic.py)
             self.dyn_id_read(val, self.idbox[name])
         if name in self.narrowed and (is_opt(t) or is_union(t) or t == "dyn" or t in self.classes) and t != NONEVAR:
-            if val.idfrom != "" and (is_opt(t) or is_union(t)):
+            if val.idfrom != "" and t != BIGOPT and (is_opt(t) or is_union(t)):
                 # A shared cell's snapshot may fill its adjacent identity cache.
                 # Read the checked member from that snapshot: storage proofs need
                 # not survive the cache write or another closure reading the cell.

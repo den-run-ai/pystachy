@@ -1362,7 +1362,7 @@ def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
         # no alias: the store takes its object, boxed or not, as a return does.
         moved = (self.fn.idmove and v.idexact and ".box." not in v.idslot) or (self.fn.idpass and ".box." in v.idslot)
         b = self.dyn_id_held(v).v if self.fn.numeric_only or moved else self.dyn_id_box(v).v
-    elif v.lit and (v.t == unopt(t) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))) and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
+    elif v.lit and (v.t == unopt(t) or (v.t == "int" and unopt(t) == BIG) or (is_union(unopt(t)) and v.t in umembers(unopt(t)))) and (v.t == "float" or (v.t == "int" and (int(v.v) < -5 or int(v.v) > 256))):
         # store_name can retain t until a pending type join restarts compilation to widen
         # it. A provisional int slot may receive a float literal: its LLVM hex bits
         # must not be parsed as an int or given the provisional destination's identity.

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.bigints import int_replay_state
-from src.pystachy_compiler.diagnostics import Rejoin, int_lists
+from src.pystachy_compiler.diagnostics import Rejoin, int_lists, int_program
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
@@ -237,9 +237,10 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         # for a numeric binding's box: every closure and nonlocal writer shares it.
         # Like runtime.c's gc_box, request 15 for the 16-byte scanned slot. Only the
         # base and second-word addresses escape; no one-past-cell pointer is made.
-        # A module whose ints promote takes two words for the value (bigints.py): 15 and 23
-        # for the 16- and 24-byte slots, the box's address then in the third word.
-        big = self.int_policy(f.node.line)
+        # A promoting value can also enter a template in a non-promoting module.
+        # If any module opts in, reserve two words for every captured payload:
+        # 15 and 23 for 16- and 24-byte cells, with the box in the third word.
+        big = int_program()
         for cv in self.cellvars(f, body):
             self.cells[cv] = self.rt("pys_alloc", "ptr", [("i64 23" if big else "i64 15") if identity_abi(f) else ("i64 15" if big else "i64 8")])
             if identity_abi(f):
@@ -310,7 +311,7 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             self.lreg[c.caps[i]] = self.mload('%ptr', a)
             self.ltype[c.caps[i]] = c.ctypes[i]
             if numeric_identity(c.ctypes[i]) and identity_abi(f):
-                self.idbox[c.caps[i]] = self.maddr('%ptr', self.lreg[c.caps[i]], '2' if self.int_policy(f.node.line) else '1', True)
+                self.idbox[c.caps[i]] = self.maddr('%ptr', self.lreg[c.caps[i]], '2' if int_program() else '1', True)
         for j in range(len(c.iflags)):
             a = self.maddr('%ptr', env, f'{len(c.caps) + closure_default_slots(c) + j}', True)
             self.iflag[c.iflags[j]] = self.mload('%ptr', a)
