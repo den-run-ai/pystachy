@@ -7,17 +7,22 @@ what to preserve, where to measure costs, and which CPython behaviors remain gap
 
 **Recommendation:** preserve concrete typed execution as the performance baseline. Keep
 supported generators, exceptions and class features; reduce the machinery they require.
-Keep dynamic `Any` experimental and opt-in while its correctness and application-cost
-gates remain open. The useful boundary is the representation and operation, not a blanket
-ban on a Python syntax family.
+Keep dynamic `Any` and promoting ints experimental and opt-in while their correctness and
+application-cost gates remain open, and keep their bookkeeping out of code that cannot
+observe it. The useful boundary is the representation and operation, not a blanket ban on
+a Python syntax family.
 
-**Snapshot:** 23 October 2026, main
-[`f5a09d4`](https://github.com/den-run-ai/pystachy/commit/f5a09d4223139d7255e31051be97fc509e1ca1fe).
+**Snapshot:** 29 October 2026, main
+[`5b49dcf`](https://github.com/den-run-ai/pystachy/commit/5b49dcfaf639d943a12cbc00ce9117ba3e7b5fcc),
+before the v0.1.0-alpha.4 release. The first version of this guide described main
+[`f5a09d4`](https://github.com/den-run-ai/pystachy/commit/f5a09d4223139d7255e31051be97fc509e1ca1fe)
+(v0.1.0-alpha.3, 23 October).
 This is an engineering guide to the existing surface, not a new language mode or a change
 to the support policy. The [language reference](language.md),
-[compatibility reference](language/compatibility.md) and [dynamic `Any` contract](dynamic-any.md)
-define the exact supported forms. Issue status below was checked for this snapshot;
-measurements linked below retain their own revisions. No new timings were collected.
+[compatibility reference](language/compatibility.md), [dynamic `Any` contract](dynamic-any.md)
+and [promoting ints](python-int.md) define the exact supported forms. Issue status below was
+checked for this snapshot; measurements linked below retain their own revisions. No new
+timings were collected for this guide.
 
 ## Reading the colors
 
@@ -50,15 +55,32 @@ and concrete storage layouts. The [microGPT snapshot](../bench/microgpt/README.m
 and [integer-list memory measurement](performance.md#start-up-and-memory) are examples
 of measured consumers of those paths, at the revisions recorded in their reports.
 
-The core still has [numeric domain limits](language/compatibility.md#numbers): an integer
-overflow raises instead of producing CPython's arbitrary-precision result, and unboxed
-NaNs lack CPython's object-identity behavior in container membership/comparisons. Green
-does not establish CPython equivalence even when every operand has a concrete type.
+The core still has [numeric domain limits](language/compatibility.md#numbers): in a module
+that does not opt in to promoting ints, an integer overflow raises `OverflowError` instead
+of producing CPython's arbitrary-precision result (a masked product such as
+`(k * 0xCC9E2D51) & 0xFFFFFFFF` keeps CPython's result), and unboxed NaNs lack CPython's
+object-identity behavior in container membership/comparisons. Green does not establish
+CPython equivalence even when every operand has a concrete type.
 
-Dynamic `Any` is an additional, per-module **experimental opt-in** surface. A module without
-the opt-in comment uses `Any` for concrete inference/specialization. A program importing an
-opt-in module can still incur identity bookkeeping in typed code; the boundary is not
-simply whether the hot function contains an `Any` annotation.
+Two per-module **experimental opt-ins** extend this surface, and a module cannot take both:
+
+- `# pystachy: python-int` gives the module CPython's `int` ([promoting ints](python-int.md)).
+  A value that fits stays an inline 64-bit word; a larger one is an immutable digit array.
+  Other modules keep checked 64-bit ints, so a value past 64 bits raises `OverflowError` at
+  the [documented boundaries](python-int.md#64-bit-boundaries) where CPython continues.
+  Explicit [`mpz`](mpz.md) values are a separate arbitrary-precision API.
+- `# pystachy: dynamic-any` makes `Any` a runtime-typed value ([dynamic `Any`](dynamic-any.md)).
+  A module without the opt-in comment uses `Any` for concrete inference/specialization.
+
+The boundary is not simply whether the hot function contains an `Any` annotation. At this
+snapshot, a program in which any module opts in to dynamic `Any` tracks numeric identity in
+every module's typed code, and gives every module's typed dictionaries Python's hash/probe
+scheme ([section 4](#4-where-compatibility-adds-cost)). A typed loop that only imports
+`tomllib` measured 9.6× slower than alpha.3 before
+[#974](https://github.com/den-run-ai/pystachy/pull/974) and 1.84× slower with it; the draft
+[#973](https://github.com/den-run-ai/pystachy/pull/973), which tracks identity only where it
+can be observed, measured within alpha.3's range ([#969](https://github.com/den-run-ai/pystachy/issues/969),
+[identity-scope report](reports/identity-scope-performance-2026-10-28.md)).
 
 Preserve programs that already compile correctly. This map does not propose removing
 generators, exceptions, unions or other accepted features to make the compiler smaller;
@@ -68,10 +90,10 @@ see the compatibility rule in [AGENTS.md](../AGENTS.md#start-with-the-current-tr
 
 | Python syntax or construct | Label | Current native surface and the important boundary |
 |---|---|---|
-| Arithmetic, boolean expressions, `if`, `while`, `for`, `break`, `continue`, `return` | **G KEEP** for concrete operands | Checked 64-bit integers and native floats/bools; changing operands to unions or `Any` changes lowering. Arbitrary-precision integers are **R OUT**. |
+| Arithmetic, boolean expressions, `if`, `while`, `for`, `break`, `continue`, `return` | **G KEEP** for concrete operands; **Y PROTO** for promoting ints | Checked 64-bit integers by default, and native floats/bools; changing operands to unions or `Any` changes lowering. CPython's arbitrary-precision `int` is a per-module opt-in ([promoting ints](python-int.md)); `complex` is **R OUT**. |
 | `def`, direct calls, keyword/default arguments, templates | **G KEEP** for known signatures | Inference specializes supported unannotated functions. Unrestricted runtime argument expansion and arbitrary builtin function values are outside this contract; see [calls and templates](language/typing.md#function-and-method-templates). |
 | List/dict/set displays, comprehensions, indexing and slicing | **G KEEP** for concrete supported types; **Y BOUND** for mixed storage | Syntax is supported; element/key types determine layout, hashing, boxing and callbacks. Scalar-union locals and containers have different costs. |
-| Assignment, unpacking, `:=`, closures, `global`, `nonlocal` | **G KEEP** within the static contract; **Y PROTO** for dynamic identity tracking | These forms are supported. Dynamic numeric identity can add box slots/snapshots; remaining boundary and late-storage-inference cases are **R FIX**, not reasons to remove assignment syntax. |
+| Assignment, unpacking, `:=`, closures, `global`, `nonlocal` | **G KEEP** within the static contract; **Y PROTO** for dynamic identity tracking | These forms are supported. Dynamic numeric identity can add box slots/snapshots, also in typed modules of a program that uses dynamic `Any`; remaining boundary and late-storage-inference cases, including promoting ints that become `Any` values, are **R FIX**, not reasons to remove assignment syntax. |
 | Strings, bytes, f-strings, formatting | **Y BOUND** | Supported operations have different copying, Unicode and formatting limits. A read of an accumulating string can force a later append to copy; use the [performance contract](performance.md#costs-to-watch). `bytearray`, `memoryview` and binary files are **R OUT**. |
 | Classes, dataclasses, properties, single inheritance | **G KEEP** for concrete fields/direct methods; **Y BOUND** for broader dispatch | Supported hierarchy and reflection forms have explicit limits. Multiple inheritance, general metaclasses and runtime-named attribute-value lookup remain **R OUT**. |
 | Generator expressions and `yield` / `yield from` | **G KEEP** for direct consumer lowering; **Y BOUND** for suspended generators | A direct reduction can avoid a general generator object. A stored generator, delegation, `send`, `throw` and `close` need frames and cleanup; see the [semantic paths](#3-generators-exceptions-and-the-object-model). |
@@ -88,7 +110,7 @@ adapted ports and calls into embedded CPython are separate support paths. Check 
 
 ## 3. Generators, exceptions and the object model
 
-![Three rows compare direct iteration with suspended generators, local handlers with unwinding, and concrete fields with hierarchy dispatch. Separate red boxes identify unavailable APIs and accepted deviations; rejected opt-in generator channels are labelled separately.](images/support-semantics.svg)
+![Three rows compare direct iteration with suspended generators, local handlers with unwinding, and concrete fields with hierarchy dispatch. Separate red boxes identify unavailable APIs and accepted deviations; generator yield channels that cannot become Any values are rejected at compile time and labelled separately.](images/support-semantics.svg)
 
 Arrows connect **supported paths with additional implementation obligations**. The red
 column records separate boundaries, not the next stage of execution. In particular:
@@ -97,11 +119,15 @@ column records separate boundaries, not the next stage of execution. In particul
   `send` / `throw` / `close` forms already work. Real generators use LLVM coroutine
   operations in the [typed IR](typed-ir.md#instructions-and-control-flow). Their frames,
   live references, resumption and cleanup need validation. Some consumers materialize
-  inputs; dropped suspended generators are not generally closed. These are different
-  concerns from the [dynamic object-iteration gap](dynamic-any.md#deviations), where
-  an accepted program raises instead of iterating. Opt-in generator channels rejected
-  for incompatible `list[int]` / `list[Any]` storage are compilation restrictions,
-  recorded in the [exception manifest](../tools/dynany_optin_exceptions.json).
+  inputs; dropped suspended generators are not generally closed. Through dynamic `Any`,
+  ranges, builtin and user iterators and generators with boxable yields iterate lazily
+  and share their state ([iteration](dynamic-any.md#iteration),
+  [#951](https://github.com/den-run-ai/pystachy/pull/951)). An object that defines only
+  `__getitem__` still raises `TypeError` when iterated through `Any`, where CPython iterates
+  it by index (**R FIX**, [#773](https://github.com/den-run-ai/pystachy/issues/773)), and
+  `send` / `throw` / `close` through `Any` are not provided. A generator whose yields
+  cannot become `Any` values (aliased typed mutable containers) is rejected at compile
+  time where it would become one: a compilation restriction, not an accepted-program gap.
 - **Exceptions:** keep ordinary exceptions and cleanup. Local raises can branch to a
   handler; covered calls that may raise lower to LLVM `invoke` and native unwinding.
   Repeated cross-function throws are a runtime cost, not an unsupported construct.
@@ -117,12 +143,13 @@ column records separate boundaries, not the next stage of execution. In particul
 
 ## 4. Where compatibility adds cost
 
-![Representation graph separates native, closed-union and experimental Any storage, their execution costs, and compiler/IR pressure in the shared pipeline. Recursive JSON uses closed union boxes, not dynamic Any; typed identity work can be activated by an imported opt-in module.](images/support-costs.svg)
+![Representation graph separates native, closed-union and experimental Any storage, their execution costs, and compiler/IR pressure in the shared pipeline. Recursive JSON uses closed union boxes, not dynamic Any; an imported opt-in module can activate typed identity work.](images/support-costs.svg)
 
 All three paths compile through typed IR and LLVM in both JIT and AOT. Dynamic `Any` is
 not an interpreter fallback or a tracing JIT. Narrowing can recover a typed payload
 operation, but does not transparently change an aliased container's layout, remove its
-boxes, or solve identity across every typed boundary.
+boxes, or solve identity across every typed boundary. Promoting ints, not drawn in the
+figure, are a further representation of the same integer syntax (table below).
 
 The [recursive JSON prototype](json-prototype.md#values-and-ownership) is a closed recursive
 union representation, separate from dynamic `Any`; it does not require the `dynamic-any`
@@ -132,15 +159,17 @@ both paths, so more dynamic-type specialization is not automatically the remedy.
 | Added surface | Label and cost dimension | Current mechanism, evidence and boundary |
 |---|---|---|
 | Closed scalar/value unions | **Y BOUND — execution / heap** | Numeric locals can use split tag/payload slots, while union-valued container items can still allocate boxes. [Union costs](union-value-costs.md), [typed-IR optimizations](typed-ir.md#optimizations), [#758](https://github.com/den-run-ai/pystachy/issues/758). Keep concrete containers for homogeneous hot data where the program's semantics permit it. |
+| Promoting ints (`python-int` opt-in) | **Y PROTO — execution / heap / IR** | Two-word values: inline checked 64-bit paths while values fit, runtime calls and immutable digit arrays past 64 bits. Recorded 64-bit loops match checked int64 (`lcg32`), values crossing 2⁶³ stay inline where they fit, and big values ran within 0.83–1.31× of CPython ([measurements](python-int.md#measurements)). Values narrow at the [64-bit boundaries](python-int.md#64-bit-boundaries), raising `OverflowError` where CPython continues; containers of ints hold 64-bit ints in a program that uses dynamic `Any`. [#907](https://github.com/den-run-ai/pystachy/issues/907). |
 | Dynamic `Any` values, heterogeneous records and JSON/TOML | **Y PROTO — execution / heap** | Runtime type/payload boxes, boxed collection items, hashing, dispatch and GC enable useful mixed data. Narrowed payload operations can avoid generic arithmetic; this does not make every dynamic pipeline fast. [Representation and measurements](dynamic-any.md#representation), [#780](https://github.com/den-run-ai/pystachy/issues/780). |
-| Numeric identity across dynamic and typed code | **Y PROTO — execution / IR; R FIX — parity** | Box provenance, snapshots and joins preserve many copies, globals, closure cells and known-dynamic displays. Scalar-only proofs avoid some boxing. Typed parameter/return/field/container boundaries, folded constants and some inferred display cases remain gaps. [Identity contract](dynamic-any.md#representation), [#858](https://github.com/den-run-ai/pystachy/issues/858). |
+| Numeric identity across dynamic and typed code | **Y PROTO — execution / IR; R FIX — parity** | Box provenance, snapshots and joins preserve copies, globals, closure cells, known-dynamic displays, typed parameters/defaults/returns, instance fields, class attributes and `list[int]`/`list[float]` items. Scalar-only proofs and lazy field sharing avoid some boxing. In a program where any module opts in, every module tracks identity: numeric fields gain companion slots and functions gain box slots and companion arguments ([#969](https://github.com/den-run-ai/pystachy/issues/969)). Typed tuple/dict/set items, optional/union list items, typed numeric generator yields and some constant folds remain gaps. Promoting ints carry no companion: each crossing into `Any` makes a new object, losing alias identity, and some field and list-item crossings are rejected at compile time ([deviation](python-int.md#deviations)). [Identity contract](dynamic-any.md#representation), [#858](https://github.com/den-run-ai/pystachy/issues/858). |
+| Typed dictionaries in a program that uses dynamic `Any` | **Y PROTO — execution** | So that dynamic comparisons can look keys up across layouts, every module's typed dicts take Python's hash/probe scheme (the `!` key kind of `gen_key_kind` in `src/pystachy_compiler/containers.py`), whose str and int key hashes `runtime.c` computes out of line. The adapted [`json_loads` benchmark](reports/json-loads-performance-2026-10-28.md) discards its `json.loads()` results, so its timed loop runs json's typed decoder in such a program; its AOT loop remained slower than alpha.3 in all seven pairs after #974. Typed lookups also keep generic out-of-line entry points ([#894](https://github.com/den-run-ai/pystachy/issues/894)). |
 | Cross-type comparisons through `Any` | **R FIX — parity; Y PROTO — compiler work** | Guarded concrete adapters now execute many previously skipped bodies, including differently typed builtin container fields. An unsupported body/field shape can still fall back without executing the method. [Deviations](dynamic-any.md#deviations), [#803](https://github.com/den-run-ai/pystachy/issues/803). Fix the missing semantics before treating this as stable. |
-| Typed container ↔ `Any` crossings and generator channels | **Y PROTO — compile-time restrictions** | Incompatible mutable layouts are rejected rather than copied or reinterpreted. The opt-in manifest contains five distinct programs, each listed for JIT and AOT (ten entries). [Exact exception manifest](../tools/dynany_optin_exceptions.json), [#777](https://github.com/den-run-ai/pystachy/issues/777), [#773](https://github.com/den-run-ai/pystachy/issues/773), [#782](https://github.com/den-run-ai/pystachy/issues/782). This is separate from accepted object iteration through `Any` raising `TypeError` instead of iterating (**R FIX**). |
+| Typed container ↔ `Any` crossings and generator channels | **Y PROTO — compile-time restrictions** | Incompatible mutable layouts, and generator yield channels that hold them, are rejected rather than copied or reinterpreted. The dynamic-`Any` opt-in manifest lists four programs for JIT and AOT (eight entries, [#777](https://github.com/den-run-ai/pystachy/issues/777), [#782](https://github.com/den-run-ai/pystachy/issues/782)); its other 202 entries are programs whose entry module already opts in to promoting ints, which cannot also opt in to dynamic `Any` ([#907](https://github.com/den-run-ai/pystachy/issues/907)). [Exact exception manifest](../tools/dynany_optin_exceptions.json). This is separate from an object with only `__getitem__` raising `TypeError` when iterated through `Any` (**R FIX**, [#773](https://github.com/den-run-ai/pystachy/issues/773)). |
 | Larger class hierarchies | **Y BOUND — compiler work / IR** | Comparison emission and specialization have already been reduced; residual class-pair analysis remains separate from field-error-message IR growth. [#625](https://github.com/den-run-ai/pystachy/issues/625), [#786](https://github.com/den-run-ai/pystachy/issues/786). Do not describe the old quadratic emitted dispatcher as the current implementation. |
 | More dynamic classes and operation keys | **Y PROTO — compiler work / IR / execution** | Class-id switches have replaced the old linear field-dispatch chain. Duplicate method lookup, classes × attributes IR, dispatcher regeneration and deterministic cost guards remain. [#799](https://github.com/den-run-ai/pystachy/issues/799). |
 | Speculation, widening and retries | **Y PROTO — compiler work / state safety** | Retries retain fresh compiler instances; the unsound catch-and-continue experiment was not merged. State checks and concrete leak fixes have landed, but complete semantic rollback and cheaper safe retries remain work. [#801](https://github.com/den-run-ai/pystachy/issues/801), [#767](https://github.com/den-run-ai/pystachy/issues/767). |
 | Deep dynamic list/dict displays | **Y PROTO — compiler work** | Memoized dry traversal removed the exponential timeout. Residual superlinear work and deterministic scaling bounds remain; the historical timeout is not today's behavior. [#781](https://github.com/den-run-ai/pystachy/issues/781). |
-| Text, regex and JSON scanning | **Y BOUND / PROTO per API — execution / heap** | Prefix copying, per-character scanning and regex miss paths can dominate even with static types. These are independent of type-dispatch optimization. [String costs](performance.md#costs-to-watch), [JSON prototype](json-prototype.md), [#861](https://github.com/den-run-ai/pystachy/issues/861), [#862](https://github.com/den-run-ai/pystachy/issues/862), [#345](https://github.com/den-run-ai/pystachy/issues/345). The `json_repair` port stack is not merged at this snapshot. |
+| Text, regex and JSON scanning | **Y BOUND / PROTO per API — execution / heap** | Prefix copying, per-character scanning and regex miss paths can dominate even with static types. These are independent of type-dispatch optimization. [String costs](performance.md#costs-to-watch), [JSON prototype](json-prototype.md), [#861](https://github.com/den-run-ai/pystachy/issues/861), [#862](https://github.com/den-run-ai/pystachy/issues/862), [#345](https://github.com/den-run-ai/pystachy/issues/345). The adapted [`json_repair`](../ports/json_repair/PORT.md) port is merged; its bounded accumulator removes the measured repeated-prefix bottleneck, with recorded PyPy and CPython-memory tradeoffs ([measurements](../bench/json_repair/ACCUMULATOR.md)). |
 | Long-lived allocation and caches | **Y BOUND — retained heap / RSS** | Conservative, batched collection can retain more memory despite fast scalar execution. A short checksum/timing run does not prove service-lifetime acceptance. [Memory behavior](performance.md#start-up-and-memory), [#202](https://github.com/den-run-ai/pystachy/issues/202), [#615](https://github.com/den-run-ai/pystachy/issues/615). |
 
 The sharpest boundaries are **concrete versus boxed storage**, **known versus dynamic
@@ -160,6 +189,9 @@ The linked reports give environment and validation details; sampling differs by 
 | Concrete vs union container | At `2438e7e0`, one million integers in `list[int]` vs `list[int \| str]`: construction **9.197 vs 19.043 ms**, scan **0.775 vs 2.392 ms** (process CPU, excluding startup); peak managed heap **13.0 vs 33.1 MiB** from separate runs. [Report](union-value-costs.md#boxing-measurement). | Identical integer payloads can incur extra allocation and indirection solely from storage. Heap peak is not retained live memory or RSS. |
 | Narrowed vs generic dynamic arithmetic | At `bc79f24c`, summing a million items took **1.1 ms typed**, **3.2 ms with narrowed Any items**, **17.8 ms with an Any accumulator** (processing CPU); CPython's generic case took **30.5 ms**. [Report](dynamic-any.md#measurements). | Yellow can beat CPython while remaining much slower than the native core. Payload narrowing avoids arithmetic dispatch without removing the container's boxes. Later boxing/identity changes mean these are not current-main ratios. |
 | Compiler work vs emitted IR | At `554f3d1 → 570eb4e`, the ordinary-class comparison with 30 subclasses and `other: object` went from **962 → 62 method instances**, **197,808 → 26,898 IR lines**, and AOT build **32.4 → 1.9 s**. [#792 measurements](https://github.com/den-run-ai/pystachy/pull/792). | Sharing specialization can preserve the feature while reducing compiler/backend cost. Quadratic frontend class-pair analysis remains ([#625](https://github.com/den-run-ai/pystachy/issues/625)); smaller IR alone proves no execution-speed gain. |
+| Typed code beside an opt-in import | At main `5bd492b3`, a 30-million-step typed `Counter` loop that also imports `tomllib` took **215.6 ms** AOT against alpha.3's **22.4 ms** (9.6×); with #974's changes **41.3 ms** (1.84×), with draft #973 **22.4 ms** (medians of nine CPU-pinned runs). [Report](reports/identity-scope-performance-2026-10-28.md). | A program-wide policy taxes typed code that cannot observe it, and scoping it recovered that cost on this workload. One workload: it does not measure JSON, JIT start-up or applications, and #973 remains held by a correctness gate. |
+| Promoting ints at 64-bit width | Recorded 26 October 2026 with `bench/integers` (AOT, medians of five): `lcg32` took **0.005 s** with promoting ints and with checked int64 (151× and 152× CPython's speed); `cross64`, whose values cross 2⁶³, took **0.174 s** against `mpz`'s **0.419 s**. [Measurements](python-int.md#measurements). | The opt-in's inline paths keep 64-bit work at checked-int64 speed on these kernels. They do not measure programs that mix promoting ints with dynamic `Any` or cross many 64-bit boundaries. |
+| Runtime support that plain programs do not use | From `5bd492b3` to `9b0cedc9`, pruning unreachable promoting-int and dynamic-identity runtime paths shrank four plain executables by **12.6–29.3%** (`print(1)`: 41,416 → 29,264 bytes) and cut the `spectral` and `richards` builds by **19.3%** and **17.6%**. [Report](reports/aot-plain-runtime-2026-10-28.md). | Opt-in features need not cost programs that do not opt in. AOT still optimizes the runtime with each program ([#706](https://github.com/den-run-ai/pystachy/issues/706)); no execution regression was confirmed. |
 
 No matched measurement here establishes that all generators or exceptions are slow.
 Their yellow classification describes machinery and workload sensitivity. Use the maintained
@@ -173,10 +205,11 @@ trackers own implementation scope and promotion decisions.
 
 | Decision | Surface | Evidence required for a change |
 |---|---|---|
-| **Preserve** | Concrete storage, typed calls, direct loops and narrowing fast paths | Correctness plus typed controls for execution, allocations and compiler cost, including programs importing opt-in modules. |
+| **Preserve** | Concrete storage, typed calls, direct loops and narrowing fast paths | Correctness plus typed controls for execution, allocations and compiler cost, including programs importing opt-in modules: for example, a deterministic check that such an import leaves a typed class's layout and box calls unchanged (#969). |
 | **Keep and optimize** | Supported generators, exceptions, classes and closed unions | A demonstrated consumer cost; retain effects, cleanup, aliasing and first errors. Prefer shared lowering/helpers over removing semantics. |
-| **Repair before promotion** | Accepted comparison/identity/iteration gaps inside dynamic `Any` | CPython parity for the affected contract and negative controls; #108 keeps stable opt-in separate from default-on. |
-| **Contain implementation cost** | Union-item boxing, Any bookkeeping, dispatch generation, class-pair analysis and speculative retries | Allocation counts, separate frontend/backend timing, raw/optimized IR and scaling bounds. Preserve verified reset/ownership boundaries (#767); the rejected #801 partial-rollback approach is not a safe shortcut. |
+| **Repair before promotion** | Accepted comparison/identity/iteration gaps inside dynamic `Any`, including promoting ints that become `Any` values | CPython parity for the affected contract and negative controls; #108 keeps stable opt-in separate from default-on, and #907 keeps the promoting-int prototype separate from a default switch with its own cost budget. |
+| **Contain implementation cost** | Union-item boxing, Any bookkeeping, dispatch generation, class-pair analysis, speculative retries, and opt-in policies applied to a whole program (identity tracking, Python-hash dictionaries) | Allocation counts, separate frontend/backend timing, raw/optimized IR and scaling bounds. Scope a program-wide policy to the code that can observe it, with a safe fallback, as the draft #973 does for identity. Preserve verified reset/ownership boundaries (#767); the rejected #801 partial-rollback approach is not a safe shortcut. |
+| **Shrink boundaries** | Promoting-int 64-bit boundaries | CPython differential tests and GC stress for each boundary removed, with the int64 fast path unchanged. Until promotion is the default (#907), an `OverflowError` can surface at a boundary far from the arithmetic that grew the value. |
 | **Defer expansion until justified** | Unavailable general object/runtime facilities | A concrete consumer and an explicit contract/cost evaluation. Red OUT is not a request to remove already-supported features. |
 
 ## 7. Compatibility payoff, correctness and evidence
@@ -188,7 +221,10 @@ two circle sizes mean medium or large estimated utility across useful applicatio
 patterns. They are engineering judgments, not counts of unchanged applications, working
 APIs, import successes or annotations removed. A larger circle is not a measured multiple
 of a smaller one. Empty cells mean no example is plotted, not that no feature belongs there.
-Positions within a low/medium/high cell only separate labels.
+Positions within a low/medium/high cell only separate labels. The placements and payoff
+sizes are the 23 October estimates named in the figure's footer: this refresh did not
+re-estimate them, and promoting ints are not plotted ([section 4](#4-where-compatibility-adds-cost)
+covers their costs).
 
 **B** denotes an implemented, documented subset with limits; it does not certify full
 CPython parity. **GAP** identifies accepted-program deviations in the associated dynamic
@@ -249,6 +285,7 @@ whole-compiler linear scaling.
 | Field-error and dispatcher IR ([#786](https://github.com/den-run-ai/pystachy/issues/786), [#799](https://github.com/den-run-ai/pystachy/issues/799)) | Raw/optimized IR, LLVM CPU and code size as classes/fields grow | Preserve concrete error names and dynamic fallbacks. |
 | Nested displays ([#781](https://github.com/den-run-ai/pystachy/issues/781)) | Traversal counts and frontend CPU as depth grows | Retain the fixed deep-nesting acceptance; the old exponential timeout is historical. |
 | Safe retries ([#801](https://github.com/den-run-ai/pystachy/issues/801), [#767](https://github.com/den-run-ai/pystachy/issues/767)) | Restart counts and frontend CPU, separately from emitted IR | Preserve reset/ownership boundaries and existing bounded adapter controls; partial rollback was unsound. |
+| AOT runtime re-optimization ([#706](https://github.com/den-run-ai/pystachy/issues/706)) | Build time and executable size per program, separately from execution | Keep runtime paths that plain programs never reach out of their executables ([pruning report](reports/aot-plain-runtime-2026-10-28.md)); opt-in programs keep the paths they use. |
 
 For memory, the [union report](union-value-costs.md#boxing-measurement) records allocation
 representation and peak heap, and the [dynamic report](dynamic-any.md#measurements) also
@@ -272,9 +309,11 @@ and [verification guide](testing.md) describe those checks. Published compute an
 application results are workload evidence, not a universal green/yellow threshold.
 
 The `Any` promotion tracker [#108](https://github.com/den-run-ai/pystachy/issues/108)
-keeps **stable bounded opt-in** separate from **default-on**. This map makes neither
-promotion: correctness gaps, corpus exceptions, whole-import-graph behavior and
-application/retained-memory acceptance still matter.
+keeps **stable bounded opt-in** separate from **default-on**, and the promoting-int tracker
+[#907](https://github.com/den-run-ai/pystachy/issues/907) keeps its prototype separate from
+a default switch with its own cost budget. This map makes neither promotion: correctness
+gaps, corpus exceptions, whole-import-graph behavior and application/retained-memory
+acceptance still matter.
 
 When updating this page, change the affected SVG labels and tables together, recheck the
 linked issue's remaining scope, and retain the distinction between an unavailable feature,

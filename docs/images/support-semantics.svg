@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="960" viewBox="0 0 1200 960" role="img" aria-labelledby="title desc">
   <title id="title">Iteration, errors and objects: additional semantic obligations</title>
-  <desc id="desc">Three rows distinguish direct native forms from supported larger contracts. Arrows connect only supported paths. Separate red boxes list unavailable APIs and accepted deviations. Generators and exception unwinding are supported; opt-in generator-channel compile-time rejections are distinct from accepted Any object iteration that raises TypeError.</desc>
+  <desc id="desc">Three rows distinguish direct native forms from supported larger contracts. Arrows connect only supported paths. Separate red boxes list unavailable APIs and accepted deviations. Generators and exception unwinding are supported. Through dynamic Any, supported iterators and generators iterate lazily; a generator whose yields cannot become Any values is rejected at compile time, which is distinct from an accepted loop over an object with only __getitem__, which raises TypeError through Any.</desc>
   <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#66758a"/></marker></defs>
   <style>
     text { font-family: "DejaVu Sans", Arial, sans-serif; fill: #18263b; }
@@ -33,14 +33,14 @@
   <text x="451" y="229" class="body yellow">yield / yield from</text>
   <text x="451" y="256" class="body yellow">send / throw / close</text>
   <text x="451" y="290" class="body yellow">Frames, roots, resumption, cleanup</text>
-  <text x="451" y="320" class="small yellow">Opt-in channel mismatch: rejected</text>
-  <text x="451" y="345" class="small yellow">#773; separate from accepted FIX</text>
+  <text x="451" y="320" class="small yellow">Unboxable Any yields: rejected</text>
+  <text x="451" y="345" class="small yellow">at compile time, not an accepted FIX</text>
   <rect x="822" y="163" width="338" height="202" rx="14" fill="#fce9e7" stroke="#ba4036" stroke-width="2"/>
   <text x="842" y="199" class="head red">OUT async / frame APIs</text>
   <text x="842" y="229" class="small red">No async generators or introspection</text>
-  <text x="842" y="275" class="head red">FIX Any object iteration</text>
-  <text x="842" y="302" class="body red">Accepted loop raises TypeError.</text>
-  <text x="842" y="337" class="small red">#773: object protocol through Any</text>
+  <text x="842" y="275" class="head red">FIX __getitem__ iteration</text>
+  <text x="842" y="302" class="body red">Through Any, raises TypeError.</text>
+  <text x="842" y="337" class="small red">#773: CPython iterates by index</text>
   <text x="40" y="413" class="small" font-weight="700">ERRORS AND CLEANUP</text>
   <rect x="40" y="425" width="338" height="183" rx="14" fill="#e5f4e9" stroke="#248049" stroke-width="2"/>
   <text x="60" y="461" class="head green">Calls + local handlers</text>
@@ -77,5 +77,5 @@
   <text x="842" y="763" class="body red">General metaclasses / lookup hooks</text>
   <text x="842" y="817" class="small red">Runtime-named attribute values</text>
   <text x="40" y="910" class="sub">Arrows add implementation obligations within supported paths. Red boxes mark separate boundaries.</text>
-  <text x="40" y="938" class="small">Snapshot f5a09d4, 23 October 2026 · contracts and evidence: docs/support-surface.md</text>
+  <text x="40" y="938" class="small">Snapshot 5b49dcf, 29 October 2026 · contracts and evidence: docs/support-surface.md</text>
 </svg>
