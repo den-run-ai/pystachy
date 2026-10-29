@@ -1,7 +1,7 @@
 # pystachy: dynamic-any
 # Remaining #803 gap: a comparison body that reads its operand back out of a container does not
-# compile for an operand of another class, so the call falls back to identity and skips the body,
-# where CPython prints "comparison ran" and True.
+# compile for an operand of another class. The call raises an explicit unsupported-comparison
+# TypeError, where CPython prints "comparison ran" and True.
 from typing import Any
 
 

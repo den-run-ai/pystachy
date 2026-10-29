@@ -355,8 +355,7 @@ above apply to well-formed text (with the surrogate exception described above).
   (`tests/deviations/dynany_annotation_check.py`), also an item of a tuple that a typed tuple
   receives (`tests/deviations/dynany_tuple_item_check.py`). A cross-type comparison method whose
   body cannot compile for an `Any` operand and falls outside the supported guarded concrete
-  adapter still falls back to identity (or `TypeError` for
-  an ordering) where CPython runs the method
+  adapter raises an explicit unsupported-comparison `TypeError` when selected, where CPython runs the method
   outside the proven operation surface (`tests/deviations/dynany_cmp_uncompiled_body.py`, an
   operand read back out of a container) or past the proof's size bound
   (`tests/deviations/dynany_cmp_proof_bound.py`). Guarded adapters cover closed builtin field

@@ -2,7 +2,7 @@
 # The proof of a comparison holds a helper's body at each call, shared or not.
 # Helpers 12 deep, each calling the one before twice, give it 2 ** 13 - 1 bodies,
 # past its bound of 4096: the method does not run with the other operand, and the
-# comparison is identity's (docs/dynamic-any.md, deviations). CPython runs it.
+# comparison raises an explicit TypeError (docs/dynamic-any.md, deviations). CPython runs it.
 from typing import Any
 
 

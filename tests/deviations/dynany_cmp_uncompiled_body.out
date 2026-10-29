@@ -1,2 +1,2 @@
-False
-[exit 0]
+TypeError: unsupported dynamic comparison: Holder.__eq__ could not be compiled for Peer
+[exit 1]
