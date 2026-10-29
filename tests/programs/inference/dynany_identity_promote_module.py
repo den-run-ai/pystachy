@@ -11,6 +11,11 @@ value = int("3000")
 intidentity.keep(value)
 intidentity.keep(alias)
 intidentity.check("equal replacement")
+left = right = int("3100")
+intidentity.keep(left)
+intidentity.churn()
+intidentity.keep(right)
+intidentity.check("chained copy")
 
 
 def read_global() -> None:

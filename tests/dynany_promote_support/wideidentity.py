@@ -2,6 +2,7 @@
 # Importing the dynamic helper activates identity tracking for these promoting slots.
 # Copying or storing an out-of-int64 value must not narrow it merely to make a companion.
 import intidentity
+import plaincells
 
 
 class Box:
@@ -16,11 +17,31 @@ def passed(value: int) -> int:
 
 GLOBAL = int("1180591620717411303424")
 COPY = GLOBAL
+LEFT = RIGHT = int("1180591620717411303424")
+
+
+def optional_cell(value: int | None) -> None:
+    def read() -> int | None:
+        if value is not None:
+            return value
+        return None
+
+    def clear() -> None:
+        nonlocal value
+        value = None
+
+    if value is not None:
+        print("wide shared narrowed", value)
+        intidentity.churn()
+        print("wide captured narrowed", read())
+    clear()
+    print("wide optional cell cleared", read() is None)
 
 
 def run() -> None:
     value = GLOBAL
     alias = value
+    left = right = value
     box = Box(value)
     maybe: int | None = value
 
@@ -32,6 +53,7 @@ def run() -> None:
 
     intidentity.churn()
     print("wide global/copy", GLOBAL, COPY, alias)
+    print("wide chained copy", LEFT, RIGHT, left, right)
     print("wide parameter/return", passed(value))
     print("wide field/optional", box.value, maybe)
     print("wide closure", read())
@@ -44,3 +66,8 @@ def run() -> None:
     intidentity.check("wide field replaced")
     maybe = None
     print("wide optional cleared", maybe)
+    optional_cell(GLOBAL)
+    optional_cell(None)
+    reader = plaincells.capture_pair(GLOBAL, -GLOBAL)
+    intidentity.churn()
+    reader()

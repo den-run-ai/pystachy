@@ -26,3 +26,27 @@ def optional(value: int | None) -> None:
 
 optional(int("6000"))
 optional(None)
+
+
+def shared(value: int | None) -> None:
+    def read() -> int | None:
+        if value is not None:
+            return value
+        return None
+
+    def clear() -> None:
+        nonlocal value
+        value = None
+
+    if value is not None:
+        intidentity.keep(value)
+        intidentity.churn()
+        intidentity.keep(read())
+        intidentity.check("narrowed shared optional")
+        print("shared optional payload", value)
+    clear()
+    print("shared optional cleared", read() is None)
+
+
+shared(int("6100"))
+shared(None)

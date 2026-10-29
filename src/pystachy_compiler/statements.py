@@ -673,7 +673,7 @@ def gen_stmt_main(self, n: Node) -> None:
                     self.joinsrc = val if t0.kind == "name" or t0.kind == "attr" else self.nokey  # (a call's value: see join_hint)
                     self.store_name(t0.s, v, True)
                 else:
-                    if len(n.kids) > 2 and (v.t == "int" or v.t == BIG or v.t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit and self.dyn_policy(n.line):
+                    if len(n.kids) > 2 and (v.t == "int" or v.t == BIG or v.t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit and dynamic_program():
                         # (x = y = f(): one object, whose box each target's binding holds: dyn_id_store)
                         v.idfrom = self.dyn_id_box(v).v
                     for i in range(len(n.kids) - 1):

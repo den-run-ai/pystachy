@@ -1,4 +1,5 @@
 module copy True True True
 equal replacement False False True
+chained copy True True True
 global read True True True
 [exit 0]

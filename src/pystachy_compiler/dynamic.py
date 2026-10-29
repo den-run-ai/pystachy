@@ -1305,7 +1305,6 @@ def gen_dyn_box(self, v: Val) -> Val:
     return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.dyn_type(t)}", f"ptr {v.v}"]), DYN)
 
 
-
 def gen_dyn_id_box(self, v: Val) -> Val:
     # A numeric binding's companion is its Any box while representable, else null.
     # Unlike a crossing into Any (dyn_box), bookkeeping must never narrow or raise.

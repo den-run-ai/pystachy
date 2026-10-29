@@ -3,4 +3,8 @@ optional narrowed True True True
 optional None True True True
 optional parameter True True True
 optional parameter True True True
+narrowed shared optional True True True
+shared optional payload 6100
+shared optional cleared True
+shared optional cleared True
 [exit 0]
