@@ -40,9 +40,13 @@ form is outside the supported subset. It is not part of this change.
 | Historical post-tag baseline | `dcdc1a281d218038c2041a5e381396edd43beaea` |
 | #986 evaluated head | `ca798a9d1f6a2767d4ec3c83cb7574bacde5d63b` |
 | #986 merged main | `2ae4745202d3f9f648fc813aedad95a8859abec0` |
-| Evaluated follow-up code and tests | `b781fc508da74e4cf8b438594938017e2115c6f5` |
+| Published follow-up code and tests | `d46c7392a3f2ce666f752d57eadba1acdfd710de` |
 
-The follow-up includes merged main. Subsequent report-only changes do not change
+The follow-up includes merged main. Its published tree is
+`c2deaaa764329afed92a8f54d706f255fe6b974f`, identical to the verified local tree.
+The source manifest records local measurement commit `b781fc508da74e4cf8b438594938017e2115c6f5`;
+the additional local changes before publication were documentation only.
+Subsequent report-only changes do not change
 consumed compiler, runtime, library or benchmark bytes. All four sources were built
 with their own libraries/runtime and private caches, using CPython 3.13.16,
 LLVM/Clang 18.1.3 and Valgrind 3.22.0 on Linux x86-64. Profiles ran sequentially,
@@ -116,5 +120,9 @@ Local validation on the follow-up includes 22,449 hosted JSON differential/limit
 checks and 14,444 native cases each in JIT and AOT with collection at every
 allocation. The benchmark and identity-scope unit suites pass 11 and 17 tests.
 The new recorded delimiter outputs match pinned CPython. Independent review found
-no defects. The full native bootstrap and required verification matrix are reported
+no defects. Fourteen focused JSON programs pass JIT and AOT both regularly and
+with GC stress (56 checks); the three new Any32 cases pass both modes and GC
+settings (12 checks). Lint, runtime checks, repository hygiene and all 1,899
+recordings, 107 deviations and 11 pinned library files pass with zero failures.
+The full native bootstrap and required verification matrix are reported
 by the PR's exact-head CI, separately from these focused local checks.
