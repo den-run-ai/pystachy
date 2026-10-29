@@ -4454,8 +4454,8 @@ static I dobj(Dyn *a, Dyn *b, I k) {
   if (DKIND(a) != DK_OBJ || !(a->t->flags & DF_X)) return 2;
   I r = pys_obj_cmp(-1 - a->t->cls, 1 + k, a->v, (I)b);
   if (r == 3) {
-    static const char *methods[] = {"__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"};
-    failf("TypeError: unsupported dynamic comparison: %s.%s could not be compiled for %s", DNAME(a), methods[k], DNAME(b));
+    const char *method = k == 0 ? "__eq__" : k == 1 ? "__ne__" : k == 2 ? "__lt__" : k == 3 ? "__le__" : k == 4 ? "__gt__" : "__ge__";
+    failf("TypeError: unsupported dynamic comparison: %s.%s could not be compiled for %s", DNAME(a), method, DNAME(b));
   }
   return r;
 }
