@@ -16,13 +16,13 @@ from json import _Parser, _quote
 
 
 def _value(p: _Parser, depth: int) -> Any:
-    token = p.next_token()
-    if token == '"':
+    token = p.next_token()[0]
+    if token == 34:
         return p.string()
-    if token == "[" or token == "{":
+    if token == 91 or token == 123:
         if depth >= 256:
             raise RecursionError("maximum JSON nesting depth exceeded")
-        if token == "[":
+        if token == 91:
             return _array(p, depth)
         return _object(p, depth)
     v = p.scalar()  # a number or a constant, in json's existing typed representation
@@ -37,22 +37,22 @@ def _value(p: _Parser, depth: int) -> Any:
 
 def _array(p: _Parser, depth: int) -> list[Any]:
     out: list[Any] = []
-    if p.begin(b"]"):
+    if p.begin(True):
         return out
     while True:
         out.append(_value(p, depth + 1))
-        if not p.next_item(b"]", "array"):
+        if not p.next_item(True):
             return out
 
 
 def _object(p: _Parser, depth: int) -> dict[str, Any]:
     out: dict[str, Any] = {}
-    if p.begin(b"}"):
+    if p.begin(False):
         return out
     while True:
         key = p.object_key()
         out[key] = _value(p, depth + 1)
-        if not p.next_item(b"}", "object"):
+        if not p.next_item(False):
             return out
 
 

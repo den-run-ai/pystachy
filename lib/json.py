@@ -142,35 +142,39 @@ class _Parser:
     # The dynamic decoder uses the scanner through typed, identity-inert boundaries.
     # Keep numeric cursor fields private to these methods; direct external observations
     # are still accepted and make the compiler restore identity tracking for the module.
-    def next_token(self) -> str:
+    def next_token(self) -> bytes:
         if self.pos == self.n:
             raise self.error("Expecting value", self.pos)
         token = self.data[self.pos]
-        return '"' if token == 34 else "[" if token == 91 else "{" if token == 123 else ""
+        # Punctuation categories use constant one-byte tokens, so the caller can
+        # test a raw byte without allocating a string or borrowing numeric identity.
+        return b'"' if token == 34 else b"[" if token == 91 else b"{" if token == 123 else b" "
 
     def scalar(self) -> JSONValue:
         return self.value(0)
 
-    def begin(self, close: bytes) -> bool:
+    def begin(self, array: bool) -> bool:
+        close = 93 if array else 125
         self.pos += 1
         self.skip()
-        if self.pos < self.n and self.data[self.pos] == close[0]:
+        if self.pos < self.n and self.data[self.pos] == close:
             self.pos += 1
             return True
         return False
 
-    def next_item(self, close: bytes, kind: str) -> bool:
+    def next_item(self, array: bool) -> bool:
+        close = 93 if array else 125
         self.skip()
         i = self.pos
-        if i < self.n and self.data[i] == close[0]:
+        if i < self.n and self.data[i] == close:
             self.pos = i + 1
             return False
         if i == self.n or self.data[i] != 44:
             raise self.error("Expecting ',' delimiter", i)
         self.pos = i + 1
         self.skip()
-        if self.pos < self.n and self.data[self.pos] == close[0]:
-            raise self.error("Illegal trailing comma before end of " + kind, i)
+        if self.pos < self.n and self.data[self.pos] == close:
+            raise self.error("Illegal trailing comma before end of " + ("array" if array else "object"), i)
         return True
 
     def object_key(self) -> str:

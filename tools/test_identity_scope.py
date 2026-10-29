@@ -352,6 +352,11 @@ print(p.step('def'), inertlib.decode('1000'))
         for fn in generations[-1].fns:
             if generations[-1].fn_home(fn.f) == "json":
                 self.assertIsNone(BOXING.search(functions(ir)[fn.f.ll]), fn.f.ll)
+        # Scanner categories must not add generic string equality to each decoded
+        # value: that erased the identity savings in a real Any-result consumer.
+        for name, body in functions(ir).items():
+            if name.startswith("@f._pystachy_json_any$_value"):
+                self.assertNotIn("@pys_eq(", body)
         baseline, _ = self.compile(source, hints=False)
         self.assertIn("%C.json$_Parser = type {ptr, i1, ptr, i1, i1, i64, i64, i64, i64, ptr, ptr, ptr, ptr, ptr, ptr}", baseline)
 

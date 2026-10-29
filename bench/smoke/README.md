@@ -135,3 +135,27 @@ to explain the profile: emit raw IR with each revision, inventory both with the 
 inlining matters. Static call counts locate candidate work; only the paired executed
 profiles establish instruction savings. Retain the broader
 [pyperformance JSON workload](../pyperformance/json_loads.py) alongside these controls.
+
+### Actual Any-result decoding
+
+The standalone [Any-result JSON decoder control](json_decode_any.py) parses a short mixed
+object into an `Any` result on every iteration and accumulates an integer field. Its
+nested arrays/object, strings, float, bool, null and escaped Unicode exercise the actual
+boxed decoder. The full final value and checksum must match CPython before timings are
+compared. The document is shorter than 256 bytes, so cursor values remain within the
+small-integer cache; this makes extra scanner dispatch visible without large cursor-box
+allocation savings masking it. This is distinct from pyperformance's discarded-result
+loop, which Pystachy compiles through typed `JSONValue` decoding.
+
+```sh
+python3.13 bench/smoke/json_decode_any.py 20
+./pystachy run bench/smoke/json_decode_any.py 20
+./pystachy build bench/smoke/json_decode_any.py -o build/json_decode_any
+build/json_decode_any 20000
+valgrind --tool=callgrind --callgrind-out-file=build/json_decode_any.callgrind build/json_decode_any 2000
+```
+
+The optional argument is a positive iteration count (default 20,000); stdout is deterministic
+and stderr is the elapsed loop time in seconds. Interleave pinned-core baseline/candidate
+runs and keep JIT startup separate. The control is intentionally standalone, not an added
+CI timing threshold or an entry in `perf_smoke.py`'s default matrix.
