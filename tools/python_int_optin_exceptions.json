@@ -4002,6 +4002,38 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/inference/dynany_str_dict_layouts.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_str_dict_layouts.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_str_dict_layouts.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_str_dict_layouts.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_str_dict_probe_order.py",
+      "mode": "jit",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_str_dict_probe_order.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/dynany_str_dict_probe_order.py",
+      "mode": "aot",
+      "category": "dynamic-any-conflict",
+      "diagnostic": "tests/programs/inference/dynany_str_dict_probe_order.py:1: error: a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet",
+      "reason": "The original entry module explicitly opts into dynamic Any. Its object representation cannot yet be combined with promoting integers in the same module.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/inference/dynany_subclass_cmp.py",
       "mode": "jit",
       "category": "dynamic-any-conflict",

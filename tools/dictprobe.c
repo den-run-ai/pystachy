@@ -307,7 +307,7 @@ static void marked_scalars(void) {
       I key = str ? i || str == 2 ? (I)pys_str(text, length) : 0 : ints[i];
       I query = str ? i || str == 2 ? (I)pys_str(text, length) : 0 : ints[i];
       if (str && i == 1) { ((Str *)key)->dict_hash = 1; ((Str *)query)->dict_hash = 1; }
-      if (str && i == 2) { ((Str *)key)->dict_hash = (uint64_t)(str == 2 ? -2 : -1); ((Str *)query)->dict_hash = (uint64_t)(str == 2 ? -2 : -1); }
+      if (str && i == 2) { ((Str *)key)->dict_hash = (uint64_t)-2; ((Str *)query)->dict_hash = (uint64_t)-2; }
       pys_list_append(keys, key); pys_list_append(keys, query);
     }
     dict_generic_hashes = 0;
