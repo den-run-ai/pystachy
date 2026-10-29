@@ -1,0 +1,4 @@
+module copy True True True
+equal replacement False False True
+global read True True True
+[exit 0]

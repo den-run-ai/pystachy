@@ -1,0 +1,6 @@
+optional copy True True True
+optional narrowed True True True
+optional None True True True
+optional parameter True True True
+optional parameter True True True
+[exit 0]
