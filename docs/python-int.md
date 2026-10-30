@@ -8,7 +8,8 @@ Promoting ints are experimental. To enable them, put this comment before any cod
 
 In that module, `int` behaves as CPython's: a result that needs more than 64 bits becomes a
 bigger int instead of raising `OverflowError`, and a result that fits is a 64-bit value again.
-Modules without the comment, including the compiler, `runtime.py` and `lib/`, keep the checked
+The same module may also opt in to [dynamic `Any`](dynamic-any.md); boxed ints then promote
+on overflow too. Modules without the comment, including the compiler, `runtime.py` and `lib/`, keep the checked
 64-bit `int` of the [language guide](language.md). The roadmap is #907; this page describes its
 step 3, the compiler-level integer, and the first parts of step 6: tuples, lists, dicts, sets and
 generators. Values past 64 bits stay in variables, arguments, returns, fields, module variables,
@@ -43,7 +44,8 @@ print(int("123456789012345678901234567890") % 97)  # 52
   just their own body once, including locals receiving a `Callable` or generic class result
   in a module without the comment. This avoids reloading and compiling unrelated code.
   Other pending joins, captured locals, generators, recursive return inference and newly
-  materialized dependencies retain the whole-program retry. The retry changes no integer
+  materialized dependencies retain the whole-program retry. Programs using dynamic `Any`
+  also retain that retry, including its dispatcher and identity state. The retry changes no integer
   policy or annotated boundary; `tools/test_python_int_retry.py` checks its pass counts.
 - A `bool` stays a `bool`, as in a module that does not opt in: one returned or stored as an
   `int` (a variable, a field, a tuple's item), or given by a conditional expression, `and`, `or`,
@@ -83,8 +85,8 @@ print(int("123456789012345678901234567890") % 97)  # 52
   `*` by a literal, iteration, `in`, `index()` and `count()` take them, as do comparisons (also
   with tuples of 64-bit ints, bools and floats, exactly), `hash()` (CPython's), `repr()`,
   f-strings, `format()` and `%` formatting. `divmod()` returns a tuple of promoting ints.
-- A `list[int]` holds promoting ints, in a program where a module opts in and none opts in to
-  [dynamic `Any`](dynamic-any.md): displays, comprehensions, `append()`, `insert()`, item and
+- A `list[int]` holds promoting ints in a program where a module opts in, including programs
+  using [dynamic `Any`](dynamic-any.md): displays, comprehensions, `append()`, `insert()`, item and
   slice assignment, `extend()` and `+=` store values past 64 bits, and in a module that opts in,
   indexing, iteration, unpacking and `pop()` read them. `in`, `index()`, `count()` and
   `remove()` compare exactly (also with floats), and so do `==`, `<` and the other comparisons;
@@ -99,8 +101,8 @@ print(int("123456789012345678901234567890") % 97)  # 52
   `count()`, `remove()`, `==`, `<` and the other comparisons and `repr()` take every item, exactly
   (also against tuples of floats, and by a tuple that may be None), and so do the lists that a
   dict's keys, values and items and a set's elements make (`list(d)`, `d.items()`, `sorted(s)`).
-- The values of a dict of ints are promoting ints, in a program where a module opts in and none
-  opts in to [dynamic `Any`](dynamic-any.md), as a list's items are: item assignment, `+=`,
+- The values of a dict of ints are promoting ints in a program where a module opts in,
+  as a list's items are: item assignment, `+=`,
   displays, comprehensions, `setdefault()`, `update()`, `dict()`, `copy()`, a NamedTuple's
   `_asdict()` and `dict(vars(o))` store values past 64 bits, also from pairs (`dict()` and
   `update()` of a list of tuples, `zip()`, `enumerate()`, a generator or another dict's
@@ -126,8 +128,8 @@ print(int("123456789012345678901234567890") % 97)  # 52
   for an int; in a module that opts in, iteration, `popitem()` and a set's `pop()` read them as
   tuples of promoting ints, and `keys()`, `items()`, `sorted()`, `min()`, `max()`, copies,
   comparisons and `repr()` take them.
-- A set or frozenset of ints holds promoting ints, in a program where a module opts in and none
-  opts in to [dynamic `Any`](dynamic-any.md), at CPython's hashes, so that loops, `repr()` and
+- A set or frozenset of ints holds promoting ints in a program where a module opts in,
+  at CPython's hashes, so that loops, `repr()` and
   `pop()` see CPython's order: displays, comprehensions, `add()`, `update()`, `set()` of a list or
   another iterable and the operators and methods of set algebra store values past 64 bits; `in`,
   `discard()` and `remove()` find them exactly, and in a module that opts in, iteration and `pop()`
@@ -163,18 +165,17 @@ print(int("123456789012345678901234567890") % 97)  # 52
   definitions compile as those of a module that opts in do (`specs.INT_HELPERS`); its keys are those
   of its type variable (below).
 - A generic class's type variable that an int binds, by an annotation (`Box[int]`) or by a call's
-  argument (`Box(1)`, `Box(2 ** 70)`), in any module of a program where a module opts in and none
-  opts in to [dynamic `Any`](dynamic-any.md), is bound to a promoting int: the class's
+  argument (`Box(1)`, `Box(2 ** 70)`), in any module of a program where a module opts in,
+  is bound to a promoting int: the class's
   specializations for ints are one class, whose fields, parameters, results and containers of the
   type variable hold promoting ints, also those of `lib/`'s `deque`, `defaultdict` and
   `OrderedDict`, a `Counter`'s keys and the results that `functools.cache` and `lru_cache` keep. The
   methods of such a specialization read the ints of their containers as a module that opts in does
   (`bigints.read_policy`). A class whose `__init__` leaves a parameter unannotated (a class
   template, specialized by each call's types) and a generic function keep the ints of their own
-  module, and where a module opts in to dynamic `Any`, whose values do not hold promoting ints, a
-  call's argument binds the type it has (an int that fits, the 64-bit int).
+  module; a call's argument binds the type it has.
 - A `Callable`'s `int` and `int | None` parameters and result are promoting ints, in every module of
-  a program where a module opts in and none opts in to [dynamic `Any`](dynamic-any.md): one
+  a program where a module opts in: one
   signature, as `Callable[[int], int]`, for lambdas, closures, bound methods (also through a base
   class whose subclasses override them), defs and builtins, also in fields, tuples, lists, dicts and
   a `defaultdict`'s factory. Its adapter converts them to and from those of the function it holds
@@ -196,6 +197,15 @@ print(int("123456789012345678901234567890") % 97)  # 52
   integer`). `hash()`, dicts and sets take one past 64 bits as the hash of that int.
 - `vars()` and `__dict__` of an object show the values of its fields that are promoting ints, an
   `int | None` or tuples of them.
+- [Dynamic `Any`](dynamic-any.md) holds promoting ints without narrowing them: boxing and
+  unboxing, field reads, dynamic lists and tuples, dictionary keys and values, arithmetic,
+  comparisons with typed ints and floats, hashing and integer conversions preserve the value.
+  Both physical representations have Python type `int`. In a module with both opt-ins,
+  operations on two in-range `Any` ints also promote on overflow. An operation involving an
+  already wide int stays exact in a dynamic-only module; an operation on two in-range ints in
+  that module retains its checked 64-bit policy. Supported numeric identity channels retain
+  the same box, including `int()` of an exact `Any` int and typed numeric list items. Typed
+  tuple, dict, set and generator identity gaps remain [documented](dynamic-any.md#deviations).
 
 Errors are CPython's: `ZeroDivisionError` for `//` and `%` by zero, `ValueError` for a negative
 shift count, `MemoryError` for a shift or power whose result could not fit in memory. As in
@@ -248,8 +258,10 @@ of tuples of other types or lengths, reads their items one by one.
 A list of ints holds an item that fits in its 8-byte slot, as a list of 64-bit ints holds it. An
 item past 64 bits holds -2\*\*63 there, and its pointer in a companion array beside the items,
 which the collector scans and the first such item makes: the list's identity companion of
-[dynamic `Any`](dynamic-any.md), of a kind of its own. Its other entries are null, -2\*\*63's
-among them, so every list operation of `runtime.c` that moves, copies or drops items keeps the
+[dynamic `Any`](dynamic-any.md), of a kind of its own. Where numeric object identity is observed,
+the same companion changes to an array of `Any` boxes; a wide item's box owns its digits.
+This keeps the list header at 32 bytes and its primary items at 8 bytes. The digits-only
+companion's other entries are null, -2\*\*63's among them. Every list operation of `runtime.c` that moves, copies or drops items keeps the
 companion in step as it is. A read of a list's int compares its slot with -2\*\*63 and reads the
 pointer only where they are equal; that is the cost a read pays in every module of a program
 that opts in. Code of a module that does not opt in reads the item as a 64-bit int and raises
@@ -329,8 +341,7 @@ for a C `long`), where CPython goes on with the bigger int:
   items of lists of other types than `int` and tuples of ints (an `int | None` in a list, also as
   a tuple's item, holds a 64-bit int), the values of dicts of other types than `int` and tuples
   of ints, a dict's tuple of ints that `get()` or
-  `pop()` gives where it may be None (`d.get(k)`), the items and values
-  of lists and dicts of ints in a program that opts in to dynamic `Any`, a tuple's `int | None`
+  `pop()` gives where it may be None (`d.get(k)`), a tuple's `int | None`
   items, unions other than `int | None` (also where a join makes one, as
   for a location given a `bool` and an int, or a list or dict display of ints and floats, bools
   or `str`s), the items of a `tuple[int, ...]` (a tuple sliced by
@@ -341,7 +352,8 @@ for a C `long`), where CPython goes on with the bigger int:
   optional-tuple boundary; `dataclasses.asdict()` preserves promoting scalar and fixed-tuple
   field values when the fields have a supported common dictionary value type. Heterogeneous
   fields requiring a closed union containing a promoting int are rejected at compile time,
-  including when the particular integer value fits in 64 bits.
+  including when the particular integer value fits in 64 bits. Containers whose items are
+  dynamic `Any` values hold wide ints; these closed-union limits do not apply to them.
 - An `int` or `int | None` parameter of a function in a module that does not opt in, also of a
   class's comparison method and where a `Callable` holds the function (whose unannotated parameters
   take the promoting int, so arithmetic there promotes too), and the ints of the other types that a
@@ -355,13 +367,9 @@ for a C `long`), where CPython goes on with the bigger int:
   floats: the ints of an `int | float` list, ints added to a float start, and a start past 64
   bits with float items. `sum()`, `min()`, `max()`, `any()`, `all()`, `sorted()` and `list()` of
   a tuple take its items as a list holds them.
-- [Dynamic `Any`](dynamic-any.md) values, which another module that opts in to them may pass or
-  take: a promoting int becomes one as a 64-bit int, including a promoting field read
-  through `Any`. In-range values retain their numeric identity across supported bindings,
-  calls, fields and closures; bookkeeping for a wide typed value does not itself narrow it.
-  An actual wide field read or dynamic list display raises `OverflowError`
-  (`tests/deviations/python_int_any_field.py` and `python_int_any_list.py`). Comparing a promoting int with an `Any`
-  value is rejected during compilation for now.
+- Unboxing an `Any` int into an explicitly fixed-width `int` or `int | None` annotation in a
+  module that does not opt in. Passing a wide int through `Any` itself is supported; its
+  eventual destination determines whether a checked narrowing is needed.
 - `x in c` where the items of `c` are not ints (a `list[float]` may hold a float equal to an int
   past 64 bits). Membership in a list of ints is exact; in another container of ints, a `range`,
   a generator or an iterator object too: an int past 64 bits is not in it. An object's
@@ -374,8 +382,6 @@ for a C `long`), where CPython goes on with the bigger int:
 - `is` between two ints is rejected during compilation in a module that opts in
   (`tests/errors/numbers/python_int_is.py`): CPython's result depends on its small-int cache.
   `x is None` and `x is not None` of an int are `False` and `True`.
-- A module cannot opt in to both promoting ints and [dynamic `Any`](dynamic-any.md) yet
-  (`tests/errors/numbers/python_int_dynamic_any.py`).
 - A tuple of 64-bit ints that holds -2\*\*63, also in a tuple it holds (from a container, a
   builtin or a module that does not opt in), becomes a new tuple where a tuple of promoting ints
   is expected: `is` tells the two apart, where CPython has one object

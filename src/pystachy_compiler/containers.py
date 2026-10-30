@@ -56,34 +56,37 @@ def gen_list_identity(self, v: Val) -> Val:
     return v
 
 
-def gen_list_item(self, o: Val, i: Val) -> Val:
+def gen_list_item(self, o: Val, i: Val, keep: bool = False) -> Val:
+    # Container comparisons retain the stored layout even in a fixed-width caller (keep).
     k = self.list_id_kind(o.t)
     if k != 0:
         b = self.rt("pys_list_get_identity", "ptr", [f"ptr {o.v}", f"i64 {i.v}", f"i64 {k}"])
-        return self.dyn_unbox(Val(b, "dyn"), elem(o.t))
-    return self.list_value(o, i.v, self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]))
+        t = BIG if keep and elem(o.t) == "int" and int_lists() else self.item_type(o.t)
+        return self.dyn_unbox(Val(b, "dyn"), t)
+    return self.list_value(o, i.v, self.rt("pys_list_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), keep)
 
 
-def gen_list_value(self, o: Val, i: str, raw: str) -> Val:
+def gen_list_value(self, o: Val, i: str, raw: str, keep: bool = False) -> Val:
     # raw, the slot of list o at index i (as pys_list_get takes it), as the item it holds: where the
     # program's lists of ints may hold promoting ints past 64 bits, an int through big_list_value
     if elem(o.t) == "int" and int_lists():
-        return self.big_list_value(o, i, raw)
-    return self.held_value(self.from_slot(raw, elem(o.t)))  # (a tuple of ints: held, bigints.py)
+        return self.big_list_value(o, i, raw, keep)
+    return self.held_value(self.from_slot(raw, elem(o.t)), keep)  # (a tuple of ints: held, bigints.py)
 
 
 def gen_list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
     # v has already been coerced to the list's item type (list_coerce: a promoting int stays one
     # where the list may hold it, big_list_store). Its source box must survive
     # the store: equal payloads can name different objects, including distinct NaNs.
-    if v.t == BIG and elem(o.t) == "int" and int_lists():
+    k = self.list_id_kind(o.t)
+    if v.t == BIG and elem(o.t) == "int" and int_lists() and k == 0:
         self.big_list_store(o, v, method, index)
         return
-    k = self.list_id_kind(o.t)
     args = [f"ptr {o.v}"]
     if index != "":
         args.append(f"i64 {index}")
-    args.append("i64 " + self.to_slot(v))
+    raw = self.select(self.big_fits([v]), self.big_lo(v), Val("-9223372036854775808", "int")) if v.t == BIG else self.to_slot(v)
+    args.append("i64 " + raw)
     if k != 0:
         args.extend([f"ptr {self.dyn_box(v).v}", f"i64 {k}"])
     symbols = {"append": "pys_list_append", "set": "pys_list_set", "insert": "pys_list_insert"}
@@ -97,7 +100,7 @@ def gen_list_minmax(self, o: Val, desc: str, maximum: bool) -> Val:
     if k != 0:
         args.append(f"i64 {k}")
         b = self.rt("pys_list_minmax_identity", "ptr", args)
-        return self.dyn_unbox(Val(b, "dyn"), elem(o.t))
+        return self.dyn_unbox(Val(b, "dyn"), self.item_type(o.t))
     if elem(o.t) == "int" and int_lists():
         return self.big_list_minmax(o, maximum)
     return self.held_value(self.from_slot(self.rt("pys_list_minmax", "i64", args), elem(o.t)))
@@ -531,6 +534,16 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         return none
     if m == "discard" or m == "remove":
         v = self.big_opt_narrow(self.expr(args[0], et))  # (an element holds a 64-bit int: bigints.py)
+        if et == "int" and v.t == "dyn":
+            entry = self.int_key_entry(o, v, m == "remove")
+            found = self.label()
+            end = self.label()
+            self.cbr(self.num_cmp(">=", Val(entry, "int"), Val("0", "int")).v, found, end)
+            self.place(found)
+            self.rt("pys_set_slot_del", "void", [ov, f"i64 {entry}"])
+            self.br(end)
+            self.place(end)
+            return none
         if (v.t == "None" or (is_opt(v.t) and unopt(v.t) == et)) and et not in self.classes:
             # None is no element (but an object's): discard() does nothing, remove() raises
             # KeyError: None
@@ -877,6 +890,80 @@ def gen_int_any_lookup(self, d: Val, k: Val, get: bool) -> str:
     self.br(end)
     self.place(end)
     return self.phi(ph)
+
+def gen_int_key_entry(self, o: Val, k: Val, required: bool = False) -> str:
+    # An Any query of a typed integer table retains its original type and hash.
+    # The runtime compares against the stored integer, including wide values,
+    # and restarts safely if a user's equality callback changes the table.
+    fn = "pys_dict_int_find_any" if is_dict(o.t) else "pys_set_int_find_any"
+    e = self.rt(fn, "i64", [f"ptr {o.v}", f"ptr {k.v}"])
+    if required:
+        missing = self.label()
+        found = self.label()
+        self.cbr(self.num_cmp("<", Val(e, "int"), Val("0", "int")).v, missing, found)
+        self.place(missing)
+        self.raise_("KeyError", self.repr(k).v)
+        self.place(found)
+    return e
+
+def gen_dict_any_method(self, o: Val, m: str, args: list[Node]) -> Val:
+    # get/pop/setdefault with an Any query of a typed integer dictionary. Values
+    # keep their declared storage; only a missing setdefault stores the query,
+    # and that store still checks for an exact integer.
+    if len(args) not in [1, 2] or (m == "setdefault" and len(args) != 2) or any(a.kind in ["kw", "starred", "dstar"] for a in args):
+        return Val("", "")
+    if self.dyn_dry(args[0]) != "dyn":
+        return Val("", "")
+    kv = targs(o.t)
+    k = self.expr(args[0], "")
+    d = self.expr(args[1], kv[1]) if len(args) == 2 else Val("null", "None")
+    vt = BIG if self.dict_int(o.t) else held(kv[1])
+    has = m == "get" or len(args) == 2
+    rt = self.optdefault(d, vt) if has and m != "setdefault" else vt
+    default = self.coerce(d, rt) if has else Val("undef", rt)
+    if m == "pop":
+        # CPython's empty pop skips hashing the query, unlike get, [] and in.
+        lookup = self.label()
+        ready = self.label()
+        ep = Ins("phi", "int", "")
+        self.incoming(ep, "-1", self.cur)
+        self.cbr(self.num_cmp("==", Val(self.mload("int", o.v), "int"), Val("0", "int")).v, ready, lookup)
+        self.place(lookup)
+        self.incoming(ep, self.int_key_entry(o, k), self.cur)
+        self.br(ready)
+        self.place(ready)
+        e = self.phi(ep)
+    else:
+        e = self.int_key_entry(o, k)
+    found = self.label()
+    missing = self.label()
+    end = self.label()
+    ph = Ins("phi", rt, "")
+    self.cbr(self.num_cmp(">=", Val(e, "int"), Val("0", "int")).v, found, missing)
+    self.place(found)
+    value = self.big_dict_value(o, e, True) if self.dict_int(o.t) else self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {e}"]), vt)
+    if m == "pop":
+        self.rt("pys_dict_entry_del", "void", [f"ptr {o.v}", f"i64 {e}"])
+    self.incoming(ph, self.coerce(value, rt).v, self.cur)
+    self.br(end)
+    self.place(missing)
+    if m == "setdefault":
+        key = self.key_coerce(k, "int")
+        self.dict_put(o, key, self.key_slot(key), self.list_hold(d, kv[1]), kv)
+    if has:
+        self.incoming(ph, default.v, self.cur)
+        self.br(end)
+    else:
+        self.raise_("KeyError", self.repr(k).v)
+    self.place(end)
+    result = Val(self.phi(ph), rt)
+    if self.read_policy():
+        return result
+    if rt == BIG:
+        return self.big_narrow(result)
+    if rt == BIGOPT:
+        return self.big_opt_narrow(result)
+    return self.held_read(Val(result.v, narrow_type(rt)))
 
 def gen_store_key(self, k: Val, kt: str) -> Val:
     # k as a key stored into a dict whose keys have type kt (d[k] = v, d[k] op= v, a display,

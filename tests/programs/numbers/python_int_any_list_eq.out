@@ -1,0 +1,11 @@
+True True
+False False
+False False
+compare 1180591620717411303424 True
+compare -1180591620717411303424 True
+compare -9223372036854775808 True
+compare 1180591620717411303424 True
+compare -1180591620717411303424 True
+compare -9223372036854775808 True
+True True
+[exit 0]

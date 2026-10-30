@@ -1,0 +1,32 @@
+mods: init mods
+mods.shapes: init mods.shapes
+same literals True True
+typed returns True True
+boxed returns True True
+return and global True True
+hexadecimal True True
+octal True True
+binary True True
+negative True True
+separate modules False False
+imported return True True
+separate module return False False
+runtime power False False
+computed objects False False
+arguments min first equal True True
+arguments max first equal True True
+arguments min True True
+arguments max True True
+unary plus True True
+positive abs True True
+returned abs True True
+negative unary plus True True
+negative abs creates object False False
+small positive abs True True
+nested small sign True True
+stored constant True True
+stored constant True True
+stored constant True True
+18446744073709551615 18446744073709551616 -18446744073709551616
+123456789012345678901234567890123456789012345678901234567890
+[exit 0]

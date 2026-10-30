@@ -1261,6 +1261,8 @@ I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a
    result is demoted where it fits, so a value has one representation: values whose hi is NULL
    are equal where their lo are, and a value with an Mpz never equals one without. */
 typedef struct { I lo; void *hi; } Big;
+typedef struct Dyn Dyn;
+void *pys_dyn_big_ptr(Dyn *x);
 static Big big_small(I v) { Big r = {v, NULL}; return r; }
 static Big big_of(Mpz *m) {                    /* m's value, demoted where it fits */
   I n = zn(m);
@@ -1445,7 +1447,13 @@ Big pys_big_powmod(I alo, void *ahi, I blo, void *bhi, I mlo, void *mhi) {   /* 
 enum { BIGIDS = 3 };
 #define NARROW "OverflowError: Python int too large to convert to C long"
 static int big_list(List *l) { return l->ids && (l->ids[0] & 3) == BIGIDS && opt_in(); }   /* may l hold an item past 64 bits */
-static Mpz *lbig(List *l, I i) { return l->a[i] == INT64_MIN && big_list(l) ? (Mpz *)l->ids[i + 1] : NULL; }
+/* A numeric identity companion holds Dyn boxes, including a wide integer's box. A
+   BIGIDS companion is still only Mpzs until an observer asks for identities. */
+static Mpz *lbig(List *l, I i) {
+  if (l->a[i] != INT64_MIN || !l->ids) return NULL;
+  if (big_list(l)) return (Mpz *)l->ids[i + 1];
+  return (l->ids[0] & 3) == 1 && l->ids[i + 1] && opt_in() ? pys_dyn_big_ptr((Dyn *)l->ids[i + 1]) : NULL;
+}
 static Big litem(List *l, I i) { Mpz *m = lbig(l, i); Big r = {m ? 0 : l->a[i], m}; return r; }   /* l[i] as a promoting int */
 /* A promoting int in a descriptor walk (descriptor J) is a pointer to two words, its slot and its
    Mpz: the value and null where it fits, else -2**63 and the Mpz, as the box of an int | None of a
@@ -1464,7 +1472,7 @@ static I titem(const I *t, I n, I i, const char *e, I *w) {   /* item i of tuple
    in that slot's word of kb (see sets) */
 static Mpz *sbig(Set *s, I j) { return s->keys[j] <= INT64_MIN + 1 && s->kb && opt_in() ? (Mpz *)s->kb[j] : NULL; }
 static int list_has_big(List *l) {   /* does l hold an item past 64 bits */
-  if (big_list(l)) for (I i = 0; i < l->len; i++) if (l->ids[i + 1]) return 1;
+  if (l->ids) for (I i = 0; i < l->len; i++) if (lbig(l, i)) return 1;
   return 0;
 }
 static void list_narrow(List *l) { if (list_has_big(l)) pys_fail(NARROW); }   /* l's ints for 64-bit code */
@@ -1486,7 +1494,7 @@ static I mpz_cmp_float(Mpz *m, double d) {   /* m, past 64 bits, against d, exac
   return pys_mpz_cmp(m, &t.m);
 }
 Big pys_big_sum(List *l, I slo, void *shi) {   /* sum(l, start) of a list of ints: past 64 bits, exactly */
-  I i = 0, big = big_list(l);
+  I i = 0, big = l->ids != NULL;
   if (!shi) {                                  /* 64-bit additions until one overflows or an item is past 64 bits */
     I s = slo, t;
     for (; i < l->len; i++) { if ((big && lbig(l, i)) || __builtin_add_overflow(s, l->a[i], &t)) break; s = t; }
@@ -2064,7 +2072,6 @@ I pys_obj_eq(I c, I a, I b);
 I pys_obj_cmp(I c, I op, I a, I b);
 Str *pys_obj_repr(I c, I a, I b);
 typedef struct DynType DynType;   /* (see dynamic values) */
-typedef struct Dyn Dyn;
 struct DynType { I kind; Str *desc; Str *name; I cls; const DynType *base; I flags; Dyn *(*iter)(Dyn *); Dyn *(*next)(Dyn *); I (*len)(Dyn *); };
 struct Dyn { const DynType *t; I v; };
 _Static_assert(sizeof(Dyn) == 16, "a dynamic value's box is gc_box's 16 bytes");
@@ -2073,6 +2080,7 @@ I pys_dyn_eq(Dyn *a, Dyn *b);
 I pys_dyn_cmp(Dyn *a, Dyn *b, I op);
 I pys_dyn_hash(Dyn *x);
 Dyn *pys_dyn_int(I v);
+Dyn *pys_dyn_big(I lo, void *hi);
 Dyn *pys_dyn_float(double x);
 static int dyn_eqitem(Dyn *a, Dyn *b);
 static int dyn_keyeq(Dyn *a, Dyn *b);
@@ -2269,6 +2277,9 @@ static const char *repr_depth(Buf *b, I v, const char *d, I depth) {
     if (x.hi) { Str *s = mpz_digits(x.hi); if (!s) digits_deep(); put(b, s->s, s->len); }
     else { char t[32]; put(b, t, snprintf(t, 32, "%lld", (long long)x.lo)); }
     return d;
+  }
+  case 'j': {                                       /* a dynamic wide int's immutable Mpz */
+    opt_in(); Str *s = mpz_digits((Mpz *)v); if (!s) digits_deep(); put(b, s->s, s->len); return d;
   }
   case 'f': { Str *s = pys_str_float(dbl(v)); put(b, s->s, s->len); return d; }
   case 'b': put(b, v ? "True" : "False", v ? 4 : 5); return d;
@@ -2733,11 +2744,12 @@ List *pys_list_new_atomic(I cap) { return list_new(cap, 1); }   /* a list[int], 
    the null marker with the value. Bit 2 of the companion header marks pending entries.
    Copies must materialize before sharing, so separate reads
    of copied items cannot create unrelated boxes.
-   A list of ints of a program that opts in to promoting ints (docs/python-int.md), and not to
-   dynamic Any, keeps the Mpz of an item past 64 bits in a companion of kind BIGIDS instead, the
+   A list of ints with no identity observer keeps the Mpz of an item past 64 bits in a
+   companion of kind BIGIDS instead, the
    item's slot holding -2**63, as a tuple's does, and the entries of its other items (-2**63 among
    them) null: list_box makes none, so the code above and below keeps it in step as it is. (BIGIDS,
-   big_list and lbig are with the promoting ints' code.) */
+   big_list and lbig are with the promoting ints' code.) An identity observer upgrades
+   that companion to integer boxes once; the raw array stays unboxed and atomic. */
 void pys_list_narrow(List *l) { list_narrow(l); }
 static I list_box(I value, I kind) {
   opt_in();
@@ -2745,6 +2757,15 @@ static I list_box(I value, I kind) {
 }
 static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
   opt_in();
+  if (big_list(l) && (kind & 3) == 1) {
+    if (!l->cap) { l->ids = empty_identity_int; return; }
+    for (I i = 0; i < l->len; i++) {
+      Mpz *m = l->a[i] == INT64_MIN ? (Mpz *)l->ids[i + 1] : NULL;
+      l->ids[i + 1] = (I)pys_dyn_big(m ? 0 : l->a[i], m);
+    }
+    l->ids[0] = 1;
+    return;
+  }
   if (!l->ids) {
     /* Companion allocation limits use the allocator's fatal MemoryError convention. */
     if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
@@ -2758,11 +2779,12 @@ static __attribute__((noinline)) void list_identity_slow(List *l, I kind) {
 void pys_list_identity(List *l, I kind) {
   /* Keep the clean check small enough to inline into getters/stores in the
      precompiled JIT runtime as well as AOT. Only missing/dirty storage calls out. */
-  if (!l->ids || (l->ids[0] & 4)) list_identity_slow(l, kind);
+  if (!l->ids || (l->ids[0] & 4) || ((kind & 3) == 1 && big_list(l))) list_identity_slow(l, kind);
 }
 static void identity_pair(List *a, List *b) {   /* before list a takes list b's items */
   if ((a->ids || b->ids) && opt_in()) {
     I kind = a->ids ? a->ids[0] : b->ids[0];
+    if ((a->ids && (a->ids[0] & 3) == 1) || (b->ids && (b->ids[0] & 3) == 1)) kind = 1;
     if ((kind & 3) == BIGIDS) {   /* (promoting ints: a needs a companion where b has one) */
       if (b->ids) pys_list_identity(a, kind);
       return;
@@ -2888,27 +2910,29 @@ static void big_companion(List *l) {
     if (l->cap > INT64_MAX / (I)sizeof(I) - 1) oom();
     I *ids = pys_alloc((l->cap + 1) * sizeof(I));
     ids[0] = BIGIDS; l->ids = ids;
-  } else if (!big_list(l)) pys_fail(NARROW);   /* (one that dynamic code gave identities holds 64-bit ints) */
+  }
 }
+static I big_companion_item(List *l, Mpz *m) { return big_list(l) ? (I)m : (I)pys_dyn_big(0, m); }
 void pys_list_set_big(List *l, I i, Mpz *m) {
   i = idx(i, l->len, "IndexError: list assignment index out of range");
-  big_companion(l); l->ids[i + 1] = (I)m; AT(l, i) = INT64_MIN;
+  big_companion(l); I box = big_companion_item(l, m); l->ids[i + 1] = box; AT(l, i) = INT64_MIN;
 }
 void pys_list_append_big(List *l, Mpz *m) {
   big_companion(l);
+  I box = big_companion_item(l, m);
   if (l->len == l->cap) reserve(l, l->len + 1);
-  l->ids[l->len + 1] = (I)m; AT(l, l->len++) = INT64_MIN;
+  l->ids[l->len + 1] = box; AT(l, l->len++) = INT64_MIN;
 }
 void pys_list_insert_big(List *l, I i, Mpz *m) {
   if (i < 0 && (i += l->len) < 0) i = 0;
   if (i > l->len) i = l->len;
-  big_companion(l); reserve(l, l->len + 1);
-  memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = (I)m;
+  big_companion(l); I box = big_companion_item(l, m); reserve(l, l->len + 1);
+  memmove(l->ids + i + 2, l->ids + i + 1, (l->len - i) * 8); l->ids[i + 1] = box;
   memmove(l->a + i + 1, l->a + i, (l->len - i) * 8); l->a[i] = INT64_MIN; l->len++;
 }
 Mpz *pys_list_big_at(List *l, I i) {   /* the Mpz of the item at index i (as pys_list_get takes it) whose slot holds -2**63, or NULL */
   if (i < 0) i += l->len;
-  return big_list(l) ? (Mpz *)l->ids[i + 1] : NULL;
+  return lbig(l, i);
 }
 Big pys_list_big_pop(List *l, I i) {   /* l.pop(i) of a list of ints, as a promoting int */
   if (!l->len) pys_fail("IndexError: pop from empty list");
@@ -3080,23 +3104,29 @@ I pys_list_big_find(List *l, I lo, Mpz *hi, I isf, I op, I st, I en) {
 }
 /* Numeric queries retain the query's identity as well as its raw value. This is
    observable for NaNs in membership, count/index/remove and sequence comparison. */
+static int list_query_eq(List *l, I i, I v, Dyn *id, const char *d, const char *vd) {
+  if (*vd == 'A') pys_list_identity(l, l->ids[0]);   /* __eq__ may have made a raw store at the next index */
+  Dyn *item = (Dyn *)l->ids[i + 1];
+  if (item == id) return 1;
+  if (*vd == 'A') return pys_dyn_eq(item, id);   /* the original query may be wide or run __eq__ */
+  Mpz *m = lbig(l, i);
+  return m ? big_eq(m, v, vd) : eqpair(l->a[i], v, d, vd);
+}
 I pys_list_find_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
   pys_list_identity(l, kind);
-  for (I i = 0; i < l->len; i++)
-    if (l->ids[i + 1] == (I)id || eqpair(l->a[i], v, d->s, vd->s)) return i;
+  for (I i = 0; i < l->len; i++) if (list_query_eq(l, i, v, id, d->s, vd->s)) return i;
   return -1;
 }
 I pys_list_index_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind, I st, I en) {
   pys_list_identity(l, kind);
   if (st < 0 && (st += l->len) < 0) st = 0;
   if (en < 0 && (en += l->len) < 0) en = 0;
-  for (I i = st; i < en && i < l->len; i++)
-    if (l->ids[i + 1] == (I)id || eqpair(l->a[i], v, d->s, vd->s)) return i;
+  for (I i = st; i < en && i < l->len; i++) if (list_query_eq(l, i, v, id, d->s, vd->s)) return i;
   not_in_list(v, vd->s);
 }
 I pys_list_count_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
   pys_list_identity(l, kind); I n = 0;
-  for (I i = 0; i < l->len; i++) n += l->ids[i + 1] == (I)id || eqpair(l->a[i], v, d->s, vd->s);
+  for (I i = 0; i < l->len; i++) n += list_query_eq(l, i, v, id, d->s, vd->s);
   return n;
 }
 void pys_list_remove_identity(List *l, I v, Dyn *id, Str *d, Str *vd, I kind) {
@@ -3503,7 +3533,13 @@ Big pys_list_big_minmax(List *l, I max) {   /* min(l) or max(l) of a list of int
 Dyn *pys_list_minmax_identity(List *l, Str *d, I max, I kind) {
   if (!l->len) pys_fail(max ? "ValueError: max() iterable argument is empty" : "ValueError: min() iterable argument is empty");
   pys_list_identity(l, kind); I at = 0;
-  for (I i = 1; i < l->len; i++) if (opv(l->a[i], l->a[at], d->s, max ? 2 : 0)) at = i;
+  for (I i = 1; i < l->len; i++) {
+    Mpz *m = lbig(l, i), *n = lbig(l, at);
+    if (m || n) {
+      I c = pys_big_cmp(m ? 0 : l->a[i], m, n ? 0 : l->a[at], n);
+      if (max ? c > 0 : c < 0) at = i;
+    } else if (opv(l->a[i], l->a[at], d->s, max ? 2 : 0)) at = i;
+  }
   return (Dyn *)l->ids[at + 1];
 }
 I pys_any(List *l) { for (I i = 0; i < l->len; i++) if (l->a[i]) return 1; return 0; }
@@ -3676,11 +3712,10 @@ static uint64_t hkey(I k, const char *d) {   /* a tuple or object key's, or an A
   uint64_t h = hval(k, d); return h ? h : hcls(k, d);
 }
 static uint64_t hint1(I k) { uint64_t h = (uint64_t)pys_hash_int(k); return h ? h : 1; }   /* an int key's: 0 marks a hole */
-/* the hash of an int key past 64 bits (kbig), its Mpz m: hint1 of CPython's hash of it. hint1 gives
-   -2**63 a hash of its own (pys_hash_int is a bijection, and is 1 for no int that 0 is not), and
-   CPython's hash is never -2**63, so no 64-bit key's lookup meets an entry of a key past 64 bits
-   (whose slot holds -2**63): only dbfind finds them */
-static uint64_t hbig(Mpz *m) { return hint1(pys_mpz_hash(m)); }
+/* A wide key follows its table's hash scheme too. Python-hash tables compare
+   across native and dynamic layouts; legacy tables mix the Python hash through
+   hint1. A native scalar probe skips a wide entry's sentinel (dlook). */
+static uint64_t hbig(Dict *d, Mpz *m) { I h = pys_mpz_hash(m); return khash(d->kind) ? (uint64_t)h : hint1(h); }
 /* The hash of key k of a table of kind > 1. Marked native str/int keys use the same
    hashes as hitem, including None and -1 normalization, without its descriptor walk.
    Other marked descriptors retain the general path and its callback behavior. */
@@ -3753,6 +3788,7 @@ static inline __attribute__((always_inline)) I dlook(Dict *d, I k, uint64_t h, I
     int32_t e = d->idx[i];
     if (!e) { if (free) *free = ran ? dempty(d, h) : f < 0 ? (I)i : f; return -1; }
     if (e < 0) { if (f < 0) f = i; }
+    else if (kbig(d, e - 1)) continue;   /* (a wide key's sentinel is never the native scalar query) */
     else if (objs == 2 && d->keys[e - 1] == k) return i;
     else if (d->hs[e - 1] == h) {
       I x = d->keys[e - 1];
@@ -3871,19 +3907,20 @@ LOOKUP I pys_dict_eq_find(Dict *d, Dict *source, I e) {
    hash. With unequal hashes the callback tests identity alone: a native and
    boxed key may share one object whose hash changed between insertions. Raw
    slot identity is not valid across distinct layouts. As lookdict, retry if
-   a callback replaces the table or its current key. */
-LOOKUP I pys_dict_eq_pair_find(Dict *d, Dict *source, I e, I (*equal)(I, I, I)) {
-  I k = source->keys[e]; uint64_t h = source->hs[e];
-  if (kbig(source, e)) return -1;   /* (a key past 64 bits: d's keys, of another type, hold 64-bit ints) */
+   a callback replaces the table or its current key. A raw numeric slot travels
+   with its Mpz companion, with zero low bits for a wide value, so the callback
+   never confuses a wide key with its storage sentinel. */
+LOOKUP I pys_dict_eq_pair_find(Dict *d, Dict *source, I e, I (*equal)(I, I, I, I, I)) {
+  I k = source->keys[e]; uint64_t h = source->hs[e]; Mpz *km = kbig(source, e);
 restart:
   if (!d->size) return -1;
   for (uint64_t m = dmask(d), i = h & m, p = h;; p >>= 5, i = (i * 5 + p + 1) & m) {
     int32_t entry = d->idx[i];
     if (!entry) return -1;
-    if (entry < 0 || kbig(d, entry - 1)) continue;
-    I x = d->keys[entry - 1]; int32_t *ix = d->idx;
-    I eq = equal(x, k, d->hs[entry - 1] == h);
-    if (d->idx != ix || d->idx[i] != entry || d->keys[entry - 1] != x) goto restart;
+    if (entry < 0) continue;
+    I x = d->keys[entry - 1]; int32_t *ix = d->idx; Mpz *xm = kbig(d, entry - 1);
+    I eq = equal(xm ? 0 : x, (I)xm, km ? 0 : k, (I)km, d->hs[entry - 1] == h);
+    if (d->idx != ix || d->idx[i] != entry || d->keys[entry - 1] != x || kbig(d, entry - 1) != xm) goto restart;
     if (eq) return entry - 1;
   }
 }
@@ -4031,18 +4068,18 @@ static _Noreturn void bkeyerr(Mpz *m) {   /* the KeyError of a dict's key or a s
 }
 LOOKUP I pys_dict_big_find(Dict *d, I lo, Mpz *m) {
   if (!m) return entry(d, lo);
-  I i = dbfind(d, m, hbig(m), 0); return i < 0 ? -1 : d->idx[i] - 1;
+  I i = dbfind(d, m, hbig(d, m), 0); return i < 0 ? -1 : d->idx[i] - 1;
 }
 LOOKUP I pys_dict_big_entry(Dict *d, I lo, Mpz *m) { I e = pys_dict_big_find(d, lo, m); if (e < 0) { if (m) bkeyerr(m); keyerr(d, lo); } return e; }
 LOOKUP I pys_dict_big_put(Dict *d, I lo, Mpz *m) {
-  if (m) return dbput(d, m, hbig(m), 0);
+  if (m) return dbput(d, m, hbig(d, m), 0);
   uint64_t h; I f = -1, i = dhfind(d, lo, &h, &f);
   if (i >= 0) return d->idx[i] - 1;
   dadd(d, lo, h, 0, f); return d->n - 1;
 }
 void pys_dict_big_del(Dict *d, I lo, Mpz *m) {
   if (!m) { pys_dict_del(d, lo); return; }
-  I i = dbfind(d, m, hbig(m), 0);
+  I i = dbfind(d, m, hbig(d, m), 0);
   if (i < 0) bkeyerr(m);
   dtake(d, i);
 }
@@ -4051,15 +4088,15 @@ void pys_dict_big_del(Dict *d, I lo, Mpz *m) {
    idx slot dbfind finds. bkey_big_pop and bkey_big_setdefault are big_pop's and big_setdefault's */
 LOOKUP I pys_dict_bkey_get(Dict *d, I lo, Mpz *m, I dflt) {
   if (!m) return pys_dict_get(d, lo, dflt);
-  I i = dbfind(d, m, hbig(m), 0); return i < 0 ? dflt : d->vals[d->idx[i] - 1];
+  I i = dbfind(d, m, hbig(d, m), 0); return i < 0 ? dflt : d->vals[d->idx[i] - 1];
 }
 LOOKUP I pys_dict_bkey_getbox(Dict *d, I lo, Mpz *m, I dflt) {
   if (!m) return pys_dict_getbox(d, lo, dflt);
-  I i = dbfind(d, m, hbig(m), 0); if (i < 0) return dflt;
+  I i = dbfind(d, m, hbig(d, m), 0); if (i < 0) return dflt;
   I e = d->idx[i] - 1; return (I)pys_big_box(d->vals[e], dbig(d, e));
 }
 static I dbpop(Dict *d, Mpz *m, I dflt, int has) {   /* (dpop's) */
-  I i = dbfind(d, m, hbig(m), 0);
+  I i = dbfind(d, m, hbig(d, m), 0);
   if (i < 0) { if (!has) bkeyerr(m); return dflt; }
   return dtake(d, i);
 }
@@ -4067,19 +4104,19 @@ LOOKUP I pys_dict_bkey_pop(Dict *d, I lo, Mpz *m) { return m ? dbpop(d, m, 0, 0)
 LOOKUP I pys_dict_bkey_pop_default(Dict *d, I lo, Mpz *m, I dflt) { return m ? dbpop(d, m, dflt, 1) : pys_dict_pop_default(d, lo, dflt); }
 LOOKUP I pys_dict_bkey_popbox(Dict *d, I lo, Mpz *m, I dflt) {
   if (!m) return pys_dict_popbox(d, lo, dflt);
-  I i = dbfind(d, m, hbig(m), 0); if (i < 0) return dflt;
+  I i = dbfind(d, m, hbig(d, m), 0); if (i < 0) return dflt;
   Mpz *b = dbig(d, d->idx[i] - 1);
   return (I)pys_big_box(dtake(d, i), b);
 }
 LOOKUP I pys_dict_bkey_setdefault(Dict *d, I lo, Mpz *m, I v) {
   if (!m) return pys_dict_setdefault(d, lo, v);
-  uint64_t h = hbig(m); I f = -1, i = dbfind(d, m, h, &f);
+  uint64_t h = hbig(d, m); I f = -1, i = dbfind(d, m, h, &f);
   if (i >= 0) return d->vals[d->idx[i] - 1];
   dbadd(d, m, h, v, f); return v;
 }
 LOOKUP Big pys_dict_bkey_big_pop(Dict *d, I klo, Mpz *km, I has, I lo, Mpz *m) {
   if (!km) return pys_dict_big_pop(d, klo, has, lo, m);
-  I i = dbfind(d, km, hbig(km), 0);
+  I i = dbfind(d, km, hbig(d, km), 0);
   if (i < 0) { if (!has) bkeyerr(km); Big r = {lo, m}; return r; }
   Mpz *b = dbig(d, d->idx[i] - 1);
   I v = dtake(d, i);
@@ -4087,7 +4124,7 @@ LOOKUP Big pys_dict_bkey_big_pop(Dict *d, I klo, Mpz *km, I has, I lo, Mpz *m) {
 }
 LOOKUP Big pys_dict_bkey_big_setdefault(Dict *d, I klo, Mpz *km, I lo, Mpz *m) {
   if (!km) return pys_dict_big_setdefault(d, klo, lo, m);
-  uint64_t h = hbig(km); I f = -1, i = dbfind(d, km, h, &f);
+  uint64_t h = hbig(d, km); I f = -1, i = dbfind(d, km, h, &f);
   if (i >= 0) { I e = d->idx[i] - 1; Mpz *b = dbig(d, e); Big r = {b ? 0 : d->vals[e], b}; return r; }
   I e = dbadd(d, km, h, m ? INT64_MIN : lo, f);
   if (m) { dbig_make(d); d->vb[e] = (I)m; }
@@ -4203,17 +4240,17 @@ void pys_dict_update_pairs_big(Dict *d, List *l, I kj, I vj) {
   for (I i = 0; i < l->len; i++) {
     I *t = (I *)l->a[i];
     Mpz *k = kj && t[0] == INT64_MIN ? (Mpz *)t[2] : NULL, *m = vj && t[1] == INT64_MIN ? (Mpz *)t[3] : NULL;
-    if (k) { I e = dbput(d, k, hbig(k), t[1]); if (m) { dbig_make(d); d->vb[e] = (I)m; } }
+    if (k) { I e = dbput(d, k, hbig(d, k), t[1]); if (m) { dbig_make(d); d->vb[e] = (I)m; } }
     else if (m) pys_dict_set_big(d, t[0], 0, m);
     else pys_dict_set(d, t[0], t[1]);
   }
 }
 __attribute__((noinline)) static void fromkeys_big(Dict *d, List *l, I v) {   /* of a list of ints that may hold one past 64 bits (BIGIDS: kbig) */
-  for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m) dbput(d, m, hbig(m), v); else pys_dict_set(d, l->a[i], v); }
+  for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m) dbput(d, m, hbig(d, m), v); else pys_dict_set(d, l->a[i], v); }
 }
 Dict *pys_dict_fromkeys(I kind, List *l, I v) {
   Dict *d = pys_dict_new(kind, 0);
-  if (big_list(l)) fromkeys_big(d, l, v);   /* (a path of its own, so that the others' loop stays as it was) */
+  if (l->ids) fromkeys_big(d, l, v);   /* (a path of its own, so that the others' loop stays as it was) */
   else for (I i = 0; i < l->len; i++) pys_dict_set(d, l->a[i], v);
   return d;
 }
@@ -4343,21 +4380,24 @@ I pys_hash_id(void *p) { return hptr((I)p); }        /* object.__hash__ */
    Any] DAA, tuple VA): descriptor A is such a slot, which the walks follow through its box's
    DynType. None is the constant box pys_dyn_none_box and never null, which is an unbound
    variable's; True, False and the ints from -5 to 256 are constant boxes too (as the program
-   makes each int literal's), and the other numbers' boxes atomic, so that boxing a number
-   allocates nothing the collector scans. An int's, a float's and a bound method's box is its
+   makes each int literal's), and other in-range numbers' boxes are atomic. A wide int keeps
+   immutable Mpz digits through a scanned box, under the same Python kind with its own
+   payload descriptor. An int's, a float's and a bound method's box is its
    identity for `is` and id() (pys_dyn_id), other values' their payload's (#797). */
 enum { DK_NONE, DK_BOOL, DK_INT, DK_FLOAT, DK_STR, DK_LIST, DK_DICT, DK_TUPLE, DK_OBJ, DK_FUNC, DK_ITER, DK_GEN };
-enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64 };   /* a class's ==, ordering, hash and != run the program's
+enum { DF_EQ = 1, DF_CMP = 2, DF_HASH = 4, DF_BOXID = 8, DF_NE = 16, DF_X = 32, DF_ITER = 64, DF_BIG = 128 };   /* a class's ==, ordering, hash and != run the program's
                                                                      helpers; a box of this type is its own identity (a bound method's);
                                                                      the class's comparison methods take a value of any type (dobj) */
 #define DSTR(id, lit) static struct { I len; uint64_t h; I c1; char s[sizeof lit]; } id = {sizeof lit - 1, 0, sizeof lit, lit}
-DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
+DSTR(dd_none, "?s"); DSTR(dd_bool, "b"); DSTR(dd_int, "i"); DSTR(dd_bigint, "j"); DSTR(dd_float, "f"); DSTR(dd_str, "s");
 DSTR(dd_list, "LA"); DSTR(dd_dict, "DAA"); DSTR(dd_tuple, "VA");
 DSTR(dn_none, "NoneType"); DSTR(dn_bool, "bool"); DSTR(dn_int, "int"); DSTR(dn_float, "float"); DSTR(dn_str, "str");
 DSTR(dn_list, "list"); DSTR(dn_dict, "dict"); DSTR(dn_tuple, "tuple");
 #define DTYPE(id, k, d, n) const DynType id = {k, (Str *)&d, (Str *)&n, -1, 0, 0, 0, 0, 0} /* GC_NO_ROOT(pys_dyntype_none, pys_dyntype_bool, pys_dyntype_int, pys_dyntype_float, pys_dyntype_str, pys_dyntype_list, pys_dyntype_dict, pys_dyntype_tuple): immutable descriptors reference only static strings. */
 DTYPE(pys_dyntype_none, DK_NONE, dd_none, dn_none); DTYPE(pys_dyntype_bool, DK_BOOL, dd_bool, dn_bool);
 DTYPE(pys_dyntype_int, DK_INT, dd_int, dn_int); DTYPE(pys_dyntype_float, DK_FLOAT, dd_float, dn_float);
+/* GC_NO_ROOT(pys_dyntype_bigint): immutable descriptor references only static strings. */
+const DynType pys_dyntype_bigint = {DK_INT, (Str *)&dd_bigint, (Str *)&dn_int, -1, 0, DF_BIG | DF_BOXID, 0, 0, 0};
 DTYPE(pys_dyntype_str, DK_STR, dd_str, dn_str); DTYPE(pys_dyntype_list, DK_LIST, dd_list, dn_list);
 DTYPE(pys_dyntype_dict, DK_DICT, dd_dict, dn_dict); DTYPE(pys_dyntype_tuple, DK_TUPLE, dd_tuple, dn_tuple);
 const Dyn pys_dyn_none_box = {&pys_dyntype_none, 0}; /* GC_NO_ROOT(pys_dyn_none_box, pys_dyn_true_box, pys_dyn_false_box): immutable scalar boxes reference only static type descriptors. */
@@ -4371,15 +4411,27 @@ static const Dyn smallint[262] = {DI4(-5), DI(-1), DI64(0), DI64(64), DI64(128),
 #define DNONE ((Dyn *)&pys_dyn_none_box)
 #define DKIND(x) ((x)->t->kind)
 #define DNAME(x) ((x)->t->name->s)
-static int dnum(const Dyn *x) { return DKIND(x) == DK_INT || DKIND(x) == DK_BOOL; }   /* an int or a bool: its value is v */
+static int dnum(const Dyn *x) { return DKIND(x) == DK_INT || DKIND(x) == DK_BOOL; }
+static int dwide(const Dyn *x) { return x->t == &pys_dyntype_bigint; }
+static Big dbigint(const Dyn *x) { return dwide(x) ? (Big){0, (void *)x->v} : big_small(x->v); }
+void *pys_dyn_big_ptr(Dyn *x) { return dwide(x) ? (void *)x->v : NULL; }
+static I dsmall(const Dyn *x) { if (dwide(x)) pys_fail(NARROW); return x->v; }
 Dyn *pys_dyn_int(I v) {
   if ((uint64_t)v + 5 < 262) return (Dyn *)&smallint[v + 5];   /* (unsigned: v + 5 overflows from INT64_MAX - 4) */
   Dyn *d = gc_box(1); d->t = &pys_dyntype_int; d->v = v; return d;
 }
+/* A wide int keeps its immutable Mpz in a scanned box. The public kind remains int;
+   the private descriptor separates its pointer payload from a small int's bits. */
+Dyn *pys_dyn_big(I lo, void *hi) {
+  if (!hi) return pys_dyn_int(lo);
+  Dyn *d = gc_box(0); d->t = &pys_dyntype_bigint; d->v = (I)hi; return d;
+}
+static Dyn *dboxbig(Big x) { return pys_dyn_big(x.lo, x.hi); }
 Dyn *pys_dyn_float(double x) { Dyn *d = gc_box(1); d->t = &pys_dyntype_float; memcpy(&d->v, &x, 8); return d; }
 /* The compiler proves that box is null or exactly this numeric object's box.
    Taking its value (never its slot address) leaves all binding writes in the caller. */
 Dyn *pys_dyn_int_box(I value, Dyn *box) { return box ? box : pys_dyn_int(value); }
+Dyn *pys_dyn_big_box(I lo, void *hi, Dyn *box) { return box ? box : pys_dyn_big(lo, hi); }
 Dyn *pys_dyn_float_box(double value, Dyn *box) { return box ? box : pys_dyn_float(value); }
 static Dyn *dbool(I b) { return (Dyn *)(b ? &pys_dyn_true_box : &pys_dyn_false_box); }
 /* a reference of type t: None where it is null (an object of a class type may be None) */
@@ -4396,7 +4448,7 @@ static int derives(const DynType *a, const DynType *b) { for (; a; a = a->base) 
    x's type is t; or t is a class's, and x an object of a class that derives from it, or None (a
    class's values may be None). The program's @o.x.<class> uses this to retain the typed call
    when a concrete comparison-operand annotation matches. */
-I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
+I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_INT && DKIND(x) == DK_INT) || (t->kind == DK_OBJ && (DKIND(x) == DK_NONE || derives(x->t, t))); }
 /* type(x) is type(y) of the boxes of DynTypes a and b (null where no box holds a value of that
    type). Generators, functions and builtin iterators can have distinct storage descriptors
    for one Python type. Only compiler-owned builtin iterator classes carry DF_ITER: a user
@@ -4404,6 +4456,7 @@ I pys_dyn_isa(Dyn *x, const DynType *t) { return x->t == t || (t->kind == DK_OBJ
 I pys_dyn_same_type(const DynType *a, const DynType *b) {
   if (a == b) return 1;
   if (!a || !b) return 0;
+  if (a->kind == DK_INT && b->kind == DK_INT) return 1;
   if (a->kind == DK_GEN && b->kind == DK_GEN) return 1;
   if (a->kind == DK_FUNC && b->kind == DK_FUNC) return strcmp(a->name->s, b->name->s) == 0;
   int ai = a->kind == DK_ITER || (a->kind == DK_OBJ && (a->flags & DF_ITER));
@@ -4414,8 +4467,12 @@ I pys_dyn_same_type(const DynType *a, const DynType *b) {
    type (pys_dyn_isa), else TypeError, where CPython would not check the annotation
    (docs/dynamic-any.md) */
 I pys_dyn_unbox(Dyn *x, const DynType *t) {
-  if (pys_dyn_isa(x, t)) return x->v;
+  if (pys_dyn_isa(x, t)) return t->kind == DK_INT ? dsmall(x) : x->v;
   failf("TypeError: expected %s, got %s", t->name->s, DNAME(x));
+}
+Big pys_dyn_big_unbox(Dyn *x) {
+  if (DKIND(x) == DK_INT) return dbigint(x);
+  failf("TypeError: expected int, got %s", DNAME(x));
 }
 
 /* repr(), str(), truth, format() */
@@ -4468,11 +4525,14 @@ I pys_dyn_eq(Dyn *a, Dyn *b) {
     if (r == 2) r = dobj(b, a, 0);
     return r >= 2 ? 0 : r;   /* (no method that runs: identity, and these are not one object) */
   }
-  if (dnum(a) && dnum(b)) return a->v == b->v;
+  if (dnum(a) && dnum(b)) {
+    if (!dwide(a) && !dwide(b)) return a->v == b->v;
+    Big x = dbigint(a), y = dbigint(b); return pys_big_cmp(x.lo, x.hi, y.lo, y.hi) == 0;
+  }
   if (ka == DK_FLOAT || kb == DK_FLOAT) {
     if (ka == DK_FLOAT && kb == DK_FLOAT) return dbl(a->v) == dbl(b->v);
-    if (ka == DK_FLOAT && dnum(b)) return pys_cmp_if(b->v, dbl(a->v)) == 0;
-    if (kb == DK_FLOAT && dnum(a)) return pys_cmp_if(a->v, dbl(b->v)) == 0;
+    if (ka == DK_FLOAT && dnum(b)) { Big y = dbigint(b); return pys_big_cmp_float(y.lo, y.hi, dbl(a->v)) == 0; }
+    if (kb == DK_FLOAT && dnum(a)) { Big x = dbigint(a); return pys_big_cmp_float(x.lo, x.hi, dbl(b->v)) == 0; }
     return 0;
   }
   if (ka != kb) return 0;
@@ -4502,6 +4562,7 @@ static int dyn_eqitem(Dyn *a, Dyn *b) { return a == b || (DKIND(a) != DK_FLOAT &
 static int dyn_keyeq(Dyn *a, Dyn *b) {
   if (a->t != b->t) return 2;
   int k = DKIND(a);
+  if (dwide(a)) return pys_mpz_cmp((Mpz *)a->v, (Mpz *)b->v) == 0;
   return k == DK_STR ? a->v == b->v || pys_str_eq((Str *)a->v, (Str *)b->v) : k == DK_INT || k == DK_BOOL ? a->v == b->v : 2;
 }
 static _Noreturn void dyn_noorder(Dyn *a, Dyn *b, I op) {
@@ -4519,10 +4580,14 @@ I pys_dyn_cmp(Dyn *a, Dyn *b, I op) {   /* a OP b, op 0..3: < <= > >= */
     }
     dyn_noorder(a, b, op);
   }
-  if (dnum(a) && dnum(b)) return cmpop((a->v > b->v) - (a->v < b->v), op);
+  if (dnum(a) && dnum(b)) {
+    if (!dwide(a) && !dwide(b)) return cmpop((a->v > b->v) - (a->v < b->v), op);
+    Big x = dbigint(a), y = dbigint(b); return cmpop(pys_big_cmp(x.lo, x.hi, y.lo, y.hi), op);
+  }
   if ((ka == DK_FLOAT || dnum(a)) && (kb == DK_FLOAT || dnum(b))) {
     if (ka == DK_FLOAT && kb == DK_FLOAT) return opv(a->v, b->v, "f", op);
-    I c = ka == DK_FLOAT ? -pys_cmp_if(b->v, dbl(a->v)) : pys_cmp_if(a->v, dbl(b->v));
+    Big x = dbigint(ka == DK_FLOAT ? b : a);
+    I c = ka == DK_FLOAT ? -pys_big_cmp_float(x.lo, x.hi, dbl(a->v)) : pys_big_cmp_float(x.lo, x.hi, dbl(b->v));
     return c == 2 || c == -2 ? 0 : cmpop(c, op);   /* (a NaN: unordered, every comparison false) */
   }
   if (ka != kb || (ka != DK_STR && ka != DK_LIST && ka != DK_TUPLE)) dyn_noorder(a, b, op);
@@ -4533,7 +4598,7 @@ static uint64_t hdyn(Dyn *x) { return (uint64_t)(DKIND(x) == DK_STR ? hstr((Str 
 I pys_dyn_hash(Dyn *x) {
   switch (DKIND(x)) {
   case DK_NONE: return NONE_HASH;
-  case DK_BOOL: case DK_INT: return hint(x->v);
+  case DK_BOOL: case DK_INT: return dwide(x) ? pys_mpz_hash((Mpz *)x->v) : hint(x->v);
   case DK_FLOAT: return hdbl(dbl(x->v));
   case DK_STR: return hstr((Str *)x->v);
   case DK_TUPLE: return htuple(((VTuple *)x->v)->a, ((VTuple *)x->v)->len, "A", 0);
@@ -4572,6 +4637,7 @@ static _Noreturn void dyn_unsupported(Dyn *a, Dyn *b, I op, int inplace) {
   failf("TypeError: unsupported operand type(s) for %s%s: '%s' and '%s'", dops[op], inplace ? "=" : op == 6 ? " or pow()" : "", DNAME(a), DNAME(b));
 }
 static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tuple and an int (or bool) */
+  if (dwide(n)) pys_fail("OverflowError: cannot fit 'int' into an index-sized integer");
   I k = n->v < 0 ? 0 : n->v;
   if (DKIND(seq) == DK_STR) return dstr(pys_str_mul((Str *)seq->v, k));
   if (DKIND(seq) == DK_LIST) return dlist(pys_list_mul((List *)seq->v, k));
@@ -4584,9 +4650,20 @@ static Dyn *dyn_repeat(Dyn *seq, Dyn *n) {   /* seq * n, for a str, list or tupl
   return dtuple(r);
 }
 static int dseq(const Dyn *x) { return DKIND(x) == DK_STR || DKIND(x) == DK_LIST || DKIND(x) == DK_TUPLE; }
-static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace) {   /* a OP b, or a's in-place fallback (inplace) */
+static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace, int promote) {   /* a OP b, or a's in-place fallback (inplace) */
   int ka = DKIND(a), kb = DKIND(b);
   if (dnum(a) && dnum(b)) {
+    if (promote || dwide(a) || dwide(b)) {
+      Big x = dbigint(a), y = dbigint(b);
+      if (op == 3) return pys_dyn_float(pys_big_truediv(x.lo, x.hi, y.lo, y.hi));
+      if (op == 6 && (y.hi ? ((Mpz *)y.hi)->size < 0 : y.lo < 0))
+        return pys_dyn_float(pys_fpow(pys_big_float(x.lo, x.hi), pys_big_float(y.lo, y.hi)));
+      /* Bool's bitwise operators return bool, including in a promoting module. */
+      if (op >= 9 && ka == DK_BOOL && kb == DK_BOOL)
+        return dbool(op == 9 ? a->v & b->v : op == 10 ? a->v | b->v : a->v ^ b->v);
+      I k = op <= 2 ? op : op == 4 ? 3 : op == 5 ? 4 : op == 6 ? 10 : op == 7 ? 8 : op == 8 ? 9 : op - 4;
+      return dboxbig(pys_big_op(x.lo, x.hi, y.lo, y.hi, k));
+    }
     I x = a->v, y = b->v, r;
     switch (op) {
     case 0: if (__builtin_add_overflow(x, y, &r)) pys_fail(OVF); return pys_dyn_int(r);
@@ -4605,7 +4682,8 @@ static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace) {   /* a OP b, or a's i
     }
   }
   if ((ka == DK_FLOAT || dnum(a)) && (kb == DK_FLOAT || dnum(b)) && op <= 6) {
-    double x = ka == DK_FLOAT ? dbl(a->v) : (double)a->v, y = kb == DK_FLOAT ? dbl(b->v) : (double)b->v;
+    Big ax = dbigint(a), bx = dbigint(b);
+    double x = ka == DK_FLOAT ? dbl(a->v) : pys_big_float(ax.lo, ax.hi), y = kb == DK_FLOAT ? dbl(b->v) : pys_big_float(bx.lo, bx.hi);
     switch (op) {
     case 0: return pys_dyn_float(x + y);
     case 1: return pys_dyn_float(x - y);
@@ -4642,12 +4720,13 @@ static Dyn *dyn_binop(Dyn *a, Dyn *b, I op, int inplace) {   /* a OP b, or a's i
   }
   dyn_unsupported(a, b, op, inplace);
 }
-Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) { return dyn_binop(a, b, op, 0); }
+Dyn *pys_dyn_binop(Dyn *a, Dyn *b, I op) { return dyn_binop(a, b, op, 0, 0); }
+Dyn *pys_dyn_binop_promote(Dyn *a, Dyn *b, I op) { return dyn_binop(a, b, op, 0, 1); }
 void pys_dyn_update(Dict *d, Dyn *x);
 /* a OP= b: a list extends or repeats itself in place, as list's __iadd__ and __imul__ do, and a
    dict updates itself, as dict's __ior__ does (dict.update(b): a mapping, or pairs); other values
    have no in-place operation and make a new value */
-Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
+static Dyn *dyn_inplace(Dyn *a, Dyn *b, I op, int promote) {
   if (DKIND(a) == DK_DICT && op == 10) { pys_dyn_update((Dict *)a->v, b); return a; }
   if (DKIND(a) == DK_LIST && op == 0) {
     if (DKIND(b) == DK_LIST) { pys_list_extend((List *)a->v, (List *)b->v); return a; }
@@ -4659,12 +4738,23 @@ Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) {
   }
   if (DKIND(a) == DK_LIST && op == 2) {
     if (!dnum(b)) failf("TypeError: can't multiply sequence by non-int of type '%s'", DNAME(b));
+    if (dwide(b)) pys_fail("OverflowError: cannot fit 'int' into an index-sized integer");
     pys_list_imul((List *)a->v, b->v < 0 ? 0 : b->v);
     return a;
   }
-  return dyn_binop(a, b, op, 1);
+  return dyn_binop(a, b, op, 1, promote);
 }
-Dyn *pys_dyn_unary(Dyn *a, I op) {   /* op 0..3: - + ~ abs */
+Dyn *pys_dyn_inplace(Dyn *a, Dyn *b, I op) { return dyn_inplace(a, b, op, 0); }
+Dyn *pys_dyn_inplace_promote(Dyn *a, Dyn *b, I op) { return dyn_inplace(a, b, op, 1); }
+static Dyn *dyn_unary(Dyn *a, I op, int promote) {   /* op 0..3: - + ~ abs */
+  if (dnum(a) && (promote || dwide(a))) {
+    Big x = dbigint(a);
+    if (op == 1 && DKIND(a) == DK_INT) return a;
+    if (op == 3 && (x.hi ? ((Mpz *)x.hi)->size >= 0 : x.lo >= 0)) return DKIND(a) == DK_INT ? a : pys_dyn_int(x.lo);
+    if (op == 0 || op == 3) return dboxbig(pys_big_op(0, NULL, x.lo, x.hi, 1));
+    if (op == 2) return dboxbig(pys_big_op(x.lo, x.hi, -1, NULL, 7));
+    return pys_dyn_int(x.lo);   /* +bool is int */
+  }
   if (op == 3) {
     if (dnum(a)) {
       if (a->v == INT64_MIN) pys_fail(OVF);
@@ -4681,6 +4771,8 @@ Dyn *pys_dyn_unary(Dyn *a, I op) {   /* op 0..3: - + ~ abs */
   if (DKIND(a) == DK_FLOAT && op < 2) return op == 1 ? a : pys_dyn_float(-dbl(a->v));
   failf("TypeError: bad operand type for unary %s: '%s'", op == 0 ? "-" : op == 1 ? "+" : "~", DNAME(a));
 }
+Dyn *pys_dyn_unary(Dyn *a, I op) { return dyn_unary(a, op, 0); }
+Dyn *pys_dyn_unary_promote(Dyn *a, I op) { return dyn_unary(a, op, 1); }
 
 /* len(), items, membership and iteration of the builtin containers and str */
 I pys_dyn_len(Dyn *x) {
@@ -4693,7 +4785,10 @@ I pys_dyn_len(Dyn *x) {
   failf("TypeError: object of type '%s' has no len()", DNAME(x));
 }
 static I dindex(Dyn *o, Dyn *k) {   /* k as a sequence's index: an int or a bool */
-  if (dnum(k)) return k->v;
+  if (dnum(k)) {
+    if (dwide(k)) pys_fail("IndexError: cannot fit 'int' into an index-sized integer");
+    return k->v;
+  }
   if (DKIND(o) == DK_STR) failf("TypeError: string indices must be integers, not '%s'", DNAME(k));
   failf("TypeError: %s indices must be integers or slices, not %s", DNAME(o), DNAME(k));
 }
@@ -4869,26 +4964,30 @@ Dyn *pys_dyn_range_iter(I start, I stop, I step, I reverse) {
 static Dyn *dyn_of(I v, const char *d) {
   switch (*d) {
   case 'i': return pys_dyn_int(v);
+  case 'j': return pys_dyn_big(0, (void *)v);
+  case 'J': return dboxbig(jbig(v));
   case 'b': return dbool(v);
   case 'f': return pys_dyn_float(dbl(v));
   case 's': return dstr((Str *)v);
   case 'A': return (Dyn *)v;
   case '?': return v ? dyn_of(unbox(v, d + 1), d + 1) : DNONE;
   case 'T': {
-    I n = d[1] - '0'; const char *e = d + 2;
+    I n = d[1] - '0', w[2]; const char *e = d + 2;
     VTuple *t = pys_alloc(sizeof(VTuple) + n * sizeof(I)); t->len = n;
-    for (I i = 0; i < n; i++, e = skip(e)) t->a[i] = (I)dyn_of(((I *)v)[i], e);
+    for (I i = 0; i < n; i++, e = skip(e)) t->a[i] = (I)dyn_of(titem((I *)v, n, i, e, w), e);
     return dtuple(t);
   }
   }
   failf("TypeError: a value of descriptor %s cannot become an Any value", d);
 }
 List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, of descriptor d */
-  list_narrow(src);   /* (a dynamic value's int is a 64-bit int: BIGIDS) */
   int ids = src->ids && !big_list(src);
   if (ids) pys_list_identity(src, src->ids[0]);
   List *l = pys_list_new(src->len);
-  for (I i = 0; i < src->len; i++) pys_list_append(l, ids ? src->ids[i + 1] : (I)dyn_of(src->a[i], d->s));
+  for (I i = 0; i < src->len; i++) {
+    Mpz *m = lbig(src, i);
+    pys_list_append(l, ids ? src->ids[i + 1] : m ? (I)pys_dyn_big(0, m) : (I)dyn_of(src->a[i], d->s));
+  }
   return l;
 }
 /* a slice's bound (or, not bound, its step) that is an Any value: None is an omitted one (NONE, a
@@ -4897,8 +4996,10 @@ List *pys_dyn_list_of(List *src, Str *d) {   /* a list of boxes of src's items, 
 static I dbound(Dyn *x, int bound) {
   if (DKIND(x) == DK_NONE) return bound ? NONE : 1;
   if (DKIND(x) != DK_INT && DKIND(x) != DK_BOOL) pys_fail("TypeError: slice indices must be integers or None or have an __index__ method");
+  if (dwide(x)) return ((Mpz *)x->v)->size < 0 ? -INT64_MAX : INT64_MAX;
   return bound && x->v == NONE ? NONE + 1 : x->v;
 }
+I pys_dyn_index_bound(Dyn *x, I bound) { return dbound(x, bound != 0); }
 /* o[lo:hi:st] of an Any value, with its bounds and step as Any values (None where omitted), as
    CPython's sequences take the slice: a str's, list's or tuple's items, a new value of its type (all
    of a str or tuple is itself), the step converted first, as PySlice_Unpack does; a dict's KeyError
@@ -4978,19 +5079,60 @@ I pys_dyn_id(Dyn *x) { return DKIND(x) >= DK_STR && !(x->t->flags & DF_BOXID) ? 
 /* int(x) and float(x) */
 I pys_dyn_int_of(Dyn *x) {
   switch (DKIND(x)) {
-  case DK_BOOL: case DK_INT: return x->v;
+  case DK_BOOL: case DK_INT: return dsmall(x);
   case DK_FLOAT: return pys_f2i(dbl(x->v));
   case DK_STR: return pys_int_str((Str *)x->v, 10);
   }
   failf("TypeError: int() argument must be a string, a bytes-like object or a real number, not '%s'", DNAME(x));
 }
+Big pys_dyn_big_of(Dyn *x) {
+  switch (DKIND(x)) {
+  case DK_BOOL: case DK_INT: return dbigint(x);
+  case DK_FLOAT: return pys_big_from_float(dbl(x->v));
+  case DK_STR: return pys_big_from_str((Str *)x->v, 10);
+  }
+  failf("TypeError: int() argument must be a string, a bytes-like object or a real number, not '%s'", DNAME(x));
+}
+Dyn *pys_dyn_int_box_of(Dyn *x) {
+  return DKIND(x) == DK_INT ? x : dboxbig(pys_dyn_big_of(x));
+}
 double pys_dyn_float_of(Dyn *x) {
   switch (DKIND(x)) {
-  case DK_BOOL: case DK_INT: return (double)x->v;
+  case DK_BOOL: case DK_INT: { Big a = dbigint(x); return pys_big_float(a.lo, a.hi); }
   case DK_FLOAT: return dbl(x->v);
   case DK_STR: return pys_float_str((Str *)x->v);
   }
   failf("TypeError: float() argument must be a string or a real number, not '%s'", DNAME(x));
+}
+/* An Any query does not have to have the integer table's storage type. Numeric
+   comparisons need no allocation; a user's comparison may retain its argument,
+   so that path receives a heap box, never the address of this temporary. */
+static int int_query_eq(I lo, Mpz *m, Dyn *query) {
+  Dyn key = {m ? &pys_dyntype_bigint : &pys_dyntype_int, m ? (I)m : lo};
+  return pys_dyn_eq(DKIND(query) == DK_OBJ ? pys_dyn_big(lo, m) : &key, query);
+}
+LOOKUP I pys_dict_int_find_any(Dict *d, Dyn *query) {
+  uint64_t h = hdyn(query);                         /* hash once, even when empty */
+restart:;
+  if (!d->size) return -1;
+  for (uint64_t mask = dmask(d), i = h & mask, p = h;; p >>= 5, i = (i * 5 + p + 1) & mask) {
+    DICT_PROBE();
+    int32_t e = d->idx[i];
+    if (!e) return -1;
+    if (e > 0 && d->hs[e - 1] == h) {
+      I value = d->keys[e - 1]; Mpz *m = kbig(d, e - 1); int32_t *table = d->idx;
+      int equal = int_query_eq(value, m, query);
+      if (d->idx != table || d->idx[i] != e || d->keys[e - 1] != value || kbig(d, e - 1) != m) goto restart;
+      if (equal) return e - 1;
+    }
+  }
+}
+/* A preceding lookup found this entry; no user operation occurs between that
+   lookup and deletion. Locate its index without hashing/comparing the key again. */
+void pys_dict_entry_del(Dict *d, I e) {
+  uint64_t mask = dmask(d), h = d->hs[e], i = h & mask, p = h;
+  while (d->idx[i] != e + 1) { p >>= 5; i = (i * 5 + p + 1) & mask; DICT_PROBE(); }
+  dtake(d, i);
 }
 static void stable(Set *s, I size) {                 /* an empty table of size slots */
   /* the 8 slots of a new or cleared set are scanned whatever its kind: the compiler gives an empty
@@ -5174,6 +5316,27 @@ I pys_set_pop(Set *s) {                              /* set_pop: the first eleme
    that fits as its 64-bit int; past 64 bits, its Mpz m, of CPython's hash (sbfind) */
 LOOKUP void pys_set_big_add(Set *s, I lo, Mpz *m) { if (m) sbadd(s, m, pys_mpz_hash(m)); else pys_set_add(s, lo); }
 LOOKUP I pys_set_big_has(Set *s, I lo, Mpz *m) { return m ? sbhas(s, m, pys_mpz_hash(m)) : pys_set_has(s, lo); }
+LOOKUP I pys_set_int_find_any(Set *s, Dyn *query) {
+  I h = (I)hdyn(query);                             /* preserve __hash__ side effects */
+restart:;
+  uint64_t mask = s->mask, i = (uint64_t)h & mask, perturb = (uint64_t)h;
+  for (;; perturb >>= 5, i = (i * 5 + 1 + perturb) & mask) {
+    I probes = i + LINEAR_PROBES <= mask ? LINEAR_PROBES : 0;
+    for (uint64_t j = i;; j++) {
+      DICT_PROBE();
+      if (s->hs[j] == h) {
+        I value = s->keys[j], *table = s->keys; Mpz *m = sbig(s, j);
+        int equal = int_query_eq(value, m, query);
+        if ((s->keys != table && (mask != 7 || s->mask != 7)) || s->hs[j] != h || s->keys[j] != value || sbig(s, j) != m) goto restart;
+        if (equal) return (I)j;
+      } else if (s->hs[j] == -1 && !s->keys[j]) return -1;
+      if (!probes--) break;
+    }
+  }
+}
+void pys_set_slot_del(Set *s, I j) {
+  s->keys[j] = 1; s->hs[j] = -1; if (s->kb) s->kb[j] = 0; s->len--;
+}
 LOOKUP void pys_set_big_discard(Set *s, I lo, Mpz *m) { if (m) sbdiscard(s, m, pys_mpz_hash(m)); else pys_set_discard(s, lo); }
 LOOKUP void pys_set_big_remove(Set *s, I lo, Mpz *m) {
   if (!m) { pys_set_remove(s, lo); return; }
@@ -5272,7 +5435,7 @@ Set *pys_set_sub_dict(Set *s, Dict *d) {
     I k = s->keys[i], h = s->hs[i];
     if (h == -1) continue;
     Mpz *m = sbig(s, i);   /* (an int past 64 bits: a key past 64 bits, dbfind) */
-    if ((m ? dbfind(d, m, hbig(m), 0) : c ? dfind(d, k, (uint64_t)h, 0) : entry(d, k)) < 0) saddm(r, k, h, m);
+    if ((m ? dbfind(d, m, hbig(d, m), 0) : c ? dfind(d, k, (uint64_t)h, 0) : entry(d, k)) < 0) saddm(r, k, h, m);
   }
   return r;
 }
@@ -5366,6 +5529,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
     v = unbox(v, ++ds);
   }
   if (*ds == 'U') ds = umember(&v, ds);
+  if (*ds == 'j') return pys_big_format(0, (void *)v, spec);
   char d = *ds;
   if ((d != 'i' && d != 'b' && d != 'f' && d != 's') || (d == 'b' && !spec->len)) {   /* format(True, "") is str(True) */
     if (spec->len) failf("TypeError: unsupported format string passed to %s.__format__", tyname(d));

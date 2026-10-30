@@ -1177,6 +1177,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return Val(r, self.ctype("dict", kv))
     if k == "tuple":
         ws = targs(want) if is_tuple(want) else ["dyn"] * len(n.kids) if want == "dyn" else []  # (dynamic items: dynamic.py)
+        if is_vtuple(unopt(want)) and targs(unopt(want))[0] == "dyn":
+            # Box each fresh item while its numeric identity is still available;
+            # first storing it in a typed tuple loses that companion (#858).
+            ws = ["dyn"] * len(n.kids)
         vals: list[Val] = []
         for i in range(len(n.kids)):
             v = self.expr(n.kids[i], ws[i] if i < len(ws) else "", returnctx, resultsoft)
@@ -2671,6 +2675,9 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
             self.stkkey = n.kids[1]  # (memo[(i, j)])
         kval = self.expr(n.kids[1], kv[0])
         self.stkkey = self.nokey
+        if kv[0] == "int" and kval.t == "dyn":
+            o = self.unwrap(o, sub)
+            return self.dict_value(o, self.int_key_entry(o, kval, True))
         if kv[0] == "dyn" and kval.t == "int":
             return self.from_slot(self.int_any_lookup(self.unwrap(o, sub), kval, True), kv[1])
         if (kval.t == BIG or kval.t == BIGOPT) and self.dict_bigkey(t):
@@ -3240,13 +3247,13 @@ def gen_unary(self, n: Node) -> Val:
         return self.unumeric(op, v, Val("", ""), "", True)
     if is_sopt(v.t):
         v = self.unwrap(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
-    if v.t == BIG or (op == "-" and (v.t == "int" or v.t == "bool") and self.int_policy(n.line)):
-        return self.big_unary(op, v)  # (promoting ints: bigints.py)
-    v = self.as_int(v)
     if v.t == "int" and v.lit and dynamic_program() and (op == "-" or op == "~"):
         folded = folded_int("-" if op == "-" else "^", "0" if op == "-" else "-1", v.v)
         if folded != "":
             return self.expr(mk("int", folded, n.line, []), "")
+    if v.t == BIG or (op == "-" and (v.t == "int" or v.t == "bool") and self.int_policy(n.line)):
+        return self.big_unary(op, v)  # (promoting ints: bigints.py)
+    v = self.as_int(v)
     if v.t == "int" and op == "-":
         return Val(self.iop("-", "0", v.v), "int")
     if v.t == "int" and op == "~":
@@ -4568,8 +4575,6 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             self.err(f"a bytes-like object is required, not '{tname(a.t)}'")
         elif is_list(b.t):
             if self.list_id_kind(b.t) != 0 and a.t in ["int", "float", "bool", "dyn"]:
-                if a.t == "dyn":
-                    a = self.coerce(a, elem(b.t))
                 found = self.list_find(b, a, "find")
                 return self.num_cmp(">=" if op == "in" else "<", found, Val("0", "int"))
             if a.t != elem(b.t) and (is_list(a.t) or is_dict(a.t) or is_tuple(a.t)) and self.numeric_comparable(a.t, elem(b.t)):
@@ -4598,12 +4603,16 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             if ok != "true":
                 r = self.select(ok, Val(r, "int"), Val("0", "int"))
         elif is_dict(b.t):
+            if targs(b.t)[0] == "int" and a.t == "dyn":
+                return self.num_cmp(">=" if op == "in" else "<", Val(self.int_key_entry(b, a), "int"), Val("0", "int"))
             if targs(b.t)[0] == "dyn" and a.t == "int":
                 r = self.int_any_lookup(b, a, False)
             else:
                 s = self.to_slot(self.dkey(a, targs(b.t)[0]))
                 r = self.rt("pys_dict_has", "i64", [f"ptr {b.v}", f"i64 {s}"], self.key_fx(targs(b.t)[0]))
         elif is_set(b.t):
+            if selem(b.t) == "int" and a.t == "dyn":
+                return self.num_cmp(">=" if op == "in" else "<", Val(self.int_key_entry(b, a), "int"), Val("0", "int"))
             s = self.to_slot(self.dkey(a, selem(b.t)))
             r = self.rt("pys_set_has", "i64", [f"ptr {b.v}", f"i64 {s}"], self.key_fx(selem(b.t)))
         else:
@@ -4780,8 +4789,8 @@ def gen_list_pair_eq(self, op: str, a: Val, b: Val) -> Val:
     bx = self.num_cmp("<", i, Val(self.mload("int", b.v), "int"))
     self.cbr(self.scalar("and", [ax, bx]), body, finish)
     self.place(body)
-    x = self.list_item(a, i)
-    y = self.list_item(b, i)
+    x = self.list_item(a, i, True)
+    y = self.list_item(b, i, True)
     self.pair_item_eq(x, y, step)
     self.br(finish)
     self.place(step)
@@ -4873,7 +4882,7 @@ def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
     e = Val(self.rt("pys_dict_eq_next", "i64", [f"ptr {a.v}", f"i64 {self.mload('int', index)}"]), "int")
     self.cbr(self.num_cmp(">=", e, Val("0", "int")).v, item, finish)
     self.place(item)
-    x = self.dict_value(a, e.v)  # (an int past 64 bits, a tuple of ints: bigints.py)
+    x = self.dict_value(a, e.v, True)  # compare the held value without a fixed-width read
     if ax[0] == bx[0]:
         match = Val(self.rt("pys_dict_eq_find", "i64", [f"ptr {b.v}", f"ptr {a.v}", f"i64 {e.v}"], self.key_fx(ax[0])), "int")
     else:
@@ -4883,12 +4892,12 @@ def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
             if old.startswith("pairkey.") and self.dynkeys[old] == pair:
                 key = old
                 break
-        f = self.dyn_dispatcher(key, ["int", "int", "int"], "int", pair)
+        f = self.dyn_dispatcher(key, ["int", "int", "int", "int", "int"], "int", pair)
         self.called[f.ll] = True
         match = Val(self.rt("pys_dict_eq_pair_find", "i64", [f"ptr {b.v}", f"ptr {a.v}", f"i64 {e.v}", f"ptr {f.ll}"]), "int")
     self.cbr(self.num_cmp(">=", match, Val("0", "int")).v, compare, miss)
     self.place(compare)
-    y = self.dict_value(b, match.v)
+    y = self.dict_value(b, match.v, True)
     self.pair_item_eq(x, y, step)
     self.br(miss)
     self.place(step)

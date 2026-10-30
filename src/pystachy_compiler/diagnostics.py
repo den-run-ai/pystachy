@@ -99,10 +99,10 @@ def int_program() -> bool:
 
 def int_lists() -> bool:
     # do the program's lists of ints hold promoting ints past 64 bits (docs/python-int.md), and the
-    # values of its dicts of ints and the elements of its sets of ints: a module opts in to them, and
-    # none to dynamic Any, whose lists of ints keep identities instead (runtime.c's BIGIDS). Its
+    # values of its dicts of ints and the elements of its sets of ints: a module opts in. Numeric
+    # identity companions can retain a wide integer's box as well as its value. The program's
     # modules then read such an int through a test (Gen.list_value, big_dict_value, big_set_value)
-    return len(INTFILES) > 0 and len(DYNFILES) == 0
+    return len(INTFILES) > 0
 
 
 def shown(s: str) -> str:

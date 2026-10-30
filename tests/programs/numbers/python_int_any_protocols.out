@@ -1,0 +1,32 @@
+71 1 71 1
+1180591620717411303424 -1180591620717411303424 0x400000000000000000 -0b10000000000000000000000000000000000000000000000000000000000000000000000
+0001180591620717411303424 -1_180_591_620_717_411_303_424
+large positive index
+large negative index
+[0, 1, 2, 3] [0] [3]
+large positive index
+large negative index
+abcd a d
+large positive index
+large negative index
+(0, 1, 2, 3) (0,) (3,)
+large store index
+large delete index
+[0, 1, 2, 3]
+repeat overflow
+repeat overflow
+repeat overflow
+repeat overflow
+repeat overflow
+repeat overflow
+index step
+index start
+index stop
+[0]
+index zero
+zero step
+bad int
+bad int type
+index bad
+bad index type
+[exit 0]

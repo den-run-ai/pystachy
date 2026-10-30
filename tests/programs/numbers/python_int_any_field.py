@@ -1,8 +1,6 @@
 # pystachy: python-int
-# Documented 64-bit Any boundary (docs/python-int.md#64-bit-boundaries): storing a wide
-# promoting int in a field must succeed, but reading that field through Any raises.
-# CPython instead returns the wide int; the exception belongs to the read, not the store.
-from devmods.python_int_any_field import read
+# Wide promoting fields stay exact when another module reads them through Any.
+from any_field_reader import read
 
 
 class Box:
