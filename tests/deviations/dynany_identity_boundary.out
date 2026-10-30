@@ -1,4 +1,5 @@
 a typed tuple's item False False
 an optional list's item False False
 a union list's item False False
+a folded wide constant False False
 [exit 0]

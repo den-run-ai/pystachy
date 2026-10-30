@@ -1,0 +1,51 @@
+hash present
+eq present int 1180591620717411303424
+hash present
+eq present int 1180591620717411303424
+hash present
+eq present int 1180591620717411303424
+True 1180591620717411303425 1180591620717411303425
+hash absent
+hash absent
+False 5
+hash present
+eq present int 1180591620717411303424
+hash absent
+True False
+hash present
+eq present int 1180591620717411303424
+1180591620717411303425
+hash present
+eq present int 1180591620717411303424
+1180591620717411303425
+8
+empty pop absent
+hash absent
+empty delete absent
+hash present
+eq present int 1180591620717411303424
+hash absent
+hash absent
+remove absent
+hash change
+eq change 0 1180591620717411303424
+eq change 1 1180591620717411303424
+changed dict 99
+hash change
+eq change 0 1180591620717411303424
+eq change 1 1180591620717411303424
+changed set True
+hash raises
+eq raises 1180591620717411303424
+query equality
+hash raises
+eq raises 1180591620717411303424
+query equality
+99 True
+drop 0
+deleted zero False
+drop 1
+deleted one False
+saved True
+retained 1180591620717411303424 20
+[exit 0]

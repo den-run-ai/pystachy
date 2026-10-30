@@ -185,7 +185,9 @@ class JSONParser:
         self.has_tried_valid_json_suffix = True
         try:
             value, end_idx = raw_decode(self.json_str[self.index :])
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, OverflowError):
+            # Pystachy port: retry integer tokens beyond the native codec's
+            # int64 range through parse_number(), which uses promoting ints.
             return False, ""
 
         self.index += end_idx

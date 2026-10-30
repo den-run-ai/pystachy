@@ -32,6 +32,8 @@ static void box_slot(void *p, int atomic, const char *what) {
 
 __attribute__((noinline)) static void sizes(void) {
   box_slot(pys_dyn_int(1000), 1, "an int's box is not in an atomic 16-byte slot");
+  box_slot(pys_dyn_big(0, pys_mpz_from_str(cstr("1180591620717411303424"), 10)), 0,
+           "a wide int's box is not in a scanned 16-byte slot");
   box_slot(pys_dyn_float(0.5), 1, "a float's box is not in an atomic 16-byte slot");
   box_slot(pys_dyn_ref(&pys_dyntype_str, cstr("s")), 0, "a str's box is not in a scanned 16-byte slot");
   box_slot(pys_ubox(3, 4), 0, "a union's box is not in a scanned 16-byte slot");

@@ -673,8 +673,6 @@ class Loader:
         if dynamic_pragma(src):
             DYNFILES[k] = True
         if int_pragma(src):
-            if k in DYNFILES:
-                fail("a module cannot opt in to both dynamic Any and promoting ints (# pystachy: python-int) yet", line)
             INTFILES[k] = True
 
     def parse_source(self, src: str, line: int) -> Node:

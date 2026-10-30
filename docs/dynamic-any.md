@@ -14,6 +14,36 @@ pipeline: the program is compiled before it runs.
 The sections below explain supported values, conversions between typed and dynamic code,
 [limitations](#deviations), and [measured costs](#measurements).
 
+## Promoting integers
+
+Dynamic `Any` can be combined with [promoting ints](python-int.md) in the same module:
+
+```python
+# pystachy: dynamic-any
+# pystachy: python-int
+from typing import Any
+
+value: Any = 9223372036854775807
+value += 1
+print(value, type(value) is int)  # 9223372036854775808 True
+exact: int = value
+items: list[int] = [exact]
+print(items[0] == value)          # True
+```
+
+Wide integers can cross typed/dynamic parameters, returns, globals, closures and fields,
+and occupy dynamic lists, tuples and dictionary keys and values. Numeric comparisons and
+hashes stay exact, including comparisons with floats. The wide and in-range representations
+both report Python type `int`; converting an exact `Any` int with `int()` keeps its object.
+The combined opt-in also keeps wide values in typed integer lists, dictionaries and sets.
+
+Integer policy belongs to the module containing an operation. With both comments, arithmetic
+on two in-range `Any` ints promotes on overflow. A dynamic-only module can receive and operate
+on an already wide int, but arithmetic on two in-range ints there retains checked 64-bit
+overflow. Its concrete `int` annotations are also checked 64-bit boundaries. This does not
+change the default integer policy or remove the remaining [typed storage limits](python-int.md#64-bit-boundaries)
+and [numeric identity gaps](#deviations).
+
 ## Selecting dynamic storage
 
 In a module that opts in, `Any` in an annotation is the internal type `dyn` wherever it
@@ -130,12 +160,15 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   defines one for each class whose objects it boxes, and one for each function value type.
 - **The payload** is an `int`'s, `float`'s or `bool`'s bits, or the original pointer of a
   `str`, list, dict, tuple or object. Boxing never copies a mutable container and never gives
-  an alias a second layout.
+  an alias a second layout. A wide integer uses a second integer DynType with the same
+  Python kind and descriptor `j`; its payload points to immutable `Mpz` digits. Its 16-byte
+  box is scanned so those digits stay alive. Integer operations inspect that layout before
+  reading the payload as a number; no extra outer box or larger `Dyn` is needed.
 - **`None` is the constant box `pys_dyn_none_box`, never null.** Null is an unbound variable's
   slot, and the existing "is assigned" flags still tell unbound reads apart. `True`, `False`,
   the ints from -5 to 256 and the program's int literals are constant boxes too, one per value
   (a literal's in each module), and so is each str constant's, whose payload is that constant: a
-  literal key of a `dict[str, Any]` allocates nothing (#777). Other numbers' boxes are atomic
+  literal key of a `dict[str, Any]` allocates nothing (#777). Other in-range numbers' boxes are atomic
   allocations, which the collector does not scan; a reference's box is a scanned allocation,
   so the box keeps its payload alive. DynTypes are constants outside the heap. Dynamic locals,
   arguments and closure cells are ordinary pointer slots, which the conservative collector
@@ -160,7 +193,10 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   functions included, as CPython caches the former and makes a module's equal constants one
   object, and another module's another; an int computed at run time gets a new box, as
   `int("1000") is int("1000")` is `False` in CPython (`tests/programs/inference/dynany_identity.py`
-  and `dynany_identity_modules.py`). A float literal likewise has one constant box per exact
+  and `dynany_identity_modules.py`). With `python-int`, wide integer literals likewise share
+  a module's constant box and immutable digits, including equivalent decimal, hexadecimal,
+  octal and binary spellings. Unary `+` and `abs()` of a nonnegative integer preserve its
+  object (`tests/programs/numbers/python_int_any_constants.py`). A float literal likewise has one constant box per exact
   value in each module, shared by its functions. Positive and negative zero have distinct
   boxes; computed floats, including NaNs, are not interned
   (`tests/programs/inference/dynany_float_identity.py`). An int or float variable of typed code
@@ -296,6 +332,9 @@ A dynamic value is a pointer to an immutable 16-byte box `{DynType *t, payload}`
   invalid or overflowing operations retain runtime evaluation and errors
   (`dynany_identity_folded_ints.py`). Other constant-folding forms remain outside this
   identity guarantee, including float arithmetic and larger shift/power counts.
+  Expressions that CPython folds to wide integer constants also remain an identity gap (#858):
+  an `Any` holding `2 ** 63` and one holding the literal `9223372036854775808` compare equal,
+  but do not share an object (`tests/deviations/dynany_identity_boundary.py`).
   Union/optional numeric payload layouts remain unchanged; their companion boxes follow
   representation-only conversions. Copies can materialize a box as they do for concrete locals.
   Comprehension targets have their own box slots, renewed for each iteration and
@@ -707,8 +746,12 @@ document into dicts and lists of `Any` values that programs which do not opt in 
   selected (`tests/deviations/dynany_cmp_declined_annotations.py`,
   `tests/deviations/dynany_cmp_declined_declarations.py`). These methods are present for
   dispatch: their inability to compile never permits a lower-priority method to run instead.
-- `in` of an `Any` item in a typed container (`x in xs` with `xs: list[int]`) unboxes the item
-  as the container's item type, raising `TypeError` where CPython would answer `False`.
+- Searches with an `Any` query in typed numeric lists, int-keyed dictionaries and int sets
+  keep the query's Python value. They compare wide ints and equal floats exactly, preserve
+  comparison/hash callbacks and observe their mutations. Dictionary/set stores still check
+  the declared element type; a query that equals an existing int need not be an int itself.
+  Other typed container queries may still unbox the item as the container's item type,
+  raising `TypeError` where CPython would answer `False`.
 - `dict.keys()`, `values()` and `items()` of an `Any` dict give lists, as the typed ones do.
 - An int or float of typed code that no variable's box slot holds is a new object where it
   becomes an `Any` value, where CPython's names, containers and classes hold one object: a

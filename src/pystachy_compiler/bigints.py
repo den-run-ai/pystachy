@@ -8,8 +8,8 @@ that fits, so equal values have one representation. See docs/python-int.md.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import first_use, local_names
-from src.pystachy_compiler.diagnostics import LINES, int_file, int_lists, int_span
-from src.pystachy_compiler.ir import FnInfo, Ins, Val
+from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_file, int_lists, int_span
+from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, CHECKED, IOPS, IRT, RANGEC, READ_HELPERS
 from src.pystachy_compiler.utils import bool_for_int, elem, is_dict, is_gen, is_list, is_opt, is_set, is_sopt, is_tuple, is_vtuple, lookable, selem, targs, unopt
@@ -36,9 +36,10 @@ BKEY: dict[str, str] = {
     "pys_dict_setdefault": "pys_dict_bkey_setdefault", "pys_dict_big_pop": "pys_dict_bkey_big_pop",
     "pys_dict_big_setdefault": "pys_dict_bkey_big_setdefault", "pys_dict_find": "pys_dict_big_find",
 }
-# A list of ints of a program whose lists hold promoting ints (int_lists: a module opts in, none to
-# dynamic Any) holds an item past 64 bits as a tuple does: TSLOT_BIG in its slot, and its Mpz in the
-# list's companion (runtime.c's BIGIDS), read only where the slot holds TSLOT_BIG (big_list_value).
+# A list of ints of a program whose lists hold promoting ints (int_lists: a module opts in)
+# holds an item past 64 bits as a tuple does: TSLOT_BIG in its slot, and its Mpz in the list's
+# companion (runtime.c's BIGIDS), or in its numeric identity box when identity is observed.
+# The companion is read only where the slot holds TSLOT_BIG (big_list_value).
 # Every module of the program reads a list's int so: one that opts in as a promoting int, another as
 # its 64-bit int (NARROW past 64 bits); a promoting int goes into the list as it is from any module
 # (big_list_store), and runtime.c's list code keeps the companion in step with the items.
@@ -309,7 +310,7 @@ def gen_int_again(self, f: FnInfo, before: list[int]) -> bool:
     # only widened from int to BIG. No new Gen/Frame state; the driver's existing hints
     # survive a fallback, and dry() cannot request joins. Shared layouts and dependencies
     # still need a fresh whole-program pass. Dynamic Any keeps its existing retry path.
-    if not int_lists() or self.modlevel or self.rtmode or f.gen or f.clo >= 0 or f.node.kind != "def":
+    if not int_lists() or dynamic_program() or self.modlevel or self.rtmode or f.gen or f.clo >= 0 or f.node.kind != "def":
         return False
     if len(self.cells) > 0 or f.ll in self.retseen or f.ll in self.dynseen or int_replay_state(self) != before:
         return False
@@ -505,14 +506,16 @@ def gen_big_abs(self, v: Val) -> Val:
     yes = self.label()
     end = self.label()
     ph = Ins("phi", BIG, "")
-    self.incoming(ph, x.v, self.cur)
+    nonnegative = self.cur
+    self.incoming(ph, x.v, nonnegative)
     self.cbr(neg.v, yes, end)
     self.place(yes)
     r = self.big_unary("-", x)
-    self.incoming(ph, r.v, self.cur)
+    negative = self.cur
+    self.incoming(ph, r.v, negative)
     self.br(end)
     self.place(end)
-    return Val(self.phi(ph), BIG)
+    return self.numeric_phi(Val(self.phi(ph), BIG), [x, r], [nonnegative, negative])
 
 
 def gen_big_cmp(self, op: str, a: Val, b: Val) -> Val:
@@ -694,12 +697,12 @@ def gen_big_slot(self, raw: str, fn: str, args: list[str], two: bool = False) ->
     return Val(self.phi(ph), BIG)
 
 
-def gen_big_list_value(self, o: Val, i: str, raw: str) -> Val:
+def gen_big_list_value(self, o: Val, i: str, raw: str, keep: bool = False) -> Val:
     # raw, the slot of list[int] o at index i (in range, or negative as pys_list_get takes it), as
-    # the int that the list holds there (int_lists): a promoting int in a module that opts in, else
+    # the int that the list holds there (int_lists): a promoting int in a module that opts in (or keep), else
     # the 64-bit int, NARROW past 64 bits (big_slot)
     v = self.big_slot(raw, "pys_list_big_at", [f"ptr {o.v}", f"i64 {i}"])
-    return v if self.read_policy() else self.big_narrow(v)
+    return v if keep or self.read_policy() else self.big_narrow(v)
 
 
 def gen_item_type(self, t: str) -> str:
@@ -713,14 +716,14 @@ def gen_item_type(self, t: str) -> str:
     return elem(t)
 
 
-def gen_held_value(self, v: Val) -> Val:
+def gen_held_value(self, v: Val, keep: bool = False) -> Val:
     # v, an item that a list holds as held(v.t) gives it: as that tuple of promoting ints in a
-    # module that opts in, else as the tuple of its 64-bit ints, which it is where each fits
+    # module that opts in (or keep), else as the tuple of its 64-bit ints, which it is where each fits
     # (NARROW past 64 bits: big_tuple_narrow)
     h = held(v.t)
     if h == v.t:
         return v
-    if self.read_policy():
+    if keep or self.read_policy():
         return Val(v.v, h)
     return self.big_tuple_narrow(Val(v.v, h))
 
@@ -747,8 +750,8 @@ def gen_list_coerce(self, v: Val, et: str) -> Val:
     # v as an item of a list of et, or a value of a dict of et: a promoting int stays one where et is
     # int and the program's lists and dicts of ints hold them (int_lists), which list_store and
     # dict_store store as it is (big_list_store, pys_dict_set_big)
-    if v.t == BIG and et == "int" and int_lists():
-        return v
+    if et == "int" and int_lists() and (v.t == BIG or v.t == "dyn"):
+        return v if v.t == BIG else self.dyn_unbox(v, BIG)
     return self.coerce(v, et)
 
 
@@ -854,8 +857,8 @@ def gen_key_coerce(self, k: Val, kt: str) -> Val:
     # k as a key stored into a dict whose keys have type kt (store_key): a promoting int stays one
     # where the keys are ints and the program's dicts hold such keys (int_lists), which dict_put
     # stores as it is
-    if k.t == BIG and kt == "int" and int_lists():
-        return k
+    if kt == "int" and int_lists() and (k.t == BIG or k.t == "dyn"):
+        return k if k.t == BIG else self.dyn_unbox(k, BIG)
     return self.store_key(k, kt)
 
 
@@ -904,12 +907,13 @@ def gen_dict_put(self, d: Val, k: Val, ks: str, v: Val, kv: list[str]) -> None:
         self.dict_store(d.v, ks, v, kv)
 
 
-def gen_dict_value(self, d: Val, e: str) -> Val:
+def gen_dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
     # the value of entry e of dict d (of a dict of ints, big_dict_value's; a tuple of ints, which the
-    # dict holds as a list holds it, as held_value reads it)
+    # dict holds as a list holds it, as held_value reads it). Comparisons keep the held layout;
+    # only an explicit read into a fixed-width module narrows a value that exceeds 64 bits.
     if self.dict_int(d.t):
-        return self.big_dict_value(d, e)
-    return self.held_value(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"]), targs(d.t)[1]))
+        return self.big_dict_value(d, e, keep)
+    return self.held_value(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {d.v}", f"i64 {e}"]), targs(d.t)[1]), keep)
 
 
 def gen_held_read(self, v: Val) -> Val:
@@ -1103,8 +1107,8 @@ def gen_set_coerce(self, v: Val, et: str) -> Val:
     # elements are ints (et int, or a promoting int's type, whose set ctype makes one of ints) and
     # the program's sets of ints hold them (int_lists), which set_store adds as it is
     et = "int" if et == BIG else et
-    if v.t == BIG and et == "int" and int_lists():
-        return v
+    if et == "int" and int_lists() and (v.t == BIG or v.t == "dyn"):
+        return v if v.t == BIG else self.dyn_unbox(v, BIG)
     return self.store_elem(v, et)
 
 
@@ -1177,6 +1181,10 @@ def gen_big_list_method(self, o: Val, m: str, args: list[Node]) -> Val:
     ints = ["int", "bool", BIG]
     if m == "pop" and len(args) <= 1 and (len(args) == 0 or self.dry(args[0]) in ints):
         i = self.as_int(self.expr(args[0], "")) if len(args) == 1 else Val("-1", "int")
+        kind = self.list_id_kind(o.t)
+        if kind != 0:
+            box = self.rt("pys_list_pop_identity", "ptr", [f"ptr {o.v}", f"i64 {i.v}", f"i64 {kind}"])
+            return self.dyn_unbox(Val(box, "dyn"), self.item_type(o.t))
         v = Val(self.rt("pys_list_big_pop", BIGLL, [f"ptr {o.v}", f"i64 {i.v}"]), BIG)
         return v if self.read_policy() else self.big_narrow(v)
     if ((m == "append" and len(args) == 1) or (m == "insert" and len(args) == 2 and self.dry(args[0]) in ints)) and self.dry(args[-1]) == BIG:
@@ -1318,10 +1326,64 @@ def gen_big_parse(self, s: Val, base: Val) -> Val:
     return Val(self.rt("pys_big_from_str", BIGLL, [f"ptr {s.v}", f"i64 {base.v}"]), BIG)
 
 
+def literal_limbs(digits: str) -> list[int]:
+    # Canonical base-2**30 magnitude, without host big ints: the self-hosted compiler
+    # performs every intermediate in int64. Power-of-two literals pack linearly;
+    # decimal literals (at most 4300 digits) multiply by groups of at most 10**9.
+    base = 16 if digits.startswith("0x") else 8 if digits.startswith("0o") else 2 if digits.startswith("0b") else 10
+    limbs: list[int] = []
+    if base != 10:
+        width = 4 if base == 16 else 3 if base == 8 else 1
+        word = 0
+        shift = 0
+        for j in range(len(digits) - 1, 1, -1):
+            word |= int(digits[j], base) << shift
+            shift += width
+            if shift >= 30:
+                limbs.append(word & 1073741823)
+                word >>= 30
+                shift -= 30
+        if word != 0:
+            limbs.append(word)
+        return limbs
+    limbs.append(0)
+    for j in range(0, len(digits), 9):
+        chunk = digits[j:j + 9]
+        carry = int(chunk)
+        mul = 10 ** len(chunk)
+        for k in range(len(limbs)):
+            word = limbs[k] * mul + carry
+            limbs[k] = word & 1073741823
+            carry = word >> 30
+        if carry != 0:
+            limbs.append(carry)
+    return limbs
+
+
 def gen_big_literal(self, text: str) -> Val:
     # an int literal past 64 bits: decimal, or 0x, 0o or 0b as the parser keeps it in a module that
     # opts in (Parser.exact_ints), maybe negated
     digits = text[1:] if text.startswith("-") else text
+    if dynamic_program() and (digits.startswith("0") or len(digits) <= 4300):
+        # Equal literals in one module share an object, including different bases and
+        # constants returned by its functions. Another module owns its own objects.
+        # Static immutable limbs and their Dyn box need no heap allocation or GC root.
+        limbs = literal_limbs(digits)
+        key = ("m" if text.startswith("-") else "") + "_".join([str(n) for n in limbs])
+        g = "@dbi." + self.curfn.mod + "$big" + key
+        mpz = "@mpz." + self.curfn.mod + "$" + key
+        if g not in self.dynboxes:
+            self.dynboxes[g] = True
+            data = Data("mpz", mpz)
+            data.text = str(-len(limbs) if text.startswith("-") else len(limbs))
+            data.items = [Val(str(n), "int") for n in limbs]
+            self.consts.append(data)
+            box = Data("dynbox", g)
+            box.refs = [self.rtdata("pys_dyntype_bigint"), mpz]
+            self.consts.append(box)
+        value = self.big(Val("0", "int"), mpz)
+        value.idfrom = g
+        return value
     return self.big_parse(Val(self.sconst(text), "str"), Val("0" if digits.startswith("0") and len(digits) > 1 else "10", "int"))
 
 
@@ -1348,6 +1410,8 @@ def gen_big_binop(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
 def gen_big_compare(self, op: str, a: Val, b: Val) -> Val:
     # a op b where an operand is a promoting int
     nums = ["int", "bool", BIG]
+    if (op == "in" or op == "not in") and a.t == BIG and (is_list(b.t) or is_dict(b.t) or is_vtuple(b.t)) and targs(b.t)[0] == "dyn":
+        return self.cmp2(op, self.dyn_box(a), b)
     if op in ["==", "!=", "<", "<=", ">", ">="]:
         if a.t in nums and b.t in nums:
             return self.big_cmp(op, a, b)
@@ -1464,6 +1528,9 @@ def gen_big_builtin(self, name: str, vals: list[Val]) -> Val:
         for v in vals[1:]:
             x = self.to_big(v)
             better = self.big_cmp("<" if name == "min" else ">", x, best)
-            best = Val(self.select(better.v, x, best), BIG)
+            old = best
+            best = Val(self.select(better.v, x, old), BIG)
+            if self.idhere():
+                best.idfrom = self.select(better.v, self.dyn_id_box(x), self.dyn_id_box(old))
         return best
     return Val("", "")

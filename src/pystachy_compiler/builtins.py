@@ -2216,6 +2216,10 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     dropped = mc is not None and mc is self.stmtexpr and len(args) == 1 and len(mc.kids) == 2 and args[0] is mc.kids[1]
     if is_set(o.t):
         return self.smethod(o, m, args)
+    if is_dict(o.t) and targs(o.t)[0] == "int" and m in ["get", "pop", "setdefault"]:
+        dm = self.dict_any_method(o, m, args)
+        if dm.t != "":
+            return dm
     if is_list(o.t) and elem(o.t) == "int" and int_lists() and m in ["pop", "append", "insert", "index", "count", "remove"]:
         lm = self.big_list_method(o, m, args)  # (items past 64 bits: bigints.py)
         if lm.t != "":
@@ -2406,6 +2410,13 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 i += 1
                 continue
             v = self.big_opt_narrow(v)  # (a builtin method's int | None holds a 64-bit int: bigints.py)
+            if self.list_id_kind(o.t) != 0 and p == "*T" and v.t == "dyn" and m in ["index", "count", "remove"]:
+                # Searches compare the original query; narrowing it would discard wide ints
+                # and reject other types before their __eq__ can run. Bounds still evaluate here.
+                idquery = v
+                av.append("i64 " + self.to_slot(v))
+                i += 1
+                continue
             if self.list_id_kind(o.t) != 0 and p == "*T" and v.t in ["int", "float", "bool"]:
                 idquery = v
                 # index's later bounds may call back and rebind the query's source.

@@ -1,0 +1,40 @@
+True False 2
+1 3
+[-9223372036854775808, 1180591620717411303425, 1180591620717411303424]
+True False 2
+1 3
+[-9223372036854775808, 1180591620717411303425, 1180591620717411303424]
+True False 1
+-9223372036854775808 is not in list
+[1180591620717411303424, 1180591620717411303425, 1180591620717411303424]
+False True 0
+None is not in list
+list.remove(x): x not in list
+False True 0
+'missing' is not in list
+list.remove(x): x not in list
+False True 0
+True is not in list
+list.remove(x): x not in list
+True 2
+1
+2
+False 0
+1180591620717411303425 is not in list
+False 0
+None is not in list
+compare 1
+compare 1180591620717411303424
+compare 1
+compare 1180591620717411303424
+compare 3
+compare 1
+compare 1180591620717411303424
+True 1 1
+compare 1
+compare 1180591620717411303424
+[1, 3]
+shrink 1
+False []
+comparison ran
+[exit 0]

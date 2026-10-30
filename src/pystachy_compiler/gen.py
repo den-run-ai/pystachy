@@ -459,6 +459,8 @@ from src.pystachy_compiler.containers import (
     gen_affix_any as containers_affix_any,
     gen_bool_find as containers_bool_find,
     gen_int_any_lookup as containers_int_any_lookup,
+    gen_int_key_entry as containers_int_key_entry,
+    gen_dict_any_method as containers_dict_any_method,
     gen_dkey as containers_dkey,
     gen_elem_problem as containers_elem_problem,
     gen_fromkeys as containers_fromkeys,
@@ -1680,8 +1682,8 @@ class Gen:
     def big_slot(self, raw: str, fn: str, args: list[str], two: bool = False) -> Val:
         return bigints_big_slot(self, raw, fn, args, two)
 
-    def big_list_value(self, o: Val, i: str, raw: str) -> Val:
-        return bigints_big_list_value(self, o, i, raw)
+    def big_list_value(self, o: Val, i: str, raw: str, keep: bool = False) -> Val:
+        return bigints_big_list_value(self, o, i, raw, keep)
 
     def item_type(self, t: str) -> str:
         return bigints_item_type(self, t)
@@ -1701,8 +1703,8 @@ class Gen:
     def update_pairs(self, d: str, v: Val, kv: list[str]) -> None:
         bigints_update_pairs(self, d, v, kv)
 
-    def held_value(self, v: Val) -> Val:
-        return bigints_held_value(self, v)
+    def held_value(self, v: Val, keep: bool = False) -> Val:
+        return bigints_held_value(self, v, keep)
 
     def search_hold(self, v: Val, et: str, t: str) -> Val:
         return bigints_search_hold(self, v, et, t)
@@ -1749,8 +1751,8 @@ class Gen:
     def dict_put(self, d: Val, k: Val, ks: str, v: Val, kv: list[str]) -> None:
         bigints_dict_put(self, d, k, ks, v, kv)
 
-    def dict_value(self, d: Val, e: str) -> Val:
-        return bigints_dict_value(self, d, e)
+    def dict_value(self, d: Val, e: str, keep: bool = False) -> Val:
+        return bigints_dict_value(self, d, e, keep)
 
     def dict_key(self, d: Val, e: str) -> Val:
         return bigints_dict_key(self, d, e)
@@ -4238,11 +4240,11 @@ class Gen:
     def list_identity(self, v: Val) -> Val:
         return containers_list_identity(self, v)
 
-    def list_item(self, o: Val, i: Val) -> Val:
-        return containers_list_item(self, o, i)
+    def list_item(self, o: Val, i: Val, keep: bool = False) -> Val:
+        return containers_list_item(self, o, i, keep)
 
-    def list_value(self, o: Val, i: str, raw: str) -> Val:
-        return containers_list_value(self, o, i, raw)
+    def list_value(self, o: Val, i: str, raw: str, keep: bool = False) -> Val:
+        return containers_list_value(self, o, i, raw, keep)
 
     def list_store(self, o: Val, v: Val, method: str, index: str = "") -> None:
         containers_list_store(self, o, v, method, index)
@@ -4891,6 +4893,12 @@ class Gen:
 
     def int_any_lookup(self, d: Val, k: Val, get: bool) -> str:
         return containers_int_any_lookup(self, d, k, get)
+
+    def int_key_entry(self, o: Val, k: Val, required: bool = False) -> str:
+        return containers_int_key_entry(self, o, k, required)
+
+    def dict_any_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return containers_dict_any_method(self, o, m, args)
 
     def store_key(self, k: Val, kt: str) -> Val:
         return containers_store_key(self, k, kt)

@@ -1,5 +1,7 @@
 # pystachy: dynamic-any
+# pystachy: python-int
 # Pystachy port: annotate recursive JSON values directly with dynamic Any.
+# Number values promote; the parser's cursor fields retain their declared integer bounds.
 from typing import Any
 
 from .utils.json_context import ContextValues

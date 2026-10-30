@@ -14,8 +14,10 @@ bounds while preserving the complete repaired result. These are **logical
 copied-code-point counts**, not native allocation traffic or GC statistics.
 The separate differential fixture covers 63/64/65-code-point boundaries,
 snapshots, surrogates, structural escapes, regex whitespace, strict/streaming
-modes and trailing removal/rstrip. The existing 645-case replay remains required;
-its known signed-64-bit mismatch is retained without a checker waiver.
+modes and trailing removal/rstrip. The existing 645-case replay remains required.
+The historical measurements below retained its signed-64-bit mismatch without a
+checker waiver; the [promoting parser](../../ports/json_repair/PORT.md#validation-and-limits)
+now passes that case too.
 
 ## Integrated measurements — 28 October 2026 (UTC)
 

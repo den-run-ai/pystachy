@@ -145,6 +145,16 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val("undef", t)
     if v.t == t:
         return v
+    if t == "dyn":
+        # Any has its own integer representation. Preserve the promoting value
+        # before the checked conversions into fixed-width storage below.
+        return self.dyn_box(v)
+    if is_tuple(v.t) and BIG in v.t and is_vtuple(unopt(t)) and targs(unopt(t))[0] == "dyn":
+        vals = [self.dyn_box(self.tget(v, i)) for i in range(len(targs(v.t)))]
+        raw = self.tuple_(vals)
+        return Val(self.rt("pys_vtuple_from", "ptr", [f"ptr {raw.v}", f"i64 {len(vals)}"]), t)
+    if is_tuple(v.t) and BIG in v.t and "dyn" in t and self.reboxes(v.t, t):
+        return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
     if t == BIG and v.t == "int":
         return self.to_big(v)  # (a promoting int: bigints.py; a bool is rejected, as in a module that does not opt in)
     if t == BIGOPT and (v.t == BIG or v.t == "int"):
@@ -173,8 +183,6 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         captured = Val(v.v, v.t).identity(v)
         captured.idfrom = self.dyn_id_box(v).v
         v = captured
-    if t == "dyn":
-        return self.dyn_box(v)  # (into dynamic storage: dynamic.py)
     if v.t == "dyn":
         return self.dyn_unbox(v, t, what)  # (out of it, where a concrete type is expected)
     if is_vtuple(unopt(t)) and is_tuple(v.t):

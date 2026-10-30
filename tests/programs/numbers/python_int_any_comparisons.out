@@ -1,0 +1,24 @@
+equality
+equality
+equality
+False False True
+9223372036854775810
+ordering False
+int property
+float property
+ordering False
+int property
+float property
+True True
+equality
+count get
+count set 1
+True
+[3] ['three']
+equality
+first error
+9223372036854775808
+equality
+'Missing' object has no attribute 'items'
+9223372036854775809
+[exit 0]
