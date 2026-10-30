@@ -6,4 +6,7 @@
 @pys_obj_repr:
 @f.ffi_axpy: pys_c_check
 @f.ffi_axpy.at: pys_c_check pys_c_at pys_c_at
+@pys.recursion.enter: pys_recursion_error
+@pys.recursion.depth:
+@pys.recursion.restore:
 @main: pys_init pys_finish

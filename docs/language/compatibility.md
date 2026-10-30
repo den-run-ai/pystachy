@@ -213,13 +213,25 @@ above apply to well-formed text (with the surrogate exception described above).
   compile-time `SyntaxWarning`s are not printed. Running out of memory (`MemoryError`), a
   Ctrl-C (`KeyboardInterrupt`) and running out of stack end the program at once: no
   `except` clause catches them, and no `finally` block runs (a `raise KeyboardInterrupt` is
-  an exception like the others). Recursion is limited only by the native
-  stack: it goes past CPython's limit of 1,000 calls (`sys.setrecursionlimit()` checks its
-  argument as CPython does and records it for `sys.getrecursionlimit()`, but bounds nothing and
-  is not compared with the current depth),
-  and where CPython raises `RecursionError` the program dies with `SIGSEGV` (status 139, losing buffered output) or,
-  for a tail call in an AOT build, loops forever. `==` between two cyclic dataclass objects
-  recurses like that too.
+  an exception like the others).
+
+- `sys.setrecursionlimit()` bounds active native source-function calls in both JIT and AOT.
+  Exceeding it raises catchable `RecursionError`, with ordinary `except`, `finally` and
+  context-manager unwinding. The default limit is 1,000; `sys.getrecursionlimit()` returns
+  the configured value. A nonpositive argument raises `ValueError`, a value outside the
+  C `int` range raises `OverflowError`, and lowering the limit to or below the active native
+  depth raises `RecursionError` without changing it.
+
+  The native depth starts at one for module execution and counts each active source
+  function, lambda or method, including supported dynamic callbacks. Compiler dispatch
+  adapters and runtime helpers do not add source frames. A generator counts only while
+  its body is running, not while suspended; resuming it uses its current caller's depth.
+  Inlining and optimized tail calls preserve this policy. Exact failure depths and error
+  messages can differ from CPython because its internal frames differ. Native stack
+  exhaustion itself is still not recoverable: an excessively raised limit, unusually large
+  native frames or foreign calls can exhaust the physical stack before the logical limit.
+  Keep recursion limits conservative for the deployment stack. The separate fixed
+  budgets for recursive aliases and JSON remain in effect.
 
 - An exception keeps `str()` of its arguments and what `repr()` shows of them as it is made,
   once all the arguments of the call are evaluated (their `__str__` and `__repr__` run then),

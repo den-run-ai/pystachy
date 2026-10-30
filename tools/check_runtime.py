@@ -79,6 +79,9 @@ from runtime_roots import check_roots
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LLVM = os.environ.get("PYSTACHY_LLVM", "")
 TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
+# Mutable data directly accessed by generated helpers, distinct from RTDATA's constants.
+# The native recursion guards and the C limit APIs must share these two i64 words.
+MUTABLE_DATA = {"pys_recursion_state": "[2 x i64]"}
 # functions whose call graph reaches user code, and rec_deep, only through comparing elements, which
 # they never do: set.copy merges into a new set, whose table has none yet (the dict and set
 # operations that hash or compare keys have U? and R?, which an object's or a recursive alias's
@@ -738,19 +741,23 @@ def main():
     named.update(f"llvm.{op}.with.overflow.i64" for op in pys.CHECKED.values())
     # (not the pys_obj_ functions and pys_plain, which the program defines, nor the names of the
     # compiler's own builtins, __pys_*, of which Gen.builtin calls two by their names without __)
-    named.update(s for s in re.findall(r"(?<!_)pys_[a-z0-9_]*[a-z0-9](?![\w{])", src) if not s.startswith("pys_obj_") and s != "pys_plain" and s not in pys.RTDATA)
+    named.update(s for s in re.findall(r"(?<!_)pys_[a-z0-9_]*[a-z0-9](?![\w{])", src) if not s.startswith("pys_obj_") and s != "pys_plain" and s not in pys.RTDATA and s not in MUTABLE_DATA)
     named.update(["pys_repr_enter", "pys_repr_leave"])
     named.update(f"pys_file_{a}" for a in ("closed", "name", "mode"))
     named.add("llvm.frameaddress.p0")
     # (and what the compiler calls by its symbol, such as runtime mode's memchr)
     named.update(re.findall(r"""self\.rt\(\s*["']([\w.]+)["']""", src))
-    # runtime data (RTDATA): each a global of runtime.c, of the LLVM type the program declares it with
-    for s, t in sorted(pys.RTDATA.items()):
-        m = re.search(r"^@" + re.escape(s) + r" = (?:[a-z_]+ )*(?:global|constant) (%[\w.]+|\{[^}]*\}|\[[^\]]*\])", ll, re.M)
+    # Runtime data: a global of runtime.c with the LLVM type the program declares.
+    # The recursion state must remain mutable; declaring it constant lets LLVM
+    # discard the changes made by entries, exits and setrecursionlimit().
+    for s, t in sorted((pys.RTDATA | MUTABLE_DATA).items()):
+        m = re.search(r"^@" + re.escape(s) + r" = (?:[a-z_]+ )*(global|constant) (%[\w.]+|\{[^}]*\}|\[[^\]]*\])", ll, re.M)
         if m is None:
             bad.append(f"RTDATA: runtime.c defines no global {s}")
             continue
-        have = m.group(1)
+        if s in MUTABLE_DATA and m.group(1) != "global":
+            bad.append(f"runtime data: {s} must be mutable, not constant")
+        have = m.group(2)
         if have.startswith("%"):
             body = re.search(r"^" + re.escape(have) + r" = type (\{[^}]*\})", ll, re.M)
             have = body.group(1) if body else have

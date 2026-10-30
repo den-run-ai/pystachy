@@ -185,6 +185,9 @@ algorithmic code; broad compatibility with arbitrary PyPI packages is still limi
 - Strings store UTF-8 with code-point lengths, indexing, slicing and search offsets; Unicode case mapping remains incomplete.
   Use the opt-in [Unicode porting audit](docs/language/compatibility.md#text-and-file-positions)
   to flag byte-oriented operations on non-ASCII input.
+- Native calls respect `sys.setrecursionlimit()`, raising catchable `RecursionError` in JIT and AOT. Native depth
+  differs from CPython, and excessively raised limits can still exhaust the physical stack;
+  see the [recursion policy](docs/language/compatibility.md#errors-and-control-flow).
 - Many unsupported constructs produce compile-time diagnostics; this is not a complete
   compatibility check. Known semantic differences are listed in
   [deviations from CPython](docs/language.md#deviations-from-cpython).

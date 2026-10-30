@@ -197,6 +197,10 @@ restrictions, evaluation order, protocols and [iterators](language/semantics.md#
 
 Builtin exceptions follow CPython 3.13's hierarchy. Runtime errors such as missing dictionary
 keys, division by zero, failed file opens and integer overflow can be caught.
+Exceeding `sys.setrecursionlimit()` raises catchable `RecursionError` in JIT and AOT,
+with ordinary `finally` and context-manager unwinding; the
+[native depth policy](language/compatibility.md#errors-and-control-flow) can reach its
+limit at a different source call than CPython.
 
 User-defined exception classes can derive from a supported builtin exception or another
 exception class in the program. They can define fields, constructors and string
@@ -288,7 +292,7 @@ The most important differences for supported programs are:
 | Strings | Code-point length, indexing, slicing and search; Unicode case mapping and some other operations remain incomplete |
 | Containers | Dictionary views are snapshots; string-set order differs from CPython |
 | Exceptions | Uncaught errors omit the full traceback; native resource failures bypass handlers |
-| Recursion | The native stack, rather than `sys.setrecursionlimit()`, limits depth |
+| Recursion | `sys.setrecursionlimit()` bounds active source calls; exact failure depth differs from CPython, and excessive limits can still exhaust the native stack |
 | Lifetime | Garbage collection runs in batches; `__del__` never runs; close files explicitly |
 | Evaluation | Some consumers materialize their input before processing it |
 

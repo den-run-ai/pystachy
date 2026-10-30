@@ -30,4 +30,7 @@
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
+@pys.recursion.enter: pys_recursion_error
+@pys.recursion.depth:
+@pys.recursion.restore:
 @main: pys_init pys_finish

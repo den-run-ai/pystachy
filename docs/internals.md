@@ -399,8 +399,9 @@ generator expressions emit the same typed IR and LLVM IR as before.
 
 ## JIT, AOT and runtime caching
 
-`run` favors startup latency. LLVM removes unused internal functions, optionally inlines the
-program's own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
+`run` favors startup latency. LLVM removes unused internal functions, inlines the small
+recursion-accounting helpers, optionally inlines the program's own functions, performs SSA
+cleanup, and runs `early-cse` and `adce` to remove
 redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
 On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
 from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
@@ -416,8 +417,11 @@ lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each
 function's cleanup), and `coro-cleanup`. The final `early-cse`/`adce` cleanup runs after
 those passes as well, so dead identity-generation loops do not reach code generation.
-The default inlining threshold is 20,000 lines of generated IR; larger programs skip that
-pass. The precompiled runtime is not inlined into JIT code.
+The default user-function inlining threshold is 20,000 lines of generated IR; larger programs
+skip that pass. Recursion-accounting helpers remain inlined, including with
+`PYSTACHY_JIT_INLINE=0`; they access the same mutable depth/limit state as the runtime's
+`sys.setrecursionlimit()` implementation and call the checked runtime entry only on the
+overflow path. The precompiled runtime is not inlined into JIT code.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
@@ -461,7 +465,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
-| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT inlining; `0` disables it |
+| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining; `0` disables it (recursion-accounting helpers remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |

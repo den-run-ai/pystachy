@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names, nonlocal_decls, numeric_statement, numeric_return_names, str_appends, targets
 from src.pystachy_compiler.bigints import int_replay_state
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, int_program
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
+from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTSYM
@@ -81,6 +81,16 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     if not self.modlevel:
         local_names(body, self.assigned)
         globals_in(body, self.gdecl)  # (global holds for the whole function, also from a dead branch)
+    if not self.rtmode and not f.gen and f.node.kind == "def" and len(f.node.kids) >= 3:
+        # Before any local handler or body code: a failed entry belongs to the caller.
+        # This is real IR before effect analysis, so even a formerly pure call may raise.
+        self.fn.counted = True
+        self.fn.rdepth = self.rt("pys_recursion_enter", "i64", [])
+    elif not self.rtmode and not f.gen:
+        # A module/adapter's handler restores its entry depth without counting it.
+        # Capture before dry() can build temporary landings: their discarded blocks
+        # must not leave a live token referring to a discarded definition.
+        self.fn.rdepth = self.rt("pys_recursion_depth", "i64", [])
 
 def gen_materialize(self, f: FnInfo) -> None:
     # Flow annotates nodes and cls substitution renames them: each compiled inherited
@@ -422,6 +432,32 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
             # (the same LLVM types, but another layout: a tuple of two strs for one of three)
             self.err(f"{f.name}() is defined as {typestr(ts[0])}({', '.join([typestr(t) for t in ts[1:]])}), but the compiler calls it as {rt_subset(RTSYM[f.ll[1:]], ts)} (RUNTIME's {RTSYM[f.ll[1:]]})")
         self.untold(f, ts, "defined")
+    if self.fn.counted:
+        # Cover inferred ret.none and every ordinary return after finally/with cleanup.
+        # Every normally returning callee restores its caller's depth. Restore our
+        # known entry depth instead of reloading the global after opaque runtime
+        # calls. The checked entry guarantees depth >= 1, so this machine subtraction
+        # cannot overflow. Keeping restoration after the recursive call also keeps
+        # tail-call elimination from discarding the logical activation count.
+        self.runtime("pys_recursion_restore")
+        base = Ins("scalar.bin", "int", "sub")
+        base.a = [Val(self.fn.rdepth, "int"), Val("1", "int")]
+        self.n += 1
+        base.r = [self.n]
+        self.fn.blocks[0].code.insert(1, base)
+        for b in self.fn.blocks:
+            code: list[Ins] = []
+            for op in b.code:
+                if op.op == "ret" or op.op == "ret.none":
+                    restore = Ins("rt", "None", "recursion.restore")
+                    restore.a = [Val(f"%t{base.r[0]}", "int")]
+                    code.append(restore)
+                code.append(op)
+            b.code = code
+    elif self.fn.rdepth != "" and not any(op.op == "rt" and op.s == "recursion.restore" for b in self.fn.blocks for op in b.code):
+        # No real handler used the snapshot (possibly only a speculative landing).
+        # Do not charge module initializers or adapters a redundant runtime call.
+        self.fn.blocks[0].code = [op for op in self.fn.blocks[0].code if not (op.op == "rt" and op.s == "recursion.depth")]
 
 def gen_extern_args(self, x: Node, more: bool) -> list[str]:
     # decorator x, @ffi.extern(lib, symbol=""): the library and the symbol ("" for the function's

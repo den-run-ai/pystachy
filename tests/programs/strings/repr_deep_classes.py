@@ -1,6 +1,6 @@
-# The reprs of deep object trees are limited by the native stack, not by the recursive-alias
+# The reprs of deep object trees use the source-call recursion limit, not the recursive-alias
 # budget (512 alias edges): a dataclass's generated __repr__ and a class's own __repr__ both
-# print deeper trees, as CPython does.
+# print these bounded trees, as CPython does.
 from __future__ import annotations
 from dataclasses import dataclass
 
