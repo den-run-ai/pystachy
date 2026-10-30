@@ -375,12 +375,8 @@ above apply to well-formed text (with the surrogate exception described above).
   creation, unresolved helper/alias flows and unsupported native operation/layout pairs
   remain outside the proof. Custom lookup methods, differing unsupported `NamedTuple`
   element layouts and `list[bytes]`/`list[Any]` equality remain explicit compile-time
-  rejections. Concrete operand annotations alone no longer suppress normal cross-type
-  instance comparison methods. Same-hierarchy dynamic comparisons retain typed helpers and
-  raise `TypeError` for an incompatible operand annotation; imported unsupported comparison
-  declarations also raise when selected. Neither case silently uses identity or a
-  lower-priority reflected method (`tests/deviations/dynany_cmp_declined_annotations.py`,
-  `tests/deviations/dynany_cmp_declined_declarations.py`). The prototype's other differences, such as
+  rejections. Concrete operand annotations alone no
+  longer suppress normal instance comparison methods. The prototype's other differences, such as
   `in` of an `Any` item in a typed container and function values printing as `<function>`, are
   listed in its
   [deviations](../dynamic-any.md#deviations).

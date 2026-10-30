@@ -397,18 +397,17 @@ def gen_dyn_class_type(self, c: str) -> str:
 
 def gen_dyn_xmethod(self, c: str, m: str) -> bool:
     # does class c have comparison method m (its own or a base's) for a value of another type: not
-    # one that @dataclass wrote, which declines an object of another class. A method whose
-    # declaration failed is still present: its active arm reports that it cannot compile.
+    # one that @dataclass wrote, which declines an object of another class, nor one whose
+    # declaration failed, which the lenient helpers leave out (see desc)
     ms = self.classes[c].methods
-    return m in ms and not (ms[m].synthetic and self.is_dc(ms[m].cls))
+    return m in ms and ms[m].bad == "" and not (ms[m].synthetic and self.is_dc(ms[m].cls))
 
 
 def gen_dyn_xhelper(self, c: str) -> None:
     # @o.x.<class>(op, a, b): comparison op (1 ==, 2 !=, 3 <, 4 <=, 5 >, 6 >=, XCMP) of the object a
     # of class c with b, an Any value that is no object of c's hierarchy (pys_dyn_eq, through
     # pys_obj_cmp(-1 - id, op, a, b): gen_dispatch): 0 or 1, its result, 2 where c has no method
-    # for op, as object's own methods decline, or 3 where its body cannot compile for b
-    # (dyn_xbody): the runtime reports an unsupported comparison rather than reflecting it.
+    # for op, as object's own methods decline, or 3 where its body cannot compile for b (dyn_xbody)
     f = FnInfo("x", f"@o.x.{c}", self.classes[c].node, "")
     f.params = ["op", "a", "b"]
     f.ptypes = ["int", c, DYN]
@@ -1266,7 +1265,7 @@ def gen_dyn_xbody(self, c: str) -> None:
     # concrete annotation keeps its ordinary method for a matching operand. For another value,
     # specialize the same body with an Any parameter: Python annotations do not decline rich
     # comparisons. If that body cannot compile, try guarded concrete class adapters before
-    # returning the unsupported status (3) for bodies that still cannot compile.
+    # retaining the documented fallback (3) for bodies that still cannot compile.
     # The two attempts have separate restart keys, so failure of the dynamic body cannot remove
     # a supported typed call. A NamedTuple without the method (!= also where it defines __eq__:
     # tuple's __ne__) compares its fields with a tuple, as tuple's methods do, which decline any
@@ -1290,10 +1289,6 @@ def gen_dyn_xbody(self, c: str) -> None:
         self.place(hit)
         if self.dyn_xmethod(c, m):
             method = self.classes[c].methods[m]
-            if method.bad != "":
-                self.ret_(Val("3", "int"))
-                self.place(nxt)
-                continue
             ps = method.ptypes
             adapt = len(ps) == 2 and ps[1] != "" and ps[1] != DYN and method.deco == ""
             takes = self.dyn_isa(b, ps[1]) if adapt else ""

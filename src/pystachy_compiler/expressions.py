@@ -4365,19 +4365,6 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             b = self.coerce(b, unopt(a.t))
         elif is_tuple(a.t) and is_vtuple(unopt(b.t)):
             a = self.coerce(a, unopt(b.t))
-    if op in ICMP and self.lenient and self.curfn.ll.startswith("@o."):
-        # The generic object helpers must not treat a declared method as absent
-        # just because its annotation or declaration cannot take this operand.
-        # The concrete dispatcher preserves None and reflected-method priority,
-        # and raises only when the unavailable method is actually selected.
-        for lhs, rhs, symbol in [(a, b, op), (b, a, REFL.get(op, op))]:
-            if lhs.t in self.classes:
-                methods = self.classes[lhs.t].methods
-                method = DUNDER[symbol]
-                if symbol == "!=" and method not in methods and "__eq__" in methods:
-                    method = "__eq__"
-                if method in methods and self.cmp_method(lhs.t, method, rhs.t) == "":
-                    return self.inherit_cmp(op, a, b)
     if (op == "==" or op == "!=" or op in REFL) and ((a.t in self.classes and self.classes[a.t].tag != 0) or (b.t in self.classes and self.classes[b.t].tag != 0)):
         return self.inherit_cmp(op, a, b)
     ka = self.exc_kinds(a.t) if op == "==" or op == "!=" or op in REFL else []
