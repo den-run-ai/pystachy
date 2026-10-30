@@ -1452,7 +1452,7 @@ static int big_list(List *l) { return l->ids && (l->ids[0] & 3) == BIGIDS && opt
 static Mpz *lbig(List *l, I i) {
   if (l->a[i] != INT64_MIN || !l->ids) return NULL;
   if (big_list(l)) return (Mpz *)l->ids[i + 1];
-  return (l->ids[0] & 3) == 1 && l->ids[i + 1] ? pys_dyn_big_ptr((Dyn *)l->ids[i + 1]) : NULL;
+  return (l->ids[0] & 3) == 1 && l->ids[i + 1] && opt_in() ? pys_dyn_big_ptr((Dyn *)l->ids[i + 1]) : NULL;
 }
 static Big litem(List *l, I i) { Mpz *m = lbig(l, i); Big r = {m ? 0 : l->a[i], m}; return r; }   /* l[i] as a promoting int */
 /* A promoting int in a descriptor walk (descriptor J) is a pointer to two words, its slot and its
