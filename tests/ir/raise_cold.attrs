@@ -12,8 +12,8 @@
 @pys_obj_cmp:
 @pys_obj_repr:
 @pys.gen.drop:
-@pys.recursion.check: alwaysinline
-@pys.recursion.enter: alwaysinline
+@pys.recursion.check:
+@pys.recursion.enter:
 @pys.recursion.leave: alwaysinline nounwind
 @pys.recursion.depth: alwaysinline nounwind
 @pys.recursion.restore: alwaysinline nounwind
