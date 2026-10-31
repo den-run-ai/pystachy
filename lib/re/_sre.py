@@ -1399,7 +1399,12 @@ def _attempt(state: State[_S], code: list[int], pattern: int, toplevel: bool) ->
     # nested too deep), the state is as the search left it, and sre_match() runs
     if state.fast >= 0:
         ptr = state.ptr
-        r = _pystachy_re_specialized.attempt(state.fast, state, toplevel)
+        try:
+            r = _pystachy_re_specialized.attempt(state.fast, state, toplevel)
+        except RecursionError:
+            # Treat exhaustion inside the specialized matcher as a decline only;
+            # exceptions from the interpreter or user callbacks must propagate.
+            r = -1
         if r >= 0:
             return r
         state.ptr = ptr
