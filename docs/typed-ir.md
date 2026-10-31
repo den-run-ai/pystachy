@@ -390,7 +390,7 @@ the others select frontend or lowering choices.
 | `tupleret` | Return a function's new fixed tuple as an LLVM aggregate of its slots to the calls that only read the slots (`a, b = f()`, `f()[0]`, a loop over `f()`), so that neither makes the tuple ([#703](https://github.com/den-run-ai/pystachy/issues/703)) |
 | `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload`/`union.raw` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
 | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
-| `recursionleaf` | Retain a source function's entry-limit check but omit its depth increment and restoration when a separate call-graph proof finds no operation that can observe that depth, including exceptional and cleanup paths. Counted callees, indirect or unknown calls, runtime state, user callbacks and generator operations prevent elision. |
+| `recursionleaf` | Retain a source function's entry-limit check but omit its depth increment and restoration where a separate call-graph proof finds no operation that can observe that depth, including exceptional and cleanup paths. Counted callees, indirect or unknown calls, runtime state, user callbacks and generator operations are depth observers. |
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
@@ -402,6 +402,15 @@ check before earlier side effects. Native allocation and built-in errors alone c
 run source code, but custom exception throws remain boundaries, and programs with exit
 callbacks or CPython extension/embedding hooks keep full bookkeeping. Disable it with
 `PYSTACHY_OPT=-recursionleaf` to compare the guarded implementation on the same compiler.
+
+For a function without local handlers or generator operations, the pass also checks
+whether every observer lies in a region that cannot reach a normal return. In that
+case it retains the original entry check and publishes depth only on edges into that
+region, before any observer executes. Backward reachability includes implicit check
+failure edges; edge splitting repairs phi predecessors. The region cannot reenter a
+normal path, so each execution publishes at most once. A failing callee's own entry
+check stays at its call, after preceding side effects. This lets JSON's number parser
+avoid depth writes while scanning valid input and retain full depth on error paths.
 
 `tupleret` applies to a function whose every `return` returns a tuple display that the return's
 own block makes (`alloc.fixed`) and that nothing but that block's `tuple.store`s reaches: a new

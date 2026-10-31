@@ -425,8 +425,10 @@ overflow path. The precompiled runtime is not inlined into JIT code.
 
 Before LLVM lowering, `recursionleaf` replaces entry bookkeeping with a check alone
 for functions whose active depth cannot be observed by any normal, exceptional or
-cleanup path. It retains full bookkeeping for recursive calls, callbacks, limit changes
-and generators. The check can still raise before the body executes; its ordinary
+cleanup path. Where all observers occur in a region that cannot return, functions
+without local handlers can instead publish depth on entry to that region. Recursive
+calls, callbacks and limit changes see the full active depth; generators keep their
+original accounting. The check can still raise before the body executes; its ordinary
 raising/state effects remain intact. State accesses carry separate depth/limit TBAA
 tags under the existing object-field root, so field stores cannot alias that state.
 The overflow edge has cold branch weights. These metadata facts support LLVM's own
