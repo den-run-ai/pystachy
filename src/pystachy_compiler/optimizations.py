@@ -1,6 +1,6 @@
 """Optimizations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Lookup, Val, Values
 from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, LOOKUPS, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_union, umembers
@@ -72,10 +72,12 @@ def gen_recursionleaf(self) -> int:
     depth.update(direct, calls)
     n = 0
     for j in range(len(self.fns)):
-        if not eligible[j] or depth.fx[j] != 0:
+        if not eligible[j]:
             continue
         fn = self.fns[j]
         base = bases[j]
+        if depth.fx[j] != 0 and not recursion_cold(self, fn, base, depth.fx):
+            continue
         enter = fn.blocks[0].code[0]
         self.runtime("pys_recursion_check")
         enter.s = "recursion.check"
@@ -87,6 +89,123 @@ def gen_recursionleaf(self) -> int:
         fn.rdepth = ""
         n += 1
     return n
+
+
+def recursion_cold(self, fn: IFn, base: str, depth: list[int]) -> bool:
+    # A function such as JSON number() calls source helpers only on error paths.
+    # Its entry check must still run before its body, but publication can wait
+    # until an edge into a region that cannot return. All observers must lie in
+    # that region; its complement neither reads nor changes depth/limit. Thus an
+    # enter at the boundary cannot fail after the entry check passed, and every
+    # subsequent callback observes the original active depth. No edge returns to
+    # the normal region, so publication occurs at most once on an execution.
+    # This does not move a failing *callee* entry check: side effects before its
+    # call stay before it. Local handlers/generators require a different proof.
+    if len(fn.tries) > 0 or fn.coro or fn.f.gen or fn.gdepth != "":
+        return False
+    nb = len(fn.blocks)
+    at: dict[str, int] = {}
+    back: list[list[int]] = []
+    returns = [False] * nb
+    observes = [False] * nb
+    work: list[int] = []
+    for j in range(nb):
+        at[fn.blocks[j].label] = j
+        back.append([])
+    for j in range(nb):
+        b = fn.blocks[j]
+        if b.handler != "":
+            return False
+        for k in range(len(b.code)):
+            i = b.code[k]
+            if i.op == "landing" or i.op.startswith("gen."):
+                return False
+            if j == 0 and k < 2:
+                continue
+            if i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v in [fn.rdepth, base]:
+                continue
+            if any(a.v == fn.rdepth or a.v == base for a in i.a):
+                return False
+            c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+            if c in self.fll:
+                ix = self.fll[c]
+                callee = self.fns[ix]
+                observes[j] = observes[j] or callee.counted or callee.f.gen or callee.coro or depth[ix] != 0
+            elif i.op == "throw" or (i.op == "rt" and i.s in ["throw", "reraise"]) or self.opfx(i, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0:
+                observes[j] = True
+        t = b.code[len(b.code) - 1]
+        if observes[j] and (j == 0 or t.op == "ret" or t.op == "ret.none"):
+            return False  # neither the entry nor a returning block can be terminal
+        if t.op == "ret" or t.op == "ret.none":
+            returns[j] = True
+            work.append(j)
+        succ: dict[str, bool] = {l: True for l in t.b}
+        if t.op == "check":
+            succ[fn.cold[t.x if t.x != "" else t.s]] = True
+        for l in succ:
+            back[at[l]].append(j)
+    # Backward reachability is iterative and visits each edge at most once.
+    pos = 0
+    while pos < len(work):
+        j = work[pos]
+        pos += 1
+        for p in back[j]:
+            if not returns[p]:
+                returns[p] = True
+                work.append(p)
+    if not returns[0] or any(returns[j] and observes[j] for j in range(nb)):
+        return False
+    # Observer-free failure sinks need no publication. In particular the hidden
+    # failure edges of `check` must stay in that class: changing fn.cold's shape
+    # would invalidate nullcheck's later pruning of unused built-in raise blocks.
+    needed = [v for v in observes]
+    work = [j for j in range(nb) if observes[j]]
+    pos = 0
+    while pos < len(work):
+        j = work[pos]
+        pos += 1
+        for p in back[j]:
+            if not returns[p] and not needed[p]:
+                needed[p] = True
+                work.append(p)
+    for j in range(nb):
+        t = fn.blocks[j].code[len(fn.blocks[j].code) - 1]
+        if returns[j] and t.op == "check" and needed[at[fn.cold[t.x if t.x != "" else t.s]]]:
+            return False
+    bridges: list[Blk] = []
+    repairs: dict[str, str] = {}
+    for j in range(nb):
+        if not returns[j]:
+            continue
+        b = fn.blocks[j]
+        t = b.code[len(b.code) - 1]
+        targets: dict[str, bool] = {}
+        for l in t.b:
+            if not returns[at[l]] and needed[at[l]]:
+                targets[l] = True
+        redirects: dict[str, str] = {}
+        for l in targets:
+            fn.n += 1
+            bridge = Blk(f"L{fn.n}")
+            publish = Ins("rt", "int", "recursion.enter")
+            fn.n += 1
+            publish.r = [fn.n]
+            br = Ins("br", "", "")
+            br.b = [l]
+            bridge.code = [publish, br]
+            bridges.append(bridge)
+            redirects[l] = bridge.label
+            repairs[l + " " + b.label] = bridge.label
+        if len(redirects) > 0:
+            t.b = [redirects.get(l, l) for l in t.b]
+    # Repair each phi once, not once per incoming edge of a large shared join.
+    for b in fn.blocks:
+        for phi in b.code:
+            if phi.op != "phi":
+                break
+            phi.b = [repairs.get(b.label + " " + p, p) for p in phi.b]
+    fn.blocks.extend(bridges)
+    return len(bridges) > 0
 
 
 def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:
