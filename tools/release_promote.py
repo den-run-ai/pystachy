@@ -11,6 +11,7 @@ import subprocess
 import sys
 
 from release_gate import get_json, should_promote
+from release_images import registry_manifest, verified_source
 
 
 def command(arguments):
@@ -38,16 +39,13 @@ def promote(repository, version, image, token):
     if previous != version and not should_promote(version, previous):
         print("A newer stable version is already latest; nothing to change")
         return False
-    source = image + ":" + version
-    command(["docker", "pull", source])
-    revision = command(["docker", "image", "inspect", source, "--format",
-                        '{{index .Config.Labels "org.opencontainers.image.revision"}}'])
-    label = command(["docker", "image", "inspect", source, "--format",
-                     '{{index .Config.Labels "org.opencontainers.image.version"}}'])
-    if revision != commit or label != version:
-        raise RuntimeError("Versioned Docker image does not match the published release tag")
-    command(["docker", "tag", source, image + ":latest"])
-    command(["docker", "push", image + ":latest"])
+    source = verified_source(image, version, commit)
+    # Copy the registry index by digest. A local pull/tag/push would select the
+    # host's architecture and silently remove ARM64 from the latest tag.
+    command(["docker", "buildx", "imagetools", "create", "--prefer-index=false",
+             "--tag", image + ":latest", source])
+    if registry_manifest(image + ":latest").get("digest") != source.rsplit("@", 1)[1]:
+        raise RuntimeError("Docker latest differs from the verified versioned image index")
     command(["gh", "release", "edit", version, "--repo", repository, "--latest"])
     print(f"Promoted {version}: Docker and GitHub latest match commit {commit}")
     return True

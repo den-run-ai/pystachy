@@ -1,6 +1,7 @@
 # Every original verification stage runs on every commit, in independent groups; pull requests
-# that change only Markdown or docs/ skip this workflow, and Lint checks them. One producer checks
-# the bootstrap fixed point; groups validate its same-run artifact. No runtime cache is shared.
+# that change only Markdown or docs/ skip this workflow, and Lint checks them. Each architecture's
+# producer checks the bootstrap fixed point; groups validate its same-run, same-architecture artifact.
+# No runtime cache is shared.
 # The final gate retains the required check name and rejects missing, failed or cancelled groups.
 name: CI
 
@@ -22,9 +23,17 @@ permissions:
 
 jobs:
   bootstrap:
-    name: verify (bootstrap)
-    runs-on: ubuntu-24.04
+    name: verify (bootstrap, ${{ matrix.machine }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            machine: x86_64
+          - os: ubuntu-24.04-arm
+            machine: aarch64
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -35,13 +44,20 @@ jobs:
         with:
           python-version-file: .python-version
       - run: tools/setup.sh --minimal
+      - name: Record native Linux ABI
+        env:
+          VERIFY_MACHINE: ${{ matrix.machine }}
+        run: |
+          test "$(uname -m)" = "$VERIFY_MACHINE"
+          getconf PAGESIZE
+          getconf GNU_LIBC_VERSION
       - name: Verify compiler and runtime fixed points
         run: tests/verify.sh bootstrap
       - name: Package verified bootstrap
         run: python3 tools/verification_bootstrap.py export build/ci-bootstrap
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: verified-bootstrap
+          name: verified-bootstrap-${{ matrix.machine }}
           path: build/ci-bootstrap/
           if-no-files-found: error
           retention-days: 7
@@ -50,7 +66,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: verification-bootstrap
+          name: ${{ matrix.machine }}-verification-bootstrap
           path: |
             build/verification.json
             build/verify/bootstrap.log
@@ -59,20 +75,26 @@ jobs:
           overwrite: true
 
   verification:
-    name: verify (${{ matrix.group }})
+    name: verify (${{ matrix.group }}, ${{ matrix.machine }})
     needs: bootstrap
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
     # Target <10 minutes of work per group; retain headroom for runner variation
     # and failure diagnostics. GC self-compilation has its own 10-minute bound.
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
         group: [hosted, native-0, native-1, native-2, opt-off-0, opt-off-1, opt-off-2, python-free-0,
                 python-free-1, python-free-2, ubsan-0, ubsan-1, ubsan-2, ubsan-3, gc-self, gc-jit-0, gc-jit-1, gc-aot-0,
                 gc-aot-1, gc-aot-2, runtime-cache, dynany-optin-0, dynany-optin-1, dynany-optin-2,
                 python-int-optin-0, python-int-optin-1, python-int-optin-2,
                 contracts, benchmarks, scaling]
+        include:
+          - os: ubuntu-24.04
+            machine: x86_64
+          - os: ubuntu-24.04-arm
+            machine: aarch64
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -104,7 +126,7 @@ jobs:
       - name: Download verified bootstrap
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
         with:
-          name: verified-bootstrap
+          name: verified-bootstrap-${{ matrix.machine }}
           path: build/ci-bootstrap
 
       - name: Verify group
@@ -132,17 +154,18 @@ jobs:
         if: matrix.group == 'benchmarks'
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
+          BLAS_MACHINE: ${{ matrix.machine }}
         run: |
           python3 -m pip install numpy==2.5.4
-          OPENBLAS_NUM_THREADS=1 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/openblas-pthread \
+          OPENBLAS_NUM_THREADS=1 LD_LIBRARY_PATH=/usr/lib/"$BLAS_MACHINE"-linux-gnu/openblas-pthread \
             make blas-check BENCH_COMPILER=build/verify/pystachy2
-          LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/blas make blas-check BENCH_COMPILER=build/verify/pystachy2
+          LD_LIBRARY_PATH=/usr/lib/"$BLAS_MACHINE"-linux-gnu/blas make blas-check BENCH_COMPILER=build/verify/pystachy2
 
       - name: Upload group report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: verification-${{ matrix.group }}
+          name: ${{ matrix.machine }}-verification-${{ matrix.group }}
           path: |
             build/pyperformance-smoke.json
             build/verification.json
@@ -180,9 +203,17 @@ jobs:
           retention-days: 7
 
   upstream-large:
-    name: upstream large regex (JIT and AOT, normal GC)
-    runs-on: ubuntu-24.04
+    name: upstream large regex (JIT and AOT, normal GC, ${{ matrix.machine }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            machine: x86_64
+          - os: ubuntu-24.04-arm
+            machine: aarch64
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -196,7 +227,7 @@ jobs:
       - run: make port-check-large
 
   verify:
-    name: make verify (Linux x86-64, LLVM 18, Python 3.13)
+    name: make verify (Linux ${{ matrix.label }}, LLVM 18, Python 3.13)
     # Report dependency failures, but release the PR concurrency slot on cancellation.
     # always() keeps obsolete summary jobs queued and blocks the replacement run.
     if: ${{ !cancelled() }}
@@ -204,6 +235,14 @@ jobs:
     runs-on: ubuntu-24.04
     # Artifact downloads alone have exceeded three minutes on otherwise green runs.
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - machine: x86_64
+            label: x86-64
+          - machine: aarch64
+            label: ARM64
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -216,12 +255,14 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
         if: always()
         with:
-          pattern: verification-*
+          pattern: ${{ matrix.machine }}-verification-*
           path: build/ci-reports
 
       - name: Require complete verification reports
         if: always()
-        run: python3 tools/merge_verification.py build/ci-reports -o build/verification.json
+        env:
+          VERIFY_MACHINE: ${{ matrix.machine }}
+        run: python3 tools/merge_verification.py build/ci-reports --machine "$VERIFY_MACHINE" -o build/verification.json
 
       - name: Require every verification group
         if: always()
@@ -240,7 +281,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: verification
+          name: ${{ matrix.machine }}-verification
           path: build/verification.json
           if-no-files-found: warn
           retention-days: 7

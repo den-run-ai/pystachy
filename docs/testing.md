@@ -389,9 +389,11 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
-A bootstrap job checks compiler and runtime IR fixed points once, then thirty groups
-run in parallel using its verified compiler. Each group checks the same-run bundle's file hashes,
-complete tracked source identity, commit and toolchain before using it. No runtime cache is
+A native bootstrap job on each of **Linux x86-64 and ARM64** checks compiler and runtime
+IR fixed points once, then thirty groups per architecture run in parallel using that
+architecture's verified compiler. Runners are `ubuntu-24.04` and `ubuntu-24.04-arm`, both
+with LLVM 18 and the pinned Python 3.13. Each group checks the same-run bundle's file hashes,
+complete tracked source identity, commit, architecture and toolchain before using it. No runtime cache is
 shared; Python-free and sanitizer rebuilds, GC stress and cache invalidation checks remain
 independent. Local `make verify` and group runs still build their own bootstrap.
 The target is under ten minutes of work per group; the 15-minute job limit leaves room for
@@ -414,10 +416,17 @@ runner variation:
 | `benchmarks` | Benchmark correctness/timings; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
 
-A failed group leaves the others running. The required check remains
-`make verify (Linux x86-64, LLVM 18, Python 3.13)`. Its report gate requires every group to
+A failed group leaves the others running. The existing required check remains
+`make verify (Linux x86-64, LLVM 18, Python 3.13)`, alongside
+`make verify (Linux ARM64, LLVM 18, Python 3.13)`. Each report gate requires every group to
 succeed and rejects missing/unexpected stages, inconsistent source revisions/hashes or
 toolchains, different bootstrap IR, and missing or inconsistent bootstrap provenance.
+Bootstrap and report artifact names include `x86_64` or `aarch64`; the final report
+merger checks that every input names the expected native machine. An x86 report renamed
+to look like an ARM artifact is rejected. Combined reports are `x86_64-verification` and
+`aarch64-verification`; download the corresponding `MACHINE-verification-*` artifacts
+and use `tools/merge_verification.py DIRECTORY --machine MACHINE -o REPORT.json` to
+reproduce either gate. Both architectures must pass for the CI workflow to succeed.
 Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
 fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
 parity cases, all four execution modes, program GC interval 1 and zero mismatches.
@@ -666,7 +675,7 @@ test programs (many intentionally invalid), and `runtime.py`'s compiler-only `_r
 intrinsics. It does not replace bootstrap, IR parity or runtime verification.
 
 The [Installation workflow](../.github/workflows/install.yml) builds and installs from source
-on Ubuntu 24.04, macOS 15 arm64 and macOS 15 x86-64, then runs hosted and native JIT/AOT smoke
+on Ubuntu 24.04 x86-64/ARM64, macOS 15 arm64 and macOS 15 x86-64, then runs hosted and native JIT/AOT smoke
 tests (`tools/install_smoke.py`). The [Packages workflow](../.github/workflows/packages.yml)
 builds the example and ports source wheels and runs them under CPython, JIT and AOT
 (`tools/package_smoke.py`). The [Release workflow](../.github/workflows/release.yml) runs its

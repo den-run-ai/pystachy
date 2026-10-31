@@ -1,8 +1,8 @@
 # Foreign function reference
 
 Read the [FFI guide](../ffi.md) for examples. This page defines the C boundary, the
-embedded CPython of `pyobj` and CPython extension behavior implemented on x86-64
-Linux with glibc.
+embedded CPython of `pyobj` and CPython extension behavior for x86-64 and ARM64
+Linux with glibc. Both Linux architectures run the FFI suite in native CI.
 
 The CPython twins in `tools/rt_cpython` are the comparison contract: `ffi.py` uses
 ctypes for `extern` and checking wrappers for `export`, and `pyobj.py` offers the
@@ -248,8 +248,10 @@ For general language differences, see [compatibility](../language/compatibility.
 
 ## Platform and API limits
 
-The tested platform is x86-64 Linux with LP64, glibc and Itanium exception
-unwinding. macOS would need `-undefined dynamic_lookup` for extensions and lacks
+Native CI targets x86-64 and little-endian ARM64 Linux with LP64, glibc and
+Itanium exception unwinding. Embedding and extension tests require the runner's
+shared libpython; a skipped embedding/extension section is not validation of that
+mode. macOS would need `-undefined dynamic_lookup` for extensions and lacks
 `RTLD_DEEPBIND`; Windows requires another loader and unwinding implementation.
 
 Keyword arguments/defaults for exports, public classes, exception classes,

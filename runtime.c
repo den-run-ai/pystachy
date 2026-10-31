@@ -297,6 +297,17 @@ __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmark
   }
   *tail = ~(uintptr_t)0;
 }
+/* PAGE describes the collector's map, not the kernel: ARM64 can use 16/64 KiB pages.
+   madvise rounds its length up, so discard only whole OS pages inside [a, e). */
+static void discard_pages(uintptr_t a, uintptr_t e) {
+  static long page;
+  if (!page) page = sysconf(_SC_PAGESIZE);
+  if (page <= 0 || (page & (page - 1))) return;   /* no safe discard if the query failed */
+  uintptr_t mask = (uintptr_t)page - 1;
+  if (a > UINTPTR_MAX - mask) return;
+  a = (a + mask) & ~mask; e &= ~mask;
+  if (a < e) madvise((void *)a, e - a, MADV_DONTNEED);
+}
 /* s, a live large str that appends grew (str_grow), gives back the room past its length where
    more than a quarter of it is unused (the copy that made s left room for as much again), once it
    has not grown since the last sweep: a str that a loop is still appending to keeps its room, as
@@ -310,7 +321,7 @@ static void str_trim(Seg *s) {
   uintptr_t a = ((uintptr_t)s->start + m + PAGE) & ~(uintptr_t)(PAGE - 1), e = (uintptr_t)s->start + s->size;
   s->size = s->lim = m + 1;
   pmap_set(a, e, 0, m - n);
-  if (a < (e & ~(uintptr_t)(PAGE - 1))) madvise((void *)a, (e & ~(uintptr_t)(PAGE - 1)) - a, MADV_DONTNEED);
+  discard_pages(a, e);
 }
 static void sweep(void) {
   I live = 0, spare = 0;

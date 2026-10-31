@@ -123,6 +123,9 @@ jobs:
       - name: Workflow job time limits (at most 15 minutes)
         run: python3 -m unittest discover -s tools -p test_workflow_limits.py
 
+      - name: Linux ELF compatibility audit controls
+        run: python3 -m unittest discover -s tools -p test_linux_abi.py
+
       - name: Generated regex matcher tests
         run: python3 -m unittest discover -s tools -p test_re_specialize.py
 
