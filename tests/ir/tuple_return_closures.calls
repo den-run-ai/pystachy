@@ -16,11 +16,18 @@
 @f.starred: pys_list_new_atomic pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_list_append pys_raise
 @v.f.strs: pys_str_mul
 @f.strs: pys_alloc
+@rf.f.outer: pys_alloc pys_raise
+@v.rf.c.3.1: pys_raise
+@rf.c.3.1: pys_alloc
+@rf.f.starred: pys_list_new_atomic pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_list_append pys_raise
+@v.rf.f.three: pys_raise
+@rf.f.three: pys_alloc
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
 @pys.recursion.check: pys_recursion_error
 @pys.recursion.enter: pys_recursion_error
+@pys.recursion.room:
 @pys.recursion.leave:
 @pys.recursion.depth:
 @pys.recursion.restore:

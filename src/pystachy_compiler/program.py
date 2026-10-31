@@ -1179,6 +1179,11 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.verify(fn, False)
         if changed and dump:
             self.effects()  # (what the passes left: tests/ir/*.fx pin them)
+    if "recursionregion" in on and not self.rtmode and self.recursionregion() > 0:
+        self.effects()
+        if chk:
+            for fn in self.fns:
+                self.verify(fn, False)
     for fn in self.fns if self.eh else self.fns[:0]:
         if len(fn.tries) > 0:
             self.eh_ir(fn)

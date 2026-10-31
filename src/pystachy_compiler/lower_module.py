@@ -47,7 +47,7 @@ def recursion_ir(keys: list[str], root: int, fields: bool) -> list[str]:
     # limit. Keep the C RecursionError as the cold path, but make ordinary accounting
     # visible to LLVM even when JIT uses a separately compiled shared runtime. These
     # helpers are always inlined independently of the user-function inlining budget.
-    if not any(key in keys for key in ["recursion.check", "recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"]):
+    if not any(key in keys for key in ["recursion.check", "recursion.room", "recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"]):
         return []
     out = ["@pys_recursion_state = external global [2 x i64]"]
     for key in ["recursion.check", "recursion.enter"]:
@@ -76,6 +76,18 @@ def recursion_ir(keys: list[str], root: int, fields: bool) -> list[str]:
                 "  ret i64 %next",
             ])
         out.append("}")
+    if "recursion.room" in keys:
+        out.extend([
+            "define internal i64 @pys.recursion.room(i64 %needed) alwaysinline nounwind {",
+            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+            "  %limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1",
+            f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
+            "  %remaining = sub i64 %limit, %depth",
+            "  %enough = icmp sge i64 %remaining, %needed",
+            "  %result = zext i1 %enough to i64",
+            "  ret i64 %result",
+            "}",
+        ])
     if "recursion.leave" in keys:
         out.extend([
             "define internal void @pys.recursion.leave() alwaysinline nounwind {",

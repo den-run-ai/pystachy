@@ -6206,6 +6206,12 @@ _Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum rec
 void pys_recursion_check(void) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
 }
+I pys_recursion_room(I needed) {
+  /* Compiler-proven bounded regions use a non-raising selector. Both state
+     words are nonnegative and bounded by INT32_MAX; subtract, do not add an
+     unchecked budget to the active depth. Failure runs the original code. */
+  return needed <= pys_recursion_state[1] - pys_recursion_state[0];
+}
 I pys_recursion_enter(void) {
   if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
   return ++pys_recursion_state[0];

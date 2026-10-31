@@ -400,7 +400,7 @@ generator expressions emit the same typed IR and LLVM IR as before.
 ## JIT, AOT and runtime caching
 
 `run` favors startup latency. LLVM removes unused internal functions, inlines the small
-recursion-accounting helpers, optionally inlines the program's own functions, performs SSA
+recursion-accounting helpers and bounded partial versions, optionally inlines the program's own functions, performs SSA
 cleanup, and runs `early-cse` and `adce` to remove
 redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
 On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
@@ -428,9 +428,22 @@ for functions whose active depth cannot be observed by any normal, exceptional o
 cleanup path. Where all observers occur in a region that cannot return, functions
 without local handlers can instead publish depth on entry to that region. Recursive
 calls, callbacks and limit changes see the full active depth; generators keep their
-original accounting. Programs that open native files or use weak references keep all
+original accounting. `recursionregion` can check a loop-containing function's finite
+maximum call depth once and run an unchecked private call subgraph. Insufficient
+headroom runs the complete guarded body, preserving side effects and the original
+failing call. Callbacks, limit changes, generators, handlers and unknown calls remain
+boundaries; code-size limits bound cloning. A separate two-frame version can cover
+a mixed function's returning leaf paths. It publishes the active depth before an
+observer or guarded suffix and never resumes unchecked calls after that publication.
+This narrower path requires a useful leaf call in a returning block; it does not
+version arbitrary prefix scans or recursive loops. Both private layers are inlined,
+with each rewritten child callsite charged against the expansion budget.
+Programs with unmanaged native files or weak references keep all
 original bookkeeping: even removing scalar instructions can change stale conservative
 roots in a caller's native frame, altering file closure or weak-reference observations.
+Files opened directly in `with` blocks can qualify when every open is immediately
+registered as an existing unwind root outside a generator. Those roots keep the file
+alive until deterministic close, so the optimization does not change GC policy.
 Standard streams alone do not impose this restriction. The check can still raise before
 the body executes; its ordinary raising/state effects remain intact. State accesses
 carry separate depth/limit TBAA tags under the existing object-field root, so field
@@ -438,7 +451,7 @@ stores cannot alias that state.
 The overflow edge has cold branch weights. These metadata facts support LLVM's own
 optimization; they do not authorize moving an error before source side effects.
 See the [IR pass contract](typed-ir.md#optimizations) and use
-`PYSTACHY_OPT=-recursionleaf` to retain the original bookkeeping for comparisons.
+`PYSTACHY_OPT=-recursionleaf,-recursionregion` to retain the original bookkeeping for comparisons.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
@@ -482,7 +495,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
-| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining; `0` disables it (recursion-accounting helpers remain inlined) |
+| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining; `0` disables it (recursion-accounting helpers and bounded partial versions remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |

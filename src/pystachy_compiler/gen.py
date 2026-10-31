@@ -1005,6 +1005,7 @@ from src.pystachy_compiler.optimizations import (
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
     gen_recursionleaf as optimizations_recursionleaf,
+    gen_recursionregion as optimizations_recursionregion,
     gen_same as optimizations_same,
     gen_tag_read as optimizations_tag_read,
     gen_ufresh as optimizations_ufresh,
@@ -3451,6 +3452,9 @@ class Gen:
 
     def recursionleaf(self) -> int:
         return optimizations_recursionleaf(self)
+
+    def recursionregion(self) -> int:
+        return optimizations_recursionregion(self)
 
     def preds(self, fn: IFn) -> dict[str, list[int]]:
         return optimizations_preds(self, fn)

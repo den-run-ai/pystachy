@@ -26,7 +26,7 @@ def gen_lower(self, fn: IFn) -> None:
     # (a generator function is a coroutine that LLVM's coroutine passes split: see gen.start)
     # (a function that only raises is an error path: cold, and kept out of its callers, so that
     # what it formats does not keep LLVM from inlining the checks that call it: raises_only)
-    o.append(f"define {'' if f.export else 'internal '}{agg if n > 0 else lt(f.ret)} {'@v.' + f.ll[1:] if n > 0 else f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' cold noinline' if raises_only(fn) else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
+    o.append(f"define {'' if f.export else 'internal '}{agg if n > 0 else lt(f.ret)} {'@v.' + f.ll[1:] if n > 0 else f.ll}({', '.join(ps)}){' presplitcoroutine' if fn.coro else ''}{' alwaysinline' if f.ll.startswith('@rp.') or f.ll.startswith('@rp2.') else ' cold noinline' if raises_only(fn) else ''}{' personality ptr @pys_personality' if fn.pads else ''} {{")
     o.append("entry:")
     self.ftags = {}  # (its own numbers: another function's %tN is no field address of this one)
     if fn.coro:
@@ -302,7 +302,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h), is_dict(h)) if h != '' else '0'}"
         # Recursion operations keep their conservative typed effects, but their
         # hot path is in the program module so JIT need not call out to its runtime.
-        sym = "pys." + i.s if not self.rtmode and i.s in ["recursion.check", "recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"] else f.sym
+        sym = "pys." + i.s if not self.rtmode and i.s in ["recursion.check", "recursion.room", "recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"] else f.sym
         c = self.invoke(f"call {ll[0]} @{sym}({', '.join(vs)})", i)
         o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
     elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} %t{i.r[0]}" in self.vcalls:

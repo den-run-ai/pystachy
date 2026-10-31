@@ -669,7 +669,7 @@ GENTHROWC = 3
 # gives the loads and stores of object fields (Gen.field_tag), and tupleret, the fixed tuples that
 # functions return by value to the calls that only read their slots (Gen.tuple_rets), which
 # PYSTACHY_OPT turns off: "-name", comma-separated, or "-all"
-OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "recursionleaf"]
+OPTS: list[str] = ["listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "recursionleaf", "recursionregion"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)
@@ -982,6 +982,7 @@ RUNTIME: dict[str, str] = {
     "select": "tuple[list[int],list[int],list[int]]:list[int],list[int],list[int],float,int|R A I rL wL|",
     "setrecursionlimit": "None:int|R I|", "getrecursionlimit": "int:|I|",
     "recursion.check": "None:|R I|pys_recursion_check",
+    "recursion.room": "int:int|I|pys_recursion_room",
     "recursion.enter": "int:|R I|pys_recursion_enter", "recursion.leave": "None:|I|pys_recursion_leave",
     "recursion.depth": "int:|I|pys_recursion_depth", "recursion.restore": "None:int|I|pys_recursion_restore",
     "recursion.error": "None:|R N|pys_recursion_error",
