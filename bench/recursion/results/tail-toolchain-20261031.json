@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "purpose": "Private toolchain recovered after scratch loss; same upstream versions, not asserted byte-identical to the lost toolchain",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "os_release": "PRETTY_NAME=\"Ubuntu 24.04.3 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.3 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+  "python": {
+    "version": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "shared": 1,
+    "archive_url": "https://releases.astral.sh/github/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+    "archive_sha256": "d0080766b6b74aeb81e1949ef0d9a20e6c17f7b160fb295a69b936ccb17660be",
+    "installed_binary_archive_parity": {
+      "python/bin/python3.13": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+      "python/lib/libpython3.13.so.1.0": "6f7f51cecac1102e5ed2b007c12dec5ebc116264448d91d190265e385fefac9b"
+    }
+  },
+  "versions": {
+    "clang": "Ubuntu clang version 18.1.3 (1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin",
+    "opt": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: sapphirerapids",
+    "lli": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+    "llvm-as": "Ubuntu LLVM version 18.1.3\n  Optimized build."
+  },
+  "valgrind_version": "valgrind-3.22.0",
+  "python_packages": {
+    "pathspec": "1.1.1",
+    "shellcheck_py": "0.11.0.1",
+    "typing_extensions": "4.16.0",
+    "mypy": "2.4.0",
+    "coverage": "7.17.0",
+    "librt": "0.16.0",
+    "mypy_extensions": "1.1.0",
+    "ast_serialize": "0.13.1",
+    "ruff": "0.17.2"
+  },
+  "downloaded_debs": [
+    {
+      "name": "clang-18",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/clang-18_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/clang-18_18.1.3-1_amd64.deb",
+      "sha256": "3d028a3b4c0b3dc942e043db94e153baedf5c384283181d274a5e915da1b5135",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "libclang-common-18-dev",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/libclang-common-18-dev_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libclang-common-18-dev_18.1.3-1_amd64.deb",
+      "sha256": "91df14d6e3829652b837e2b368e35b076124277f2962a3f3daaea296bf86e4b0",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "libpfm4",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/universe/libp/libpfm4/libpfm4_4.13.0+git32-g0d4ed0e-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libpfm4_4.13.0+git32-g0d4ed0e-1_amd64.deb",
+      "sha256": "037cdd0aad754b70df1df39aae34a9f857daa78fdfa132673b476c256e33ad52",
+      "version": "4.13.0+git32-g0d4ed0e-1"
+    },
+    {
+      "name": "libz3-4",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/universe/z/z3/libz3-4_4.8.12-3.1build1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libz3-4_4.8.12-3.1build1_amd64.deb",
+      "sha256": "67ceb432593fe62afbaf3bd85c73d46c66fa19433a6b58326a3248162f139b19",
+      "version": "4.8.12-3.1build1"
+    },
+    {
+      "name": "lld-18",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/lld-18_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/lld-18_18.1.3-1_amd64.deb",
+      "sha256": "3a57f9d283186f0779020104ae81db8138657d0ea36809cf06d9cc2bcbce387d",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "llvm-18",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18_18.1.3-1_amd64.deb",
+      "sha256": "24c6a9d7b763c2b9ce3199012eca7366cada3e41978ecee022e9d44a110a9c6d",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "llvm-18-linker-tools",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18-linker-tools_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18-linker-tools_18.1.3-1_amd64.deb",
+      "sha256": "5724e42bd73a481386087b57dc9962c4d4d218c91175160668b6ceb297725093",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "llvm-18-runtime",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18-runtime_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18-runtime_18.1.3-1_amd64.deb",
+      "sha256": "e41df891e8f509bb08b83fed4b7f0863c2b0e4e7624464160263840b5b25b2c1",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "llvm-18-tools",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18-tools_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18-tools_18.1.3-1_amd64.deb",
+      "sha256": "a5865e3e70c3a9246d61ee602e31fd030a0d6c9b93664742c7aa1a3f4ec50292",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "libclang-cpp18",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/llvm-toolchain-18/libclang-cpp18_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libclang-cpp18_18.1.3-1_amd64.deb",
+      "sha256": "899e354d4719c31eb7829517a3ed8d6b64173590fb5c7fe7371ede469fbbe05d",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "libclang1-18",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/llvm-toolchain-18/libclang1-18_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libclang1-18_18.1.3-1_amd64.deb",
+      "sha256": "c7972cec7003be32e57fcfc3ec6ca3ee65ac5d648fb9c420db52022919562855",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "libgc-dev",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/libg/libgc/libgc-dev_8.2.6-1build1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libgc-dev_8.2.6-1build1_amd64.deb",
+      "sha256": "e5d9a3129688bcf6722c381561aeef1c938e7a70bcade830c04c04e55cfa0744",
+      "version": "1:8.2.6-1build1"
+    },
+    {
+      "name": "libgc1",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/libg/libgc/libgc1_8.2.6-1build1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libgc1_8.2.6-1build1_amd64.deb",
+      "sha256": "67d4d83f1c7f3bc240d44f4d9133e08d0da3e5069e50e6dd15ea998af7bccd06",
+      "version": "1:8.2.6-1build1"
+    },
+    {
+      "name": "libllvm18",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/llvm-toolchain-18/libllvm18_18.1.3-1_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libllvm18_18.1.3-1_amd64.deb",
+      "sha256": "826621c8e678dd27b4f5c3a9b26d10aae50d5de2d95575695a17c91014f5eaa5",
+      "version": "1:18.1.3-1"
+    },
+    {
+      "name": "valgrind",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/v/valgrind/valgrind_3.22.0-0ubuntu3_amd64.deb",
+      "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/valgrind_3.22.0-0ubuntu3_amd64.deb",
+      "sha256": "744e081e5cf3d5c598b499dbb7d2250ea3f2869dde4a4d7b231fe6114f347d7d",
+      "version": "1:3.22.0-0ubuntu3"
+    }
+  ],
+  "files": {
+    "clang": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/clang",
+      "sha256": "37f126a5e97442563fa0963660a72a11f2b31a9d608664d9e5675f2ebac99eca",
+      "size": 140536
+    },
+    "lli": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli",
+      "sha256": "44669e8442edb76ada08c806e80695c597240aedb7aa005986058d0111893370",
+      "size": 184384
+    },
+    "llvm-as": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llvm-as",
+      "sha256": "5daefabd373e614b6cc406c57fe37bc7ba20d0b80b4619cbef72b9fb5958910d",
+      "size": 31424
+    },
+    "opt": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+      "sha256": "68bce89007caf00c1c73c3e88f2ff90dde243799f9557d5a729b3a8b3d7ea370",
+      "size": 251312
+    },
+    "llvm-dis": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llvm-dis",
+      "sha256": "f3a0ed37da04e42f2f5cca1f88684ca8140e6f8252996e23c587591848487f77",
+      "size": 47952
+    },
+    "llvm-link": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llvm-link",
+      "sha256": "1eb44d783a8c7bd55af1af5abf786eacb994cef08110caaa52259da14558952c",
+      "size": 68656
+    },
+    "llc": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llc",
+      "sha256": "54b1109d0e51ead52fa9aade0d4c5504e87be45e8c0d57d42a1e76aa55c92875",
+      "size": 168600
+    },
+    "python3.13": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+      "size": 31601560
+    },
+    "libpython3.13.so": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/python/cpython-3.13.16-linux-x86_64-gnu/lib/libpython3.13.so.1.0",
+      "sha256": "6f7f51cecac1102e5ed2b007c12dec5ebc116264448d91d190265e385fefac9b",
+      "size": 32338272
+    },
+    "valgrind": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/bin/valgrind",
+      "sha256": "4652774bd116cb49951ef74115ad4237cad5021b2bd4d80002f09d986ec438b9",
+      "size": 528
+    },
+    "callgrind-amd64-linux": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/libexec/valgrind/callgrind-amd64-linux",
+      "sha256": "825eb197d519240c112e03ed00f40a8bbe1a0a0614f79ea95e28c67e8695cb03",
+      "size": 2482912
+    }
+  },
+  "env_script": {
+    "path": "/workspace/scratch/e858f72517b9/toolchain/env.sh",
+    "sha256": "af7c564f3d51b1d7d8036a645d7ae18f792bea6bad025b61b261913b6d41e1b2",
+    "size": 865
+  },
+  "sanity_checks": {
+    "tools_setup_check": "passed",
+    "valgrind_callgrind_bin_true": "passed",
+    "native_c_compile_link_run": "passed"
+  },
+  "pystachy_builds_run": false
+}
