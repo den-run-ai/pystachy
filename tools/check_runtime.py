@@ -84,6 +84,17 @@ TOOL = (LLVM.rstrip("/") + "/") if LLVM else ""
 # operations that hash or compare keys have U? and R?, which an object's or a recursive alias's
 # key descriptor makes U or R: Gen.opfx)
 NO_USER = {"set.copy"}
+# Clang lowers this two-word result to {i64, ptr} on x86-64 and [2 x i64]
+# on AArch64. Both return the low word and pointer in the first two integer
+# result registers. Probe the C ABI independently of runtime.c; do not accept
+# arbitrary same-sized aggregates or normalize runtime.py's LLVM signatures.
+BIG_ABI_PROBE = """
+typedef struct { __INT64_TYPE__ lo; void *hi; } CheckBig;
+CheckBig check_big_abi(__INT64_TYPE__ lo, void *hi) {
+    CheckBig value = {.lo = lo, .hi = hi};
+    return value;
+}
+"""
 RAISES = {"pys_fail", "pys_raise", "oserr", "kbint_exit", "throw_", "pys_reraise"}
 # the depth guard of runtime.c's descriptor walks (repr_depth, eqpair_depth), which counts only the
 # edges of recursive aliases, so that an op whose descriptor holds none never raises through it: R?;
@@ -180,6 +191,9 @@ def functions(ll):
             if head.endswith("}"):
                 # (a two-word struct result, which clang prints as { i64, ptr }: as RUNTIME writes it)
                 result = "{" + ", ".join(t.strip() for t in head[head.rfind("{") + 1 : -1].split(",")) + "}"
+            elif head.endswith("]"):
+                # AArch64's C ABI coerces Big's result to a two-word array.
+                result = "[" + " ".join(head[head.rfind("[") + 1 : -1].split()) + "]"
             else:
                 words = head.split()
                 result = words[-1] if words else ""
@@ -205,6 +219,25 @@ def functions(ll):
         elif cur is not None:
             fns[cur][3].update(re.findall(r"@([\w.]+)", line))
     return fns
+
+
+def c_declaration(declaration, big_result):
+    """The compiler's declaration with only Big's C result ABI applied."""
+    if big_result not in ("{i64, ptr}", "[2 x i64]"):
+        raise ValueError(f"unsupported C ABI for the two-word Big result: {big_result}")
+    prefix = "declare {i64, ptr} "
+    if declaration.startswith(prefix):
+        return "declare " + big_result + " " + declaration[len(prefix):]
+    return declaration
+
+
+def big_layout_errors(ir):
+    # The native result coercion erases field types on AArch64: even a wrong
+    # {i32, ptr} or reversed {ptr, i64} can lower to [2 x i64]. Check the named
+    # C payload too, before accepting its independently probed result ABI.
+    match = re.search(r"^%struct\.Big = type (\{[^}]*\})$", ir, re.M)
+    layout = re.sub(r"\s+", "", match[1]) if match else "missing"
+    return [] if layout == "{i64,ptr}" else [f"Big payload layout: expected {{i64, ptr}}, got {layout}"]
 
 
 def split_top(s):
@@ -613,6 +646,7 @@ def main():
         bad.append("runtime cache repeats a compiler source path")
     ll = llvm_ir(os.path.join(ROOT, "runtime.c"), "runtime.c", all_decls=True)
     bad.extend(check_roots(Path(ROOT, "runtime.c").read_text(), ll))
+    bad.extend(big_layout_errors(ll))
     fns = functions(ll)
     for f, g in STORES.items():
         fns[f][3].discard(g)
@@ -692,7 +726,9 @@ def main():
         with open(probe, "w") as f:
             f.write("#define _GNU_SOURCE\n#include <math.h>\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n")
             f.write("".join(f"void *probe{i} = (void *)&{s};\n" for i, s in enumerate(libc)))
+            f.write(BIG_ABI_PROBE)
         cfns = functions(llvm_ir(probe, "a probe of the C library"))
+        big_result = cfns["check_big_abi"][0]
         intrinsics = [pys.runtime_decl(k) for k in rt if pys.rtsym(k).startswith("llvm.")]
         mod = os.path.join(tmp, "intrinsics.ll")
         with open(mod, "w") as f:
@@ -715,7 +751,7 @@ def main():
                 bad.append(f"{k}: RUNTIME declares {want[8:]}, runtime.py defines {got[8:]}")
             if sym in fns and fns[sym][4] == "define":
                 bad.append(f"{k}: both runtime.c and runtime.py define {sym}")
-            elif sym in fns and f"declare {fns[sym][0]} @{sym}({', '.join(fns[sym][1])})" != want:
+            elif sym in fns and f"declare {fns[sym][0]} @{sym}({', '.join(fns[sym][1])})" != c_declaration(want, big_result):
                 bad.append(f"{k}: RUNTIME declares {want[8:]}, runtime.c declares {sym} as {fns[sym][0]}({', '.join(fns[sym][1])})")
             continue
         have = fns.get(sym) if sym in fns and fns[sym][4] == "define" else cfns.get(sym)
@@ -723,7 +759,7 @@ def main():
             bad.append(f"{k}: neither runtime.c nor runtime.py defines {sym}" + (" (runtime.c only declares it)" if sym in fns else ""))
             continue
         got = f"declare {have[0]} @{sym}({', '.join(have[1])})"
-        if want != got:
+        if c_declaration(want, big_result) != got:
             bad.append(f"{k}: RUNTIME declares {want[8:]}, runtime.c defines {got[8:]}")
     # coverage
     sources = [Path(ROOT) / "pystachy.py"] + component_sources

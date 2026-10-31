@@ -21,12 +21,15 @@ def add(tag: str) -> None:
 
 
 def scrub(n: int) -> int:
-    # overwrites the dead stack frames below, so that only the list could still refer to a box
+    # Overwrite dead allocation frames. Keep three checked scalars live across
+    # the recursive call: LLVM 18's ARM64 frame for two leaves an untouched word
+    # of alignment padding that can still contain a conservative File root.
     a = n * 3
     b = a + 1
+    c = n * 5
     if n == 0:
         return b
-    return scrub(n - 1) * 7 % 1000003 + a - b
+    return scrub(n - 1) * 7 % 1000003 + a - b + c - c
 
 
 def remove(k: int) -> None:
@@ -48,9 +51,21 @@ def remove(k: int) -> None:
         boxes *= 0
 
 
+def populate(tags: list[str], depth: int) -> int:
+    # A non-tail recursive frame keeps creation out of check(): an inlined add
+    # can leave its dead File in a callee-saved register until after the read.
+    # listprobe also checks the vacated slots directly, independently of when
+    # conservative roots disappear and files are finalized.
+    if depth:
+        return populate(tags, depth - 1) * 7 % 1000003
+    for tag in tags:
+        add(tag)
+    return len(tags)
+
+
 def check(k: int, tags: list[str]) -> None:
-    for t in tags:
-        add(t)
+    count = populate(tags, 2)
+    assert count == len(tags) * 49
     remove(k)
     print(len(boxes), scrub(400))
     for t in tags:

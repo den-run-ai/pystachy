@@ -182,7 +182,9 @@ want() { case " $SELECTED " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 expected=0
 for x in $SELECTED; do expected=$((expected + 1)); done
 PY=${PY:-python3}
-UBSAN="-fsanitize=undefined -fno-sanitize-recover=all"
+# LLVM's checked 128-bit multiplication can call __muloti4 on ARM64. That builtin
+# belongs to compiler-rt, not libgcc or the preloaded UBSan shared library.
+UBSAN="-fsanitize=undefined -fno-sanitize-recover=all --rtlib=compiler-rt"
 V=$ROOT/build/verify
 OUT=$ROOT/build/verification.json
 rm -rf "$V" "$OUT"

@@ -58,6 +58,14 @@ runtime C/Python sources, `pyext.c`, `pyembed.c`, library sources, and the Ryu/m
 sources. It does not bundle LLVM or libpython. The compiler can report its version
 without LLVM; compiling and running new programs requires the toolchain.
 
+The ARM64 port adds POSIX thread-attribute validation for `_thread.stack_size`.
+Its `pthread_attr_*` calls are available from libc at the current baseline. A
+glibc 2.28 build must link the older separate pthread library on generated AOT
+and JIT shared-library paths; their presence in a newer libc does not establish
+that an old-sysroot link will succeed unchanged. Sanitizer verification also
+selects LLVM's compiler-rt builtins explicitly for checked 128-bit arithmetic.
+Those verification libraries are not ordinary compiler archive dependencies.
+
 The [driver](../../src/pystachy_compiler/driver.py) and
 [setup check](../../tools/setup.sh) require **five matching LLVM tools**:
 `clang`, `opt`, `lli`, `llvm-link`, and `llvm-as`. Linux verification uses LLVM 18.

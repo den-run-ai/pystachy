@@ -114,6 +114,13 @@ Full verification checks the bootstrap and suite under CPython-hosted and native
 with optimizations disabled, without Python available, under UBSan, and with a collection at
 every program allocation. It also runs the contract checks below.
 
+UBSan uses LLVM's compiler-rt builtins (`--rtlib=compiler-rt`) as well as its sanitizer
+runtime. Checked 128-bit multiplication on ARM64 needs a helper that libgcc does not
+provide. CI checks the shared-library and object-cache JIT paths, including deliberate
+overflow and missing-builtin controls, on both Linux architectures. Native thread
+stack-size edge cases are compared with the local CPython oracle rather than an
+architecture-specific recording.
+
 | Area | Checks |
 |---|---|
 | Compiler and IR | Valid typed/LLVM IR, runtime ABI and effects, bounded specialization failures, linear compilation, inherited-AST storage and hierarchy comparison code, JIT dead-code removal and inlining, AOT opt-in code retention. |

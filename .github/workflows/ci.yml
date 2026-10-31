@@ -145,6 +145,16 @@ jobs:
             exit 1
           fi
 
+      - name: Native thread stack-size edge cases and ABI controls
+        if: matrix.group == 'contracts'
+        run: |
+          python3 -m unittest discover -s tools -p test_runtime_thread.py
+          python3 -m unittest discover -s tools -p test_runtime_signatures.py
+
+      - name: Sanitized shared and object JIT linkage controls
+        if: matrix.group == 'ubsan-0'
+        run: python3 -m unittest discover -s tools -p test_runtime_ubsan.py
+
       - name: Extended subset benchmark correctness
         if: matrix.group == 'benchmarks'
         env:
