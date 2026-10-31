@@ -1,0 +1,10 @@
+{
+  "scope": "self-only perf_event_open; hardware instructions, excludes kernel/hypervisor; no escalation",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "architecture": "x86_64",
+  "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "perf_event_paranoid": "2",
+  "opened": false,
+  "errno": 2,
+  "error": "No such file or directory"
+}

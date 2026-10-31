@@ -1,0 +1,2933 @@
+{
+  "purpose": "Fresh Intel-host native JSON follow-up; old AMD measurements remain historical.",
+  "started_utc": "2026-10-31T15:51:53.145927+00:00",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "cpuinfo": "processor\t: 0\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 0\ncpu cores\t: 9\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 1\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 1\ncpu cores\t: 9\napicid\t\t: 1\ninitial apicid\t: 1\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 2\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 2\ncpu cores\t: 9\napicid\t\t: 2\ninitial apicid\t: 2\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 3\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 3\ncpu cores\t: 9\napicid\t\t: 3\ninitial apicid\t: 3\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 4\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 4\ncpu cores\t: 9\napicid\t\t: 4\ninitial apicid\t: 4\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 5\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 5\ncpu cores\t: 9\napicid\t\t: 5\ninitial apicid\t: 5\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 6\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 6\ncpu cores\t: 9\napicid\t\t: 6\ninitial apicid\t: 6\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 7\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 7\ncpu cores\t: 9\napicid\t\t: 7\ninitial apicid\t: 7\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\nprocessor\t: 8\nvendor_id\t: GenuineIntel\ncpu family\t: 6\nmodel\t\t: 207\nmodel name\t: INTEL(R) XEON(R) PLATINUM 8573C\nstepping\t: 2\nmicrocode\t: 0x1\ncpu MHz\t\t: 2300.000\ncache size\t: 266240 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 8\ncpu cores\t: 9\napicid\t\t: 8\ninitial apicid\t: 8\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nbugs\t\t: spectre_v1 spectre_v2 spec_store_bypass swapgs retbleed bhi spectre_v2_user its\nbogomips\t: 4600.00\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 57 bits virtual\npower management:\n\n",
+  "cpu": 0,
+  "source_identities": {
+    "main": {
+      "directory": "/workspace/scratch/e858f72517b9/baselines/main",
+      "commit": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+      "tree": "db120afecf27ff03b08c25624dc64be8b06bac3b",
+      "git_status": "",
+      "input_sha256": {
+        "Makefile": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "301df0312610d7ce92f7898db27b5e67e0ddf1cae07a2ed41773638919093e66",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "925eeba2c02e7d111e76def73d1df74c44db1a714b3f58bf4c7239d11d4418b8",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "1671393a715c9ca99ce96ac64127aeef7f449d6d565c974a7a4c00c41fd970f8",
+        "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+        "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+        "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+        "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+        "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+        "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+        "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+        "src/pystachy_compiler/diagnostics.py": "4d256b7ea3ca66398723043deef4165bcfa076217f2ebd974746945ee04e6857",
+        "src/pystachy_compiler/driver.py": "45dcbd9bf71f463e7772bce9f0c5d5b4e74c2fa5e91356746be4c976f07f1971",
+        "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+        "src/pystachy_compiler/emission.py": "5356b79e98096a2371c27c5d4caa32d1513a5b86894908d2b772189ed05867e3",
+        "src/pystachy_compiler/exceptions.py": "9315fbc0d29b843b16905bea441e61a85ee5000f8590aa8156c80da35066495a",
+        "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "faff8171d6f17fbd7bd11fbb907990bc3caee9adcceb7c5c7d3e12462a21c01e",
+        "src/pystachy_compiler/gen.py": "a0cc9b02b04b5095cf058ed70d5cbcd67e185e60d3e6ec9676fbca03ef82a759",
+        "src/pystachy_compiler/generators.py": "b8824c3d85dc674b1b2ec827ad88205a3f7ca211435bb05357165f75c3a3b23b",
+        "src/pystachy_compiler/ir.py": "e1bcdb6bd0b6a5d9738eca6073e3088e311a741ed61bb18a8292d21067402c31",
+        "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+        "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "854471dc749104a3f3847d04b38c6c0e88f566592d1b065d50b8616f9c63bf40",
+        "src/pystachy_compiler/lowering.py": "14a55ab0861e4e51ca9fe6e133c01cdb5bf3461bda1f9631e83031d8cd764c63",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "88fd9032a955aee8d3fcc0f02e044d81ff10a19bb4d6d701d8a75d7eb82c37ed",
+        "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+        "src/pystachy_compiler/program.py": "cf3ad432a72dbe88ad6e3abfbe9c05b463e9f472d3f98c6be9f209797ee5a0f1",
+        "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+        "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "8a48e0de8200f6526b80e16e13588bf6ad926653a1fdb1277d9735baa51b2d64",
+        "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+        "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+        "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+        "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+        "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+        "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086"
+      }
+    },
+    "eca": {
+      "directory": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+      "commit": "eca993b9a4563f7f7865cdeda6e6b22f29d044c1",
+      "tree": "69a6913a2a71f247d2762fef11ca6d7700a31b08",
+      "git_status": "",
+      "input_sha256": {
+        "Makefile": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "4bdf82b0663d1141667fe234029c8f92b6146978cff6457f79c1d554926f6637",
+        "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+        "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+        "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+        "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+        "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+        "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+        "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+        "src/pystachy_compiler/diagnostics.py": "4d256b7ea3ca66398723043deef4165bcfa076217f2ebd974746945ee04e6857",
+        "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+        "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+        "src/pystachy_compiler/emission.py": "5356b79e98096a2371c27c5d4caa32d1513a5b86894908d2b772189ed05867e3",
+        "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+        "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+        "src/pystachy_compiler/gen.py": "6a66bc3ad42fc6d4cd95f04aa8ffa2cb041ad6b772ec0249a0759fc2c70893f6",
+        "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+        "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+        "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+        "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "826b72cefa86bf9c4d15a9ce50da10fbc98b5ed03b286d206cd8b5f0d8d47522",
+        "src/pystachy_compiler/lowering.py": "6866fc1a594081e14a081196fbed2c9d7394a6edeeec43a825e8404e321de125",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "a1019a92ccdc0d3cf30164dcc1056aa48e0286a92b75afb0b2464b1c3efcb316",
+        "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+        "src/pystachy_compiler/program.py": "1f436207078f6cdca536061f509d7fba8dfa3e516c34a406d9ca7facf2a26c84",
+        "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+        "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "1f8a54f4cdb2de9b2293d22005229bbedc9d03be8d7ff4cad76f71481418ec96",
+        "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+        "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+        "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+        "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+        "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+        "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086"
+      }
+    },
+    "aaec": {
+      "directory": "/workspace/scratch/e858f72517b9/pystachy",
+      "commit": "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1",
+      "tree": "2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1",
+      "git_status": "",
+      "input_sha256": {
+        "Makefile": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "runtime.c": "4bdf82b0663d1141667fe234029c8f92b6146978cff6457f79c1d554926f6637",
+        "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+        "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+        "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+        "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+        "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+        "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+        "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+        "src/pystachy_compiler/diagnostics.py": "4d256b7ea3ca66398723043deef4165bcfa076217f2ebd974746945ee04e6857",
+        "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+        "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+        "src/pystachy_compiler/emission.py": "5356b79e98096a2371c27c5d4caa32d1513a5b86894908d2b772189ed05867e3",
+        "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+        "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+        "src/pystachy_compiler/gen.py": "6a66bc3ad42fc6d4cd95f04aa8ffa2cb041ad6b772ec0249a0759fc2c70893f6",
+        "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+        "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+        "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+        "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "826b72cefa86bf9c4d15a9ce50da10fbc98b5ed03b286d206cd8b5f0d8d47522",
+        "src/pystachy_compiler/lowering.py": "6866fc1a594081e14a081196fbed2c9d7394a6edeeec43a825e8404e321de125",
+        "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+        "src/pystachy_compiler/optimizations.py": "29de3b89d1389bc1d789fde8e96aa936ed48586e07a3a4a3363c3eae04e777cf",
+        "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+        "src/pystachy_compiler/program.py": "1f436207078f6cdca536061f509d7fba8dfa3e516c34a406d9ca7facf2a26c84",
+        "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+        "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/specs.py": "1f8a54f4cdb2de9b2293d22005229bbedc9d03be8d7ff4cad76f71481418ec96",
+        "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+        "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+        "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+        "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+        "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+        "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086"
+      }
+    }
+  },
+  "native_compilers": {
+    "main": {
+      "path": "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+      "sha256": "14571111190e9c2efdf5d7e5620e498cb6697f05ef97e4a05953b240160c9e51",
+      "bootstrap_record_sha256": "d1ab269d9c7c135345074e516970592487f16550dff5e99643018a0bb72bab74"
+    },
+    "eca": {
+      "path": "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+      "sha256": "15c1bd66666d4d166a489270d4c31ae5725a1946a44da216f2c99c8797e0304d",
+      "bootstrap_record_sha256": "35f8e2af347f495e514749d3e09acb791d2f656ad81c59c0e8cf4db0fa197594"
+    },
+    "aaec": {
+      "path": "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+      "sha256": "066ca28a41256c32bb4962b6dfd82a4a8ce883e963ce4557a4be6aca9ad935e3",
+      "bootstrap_record_sha256": "67df58f10888048030527a9f930298698c438ad9f73cd558a07cc580a6332a75"
+    }
+  },
+  "toolchain_manifest": {
+    "schema_version": 1,
+    "purpose": "Private toolchain recovered after scratch loss; same upstream versions, not asserted byte-identical to the lost toolchain",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "os_release": "PRETTY_NAME=\"Ubuntu 24.04.3 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.3 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+    "python": {
+      "version": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+      "shared": 1,
+      "archive_url": "https://releases.astral.sh/github/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+      "archive_sha256": "d0080766b6b74aeb81e1949ef0d9a20e6c17f7b160fb295a69b936ccb17660be",
+      "installed_binary_archive_parity": {
+        "python/bin/python3.13": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+        "python/lib/libpython3.13.so.1.0": "6f7f51cecac1102e5ed2b007c12dec5ebc116264448d91d190265e385fefac9b"
+      }
+    },
+    "versions": {
+      "clang": "Ubuntu clang version 18.1.3 (1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin",
+      "opt": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: sapphirerapids",
+      "lli": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+      "llvm-as": "Ubuntu LLVM version 18.1.3\n  Optimized build."
+    },
+    "valgrind_version": "valgrind-3.22.0",
+    "python_packages": {
+      "pathspec": "1.1.1",
+      "shellcheck_py": "0.11.0.1",
+      "typing_extensions": "4.16.0",
+      "mypy": "2.4.0",
+      "coverage": "7.17.0",
+      "librt": "0.16.0",
+      "mypy_extensions": "1.1.0",
+      "ast_serialize": "0.13.1",
+      "ruff": "0.17.2"
+    },
+    "downloaded_debs": [
+      {
+        "name": "clang-18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/clang-18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/clang-18_18.1.3-1_amd64.deb",
+        "sha256": "3d028a3b4c0b3dc942e043db94e153baedf5c384283181d274a5e915da1b5135",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libclang-common-18-dev",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/libclang-common-18-dev_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libclang-common-18-dev_18.1.3-1_amd64.deb",
+        "sha256": "91df14d6e3829652b837e2b368e35b076124277f2962a3f3daaea296bf86e4b0",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libpfm4",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/libp/libpfm4/libpfm4_4.13.0+git32-g0d4ed0e-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libpfm4_4.13.0+git32-g0d4ed0e-1_amd64.deb",
+        "sha256": "037cdd0aad754b70df1df39aae34a9f857daa78fdfa132673b476c256e33ad52",
+        "version": "4.13.0+git32-g0d4ed0e-1"
+      },
+      {
+        "name": "libz3-4",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/z/z3/libz3-4_4.8.12-3.1build1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libz3-4_4.8.12-3.1build1_amd64.deb",
+        "sha256": "67ceb432593fe62afbaf3bd85c73d46c66fa19433a6b58326a3248162f139b19",
+        "version": "4.8.12-3.1build1"
+      },
+      {
+        "name": "lld-18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/lld-18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/lld-18_18.1.3-1_amd64.deb",
+        "sha256": "3a57f9d283186f0779020104ae81db8138657d0ea36809cf06d9cc2bcbce387d",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "llvm-18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18_18.1.3-1_amd64.deb",
+        "sha256": "24c6a9d7b763c2b9ce3199012eca7366cada3e41978ecee022e9d44a110a9c6d",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "llvm-18-linker-tools",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18-linker-tools_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18-linker-tools_18.1.3-1_amd64.deb",
+        "sha256": "5724e42bd73a481386087b57dc9962c4d4d218c91175160668b6ceb297725093",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "llvm-18-runtime",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18-runtime_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18-runtime_18.1.3-1_amd64.deb",
+        "sha256": "e41df891e8f509bb08b83fed4b7f0863c2b0e4e7624464160263840b5b25b2c1",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "llvm-18-tools",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/universe/l/llvm-toolchain-18/llvm-18-tools_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/llvm-18-tools_18.1.3-1_amd64.deb",
+        "sha256": "a5865e3e70c3a9246d61ee602e31fd030a0d6c9b93664742c7aa1a3f4ec50292",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libclang-cpp18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/llvm-toolchain-18/libclang-cpp18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libclang-cpp18_18.1.3-1_amd64.deb",
+        "sha256": "899e354d4719c31eb7829517a3ed8d6b64173590fb5c7fe7371ede469fbbe05d",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libclang1-18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/llvm-toolchain-18/libclang1-18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libclang1-18_18.1.3-1_amd64.deb",
+        "sha256": "c7972cec7003be32e57fcfc3ec6ca3ee65ac5d648fb9c420db52022919562855",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "libgc-dev",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/libg/libgc/libgc-dev_8.2.6-1build1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libgc-dev_8.2.6-1build1_amd64.deb",
+        "sha256": "e5d9a3129688bcf6722c381561aeef1c938e7a70bcade830c04c04e55cfa0744",
+        "version": "1:8.2.6-1build1"
+      },
+      {
+        "name": "libgc1",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/libg/libgc/libgc1_8.2.6-1build1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libgc1_8.2.6-1build1_amd64.deb",
+        "sha256": "67d4d83f1c7f3bc240d44f4d9133e08d0da3e5069e50e6dd15ea998af7bccd06",
+        "version": "1:8.2.6-1build1"
+      },
+      {
+        "name": "libllvm18",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/l/llvm-toolchain-18/libllvm18_18.1.3-1_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/libllvm18_18.1.3-1_amd64.deb",
+        "sha256": "826621c8e678dd27b4f5c3a9b26d10aae50d5de2d95575695a17c91014f5eaa5",
+        "version": "1:18.1.3-1"
+      },
+      {
+        "name": "valgrind",
+        "url": "https://archive.ubuntu.com/ubuntu/pool/main/v/valgrind/valgrind_3.22.0-0ubuntu3_amd64.deb",
+        "file": "/workspace/scratch/e858f72517b9/toolchain/downloads/valgrind_3.22.0-0ubuntu3_amd64.deb",
+        "sha256": "744e081e5cf3d5c598b499dbb7d2250ea3f2869dde4a4d7b231fe6114f347d7d",
+        "version": "1:3.22.0-0ubuntu3"
+      }
+    ],
+    "files": {
+      "clang": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/clang",
+        "sha256": "37f126a5e97442563fa0963660a72a11f2b31a9d608664d9e5675f2ebac99eca",
+        "size": 140536
+      },
+      "lli": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/lli",
+        "sha256": "44669e8442edb76ada08c806e80695c597240aedb7aa005986058d0111893370",
+        "size": 184384
+      },
+      "llvm-as": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llvm-as",
+        "sha256": "5daefabd373e614b6cc406c57fe37bc7ba20d0b80b4619cbef72b9fb5958910d",
+        "size": 31424
+      },
+      "opt": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+        "sha256": "68bce89007caf00c1c73c3e88f2ff90dde243799f9557d5a729b3a8b3d7ea370",
+        "size": 251312
+      },
+      "llvm-dis": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llvm-dis",
+        "sha256": "f3a0ed37da04e42f2f5cca1f88684ca8140e6f8252996e23c587591848487f77",
+        "size": 47952
+      },
+      "llvm-link": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llvm-link",
+        "sha256": "1eb44d783a8c7bd55af1af5abf786eacb994cef08110caaa52259da14558952c",
+        "size": 68656
+      },
+      "llc": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/llc",
+        "sha256": "54b1109d0e51ead52fa9aade0d4c5504e87be45e8c0d57d42a1e76aa55c92875",
+        "size": 168600
+      },
+      "python3.13": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "sha256": "6e9b7d27499f26dbec3c8687728f3a0500b9b61688664f03678242744567c461",
+        "size": 31601560
+      },
+      "libpython3.13.so": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/python/cpython-3.13.16-linux-x86_64-gnu/lib/libpython3.13.so.1.0",
+        "sha256": "6f7f51cecac1102e5ed2b007c12dec5ebc116264448d91d190265e385fefac9b",
+        "size": 32338272
+      },
+      "valgrind": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/bin/valgrind",
+        "sha256": "4652774bd116cb49951ef74115ad4237cad5021b2bd4d80002f09d986ec438b9",
+        "size": 528
+      },
+      "callgrind-amd64-linux": {
+        "path": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/libexec/valgrind/callgrind-amd64-linux",
+        "sha256": "825eb197d519240c112e03ed00f40a8bbe1a0a0614f79ea95e28c67e8695cb03",
+        "size": 2482912
+      }
+    },
+    "env_script": {
+      "path": "/workspace/scratch/e858f72517b9/toolchain/env.sh",
+      "sha256": "af7c564f3d51b1d7d8036a645d7ae18f792bea6bad025b61b261913b6d41e1b2",
+      "size": 865
+    },
+    "sanity_checks": {
+      "tools_setup_check": "passed",
+      "valgrind_callgrind_bin_true": "passed",
+      "native_c_compile_link_run": "passed"
+    },
+    "pystachy_builds_run": false
+  },
+  "toolchain_manifest_sha256": "abecac0463e37ea045c0e32ad445f5418efac20a31de8f02bd12f55b8c8c8488",
+  "tools": {
+    "python": "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+    "llvm": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin",
+    "valgrind_root": "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr"
+  },
+  "cases": {
+    "ordinary_calls": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/ordinary_calls.py",
+      "source_sha256": "ecf346f4e65bab89564c52d864bd405641bc7689374a303b3a9f74bc8ab4df6c",
+      "n": 10000000,
+      "extra_untimed_kernel_calls": 0,
+      "extra_args": [],
+      "frontend_ir": {
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/ordinary_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-ordinary_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.008602029000030598,
+          "sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+          "ir_lines": 317,
+          "hosted_ir_sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3"
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/ordinary_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-ordinary_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.011875119000251289,
+          "sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+          "ir_lines": 317,
+          "hosted_ir_sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3"
+        }
+      },
+      "builds": {
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/ordinary_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-ordinary_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.6137560659999508,
+          "sha256": "6eb8b60d17cef39b5c869e31c9c78b24f87a08350d66c10ca42b7dc98cb3182d",
+          "binary_bytes": 46456
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/ordinary_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-ordinary_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.6011475090003842,
+          "sha256": "6eb8b60d17cef39b5c869e31c9c78b24f87a08350d66c10ca42b7dc98cb3182d",
+          "binary_bytes": 46456
+        }
+      },
+      "runs": {},
+      "cpython_oracle": {
+        "command": [
+          "taskset",
+          "-c",
+          "0",
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/ordinary_calls.py",
+          "10000000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+        "returncode": 0,
+        "stdout": "warm 52241\n52241 1053158408\n52241 1065739395\n52241 1091071817\n52241 1091701940\n52241 1081043622\n52241 1129025818\n52241 1577087145\n",
+        "stderr": "",
+        "wall_seconds": 9.168502457000159,
+        "checksum": 52241,
+        "sample_ns": [
+          1053158408,
+          1065739395,
+          1091071817,
+          1091701940,
+          1081043622,
+          1129025818,
+          1577087145
+        ],
+        "median_ns": 1091071817
+      },
+      "checksum": 52241,
+      "correctness": {
+        "eca": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/ordinary_calls.py",
+              "10000000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 52241\n52241 21653203\n52241 20844562\n52241 27565675\n52241 32561378\n52241 28545209\n52241 27547835\n52241 22746923\n",
+            "stderr": "",
+            "wall_seconds": 0.30804213700002947,
+            "checksum": 52241,
+            "sample_ns": [
+              21653203,
+              20844562,
+              27565675,
+              32561378,
+              28545209,
+              27547835,
+              22746923
+            ],
+            "median_ns": 27547835
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-ordinary_calls",
+              "10000000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 52241\n52241 17718079\n52241 22718585\n52241 15037853\n52241 15618514\n52241 21261817\n52241 19206862\n52241 20156221\n",
+            "stderr": "",
+            "wall_seconds": 0.1529490180000721,
+            "checksum": 52241,
+            "sample_ns": [
+              17718079,
+              22718585,
+              15037853,
+              15618514,
+              21261817,
+              19206862,
+              20156221
+            ],
+            "median_ns": 19206862
+          }
+        },
+        "aaec": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/ordinary_calls.py",
+              "10000000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 52241\n52241 18342489\n52241 18332481\n52241 16639833\n52241 16564338\n52241 17418993\n52241 17119632\n52241 20968505\n",
+            "stderr": "",
+            "wall_seconds": 0.2521906800002398,
+            "checksum": 52241,
+            "sample_ns": [
+              18342489,
+              18332481,
+              16639833,
+              16564338,
+              17418993,
+              17119632,
+              20968505
+            ],
+            "median_ns": 17418993
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-ordinary_calls",
+              "10000000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 52241\n52241 13895433\n52241 19532568\n52241 14263617\n52241 16081751\n52241 17953415\n52241 18225652\n52241 14096847\n",
+            "stderr": "",
+            "wall_seconds": 0.13329636999969807,
+            "checksum": 52241,
+            "sample_ns": [
+              13895433,
+              19532568,
+              14263617,
+              16081751,
+              17953415,
+              18225652,
+              14096847
+            ],
+            "median_ns": 16081751
+          }
+        }
+      }
+    },
+    "object_calls": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/object_calls.py",
+      "source_sha256": "4da3eeae714a896bb205a4d16e1d91d0bafad2ec58a3dee0d33cc90096de70af",
+      "n": 100000,
+      "extra_untimed_kernel_calls": 0,
+      "extra_args": [],
+      "frontend_ir": {
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/object_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-object_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.012488064000081067,
+          "sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+          "ir_lines": 519,
+          "hosted_ir_sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89"
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/object_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-object_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.011368341999968834,
+          "sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+          "ir_lines": 519,
+          "hosted_ir_sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89"
+        }
+      },
+      "builds": {
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/object_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-object_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.5045259970002007,
+          "sha256": "74a80bcd6206aa8ea2dd976c77deff354af47225a78673c12a8660ec2f365243",
+          "binary_bytes": 46656
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/object_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-object_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.6428638570000658,
+          "sha256": "74a80bcd6206aa8ea2dd976c77deff354af47225a78673c12a8660ec2f365243",
+          "binary_bytes": 46656
+        }
+      },
+      "runs": {},
+      "cpython_oracle": {
+        "command": [
+          "taskset",
+          "-c",
+          "0",
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/object_calls.py",
+          "100000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+        "returncode": 0,
+        "stdout": "warm 3226706707\n3226706707 692333579\n3226706707 724995258\n3226706707 720233697\n3226706707 700078344\n3226706707 715953108\n3226706707 711713779\n3226706707 711403610\n",
+        "stderr": "",
+        "wall_seconds": 5.733581201000106,
+        "checksum": 3226706707,
+        "sample_ns": [
+          692333579,
+          724995258,
+          720233697,
+          700078344,
+          715953108,
+          711713779,
+          711403610
+        ],
+        "median_ns": 711713779
+      },
+      "checksum": 3226706707,
+      "correctness": {
+        "eca": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/object_calls.py",
+              "100000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 3226706707\n3226706707 23654169\n3226706707 20565986\n3226706707 22786327\n3226706707 18841479\n3226706707 18967004\n3226706707 22292426\n3226706707 20375360\n",
+            "stderr": "",
+            "wall_seconds": 0.24949417800007723,
+            "checksum": 3226706707,
+            "sample_ns": [
+              23654169,
+              20565986,
+              22786327,
+              18841479,
+              18967004,
+              22292426,
+              20375360
+            ],
+            "median_ns": 20565986
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-object_calls",
+              "100000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 3226706707\n3226706707 13363234\n3226706707 11937220\n3226706707 15309746\n3226706707 16248078\n3226706707 14748315\n3226706707 14935195\n3226706707 14035140\n",
+            "stderr": "",
+            "wall_seconds": 0.11858456399977513,
+            "checksum": 3226706707,
+            "sample_ns": [
+              13363234,
+              11937220,
+              15309746,
+              16248078,
+              14748315,
+              14935195,
+              14035140
+            ],
+            "median_ns": 14748315
+          }
+        },
+        "aaec": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/object_calls.py",
+              "100000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 3226706707\n3226706707 16867992\n3226706707 18628382\n3226706707 38650683\n3226706707 21150110\n3226706707 21425584\n3226706707 25524509\n3226706707 20887639\n",
+            "stderr": "",
+            "wall_seconds": 0.27609474100017906,
+            "checksum": 3226706707,
+            "sample_ns": [
+              16867992,
+              18628382,
+              38650683,
+              21150110,
+              21425584,
+              25524509,
+              20887639
+            ],
+            "median_ns": 21150110
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-object_calls",
+              "100000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 3226706707\n3226706707 13449185\n3226706707 14418480\n3226706707 14663258\n3226706707 13233751\n3226706707 15892735\n3226706707 16754911\n3226706707 16458575\n",
+            "stderr": "",
+            "wall_seconds": 0.1274272750001728,
+            "checksum": 3226706707,
+            "sample_ns": [
+              13449185,
+              14418480,
+              14663258,
+              13233751,
+              15892735,
+              16754911,
+              16458575
+            ],
+            "median_ns": 14663258
+          }
+        }
+      }
+    },
+    "json_calls": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+      "source_sha256": "04a3b45405ef1b96360dbe941e072e5922d8dcae39d8a5bd45745000ea47c9fc",
+      "n": 2000,
+      "extra_untimed_kernel_calls": 0,
+      "extra_args": [],
+      "frontend_ir": {
+        "main": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.03795192899997346,
+          "sha256": "43611463646a19f2c4b6e494c100092d15efc2fcb3c6443d2ecddba6707d140d",
+          "ir_lines": 4154,
+          "hosted_ir_sha256": "43611463646a19f2c4b6e494c100092d15efc2fcb3c6443d2ecddba6707d140d"
+        },
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.04297860699989542,
+          "sha256": "80d135b599ad31d3f6ecdc0e53fbdc91f1e5f09d1035f7ccc2a48021ccc40ec4",
+          "ir_lines": 5651,
+          "hosted_ir_sha256": "80d135b599ad31d3f6ecdc0e53fbdc91f1e5f09d1035f7ccc2a48021ccc40ec4"
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.04769942600023569,
+          "sha256": "467d86c8d6e697f5f02b24808b00509cc04bfe2bd81bd688faedc9a89f4dc8a8",
+          "ir_lines": 5647,
+          "hosted_ir_sha256": "467d86c8d6e697f5f02b24808b00509cc04bfe2bd81bd688faedc9a89f4dc8a8"
+        }
+      },
+      "builds": {
+        "main": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 3.2883311030000186,
+          "sha256": "fc6fe3745eda8ccdbec25dc96abc74b8e471cdb6802e6560be3bc3ae88517096",
+          "binary_bytes": 153680
+        },
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 4.169281382999998,
+          "sha256": "43a10a6df3ca1a89915388e6a67ba856b9142b293e608af6dc7b54ec1e9f9628",
+          "binary_bytes": 158064
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 3.595667112999763,
+          "sha256": "25f7fff43e28425c69eeaf5bc23d7f554989826f214914daad57688e9e971773",
+          "binary_bytes": 158064
+        }
+      },
+      "runs": {},
+      "cpython_oracle": {
+        "command": [
+          "taskset",
+          "-c",
+          "0",
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+          "2000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+        "returncode": 0,
+        "stdout": "warm 64000\n64000 21003296\n64000 12871654\n64000 16161951\n64000 14483138\n64000 12282969\n64000 12294646\n64000 16230687\n",
+        "stderr": "",
+        "wall_seconds": 0.15253595999956815,
+        "checksum": 64000,
+        "sample_ns": [
+          21003296,
+          12871654,
+          16161951,
+          14483138,
+          12282969,
+          12294646,
+          16230687
+        ],
+        "median_ns": 14483138
+      },
+      "checksum": 64000,
+      "correctness": {
+        "main": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 13497302\n64000 11454308\n64000 8118281\n64000 8418315\n64000 9022850\n64000 7302874\n64000 7651255\n",
+            "stderr": "",
+            "wall_seconds": 0.41149605100008557,
+            "checksum": 64000,
+            "sample_ns": [
+              13497302,
+              11454308,
+              8118281,
+              8418315,
+              9022850,
+              7302874,
+              7651255
+            ],
+            "median_ns": 8418315
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_calls",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 11996009\n64000 11102992\n64000 6967176\n64000 7878601\n64000 7955195\n64000 6361777\n64000 7146354\n",
+            "stderr": "",
+            "wall_seconds": 0.07996372800016616,
+            "checksum": 64000,
+            "sample_ns": [
+              11996009,
+              11102992,
+              6967176,
+              7878601,
+              7955195,
+              6361777,
+              7146354
+            ],
+            "median_ns": 7878601
+          }
+        },
+        "eca": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 21358928\n64000 15550492\n64000 11710509\n64000 13139825\n64000 15801446\n64000 12576252\n64000 14636216\n",
+            "stderr": "",
+            "wall_seconds": 0.5790845800001989,
+            "checksum": 64000,
+            "sample_ns": [
+              21358928,
+              15550492,
+              11710509,
+              13139825,
+              15801446,
+              12576252,
+              14636216
+            ],
+            "median_ns": 14636216
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_calls",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 12868780\n64000 11306361\n64000 8369499\n64000 7066375\n64000 7159077\n64000 6198684\n64000 7169166\n",
+            "stderr": "",
+            "wall_seconds": 0.07907038499979535,
+            "checksum": 64000,
+            "sample_ns": [
+              12868780,
+              11306361,
+              8369499,
+              7066375,
+              7159077,
+              6198684,
+              7169166
+            ],
+            "median_ns": 7169166
+          }
+        },
+        "aaec": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 14110644\n64000 13881914\n64000 9580341\n64000 7986412\n64000 8514100\n64000 8448195\n64000 7787566\n",
+            "stderr": "",
+            "wall_seconds": 0.4224257459995897,
+            "checksum": 64000,
+            "sample_ns": [
+              14110644,
+              13881914,
+              9580341,
+              7986412,
+              8514100,
+              8448195,
+              7787566
+            ],
+            "median_ns": 8514100
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_calls",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 14109475\n64000 14032289\n64000 9114148\n64000 8494483\n64000 8112015\n64000 6522341\n64000 6747956\n",
+            "stderr": "",
+            "wall_seconds": 0.0898474929999793,
+            "checksum": 64000,
+            "sample_ns": [
+              14109475,
+              14032289,
+              9114148,
+              8494483,
+              8112015,
+              6522341,
+              6747956
+            ],
+            "median_ns": 8494483
+          }
+        }
+      }
+    },
+    "json_warmed_short": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+      "source_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "n": 2000,
+      "extra_untimed_kernel_calls": 4,
+      "extra_args": [],
+      "frontend_ir": {
+        "main": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_warmed_short.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.04533129399987956,
+          "sha256": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9",
+          "ir_lines": 4176,
+          "hosted_ir_sha256": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9"
+        },
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_warmed_short.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.05608187000007092,
+          "sha256": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df",
+          "ir_lines": 5673,
+          "hosted_ir_sha256": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df"
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_warmed_short.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.05890343299961387,
+          "sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+          "ir_lines": 5669,
+          "hosted_ir_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb"
+        }
+      },
+      "builds": {
+        "main": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_warmed_short"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 2.7568909010001335,
+          "sha256": "69107a5258ea84fa5cb1d6616ee2bc930233360eaabf82de28fce182ccacb846",
+          "binary_bytes": 153680
+        },
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_warmed_short"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 3.025279520999902,
+          "sha256": "3e56cfc3f73674d2ee1237c1e76c88c0f9ec187107893cb5bf3df4d39ca99a8d",
+          "binary_bytes": 158064
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_warmed_short"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 2.8836757870003566,
+          "sha256": "6963d939ce064c88bc15596fa8e3d37d8f94813743797d79a9da61e9ab09a641",
+          "binary_bytes": 158064
+        }
+      },
+      "runs": {},
+      "cpython_oracle": {
+        "command": [
+          "taskset",
+          "-c",
+          "0",
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+          "2000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+        "returncode": 0,
+        "stdout": "warm 64000\n64000 15401928\n64000 13338436\n64000 11813089\n64000 13997176\n64000 12119733\n64000 11446292\n64000 11932608\n",
+        "stderr": "",
+        "wall_seconds": 0.19320757800005595,
+        "checksum": 64000,
+        "sample_ns": [
+          15401928,
+          13338436,
+          11813089,
+          13997176,
+          12119733,
+          11446292,
+          11932608
+        ],
+        "median_ns": 12119733
+      },
+      "checksum": 64000,
+      "correctness": {
+        "main": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 9811366\n64000 6604111\n64000 8515201\n64000 7664446\n64000 6082442\n64000 6866684\n64000 5578612\n",
+            "stderr": "",
+            "wall_seconds": 0.3787919090000287,
+            "checksum": 64000,
+            "sample_ns": [
+              9811366,
+              6604111,
+              8515201,
+              7664446,
+              6082442,
+              6866684,
+              5578612
+            ],
+            "median_ns": 6866684
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_warmed_short",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 6410625\n64000 5138661\n64000 5628676\n64000 7394597\n64000 8167522\n64000 6412867\n64000 6074840\n",
+            "stderr": "",
+            "wall_seconds": 0.10006638000004386,
+            "checksum": 64000,
+            "sample_ns": [
+              6410625,
+              5138661,
+              5628676,
+              7394597,
+              8167522,
+              6412867,
+              6074840
+            ],
+            "median_ns": 6410625
+          }
+        },
+        "eca": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 8881976\n64000 8379003\n64000 7388331\n64000 8818995\n64000 6990700\n64000 9109043\n64000 6754137\n",
+            "stderr": "",
+            "wall_seconds": 0.5415113119997841,
+            "checksum": 64000,
+            "sample_ns": [
+              8881976,
+              8379003,
+              7388331,
+              8818995,
+              6990700,
+              9109043,
+              6754137
+            ],
+            "median_ns": 8379003
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_warmed_short",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 7119104\n64000 5516932\n64000 6159482\n64000 7293592\n64000 8303909\n64000 10373456\n64000 7931558\n",
+            "stderr": "",
+            "wall_seconds": 0.10484049199976653,
+            "checksum": 64000,
+            "sample_ns": [
+              7119104,
+              5516932,
+              6159482,
+              7293592,
+              8303909,
+              10373456,
+              7931558
+            ],
+            "median_ns": 7293592
+          }
+        },
+        "aaec": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 8953131\n64000 7484587\n64000 7380395\n64000 8615532\n64000 8086654\n64000 9369053\n64000 9915837\n",
+            "stderr": "",
+            "wall_seconds": 0.5499455379999745,
+            "checksum": 64000,
+            "sample_ns": [
+              8953131,
+              7484587,
+              7380395,
+              8615532,
+              8086654,
+              9369053,
+              9915837
+            ],
+            "median_ns": 8615532
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_warmed_short",
+              "2000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 64000\n64000 8161073\n64000 7670500\n64000 7333063\n64000 7693970\n64000 7117542\n64000 7290081\n64000 8012648\n",
+            "stderr": "",
+            "wall_seconds": 0.11560477900002297,
+            "checksum": 64000,
+            "sample_ns": [
+              8161073,
+              7670500,
+              7333063,
+              7693970,
+              7117542,
+              7290081,
+              8012648
+            ],
+            "median_ns": 7670500
+          }
+        }
+      }
+    },
+    "json_warmed_long": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+      "source_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "n": 20000,
+      "extra_untimed_kernel_calls": 4,
+      "extra_args": [],
+      "frontend_ir": {
+        "main": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_warmed_long.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.04386837799984278,
+          "sha256": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9",
+          "ir_lines": 4176,
+          "hosted_ir_sha256": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9"
+        },
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_warmed_long.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.04463977100022021,
+          "sha256": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df",
+          "ir_lines": 5673,
+          "hosted_ir_sha256": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df"
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_warmed_long.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.05898584199985635,
+          "sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+          "ir_lines": 5669,
+          "hosted_ir_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb"
+        }
+      },
+      "builds": {
+        "main": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_warmed_long"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 2.7941926939997757,
+          "sha256": "69107a5258ea84fa5cb1d6616ee2bc930233360eaabf82de28fce182ccacb846",
+          "binary_bytes": 153680
+        },
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_warmed_long"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 2.8757794170001034,
+          "sha256": "3e56cfc3f73674d2ee1237c1e76c88c0f9ec187107893cb5bf3df4d39ca99a8d",
+          "binary_bytes": 158064
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_warmed_long"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 2.869016092000038,
+          "sha256": "6963d939ce064c88bc15596fa8e3d37d8f94813743797d79a9da61e9ab09a641",
+          "binary_bytes": 158064
+        }
+      },
+      "runs": {},
+      "cpython_oracle": {
+        "command": [
+          "taskset",
+          "-c",
+          "0",
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+          "20000"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+        "returncode": 0,
+        "stdout": "warm 640000\n640000 121659243\n640000 132984755\n640000 136633328\n640000 133589148\n640000 125974475\n640000 139130781\n640000 132912224\n",
+        "stderr": "",
+        "wall_seconds": 1.6471278829999392,
+        "checksum": 640000,
+        "sample_ns": [
+          121659243,
+          132984755,
+          136633328,
+          133589148,
+          125974475,
+          139130781,
+          132912224
+        ],
+        "median_ns": 132984755
+      },
+      "checksum": 640000,
+      "correctness": {
+        "main": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+              "20000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 76966222\n640000 73646875\n640000 71551041\n640000 75518412\n640000 69267432\n640000 65023351\n640000 66579857\n",
+            "stderr": "",
+            "wall_seconds": 1.173569434000001,
+            "checksum": 640000,
+            "sample_ns": [
+              76966222,
+              73646875,
+              71551041,
+              75518412,
+              69267432,
+              65023351,
+              66579857
+            ],
+            "median_ns": 71551041
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_warmed_long",
+              "20000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 80843267\n640000 67455416\n640000 67779628\n640000 63726074\n640000 64163260\n640000 61987707\n640000 66619870\n",
+            "stderr": "",
+            "wall_seconds": 0.8251280179997593,
+            "checksum": 640000,
+            "sample_ns": [
+              80843267,
+              67455416,
+              67779628,
+              63726074,
+              64163260,
+              61987707,
+              66619870
+            ],
+            "median_ns": 66619870
+          }
+        },
+        "eca": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+              "20000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 76129377\n640000 97050518\n640000 131947348\n640000 75529253\n640000 101871970\n640000 85694111\n640000 101058962\n",
+            "stderr": "",
+            "wall_seconds": 1.4635201050000433,
+            "checksum": 640000,
+            "sample_ns": [
+              76129377,
+              97050518,
+              131947348,
+              75529253,
+              101871970,
+              85694111,
+              101058962
+            ],
+            "median_ns": 97050518
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_warmed_long",
+              "20000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 91614363\n640000 70033570\n640000 76863252\n640000 69348479\n640000 81293444\n640000 79949445\n640000 80741870\n",
+            "stderr": "",
+            "wall_seconds": 1.051150330999917,
+            "checksum": 640000,
+            "sample_ns": [
+              91614363,
+              70033570,
+              76863252,
+              69348479,
+              81293444,
+              79949445,
+              80741870
+            ],
+            "median_ns": 79949445
+          }
+        },
+        "aaec": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_warmed.py",
+              "20000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 92466964\n640000 85347595\n640000 75218326\n640000 75151169\n640000 77663515\n640000 73193450\n640000 88705040\n",
+            "stderr": "",
+            "wall_seconds": 1.3242815349999546,
+            "checksum": 640000,
+            "sample_ns": [
+              92466964,
+              85347595,
+              75218326,
+              75151169,
+              77663515,
+              73193450,
+              88705040
+            ],
+            "median_ns": 77663515
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_warmed_long",
+              "20000"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 71198572\n640000 80172913\n640000 71166502\n640000 67523940\n640000 65623704\n640000 65433972\n640000 65904686\n",
+            "stderr": "",
+            "wall_seconds": 0.8833583960004034,
+            "checksum": 640000,
+            "sample_ns": [
+              71198572,
+              80172913,
+              71166502,
+              67523940,
+              65623704,
+              65433972,
+              65904686
+            ],
+            "median_ns": 67523940
+          }
+        }
+      }
+    },
+    "json_file_calls": {
+      "source": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+      "source_sha256": "390c2742d4258e1b13d5c7449fe93e1f460917f8ac8616a121da9b6642ec83f5",
+      "n": 20000,
+      "extra_untimed_kernel_calls": 0,
+      "extra_args": [
+        "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/json-input.data"
+      ],
+      "frontend_ir": {
+        "main": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_file_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.044409534000351414,
+          "sha256": "035912ab451a0fc2ae37f61e751d681ba4ddceef5f60303f67297feae7d0c44c",
+          "ir_lines": 4191,
+          "hosted_ir_sha256": "035912ab451a0fc2ae37f61e751d681ba4ddceef5f60303f67297feae7d0c44c"
+        },
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_file_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.04205296600002839,
+          "sha256": "d7eb099b4fdb2fa94174b243db1d931e2f631c31e22089bce6f735a9f8cb428f",
+          "ir_lines": 5688,
+          "hosted_ir_sha256": "d7eb099b4fdb2fa94174b243db1d931e2f631c31e22089bce6f735a9f8cb428f"
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "ir",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_file_calls.ll"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 0.044450939999933325,
+          "sha256": "790affeddeb61651cf08e951ea4a83ae8b57dc611956e233d93d4c85228a0c02",
+          "ir_lines": 5684,
+          "hosted_ir_sha256": "790affeddeb61651cf08e951ea4a83ae8b57dc611956e233d93d4c85228a0c02"
+        }
+      },
+      "builds": {
+        "main": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_file_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 2.941830045000188,
+          "sha256": "981f6c73e8d4f077a8debf4bfbf5edb7a74c59462e9adb739e19c634b5e4b5fe",
+          "binary_bytes": 167600
+        },
+        "eca": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_file_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 4.781121478999921,
+          "sha256": "e95bd3c9917e3430cdd1adf97a70dc28ac5d1880a7ce47c624c5e9380aae3186",
+          "binary_bytes": 176072
+        },
+        "aaec": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+            "build",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+            "-o",
+            "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_file_calls"
+          ],
+          "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "",
+          "wall_seconds": 3.1827256749998014,
+          "sha256": "77bf1e99ac8236c6fbb70924af8c36c755d2aa4c70633c4d72b148460e393af7",
+          "binary_bytes": 171976
+        }
+      },
+      "runs": {},
+      "cpython_oracle": {
+        "command": [
+          "taskset",
+          "-c",
+          "0",
+          "/workspace/scratch/e858f72517b9/toolchain/venv/bin/python3.13",
+          "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+          "20000",
+          "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/json-input.data"
+        ],
+        "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+        "returncode": 0,
+        "stdout": "warm 640000\n640000 138412384\n640000 151193312\n640000 139868358\n640000 140423118\n640000 130192079\n640000 126964935\n640000 144113269\n",
+        "stderr": "",
+        "wall_seconds": 1.1497290289999,
+        "checksum": 640000,
+        "sample_ns": [
+          138412384,
+          151193312,
+          139868358,
+          140423118,
+          130192079,
+          126964935,
+          144113269
+        ],
+        "median_ns": 139868358
+      },
+      "checksum": 640000,
+      "correctness": {
+        "main": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+              "20000",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/json-input.data"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 72401298\n640000 71001949\n640000 65516957\n640000 71050460\n640000 78854326\n640000 88271722\n640000 81005702\n",
+            "stderr": "",
+            "wall_seconds": 0.9159346460000961,
+            "checksum": 640000,
+            "sample_ns": [
+              72401298,
+              71001949,
+              65516957,
+              71050460,
+              78854326,
+              88271722,
+              81005702
+            ],
+            "median_ns": 72401298
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/main-json_file_calls",
+              "20000",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/json-input.data"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 82093648\n640000 73715308\n640000 70483722\n640000 74037464\n640000 67445129\n640000 70659841\n640000 66653879\n",
+            "stderr": "",
+            "wall_seconds": 0.5984696709997479,
+            "checksum": 640000,
+            "sample_ns": [
+              82093648,
+              73715308,
+              70483722,
+              74037464,
+              67445129,
+              70659841,
+              66653879
+            ],
+            "median_ns": 70659841
+          }
+        },
+        "eca": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+              "20000",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/json-input.data"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 85686546\n640000 87224151\n640000 80603535\n640000 81191292\n640000 88211009\n640000 86451919\n640000 84569726\n",
+            "stderr": "",
+            "wall_seconds": 1.1507719860001089,
+            "checksum": 640000,
+            "sample_ns": [
+              85686546,
+              87224151,
+              80603535,
+              81191292,
+              88211009,
+              86451919,
+              84569726
+            ],
+            "median_ns": 85686546
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/eca-json_file_calls",
+              "20000",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/json-input.data"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 74960109\n640000 81670982\n640000 79362615\n640000 75319372\n640000 69604517\n640000 67734793\n640000 91509643\n",
+            "stderr": "",
+            "wall_seconds": 0.6431653919999007,
+            "checksum": 640000,
+            "sample_ns": [
+              74960109,
+              81670982,
+              79362615,
+              75319372,
+              69604517,
+              67734793,
+              91509643
+            ],
+            "median_ns": 75319372
+          }
+        },
+        "aaec": {
+          "jit": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+              "run",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_file_calls.py",
+              "20000",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/json-input.data"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 86497411\n640000 90834192\n640000 92948527\n640000 88543037\n640000 92480731\n640000 90181308\n640000 88311773\n",
+            "stderr": "",
+            "wall_seconds": 1.1668791950000923,
+            "checksum": 640000,
+            "sample_ns": [
+              86497411,
+              90834192,
+              92948527,
+              88543037,
+              92480731,
+              90181308,
+              88311773
+            ],
+            "median_ns": 90181308
+          },
+          "aot": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/aaec-json_file_calls",
+              "20000",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/json-input.data"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+            "returncode": 0,
+            "stdout": "warm 640000\n640000 71855473\n640000 66142465\n640000 68024847\n640000 55974719\n640000 66416671\n640000 61009986\n640000 58908671\n",
+            "stderr": "",
+            "wall_seconds": 0.5595756559996516,
+            "checksum": 640000,
+            "sample_ns": [
+              71855473,
+              66142465,
+              68024847,
+              55974719,
+              66416671,
+              61009986,
+              58908671
+            ],
+            "median_ns": 66142465
+          }
+        }
+      }
+    }
+  },
+  "phases": {
+    "prepare": {
+      "status": "passed",
+      "started_utc": "2026-10-31T15:57:57.193618+00:00",
+      "harness_sha256": {
+        "finish_recovered_prepare.py": "0b6ef4996baaf47b2e6d34c39afeafcc60d43e8a0f10f816d1bee041ec3d3cef"
+      },
+      "resume_scope": "No compiler or AOT rebuild. Recheck source/native/prepared hashes, replace the pathname assertion by inherited-descriptor verification, finish JIT comparisons.",
+      "correction": "The driver intentionally unlinks its temporary .so after opening fd8. A deleted pathname with a temporary suffix is valid shared-runtime provenance; checking suffix==.so and filesystem access after unlink was incorrect.",
+      "finished_utc": "2026-10-31T15:58:17.056004+00:00"
+    }
+  },
+  "equivalence": {
+    "ordinary_calls": {
+      "raw_ir": {
+        "before_sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+        "after_sha256": "cdaaaea9565e9da7628a66f858b6733e59c38ed5cea53182919695983288bcc3",
+        "identical": true
+      },
+      "aot_binary": {
+        "before_sha256": "6eb8b60d17cef39b5c869e31c9c78b24f87a08350d66c10ca42b7dc98cb3182d",
+        "after_sha256": "6eb8b60d17cef39b5c869e31c9c78b24f87a08350d66c10ca42b7dc98cb3182d",
+        "identical": true
+      },
+      "jit_optimized_bitcode": {
+        "before_sha256": "2fcebd86f5e243a0a7da8bc86eb3368f008182150db98383275b4d642596ff61",
+        "after_sha256": "2fcebd86f5e243a0a7da8bc86eb3368f008182150db98383275b4d642596ff61",
+        "identical": true,
+        "records": {
+          "eca": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/eca-ordinary_calls.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.02513100000032864,
+            "sha256": "2fcebd86f5e243a0a7da8bc86eb3368f008182150db98383275b4d642596ff61",
+            "input_sha256": "68f159ca25c5026c8c04d4cebe641516289b43a116006eb4f58f52442e813ac2",
+            "optimized_text_sha256": "8d82dc9b0ac3b6a9ab04a408fdf64fd0e72c3e2029f575d314b27231e2432898",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          },
+          "aaec": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/aaec-ordinary_calls.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.02154067700030282,
+            "sha256": "2fcebd86f5e243a0a7da8bc86eb3368f008182150db98383275b4d642596ff61",
+            "input_sha256": "68f159ca25c5026c8c04d4cebe641516289b43a116006eb4f58f52442e813ac2",
+            "optimized_text_sha256": "f065b0887b0ded4a1dcc3f43343b42593f95840ffd23215add7e3b8a944fc4f0",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          }
+        },
+        "scope": "Exact bitcode bytes, same opt input path, verified actual driver target/hooks/pipeline."
+      },
+      "all_artifacts_identical": true
+    },
+    "object_calls": {
+      "raw_ir": {
+        "before_sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+        "after_sha256": "f80fbc9ccd43e357960853abccd50cf2e7409932e3ed001c638fe18022e73b89",
+        "identical": true
+      },
+      "aot_binary": {
+        "before_sha256": "74a80bcd6206aa8ea2dd976c77deff354af47225a78673c12a8660ec2f365243",
+        "after_sha256": "74a80bcd6206aa8ea2dd976c77deff354af47225a78673c12a8660ec2f365243",
+        "identical": true
+      },
+      "jit_optimized_bitcode": {
+        "before_sha256": "ffe4afbddd74ba349140ff33f8bb4fc23850b4d3bb725b0bb8a96935bffe91f1",
+        "after_sha256": "ffe4afbddd74ba349140ff33f8bb4fc23850b4d3bb725b0bb8a96935bffe91f1",
+        "identical": true,
+        "records": {
+          "eca": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/eca-object_calls.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.01842617300007987,
+            "sha256": "ffe4afbddd74ba349140ff33f8bb4fc23850b4d3bb725b0bb8a96935bffe91f1",
+            "input_sha256": "5e0a527c60ee60872ca81dcd1c5bdcf9a8fc055daedf7349c5bfabb1c48d075e",
+            "optimized_text_sha256": "02e57b443b48172a17d27548ffc3ecf8f83ae191d3b11faa14433d7f81db1e36",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          },
+          "aaec": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/aaec-object_calls.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.023538796000138973,
+            "sha256": "ffe4afbddd74ba349140ff33f8bb4fc23850b4d3bb725b0bb8a96935bffe91f1",
+            "input_sha256": "5e0a527c60ee60872ca81dcd1c5bdcf9a8fc055daedf7349c5bfabb1c48d075e",
+            "optimized_text_sha256": "678c42a2bad88bdd5e8fb4cc873b82f053468de738b2df2fa0cc3bd310d4217d",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          }
+        },
+        "scope": "Exact bitcode bytes, same opt input path, verified actual driver target/hooks/pipeline."
+      },
+      "all_artifacts_identical": true
+    },
+    "json_calls": {
+      "raw_ir": {
+        "before_sha256": "80d135b599ad31d3f6ecdc0e53fbdc91f1e5f09d1035f7ccc2a48021ccc40ec4",
+        "after_sha256": "467d86c8d6e697f5f02b24808b00509cc04bfe2bd81bd688faedc9a89f4dc8a8",
+        "identical": false
+      },
+      "aot_binary": {
+        "before_sha256": "43a10a6df3ca1a89915388e6a67ba856b9142b293e608af6dc7b54ec1e9f9628",
+        "after_sha256": "25f7fff43e28425c69eeaf5bc23d7f554989826f214914daad57688e9e971773",
+        "identical": false
+      },
+      "jit_optimized_bitcode": {
+        "before_sha256": "baf8c7024928fbd416fdcc7115a53b7289e68e52db38f0273cd4f56188901eda",
+        "after_sha256": "9597458bbcdac35832c054005f238d63337ecee80555dda262ffcd7757cd8568",
+        "identical": false,
+        "records": {
+          "eca": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/eca-json_calls.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.08495605999996769,
+            "sha256": "baf8c7024928fbd416fdcc7115a53b7289e68e52db38f0273cd4f56188901eda",
+            "input_sha256": "751be2e909db333054f6f92450c90b7eab4525786baca535e77f14a71959b4df",
+            "optimized_text_sha256": "cec5b894d2b6b1abecc77e8ade7f1d496f00d114ce5d4cbf392405fb466e18e0",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          },
+          "aaec": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/aaec-json_calls.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.06290169100066123,
+            "sha256": "9597458bbcdac35832c054005f238d63337ecee80555dda262ffcd7757cd8568",
+            "input_sha256": "f691dbd209da4f7cd389721f4ca2bcd3e0feb9fa67437827fe7841fa3e52eef9",
+            "optimized_text_sha256": "d7dfda0961be11d2b6fc531afbf4582ca142e6e16d4dba7315a306a60094f711",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          }
+        },
+        "scope": "Exact bitcode bytes, same opt input path, verified actual driver target/hooks/pipeline."
+      },
+      "all_artifacts_identical": false
+    },
+    "json_warmed_short": {
+      "raw_ir": {
+        "before_sha256": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df",
+        "after_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+        "identical": false
+      },
+      "aot_binary": {
+        "before_sha256": "3e56cfc3f73674d2ee1237c1e76c88c0f9ec187107893cb5bf3df4d39ca99a8d",
+        "after_sha256": "6963d939ce064c88bc15596fa8e3d37d8f94813743797d79a9da61e9ab09a641",
+        "identical": false
+      },
+      "jit_optimized_bitcode": {
+        "before_sha256": "737a171e2ee7fe0f0066af73ecd28c24962e958dd5b2172f0f41302c3d51555a",
+        "after_sha256": "0f56794a8c220bea558d4520fba778ca8edeb7d386426f43bae35e1ee015d122",
+        "identical": false,
+        "records": {
+          "eca": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/eca-json_warmed_short.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.07755242599978374,
+            "sha256": "737a171e2ee7fe0f0066af73ecd28c24962e958dd5b2172f0f41302c3d51555a",
+            "input_sha256": "1bfebd7e6d757826a7d66ed97af71176242bf8fa43738029169e60b2149bb0ce",
+            "optimized_text_sha256": "739f250beab1ed325f9dbb5523cdacf6d7fd8093e8673cc070b0f077bfdb32be",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          },
+          "aaec": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/aaec-json_warmed_short.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.06951241300066613,
+            "sha256": "0f56794a8c220bea558d4520fba778ca8edeb7d386426f43bae35e1ee015d122",
+            "input_sha256": "6161920a109c0a02093ec873717f86e213fefe9453d1c7dabd71053b31ea2170",
+            "optimized_text_sha256": "8611a0a4c6ea2ad24a0752a76af05dbaabe66ac63201962564691981553675f9",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          }
+        },
+        "scope": "Exact bitcode bytes, same opt input path, verified actual driver target/hooks/pipeline."
+      },
+      "all_artifacts_identical": false
+    },
+    "json_warmed_long": {
+      "raw_ir": {
+        "before_sha256": "1a3c86408651cc6fea06dfe280bee1d3dc303b2316b92f39284f9ef11b9727df",
+        "after_sha256": "9bd0ac2fb023832539633444e9a7baf241473e17b9095d5f02fa30eb3130e3fb",
+        "identical": false
+      },
+      "aot_binary": {
+        "before_sha256": "3e56cfc3f73674d2ee1237c1e76c88c0f9ec187107893cb5bf3df4d39ca99a8d",
+        "after_sha256": "6963d939ce064c88bc15596fa8e3d37d8f94813743797d79a9da61e9ab09a641",
+        "identical": false
+      },
+      "jit_optimized_bitcode": {
+        "before_sha256": "737a171e2ee7fe0f0066af73ecd28c24962e958dd5b2172f0f41302c3d51555a",
+        "after_sha256": "0f56794a8c220bea558d4520fba778ca8edeb7d386426f43bae35e1ee015d122",
+        "identical": false,
+        "records": {
+          "eca": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/eca-json_warmed_long.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.07812758599993685,
+            "sha256": "737a171e2ee7fe0f0066af73ecd28c24962e958dd5b2172f0f41302c3d51555a",
+            "input_sha256": "1bfebd7e6d757826a7d66ed97af71176242bf8fa43738029169e60b2149bb0ce",
+            "optimized_text_sha256": "13f7d16a969a20db70fa100840abe00558606c5132af01c43d2dbaff7ece032f",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          },
+          "aaec": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/aaec-json_warmed_long.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.0772718789994542,
+            "sha256": "0f56794a8c220bea558d4520fba778ca8edeb7d386426f43bae35e1ee015d122",
+            "input_sha256": "6161920a109c0a02093ec873717f86e213fefe9453d1c7dabd71053b31ea2170",
+            "optimized_text_sha256": "943df7209b2a552fa89a82f5ac6d91698da169a1b008dd9ab5b5807fa3dd06a5",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          }
+        },
+        "scope": "Exact bitcode bytes, same opt input path, verified actual driver target/hooks/pipeline."
+      },
+      "all_artifacts_identical": false
+    },
+    "json_file_calls": {
+      "raw_ir": {
+        "before_sha256": "d7eb099b4fdb2fa94174b243db1d931e2f631c31e22089bce6f735a9f8cb428f",
+        "after_sha256": "790affeddeb61651cf08e951ea4a83ae8b57dc611956e233d93d4c85228a0c02",
+        "identical": false
+      },
+      "aot_binary": {
+        "before_sha256": "e95bd3c9917e3430cdd1adf97a70dc28ac5d1880a7ce47c624c5e9380aae3186",
+        "after_sha256": "77bf1e99ac8236c6fbb70924af8c36c755d2aa4c70633c4d72b148460e393af7",
+        "identical": false
+      },
+      "jit_optimized_bitcode": {
+        "before_sha256": "8766b4bfcbc7f7e6110d583fd977bc51c169c9221354fd7a6e42e87755d5d1f8",
+        "after_sha256": "97580f23006f2d4f0f92bcc9f693d9fac04373611cf537501a92f3509a4817f8",
+        "identical": false,
+        "records": {
+          "eca": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/eca-json_file_calls.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.07627465299992764,
+            "sha256": "8766b4bfcbc7f7e6110d583fd977bc51c169c9221354fd7a6e42e87755d5d1f8",
+            "input_sha256": "74c4ba83bdf58c8a3afe00560b248b9a3123f24e4da7dae1f58f836da46318be",
+            "optimized_text_sha256": "a25a7045b2133ebb049b00837fa34309b8098fc890210c97c0d414399bdc2fc0",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          },
+          "aaec": {
+            "command": [
+              "taskset",
+              "-c",
+              "0",
+              "/workspace/scratch/e858f72517b9/toolchain/llvm18/usr/lib/llvm-18/bin/opt",
+              "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/prog.ll",
+              "-o",
+              "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/jit-equivalence/aaec-json_file_calls.bc"
+            ],
+            "cwd": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three",
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "wall_seconds": 0.08078016199942795,
+            "sha256": "97580f23006f2d4f0f92bcc9f693d9fac04373611cf537501a92f3509a4817f8",
+            "input_sha256": "2703a1779dceefdeb66cfba579c92eb57db5fef71fe734c25f4ffb57c6de1ef8",
+            "optimized_text_sha256": "832ae61fbf5571cd63b46b91d8b8773ef8b291660a976b64663666f0eb392f71",
+            "pipeline": "globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)"
+          }
+        },
+        "scope": "Exact bitcode bytes, same opt input path, verified actual driver target/hooks/pipeline."
+      },
+      "all_artifacts_identical": false
+    }
+  },
+  "method": "Fresh native main/eca/aaec artifacts on the recovered Intel host/toolchain. Exact same probe bytes and paths within this new series. Six-case eca/aaec raw LLVM, driver-faithful JIT bitcode and AOT comparison; only changed cases are timed/counted. Six rotated process rounds, seven measured calls each; three rotated native compilation samples. No cross-host before/after timing claim and no relabeling of the historical AMD series.",
+  "runtime_warmups": {
+    "main": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/e858f72517b9/baselines/main/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/warm.py"
+      ],
+      "cwd": "/workspace/scratch/e858f72517b9/baselines/main",
+      "returncode": 0,
+      "stdout": "17\n",
+      "stderr": "",
+      "wall_seconds": 21.14468054500003
+    },
+    "eca": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/e858f72517b9/baselines/old-eca/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/warm.py"
+      ],
+      "cwd": "/workspace/scratch/e858f72517b9/baselines/old-eca",
+      "returncode": 0,
+      "stdout": "17\n",
+      "stderr": "",
+      "wall_seconds": 17.3132571189999
+    },
+    "aaec": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/warm.py"
+      ],
+      "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+      "returncode": 0,
+      "stdout": "17\n",
+      "stderr": "",
+      "wall_seconds": 16.993226779999986
+    }
+  },
+  "prior_phase_attempts": [
+    {
+      "phase": "prepare",
+      "status": "failed",
+      "started_utc": "2026-10-31T15:51:53.438567+00:00",
+      "harness_sha256": {
+        "measure_recovered.py": "d09d7eaaeb56d63ffdbecdd626de2cc1036e0d4175db703e39422d8ce240b24e",
+        "count_support.py": "cf61855f5759ade0c2fb3bed68e580377185f3c89f8a68c26cf15f264e9b7050",
+        "replay_support.py": "530cb6e5e27546f1158e6844f3088ed33b7c82c47306710a9b68e4c4a8cbf52b"
+      },
+      "load_start": [
+        0.19921875,
+        0.84619140625,
+        0.91259765625
+      ],
+      "error": "",
+      "failure_record": null,
+      "finished_utc": "2026-10-31T15:54:28.621814+00:00",
+      "load_end": [
+        1.42138671875,
+        1.1015625,
+        1.0009765625
+      ],
+      "preserved_report_sha256": "cfee2c7bbcb61bf28dff42ce03e01a75acf6323b92212cedb17484f50bb4a5e9"
+    }
+  ],
+  "actual_driver_proof": {
+    "execution": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "/workspace/scratch/e858f72517b9/pystachy/pystachy",
+        "run",
+        "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/probes/json_calls.py",
+        "2000"
+      ],
+      "cwd": "/workspace/scratch/e858f72517b9/pystachy",
+      "returncode": 0,
+      "stdout": "warm 64000\n64000 18709873\n64000 11736732\n64000 8178516\n64000 13237834\n64000 8406009\n64000 16487399\n64000 11000597\n",
+      "stderr": "",
+      "wall_seconds": 18.316673136999725,
+      "checksum": 64000,
+      "sample_ns": [
+        18709873,
+        11736732,
+        8178516,
+        13237834,
+        8406009,
+        16487399,
+        11000597
+      ],
+      "median_ns": 11736732
+    },
+    "actual_input_sha256": "f691dbd209da4f7cd389721f4ca2bcd3e0feb9fa67437827fe7841fa3e52eef9",
+    "input_exactly_equals_target_raw_hooks": true,
+    "opt_arguments": [
+      "-passes=globaldce,always-inline,cgscc(inline,function(mem2reg,instcombine<no-verify-fixpoint>,simplifycfg)),function(early-cse,adce)",
+      "/tmp/tmpi7zcennr/prog.ll",
+      "-o",
+      "/tmp/tmpi7zcennr/prog.bc"
+    ],
+    "lli": {
+      "arguments": [
+        "-profile-guided-section-prefix=false",
+        "-dlopen=/dev/fd/8",
+        "/dev/fd/9",
+        "2000"
+      ],
+      "runtime_fd8_sha256": "e9b69e7c922f202531a980c8896659530d28b24b2a109ee0757b90080a8aeab4",
+      "runtime_fd8_path": "/workspace/scratch/e858f72517b9/perf-work/results-recovered-three/driver-proof-resume/cache/runtime-py-b9f6dff5-a277094524afa7ba.so.60.tmpi7zcennr (deleted)",
+      "fd8_is_regular_file": true,
+      "fd8_mode": "0o100755",
+      "fd8_exec_access": true,
+      "elf_magic": "7f454c46",
+      "elf_type": 3
+    },
+    "matches_normal_runtime_payload": true,
+    "scope": "Untimed actual native JIT capture. Hash and ELF/executable checks use inherited fd8 before exec; unlinked temporary pathname retained as observed."
+  },
+  "changed_cases": [
+    "json_calls",
+    "json_warmed_short",
+    "json_warmed_long",
+    "json_file_calls"
+  ],
+  "unchanged_cases": [
+    "ordinary_calls",
+    "object_calls"
+  ]
+}
