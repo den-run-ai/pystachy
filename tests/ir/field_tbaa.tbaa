@@ -8,7 +8,8 @@
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
-@pys.recursion.enter:
-@pys.recursion.depth:
-@pys.recursion.restore:
+@pys.recursion.check: load:recursion depth+0 load:recursion limit+0
+@pys.recursion.enter: load:recursion depth+0 load:recursion limit+0 store:recursion depth+0
+@pys.recursion.depth: load:recursion depth+0
+@pys.recursion.restore: store:recursion depth+0
 @main:
