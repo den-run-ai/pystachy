@@ -603,7 +603,7 @@ def recursion_partial(self) -> int:
     total = 0
     for root in range(nf):
         fn = self.fns[root]
-        if (not fn.counted or fn.coro or fn.f.gen or fn.f.export or fn.f.pyexport or fn.f.extern
+        if (not fn.counted or weights[root] > 768 or fn.coro or fn.f.gen or fn.f.export or fn.f.pyexport or fn.f.extern
                 or len(fn.tries) > 0 or fn.gdepth != "" or fn.pads or len(fn.blocks[0].code) < 2):
             continue
         if "tupleret" in self.opts and is_tuple(fn.f.ret):
@@ -679,7 +679,7 @@ def recursion_partial(self) -> int:
         # prefix scan before dispatch may still publish on its common path and
         # pay more for the selector than it saves. Keep all other prefix children
         # in the closed clone set once this stronger profitability test passes.
-        if not valid or published[0] or len(work) == 0 or not normal_child or size > 768:
+        if not valid or published[0] or len(work) == 0 or not normal_child:
             continue
         cost = size
         # Both private layers must inline to expose the removed checks to LLVM.

@@ -7,6 +7,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tools.test_typed_recursion import compile_source, operations
+from src.pystachy_compiler import optimizations
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.optimizations import recursion_copy
 
@@ -167,8 +168,42 @@ print(unpack(2))
         body = "\n".join("    n += 1" for _ in range(200))
         source = PARTIAL.replace("    if n == 0:\n        return observer()",
                                  body + "\n    if n == 0:\n        return observer()")
-        _, functions = compile_source(source)
-        self.assertNotIn("@rp.f.partial", functions)
+        original_region = Gen.recursionregion
+        original_successors = optimizations.recursion_successors
+        original_returning = optimizations.recursion_returning
+        for oversized, program in ((True, source), (False, PARTIAL)):
+            sizes = []
+            analyzed = []
+
+            def capture(g, recorded=sizes):
+                recorded.extend(len(fn.slots) + sum(len(block.code) for block in fn.blocks)
+                                for fn in g.fns if fn.f.ll == "@f.partial")
+                return original_region(g)
+
+            def successors(fn, recorded=analyzed):
+                if fn.f.ll == "@f.partial":
+                    recorded.append("successors")
+                return original_successors(fn)
+
+            def returning(fn, succ, recorded=analyzed):
+                if fn.f.ll == "@f.partial":
+                    recorded.append("returning")
+                return original_returning(fn, succ)
+
+            with (self.subTest(oversized=oversized),
+                  patch.object(Gen, "recursionregion", capture),
+                  patch.object(optimizations, "recursion_successors", successors),
+                  patch.object(optimizations, "recursion_returning", returning)):
+                _, functions = compile_source(program)
+                self.assertEqual(len(sizes), 1)
+                if oversized:
+                    self.assertGreater(sizes[0], 768)
+                    self.assertNotIn("@rp.f.partial", set(functions))
+                    self.assertEqual(analyzed, [])
+                else:
+                    self.assertLessEqual(sizes[0], 768)
+                    self.assertIn("@rp.f.partial", functions)
+                    self.assertEqual(analyzed, ["successors", "returning"])
 
     def test_prefix_child_before_dispatch_does_not_justify_versioning(self):
         _, functions = compile_source('''
