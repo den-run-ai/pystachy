@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <langinfo.h>
 #include <locale.h>
+#include <pthread.h>
 #ifdef __APPLE__
 #include <xlocale.h>
 #endif
@@ -297,6 +298,17 @@ __attribute__((noinline)) static void rebuild(Seg *s) {   /* free list of unmark
   }
   *tail = ~(uintptr_t)0;
 }
+/* PAGE describes the collector's map, not the kernel: ARM64 can use 16/64 KiB pages.
+   madvise rounds its length up, so discard only whole OS pages inside [a, e). */
+static void discard_pages(uintptr_t a, uintptr_t e) {
+  static long page;
+  if (!page) page = sysconf(_SC_PAGESIZE);
+  if (page <= 0 || (page & (page - 1))) return;   /* no safe discard if the query failed */
+  uintptr_t mask = (uintptr_t)page - 1;
+  if (a > UINTPTR_MAX - mask) return;
+  a = (a + mask) & ~mask; e &= ~mask;
+  if (a < e) madvise((void *)a, e - a, MADV_DONTNEED);
+}
 /* s, a live large str that appends grew (str_grow), gives back the room past its length where
    more than a quarter of it is unused (the copy that made s left room for as much again), once it
    has not grown since the last sweep: a str that a loop is still appending to keeps its room, as
@@ -310,7 +322,7 @@ static void str_trim(Seg *s) {
   uintptr_t a = ((uintptr_t)s->start + m + PAGE) & ~(uintptr_t)(PAGE - 1), e = (uintptr_t)s->start + s->size;
   s->size = s->lim = m + 1;
   pmap_set(a, e, 0, m - n);
-  if (a < (e & ~(uintptr_t)(PAGE - 1))) madvise((void *)a, (e & ~(uintptr_t)(PAGE - 1)) - a, MADV_DONTNEED);
+  discard_pages(a, e);
 }
 static void sweep(void) {
   I live = 0, spare = 0;
@@ -4202,17 +4214,17 @@ static void retable(Dict *r, Dict *d) {              /* r := d's table, holes in
   r->vb = d->vb ? memcpy(pys_alloc(u * 8), d->vb, d->n * 8) : 0;
   r->kb = d->kb ? memcpy(pys_alloc(u * 8), d->kb, d->n * 8) : 0;
 }
-static Dict *clone(Dict *d) { Dict *r = dict_new(d->kind, 0, d->vatomic); retable(r, d); return r; }
+static Dict *dict_clone(Dict *d) { Dict *r = dict_new(d->kind, 0, d->vatomic); retable(r, d); return r; }
 static int clean(Dict *d) { return d->len && d->len == d->n && (d->size == 8 || d->size / 2 * 2 / 3 < d->len); }
 void pys_dict_update(Dict *d, Dict *o);
 Dict *pys_dict_from(Dict *d) {
-  if (clean(d)) return clone(d);
+  if (clean(d)) return dict_clone(d);
   Dict *r = dict_new(d->kind, 0, d->vatomic);
   if (d->kind & KTAG) pys_dict_update(r, d);
   else if (d->len) build(r, d, keysize((d->len * 3 + 1) / 2));
   return r;
 }
-Dict *pys_dict_copy(Dict *d) { return d->len && d->len >= d->n * 2 / 3 ? clone(d) : pys_dict_from(d); }
+Dict *pys_dict_copy(Dict *d) { return d->len && d->len >= d->n * 2 / 3 ? dict_clone(d) : pys_dict_from(d); }
 /* d.update(o) of a dict of d's type, as CPython 3.13's dict_dict_merge: an empty d takes a clone
    of o's table where dict(o) would, else d is resized once for both dicts' items (if o has more
    than d's table could take), then o's items are inserted in order (with the hashes o keeps) */
@@ -6190,6 +6202,27 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   ioerr(errno);
 }
 I pys_getpid(void) { return getpid(); }
+
+/* _thread.stack_size validates a requested setting even though this runtime
+   creates no threads. PTHREAD_STACK_MIN can be a runtime sysconf query (larger
+   on ARM systems with larger signal contexts); 32 KiB alone is not sufficient.
+   Let pthread validate its remaining platform restrictions without starting a
+   thread or changing a process-wide default. */
+I pys_thread_stack_valid(I size) {
+  if (!size) return 1;
+  if (size < 32768) return 0;
+  size_t minimum = 32768;
+#ifdef PTHREAD_STACK_MIN
+  long platform_minimum = PTHREAD_STACK_MIN;
+  if (platform_minimum > 32768) minimum = (size_t)platform_minimum;
+#endif
+  if ((uint64_t)size < minimum) return 0;
+  pthread_attr_t attributes;
+  if (pthread_attr_init(&attributes)) return 0;
+  int invalid = pthread_attr_setstacksize(&attributes, (size_t)size);
+  pthread_attr_destroy(&attributes);
+  return !invalid;
+}
 static I recursion_limit = 1000;       /* sys.setrecursionlimit: only recorded, the native stack bounds recursion */
 void pys_setrecursionlimit(I n) {
   if (n > INT32_MAX || n < INT32_MIN) pys_fail("OverflowError: Python int too large to convert to C int");

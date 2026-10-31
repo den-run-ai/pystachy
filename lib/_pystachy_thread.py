@@ -399,8 +399,8 @@ the suggested approach in the absence of more specific information)."""
     global _stacksize
     if size < 0:
         raise ValueError("size must be 0 or a positive value")
-    if size != 0 and size < 32768:
-        raise ValueError(f"size not valid: {size} bytes")  # (THREAD_STACK_MIN)
+    if not __pys_thread_stack_valid(size):
+        raise ValueError(f"size not valid: {size} bytes")
     old = _stacksize
     _stacksize = size
     return old

@@ -1,9 +1,11 @@
 # Releases
 
 The [Release workflow](../.github/workflows/release.yml) builds native compiler archives
-for Linux x86-64 and macOS arm64/x86-64, and a Docker image for Linux amd64. Pull requests
+for Linux x86-64/AArch64 and macOS arm64/x86-64, and native Docker images for Linux
+amd64/arm64. Linux ARM64 builds use `ubuntu-24.04-arm`, without emulation. Pull requests
 changing packaging run the same builds and smoke tests without publishing or Docker
-credentials. Artifacts are retained for 14 days.
+credentials. Artifacts are retained for 14 days. Published Docker version tags select
+the native image through a manifest containing both architectures.
 
 ## Prepare publishing
 
@@ -26,7 +28,8 @@ only build inputs and excludes environment files, keys and caches.
    as `docs/releases/VERSION.md`, such as [v0.1.0-alpha.3](releases/v0.1.0-alpha.3.md).
    Then merge the version bump, intended fixes and packaging changes into `main`.
 2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
-   `main` commit.
+   `main` commit. CI includes the complete Linux x86-64 and Linux ARM64 verification
+   matrices; a success on only one architecture does not satisfy this gate.
 3. Run **Release** manually from `main`, with a new tag matching `VERSION`.
    Alternatively, push that tag pointing to a verified commit on `main`.
 4. Download an archive and `SHA256SUMS` from the release, check the archive's hash, and
@@ -58,23 +61,37 @@ Smoke tests extract and move the archive, then compare JIT/AOT output with CPyth
 a compiler PATH without Python and a cache outside the installation. GC stress is tested
 as well, the programs include a JSON round trip and code-point string indexing, and a warm
 JIT run must reuse the cached runtime, which on Linux includes its shared library. The
-Docker build also verifies JIT/AOT without Python; CI checks an unprivileged user and
-bind-mounted inputs/outputs.
+Linux payload audit records ELF architecture, shared-library dependencies and required
+symbol versions, rejecting binaries above the declared glibc 2.39 baseline. Its reports
+accompany the Linux archive artifacts; they do not establish manylinux compatibility or
+a baseline for executables users later generate.
+
+Each native Docker job downloads its architecture's tested archive, verifies its hashes,
+manifest, version, commit and target, and supplies its installed payload as the named
+`build` context in the Docker build. This replaces the source-bootstrap stage; the image
+contains the same compiler and resources that passed the archive checks. Ordinary local
+`docker build` still bootstraps from source. The final image verifies JIT/AOT without
+Python; CI checks its architecture, an unprivileged user and bind-mounted inputs/outputs
+on the matching native runner.
 
 Only after every build and smoke passes does the publishing job receive write permission.
-It checks artifact hashes, loads the tested image, pushes its version tag, and uploads the
-three archives, their checksum files and `SHA256SUMS` to a GitHub release. A version
+It checks artifact hashes, loads both tested images, pushes architecture-specific tags
+(`VERSION-amd64` and `VERSION-arm64`), and combines their immutable digests into the
+`VERSION` manifest. The four archives, their checksum files, Linux ABI reports and
+`SHA256SUMS` are uploaded to a GitHub release. A version
 containing `-` is a prerelease and never advances Docker's `latest` tag. Newer stable
 versions advance both `latest` pointers after the GitHub release is published; publishing
 an older stable version cannot move them backwards. Publication jobs are serialized.
 
 If publication fails before the draft GitHub release becomes public, a retry may complete
 the draft only for its original source commit. An existing Docker version tag is accepted
-only if its image matches the tested image exactly; otherwise choose a new version. If the
+only if both native image configurations match the tested images and the manifest contains
+exactly the supported architectures. Existing per-architecture tags from a partial attempt
+must match too; otherwise choose a new version. If the
 GitHub release is already public, use a new version for changed assets.
 
 If a transient failure interrupts the final stable `latest` promotion, recover it without
-rebuilding or uploading assets. Authenticate `gh` and `docker`, set `GH_TOKEN` in your
+rebuilding or uploading assets. Install Docker Buildx, authenticate `gh` and `docker`, set `GH_TOKEN` in your
 environment, then run:
 
 ```sh
@@ -83,8 +100,10 @@ python3 tools/release_promote.py --repository den-run-ai/pystachy \
 ```
 
 The same helper runs in the workflow. It requires a published stable release, resolves its
-tag commit, and verifies the versioned image's revision and version labels before updating
-either `latest` pointer. It can repair Docker when GitHub already points to this version,
+tag commit, and verifies the revision and version labels on every image before copying the
+entire registry index by digest to `latest`. A local pull/tag/push would retain only the host
+architecture. The helper verifies the copied digest before advancing GitHub's `latest`.
+It can repair Docker when GitHub already points to this version,
 and it refuses to displace a newer version. Run recovery after other release publication
 jobs finish, so manual promotion does not race an active release.
 
@@ -99,6 +118,6 @@ docker build -t pystachy:test .
 docker run --rm --user 10001:10001 --entrypoint pystachy-smoke pystachy:test
 ```
 
-Use the matching macOS archive target on macOS. Builds use the pinned Python version and
+Use `linux-aarch64` on Linux ARM64 or the matching macOS archive target on macOS. Builds use the pinned Python version and
 the platform's LLVM version. Archive metadata is normalized for reproducibility;
 `SOURCE_DATE_EPOCH` or `--epoch` can override the source commit timestamp.

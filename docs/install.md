@@ -14,8 +14,14 @@ Download the matching archive and `SHA256SUMS` from
 | Package target | Requirements |
 |---|---|
 | `linux-x86_64` | Ubuntu 24.04 or compatible Linux with glibc 2.39+, LLVM 18 |
+| `linux-aarch64` | 64-bit little-endian ARM Linux, Ubuntu 24.04 or compatible glibc 2.39+, LLVM 18; starts with alpha.4 |
 | `macos-arm64` | Apple Silicon, macOS 15+, Xcode Command Line Tools, LLVM 20 |
 | `macos-x86_64` | Intel, macOS 15+, Xcode Command Line Tools, LLVM 20 |
+
+Linux ARM64 archives and native Docker images are added for **alpha.4 preparation**;
+they are not part of the published alpha.3 release. Download them only once the
+matching release is published. The archive spelling is `aarch64`; Docker calls the
+same architecture `arm64`.
 
 Install the toolchain once:
 
@@ -49,10 +55,10 @@ this command works without LLVM or Python.
 
 ## Docker
 
-The image runs on **Linux amd64**, including Docker Desktop on Intel hosts.
-Apple Silicon can use `--platform linux/amd64` with Docker's emulation; there is
-currently no native Linux arm64 release image. Use the image name and version from
-the release notes:
+Starting with alpha.4, the image targets **Linux amd64 and arm64**. Docker selects the
+host's architecture, including native Linux containers on Apple Silicon. The published
+alpha.3 image remains amd64-only and needs `--platform linux/amd64` on ARM hosts.
+Use the image name and published version from the release notes:
 
 ```sh
 IMAGE=DOCKERHUB_NAMESPACE/pystachy:VERSION
@@ -78,7 +84,7 @@ Source builds need **Python 3.11+** to bootstrap and `make`, in addition to LLVM
 There are no pip dependencies for building or running the compiler. Ordinary AOT programs
 run without Python; compiling new programs still requires LLVM.
 
-## Ubuntu 24.04
+## Ubuntu 24.04 (x86-64 or ARM64)
 
 ```sh
 sudo apt update
@@ -112,8 +118,9 @@ LLVM 20 supplies the Apple Silicon JIT's compact unwind registration; LLVM 18 re
 the Linux toolchain used by full verification.
 
 The installation CI checks bootstrap, ordinary JIT/AOT, exceptions, files and garbage
-collection on Linux and both macOS architectures. The full verification suite and
-experimental CPython extension/embedding support remain Linux-focused; see
+collection on both Linux and macOS architectures. The full verification suite runs
+independently on Linux x86-64 and ARM64, including experimental CPython
+extension/embedding checks; see
 [testing](testing.md) and [FFI](ffi.md).
 
 To install or ship reusable libraries, use ordinary wheels with uv/pip and
@@ -192,8 +199,42 @@ PATH="$PWD/.venv/bin:$PATH" make typecheck  # mypy; no LLVM or compiler bootstra
 make verify PY="$PWD/.venv/bin/python"
 ```
 
-`make verify` uses Python 3.13 and Linux x86-64. The extra pip packages and sanitizer
+`make verify` uses Python 3.13 on Linux x86-64 and ARM64. The extra pip packages and sanitizer
 runtime are for development and verification, rather than ordinary installation.
+
+## Platform and deployment boundaries
+
+Linux x86-64, Linux ARM64 and macOS Apple Silicon are the primary release targets.
+Linux targets have full native verification; macOS currently has narrower installation
+and release-consumer coverage. Intel macOS remains a secondary target with the same
+archive and installation checks; it is retained while those builds remain maintainable.
+Primary status does not imply identical testing depth across operating systems.
+
+Linux ARM64 uses the little-endian LP64 ABI and untagged heap pointers below
+2^48, matching Linux's default allocation range; explicitly requested 52-bit
+heap mappings and tagged-pointer allocators are not supported. The string-trimming
+runtime queries the OS page size before discarding pages. Its regression control
+covers 4/16/64 KiB page boundaries; native CI verifies the runner's page size and
+does not establish complete execution coverage on every kernel page-size variant.
+Cross-compilation, 32-bit ARM,
+big-endian ARM and musl/Alpine are not covered by these glibc packages. Native
+Windows and WASI are separate future ports. Linux source builds inside WSL2 can
+follow the Ubuntu instructions, but WSL2 is not an independently verified target.
+
+The compiler package's baseline and a generated executable's baseline are separate.
+An AOT executable targets the compiler host's OS/CPU and the installed linker/sysroot
+and native libraries. Copying it to an older distribution is not guaranteed to work.
+Ordinary AOT needs neither Python nor LLVM; JIT and compilation need LLVM, CPython
+extensions need a matching interpreter ABI, and the explicit embedding bridge needs
+libpython and its Python packages. Applications may also need external libraries and
+resource files.
+
+The Linux archives retain a **glibc 2.39+** support baseline. `manylinux_2_28` is a
+feasible follow-up build target, not a compatibility tag for the current Ubuntu-built
+compiler. See the [Linux portability audit](reports/linux-portability.md) for measured
+symbol requirements and the older-sysroot/toolchain work still needed. Compiler
+wheels for `pip install` / `uv tool install` remain separate work; the existing wheel
+instructions distribute Python source libraries, not the compiler itself.
 
 ## Custom and staged installations
 

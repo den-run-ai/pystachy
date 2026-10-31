@@ -60,11 +60,25 @@ def timeout_for(gen):
     return math.ldexp(1.0, gen.randrange(30, 34)) * gen.choice([1, -1]) + gen.uniform(-2, 2)
 
 
+def stack_valid(size):
+    # Hosted twin of the private primitive; preserve the oracle's setting.
+    # test_runtime_thread.py independently checks the actual native validator.
+    previous = _thread.stack_size()
+    try:
+        _thread.stack_size(size)
+        return 1
+    except ValueError:
+        return 0
+    finally:
+        _thread.stack_size(previous)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--rounds", type=int, default=20000)
     options = parser.parse_args()
     port = load("_thread_port", LIB / "_pystachy_thread.py")
+    port.__pys_thread_stack_valid = stack_valid
     gen = random.Random(20261016)
     count = failures = 0
 

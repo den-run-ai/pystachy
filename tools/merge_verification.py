@@ -290,8 +290,9 @@ def validate_report(report, group, expected):
         raise ValueError(f"{group}: invalid git commit")
 
 
-def merge_reports(directory, groups, expected_commit=None):
+def merge_reports(directory, groups, expected_commit=None, machine=None):
     reports, paths = {}, {}
+    prefix = f"{machine}-verification" if machine else "verification"
     for path in sorted(directory.rglob("verification.json")):
         report = json.loads(path.read_text(), object_pairs_hook=unique_object,
                             parse_constant=invalid_constant)
@@ -300,9 +301,11 @@ def merge_reports(directory, groups, expected_commit=None):
             raise ValueError(f"{path}: unexpected group {group!r}")
         if group in reports:
             raise ValueError(f"duplicate report group: {group}")
-        if path != directory / f"verification-{group}" / "verification.json":
+        if path != directory / f"{prefix}-{group}" / "verification.json":
             raise ValueError(f"{group}: unexpected report path {path}")
         validate_report(report, group, groups[group])
+        if machine and report.get("platform", {}).get("machine") != machine:
+            raise ValueError(f"{group}: expected {machine} platform evidence")
         reports[group], paths[group] = report, path
     wanted = [name for name in groups if name != "all"]
     if set(reports) != set(wanted):
@@ -460,12 +463,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path, help="downloaded verification artifacts")
     parser.add_argument("-o", "--output", type=Path, required=True)
+    parser.add_argument("--machine", choices=("x86_64", "aarch64"),
+                        help="require this native architecture and its namespaced artifacts")
     args = parser.parse_args(argv)
     try:
         groups = load_groups()
         commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
                                 capture_output=True, text=True, timeout=10).stdout.strip()
-        result = merge_reports(args.directory, groups, commit)
+        result = merge_reports(args.directory, groups, commit, args.machine)
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
         result = {"project": "Pystachy", "group": "all", "result": "fail", "error": str(exc),
                   "summary": {"steps": 0, "passed": 0, "failed": 1, "seconds": 0}, "steps": []}

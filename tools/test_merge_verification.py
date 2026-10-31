@@ -790,6 +790,27 @@ class ReportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing report groups"):
             self.merged()
 
+    def test_architecture_namespaces_require_native_evidence(self):
+        for group, data in self.reports.items():
+            data["platform"] = {"machine": "aarch64"}
+            old = self.directory / f"verification-{group}"
+            old.rename(self.directory / f"aarch64-verification-{group}")
+            path = self.directory / f"aarch64-verification-{group}" / "verification.json"
+            path.write_text(json.dumps(data))
+        merged = merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64")
+        self.assertEqual(merged["platform"]["machine"], "aarch64")
+        self.assertEqual([step["name"] for step in merged["steps"]], self.groups["all"])
+        # An x86 report cannot pass as ARM even if its artifact was renamed.
+        path = self.directory / "aarch64-verification-contracts" / "verification.json"
+        data = self.reports["contracts"]
+        data["platform"]["machine"] = "x86_64"
+        path.write_text(json.dumps(data))
+        with self.assertRaisesRegex(ValueError, "expected aarch64 platform evidence"):
+            merge.merge_reports(self.directory, self.groups, COMMIT, "aarch64")
+        # The default gate still rejects namespaced reports instead of mixing platforms.
+        with self.assertRaisesRegex(ValueError, "unexpected report path"):
+            self.merged()
+
     def test_failed_skipped_missing_reordered_and_unexpected_steps_are_rejected(self):
         original = copy.deepcopy(self.reports["opt-off-0"])
         mutations = [lambda data: data.update(result="fail"),

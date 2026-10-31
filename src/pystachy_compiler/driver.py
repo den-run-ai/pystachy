@@ -629,7 +629,7 @@ def main() -> None:
             # only the ungrouped subset constructor may be renamed by llvm-link.
             modules = f"{q(rcb)} {q(rpb)}"
             sanitize = f"{tc[0]} -O2 -emit-llvm -c -x ir {q(rpl)} -o {q(rpb)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -mllvm -asan-with-comdat=0 -fexceptions && "
-        code = sh(sanitize + f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)}{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
+        code = sh(sanitize + f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)} && {tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
         for p in RTPARTS:
             os.remove(tmp + "/" + p)
         for d in sub:
@@ -684,7 +684,7 @@ def main() -> None:
             f = open(tmp + "/" + g[1], "w", encoding=RAW, newline="")
             f.write(f'#line 1 "{g[1]}"\n' + gs[0])
             f.close()
-            code = sh(f"{tc[0]} -O2 -fPIC -S -emit-llvm -x c - -o {q(rll)}{cflags} -fexceptions{g[2]} < {q(tmp + '/' + g[1])} && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(gp)}")
+            code = sh(f"{tc[0]} -O2 -fPIC -S -emit-llvm -x c - -o {q(rll)} -Wno-unused-command-line-argument{cflags} -fexceptions{g[2]} < {q(tmp + '/' + g[1])} && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(gp)}")
             if code != 0:
                 break
     # pystachy run of a program that embeds CPython: pyembed.c's machine code too, which lli loads
@@ -855,7 +855,15 @@ def main() -> None:
             # pyembed.c's machine code, as the runtime's (on descriptor 7)
             pe = "".join([" -dlopen=" + q(x) for x in LIBS]) + (" -extra-object=/dev/fd/7" if embed else "")
             rt = " -dlopen=/dev/fd/8" if useso != "" else " -extra-object=/dev/fd/8"
-            run = f"{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/9 {' '.join([q(a) for a in rest])}"
+            archive = ""
+            if useso == "" and any([a.startswith("--rtlib=") or a.startswith("-rtlib=") for a in flags]):
+                # A shared runtime's native link includes the selected compiler builtins. When
+                # lli instead links the object (e.g. a noexec cache), it needs that archive too:
+                # compiler-rt supplies checked wide arithmetic that libgcc/UBSan do not export.
+                archive = f"jit_rtlib=$({tc[0]} -print-libgcc-file-name{ccflags}) || exit 1; "
+                archive += '[ -f "$jit_rtlib" ] || { echo "cannot find compiler runtime archive: $jit_rtlib" >&2; exit 1; }; '
+                rt += ' -extra-archive="$jit_rtlib"'
+            run = f"{archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt} /dev/fd/9 {' '.join([q(a) for a in rest])}"
             fds = f" 7< {q(peo[1])}" if embed else ""
             parts = q(parto) + " " + q(partso) + (" " + q(peo[2]) if peo[2] != "" else "")
             os.execv("/bin/sh", ["sh", "-c", f"exec 9< {q(bc)} 8< {q(useso if useso != '' else useo)}{fds} && rm -f {q(bc)} {parts} && rmdir {q(tmp)} && {run}"])

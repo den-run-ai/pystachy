@@ -10,6 +10,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import release
 import release_smoke
@@ -208,6 +209,43 @@ class ReleaseTests(unittest.TestCase):
         binary.write_bytes(b"\xcf\xfa\xed\xfe" + struct.pack("<III", 0x01000007, 0, 6) + bytes(16))
         with self.assertRaises(ValueError):
             release.binary_target(binary)
+
+    def test_host_target_uses_platform_specific_arm_spelling(self):
+        for system, machine, expected in (("Linux", "aarch64", "linux-aarch64"),
+                                          ("Linux", "arm64", "linux-aarch64"),
+                                          ("Darwin", "arm64", "macos-arm64"),
+                                          ("Linux", "x86_64", "linux-x86_64")):
+            with self.subTest(system=system, machine=machine), patch("release.platform.system", return_value=system), \
+                    patch("release.platform.machine", return_value=machine):
+                self.assertEqual(release.host_target(), expected)
+
+    def test_linux_elf_targets_and_unsupported_abis(self):
+        binary = self.root / "elf-header"
+
+        def header(machine, kind=2, bits=2, byte_order=1):
+            endian = "<" if byte_order == 1 else ">"
+            return b"\x7fELF" + bytes([bits, byte_order, 1]) + bytes(9) + struct.pack(endian + "HH", kind, machine) + bytes(12)
+
+        for machine, target in ((62, "linux-x86_64"), (183, "linux-aarch64")):
+            for kind in (2, 3):
+                binary.write_bytes(header(machine, kind))
+                with self.subTest(machine=machine, kind=kind):
+                    self.assertEqual(release.binary_target(binary), target)
+        for changes in ({"machine": 183, "bits": 1}, {"machine": 183, "byte_order": 2},
+                        {"machine": 183, "kind": 1}, {"machine": 40}, {"machine": 62, "byte_order": 2}):
+            binary.write_bytes(header(**changes))
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                release.binary_target(binary)
+
+    def test_linux_architecture_mismatch_never_creates_an_archive(self):
+        # Synthetic headers exercise both directions even on a non-ARM host;
+        # executing the package is separately covered by native release CI.
+        binary = self.source / "pystachy"
+        for machine, target in ((62, "linux-aarch64"), (183, "linux-x86_64")):
+            binary.write_bytes(b"\x7fELF" + bytes([2, 1, 1]) + bytes(9) + struct.pack("<HH", 2, machine) + bytes(12))
+            with self.subTest(target=target), self.assertRaisesRegex(ValueError, "architecture"):
+                self.package(target=target)
+            self.assertFalse(list(self.output.glob("*.tar.gz")))
 
     def test_manifest_detects_corruption_and_extra_files(self):
         directory = self.unpack(self.package())
