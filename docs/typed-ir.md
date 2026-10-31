@@ -61,6 +61,10 @@ the current backend; WebAssembly remains future work, and dynamic `Any` values a
 `PYSTACHY_IRCHECK=1` verifies IR before the passes and after transformations. Function effect
 summaries remain available after the rest of the function's IR is released.
 
+The hosted [inspection prototype](compiler-inspection.md) captures those live
+stages, function signatures/effects and per-pass diffs in one compilation. Its
+JSON report also retains terminal diagnostic locations and specialization notes.
+
 Module declarations follow the same boundary. Globals retain native types in `Val`
 records; `Data` records retain string bytes, callable code/environment references,
 exception descriptor references and classes' reflection records with their name and field

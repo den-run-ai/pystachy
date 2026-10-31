@@ -41,7 +41,7 @@ def gen_err(self, msg: str) -> None:
         # (a recursive alias's edge is the alias, as typestr writes it; the message may quote the
         # program's text, getattr(o, "rec[1]"), which only an alias's own name could match)
         msg = msg.replace("rec[" + name + "]", short(name))
-    fail(msg, self.line)
+    fail(msg, self.line, self.making)
 
 def gen_save(self) -> Frame:
     fr = Frame(self.curfn, self.fn, self.blk)
