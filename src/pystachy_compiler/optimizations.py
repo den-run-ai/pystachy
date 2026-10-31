@@ -1,8 +1,1107 @@
 """Optimizations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values
+from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Lookup, Val, Values
+from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXBIT, LOOKUPS, RAWW, REACH
-from src.pystachy_compiler.utils import is_list, is_union, umembers
+from src.pystachy_compiler.utils import identity_abi, is_list, is_tuple, is_union, numeric_identity, umembers
+
+
+def recursion_blocked(self) -> bool:
+    # Scalar code changes can change conservative roots in callers. Keep the
+    # original program when finalization or termination callbacks can expose it.
+    return (("open" in self.rtfns and not recursion_scoped_files(self))
+            or any(k.startswith("weakref.") for k in self.rtfns)
+            or self.ext != "" or len(self.cdirect) > 0
+            or any(g.v == "@g.atexit$_hook" for g in self.globs))
+
+
+def recursion_scoped_files(self) -> bool:
+    # A native File protected immediately by with's unwind action is an explicit
+    # collector root until deterministic close, including exception exits. Its
+    # closure cannot depend on stale conservative stack/register roots. Require
+    # this for every open, with no intervening instruction that could raise or
+    # expose the new file. Suspended generators may retain their actions beyond
+    # a normal native activation, so leave those and all other opens excluded.
+    found = False
+    for fn in self.fns:
+        for b in fn.blocks:
+            for at in range(len(b.code)):
+                i = b.code[at]
+                if i.op != "rt" or i.s != "open":
+                    continue
+                if fn.f.gen or fn.coro or len(i.r) != 1 or at + 1 == len(b.code):
+                    return False
+                protect = b.code[at + 1]
+                if protect.op != "rt" or protect.s != "unwind_file" or len(protect.a) != 1 or protect.a[0].v != f"%t{i.r[0]}":
+                    return False
+                found = True
+    return found  # an unaccounted runtime registration is not a proof
+
+
+def recursion_copy(i: Ins) -> Ins:
+    out = Ins(i.op, i.t, i.s)
+    out.k = i.k
+    out.x = i.x
+    out.r = [r for r in i.r]
+    out.a = [Val(a.v, a.t) for a in i.a]
+    out.b = [b for b in i.b]
+    return out
+
+
+def recursion_fast(fn: IFn, skip: int, base: str, names: dict[str, str], entry: bool) -> IFn:
+    # This runs after ordinary typed optimizations. Copy only their final IR and
+    # the signature/lowering metadata it uses; never mutate the source FnInfo.
+    old = fn.f
+    f = FnInfo(old.name + ("$recursionentry" if entry else "$recursionfast"), names[old.ll], old.node, old.cls)
+    f.params = [p for p in old.params]
+    f.ptypes = [t for t in old.ptypes]
+    f.ret = old.ret
+    f.deco = old.deco
+    f.mod = old.mod
+    f.home = old.home
+    f.noret = old.noret
+    out = IFn(f)
+    out.ps = [p for p in fn.ps]
+    out.slots = [recursion_copy(i) for i in fn.slots]
+    out.n = fn.n
+    out.fa = {v: True for v in fn.fa}
+    out.cold = {k: v for k, v in fn.cold.items()}
+    out.blocks = []
+    for b in fn.blocks:
+        block = Blk(b.label)
+        for at in range(len(b.code)):
+            i = b.code[at]
+            if b is fn.blocks[0] and at < skip:
+                continue
+            if base != "" and i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v == base:
+                continue
+            op = recursion_copy(i)
+            if op.op == "call":
+                op.s = names[op.s]
+            elif op.op == "init":
+                op.op = "call"
+                op.t = "None"
+                op.s = names["@init." + op.s]
+            block.code.append(op)
+        out.blocks.append(block)
+    return out
+
+
+def recursion_repeated(self, fn: IFn, bounds: list[int]) -> bool:
+    # A loop elsewhere in the function does not amortize a one-off source call.
+    # Find calls in the strongly connected region of a recorded loop head by
+    # intersecting forward/backward reachability. Implicit failure exits cannot
+    # lead back to a head in these handler-free functions.
+    at: dict[str, int] = {}
+    back: list[list[int]] = [[] for _ in fn.blocks]
+    forward: list[list[int]] = []
+    counted: list[bool] = []
+    for j in range(len(fn.blocks)):
+        at[fn.blocks[j].label] = j
+    for j in range(len(fn.blocks)):
+        b = fn.blocks[j]
+        edges = [at[l] for l in b.code[-1].b]
+        forward.append(edges)
+        for target in edges:
+            back[target].append(j)
+        counted.append(any(i.op == "call" and i.s in self.fll and bounds[self.fll[i.s]] > 0 for i in b.code))
+    for loop in fn.loops:
+        if loop.head not in at:
+            continue
+        head = at[loop.head]
+        ancestors: dict[int, bool] = {head: True}
+        work = [head]
+        pos = 0
+        while pos < len(work):
+            j = work[pos]
+            pos += 1
+            for previous in back[j]:
+                if previous not in ancestors:
+                    ancestors[previous] = True
+                    work.append(previous)
+        reached: dict[int, bool] = {head: True}
+        work = [head]
+        pos = 0
+        while pos < len(work):
+            j = work[pos]
+            pos += 1
+            if counted[j]:
+                return True
+            for target in forward[j]:
+                if target in ancestors and target not in reached:
+                    reached[target] = True
+                    work.append(target)
+    return False
+
+
+def recursion_bounded(self) -> int:
+    # Version a bounded whole function, not a speculative early failure. The
+    # selector tests the maximum *simultaneous* source-call depth, including all
+    # branches. If the budget is unavailable the original body still runs: a
+    # zero-trip loop may succeed, and effects before a failing call must happen.
+    # Fast clones have no depth observers or mutations, including on failure
+    # paths. Only direct calls in that proven subgraph use their unchecked ABI;
+    # pointers, callbacks and every original entry retain their guarded symbols.
+    if recursion_blocked(self):
+        return 0
+    nf = len(self.fns)
+    calls: list[list[int]] = []
+    back: list[list[int]] = [[] for _ in range(nf)]
+    pending: list[int] = []
+    valid: list[bool] = []
+    bounds = [-1] * nf
+    skips: list[int] = []
+    bases: list[str] = []
+    sizes: list[int] = []
+    ready: list[int] = []
+    for j in range(nf):
+        fn = self.fns[j]
+        ok = not (fn.coro or fn.f.gen or fn.f.export or fn.f.pyexport or fn.f.extern
+                  or len(fn.tries) > 0 or fn.gdepth != "" or fn.pads)
+        skip = 0
+        base = ""
+        if fn.counted:
+            code = fn.blocks[0].code
+            if len(code) > 0 and code[0].op == "rt" and code[0].s == "recursion.check" and fn.rdepth == "":
+                skip = 1
+            elif len(code) >= 2:
+                enter = code[0]
+                sub = code[1]
+                if (enter.op == "rt" and enter.s == "recursion.enter" and len(enter.r) == 1
+                        and fn.rdepth == f"%t{enter.r[0]}" and sub.op == "scalar.bin"
+                        and sub.s == "sub" and sub.t == "int" and len(sub.r) == 1
+                        and len(sub.a) == 2 and sub.a[0].v == fn.rdepth and sub.a[1].v == "1"):
+                    skip = 2
+                    base = f"%t{sub.r[0]}"
+            ok = ok and skip > 0
+        elif fn.rdepth != "":
+            ok = False
+        seen: dict[int, bool] = {}
+        size = len(fn.slots)
+        for b in fn.blocks:
+            ok = ok and b.handler == ""
+            size += len(b.code)
+            for at in range(len(b.code)):
+                i = b.code[at]
+                if b is fn.blocks[0] and at < skip:
+                    continue
+                if base != "" and i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v == base:
+                    continue
+                if any(a.v == fn.rdepth or (base != "" and a.v == base) for a in i.a):
+                    ok = False
+                callee_name = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+                if callee_name in self.fll:
+                    seen[self.fll[callee_name]] = True
+                elif (i.op == "throw" or i.op == "landing" or i.op.startswith("gen.")
+                      or (i.op == "rt" and i.s in ["throw", "reraise"])
+                      or self.opfx(i, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0):
+                    ok = False
+        cs = [c for c in seen]
+        calls.append(cs)
+        pending.append(len(cs))
+        valid.append(ok)
+        skips.append(skip)
+        bases.append(base)
+        sizes.append(size)
+        for c in cs:
+            back[c].append(j)
+        if len(cs) == 0:
+            ready.append(j)
+    # Bottom-up worklist: cycles (including uncounted-adapter cycles) never
+    # become ready. Invalid callees propagate failure, not a guessed bound.
+    pos = 0
+    while pos < len(ready):
+        j = ready[pos]
+        pos += 1
+        depth = 0
+        ok = valid[j]
+        for c in calls[j]:
+            ok = ok and bounds[c] >= 0
+            depth = max(depth, bounds[c])
+        if ok:
+            bounds[j] = depth + (1 if self.fns[j].counted else 0)
+        for p in back[j]:
+            pending[p] -= 1
+            if pending[p] == 0:
+                ready.append(p)
+    roots: list[int] = []
+    needed: dict[int, bool] = {}
+    total = 0
+    for j in range(nf):
+        # Pure leaves already have one check. Version only functions with child
+        # activations; cap both depth and emitted IR so large programs cannot
+        # acquire an unbounded specialization/compilation cost.
+        if not self.fns[j].counted or bounds[j] < 2 or bounds[j] > 64 or len(self.fns[j].loops) == 0:
+            continue
+        # A new forwarding return would hide the fresh tuple from tupleret and
+        # reintroduce a heap allocation in callers which unpack it. Descendant
+        # clones remain eligible; their bodies retain the fresh return proof.
+        if "tupleret" in self.opts and is_tuple(self.fns[j].f.ret):
+            continue
+        if sizes[j] > 2048 or not recursion_repeated(self, self.fns[j], bounds):
+            continue
+        closure: dict[int, bool] = {j: True}
+        work = [j]
+        pos = 0
+        cost = 0
+        extra = 0
+        while pos < len(work):
+            c = work[pos]
+            pos += 1
+            cost += sizes[c]
+            if c not in needed:
+                extra += sizes[c]
+            if cost > 2048 or total + extra > 8192:
+                break
+            for child in calls[c]:
+                if child not in closure:
+                    closure[child] = True
+                    work.append(child)
+        if cost > 2048 or total + extra > 8192:
+            continue
+        roots.append(j)
+        for c in closure:
+            needed[c] = True
+        total += extra
+    if len(roots) == 0:
+        return 0
+    # Only maximal regions need an entry wrapper. A nested root remains an
+    # unchecked descendant of its selected ancestor; retaining its original
+    # guarded entry avoids another wrapper and keeps the private descendant
+    # inlineable. The complete needed DAG includes uncounted/intermediate
+    # adapters, so an incoming edge catches transitive nesting too.
+    roots = [j for j in roots if not any(parent in needed for parent in back[j])]
+    entries = {j: True for j in roots}
+    names: dict[str, str] = {}
+    for j in needed:
+        name = self.fns[j].f.ll
+        names[name] = "@rf." + name[1:]
+    # Clone before changing any original entry. Shared descendants get one
+    # private clone regardless of how many bounded roots call them.
+    for j in needed:
+        fast = recursion_fast(self.fns[j], skips[j], bases[j], names, j in entries)
+        self.fll[fast.f.ll] = len(self.fns)
+        self.fns.append(fast)
+    self.runtime("pys_recursion_room")
+    for j in roots:
+        fn = self.fns[j]
+        fn.n += 1
+        slow = f"L{fn.n}"
+        fn.blocks[0].label = slow
+        for b in fn.blocks:
+            for i in b.code:
+                i.b = [slow if l == "entry" else l for l in i.b]
+        entry = Blk("entry")
+        room = Ins("rt", "int", "recursion.room")
+        room.a = [Val(str(bounds[j]), "int")]
+        fn.n += 1
+        room.r = [fn.n]
+        cmp = Ins("scalar.cmp", "bool", "ne")
+        cmp.a = [Val(f"%t{room.r[0]}", "int"), Val("0", "int")]
+        fn.n += 1
+        cmp.r = [fn.n]
+        fn.n += 1
+        fastblock = Blk(f"L{fn.n}")
+        br = Ins("cbr", "", "")
+        br.a = [Val(f"%t{cmp.r[0]}", "bool")]
+        br.b = [fastblock.label, slow]
+        entry.code = [room, cmp, br]
+        call = Ins("call", fn.f.ret, names[fn.f.ll])
+        call.a = [Val(f"%a{p}", fn.f.ptypes[p]) for p in fn.ps]
+        if identity_abi(fn.f):
+            call.a.extend([Val(f"%aid{p}", "dyn") for p in fn.ps if numeric_identity(fn.f.ptypes[p])])
+            if numeric_identity(fn.f.ret):
+                call.a.append(Val("%idret", "*dyn"))
+        ret = Ins("ret", "", "")
+        if fn.f.ret != "None":
+            fn.n += 1
+            call.r = [fn.n]
+            ret.a = [Val(f"%t{fn.n}", fn.f.ret)]
+        fastblock.code = [call, ret]
+        fn.blocks = [entry, fastblock] + fn.blocks
+    return len(roots)
+
+
+def recursion_successors(fn: IFn) -> list[list[int]]:
+    at: dict[str, int] = {b.label: j for j, b in enumerate(fn.blocks)}
+    succ: list[list[int]] = []
+    for block in fn.blocks:
+        term = block.code[len(block.code) - 1]
+        labels = [label for label in term.b]
+        if term.op == "check":
+            labels.append(fn.cold[term.x if term.x != "" else term.s])
+        succ.append([at[label] for label in labels])
+    return succ
+
+
+def recursion_returning(fn: IFn, succ: list[list[int]]) -> list[bool]:
+    back: list[list[int]] = [[] for _ in fn.blocks]
+    returns: list[bool] = []
+    work: list[int] = []
+    for at in range(len(fn.blocks)):
+        term = fn.blocks[at].code[len(fn.blocks[at].code) - 1]
+        returns.append(term.op in ["ret", "ret.none"])
+        if returns[at]:
+            work.append(at)
+        for child in succ[at]:
+            back[child].append(at)
+    pos = 0
+    while pos < len(work):
+        at = work[pos]
+        pos += 1
+        for parent in back[at]:
+            if not returns[parent]:
+                returns[parent] = True
+                work.append(parent)
+    return returns
+
+
+def recursion_partial_child(self, fn: IFn) -> bool:
+    # The existing leaf proof permits observers only beyond a publication bridge
+    # into a suffix that cannot return. Recheck that boundary before reusing the
+    # body with its entry already guaranteed by its immediate caller's budget.
+    if (not fn.counted or fn.rdepth != "" or fn.coro or fn.f.gen or len(fn.tries) > 0
+            or fn.gdepth != "" or fn.pads or len(fn.blocks[0].code) == 0):
+        return False
+    entry = fn.blocks[0].code[0]
+    if entry.op != "rt" or entry.s != "recursion.check":
+        return False
+    succ = recursion_successors(fn)
+    returns = recursion_returning(fn, succ)
+    if not returns[0]:
+        return False
+    for at in range(len(fn.blocks)):
+        block = fn.blocks[at]
+        if block.handler != "":
+            return False
+        for pos in range(len(block.code)):
+            op = block.code[pos]
+            if at == 0 and pos == 0:
+                continue
+            if op.op == "landing" or op.op.startswith("gen."):
+                return False
+            observed = (op.op in ["call", "init", "icall", "throw"]
+                        or self.opfx(op, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0)
+            if returns[at] and observed:
+                return False
+    # Verify the bridge invariant, rather than inferring it from a symbol or
+    # the absence of rdepth. Bit 1 is unpublished, bit 2 already published.
+    # Every observer must see exactly one bridge, and no bridge can be crossed
+    # twice even through a cycle or an exceptional `check` successor.
+    states = [0] * len(fn.blocks)
+    states[0] = 1
+    work = [0]
+    pos = 0
+    while pos < len(work):
+        at = work[pos]
+        pos += 1
+        state = states[at]
+        block = fn.blocks[at]
+        for index in range(len(block.code)):
+            op = block.code[index]
+            if at == 0 and index == 0:
+                continue
+            if op.op == "rt" and op.s == "recursion.enter":
+                if state != 1 or len(op.r) != 1:
+                    return False
+                state = 2
+            elif op.op == "rt" and op.s.startswith("recursion."):
+                return False
+            elif (op.op in ["call", "init", "icall", "throw"]
+                    or self.opfx(op, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0):
+                if state != 2:
+                    return False
+            if op.op in ["ret", "ret.none"] and state != 1:
+                return False
+        for target in succ[at]:
+            combined = states[target] | state
+            if combined != states[target]:
+                states[target] = combined
+                work.append(target)
+    return True
+
+
+def recursion_partial_header(fn: IFn, symbol: str) -> IFn:
+    old = fn.f
+    info = FnInfo(old.name + "$recursionpartial", symbol, old.node, old.cls)
+    info.params = [p for p in old.params]
+    info.ptypes = [t for t in old.ptypes]
+    info.ret = old.ret
+    info.deco = old.deco
+    info.mod = old.mod
+    info.home = old.home
+    info.noret = old.noret
+    out = IFn(info)
+    out.ps = [p for p in fn.ps]
+    out.slots = [recursion_copy(op) for op in fn.slots]
+    out.n = fn.n
+    out.fa = {value: True for value in fn.fa}
+    out.cold = {key: label for key, label in fn.cold.items()}
+    out.blocks = []
+    return out
+
+
+def recursion_partial_leaf(fn: IFn, symbol: str) -> IFn:
+    out = recursion_partial_header(fn, symbol)
+    for block in fn.blocks:
+        copied = Blk(block.label)
+        for pos in range(len(block.code)):
+            op = block.code[pos]
+            if block is fn.blocks[0] and pos == 0:
+                continue
+            if op.op == "rt" and op.s == "recursion.enter":
+                # The unpublished chain is exactly root -> this child. The
+                # original bridge is crossed once; its whole suffix is guarded.
+                depth = Ins("rt", "int", "recursion.depth")
+                out.n += 1
+                depth.r = [out.n]
+                active = Ins("scalar.bin", "int", "add")
+                active.a = [Val(f"%t{out.n}", "int"), Val("2", "int")]
+                active.r = [number for number in op.r]
+                publish = Ins("rt", "None", "recursion.restore")
+                publish.a = [Val(f"%t{op.r[0]}", "int")]
+                copied.code.extend([depth, active, publish])
+            else:
+                copied.code.append(recursion_copy(op))
+        out.blocks.append(copied)
+    return out
+
+
+def recursion_same_tail(left: Blk, right: Blk) -> bool:
+    renamed: dict[str, str] = {}
+    for at in range(3):
+        a = left.code[at]
+        b = right.code[at]
+        if (a.op != b.op or a.t != b.t or a.s != b.s or a.k != b.k or a.x != b.x
+                or len(a.r) != len(b.r) or len(a.a) != len(b.a) or a.b != b.b):
+            return False
+        for pos in range(len(a.a)):
+            if a.a[pos].t != b.a[pos].t or renamed.get(a.a[pos].v, a.a[pos].v) != b.a[pos].v:
+                return False
+        for pos in range(len(a.r)):
+            renamed[f"%t{a.r[pos]}"] = f"%t{b.r[pos]}"
+    return True
+
+
+def recursion_merge_tails(fn: IFn) -> int:
+    # Always-inlining a partial child into duplicate return blocks duplicates
+    # its entire body. Share only a local-slot load, that child call, and return;
+    # prefixes stay on their original paths, including every depth publication.
+    # The proof/budget already selected this private root. Do not rewrite the
+    # guarded fallback or use this sharing to admit larger regions.
+    if not fn.f.ll.startswith("@rp.") or fn.coro or fn.f.gen or fn.pads or len(fn.tries) > 0:
+        return 0
+    slots: dict[str, str] = {}
+    uses: dict[str, str] = {}
+    blocked: dict[str, bool] = {"entry": True, "": True}
+    if len(fn.blocks) > 0:
+        blocked[fn.blocks[0].label] = True
+    for op in fn.slots:
+        if op.op == "slot" and op.k == 0 and len(op.r) == 1:
+            slots[f"%{op.s or 'h'}.{op.r[0]}"] = op.t
+        for arg in op.a:
+            uses[arg.v] = ""
+    for value in fn.fa:
+        uses[value] = ""
+    uses[fn.rdepth] = ""
+    uses[fn.gdepth] = ""
+    for label in fn.cold.values():
+        blocked[label] = True
+    for label in fn.coldh.values():
+        blocked[label] = True
+    for block in fn.blocks:
+        blocked[block.handler] = True
+        for op in block.code:
+            if op.op not in ["br", "cbr"]:
+                for label in op.b:
+                    blocked[label] = True  # phi, check and other hidden edges
+            for arg in op.a:
+                if arg.v not in uses:
+                    uses[arg.v] = block.label
+                elif uses[arg.v] != block.label:
+                    uses[arg.v] = ""
+    candidates: list[Blk] = []
+    redirects: dict[str, str] = {}
+    for block in fn.blocks:
+        if block.label in blocked or block.handler != "" or len(block.code) != 3:
+            continue
+        load = block.code[0]
+        call = block.code[1]
+        ret = block.code[2]
+        if (load.op != "mem.load" or len(load.r) != 1 or len(load.a) != 1 or len(load.b) != 0
+                or load.a[0].v not in slots or slots[load.a[0].v] != load.t
+                or call.op != "call" or not call.s.startswith("@rp2.") or len(call.r) != 1 or len(call.b) != 0
+                or ret.op != "ret" or len(ret.r) != 0 or len(ret.a) != 1 or len(ret.b) != 0):
+            continue
+        loaded = f"%t{load.r[0]}"
+        result = f"%t{call.r[0]}"
+        if (loaded == result or ret.a[0].v != result or ret.a[0].t != call.t
+                or not any(arg.v == loaded and arg.t == load.t for arg in call.a)
+                or uses.get(loaded, "") != block.label or uses.get(result, "") != block.label):
+            continue
+        for previous in candidates:
+            if recursion_same_tail(previous, block):
+                redirects[block.label] = previous.label
+                break
+        if block.label not in redirects:
+            candidates.append(block)
+    if len(redirects) == 0:
+        return 0
+    for block in fn.blocks:
+        for op in block.code:
+            if op.op in ["br", "cbr"]:
+                op.b = [redirects.get(label, label) for label in op.b]
+    fn.blocks = [block for block in fn.blocks if block.label not in redirects]
+    return len(redirects)
+
+
+def recursion_partial_wrap(self, fn: IFn, symbol: str) -> None:
+    fn.n += 1
+    slow = f"L{fn.n}"
+    fn.blocks[0].label = slow
+    for block in fn.blocks:
+        for op in block.code:
+            op.b = [slow if label == "entry" else label for label in op.b]
+    entry = Blk("entry")
+    room = Ins("rt", "int", "recursion.room")
+    room.a = [Val("2", "int")]
+    fn.n += 1
+    room.r = [fn.n]
+    enough = Ins("scalar.cmp", "bool", "ne")
+    enough.a = [Val(f"%t{fn.n}", "int"), Val("0", "int")]
+    fn.n += 1
+    enough.r = [fn.n]
+    fn.n += 1
+    fast = Blk(f"L{fn.n}")
+    branch = Ins("cbr", "", "")
+    branch.a = [Val(f"%t{enough.r[0]}", "bool")]
+    branch.b = [fast.label, slow]
+    entry.code = [room, enough, branch]
+    call = Ins("call", fn.f.ret, symbol)
+    call.a = [Val(f"%a{param}", fn.f.ptypes[param]) for param in fn.ps]
+    if identity_abi(fn.f):
+        call.a.extend([Val(f"%aid{param}", "dyn") for param in fn.ps if numeric_identity(fn.f.ptypes[param])])
+        if numeric_identity(fn.f.ret):
+            call.a.append(Val("%idret", "*dyn"))
+    ret = Ins("ret", "", "")
+    if fn.f.ret != "None":
+        fn.n += 1
+        call.r = [fn.n]
+        ret.a = [Val(f"%t{fn.n}", fn.f.ret)]
+    fast.code = [call, ret]
+    fn.blocks = [entry, fast] + fn.blocks
+
+
+def recursion_partial(self) -> int:
+    if recursion_blocked(self):
+        return 0
+    nf = len(self.fns)
+    children = [recursion_partial_child(self, fn) for fn in self.fns]
+    weights = [len(fn.slots) + sum(len(block.code) for block in fn.blocks) for fn in self.fns]
+    names: dict[str, str] = {}
+    count = 0
+    total = 0
+    for root in range(nf):
+        fn = self.fns[root]
+        if (not fn.counted or weights[root] > 768 or fn.coro or fn.f.gen or fn.f.export or fn.f.pyexport or fn.f.extern
+                or len(fn.tries) > 0 or fn.gdepth != "" or fn.pads or len(fn.blocks[0].code) < 2):
+            continue
+        if "tupleret" in self.opts and is_tuple(fn.f.ret):
+            continue  # the forwarding wrapper would lose a fresh aggregate return
+        enter = fn.blocks[0].code[0]
+        sub = fn.blocks[0].code[1]
+        if (enter.op != "rt" or enter.s != "recursion.enter" or len(enter.r) != 1
+                or fn.rdepth != f"%t{enter.r[0]}" or sub.op != "scalar.bin" or sub.s != "sub"
+                or sub.t != "int" or len(sub.r) != 1 or len(sub.a) != 2
+                or sub.a[0].v != fn.rdepth or sub.a[1].v != "1"):
+            continue
+        base = f"%t{sub.r[0]}"
+        succ = recursion_successors(fn)
+        returns = recursion_returning(fn, succ)
+        published = [False] * len(fn.blocks)
+        work: list[int] = []
+        valid = returns[0]
+        size = weights[root]
+        for at in range(len(fn.blocks)):
+            block = fn.blocks[at]
+            valid = valid and block.handler == ""
+            for pos in range(len(block.code)):
+                op = block.code[pos]
+                if at == 0 and pos < 2:
+                    continue
+                if op.op == "rt" and op.s == "recursion.restore" and len(op.a) == 1 and op.a[0].v == base:
+                    continue
+                if any(arg.v in [fn.rdepth, base] for arg in op.a):
+                    valid = False
+                callee_name = op.s if op.op == "call" else "@init." + op.s if op.op == "init" else ""
+                child = self.fll.get(callee_name, -1)
+                observer = False
+                if child >= 0 and child < nf:
+                    observer = not children[child]
+                    if observer and returns[at]:
+                        # Only an ordinary direct tail call may return after
+                        # changing the limit; there are no unchecked calls left.
+                        valid = valid and op.op == "call" and block.code[len(block.code) - 1].op in ["ret", "ret.none"]
+                        for after in block.code[pos + 1:]:
+                            if after.op == "rt" and after.s == "recursion.restore" and len(after.a) == 1 and after.a[0].v == base:
+                                continue
+                            if after.op in ["call", "init", "icall", "throw"] or self.opfx(after, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0:
+                                valid = False
+                elif op.op == "throw" or (op.op == "rt" and op.s in ["throw", "reraise"]):
+                    observer = True
+                    valid = valid and not returns[at]
+                elif op.op == "landing" or op.op.startswith("gen.") or self.opfx(op, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0:
+                    valid = False
+                if observer and not published[at]:
+                    published[at] = True
+                    work.append(at)
+        pos = 0
+        while pos < len(work):
+            at = work[pos]
+            pos += 1
+            for target in succ[at]:
+                if not published[target]:
+                    published[target] = True
+                    work.append(target)
+        wanted: dict[int, bool] = {}
+        normal_child = False
+        for at in range(len(fn.blocks)):
+            if published[at]:
+                continue
+            for op in fn.blocks[at].code:
+                if op.op == "call" and op.s in self.fll:
+                    child = self.fll[op.s]
+                    if child < nf and children[child]:
+                        wanted[child] = True
+                        normal_child = normal_child or fn.blocks[at].code[len(fn.blocks[at].code) - 1].op in ["ret", "ret.none"]
+        # Restrict this pass to a mixed body with useful normal child calls and
+        # guarded suffixes. An unchecked child must directly feed a return: a
+        # prefix scan before dispatch may still publish on its common path and
+        # pay more for the selector than it saves. Keep all other prefix children
+        # in the closed clone set once this stronger profitability test passes.
+        if not valid or published[0] or len(work) == 0 or not normal_child:
+            continue
+        cost = size
+        # Both private layers must inline to expose the removed checks to LLVM.
+        # Charge each rewritten callsite, not each shared child definition: one
+        # child called repeatedly expands repeatedly. Child suffix calls retain
+        # original guarded symbols, so mandatory inlining cannot recurse.
+        for at in range(len(fn.blocks)):
+            if published[at]:
+                continue
+            for op in fn.blocks[at].code:
+                if op.op == "call" and op.s in self.fll:
+                    child = self.fll[op.s]
+                    if child in wanted:
+                        cost += weights[child]
+        if cost > 2048 or total + cost > 8192:
+            continue
+        total += cost
+        for child in wanted:
+            callee = self.fns[child]
+            if callee.f.ll not in names:
+                name = "@rp2." + callee.f.ll[1:]
+                names[callee.f.ll] = name
+                copied = recursion_partial_leaf(callee, name)
+                self.fll[name] = len(self.fns)
+                self.fns.append(copied)
+        symbol = "@rp." + fn.f.ll[1:]
+        fast = recursion_partial_header(fn, symbol)
+        depth = Ins("rt", "int", "recursion.depth")
+        depth.r = [number for number in sub.r]
+        active = Ins("scalar.bin", "int", "add")
+        active.a = [Val(base, "int"), Val("1", "int")]
+        active.r = [number for number in enter.r]
+        for at in range(len(fn.blocks)):
+            block = fn.blocks[at]
+            copied_block = Blk(block.label)
+            if at == 0:
+                copied_block.code = [depth, active]
+            inserted = False
+            for pos in range(len(block.code)):
+                op = block.code[pos]
+                if at == 0 and pos < 2:
+                    continue
+                if published[at] and not inserted and op.op != "phi":
+                    publish = Ins("rt", "None", "recursion.restore")
+                    publish.a = [Val(fn.rdepth, "int")]
+                    copied_block.code.append(publish)
+                    inserted = True
+                if (not published[at] and op.op == "rt" and op.s == "recursion.restore"
+                        and len(op.a) == 1 and op.a[0].v == base):
+                    continue
+                copied_op = recursion_copy(op)
+                if not published[at] and op.op == "call" and op.s in names:
+                    copied_op.s = names[op.s]
+                copied_block.code.append(copied_op)
+            fast.blocks.append(copied_block)
+        recursion_merge_tails(fast)
+        self.fll[symbol] = len(self.fns)
+        self.fns.append(fast)
+        self.runtime("pys_recursion_room")
+        self.runtime("pys_recursion_depth")
+        self.runtime("pys_recursion_restore")
+        recursion_partial_wrap(self, fn, symbol)
+        count += 1
+    return count
+
+
+def recursion_cached(self) -> int:
+    # After a counted source child returns, its caller has at least one spare
+    # frame. Normal returns restore the incoming depth, and the public limit
+    # setter always rejects a limit at or below the currently active depth.
+    # Thus later returning calls/setters cannot take that last slot away. Keep
+    # the caller's own frame published, and remove only redundant leaf checks;
+    # its entry alone (which may consume the last slot) never establishes room.
+    # Unknown/foreign callbacks invalidate the fact, including transitively in
+    # a source callee. Handler and generator roots need a different edge proof.
+    if recursion_blocked(self):
+        return 0
+    nf = len(self.fns)
+    children = [recursion_partial_child(self, fn) for fn in self.fns]
+    bounds = [1 if child else 0 for child in children]
+    weights = [len(fn.slots) + sum(len(block.code) for block in fn.blocks) for fn in self.fns]
+    names: dict[str, str] = {}
+    total = 0
+    count = 0
+    for root in range(nf):
+        fn = self.fns[root]
+        if (not fn.counted or weights[root] > 2048 or fn.coro or fn.f.gen
+                or fn.f.export or fn.f.pyexport or fn.f.extern or len(fn.tries) > 0 or fn.gdepth != "" or fn.pads
+                or len(fn.blocks[0].code) < 2 or any(block.handler != "" for block in fn.blocks)):
+            continue
+        enter = fn.blocks[0].code[0]
+        sub = fn.blocks[0].code[1]
+        if (enter.op != "rt" or enter.s != "recursion.enter" or len(enter.r) != 1
+                or fn.rdepth != f"%t{enter.r[0]}" or sub.op != "scalar.bin" or sub.s != "sub"
+                or sub.t != "int" or len(sub.r) != 1 or len(sub.a) != 2
+                or sub.a[0].v != fn.rdepth or sub.a[1].v != "1"):
+            continue
+        if len(fn.loops) == 0 or not recursion_repeated(self, fn, bounds):
+            continue
+        succ = recursion_successors(fn)
+        back: list[list[int]] = [[] for _ in fn.blocks]
+        # Each operation either preserves, kills, or establishes the fact.
+        actions: list[list[int]] = []
+        for at in range(len(fn.blocks)):
+            for target in succ[at]:
+                back[target].append(at)
+            row: list[int] = []
+            for op in fn.blocks[at].code:
+                action = 0
+                if op.op.startswith("gen.") or self.opfx(op, fn.fa) & FXBIT["U"] != 0:
+                    action = -1
+                elif op.op == "call" and op.s in self.fll:
+                    callee = self.fns[self.fll[op.s]]
+                    if callee.counted and not callee.f.gen and not callee.coro:
+                        action = 1
+                row.append(action)
+            actions.append(row)
+        incoming = [False] * len(fn.blocks)
+        outgoing = [False] * len(fn.blocks)
+        work = list(range(len(fn.blocks)))
+        pos = 0
+        while pos < len(work):
+            at = work[pos]
+            pos += 1
+            state = at != 0 and len(back[at]) > 0 and all(outgoing[p] for p in back[at])
+            incoming[at] = state
+            for action in actions[at]:
+                if action != 0:
+                    state = action > 0
+            if state != outgoing[at]:
+                outgoing[at] = state
+                work.extend(succ[at])
+        wanted: dict[int, bool] = {}
+        selected: list[list[bool]] = []
+        for at in range(len(fn.blocks)):
+            state = incoming[at]
+            choices: list[bool] = []
+            for index in range(len(fn.blocks[at].code)):
+                op = fn.blocks[at].code[index]
+                child = self.fll.get(op.s, -1) if op.op == "call" else -1
+                take = state and child >= 0 and child < nf and children[child]
+                choices.append(take)
+                if take:
+                    wanted[child] = True
+                if actions[at][index] != 0:
+                    state = actions[at][index] > 0
+            selected.append(choices)
+        cost = sum(weights[child] for child in wanted if self.fns[child].f.ll not in names)
+        if len(wanted) == 0 or cost > 2048 or total + cost > 8192:
+            continue
+        total += cost
+        for child in wanted:
+            original = self.fns[child]
+            if original.f.ll not in names:
+                symbol = "@rc." + original.f.ll[1:]
+                names[original.f.ll] = symbol
+                fast = recursion_partial_header(original, symbol)
+                fast.f.name = original.f.name + "$recursioncached"
+                for block in original.blocks:
+                    copied = Blk(block.label)
+                    copied.code = [recursion_copy(op) for op in block.code]
+                    if block is original.blocks[0]:
+                        copied.code.pop(0)
+                    fast.blocks.append(copied)
+                # Terminal publication still enters ONE child frame because
+                # this caller is published; do not use rp2's two-frame bridge.
+                self.fll[symbol] = len(self.fns)
+                self.fns.append(fast)
+        for at in range(len(fn.blocks)):
+            for index in range(len(fn.blocks[at].code)):
+                if selected[at][index]:
+                    op = fn.blocks[at].code[index]
+                    op.s = names[op.s]
+        count += 1
+    return count
+
+
+def gen_recursionregion(self) -> int:
+    count = recursion_bounded(self) + recursion_partial(self) + recursion_cached(self)
+    for fn in self.fns:
+        # Bounded and following-call leaves already have an unchecked body.
+        # Retain the original callable's entry check and tail-forward to it.
+        # An @rc body keeps the original one-frame terminal publication; @rp2
+        # publishes two frames and must never be used for this forwarding.
+        # Run after selection so the original leaf proofs/budgets do not change.
+        fast = self.fll.get("@rf." + fn.f.ll[1:], -1)
+        if fast < 0:
+            fast = self.fll.get("@rc." + fn.f.ll[1:], -1)
+        if (not fn.counted or fn.rdepth != "" or fast < 0 or is_tuple(fn.f.ret)
+                or len(fn.blocks[0].code) == 0):
+            continue
+        check = fn.blocks[0].code[0]
+        if check.op != "rt" or check.s != "recursion.check":
+            continue
+        call = Ins("call", fn.f.ret, self.fns[fast].f.ll)
+        call.a = [Val(f"%a{p}", fn.f.ptypes[p]) for p in fn.ps]
+        if identity_abi(fn.f):
+            call.a.extend([Val(f"%aid{p}", "dyn") for p in fn.ps if numeric_identity(fn.f.ptypes[p])])
+            if numeric_identity(fn.f.ret):
+                call.a.append(Val("%idret", "*dyn"))
+        ret = Ins("ret", "", "")
+        if fn.f.ret != "None":
+            fn.n += 1
+            call.r = [fn.n]
+            ret.a = [Val(f"%t{fn.n}", fn.f.ret)]
+        block = Blk("entry")
+        block.code = [recursion_copy(check), call, ret]
+        fn.blocks = [block]
+        fn.slots = []
+        fn.loops = []
+        fn.cold = {}
+        fn.coldh = {}
+        fn.fa = {}
+        count += 1
+    return count
+
+
+def gen_recursionleaf(self) -> int:
+    # Depth observation is separate from ordinary effects: the source entry still
+    # raises and reads runtime state after this pass. Scan every block, including
+    # exceptional/cleanup paths, before changing any function. A counted callee
+    # observes its caller's depth even when its own bookkeeping will be elided.
+    # Uncounted compiler adapters can be transparent only through a complete
+    # transitive proof. Unknown/indirect calls, generators, and U/I operations are
+    # boundaries (including limit changes, descriptor callbacks and foreign code).
+    # A/R alone are not depth observers: native collection runs no user code, and
+    # generator cleanup is an explicit gen.drop operation. But removing even
+    # scalar bookkeeping can change register allocation and stale conservative
+    # roots. Unmanaged files and weakrefs expose that changed retention, so
+    # programs using them keep their original IR, including unrelated leaves.
+    # Immediately registered with-files stay rooted until deterministic close.
+    # Runtime registrations are complete here, before lowering; open creates a
+    # collectable File, while std, print and input do not.
+    if recursion_blocked(self):
+        return 0
+    # Uncaught errors and allocation failure can nevertheless run termination
+    # callbacks. Keep full bookkeeping when atexit or CPython hooks may exist.
+    # A throw of a user exception can also render __str__ before terminating; it
+    # is a boundary below even though ordinary effect summaries label it only R.
+    direct: list[int] = []
+    calls: list[list[int]] = []
+    bases: list[str] = []
+    eligible: list[bool] = []
+    observed = FXBIT["I"]
+    for fn in self.fns:
+        own = fn.counted and not fn.coro and not fn.f.gen and len(fn.blocks[0].code) >= 2
+        base = ""
+        if own:
+            enter = fn.blocks[0].code[0]
+            sub = fn.blocks[0].code[1]
+            own = enter.op == "rt" and enter.s == "recursion.enter" and len(enter.r) == 1 and fn.rdepth == f"%t{enter.r[0]}"
+            own = own and sub.op == "scalar.bin" and sub.s == "sub" and sub.t == "int" and len(sub.a) == 2 and len(sub.r) == 1
+            own = own and sub.a[0].v == fn.rdepth and sub.a[1].v == "1"
+            if own:
+                base = f"%t{sub.r[0]}"
+        bases.append(base)
+        eligible.append(own)
+        m = observed if fn.f.gen or fn.coro else 0
+        cs: list[int] = []
+        seen: dict[int, bool] = {}
+        for b in fn.blocks:
+            for at in range(len(b.code)):
+                i = b.code[at]
+                if own and b is fn.blocks[0] and at < 2:
+                    continue  # the validated entry and its caller-depth subtraction
+                if own and i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v in [fn.rdepth, base]:
+                    continue
+                # These tokens belong only to the bookkeeping above. A future
+                # consumer of either token must invalidate this proof explicitly.
+                if own and any(a.v == fn.rdepth or a.v == base for a in i.a):
+                    m = m | observed
+                c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+                if c in self.fll:
+                    ix = self.fll[c]
+                    callee = self.fns[ix]
+                    if callee.counted or callee.f.gen or callee.coro:
+                        m = m | observed
+                    elif ix not in seen:
+                        seen[ix] = True
+                        cs.append(ix)
+                elif i.op == "throw" or i.op.startswith("gen.") or (i.op == "rt" and i.s in ["throw", "reraise"]) or self.opfx(i, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0:
+                    m = m | observed
+        direct.append(m)
+        calls.append(cs)
+    depth = EffectSummaries()
+    depth.update(direct, calls)
+    n = 0
+    for j in range(len(self.fns)):
+        if not eligible[j]:
+            continue
+        fn = self.fns[j]
+        base = bases[j]
+        if depth.fx[j] != 0 and not recursion_cold(self, fn, base, depth.fx):
+            continue
+        enter = fn.blocks[0].code[0]
+        self.runtime("pys_recursion_check")
+        enter.s = "recursion.check"
+        enter.t = "None"
+        enter.r = []
+        fn.blocks[0].code.pop(1)
+        for b in fn.blocks:
+            b.code = [i for i in b.code if not (i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v in [fn.rdepth, base])]
+        fn.rdepth = ""
+        n += 1
+    return n
+
+
+def recursion_cold(self, fn: IFn, base: str, depth: list[int]) -> bool:
+    # A function such as JSON number() calls source helpers only on error paths.
+    # Its entry check must still run before its body, but publication can wait
+    # until an edge into a region that cannot return. All observers must lie in
+    # that region; its complement neither reads nor changes depth/limit. Thus an
+    # enter at the boundary cannot fail after the entry check passed, and every
+    # subsequent callback observes the original active depth. No edge returns to
+    # the normal region, so publication occurs at most once on an execution.
+    # This does not move a failing *callee* entry check: side effects before its
+    # call stay before it. Local handlers/generators require a different proof.
+    if len(fn.tries) > 0 or fn.coro or fn.f.gen or fn.gdepth != "":
+        return False
+    nb = len(fn.blocks)
+    at: dict[str, int] = {}
+    back: list[list[int]] = []
+    returns = [False] * nb
+    observes = [False] * nb
+    work: list[int] = []
+    for j in range(nb):
+        at[fn.blocks[j].label] = j
+        back.append([])
+    for j in range(nb):
+        b = fn.blocks[j]
+        if b.handler != "":
+            return False
+        for k in range(len(b.code)):
+            i = b.code[k]
+            if i.op == "landing" or i.op.startswith("gen."):
+                return False
+            if j == 0 and k < 2:
+                continue
+            if i.op == "rt" and i.s == "recursion.restore" and len(i.a) == 1 and i.a[0].v in [fn.rdepth, base]:
+                continue
+            if any(a.v == fn.rdepth or a.v == base for a in i.a):
+                return False
+            c = i.s if i.op == "call" else "@init." + i.s if i.op == "init" else ""
+            if c in self.fll:
+                ix = self.fll[c]
+                callee = self.fns[ix]
+                observes[j] = observes[j] or callee.counted or callee.f.gen or callee.coro or depth[ix] != 0
+            elif i.op == "throw" or (i.op == "rt" and i.s in ["throw", "reraise"]) or self.opfx(i, fn.fa) & (FXBIT["U"] | FXBIT["I"]) != 0:
+                observes[j] = True
+        t = b.code[len(b.code) - 1]
+        if observes[j] and (j == 0 or t.op == "ret" or t.op == "ret.none"):
+            return False  # neither the entry nor a returning block can be terminal
+        if t.op == "ret" or t.op == "ret.none":
+            returns[j] = True
+            work.append(j)
+        succ: dict[str, bool] = {l: True for l in t.b}
+        if t.op == "check":
+            succ[fn.cold[t.x if t.x != "" else t.s]] = True
+        for l in succ:
+            back[at[l]].append(j)
+    # Backward reachability is iterative and visits each edge at most once.
+    pos = 0
+    while pos < len(work):
+        j = work[pos]
+        pos += 1
+        for p in back[j]:
+            if not returns[p]:
+                returns[p] = True
+                work.append(p)
+    if not returns[0] or any(returns[j] and observes[j] for j in range(nb)):
+        return False
+    # Observer-free failure sinks need no publication. In particular the hidden
+    # failure edges of `check` must stay in that class: changing fn.cold's shape
+    # would invalidate nullcheck's later pruning of unused built-in raise blocks.
+    needed = [v for v in observes]
+    work = [j for j in range(nb) if observes[j]]
+    pos = 0
+    while pos < len(work):
+        j = work[pos]
+        pos += 1
+        for p in back[j]:
+            if not returns[p] and not needed[p]:
+                needed[p] = True
+                work.append(p)
+    for j in range(nb):
+        t = fn.blocks[j].code[len(fn.blocks[j].code) - 1]
+        if returns[j] and t.op == "check" and needed[at[fn.cold[t.x if t.x != "" else t.s]]]:
+            return False
+    bridges: list[Blk] = []
+    repairs: dict[str, str] = {}
+    for j in range(nb):
+        if not returns[j]:
+            continue
+        b = fn.blocks[j]
+        t = b.code[len(b.code) - 1]
+        targets: dict[str, bool] = {}
+        for l in t.b:
+            if not returns[at[l]] and needed[at[l]]:
+                targets[l] = True
+        redirects: dict[str, str] = {}
+        for l in targets:
+            fn.n += 1
+            bridge = Blk(f"L{fn.n}")
+            publish = Ins("rt", "int", "recursion.enter")
+            fn.n += 1
+            publish.r = [fn.n]
+            br = Ins("br", "", "")
+            br.b = [l]
+            bridge.code = [publish, br]
+            bridges.append(bridge)
+            redirects[l] = bridge.label
+            repairs[l + " " + b.label] = bridge.label
+        if len(redirects) > 0:
+            t.b = [redirects.get(l, l) for l in t.b]
+    # Repair each phi once, not once per incoming edge of a large shared join.
+    for b in fn.blocks:
+        for phi in b.code:
+            if phi.op != "phi":
+                break
+            phi.b = [repairs.get(b.label + " " + p, p) for p in phi.b]
+    fn.blocks.extend(bridges)
+    return len(bridges) > 0
 
 
 def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:

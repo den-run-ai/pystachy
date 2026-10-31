@@ -3,6 +3,7 @@
 # 512 of them, so an operation that walks a value by its descriptor (RUNTIME's R?) may raise only
 # where the descriptor holds such an edge: ==, in, count() and repr() of V raise (R), the same
 # operations on lists of lists do not, and neither does storing V values in a dict with str keys.
+# Source-function summaries also include R I for their recursion entry/exit guards.
 type V = int | list[V]
 
 

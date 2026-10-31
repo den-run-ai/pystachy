@@ -1,6 +1,6 @@
 @m.Point.__init__.1: store:Point+8 store:Point+24 store:Point+16 store:Point+25
 @m.Point.__init__.2: store:Point+8 store:Point+24 store:Point+16 store:Point+25
-@m.Labeled.__init__.1: store:Labeled+32 store:Labeled+40
+@m.Labeled.__init__.1: store:Labeled+32 store:Labeled+40 store:recursion depth+0
 @main.init:
 @f.shift: load:Point+25 load:Point+16 store:Point+8 store:Point+24 store:Labeled+32 store:Labeled+40 load:Point+25 load:Point+0 load:Point+16 load:Point+24 load:Point+8
 @f.bump: load:Tally+8 load:Tally+0 store:Tally+0 store:Tally+8 load:Tally+8 load:Tally+0
@@ -8,4 +8,8 @@
 @pys_obj_eq:
 @pys_obj_cmp:
 @pys_obj_repr:
+@pys.recursion.check: load:recursion depth+0 load:recursion limit+0
+@pys.recursion.enter: load:recursion depth+0 load:recursion limit+0 store:recursion depth+0
+@pys.recursion.depth: load:recursion depth+0
+@pys.recursion.restore: store:recursion depth+0
 @main:

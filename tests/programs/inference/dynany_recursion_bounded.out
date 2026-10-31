@@ -1,0 +1,11 @@
+identity True
+tuple True True
+value 1000 2001
+partial identity False True True
+partial identity True True True
+identity True
+tuple True True
+value 123456789012345678901234567890 246913578024691357802469135781
+partial identity False True True
+partial identity True True True
+[exit 0]

@@ -358,6 +358,12 @@ class IFn:
         self.coldh: dict[str, str] = {}
         self.tries: list[Try] = []
         self.pads = False  # whether it keeps landing pads (once the exception passes have run)
+        # Native recursion counts source function activations, not dispatch adapters. An
+        # ordinary function's entry token is also the depth every local landing restores;
+        # a generator refreshes gdepth on each resume, since it may have another caller.
+        self.counted = False
+        self.rdepth = ""
+        self.gdepth = ""
         # its effect summary (FX bits): every letter (but N) until Gen.effects computes it, once
         # the whole program is built
         self.fx: int = FXALL

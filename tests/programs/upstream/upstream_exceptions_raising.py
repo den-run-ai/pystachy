@@ -56,8 +56,8 @@
 #   __cause__, __context__ and __suppress_context__ (an exception's attributes and BaseException's
 #   methods other than __str__ and __repr__ are not supported)
 # - testInfiniteRecursion, test_recursion_in_except_handler and test_badisinstance's
-#   recursion (RecursionError: Pystachy's recursion is limited by the native stack, a documented
-#   deviation), test_badisinstance's metaclass, test_trashcan_recursion,
+#   recursion (covered separately by bounded native recursion guard cases; exact native frame
+#   depth differs), test_badisinstance's metaclass, test_trashcan_recursion,
 #   test_recursion_normalizing_exception, test_recursion_normalizing_infinite_exception,
 #   test_recursion_normalizing_with_no_memory, test_memory_error_in_PyErr_PrintEx,
 #   test_memory_error_in_subinterp and test_exec_set_nomemory_hang (_testcapi,

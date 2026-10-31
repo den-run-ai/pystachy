@@ -1,0 +1,17 @@
+cold offset True
+tail depth True
+cold positive True
+hidden failure True
+recovered 3
+cold offset True
+tail depth True
+cold positive True
+hidden failure True
+recovered 3
+cold offset True
+tail depth True
+cold positive True
+hidden failure True
+recovered 3
+cold observer True
+[exit 0]

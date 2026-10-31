@@ -17,6 +17,9 @@ whole-module compatibility.
 
 Imports search builtin modules first, then the program's directory,
 `PYSTACHY_PATH`, and `lib/`. See [module rules](../docs/language/modules.md).
+Compiler-provided `sys.setrecursionlimit()` bounds active native source calls with
+catchable `RecursionError`; [its depth policy](../docs/language/compatibility.md#errors-and-control-flow)
+also applies to compiled library functions.
 
 ## Module guide
 

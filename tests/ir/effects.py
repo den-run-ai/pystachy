@@ -4,6 +4,8 @@
 # slot's load or store, rG or wG for a global's, rO or wO for an object's field's or flag's
 # (P.__init__, P.__eq__, K.get), and rL rD rO or wL wD wO through any other address (a list's or
 # a dict's header).
+# Source activations additionally contribute R I for recursion-limit checks and depth state;
+# the per-body comments below describe the other effects.
 import sys
 
 

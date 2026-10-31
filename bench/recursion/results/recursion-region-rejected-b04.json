@@ -1,0 +1,6107 @@
+{
+  "schema": "pystachy-recursion-performance-v1",
+  "disposition": "rejected layout",
+  "rejection_reason": "The object JIT kernel slowed by 11.73% versus main in the eight-round series and was slower than the prior head in all eight paired rounds despite removing per-loop instruction overhead. Subsequent ten-round controls reproduced the regression. Compile sampling was not run; code placement is being corrected before final acceptance.",
+  "created_utc": "2026-10-31T04:19:00.190980+00:00",
+  "raw_measurement_sha256": "22d99e30d1cc6a2d65f4ea24ee097806fa995d660f905fd044135c973ac99984",
+  "tools": {
+    "python": "Python 3.13.16",
+    "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+    "valgrind": "valgrind-3.22.0"
+  },
+  "host": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "cpu_affinity": 0,
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "shared_host": true,
+    "hardware_instruction_counter": "perf_event_open returned ENOENT"
+  },
+  "source_identity": {
+    "manifest_reconstruction": "Merge common_source_input_sha256 with each variant's source_input_sha256_overrides. Complete-manifest hash is SHA256 of sorted compact JSON with separators comma and colon.",
+    "common_source_input_sha256": {
+      "Makefile": "9d9574c44902625ce0c79e94c31513548080b0d7543c2ba82e6c707f28708997",
+      "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+      "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+      "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+      "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+      "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+      "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+      "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+      "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+      "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+      "lib/_pystachy_json_any.py": "392d432c6ef3679f36bd3a86b302fe71858ff2d261bc25863c1673bf58944016",
+      "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+      "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+      "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+      "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+      "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+      "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+      "lib/_pystachy_thread.py": "62e5617d4f19c2deb6d714dbcc92ebaa6a97a78a596fc7d8c56c088cc4ad0f37",
+      "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+      "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+      "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+      "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+      "lib/_pystachy_weakref.py": "da4181f6adb4cbbed1d3c45d95e32bd39e8ac210638ab902f26fb0b68bc7cbfe",
+      "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+      "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+      "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+      "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+      "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+      "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+      "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+      "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+      "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+      "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+      "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+      "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+      "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+      "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+      "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+      "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+      "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+      "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+      "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+      "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+      "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+      "lib/json.py": "72fb29122acddd3b4d1bd43d8ae9e7fee506b1d7d4f30559edeeebd92ac044ce",
+      "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+      "lib/mpz.py": "754e4844ff8425e92ee8cde26b1e84a4ad318312d1ca17d10ea724a6c4c46a45",
+      "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+      "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+      "lib/pyobj.py": "2d673d060a386ceae11b381ca94ce71a4ec43be89e7c1c59651c936ffea9054e",
+      "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+      "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+      "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+      "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+      "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+      "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+      "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+      "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+      "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+      "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+      "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+      "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+      "lib/tomllib/_parser.py": "11d40d79772967ebf81f5a0cf8dfa99608413b3ba6144d4beadae99baa28f279",
+      "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+      "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+      "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+      "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+      "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+      "lib/weakref.py": "781ef9b242fde2b923e070fce64b751954d42955c5c66b367e54941678ab722b",
+      "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+      "pyembed.c": "98c9dd90c0964f885da08e1bd7622386421607723b7341b27783aaf3ff6a11b0",
+      "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+      "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "runtime.py": "c45138f44a7aa25828b351b6d627e1a4f9fad69dc8a88532d053fb90e84beefb",
+      "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+      "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+      "src/pystachy_compiler/analysis.py": "5b3c134b21586a03909f89beddbff999f6f28f067ce1dd975fb46a4c1794fecd",
+      "src/pystachy_compiler/bigints.py": "888815dfc3b4a69caed4f88242863478c6b97471637b9f90c72185d09291cbe8",
+      "src/pystachy_compiler/builtins.py": "d0d25b4e975b1e7607131632656f17331ef3e4ac317fbed3a663977dd7614126",
+      "src/pystachy_compiler/calls.py": "1d9cff0879935d3dc48700ccd086b1b44e27641d142e8e71be8a2e24a31cbd55",
+      "src/pystachy_compiler/containers.py": "43a9d6b88602aa1feaecaeb1d11cc44d6fe87c057a6f156c4cf294b0129f1b5e",
+      "src/pystachy_compiler/conversions.py": "900a17d52ac83efb9bd82eb11723a001a51d6ac0f1af57becbf211363509daa5",
+      "src/pystachy_compiler/declarations.py": "d01904e710d79a12f2d33d4eda52c6e79e7605be08d5c974b2905098d6c62b87",
+      "src/pystachy_compiler/diagnostics.py": "4d256b7ea3ca66398723043deef4165bcfa076217f2ebd974746945ee04e6857",
+      "src/pystachy_compiler/dynamic.py": "7350dd8c95638ab416bce848d77347c8a75bd6cd9617e18c78e2fa42a8f69340",
+      "src/pystachy_compiler/emission.py": "5356b79e98096a2371c27c5d4caa32d1513a5b86894908d2b772189ed05867e3",
+      "src/pystachy_compiler/expressions.py": "5cb9ba837c5b4bd1f943ca21c4aa4dc886fff0eb1ac2c7e24fa4a2cc42084099",
+      "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+      "src/pystachy_compiler/ircheck.py": "781fa17c070480ed38ceb4d094757ac908e4ab027bb74af8b8ab6b405b5c0e60",
+      "src/pystachy_compiler/lexer.py": "1ca2874158eccdb0a4e3569a31940fb9b33a51fe2f06983be83de57d8d9fedeb",
+      "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+      "src/pystachy_compiler/loader.py": "e50415407b10644a710f666981e650414aeec439d2f46270c1bdc255b3590a49",
+      "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+      "src/pystachy_compiler/memory_ir.py": "c2544eda0bdb89ccb99ac1330c95d99974983cc7bdfa0d3a2b39a993c9f62bc1",
+      "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+      "src/pystachy_compiler/names.py": "51eedecfa52aa390bdbe0e7303d6663fc0c32b3c74afce569a1a2aaf637a3fb5",
+      "src/pystachy_compiler/parser.py": "05c4617ef7ce82f2c270c39ed82dea409e10e5d984826cee759d8cd922c5705b",
+      "src/pystachy_compiler/reflection.py": "ed77b340da37e38d4249adbc8e569cf351f0258acd74fdf63365c9d7d8830aeb",
+      "src/pystachy_compiler/scalar_ir.py": "14bc0ce71b4cbf066e8a4cab2ea0bb5c0a53880997484d74f5ea3e9a6d30c05a",
+      "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+      "src/pystachy_compiler/statements.py": "4bb9347b64952570845df754efbb1e6a3b02467b1b629dd9171e9b98d3d85e2d",
+      "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+      "src/pystachy_compiler/syntax.py": "799e522034af31967517409654d5788179bb6dfa727be9f544a8855c90d3ecb9",
+      "src/pystachy_compiler/templates.py": "b587b346bea5087b3422ea5117e023b521205285f0dc3d622f3c9aed5a94c36f",
+      "src/pystachy_compiler/union_arithmetic.py": "6d6892c0d97667d7e8ffeb5293ccbbe24c76529328e4761ffec6831229c416dd",
+      "src/pystachy_compiler/union_proof.py": "8027ed7a77006053e2da8b0264d1d2bf12ea465d193d4ce49ecd581e0b436cd9",
+      "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+      "src/pystachy_compiler/unions.py": "133448300155804316b04d6b1e80d99ba606905ad267835007d0d68e77195de3",
+      "src/pystachy_compiler/utils.py": "0efd4bb4f572c22b361890849e4d67c54977b216652a29c397eb44c92426d2ee",
+      "src/pystachy_compiler/variables.py": "f4ea9b2eb58cb7339add9ced65d890f2f5b37d26f4919f463cbb50c54c11b086",
+      "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+      "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+      "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+      "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+      "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+      "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+    },
+    "variants": {
+      "main": {
+        "measured_local_commit": "4ef9cb7b1872445596ea5df01f0dfed365faf875",
+        "tree": "db120afecf27ff03b08c25624dc64be8b06bac3b",
+        "clean_at_freeze": true,
+        "source_input_count": 131,
+        "source_input_sha256_overrides": {
+          "lib/re/__init__.py": "301df0312610d7ce92f7898db27b5e67e0ddf1cae07a2ed41773638919093e66",
+          "lib/re/_sre.py": "925eeba2c02e7d111e76def73d1df74c44db1a714b3f58bf4c7239d11d4418b8",
+          "runtime.c": "1671393a715c9ca99ce96ac64127aeef7f449d6d565c974a7a4c00c41fd970f8",
+          "src/pystachy_compiler/driver.py": "45dcbd9bf71f463e7772bce9f0c5d5b4e74c2fa5e91356746be4c976f07f1971",
+          "src/pystachy_compiler/exceptions.py": "9315fbc0d29b843b16905bea441e61a85ee5000f8590aa8156c80da35066495a",
+          "src/pystachy_compiler/functions.py": "faff8171d6f17fbd7bd11fbb907990bc3caee9adcceb7c5c7d3e12462a21c01e",
+          "src/pystachy_compiler/gen.py": "a0cc9b02b04b5095cf058ed70d5cbcd67e185e60d3e6ec9676fbca03ef82a759",
+          "src/pystachy_compiler/generators.py": "b8824c3d85dc674b1b2ec827ad88205a3f7ca211435bb05357165f75c3a3b23b",
+          "src/pystachy_compiler/ir.py": "e1bcdb6bd0b6a5d9738eca6073e3088e311a741ed61bb18a8292d21067402c31",
+          "src/pystachy_compiler/lower_module.py": "854471dc749104a3f3847d04b38c6c0e88f566592d1b065d50b8616f9c63bf40",
+          "src/pystachy_compiler/lowering.py": "14a55ab0861e4e51ca9fe6e133c01cdb5bf3461bda1f9631e83031d8cd764c63",
+          "src/pystachy_compiler/optimizations.py": "88fd9032a955aee8d3fcc0f02e044d81ff10a19bb4d6d701d8a75d7eb82c37ed",
+          "src/pystachy_compiler/program.py": "cf3ad432a72dbe88ad6e3abfbe9c05b463e9f472d3f98c6be9f209797ee5a0f1",
+          "src/pystachy_compiler/specs.py": "8a48e0de8200f6526b80e16e13588bf6ad926653a1fdb1277d9735baa51b2d64"
+        },
+        "complete_manifest_sha256": "403f3d223fb915225074ddaae1a4a47e98001ec8d21bb3d05e5bb92af12a67b5",
+        "published_commit_with_identical_tree": "06e3ad5d08514ba31fb231fe4636a962fe6578e3"
+      },
+      "original": {
+        "measured_local_commit": "d5bc7a93504e9e0ed0d8bb125d3a39a8711911cb",
+        "tree": "c2c4ffe9efdb1c9dfe9511e320cedc78ff675fac",
+        "clean_at_freeze": true,
+        "source_input_count": 131,
+        "source_input_sha256_overrides": {
+          "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+          "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+          "runtime.c": "cf27939dfc3ebb3ec19b4cc8e2e066d2dc1eeb39f16bbcbe3a05156889d8acbf",
+          "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+          "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+          "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+          "src/pystachy_compiler/gen.py": "a0cc9b02b04b5095cf058ed70d5cbcd67e185e60d3e6ec9676fbca03ef82a759",
+          "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+          "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+          "src/pystachy_compiler/lower_module.py": "9d6185d9b7f2622f35893bd9e34c56a65d4fe0debc586ad683ec1290b5d4f6f8",
+          "src/pystachy_compiler/lowering.py": "a901e31a9c0a53df0e9f9c6413350c23bd0f0acaf6aa88f3f7d3931148c2f3bb",
+          "src/pystachy_compiler/optimizations.py": "88fd9032a955aee8d3fcc0f02e044d81ff10a19bb4d6d701d8a75d7eb82c37ed",
+          "src/pystachy_compiler/program.py": "cf3ad432a72dbe88ad6e3abfbe9c05b463e9f472d3f98c6be9f209797ee5a0f1",
+          "src/pystachy_compiler/specs.py": "507252799c4011808acb4fc048b2ae4f016388336370c14dc069f785f7c4f073"
+        },
+        "complete_manifest_sha256": "623b4e8e263e4a657c45957082ff769104296ca00227bdc39aefca8a654d0627",
+        "published_commit_with_identical_tree": "0166fbb556754b3d23ac68647baf458a55bd74cb"
+      },
+      "prior": {
+        "measured_local_commit": "a7c38c516e9730f4da8eeff4456c495e1ab29e0e",
+        "tree": "2eb5436ed29787064531da78679ba27067317e89",
+        "clean_at_freeze": true,
+        "source_input_count": 131,
+        "source_input_sha256_overrides": {
+          "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+          "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+          "runtime.c": "088ca6df94980e138eec7f25c9cc24f95120f508608fbfdfac889538deca1916",
+          "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+          "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+          "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+          "src/pystachy_compiler/gen.py": "93413bafec6916aa7a4a6ffb5b6880cd893bd65a0acce37d58178da6c6c26134",
+          "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+          "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+          "src/pystachy_compiler/lower_module.py": "df8fd54bca36516375f1538193328079b654f059eb60258d5cf08dad818fef25",
+          "src/pystachy_compiler/lowering.py": "cafaa1b8d1fdb796c20c84804c5bde16ed5f3ea601995d0f266fb88da70b586a",
+          "src/pystachy_compiler/optimizations.py": "560a8808265b96fc8d97ee1dd4041897be4f946994dcd87790a5ba28240e9c3d",
+          "src/pystachy_compiler/program.py": "3c0a636c29358d65c71f094e57b4d51ead0c6ae88e1b9df80fa74fe336b1ce92",
+          "src/pystachy_compiler/specs.py": "34d34b978506256b7e174f2304d05a85187dd7d6675baa5aa7fabb7cae2cc30d"
+        },
+        "complete_manifest_sha256": "845922f4be531109584f62d772596291ecbddeb732969a083a834db43fd56f1b",
+        "published_commit_with_identical_tree": "993fb17eed953f332661841f7793a30902738242"
+      },
+      "candidate": {
+        "measured_local_commit": "b04e6b443afde3692d3eec51324a5a9def52ae61",
+        "tree": "a29c339abbbc92516fa0aa0eec78539b11bccdb0",
+        "clean_at_freeze": true,
+        "source_input_count": 131,
+        "source_input_sha256_overrides": {
+          "lib/re/__init__.py": "3e1c1d6312856cfb5c34d2ad5f24b933de77c00dd21d36f76f74c54f8cf0f856",
+          "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+          "runtime.c": "4bdf82b0663d1141667fe234029c8f92b6146978cff6457f79c1d554926f6637",
+          "src/pystachy_compiler/driver.py": "48941caa98b340de4ec44ae03b1573f75828c24142eba88cc7c1ab617acea7b0",
+          "src/pystachy_compiler/exceptions.py": "b2554ff2ac10570c010814a1c3740b6eb51d8cd9f79ac580d2fc323a68f90a30",
+          "src/pystachy_compiler/functions.py": "6b2766311d39bcefa45a53d5ec03527935a42bcc9ebced029dbf83b5db7d1aaa",
+          "src/pystachy_compiler/gen.py": "6a66bc3ad42fc6d4cd95f04aa8ffa2cb041ad6b772ec0249a0759fc2c70893f6",
+          "src/pystachy_compiler/generators.py": "ca8611458ccc23c11fd095d1026b936caff86c100e410a833b202315a0778b63",
+          "src/pystachy_compiler/ir.py": "ad058f4b1a011b9fa101c2680eda11650f5b539fe8a259531f2a24689e806ffd",
+          "src/pystachy_compiler/lower_module.py": "826b72cefa86bf9c4d15a9ce50da10fbc98b5ed03b286d206cd8b5f0d8d47522",
+          "src/pystachy_compiler/lowering.py": "e6a80f8718478b9bbc091858e0ecf8dd9df77da4c171c073dd71831b27c95024",
+          "src/pystachy_compiler/optimizations.py": "71c2fba15cb5f1695e515589b430fcd2cb188158157dabf7b07f6a94564e3467",
+          "src/pystachy_compiler/program.py": "37cc66905c829070cda86760199725aae9bf0abff4beda5d59cfa4467a7c6971",
+          "src/pystachy_compiler/specs.py": "1f8a54f4cdb2de9b2293d22005229bbedc9d03be8d7ff4cad76f71481418ec96"
+        },
+        "complete_manifest_sha256": "103bf45e8babb4a2699e0216ef4d844cabd9a6eccea0dd31fd45343fba1a87d2",
+        "published_commit_with_identical_tree": "8af0ea7c2e67a686ac6e8bc6f36f5e49de9e5d41"
+      }
+    }
+  },
+  "method": {
+    "variants": [
+      "main",
+      "original",
+      "prior",
+      "candidate"
+    ],
+    "compiler_flags": "default; separate runtime cache per variant",
+    "elapsed_summary": "median of 8 process medians; each process has 7 kernel times; all values retained",
+    "elapsed_process_order": "four forward rotations followed by four reversed rotations",
+    "elapsed_excludes": "compilation, startup, printing, and scoped-file I/O",
+    "timed_calls_per_process": 7,
+    "normal_untimed_warmup_calls": 1,
+    "instruction_scope": "8 kernel calls including warmup, with native runtime and GC; excludes startup/compiler/timers/printing",
+    "jit_instruction_markers": "actual ORC execution of instrumented equivalent; every preexisting non-initializer raw LLVM function body is equal, but later whole-module optimization can differ",
+    "aot_instruction_scope": "exact timing executable at f.kernel entry/return; fully inlined ordinary control uses markers",
+    "compile_samples": "not run: candidate rejected after elapsed regression",
+    "timing_limit": "descriptive shared-host results; small speedups or regressions do not establish precision"
+  },
+  "phases": {
+    "prepare": {
+      "status": "passed",
+      "started_utc": "2026-10-31T03:39:25.170600+00:00",
+      "finished_utc": "2026-10-31T03:40:53.546401+00:00",
+      "harness_sha256": {
+        "measure.py": "388ddb2681f389613d597b462192185dee6da94dd64f50bb1b94eb46a3f94dce",
+        "count_support.py": "29cce8c5a2635be884a471d0517f5fb17d4e00ebb05963cd36ece57169484712",
+        "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+      },
+      "all_sources_unchanged": true
+    },
+    "counts": {
+      "status": "passed",
+      "started_utc": "2026-10-31T03:53:33.133312+00:00",
+      "finished_utc": "2026-10-31T03:57:21.756805+00:00",
+      "harness_sha256": {
+        "measure.py": "ef3299dd749226be5f611e7339def910b1605b96b575c655c3f1b9d770ff1679",
+        "count_support.py": "29cce8c5a2635be884a471d0517f5fb17d4e00ebb05963cd36ece57169484712",
+        "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+      },
+      "all_sources_unchanged": true
+    },
+    "timings": {
+      "status": "passed",
+      "started_utc": "2026-10-31T03:57:50.293151+00:00",
+      "finished_utc": "2026-10-31T04:00:06.784806+00:00",
+      "harness_sha256": {
+        "measure.py": "ef3299dd749226be5f611e7339def910b1605b96b575c655c3f1b9d770ff1679",
+        "count_support.py": "29cce8c5a2635be884a471d0517f5fb17d4e00ebb05963cd36ece57169484712",
+        "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+      },
+      "rounds": 8,
+      "process_orders": [
+        [
+          "main",
+          "original",
+          "prior",
+          "candidate"
+        ],
+        [
+          "original",
+          "prior",
+          "candidate",
+          "main"
+        ],
+        [
+          "prior",
+          "candidate",
+          "main",
+          "original"
+        ],
+        [
+          "candidate",
+          "main",
+          "original",
+          "prior"
+        ],
+        [
+          "candidate",
+          "prior",
+          "original",
+          "main"
+        ],
+        [
+          "main",
+          "candidate",
+          "prior",
+          "original"
+        ],
+        [
+          "original",
+          "main",
+          "candidate",
+          "prior"
+        ],
+        [
+          "prior",
+          "original",
+          "main",
+          "candidate"
+        ]
+      ],
+      "variant_position_counts": {
+        "main": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "original": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "prior": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "candidate": [
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "all_sources_unchanged": true
+    }
+  },
+  "cases": {
+    "ordinary_calls": {
+      "probe_filename": "ordinary_calls.py",
+      "probe_sha256": "ecf346f4e65bab89564c52d864bd405641bc7689374a303b3a9f74bc8ab4df6c",
+      "elapsed_iterations": 10000000,
+      "checksum": 52241,
+      "extra_untimed_kernel_calls": 0,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "f55bddbd400eb2c484fbc00ab6d0d2e6d68ee49df468366ee5062ef165b8db97",
+          "aot_executable": "abf3d5724e5bf3305e71983132b5dc3aa27ebc932a17c80fcf9e110110ba552d"
+        },
+        "original": {
+          "raw_llvm": "f4ad1f47fcd7b76b0924acd986b6d5bc91325a6f37c9f5407ae754d6400e8453",
+          "aot_executable": "a4c9d47f1084bc0b36682551f5dc26e29cc87a5d59d99151e62c7f3d53ef424a"
+        },
+        "prior": {
+          "raw_llvm": "66117555525f19237db8c9b2294b245dd0a6412213f11e2e213a5b87321c8b89",
+          "aot_executable": "a4c9d47f1084bc0b36682551f5dc26e29cc87a5d59d99151e62c7f3d53ef424a"
+        },
+        "candidate": {
+          "raw_llvm": "80ff7ab230b060979b594142fa75753ae5609213636dfc176f43ad46b38a431c",
+          "aot_executable": "f792d1e61bc20bf2a2c5ee2bcfeb1cbe2ec7e3d8b2c440bfeacef1b3a7f348c4"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 194,
+          "aot_executable_bytes": 46312
+        },
+        "original": {
+          "raw_llvm_lines": 228,
+          "aot_executable_bytes": 46424
+        },
+        "prior": {
+          "raw_llvm_lines": 246,
+          "aot_executable_bytes": 46424
+        },
+        "candidate": {
+          "raw_llvm_lines": 317,
+          "aot_executable_bytes": 46424
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "object_calls": {
+      "probe_filename": "object_calls.py",
+      "probe_sha256": "4da3eeae714a896bb205a4d16e1d91d0bafad2ec58a3dee0d33cc90096de70af",
+      "elapsed_iterations": 100000,
+      "checksum": 3226706707,
+      "extra_untimed_kernel_calls": 0,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "c406829c81adb02717787f3f7c7441f6a451b408479e5a96acff0e478ba678cb",
+          "aot_executable": "a03c1325f5b1d1d75e6a0200fd553ca3726fdf5e3bdaf27d829a8b0bf1a3b0e9"
+        },
+        "original": {
+          "raw_llvm": "0f68e435d3da19d84c0bf12f390964f72b1cf5bffa5783a6e83c73d361631970",
+          "aot_executable": "2f16c4c83b52c3a618fa65b8cf4e670e5d18b7a109de4c929e4bd20f586638ea"
+        },
+        "prior": {
+          "raw_llvm": "f41cebba0c0045faab53ccb90283b83d5ff220312a51f1e65bcfdf81f06525a7",
+          "aot_executable": "ed6f2201452bea2cdd9c2fbefd05c4d5c3c47b37d7c61e0035c2791523aab2fb"
+        },
+        "candidate": {
+          "raw_llvm": "1459545cd0d030401acdf147790a53d5a3e3df85b721dc2fc796448f7a5d491e",
+          "aot_executable": "18209ea3c8ea8e61d398bb309ef8f8998325bea612a27a591d00272adf2eab54"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 300,
+          "aot_executable_bytes": 46528
+        },
+        "original": {
+          "raw_llvm_lines": 337,
+          "aot_executable_bytes": 46640
+        },
+        "prior": {
+          "raw_llvm_lines": 352,
+          "aot_executable_bytes": 46640
+        },
+        "candidate": {
+          "raw_llvm_lines": 519,
+          "aot_executable_bytes": 46640
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "json_calls": {
+      "probe_filename": "json_calls.py",
+      "probe_sha256": "04a3b45405ef1b96360dbe941e072e5922d8dcae39d8a5bd45745000ea47c9fc",
+      "elapsed_iterations": 2000,
+      "checksum": 64000,
+      "extra_untimed_kernel_calls": 0,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "43611463646a19f2c4b6e494c100092d15efc2fcb3c6443d2ecddba6707d140d",
+          "aot_executable": "c664ced5563784d946c279905687a9e8fd62a3214a8a76245a0b937461637cf9"
+        },
+        "original": {
+          "raw_llvm": "f9be9c984634a381cb95185e2fc1ae4f421ec2cf63d1d41c37e0018cbf6ac010",
+          "aot_executable": "2614d1507e649b8ec40923c16b772023967f82ed4d511b54afd6bc4078f8f6d5"
+        },
+        "prior": {
+          "raw_llvm": "ef8614b9d1c1675654092660da5d528fe18d93ac95b2fed2693d9d65fc74cdfb",
+          "aot_executable": "ce6e505221ecc4ac7748d9c7276f7c689b338aacb2eef6c94a48d557eb21bcb7"
+        },
+        "candidate": {
+          "raw_llvm": "ee3a8cb7503b99cf4ded164621cabb3f780b89dbb77f330ed11a08e5ab43a30c",
+          "aot_executable": "e06add414e83b073104d21efef00d3b56c1479635687f7d0eda6c4d4cbb1e4fc"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 4154,
+          "aot_executable_bytes": 153688
+        },
+        "original": {
+          "raw_llvm_lines": 4275,
+          "aot_executable_bytes": 153856
+        },
+        "prior": {
+          "raw_llvm_lines": 4289,
+          "aot_executable_bytes": 153808
+        },
+        "candidate": {
+          "raw_llvm_lines": 5651,
+          "aot_executable_bytes": 158048
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "json_warmed_short": {
+      "probe_filename": "json_warmed.py",
+      "probe_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "elapsed_iterations": 2000,
+      "checksum": 64000,
+      "extra_untimed_kernel_calls": 4,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9",
+          "aot_executable": "9ba5d1f92c3bdf44a69a52977ff082d2fe09592a68be66cdaf821862cf75ae3d"
+        },
+        "original": {
+          "raw_llvm": "cd6d54341aa2c6ea4e950ceb4a85fffc3e256940cfe5327d19fc3743ec671f0d",
+          "aot_executable": "ff5b6b553c844ff5542fd3be01428cb6fa2486de847a1052cb752f1d71a7469e"
+        },
+        "prior": {
+          "raw_llvm": "e1d09f5470e6f3fff1a50a51e163503b1ab3f0f30426a6d451fda9d0c1630980",
+          "aot_executable": "eb2d5d881204c506bc7715dcc0429c6369b5da6970a000d26172a228c184f285"
+        },
+        "candidate": {
+          "raw_llvm": "e41f8eb09e36a1bb3af4b0feedbd7f564fd3a083e4c80116d46a7e6a6c535f93",
+          "aot_executable": "22df6a07b6db61439079a1978cd8b3a380044211f6330b5c77a7a5697619ced2"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 4176,
+          "aot_executable_bytes": 153688
+        },
+        "original": {
+          "raw_llvm_lines": 4297,
+          "aot_executable_bytes": 153856
+        },
+        "prior": {
+          "raw_llvm_lines": 4311,
+          "aot_executable_bytes": 153808
+        },
+        "candidate": {
+          "raw_llvm_lines": 5673,
+          "aot_executable_bytes": 158048
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "json_warmed_long": {
+      "probe_filename": "json_warmed.py",
+      "probe_sha256": "7a8a94314179ba0797632f7241cb9c6541d891c79ded006b444c8bfd9dfea6cf",
+      "elapsed_iterations": 20000,
+      "checksum": 640000,
+      "extra_untimed_kernel_calls": 4,
+      "explicit_scratch_file_argument": false,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "74ba4b00ad774b0cddff162655588cbaeeba73342ddb0a5d3c28257da3bdb0a9",
+          "aot_executable": "9ba5d1f92c3bdf44a69a52977ff082d2fe09592a68be66cdaf821862cf75ae3d"
+        },
+        "original": {
+          "raw_llvm": "cd6d54341aa2c6ea4e950ceb4a85fffc3e256940cfe5327d19fc3743ec671f0d",
+          "aot_executable": "ff5b6b553c844ff5542fd3be01428cb6fa2486de847a1052cb752f1d71a7469e"
+        },
+        "prior": {
+          "raw_llvm": "e1d09f5470e6f3fff1a50a51e163503b1ab3f0f30426a6d451fda9d0c1630980",
+          "aot_executable": "eb2d5d881204c506bc7715dcc0429c6369b5da6970a000d26172a228c184f285"
+        },
+        "candidate": {
+          "raw_llvm": "e41f8eb09e36a1bb3af4b0feedbd7f564fd3a083e4c80116d46a7e6a6c535f93",
+          "aot_executable": "22df6a07b6db61439079a1978cd8b3a380044211f6330b5c77a7a5697619ced2"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 4176,
+          "aot_executable_bytes": 153688
+        },
+        "original": {
+          "raw_llvm_lines": 4297,
+          "aot_executable_bytes": 153856
+        },
+        "prior": {
+          "raw_llvm_lines": 4311,
+          "aot_executable_bytes": 153808
+        },
+        "candidate": {
+          "raw_llvm_lines": 5673,
+          "aot_executable_bytes": 158048
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    },
+    "json_file_calls": {
+      "probe_filename": "json_file_calls.py",
+      "probe_sha256": "390c2742d4258e1b13d5c7449fe93e1f460917f8ac8616a121da9b6642ec83f5",
+      "elapsed_iterations": 20000,
+      "checksum": 640000,
+      "extra_untimed_kernel_calls": 0,
+      "explicit_scratch_file_argument": true,
+      "artifact_sha256": {
+        "main": {
+          "raw_llvm": "035912ab451a0fc2ae37f61e751d681ba4ddceef5f60303f67297feae7d0c44c",
+          "aot_executable": "78afa9378307019d8eda6df51deb67b09b257f74ef51bdd1abc3b3c042b53d77"
+        },
+        "original": {
+          "raw_llvm": "8ad71aa3e77d74ac6385b6bd4d4adf8e92e450a896f760aa3709061c62c71567",
+          "aot_executable": "531ccd1a8914297d5b2af44233b9c86f9a2d7ffc689787cf1eb972670874bc1a"
+        },
+        "prior": {
+          "raw_llvm": "68f3ae1e9e3328a962cbd8bd0328d189fe7dfa0ca0fe353ab519eac56d0d46d8",
+          "aot_executable": "e3c4dad1ba9bc9d559f317cf1af4858322bd49ee73e3914b7cd4362e3e43e260"
+        },
+        "candidate": {
+          "raw_llvm": "78b0a6213fc80cc38e1a78826f07bc2fb3cef6a5ec95051060e80f693f9dbbd7",
+          "aot_executable": "2122b8aa01886b16eaefb20a35d1694c0dea45f9c252405ee9f18c8f663c4714"
+        }
+      },
+      "emitted_size": {
+        "main": {
+          "raw_llvm_lines": 4191,
+          "aot_executable_bytes": 167608
+        },
+        "original": {
+          "raw_llvm_lines": 4312,
+          "aot_executable_bytes": 171864
+        },
+        "prior": {
+          "raw_llvm_lines": 4317,
+          "aot_executable_bytes": 171864
+        },
+        "candidate": {
+          "raw_llvm_lines": 5688,
+          "aot_executable_bytes": 176056
+        }
+      },
+      "native_prepare_checksum_passes": {
+        "main": {
+          "jit": true,
+          "aot": true
+        },
+        "original": {
+          "jit": true,
+          "aot": true
+        },
+        "prior": {
+          "jit": true,
+          "aot": true
+        },
+        "candidate": {
+          "jit": true,
+          "aot": true
+        }
+      }
+    }
+  },
+  "instruction_counts": {
+    "ordinary_calls": {
+      "iterations_per_kernel_call": 100000,
+      "kernel_calls": 8,
+      "checksum": 11281,
+      "variants": {
+        "main": {
+          "jit": {
+            "instructions": 8000160,
+            "instructions_per_kernel_call": 1000020.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "acd46160c0828fe856f2713b8ad6aa8252df3e2800b8c81fed4768562f77a59d",
+            "part_sha256": {
+              "main-ordinary_calls-jit.callgrind": "acd46160c0828fe856f2713b8ad6aa8252df3e2800b8c81fed4768562f77a59d"
+            }
+          },
+          "aot": {
+            "instructions": 5000217,
+            "instructions_per_kernel_call": 625027.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": true,
+            "profile_sha256": "3019909e5986387f7c33d980531985bda7d53670168611af6f92aec12a855c0e",
+            "part_sha256": {
+              "main-ordinary_calls-aot.callgrind": "3019909e5986387f7c33d980531985bda7d53670168611af6f92aec12a855c0e"
+            }
+          }
+        },
+        "original": {
+          "jit": {
+            "instructions": 10400217,
+            "instructions_per_kernel_call": 1300027.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "2e8cd22860d89d74ccce9975e71c882e4e8e6ec1435827730e0fecb9d3b6d7f6",
+            "part_sha256": {
+              "original-ordinary_calls-jit.callgrind": "2e8cd22860d89d74ccce9975e71c882e4e8e6ec1435827730e0fecb9d3b6d7f6"
+            }
+          },
+          "aot": {
+            "instructions": 5000289,
+            "instructions_per_kernel_call": 625036.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": true,
+            "profile_sha256": "764dfeaed81fb14cb1dd39ab4fa15461bba6d37e723201a15ed15f804e8df0bd",
+            "part_sha256": {
+              "original-ordinary_calls-aot.callgrind": "764dfeaed81fb14cb1dd39ab4fa15461bba6d37e723201a15ed15f804e8df0bd"
+            }
+          }
+        },
+        "prior": {
+          "jit": {
+            "instructions": 10400217,
+            "instructions_per_kernel_call": 1300027.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "a79c86128c7b754f2bffa5bc4e6d0597f10624b837bae161aa0d8bc18464cbff",
+            "part_sha256": {
+              "prior-ordinary_calls-jit.callgrind": "a79c86128c7b754f2bffa5bc4e6d0597f10624b837bae161aa0d8bc18464cbff"
+            }
+          },
+          "aot": {
+            "instructions": 5000289,
+            "instructions_per_kernel_call": 625036.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": true,
+            "profile_sha256": "dc379fde0e4469dbcf9b1ab42e10ce37e5bd419dea9cc4d2cb78b1da169e62e9",
+            "part_sha256": {
+              "prior-ordinary_calls-aot.callgrind": "dc379fde0e4469dbcf9b1ab42e10ce37e5bd419dea9cc4d2cb78b1da169e62e9"
+            }
+          }
+        },
+        "candidate": {
+          "jit": {
+            "instructions": 8000217,
+            "instructions_per_kernel_call": 1000027.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "700b6c79fb522b295664a22dab0a3947447a6ef776989b67044090ea855962fa",
+            "part_sha256": {
+              "candidate-ordinary_calls-jit.callgrind": "700b6c79fb522b295664a22dab0a3947447a6ef776989b67044090ea855962fa"
+            }
+          },
+          "aot": {
+            "instructions": 5000265,
+            "instructions_per_kernel_call": 625033.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": true,
+            "profile_sha256": "c3e57619bb739f5662700c6062863adb2e6e5c712f4f80ea05eee0f12237245c",
+            "part_sha256": {
+              "candidate-ordinary_calls-aot.callgrind": "c3e57619bb739f5662700c6062863adb2e6e5c712f4f80ea05eee0f12237245c"
+            }
+          }
+        }
+      }
+    },
+    "object_calls": {
+      "iterations_per_kernel_call": 5000,
+      "kernel_calls": 8,
+      "checksum": 162225943,
+      "variants": {
+        "main": {
+          "jit": {
+            "instructions": 90036184,
+            "instructions_per_kernel_call": 11254523.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "a94b6c61e820f92a0d0971d4baa655c81d40e71a00eeb2fd2051ad87309f14f1",
+            "part_sha256": {
+              "main-object_calls-jit.callgrind": "a94b6c61e820f92a0d0971d4baa655c81d40e71a00eeb2fd2051ad87309f14f1"
+            }
+          },
+          "aot": {
+            "instructions": 67032624,
+            "instructions_per_kernel_call": 8379078.0,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "f30a1538e48f3112c78c5f1c6f008fefee0a6862031e121bef61d7d6b300df5f",
+            "part_sha256": {
+              "main-object_calls-aot.callgrind": "f30a1538e48f3112c78c5f1c6f008fefee0a6862031e121bef61d7d6b300df5f",
+              "main-object_calls-aot.callgrind.1": "325817187fabd0b54615fe0515f539f4436d82c3dac20e9b0e6ce2dd4b41f120",
+              "main-object_calls-aot.callgrind.2": "e7fbda64282ff911fd6c965e3d7d82179ad9a47b4953232c4fb2d0b72a4ddf94",
+              "main-object_calls-aot.callgrind.3": "fdc26740c45f36172467ad69de5d3b156b7165c139a73f866145f5e52580730a",
+              "main-object_calls-aot.callgrind.4": "dbd9461028971af5381bb4785b67cbfeac66e418ccc6c1b113cce9417848f486",
+              "main-object_calls-aot.callgrind.5": "152daf158ae660ee46c68eb689dd391e408ff1bf059d30cf856959da8dc0a373",
+              "main-object_calls-aot.callgrind.6": "459e5b8be854185011bae5d758cdcbdadadd2c0a9c17c60fb861fe103888285f",
+              "main-object_calls-aot.callgrind.7": "84cb531d8bf4a75191a058f6b3f93bd192f971479f9bb2983f52eb68ce3c8c95",
+              "main-object_calls-aot.callgrind.8": "6a97a132bdf2051222663155b445eb3879b21dd5ba94d6bb7eb6d9e370668ffe"
+            },
+            "verified_kernel_returns": 8
+          }
+        },
+        "original": {
+          "jit": {
+            "instructions": 115639360,
+            "instructions_per_kernel_call": 14454920.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "912d236900a4bae520cb08291d87f20d0fa2a4645bfed63cb8e252d268835217",
+            "part_sha256": {
+              "original-object_calls-jit.callgrind": "912d236900a4bae520cb08291d87f20d0fa2a4645bfed63cb8e252d268835217"
+            }
+          },
+          "aot": {
+            "instructions": 82394752,
+            "instructions_per_kernel_call": 10299344.0,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "e3e7bbe2b796b5e6f6b250912b78937aefe18a620bf56b7dff9f602caae3d68c",
+            "part_sha256": {
+              "original-object_calls-aot.callgrind": "e3e7bbe2b796b5e6f6b250912b78937aefe18a620bf56b7dff9f602caae3d68c",
+              "original-object_calls-aot.callgrind.1": "4e2321b6b55d439d2333a8a0cd6d2e5b45e6f0a2a5d8c1f50bf7e645ba5e656d",
+              "original-object_calls-aot.callgrind.2": "d438fed5c9681f4dc068ceb7992222c8f894070bca60cc529df1df5f063f3944",
+              "original-object_calls-aot.callgrind.3": "d435055ad81905f887b6fbccc08901c210306f6da2cb2b369859a27c8a24686b",
+              "original-object_calls-aot.callgrind.4": "80e261f19614da10feca37c8a4231891fec561b8dd84d3ff33fd1a800dc0ef56",
+              "original-object_calls-aot.callgrind.5": "72b825cb4a19dd77712d1bd74ef34861045ea6c46daf01cd68064ac8e3e81a40",
+              "original-object_calls-aot.callgrind.6": "1e7dc98e0ea19281a8e3b9b76fdbdd6981d86b8bad85dc5a59876e77c4ba921d",
+              "original-object_calls-aot.callgrind.7": "4b93e092f709183fec4a3e65cdbfb429a3c41f29ab1aec638d3ff2f3d0a1c986",
+              "original-object_calls-aot.callgrind.8": "55f071ae98ae14c1fd36110e25558ee8750532b6589f0a1105d31819b43d9222"
+            },
+            "verified_kernel_returns": 8
+          }
+        },
+        "prior": {
+          "jit": {
+            "instructions": 97717792,
+            "instructions_per_kernel_call": 12214724.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "78c9c657d72b94c7ed95b15b16e97a9e5ee2bddb459d8ce4b8cafde95eaf120d",
+            "part_sha256": {
+              "prior-object_calls-jit.callgrind": "78c9c657d72b94c7ed95b15b16e97a9e5ee2bddb459d8ce4b8cafde95eaf120d"
+            }
+          },
+          "aot": {
+            "instructions": 72194240,
+            "instructions_per_kernel_call": 9024280.0,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "942bc7dfece90909010c333ff8df5b67ef361834be54933527b674a272735a43",
+            "part_sha256": {
+              "prior-object_calls-aot.callgrind": "942bc7dfece90909010c333ff8df5b67ef361834be54933527b674a272735a43",
+              "prior-object_calls-aot.callgrind.1": "4add649809104a8cbbe8f6cc4eb254b82b6b58f41862d8b0a507fd7af4096653",
+              "prior-object_calls-aot.callgrind.2": "47e6596e4809667517e715476436361a6ca91213d646dac99aab09c0b28d1be4",
+              "prior-object_calls-aot.callgrind.3": "1190a1e0dda59765db3d4667acd4fec3011b920e3b5961f73f24be573b44278f",
+              "prior-object_calls-aot.callgrind.4": "e5717f58ddd173d9c5ff4d1e74713e865fee86267a4b424033dc6ad695707068",
+              "prior-object_calls-aot.callgrind.5": "2faf52073efad6b9fe99c97744949fcf42d4d5470ab299d9a6f3a06d9ef23127",
+              "prior-object_calls-aot.callgrind.6": "cc0e25e8c09c73ec105ad7de69c1437f142570e5b06d3fe8a1750eb4c766b8f1",
+              "prior-object_calls-aot.callgrind.7": "8f42308983cd5535a85ae5fcca31866571cb005f774630e3de578db24b740577",
+              "prior-object_calls-aot.callgrind.8": "60d3ddeeb74301b519e58d43a0a778616f97c303d261db290e44498d58a1687c"
+            },
+            "verified_kernel_returns": 8
+          }
+        },
+        "candidate": {
+          "jit": {
+            "instructions": 89996240,
+            "instructions_per_kernel_call": 11249530.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "fc086a22acf3064c46a90ef5c3d18f443801ebe79e2dbb0630b74bbc82031cc9",
+            "part_sha256": {
+              "candidate-object_calls-jit.callgrind": "fc086a22acf3064c46a90ef5c3d18f443801ebe79e2dbb0630b74bbc82031cc9"
+            }
+          },
+          "aot": {
+            "instructions": 67032704,
+            "instructions_per_kernel_call": 8379088.0,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "b41d931db377e9369dc78dd6c606b8d125a67b1845cb7f8ede6f14d76e9784d6",
+            "part_sha256": {
+              "candidate-object_calls-aot.callgrind": "b41d931db377e9369dc78dd6c606b8d125a67b1845cb7f8ede6f14d76e9784d6",
+              "candidate-object_calls-aot.callgrind.1": "d0a8c0da01dc2cd1ea9bc4642e9f49e291b503d3fc656c7163bcb130c7939d91",
+              "candidate-object_calls-aot.callgrind.2": "877a31126c57c313ec1b2ae9c06b8277ad084b6b87ec81daed209d76b13c8512",
+              "candidate-object_calls-aot.callgrind.3": "614ba508fdea72862705101e15e929f25a88d2da0e12d99fe648c1cddb8281ca",
+              "candidate-object_calls-aot.callgrind.4": "2e594283c63a1457580fe5d64fd05422470cd1509bdc47e2c5bd028a9bea18fc",
+              "candidate-object_calls-aot.callgrind.5": "3eb7e80108f04eeba27b19053d4a7f84c2647ea4bc7b7dbbb5211e316f211c87",
+              "candidate-object_calls-aot.callgrind.6": "937e66214d5881f362731cf1a4946483a19560ff33470f546fd8165f35a259d5",
+              "candidate-object_calls-aot.callgrind.7": "d2fc20bace8607f34bdd9751db36fcc3f5155b5c7b24b70e367572d2a52d388b",
+              "candidate-object_calls-aot.callgrind.8": "df266391fe14f718de811392abb7821a85ee58412ff52a1f79e8d2eb4aa8a68e"
+            },
+            "verified_kernel_returns": 8
+          }
+        }
+      }
+    },
+    "json_calls": {
+      "iterations_per_kernel_call": 2000,
+      "kernel_calls": 8,
+      "checksum": 64000,
+      "variants": {
+        "main": {
+          "jit": {
+            "instructions": 572271057,
+            "instructions_per_kernel_call": 71533882.125,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "8ed7babef03d956f68cd1bb17b1572e021b9ab7b2277283dfc689494f7ec461c",
+            "part_sha256": {
+              "main-json_calls-jit.callgrind": "8ed7babef03d956f68cd1bb17b1572e021b9ab7b2277283dfc689494f7ec461c"
+            }
+          },
+          "aot": {
+            "instructions": 526327790,
+            "instructions_per_kernel_call": 65790973.75,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "e0008a8e5268b9772156c2bc70dfd8e01c2da31b62c4b7ad9adfa98f3e050714",
+            "part_sha256": {
+              "main-json_calls-aot.callgrind": "e0008a8e5268b9772156c2bc70dfd8e01c2da31b62c4b7ad9adfa98f3e050714",
+              "main-json_calls-aot.callgrind.1": "c6e660cea3bf308f8327283d75c11998bd10cefcff4469e707d9553ec24b78a8",
+              "main-json_calls-aot.callgrind.2": "d5a5abf66527726e3996dd6844cf1ea26292a7abcfa55563e0df9f162d93ef77",
+              "main-json_calls-aot.callgrind.3": "dc65d4d9e2b5184af6e25522c72f1b04ab8a9c677d1388c84711fba65bc358a9",
+              "main-json_calls-aot.callgrind.4": "65151249759b801238bca85680cfe22be20177fa729e50b7dea6c6cbd047f836",
+              "main-json_calls-aot.callgrind.5": "98e85696594541af2e613eea7baef484a473bbc22041bfb5ef9b472580d796ee",
+              "main-json_calls-aot.callgrind.6": "e1b6894d4ee928ef0e14b13eb4591a3468249cdb860ab8fb21a5e2280de02273",
+              "main-json_calls-aot.callgrind.7": "d66703bd26cd97766b1a22f5301e5cee89fe23739b9762b3dd94e15bc7a0faf9",
+              "main-json_calls-aot.callgrind.8": "0dfdee7d838fff4899b209d7690d6f93db0a4cb83c1a0124aff2036f172ca2b2"
+            },
+            "verified_kernel_returns": 8
+          }
+        },
+        "original": {
+          "jit": {
+            "instructions": 622599568,
+            "instructions_per_kernel_call": 77824946.0,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "02b53374d6c75024a259b2052f0b5f791dda9665bfdde478fff63aa0089c6d73",
+            "part_sha256": {
+              "original-json_calls-jit.callgrind": "02b53374d6c75024a259b2052f0b5f791dda9665bfdde478fff63aa0089c6d73"
+            }
+          },
+          "aot": {
+            "instructions": 568691726,
+            "instructions_per_kernel_call": 71086465.75,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "509902480262236b43bffbce5cb91a12ea7e04d1a31e5d3c4f499396b7ab7408",
+            "part_sha256": {
+              "original-json_calls-aot.callgrind": "509902480262236b43bffbce5cb91a12ea7e04d1a31e5d3c4f499396b7ab7408",
+              "original-json_calls-aot.callgrind.1": "3b0a82de303584d23a8de746b59300a1c6aabe90d1eb3a87f9a96eb80f6aee3d",
+              "original-json_calls-aot.callgrind.2": "03023f3b8f61f1fd7c3b0377b0191d30e54d3560bb7d75b09eea6979a67401ff",
+              "original-json_calls-aot.callgrind.3": "0e43978b307f4d572dae18ff118d580eeb94fddd7e36c7f98529e68cace38e38",
+              "original-json_calls-aot.callgrind.4": "982edcb52beecc537f2418771f1e0e93a52a06d699e645897bfe28c8c5330c32",
+              "original-json_calls-aot.callgrind.5": "ee1547928357e946bf30fb7dd4164e924caab7a03f5b7e5b331edeb91879bf6a",
+              "original-json_calls-aot.callgrind.6": "99b9b2a95049c94561662e859da1a8d880e629bb4884c03960ecad8cfaa1b0ad",
+              "original-json_calls-aot.callgrind.7": "0ef91b79b0f336dca28a1120b787497c267da1f07158744efc942b0ae04ee814",
+              "original-json_calls-aot.callgrind.8": "5b36d4fedee76dc407ca31655ddbbfc73a8289b6d63966c103d158ae82c6a043"
+            },
+            "verified_kernel_returns": 8
+          }
+        },
+        "prior": {
+          "jit": {
+            "instructions": 608558798,
+            "instructions_per_kernel_call": 76069849.75,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "de3a952eebe57d1fbce40bbd024d30ec686e106d185485e623b8fd5709639516",
+            "part_sha256": {
+              "prior-json_calls-jit.callgrind": "de3a952eebe57d1fbce40bbd024d30ec686e106d185485e623b8fd5709639516"
+            }
+          },
+          "aot": {
+            "instructions": 545551029,
+            "instructions_per_kernel_call": 68193878.625,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "d06942979ea73e6781b016007834e638da4d2a98b6260f820fdf8094477d3e06",
+            "part_sha256": {
+              "prior-json_calls-aot.callgrind": "d06942979ea73e6781b016007834e638da4d2a98b6260f820fdf8094477d3e06",
+              "prior-json_calls-aot.callgrind.1": "65eadd97f72ec2c4375e2ebb01ad39cf84a0264fb4e34267de565f2e914e9b10",
+              "prior-json_calls-aot.callgrind.2": "6258a4c703e46a038e6d80d03375b1292280d4a0dd9be475ac845e7252e4e2c0",
+              "prior-json_calls-aot.callgrind.3": "e7a972db86a84f050ae27af0dca463ee85736a25d8077d24d2413d6bb99f7909",
+              "prior-json_calls-aot.callgrind.4": "afdb6b4c2272957f15db182af13311018142c9fbe1f17a34201f57ccccb264ff",
+              "prior-json_calls-aot.callgrind.5": "0836e7d24e643bc115790ea057e8493b5dfbd7bca77ade778b0f7d19f1c795d9",
+              "prior-json_calls-aot.callgrind.6": "012971de6b757d81bdf55173ae7f57f98e217059392da08de0f839ff0f84a44a",
+              "prior-json_calls-aot.callgrind.7": "8c96290bdc7fe46c42837b7a8e42adc505ea48a75cb9efab48914c5f36d5fe73",
+              "prior-json_calls-aot.callgrind.8": "c156599ebef75672ddd2aa3993530c146d7596f688c894decb76e37fc1640e28"
+            },
+            "verified_kernel_returns": 8
+          }
+        },
+        "candidate": {
+          "jit": {
+            "instructions": 599323430,
+            "instructions_per_kernel_call": 74915428.75,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "76d091e55c428f9c97c4718e6875c04c3ba58dedacc717d08e918b9ae73ac93c",
+            "part_sha256": {
+              "candidate-json_calls-jit.callgrind": "76d091e55c428f9c97c4718e6875c04c3ba58dedacc717d08e918b9ae73ac93c"
+            }
+          },
+          "aot": {
+            "instructions": 536695570,
+            "instructions_per_kernel_call": 67086946.25,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "4f07b07aa8582d03c5a9bf1c9a4beb7e9e02c9663c9b5d922886a0910a317040",
+            "part_sha256": {
+              "candidate-json_calls-aot.callgrind": "4f07b07aa8582d03c5a9bf1c9a4beb7e9e02c9663c9b5d922886a0910a317040",
+              "candidate-json_calls-aot.callgrind.1": "5fddd2ddd87bb6beb71f63b13c352c21fa9cb68f135c8faf0d74acb4c0679ddb",
+              "candidate-json_calls-aot.callgrind.2": "fd99a89941d517734700717de41086793503e0794957221e34cf9ab331fa9717",
+              "candidate-json_calls-aot.callgrind.3": "0efa7986efb31659625d2672b8a43ba14f10a41f865dc4178995b5b9a3a8d61f",
+              "candidate-json_calls-aot.callgrind.4": "7865647eee0c2eb8b7cb356151289f18a50a7aea0eb74893c40c6fff8078228e",
+              "candidate-json_calls-aot.callgrind.5": "b4d80967fc35f5489b085328af26caeadbcb370e6c3db80b71f3d2f068035041",
+              "candidate-json_calls-aot.callgrind.6": "9a97b3a8e0e942e821075c932e360b1682b5da720bea2f02e0e6489b6e0655f3",
+              "candidate-json_calls-aot.callgrind.7": "4aa9a02bdd6b94e86d7586ba57877653d1d134ac49d8d90a3d5d54367beedeb6",
+              "candidate-json_calls-aot.callgrind.8": "4e973eff59cfb1d2d59a182d326902398ec23ac1c41126a1e4ae7671a556bb21"
+            },
+            "verified_kernel_returns": 8
+          }
+        }
+      }
+    },
+    "json_file_calls": {
+      "iterations_per_kernel_call": 2000,
+      "kernel_calls": 8,
+      "checksum": 64000,
+      "variants": {
+        "main": {
+          "jit": {
+            "instructions": 571040317,
+            "instructions_per_kernel_call": 71380039.625,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "f2f4ac93f7a70dd3a3c683860ffcac2c7ded1a2c0f7ad15cd8e5968d51368a84",
+            "part_sha256": {
+              "main-json_file_calls-jit.callgrind": "f2f4ac93f7a70dd3a3c683860ffcac2c7ded1a2c0f7ad15cd8e5968d51368a84"
+            }
+          },
+          "aot": {
+            "instructions": 526452858,
+            "instructions_per_kernel_call": 65806607.25,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "0c71fa5044186f034b56d636e070cf0d87ce6da7a52151aa95d2638435c693ba",
+            "part_sha256": {
+              "main-json_file_calls-aot.callgrind": "0c71fa5044186f034b56d636e070cf0d87ce6da7a52151aa95d2638435c693ba",
+              "main-json_file_calls-aot.callgrind.1": "5392b3ce276552dccfe18996b02a0287fb04d9c4865f0d11f7b9a9b3c05911af",
+              "main-json_file_calls-aot.callgrind.2": "ce098dc08f63ba0379fa1fc456d95a750cf1983a5e2cfda61c1e8629b8904d61",
+              "main-json_file_calls-aot.callgrind.3": "c9e63f0e76836264de3656a3b3458a53500d7d85485d7a6b5e0a3f625ce22c5f",
+              "main-json_file_calls-aot.callgrind.4": "58e18b5b4af5bf09a403da13239bb009bc433abd62c62501723afdb2ff665e41",
+              "main-json_file_calls-aot.callgrind.5": "a279e11f5a4609c26eb6dd53289a2f96b836b5e41a36847a183d7a20da8b5bb5",
+              "main-json_file_calls-aot.callgrind.6": "0c8b874ebdc7b0119dd17a51332d5bd28784f82b147371fbef9cdcd7ba11a070",
+              "main-json_file_calls-aot.callgrind.7": "d1b4e84323e5b7d7766870d4c4200c664477bf64e88c444286480d26dae5ae46",
+              "main-json_file_calls-aot.callgrind.8": "7b0dcc9887a1d790b9af960e5b2c7c9d96f2ac05d08457cd87e6afa96aff3ccc"
+            },
+            "verified_kernel_returns": 8
+          }
+        },
+        "original": {
+          "jit": {
+            "instructions": 621571947,
+            "instructions_per_kernel_call": 77696493.375,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "4f0218f3d2fa18528d550aac77c7eb60f3cba8760a292120a16832ddeff54332",
+            "part_sha256": {
+              "original-json_file_calls-jit.callgrind": "4f0218f3d2fa18528d550aac77c7eb60f3cba8760a292120a16832ddeff54332"
+            }
+          },
+          "aot": {
+            "instructions": 567696774,
+            "instructions_per_kernel_call": 70962096.75,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "92fc65624c1c34b414c6d14a1b1b25023188f002cb9d6c89dcbb8ee47871ca08",
+            "part_sha256": {
+              "original-json_file_calls-aot.callgrind": "92fc65624c1c34b414c6d14a1b1b25023188f002cb9d6c89dcbb8ee47871ca08",
+              "original-json_file_calls-aot.callgrind.1": "3e41bef4169b2009c4aa98eabd7cafe20a9f97d20c2857139c3d69d795d3b964",
+              "original-json_file_calls-aot.callgrind.2": "3c13ee7bca5fbacdc573db3eb6edb4997515b3f7a1909a45c8a3707b30cdb59e",
+              "original-json_file_calls-aot.callgrind.3": "b12f901cffff4c753e52d089e0aa3c8206cd7dd7ec3bdf44f831f938d6ac42fe",
+              "original-json_file_calls-aot.callgrind.4": "2e610669615d83cb25032635441440da65e2b68146bf0ad75bcfeeea0cc29aaf",
+              "original-json_file_calls-aot.callgrind.5": "7f516fa0ddab61b115a46c23182c031ac094923973c38f630590a14aea77fa59",
+              "original-json_file_calls-aot.callgrind.6": "82ccc238558bada53d03579c0a194ca8fc7703768ed3d5d82ae1a353e1918527",
+              "original-json_file_calls-aot.callgrind.7": "25b841bd5982a4852e303ae1e7233775ba8c5e64e62af4234c8c9887c52191e0",
+              "original-json_file_calls-aot.callgrind.8": "c0a69ee1eeea2936879e854b54aced254fad530bddf223f842695d73ee04da90"
+            },
+            "verified_kernel_returns": 8
+          }
+        },
+        "prior": {
+          "jit": {
+            "instructions": 620574627,
+            "instructions_per_kernel_call": 77571828.375,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "e335fc33c5ddad874025ab9c40fa59313b4d067c4dc264ba57274013dd447e0b",
+            "part_sha256": {
+              "prior-json_file_calls-jit.callgrind": "e335fc33c5ddad874025ab9c40fa59313b4d067c4dc264ba57274013dd447e0b"
+            }
+          },
+          "aot": {
+            "instructions": 558045733,
+            "instructions_per_kernel_call": 69755716.625,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "2607728a8ed193758384a6a82fe946e6a710efe49cfef475cdbd47cbd1c250f6",
+            "part_sha256": {
+              "prior-json_file_calls-aot.callgrind": "2607728a8ed193758384a6a82fe946e6a710efe49cfef475cdbd47cbd1c250f6",
+              "prior-json_file_calls-aot.callgrind.1": "2b854487f90dcc290ca91009d26a674ba8a5ce3ad12b15d2ff19b776c8ea808b",
+              "prior-json_file_calls-aot.callgrind.2": "1cb511c8178df1afaf21bba00a854be93bf69b52375b1d0b0b5fc9ba84a3a9bb",
+              "prior-json_file_calls-aot.callgrind.3": "1e8a81eca6cefcd1f50f16b220989241839bb56c35e102900ca2e74db5e39d20",
+              "prior-json_file_calls-aot.callgrind.4": "8b6e5b42ce2646802c2a31deaeb9d08daaa71a4b7bca2252667cf0714244fa89",
+              "prior-json_file_calls-aot.callgrind.5": "da93cbb84daae43c646badb4b1bf906b248d3358b62c055876e26995d79919bb",
+              "prior-json_file_calls-aot.callgrind.6": "0166ab2a63a51ac7633e54c6256ead70af6daccbf8b0438df7c2ab79e1c2e32a",
+              "prior-json_file_calls-aot.callgrind.7": "2d569cd751799f549d28c66ca1d749f74c6fb4168caa5527dc13effcb1d9604f",
+              "prior-json_file_calls-aot.callgrind.8": "ad9fe9cb000a02dfd299b5c11d17862c3c57dcc015d01ae190e3b6dc6dd71419"
+            },
+            "verified_kernel_returns": 8
+          }
+        },
+        "candidate": {
+          "jit": {
+            "instructions": 598444510,
+            "instructions_per_kernel_call": 74805563.75,
+            "counting_scope": "client-request markers around kernel",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "98d887acb4cb751165573f96294d631949c4d40fb1fb9e05c2c871c7f92043b9",
+            "part_sha256": {
+              "candidate-json_file_calls-jit.callgrind": "98d887acb4cb751165573f96294d631949c4d40fb1fb9e05c2c871c7f92043b9"
+            }
+          },
+          "aot": {
+            "instructions": 535776535,
+            "instructions_per_kernel_call": 66972066.875,
+            "counting_scope": "unmodified executable, f.kernel entry/return",
+            "kernel_ir_identical": true,
+            "all_non_entry_function_bodies_identical": true,
+            "aot_kernel_fully_inlined": false,
+            "profile_sha256": "98e861f7e309e27d0adebfa31f8ab12b2ea4d5ba7c09251842afb83b13c45123",
+            "part_sha256": {
+              "candidate-json_file_calls-aot.callgrind": "98e861f7e309e27d0adebfa31f8ab12b2ea4d5ba7c09251842afb83b13c45123",
+              "candidate-json_file_calls-aot.callgrind.1": "b542767f227ba77609fc510a0d4f573f550031f577f533aec167d36279bb0eeb",
+              "candidate-json_file_calls-aot.callgrind.2": "399a93ef373d2b25c9fdaaa2f25f1a63ba251bf00d55d581cb999da04959ea3e",
+              "candidate-json_file_calls-aot.callgrind.3": "a8e4999bc122e7ff3adab6be47f1a646dc7e7c3b7845c1bb253b825796ae9078",
+              "candidate-json_file_calls-aot.callgrind.4": "56dbb432f9ffff1672e70d65644c5ab91ad2ac8a0519aea34c6f7f7b3ac8edbd",
+              "candidate-json_file_calls-aot.callgrind.5": "0f11c61576273e85ede85c932b498aa9123d2f5050132d1d6039feed0b67e00f",
+              "candidate-json_file_calls-aot.callgrind.6": "669180c155470bca5bf4b9edb20b2d2bc746121eb61b0f4942b165d2b38330f2",
+              "candidate-json_file_calls-aot.callgrind.7": "1f13a8e9c680c3a5122787ec772f4008b4ec9c20156a74545d567b0a7c911e7f",
+              "candidate-json_file_calls-aot.callgrind.8": "1ac9f4f2a376af61dc0b3851877c3c4e3e3c0e82add67a6ce6e5452be317dbf4"
+            },
+            "verified_kernel_returns": 8
+          }
+        }
+      }
+    }
+  },
+  "elapsed_kernel_samples": {
+    "ordinary_calls": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            12841408,
+            12128035,
+            11887304,
+            11193031,
+            12437501,
+            11957690,
+            11783248
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11302025,
+            11259731,
+            11171358,
+            11252821,
+            11815246,
+            11768386,
+            11362095
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11324899,
+            11124107,
+            11411219,
+            11536487,
+            11579942,
+            11343297,
+            11548655
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11695826,
+            11342025,
+            11264578,
+            11571670,
+            11219120,
+            11139810,
+            11391320
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            11650027,
+            11850209,
+            16935340,
+            12676731,
+            11483026,
+            11417788,
+            11290387
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            11123417,
+            11895657,
+            11715605,
+            11500002,
+            11231338,
+            11401975,
+            11173682
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11024147,
+            10993891,
+            11313932,
+            11078459,
+            11067261,
+            11021103,
+            11195855
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11463277,
+            14135402,
+            18376316,
+            12142998,
+            11874766,
+            12525173,
+            11618590
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            11299150,
+            11866452,
+            11794926,
+            11691200,
+            12427486,
+            11587264,
+            11890889
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11556236,
+            11105119,
+            11184828,
+            11525030,
+            11740895,
+            11975707,
+            12001296
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11202775,
+            11917079,
+            11196195,
+            11366702,
+            11369576,
+            11271760,
+            11142224
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11178970,
+            11160943,
+            11037697,
+            11380132,
+            11010666,
+            11479721,
+            11184859
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            11145750,
+            11279180,
+            11555166,
+            11451860,
+            11252510,
+            11155504,
+            12340004
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            14863316,
+            11139741,
+            11087472,
+            11081583,
+            11013361,
+            10999600,
+            11102335
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11198229,
+            11320191,
+            11034112,
+            11231188,
+            11248244,
+            11474915,
+            11051738
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11435325,
+            11076456,
+            11467233,
+            11621355,
+            11416086,
+            11041774,
+            11009325
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            12234245,
+            13290554,
+            12347095,
+            12285243,
+            11837939,
+            11682907,
+            11652943
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11465971,
+            11386351,
+            11903959,
+            11280803,
+            11409425,
+            11234814,
+            11334192
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11572691,
+            12373314,
+            11704490,
+            11150827,
+            11815367,
+            11695325,
+            11490357
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11362686,
+            11041363,
+            10995564,
+            11084317,
+            13552757,
+            12501267,
+            11701204
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            11770008,
+            11660363,
+            11142926,
+            11266040,
+            11347342,
+            11844641,
+            11788476
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            11736437,
+            11891220,
+            11906713,
+            11234303,
+            11249145,
+            11046101,
+            11327552
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11445070,
+            11026801,
+            11100452,
+            11421945,
+            11477729,
+            11106480,
+            11139430
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11141013,
+            11125008,
+            11202074,
+            11072540,
+            11340973,
+            11259782,
+            11291939
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            11154864,
+            11310376,
+            11862066,
+            11334493,
+            11134192,
+            11247263,
+            11438280
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            12184150,
+            11743008,
+            12516810,
+            11845892,
+            11585080,
+            13340558,
+            15129958
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11071037,
+            11869558,
+            11464739,
+            11300051,
+            11131439,
+            11571780,
+            11628656
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11300533,
+            11312309,
+            11274804,
+            11266390,
+            11260612,
+            11259381,
+            11293902
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            11624228,
+            11615376,
+            11500943,
+            11678830,
+            12583350,
+            11870639,
+            11201233
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            11276516,
+            11206822,
+            11385680,
+            11106801,
+            11426191,
+            11363448,
+            11025048
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11059401,
+            11003395,
+            11135725,
+            11651900,
+            11252300,
+            12573926,
+            11810278
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            12064080,
+            13042029,
+            11578670,
+            12394666,
+            12743380,
+            11355786,
+            11205950
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            9347547,
+            9002699,
+            9120717,
+            9343040,
+            9167917,
+            9315049,
+            9224212
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            9167827,
+            9262790,
+            9263070,
+            10060128,
+            9291493,
+            9103851,
+            9243871
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            8937571,
+            9219936,
+            9913168,
+            9611924,
+            10867011,
+            11438874,
+            9349220
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            9890343,
+            9738274,
+            9822662,
+            9149049,
+            9708149,
+            9226545,
+            9169621
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            9483492,
+            9073115,
+            9101599,
+            9079585,
+            9286456,
+            9101118,
+            9447338
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            8981959,
+            8966985,
+            9164692,
+            8987546,
+            9069209,
+            8965223,
+            8940155
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            9874299,
+            9212554,
+            8941658,
+            9175138,
+            9352354,
+            8953065,
+            9003250
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            9173587,
+            9106815,
+            9055678,
+            9258924,
+            9087536,
+            10063754,
+            9450933
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            9021998,
+            9771284,
+            9187477,
+            9047657,
+            9088128,
+            9953969,
+            10337475
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11336090,
+            9610542,
+            9003091,
+            9029208,
+            9145423,
+            9137852,
+            9013976
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            9102549,
+            9041227,
+            9307096,
+            9096880,
+            9151253,
+            9015207,
+            9029319
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            9602771,
+            9639456,
+            9564934,
+            9504203,
+            9272595,
+            10664446,
+            9033826
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            9977083,
+            9594309,
+            9519005,
+            9061908,
+            9610774,
+            9279074,
+            9033435
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            8981737,
+            8935198,
+            13547148,
+            9193927,
+            8961427,
+            9007887,
+            8973796
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            9429019,
+            9135309,
+            9352345,
+            9076991,
+            9068008,
+            9025594,
+            9075858
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            9039585,
+            9464132,
+            9115339,
+            12538793,
+            9275349,
+            9591124,
+            9454688
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            9496731,
+            8981487,
+            8943851,
+            9345534,
+            9856402,
+            9207998,
+            8941748
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            9308639,
+            9477012,
+            9333617,
+            9049550,
+            9239945,
+            9005454,
+            9274678
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            9060355,
+            9428068,
+            9041998,
+            9036550,
+            9070431,
+            9842832,
+            9401898
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            9219595,
+            9612816,
+            10038656,
+            9757374,
+            9725155,
+            9144733,
+            9325083
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            9514840,
+            9588669,
+            9189710,
+            9165614,
+            8958573,
+            9294627,
+            9634178
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            9057932,
+            9217912,
+            8963400,
+            9110341,
+            8989369,
+            9212424,
+            8988087
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            9044662,
+            8970621,
+            9601469,
+            9611875,
+            9401599,
+            8943910,
+            8962428
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            10169843,
+            9551053,
+            9744355,
+            9217712,
+            9161688,
+            9171974,
+            10224195
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            9166266,
+            9140726,
+            8947957,
+            8955078,
+            9074246,
+            8964672,
+            9062489
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            9199525,
+            9329680,
+            9065133,
+            9299525,
+            9190651,
+            8967807,
+            9352525
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            9463732,
+            9722881,
+            9423591,
+            9092494,
+            9233155,
+            10097986,
+            9147317
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            9502320,
+            9074236,
+            9230712,
+            9776382,
+            9142248,
+            9344834,
+            9714689
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            9114096,
+            9278313,
+            9101989,
+            9187607,
+            9492314,
+            9936372,
+            9351754
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            9048928,
+            9343381,
+            8948348,
+            9538774,
+            9042028,
+            9379376,
+            8938743
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            9457453,
+            9080606,
+            9281177,
+            9184573,
+            9463381,
+            12083209,
+            9143100
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            12170289,
+            9507308,
+            9099625,
+            9366526,
+            8946725,
+            9279465,
+            8944742
+          ]
+        }
+      ]
+    },
+    "object_calls": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            12467437,
+            12461947,
+            12451882,
+            12455067,
+            12437120,
+            12424051,
+            12417551
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            12717292,
+            12741257,
+            12845043,
+            12675919,
+            12900026,
+            12908118,
+            13732377
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            13256442,
+            12653786,
+            12501417,
+            12890261,
+            12511332,
+            12581607,
+            12633064
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            12434156,
+            12788248,
+            12673175,
+            12834448,
+            13330513,
+            13032204,
+            12742929
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            19921047,
+            20022249,
+            13484574,
+            12714818,
+            12640546,
+            12946485,
+            13668681
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            12504271,
+            15975257,
+            14826402,
+            13061459,
+            12906596,
+            13124944,
+            14954183
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            12492964,
+            13897034,
+            14171347,
+            14267862,
+            15114063,
+            12765904,
+            12741217
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            13433137,
+            13443052,
+            12558673,
+            12767667,
+            12920496,
+            14377316,
+            13720689
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            13324043,
+            13457324,
+            13594068,
+            13616143,
+            13915662,
+            14840062,
+            14529324
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            13223933,
+            13864566,
+            22154412,
+            22120253,
+            22141805,
+            22723239,
+            23964523
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            14283325,
+            15079441,
+            13540037,
+            13517294,
+            13643133,
+            13719798,
+            14329364
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            13706888,
+            13594770,
+            13618616,
+            14277526,
+            13821851,
+            14650937,
+            14765540
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            14405884,
+            21257606,
+            15607465,
+            18331598,
+            22417738,
+            26005661,
+            21520801
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            14548975,
+            14859120,
+            15978482,
+            15453444,
+            15392812,
+            14503055,
+            15506252
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            13222911,
+            20641810,
+            13500168,
+            13813659,
+            13569743,
+            14078898,
+            14652630
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            20627769,
+            13403613,
+            13552407,
+            13502291,
+            13987580,
+            14269454,
+            13731867
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            12598983,
+            13338815,
+            13025484,
+            13064272,
+            13314760,
+            12984192,
+            13159917
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            12532775,
+            12686084,
+            17788353,
+            12686906,
+            12484101,
+            12598503,
+            12966446
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            13261339,
+            12808379,
+            12607115,
+            12558863,
+            12495328,
+            12574777,
+            12532584
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            15107954,
+            13880299,
+            12796080,
+            13217563,
+            12952224,
+            13426818,
+            13036972
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            12645203,
+            12477371,
+            12880116,
+            12858904,
+            12647216,
+            12965604,
+            13002060
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            13025664,
+            15507555,
+            16887679,
+            13573157,
+            12939095,
+            13859118,
+            12592002
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            12407747,
+            12414196,
+            12776901,
+            12423319,
+            12414727,
+            12582839,
+            12537772
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            12717642,
+            12889490,
+            12633365,
+            12783481,
+            12862840,
+            12607176,
+            12772694
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            14737977,
+            14640853,
+            14518608,
+            14500451,
+            13803964,
+            12886476,
+            14771749
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            15408641,
+            13022600,
+            13972227,
+            15130297,
+            15079482,
+            14913211,
+            13974099
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            13570734,
+            14253329,
+            14350635,
+            14649494,
+            14420121,
+            14380220,
+            15146722
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            13440538,
+            14247301,
+            21542163,
+            16525924,
+            15454515,
+            17140839,
+            15152571
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            14483996,
+            14559890,
+            14883336,
+            14607963,
+            14464828,
+            14574823,
+            14620181
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            14497458,
+            13946378,
+            13198935,
+            15082886,
+            15067423,
+            16291603,
+            14174581
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            12448408,
+            12764742,
+            12717582,
+            12477270,
+            13587189,
+            14437496,
+            14524577
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            14219399,
+            14548534,
+            14475574,
+            13603783,
+            12656610,
+            12452614,
+            13961261
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            12681968,
+            15358616,
+            18742550,
+            22750615,
+            12836752,
+            17166117,
+            15838897
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            16043645,
+            14995150,
+            11197187,
+            11214432,
+            10702904,
+            10549844,
+            10914652
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            23472504,
+            10589925,
+            10914362,
+            10720180,
+            10933811,
+            10813901,
+            11302155
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            10977408,
+            10778287,
+            10919950,
+            14739971,
+            11480033,
+            10654451,
+            10943135
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            10845098,
+            10608823,
+            16532836,
+            10811528,
+            11102013,
+            10901924,
+            11124367
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            10969455,
+            11296246,
+            10951187,
+            11308124,
+            11165920,
+            11005749,
+            11097928
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11444137,
+            10969695,
+            10878418,
+            10733911,
+            10674812,
+            10706008,
+            10734982
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11425189,
+            10715483,
+            16107726,
+            11060331,
+            10661782,
+            10843745,
+            11062264
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            13232616,
+            14032437,
+            13625557,
+            17461370,
+            20881731,
+            16083260,
+            16818004
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            12802540,
+            12506294,
+            12672454,
+            12845794,
+            12305312,
+            12315307,
+            12649329
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            14137335,
+            12129608,
+            12146684,
+            12462549,
+            14231277,
+            12952054,
+            12129137
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            12134346,
+            12158271,
+            12029588,
+            12571773,
+            13013567,
+            12150829,
+            12132783
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            11967054,
+            11767594,
+            11686102,
+            11872822,
+            12241075,
+            11824619,
+            11935096
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            12786405,
+            12522579,
+            12990962,
+            12747997,
+            12917923,
+            12697952,
+            12533675
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            11782116,
+            11716938,
+            11705751,
+            11651099,
+            11727033,
+            11659021,
+            11960484
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            11654955,
+            11915797,
+            11761925,
+            11802056,
+            11986854,
+            12541387,
+            11990229
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            11725120,
+            11216006,
+            10512248,
+            10609944,
+            10391997,
+            10490925,
+            10684126
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11224528,
+            11057417,
+            10499819,
+            10394280,
+            10394040,
+            10921422,
+            11225340
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11205119,
+            10577025,
+            11027853,
+            10615793,
+            11506111,
+            10636304,
+            10834842
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            11396837,
+            10812529,
+            10944217,
+            11050297,
+            10792418,
+            10992659,
+            11182534
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            10915283,
+            10463665,
+            10448903,
+            12006643,
+            10667170,
+            10752859,
+            10462954
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            11100592,
+            11112440,
+            11386492,
+            11343286,
+            11689277,
+            10729854,
+            11557219
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            10756985,
+            10815133,
+            10706390,
+            10566439,
+            10561892,
+            10901733,
+            10615443
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            10541582,
+            10995684,
+            17259147,
+            10445447,
+            10534390,
+            10610545,
+            10766018
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            11950369,
+            12255959,
+            12729544,
+            11661054,
+            11293301,
+            11326091,
+            11274213
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            11196636,
+            11278199,
+            10891157,
+            11467583,
+            11180381,
+            11141814,
+            11075224
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            12978894,
+            10564746,
+            11109366,
+            10933441,
+            10902353,
+            10994843,
+            10747762
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            10612618,
+            10943376,
+            17419698,
+            11087172,
+            11083196,
+            11076396,
+            11023646
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            11008273,
+            10655072,
+            12731443,
+            12263649,
+            13514830,
+            12717712,
+            11816237
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            11214593,
+            11541394,
+            11629067,
+            11525621,
+            11328164,
+            11065579,
+            11629838
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            10985499,
+            14444797,
+            22888677,
+            10870305,
+            10708412,
+            12089948,
+            11442556
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            10521652,
+            10807782,
+            10652128,
+            10732319,
+            11133622,
+            11008567,
+            10565080
+          ]
+        }
+      ]
+    },
+    "json_calls": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            12334903,
+            11267345,
+            9334122,
+            9281745,
+            10987755,
+            9378670,
+            9489767
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7671959,
+            7122583,
+            5071401,
+            6185856,
+            5832104,
+            5798123,
+            5444522
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            7523847,
+            7012558,
+            5630261,
+            5076209,
+            5675098,
+            5329318,
+            5773035
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            8200793,
+            7207030,
+            5353455,
+            5629390,
+            10711998,
+            8039371,
+            8071820
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7494823,
+            7304697,
+            5021095,
+            5088076,
+            5442688,
+            5020714,
+            5211331
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7137685,
+            7315362,
+            5601827,
+            5663891,
+            5544653,
+            5074385,
+            5116949
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            7305988,
+            7436715,
+            5133985,
+            5159032,
+            5756069,
+            5193394,
+            5114686
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7280971,
+            7171546,
+            5173244,
+            5836471,
+            5480234,
+            5164851,
+            5191201
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            8846060,
+            7905518,
+            5674739,
+            6131766,
+            6488991,
+            5835220,
+            5898485
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7784747,
+            7696013,
+            5819336,
+            5593217,
+            5987198,
+            5560789,
+            5667067
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            10025155,
+            8817460,
+            5696821,
+            5940207,
+            6298685,
+            5749250,
+            6385245
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            9612164,
+            8370078,
+            6539712,
+            6231460,
+            7060790,
+            6014598,
+            6251184
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7832240,
+            8026041,
+            6891266,
+            6966248,
+            5981289,
+            5597462,
+            5572374
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            8949488,
+            7896607,
+            5658452,
+            5612114,
+            6072244,
+            5694506,
+            5597672
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            7914423,
+            9601808,
+            5489178,
+            5474687,
+            6384153,
+            6111805,
+            6062551
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7943647,
+            7619599,
+            5679785,
+            5597190,
+            5920577,
+            5454176,
+            5479383
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7713540,
+            7138297,
+            5458976,
+            5672535,
+            5892236,
+            5754218,
+            5379025
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7740700,
+            7542693,
+            5437994,
+            5405655,
+            5723373,
+            5236641,
+            5255670
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            11484687,
+            7714783,
+            5661718,
+            5827187,
+            6321419,
+            5695228,
+            5584352
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            7332438,
+            6945167,
+            5238022,
+            5233415,
+            5642749,
+            5340876,
+            5281917
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7704327,
+            7170436,
+            5349959,
+            5631332,
+            5630882,
+            5192764,
+            5329969
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7503756,
+            7108923,
+            6870243,
+            5514066,
+            6321018,
+            5962990,
+            5469549
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            7558727,
+            7291988,
+            5176789,
+            5295187,
+            6299326,
+            5403329,
+            5284351
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7847983,
+            7167661,
+            5532503,
+            7923687,
+            6146898,
+            5486945,
+            5557521
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7629364,
+            7491297,
+            5179235,
+            5141218,
+            5843602,
+            5316101,
+            5257423
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7696455,
+            7729494,
+            5533908,
+            5735521,
+            6063623,
+            6261130,
+            5578665
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            7955105,
+            7445008,
+            5589098,
+            5434266,
+            6018284,
+            5297190,
+            5511563
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            7902195,
+            10889313,
+            8506323,
+            8522167,
+            9140866,
+            8475116,
+            8136136
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7558629,
+            7448212,
+            5269077,
+            5241868,
+            5795629,
+            5204110,
+            4987736
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            8678401,
+            7141532,
+            5132162,
+            5169309,
+            5676701,
+            7281922,
+            5395868
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            8451940,
+            7299990,
+            6983694,
+            5405693,
+            5739595,
+            5542208,
+            5637470
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7372880,
+            7009853,
+            5253164,
+            5050569,
+            5409047,
+            5611829,
+            5418032
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            6721140,
+            6703374,
+            4704563,
+            5134879,
+            5388370,
+            4698093,
+            4771633
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            6776463,
+            6224213,
+            4681415,
+            4592121,
+            4979593,
+            4817338,
+            5111732
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            7022153,
+            6615471,
+            5097280,
+            4607224,
+            5017200,
+            4553293,
+            4559161
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            6933299,
+            6467790,
+            5001155,
+            4819943,
+            5299884,
+            4650729,
+            4698261
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            6757214,
+            6297903,
+            4503758,
+            4521674,
+            4972973,
+            4759893,
+            4632171
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7337506,
+            6588521,
+            4586312,
+            4971360,
+            5124020,
+            5066905,
+            6686828
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            6688861,
+            6201819,
+            4402135,
+            4512551,
+            4861815,
+            4438039,
+            4955407
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7041451,
+            6433618,
+            4638000,
+            4970108,
+            5160995,
+            4600123,
+            5429058
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7383345,
+            6835842,
+            4993016,
+            5035539,
+            5345325,
+            5222079,
+            4974408
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7596516,
+            6782913,
+            5303370,
+            5078202,
+            5761258,
+            4993474,
+            4900995
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            7240290,
+            6534620,
+            4832672,
+            5181116,
+            5468668,
+            5131001,
+            4947404
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            7073570,
+            7087991,
+            4952502,
+            4928166,
+            5728108,
+            5034095,
+            5155318
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            7403626,
+            7078637,
+            5135928,
+            5117350,
+            5410500,
+            4912121,
+            5128917
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7093129,
+            6759417,
+            5450851,
+            4922407,
+            5364351,
+            4956839,
+            6179937
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            6969223,
+            6627840,
+            4821526,
+            4803108,
+            5344431,
+            4792622,
+            4869147
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            8269247,
+            6992236,
+            5038422,
+            5019003,
+            5267976,
+            5023408,
+            5005602
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7053359,
+            6841751,
+            4802550,
+            4830422,
+            5288269,
+            5321880,
+            4819806
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7398579,
+            6830403,
+            5162448,
+            4593203,
+            5576239,
+            4979023,
+            5409900
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            7075553,
+            7200059,
+            5094065,
+            4853834,
+            5239243,
+            4693823,
+            4722437
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            7555234,
+            7130024,
+            5326064,
+            5137761,
+            5600556,
+            4850289,
+            5144140
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            6799687,
+            6388841,
+            4968966,
+            4805591,
+            5334326,
+            5163138,
+            5264231
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7161131,
+            6615611,
+            6000627,
+            4840835,
+            5178472,
+            4994665,
+            5288908
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            7382543,
+            6847590,
+            5330751,
+            5520806,
+            5724332,
+            5278913,
+            5018521
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7195772,
+            7496886,
+            5252182,
+            4844259,
+            5370230,
+            5064289,
+            5188817
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            7206239,
+            7360640,
+            6445395,
+            7658718,
+            7951307,
+            7283354,
+            7241623
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7550767,
+            8406758,
+            5476429,
+            5182047,
+            5865284,
+            5634267,
+            4957920
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            7148703,
+            6696162,
+            4864180,
+            4802838,
+            5500445,
+            5083820,
+            5223620
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            6845497,
+            6411474,
+            4740624,
+            5145873,
+            5189339,
+            5064100,
+            4839051
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            6986898,
+            6513027,
+            4915837,
+            5455718,
+            5203199,
+            4777239,
+            4799051
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7103214,
+            6355992,
+            4919021,
+            4772512,
+            5341276,
+            4838060,
+            4841996
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            6985056,
+            6484373,
+            4911892,
+            4954715,
+            5420004,
+            4951481,
+            5000424
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7067529,
+            6586788,
+            5216759,
+            4983749,
+            5599254,
+            5219905,
+            5047815
+          ]
+        }
+      ]
+    },
+    "json_warmed_short": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5873666,
+            5403350,
+            5268547,
+            5825964,
+            7804067,
+            8088013,
+            5259224
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            5741088,
+            5410753,
+            5156511,
+            5832406,
+            5581379,
+            5774530,
+            5252615
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5484093,
+            4936580,
+            5016090,
+            5458614,
+            5059134,
+            6115672,
+            5033836
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            6547111,
+            5366376,
+            5419796,
+            6235773,
+            7499813,
+            6411076,
+            6189954
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5920358,
+            5359135,
+            5234477,
+            5952807,
+            5528920,
+            6160980,
+            5495550
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5538673,
+            5266023,
+            5103859,
+            5582970,
+            5040415,
+            6036721,
+            5015127
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            5560799,
+            5203582,
+            5372476,
+            5648991,
+            5446848,
+            5721390,
+            5502862
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            5888312,
+            5966849,
+            5258385,
+            5500338,
+            5155179,
+            6540642,
+            6055683
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            6098985,
+            5703831,
+            5539114,
+            6053836,
+            5538543,
+            6927861,
+            5599053
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            6210963,
+            6095539,
+            5525734,
+            6583383,
+            5542649,
+            5829850,
+            5426695
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5889883,
+            5404263,
+            5604194,
+            6290094,
+            5550823,
+            6127690,
+            5520748
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            6406429,
+            6169904,
+            5801320,
+            7073442,
+            6566700,
+            6433820,
+            5962462
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            6375123,
+            5833989,
+            6264726,
+            6482854,
+            5753007,
+            6021710,
+            5615731
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            6050071,
+            5722900,
+            5595398,
+            6014047,
+            5611062,
+            5902249,
+            5572624
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            6069975,
+            5597785,
+            5468301,
+            5951367,
+            5881691,
+            6053991,
+            5594319
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            5965097,
+            5602602,
+            5957606,
+            6470216,
+            6042182,
+            6559721,
+            5964886
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5681488,
+            5267756,
+            5700797,
+            5714997,
+            5219423,
+            6023631,
+            5393735
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            6131163,
+            5293835,
+            5234736,
+            5757351,
+            5168137,
+            5620015,
+            5077609
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5575430,
+            5175569,
+            5165304,
+            7250167,
+            5365514,
+            5878856,
+            5287287
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5868230,
+            5895040,
+            5351955,
+            5847730,
+            5488370,
+            6197665,
+            5848050
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            6699160,
+            5875672,
+            5901871,
+            7235385,
+            5719457,
+            7043517,
+            6228773
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5872876,
+            5467967,
+            5209528,
+            5626385,
+            5350120,
+            5959334,
+            5200825
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            6641013,
+            5805116,
+            5650143,
+            6452420,
+            5732206,
+            6267992,
+            5582622
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            6089955,
+            5353508,
+            5913288,
+            6236494,
+            5719768,
+            6271818,
+            5366497
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5504291,
+            5235186,
+            5202698,
+            5665154,
+            5096990,
+            5539504,
+            5091511
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            5610010,
+            5300495,
+            5204220,
+            5621668,
+            5410151,
+            5430661,
+            4991019
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5419416,
+            4979395,
+            4998022,
+            5452576,
+            4934637,
+            5452165,
+            5074568
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5910293,
+            5649061,
+            5976674,
+            6510435,
+            5636973,
+            8537292,
+            5362410
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5823863,
+            5203481,
+            5429591,
+            5924645,
+            5721580,
+            5777954,
+            5209179
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5929900,
+            5198822,
+            5455389,
+            6171153,
+            5236829,
+            5695449,
+            5097701
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            9379829,
+            5566558,
+            5440418,
+            5919648,
+            5607079,
+            5935783,
+            5623573
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            6057176,
+            5560929,
+            5333718,
+            5688191,
+            5168229,
+            5671124,
+            5268120
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5102237,
+            4592201,
+            4660113,
+            5413295,
+            4668326,
+            5024481,
+            4724399
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            7256307,
+            7035535,
+            7070446,
+            7831281,
+            7085419,
+            7799222,
+            7214695
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5248208,
+            4569017,
+            4653014,
+            5621539,
+            5030351,
+            5488509,
+            5130431
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5573157,
+            4807055,
+            4769378,
+            6142442,
+            4949410,
+            5395510,
+            5801610
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            4982759,
+            4644071,
+            4678922,
+            5232965,
+            4589669,
+            5183261,
+            4705433
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            4892632,
+            4501244,
+            4647764,
+            5003559,
+            4552682,
+            4982376,
+            4536887
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            5619428,
+            5032234,
+            5053165,
+            5565666,
+            5009560,
+            5407177,
+            5229601
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            5364645,
+            4829950,
+            4830932,
+            5174168,
+            5023952,
+            5092725,
+            4630340
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            6267308,
+            5140524,
+            5094366,
+            5600576,
+            5041415,
+            5475397,
+            5109929
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            5207177,
+            5163651,
+            5278094,
+            5708159,
+            5095079,
+            5503832,
+            5006114
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5910644,
+            6587721,
+            5463302,
+            5733227,
+            5362300,
+            6276505,
+            4930491
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5691625,
+            5161347,
+            5203281,
+            5861390,
+            4989881,
+            5660468,
+            5159054
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5481649,
+            4908137,
+            4876269,
+            5420307,
+            4871092,
+            5282960,
+            4864962
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5707206,
+            5018872,
+            5045402,
+            5847366,
+            4948196,
+            5290800,
+            4942707
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            5654620,
+            5774050,
+            5250743,
+            5896403,
+            5104884,
+            5291133,
+            4842069
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            5467569,
+            4921418,
+            5252425,
+            6006800,
+            5350753,
+            5906749,
+            4837672
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5649118,
+            4850539,
+            5173614,
+            5650721,
+            4909687,
+            5529499,
+            4795456
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            5500677,
+            5245795,
+            4987777,
+            5501049,
+            4708858,
+            5052734,
+            4679975
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5256311,
+            4706174,
+            4773626,
+            5279806,
+            4701496,
+            5189390,
+            4712162
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            6409984,
+            4846815,
+            5101547,
+            5833779,
+            7453052,
+            5329340,
+            5479876
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5595901,
+            5151372,
+            5500477,
+            5632921,
+            4951392,
+            5244824,
+            4939463
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            5224551,
+            4919142,
+            4969097,
+            5517131,
+            4815787,
+            5130209,
+            5538452
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            5782792,
+            5587108,
+            5198384,
+            5644835,
+            5371424,
+            5605766,
+            5542011
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            5603012,
+            5009571,
+            4933667,
+            5754971,
+            5017712,
+            5532677,
+            5237914
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            5291582,
+            4878550,
+            4944690,
+            5266774,
+            4726693,
+            5420455,
+            4765821
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            5210222,
+            4996160,
+            4807887,
+            5233315,
+            4801167,
+            5300858,
+            4974467
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            5253005,
+            4699814,
+            4770230,
+            5373146,
+            4695938,
+            5588009,
+            5034357
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            5703413,
+            5113897,
+            5093006,
+            5586868,
+            5318925,
+            5239174,
+            5702671
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            5728540,
+            4977541,
+            5091513,
+            5786587,
+            4945403,
+            6393730,
+            5506727
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            7942276,
+            7325969,
+            7274341,
+            7984038,
+            7147781,
+            7793672,
+            6911466
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            5642312,
+            5204924,
+            5606308,
+            5667038,
+            4868618,
+            5951066,
+            5090552
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            7996540,
+            7408096,
+            7472252,
+            8153116,
+            7385873,
+            8043000,
+            7428567
+          ]
+        }
+      ]
+    },
+    "json_warmed_long": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            55298405,
+            54478732,
+            54264080,
+            54316057,
+            58547768,
+            54841167,
+            53763857
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            56426140,
+            53210025,
+            51592612,
+            54522848,
+            51765603,
+            56487893,
+            51799674
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            51600205,
+            50460371,
+            50126819,
+            49241168,
+            50888114,
+            49927630,
+            50681353
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            54529611,
+            53976520,
+            51540253,
+            52920410,
+            56308938,
+            51561255,
+            52432385
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            55061401,
+            54833357,
+            53435655,
+            53268944,
+            52643234,
+            55665750,
+            56124180
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            53868206,
+            53787544,
+            53543067,
+            53198328,
+            52823915,
+            70863764,
+            79540947
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            53475010,
+            52069365,
+            51157173,
+            51069941,
+            51616944,
+            50981438,
+            51459458
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            52358314,
+            51991272,
+            51017688,
+            52378916,
+            51351560,
+            52808583,
+            53071648
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            59755575,
+            58905296,
+            60302316,
+            60649128,
+            58022118,
+            59531718,
+            59820682
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            60595559,
+            68583525,
+            62758992,
+            69789903,
+            59042153,
+            62740084,
+            60993827
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            57069655,
+            57598940,
+            57511989,
+            57418569,
+            58409479,
+            58251281,
+            55795850
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            57158697,
+            56923364,
+            57561623,
+            56358563,
+            63879224,
+            68283485,
+            57030826
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            61212315,
+            60885142,
+            61759207,
+            59670586,
+            70839772,
+            59484195,
+            57731648
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            61786965,
+            59266975,
+            61498551,
+            62224022,
+            66395584,
+            60463123,
+            57973560
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            66890369,
+            58537447,
+            57651905,
+            57637052,
+            57853798,
+            57437281,
+            59025442
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            56845757,
+            56533768,
+            58005181,
+            57314052,
+            56489501,
+            61206519,
+            58313626
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            55148288,
+            53549055,
+            54214776,
+            55436322,
+            55457023,
+            56767413,
+            54222658
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            56814134,
+            58084252,
+            60142919,
+            56776687,
+            59047791,
+            64677196,
+            56444517
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            67272656,
+            59195645,
+            81790445,
+            66829065,
+            68250584,
+            84237654,
+            58081980
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            55945733,
+            55927675,
+            55253551,
+            54342190,
+            78836822,
+            76406707,
+            55943759
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            53236354,
+            61695741,
+            54689219,
+            55958977,
+            55931506,
+            55672606,
+            55394188
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            55794023,
+            54695170,
+            53939984,
+            55230586,
+            54177512,
+            55162152,
+            56589219
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            62940162,
+            59503270,
+            59343039,
+            58489095,
+            60005255,
+            61515959,
+            55587227
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            55117166,
+            55416416,
+            53867916,
+            54500778,
+            54234017,
+            54477723,
+            54740500
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            52256639,
+            50708282,
+            51869697,
+            51830769,
+            51918090,
+            51722456,
+            51812742
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            54492372,
+            53363371,
+            54222156,
+            53089644,
+            52535129,
+            52521929,
+            52676913
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            51534051,
+            52139774,
+            50998680,
+            51812893,
+            50642996,
+            50680883,
+            50007210
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            55914629,
+            56933890,
+            55882320,
+            64235896,
+            71409097,
+            52843193,
+            52621049
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            51666304,
+            51412923,
+            51839624,
+            53122322,
+            51631832,
+            52329651,
+            53374803
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            55561944,
+            56658824,
+            57364305,
+            56478923,
+            54419425,
+            55031867,
+            55662515
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            52122104,
+            52546263,
+            52239561,
+            53731796,
+            52641786,
+            53702852,
+            53678877
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            54406837,
+            53250417,
+            53327904,
+            54135159,
+            53033480,
+            55278649,
+            56119634
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            46816834,
+            47333951,
+            46981021,
+            47850708,
+            46522822,
+            46078243,
+            46457222
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            47618494,
+            47429347,
+            48513756,
+            50778679,
+            68950052,
+            51937972,
+            56492689
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            51512573,
+            48158071,
+            47341113,
+            46911877,
+            48814827,
+            44521395,
+            44381444
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            48992691,
+            47677653,
+            46821955,
+            50617806,
+            46998250,
+            46458067,
+            45293997
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            48372689,
+            47916912,
+            48609395,
+            48055492,
+            47413255,
+            57407726,
+            50360298
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            47252397,
+            46618053,
+            47882625,
+            46883092,
+            46598202,
+            47055962,
+            46804042
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            49265556,
+            49872239,
+            48834818,
+            50689870,
+            63142926,
+            60239052,
+            49406368
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            48949976,
+            47953797,
+            47716090,
+            48194209,
+            47747457,
+            48114739,
+            48165295
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            52270272,
+            51196897,
+            50190525,
+            51237909,
+            51966214,
+            52028177,
+            54114884
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            51271441,
+            50439011,
+            50282326,
+            49700390,
+            50320744,
+            49648142,
+            51397391
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            48884342,
+            48772805,
+            49601791,
+            67197752,
+            56156839,
+            50938529,
+            52089640
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            50707270,
+            50409412,
+            50280378,
+            50821523,
+            50585968,
+            49857793,
+            50379748
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            52690374,
+            52795523,
+            52495661,
+            51719433,
+            52260737,
+            52088179,
+            54091622
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            49740811,
+            48444671,
+            52067222,
+            50744402,
+            49596014,
+            49444796,
+            50154043
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            63679905,
+            60252097,
+            58180209,
+            55271353,
+            57573507,
+            55981071,
+            50810711
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            50441551,
+            49676870,
+            50958608,
+            49860186,
+            49824292,
+            51220592,
+            50776004
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            56256716,
+            54284269,
+            49863443,
+            58957055,
+            57372012,
+            52622891,
+            52000385
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            50104458,
+            49556274,
+            47794366,
+            48589431,
+            48520378,
+            48997766,
+            50075084
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            50117025,
+            49933159,
+            49704325,
+            49083031,
+            49225275,
+            50957909,
+            51476849
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            50642613,
+            49038550,
+            50207018,
+            50039586,
+            49284099,
+            49803877,
+            47353580
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            49687617,
+            50342232,
+            50385316,
+            50521831,
+            49907608,
+            51072110,
+            52119000
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            47019738,
+            47270104,
+            48282498,
+            47599840,
+            47486469,
+            47186388,
+            48167494
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            50438425,
+            51292962,
+            53136637,
+            51174403,
+            51217098,
+            61712790,
+            53882098
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            52707931,
+            48285486,
+            48972721,
+            50797476,
+            53127782,
+            49835920,
+            48457045
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            49930313,
+            49432354,
+            49108027,
+            51961657,
+            48724350,
+            48554274,
+            49772786
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            48527268,
+            48191924,
+            54212141,
+            59023532,
+            69263711,
+            71217918,
+            47519393
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            50463125,
+            46997186,
+            45370059,
+            48834677,
+            46160329,
+            45576240,
+            45576321
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            52662092,
+            51707676,
+            55671620,
+            48754863,
+            48932760,
+            51352181,
+            48645770
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            47577032,
+            46294292,
+            47284722,
+            56906572,
+            49109146,
+            49177930,
+            55813437
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            47863476,
+            46090839,
+            47254020,
+            52850460,
+            67521365,
+            46189227,
+            47264506
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            71667418,
+            75916692,
+            52337780,
+            49563103,
+            49823774,
+            49971737,
+            49079355
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            58279775,
+            50083432,
+            51012229,
+            51092671,
+            51262576,
+            51613885,
+            51752112
+          ]
+        }
+      ]
+    },
+    "json_file_calls": {
+      "main_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            52712858,
+            53844470,
+            52037532,
+            53342415,
+            52286527,
+            52059945,
+            53018248
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            57659656,
+            59081780,
+            56965051,
+            54214183,
+            55183140,
+            53592517,
+            53632156
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            53348388,
+            51748359,
+            52806960,
+            52293884,
+            52123737,
+            53292314,
+            56310436
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            54193492,
+            53082893,
+            52661176,
+            51877410,
+            58375083,
+            52584470,
+            53515907
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            54999218,
+            53678380,
+            56824350,
+            54337428,
+            53531674,
+            50390266,
+            52245544
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            54298538,
+            54357467,
+            55293814,
+            53215080,
+            53255501,
+            55842785,
+            55254475
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            53816132,
+            58064290,
+            55033755,
+            52757501,
+            55993407,
+            52686874,
+            61773677
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            52288769,
+            52771268,
+            52356922,
+            52505266,
+            53883278,
+            54004351,
+            55146266
+          ]
+        }
+      ],
+      "original_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            59226651,
+            62776237,
+            75125814,
+            63706592,
+            63867127,
+            62361844,
+            63417761
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            56890411,
+            57644645,
+            58215274,
+            58099490,
+            56550821,
+            57361359,
+            62970598
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            61506642,
+            62384589,
+            61253638,
+            62855651,
+            61298427,
+            61848919,
+            62736130
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            59815721,
+            63208609,
+            62587951,
+            69518378,
+            61734351,
+            58817461,
+            58384246
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            59808794,
+            69487176,
+            62331060,
+            75531443,
+            85776496,
+            84961503,
+            75661666
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            73927741,
+            57924827,
+            57239734,
+            58085208,
+            62606988,
+            56311417,
+            64122330
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            62310704,
+            67191807,
+            60426017,
+            59221701,
+            59675437,
+            58921247,
+            61010106
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            59450089,
+            59710433,
+            61305614,
+            63978812,
+            59738846,
+            57622959,
+            59349697
+          ]
+        }
+      ],
+      "prior_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            65303113,
+            64985361,
+            57252706,
+            59972493,
+            59934214,
+            57333678,
+            56610830
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            55135921,
+            54592448,
+            52940734,
+            53873039,
+            54108143,
+            54929909,
+            54180372
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            63307581,
+            57014794,
+            56068896,
+            56701063,
+            55643035,
+            63018761,
+            62083383
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            54927380,
+            56857690,
+            58657653,
+            56834976,
+            60007225,
+            55158910,
+            63363721
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            54719987,
+            53205305,
+            60598138,
+            55502921,
+            55701020,
+            55644375,
+            57880387
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            59884842,
+            58246249,
+            58571789,
+            59445395,
+            58738080,
+            72884424,
+            66631959
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            60914652,
+            57787220,
+            57539195,
+            56841220,
+            63506177,
+            66242332,
+            57052645
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            56239057,
+            60227554,
+            62274652,
+            57230064,
+            57908690,
+            57361885,
+            63466954
+          ]
+        }
+      ],
+      "candidate_jit": [
+        {
+          "round": 0,
+          "sample_ns": [
+            58387182,
+            66773823,
+            62681593,
+            56133392,
+            57789253,
+            55779840,
+            57296612
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            51133518,
+            51430054,
+            54724360,
+            54237177,
+            55861551,
+            58906092,
+            58627473
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            57469618,
+            57751695,
+            58310059,
+            57876203,
+            59662333,
+            57382476,
+            61021653
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            57383964,
+            53208533,
+            52475755,
+            67297892,
+            56798961,
+            54870905,
+            57385757
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            54474716,
+            53428061,
+            51778126,
+            52292513,
+            52107345,
+            54574216,
+            54391269
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            64526157,
+            58267552,
+            56680051,
+            59065674,
+            57925456,
+            79510819,
+            72597142
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            61230109,
+            55122499,
+            56371139,
+            55179045,
+            55961268,
+            57131027,
+            57335256
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            71748242,
+            82138972,
+            63163396,
+            54936039,
+            53801094,
+            57758999,
+            65688055
+          ]
+        }
+      ],
+      "main_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            52936423,
+            52757924,
+            51485050,
+            50964667,
+            49619276,
+            49099511,
+            46263946
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            53437758,
+            47843344,
+            47233077,
+            47233948,
+            45320070,
+            48950594,
+            49064437
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            45864130,
+            46604460,
+            45888958,
+            47251939,
+            48691825,
+            46911234,
+            46023150
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            49408081,
+            47802382,
+            47447155,
+            47511361,
+            48622482,
+            48820982,
+            48476502
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            64996831,
+            49146105,
+            48668142,
+            49819894,
+            49551437,
+            50429486,
+            48445565
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            52131351,
+            50002135,
+            49869144,
+            48565941,
+            50017617,
+            50168335,
+            62732797
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            49322085,
+            48410385,
+            48461813,
+            48122119,
+            47269399,
+            47168656,
+            47141486
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            51847305,
+            47864952,
+            47609416,
+            47459018,
+            47458848,
+            45441698,
+            47461502
+          ]
+        }
+      ],
+      "original_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            53269894,
+            50371325,
+            49893035,
+            50055208,
+            51905573,
+            48591497,
+            50417173
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            53333759,
+            51387690,
+            51235972,
+            53628523,
+            61929010,
+            92923708,
+            52653195
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            50897700,
+            54502339,
+            51542544,
+            72309017,
+            76486562,
+            77526412,
+            77004134
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            53366168,
+            51322537,
+            51399233,
+            51322156,
+            50419331,
+            50328684,
+            50254982
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            50211386,
+            49926275,
+            48773881,
+            48942236,
+            49512368,
+            50366275,
+            52279464
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            55966957,
+            51725781,
+            50889897,
+            54808485,
+            56387484,
+            55633442,
+            53815712
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            50235807,
+            51153114,
+            56606173,
+            54431234,
+            50568199,
+            50220313,
+            53624023
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            71544018,
+            60336435,
+            49099580,
+            49495438,
+            49115033,
+            49743283,
+            51518568
+          ]
+        }
+      ],
+      "prior_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            50946139,
+            49358180,
+            51196316,
+            49298040,
+            50566308,
+            52132353,
+            50423383
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            52326293,
+            53958868,
+            57472105,
+            50657742,
+            51412527,
+            52241625,
+            51439709
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            50333807,
+            51717430,
+            53338839,
+            51543536,
+            50440659,
+            48691815,
+            49327206
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            50123373,
+            49806974,
+            49189080,
+            47806577,
+            47940010,
+            47524241,
+            48554349
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            48832520,
+            48914114,
+            47589910,
+            48354387,
+            48156137,
+            48389229,
+            47651643
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            53812589,
+            57401868,
+            51553230,
+            52191626,
+            52499913,
+            53095864,
+            56749812
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            50522861,
+            51165091,
+            50651856,
+            49895112,
+            56986407,
+            51092512,
+            49970035
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            53649905,
+            55088108,
+            54572610,
+            51981875,
+            50890745,
+            54274184,
+            54686641
+          ]
+        }
+      ],
+      "candidate_aot": [
+        {
+          "round": 0,
+          "sample_ns": [
+            48605458,
+            48149562,
+            48659839,
+            47123248,
+            47368296,
+            47956181,
+            47540816
+          ]
+        },
+        {
+          "round": 1,
+          "sample_ns": [
+            50797903,
+            51683165,
+            48790101,
+            50028550,
+            48648129,
+            51884327,
+            49291764
+          ]
+        },
+        {
+          "round": 2,
+          "sample_ns": [
+            47574346,
+            46981721,
+            46645752,
+            46447863,
+            47015260,
+            46928951,
+            46607505
+          ]
+        },
+        {
+          "round": 3,
+          "sample_ns": [
+            51088482,
+            55774276,
+            48080963,
+            50003912,
+            48148536,
+            49046503,
+            49095869
+          ]
+        },
+        {
+          "round": 4,
+          "sample_ns": [
+            52572547,
+            72120959,
+            47049183,
+            48856456,
+            47686667,
+            47041039,
+            46508365
+          ]
+        },
+        {
+          "round": 5,
+          "sample_ns": [
+            49442522,
+            48069373,
+            46102822,
+            47117951,
+            46393339,
+            46652480,
+            45967388
+          ]
+        },
+        {
+          "round": 6,
+          "sample_ns": [
+            60058493,
+            51197079,
+            54388491,
+            51534289,
+            49704353,
+            48489578,
+            48135688
+          ]
+        },
+        {
+          "round": 7,
+          "sample_ns": [
+            51200652,
+            51371185,
+            53976956,
+            60400992,
+            47937433,
+            49433645,
+            59270082
+          ]
+        }
+      ]
+    }
+  },
+  "compile_samples": {},
+  "between_phase_harness_update": {
+    "changed_utc": "2026-10-31T03:43:09.868965+00:00",
+    "reason": "For four variants, reverse complete blocks of four rotations instead of every other round so eight rounds put every variant in every position twice. Prepared sources, probes and artifacts are unchanged. Defaults now request eight elapsed rounds and four compile rotations. Read-only review also added fresh-row and exact-cardinality assertions to reject accidental timing/compile phase append retries before final measurements began.",
+    "prepare_harness_sha256": {
+      "measure.py": "388ddb2681f389613d597b462192185dee6da94dd64f50bb1b94eb46a3f94dce",
+      "count_support.py": "29cce8c5a2635be884a471d0517f5fb17d4e00ebb05963cd36ece57169484712",
+      "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+    },
+    "next_phase_harness_sha256": {
+      "measure.py": "ef3299dd749226be5f611e7339def910b1605b96b575c655c3f1b9d770ff1679",
+      "count_support.py": "29cce8c5a2635be884a471d0517f5fb17d4e00ebb05963cd36ece57169484712",
+      "replay_support.py": "b74a4c19fcd1e51d221271e50c9a3bc45a466de146073476dbc2a7d4f09d5d02"
+    },
+    "expected_timing_orders": [
+      [
+        "main",
+        "original",
+        "prior",
+        "candidate"
+      ],
+      [
+        "original",
+        "prior",
+        "candidate",
+        "main"
+      ],
+      [
+        "prior",
+        "candidate",
+        "main",
+        "original"
+      ],
+      [
+        "candidate",
+        "main",
+        "original",
+        "prior"
+      ],
+      [
+        "candidate",
+        "prior",
+        "original",
+        "main"
+      ],
+      [
+        "main",
+        "candidate",
+        "prior",
+        "original"
+      ],
+      [
+        "original",
+        "main",
+        "candidate",
+        "prior"
+      ],
+      [
+        "prior",
+        "original",
+        "main",
+        "candidate"
+      ]
+    ],
+    "position_counts": {
+      "main": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "original": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "prior": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "candidate": [
+        2,
+        2,
+        2,
+        2
+      ]
+    }
+  }
+}

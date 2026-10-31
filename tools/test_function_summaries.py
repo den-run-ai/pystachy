@@ -144,7 +144,10 @@ class EffectSummaryTests(unittest.TestCase):
         self.assertEqual({key: f.ret for key, f in instances.items()}, {"int": "int", "str": "str"})
         contexts = [fn for fn in g.fns if fn.f.name == "identity"]
         self.assertEqual(len(contexts), 2)
-        self.assertEqual([fn.fx for fn in contexts], [0, 0])
+        # Even a pure source body checks the recursion limit and updates active
+        # depth. Both specialized contexts retain those raise/state effects.
+        recursion_fx = FXBIT["R"] | FXBIT["I"]
+        self.assertEqual([fn.fx for fn in contexts], [recursion_fx, recursion_fx])
 
 
 if __name__ == "__main__":

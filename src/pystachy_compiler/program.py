@@ -7,9 +7,10 @@ from src.pystachy_compiler.analysis import all_imports, collect, defines, module
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
-from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
+from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, IFn, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import RENAMED, short
+from src.pystachy_compiler.optimizations import recursion_blocked
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     EXCBASES,
@@ -1161,6 +1162,17 @@ def gen_program(self, mods: list[Mod]) -> str:
         # storage facts, so the first verification uses complete effect summaries too.
         for fn in self.fns:
             self.verify(fn, False)
+    # Guard outlining can change conservative stack roots just as scalar depth
+    # optimizations do. Capture the shared lifetime policy before optimization or
+    # EH lowering can split a scoped open from its immediate unwind root.
+    inline_recursion_guards = not self.rtmode and recursion_blocked(self)
+    if "recursionleaf" in on and not self.rtmode and self.recursionleaf() > 0:
+        # This has its own depth-observation summary; ordinary R/I effects remain
+        # on each entry check and still govern EH and the following optimizations.
+        self.effects()
+        if chk:
+            for fn in self.fns:
+                self.verify(fn, False)
     if len(on) > 0:
         # (before eh_ir: a block that a try statement covers keeps its exception edge to the
         # landing block, Blk.handler, which the passes count, see preds)
@@ -1172,6 +1184,11 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.verify(fn, False)
         if changed and dump:
             self.effects()  # (what the passes left: tests/ir/*.fx pin them)
+    if "recursionregion" in on and not self.rtmode and self.recursionregion() > 0:
+        self.effects()
+        if chk:
+            for fn in self.fns:
+                self.verify(fn, False)
     for fn in self.fns if self.eh else self.fns[:0]:
         if len(fn.tries) > 0:
             self.eh_ir(fn)
@@ -1182,7 +1199,19 @@ def gen_program(self, mods: list[Mod]) -> str:
             print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
     if "tupleret" in on:
         self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
+    # Keep bounded hot entries separate from their guarded fallback and emit
+    # them first. Merging both versions enlarged hot-loop branches in LLVM 18;
+    # appending a separate entry after its fallback also hurt measured layout.
+    # Reorder emission only: fll and every analysis index still name self.fns.
+    emitted: list[IFn] = []
     for fn in self.fns:
+        if fn.f.ll.startswith("@rf.") and fn.f.name.endswith("$recursionentry"):
+            continue
+        fast = self.fll.get("@rf." + fn.f.ll[1:], -1)
+        if fast >= 0 and self.fns[fast].f.name.endswith("$recursionentry"):
+            emitted.append(self.fns[fast])
+        emitted.append(fn)
+    for fn in emitted:
         self.lower(fn)
         # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)
         fn.blocks = []
@@ -1192,7 +1221,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         fn.fa = {}
     for op in ["eq", "cmp", "repr"] if not self.rtmode else []:
         self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
-    ir = self.lower_module()
+    ir = self.lower_module(inline_recursion_guards)
     RENAMED.clear()  # (the program's classes': runtime.py, which the driver may compile next, has none)
     return ir
 

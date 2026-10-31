@@ -34,7 +34,14 @@ PASS_RULES = {
     "unionslots": "Split eligible local union slots into tag/payload storage and reconstruct boxes at uses that require them.",
     "nullcheck": "Remove redundant null checks only where the existing control-flow proof establishes a non-null value.",
     "exceptions": "Lower retained exception regions using the compiler's conservative effect summaries.",
+    "recursionleaf": "Retain source entry checks; remove or defer depth publication only under the existing whole-program depth-observation and lifetime proofs.",
+    "recursionregion": "Use the existing bounded, partial and successful-call proofs and budgets; preserve original failure points and guarded observer paths.",
 }
+PROGRAM_PASS_UNITS = {
+    "recursionleaf": "transformed functions",
+    "recursionregion": "mixed sum: maximal bounded roots, partial roots, rewritten successful-call callers, and shared checked originals",
+}
+RECURSION_OPS = ("check", "room", "enter", "leave", "depth", "restore")
 # Only compiler inputs are recorded, never arbitrary process environment values.
 ENV_KEYS = (
     "PYSTACHY_HOME", "PYSTACHY_PATH", "PYSTACHY_OPT", "PYSTACHY_IRCHECK",
@@ -96,7 +103,7 @@ def base_report(source: str, function: str) -> dict:
                      | {"PYSTACHY_IRCHECK": "1"},
                      "function_filter": function, "command": "ir", "executes_program": False,
                      "forced_environment": {"PYSTACHY_IRCHECK": "1"}},
-        "diagnostics": [], "attempts": [], "passes": [],
+        "diagnostics": [], "attempts": [], "passes": [], "program_passes": [],
         "stages": [{"name": name, "status": "unavailable", "artifact": None}
                    for name in ("typed-before", "typed-after", "llvm")],
         "verification": {"requested": True, "calls": 0, "completed": False,
@@ -161,6 +168,8 @@ class Observer:
             "return_type": self.typestr(f.ret), "return_representation": f.ret,
             "specialization": {"instantiated": f.inst, "generic": f.generic},
             "effects": self.fxs(fn.fx), "effects_scope": "last compiler analysis; may be conservative after rewrites",
+            "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "gdepth": fn.gdepth,
+                          "generator": f.gen, "coroutine": fn.coro},
             "slots": [self.instruction(i) for i in fn.slots],
             "blocks": [{"label": b.label, "handler": b.handler,
                         "operations": [self.instruction(i) for i in b.code]} for b in fn.blocks],
@@ -304,13 +313,95 @@ class Observer:
             return wrapped
         return decorate
 
+    @staticmethod
+    def program_totals(functions: dict) -> dict:
+        operations = Counter()
+        for fn in functions.values():
+            operations.update(fn["operations"])
+        return {"functions": len(functions), "slots": sum(fn["slots"] for fn in functions.values()),
+                "operation_count": sum(operations.values()), "operations": dict(sorted(operations.items())),
+                "guards": {name: operations["rt:recursion." + name] for name in RECURSION_OPS}}
+
+    def program_snapshot(self, gen) -> dict:
+        functions, selected = {}, {}
+        for fn in gen.fns:
+            snapshot = self.snapshot(fn)
+            operations = self.counts(snapshot)
+            functions[fn.f.ll] = {
+                "snapshot_sha256": hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest(),
+                "operations": operations, "slots": len(snapshot["slots"]),
+                "guards": {name: operations.get("rt:recursion." + name, 0) for name in RECURSION_OPS},
+                "recursion": snapshot["recursion"],
+            }
+            if self.selected(fn):
+                selected[fn.f.ll] = snapshot
+        return {"function_order": [fn.f.ll for fn in gen.fns], "functions": functions,
+                "selected_snapshots": selected, "totals": self.program_totals(functions),
+                "selected_totals": self.program_totals({key: functions[key] for key in selected})}
+
+    def program_pass_wrapper(self, name: str):
+        def decorate(original):
+            def wrapped(gen, *args, **kwargs):
+                old = self.diagnostics.PHASE
+                self.diagnostics.PHASE = "optimize"
+                before = self.program_snapshot(gen)
+                result = original(gen, *args, **kwargs)
+                after = self.program_snapshot(gen)
+                previous, current = before["functions"], after["functions"]
+                added = [key for key in current if key not in previous]
+                removed = [key for key in previous if key not in current]
+                changed = [key for key in current if key in previous and current[key] != previous[key]]
+                stem = f"program-passes/{len(self.report['program_passes']) + 1:04d}-{name}"
+                (self.output / "program-passes").mkdir(exist_ok=True)
+                write_json(self.output / (stem + ".json"), {"before": before, "after": after})
+                selected_before, selected_after = before["selected_snapshots"], after["selected_snapshots"]
+                diff = []
+                for key in sorted(selected_before.keys() | selected_after.keys()):
+                    left = self.render(selected_before[key]) if key in selected_before else []
+                    right = self.render(selected_after[key]) if key in selected_after else []
+                    diff.extend(difflib.unified_diff(left, right, fromfile=f"{key}:before-{name}",
+                                                   tofile=f"{key}:after-{name}"))
+                if diff:
+                    (self.output / (stem + ".diff")).write_text("".join(diff), encoding="utf-8")
+                order_changed = before["function_order"] != after["function_order"]
+                self.report["program_passes"].append({
+                    "attempt": self.attempt["index"] if self.attempt else 0, "name": name,
+                    "scope": "whole program", "reported_transformations": result if type(result) is int else None,
+                    "return_unit": PROGRAM_PASS_UNITS[name],
+                    "changed": bool(added or removed or changed or order_changed),
+                    "added_functions": added, "removed_functions": removed, "changed_functions": changed,
+                    "order_changed": order_changed, "snapshot": stem + ".json",
+                    "diff": stem + ".diff" if diff else None,
+                    "before_totals": before["totals"], "after_totals": after["totals"],
+                    "before_selected_totals": before["selected_totals"], "after_selected_totals": after["selected_totals"],
+                    "rule": PASS_RULES[name], "explanation_scope": "general pass contract; zero does not identify a refusal reason",
+                })
+                self.diagnostics.PHASE = old
+                return result
+            return wrapped
+        return decorate
+
     def lower_wrapper(self, original):
         def wrapped(gen, fn, *args, **kwargs):
             self.capture_before(gen)
+            if self.attempt is not None:
+                if "function_order_before_lowering" not in self.attempt:
+                    self.attempt["function_order_before_lowering"] = [item.f.ll for item in gen.fns]
             if self.selected(fn):
                 self.after.append(self.snapshot(fn))
             self.diagnostics.PHASE = "lower"
-            return original(gen, fn, *args, **kwargs)
+            result = original(gen, fn, *args, **kwargs)
+            if self.attempt is not None:
+                self.attempt.setdefault("lowered_function_order", []).append(fn.f.ll)
+            return result
+        return wrapped
+
+    def lower_module_wrapper(self, original):
+        def wrapped(gen, *args, **kwargs):
+            if self.attempt is not None and (args or "inline_recursion_guards" in kwargs):
+                self.attempt["inline_recursion_guards_argument"] = args[0] if args else kwargs["inline_recursion_guards"]
+            self.diagnostics.PHASE = "lower"
+            return original(gen, *args, **kwargs)
         return wrapped
 
     def install(self) -> None:
@@ -327,9 +418,11 @@ class Observer:
         self.wrap(Gen, "verify", self.verify_wrapper)
         for name in ("listget", "dictfuse", "unionslots", "nullcheck"):
             self.wrap(Gen, name, self.pass_wrapper(name))
+        for name in PROGRAM_PASS_UNITS:
+            self.wrap(Gen, name, self.program_pass_wrapper(name))
         self.wrap(Gen, "eh_ir", self.pass_wrapper("exceptions"))
         self.wrap(Gen, "lower", self.lower_wrapper)
-        self.wrap(Gen, "lower_module", self.phase_wrapper("lower"))
+        self.wrap(Gen, "lower_module", self.lower_module_wrapper)
 
     def restore(self) -> None:
         for cls, name, original in reversed(self.restores):
@@ -489,7 +582,8 @@ def main() -> int:
         return 2
     report = json.loads((output / "report.json").read_text(encoding="utf-8"))
     changed = sum(bool(p["changed"]) for p in report["passes"])
-    print(f"{report['status']}: {output / 'report.json'} ({changed} changed pass/function pairs)")
+    program_changed = sum(bool(p["changed"]) for p in report["program_passes"])
+    print(f"{report['status']}: {output / 'report.json'} ({changed} changed function-pass records, {program_changed} changed program-pass records)")
     return exitcode
 
 

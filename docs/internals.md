@@ -399,9 +399,15 @@ generator expressions emit the same typed IR and LLVM IR as before.
 
 ## JIT, AOT and runtime caching
 
-`run` favors startup latency. LLVM removes unused internal functions, optionally inlines the
-program's own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
+`run` favors startup latency. LLVM removes unused internal functions, inlines the scalar
+recursion-accounting helpers and bounded partial versions, optionally inlines the program's
+own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
 redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
+Recursion entry guards use ordinary inlining, allowing large modules to share their
+checks. Programs with unmanaged files, weak references, termination callbacks or
+embedding preserve their prior mandatory guard inlining policy. The eligibility
+decision is captured before optimization
+and exception lowering, while scoped-file roots can still be proved.
 On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
 from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
 run (`-extra-object`), which cost about 35 ms a run
@@ -416,8 +422,90 @@ lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each
 function's cleanup), and `coro-cleanup`. The final `early-cse`/`adce` cleanup runs after
 those passes as well, so dead identity-generation loops do not reach code generation.
-The default inlining threshold is 20,000 lines of generated IR; larger programs skip that
-pass. The precompiled runtime is not inlined into JIT code.
+The default user-function inlining threshold is 20,000 lines of generated IR; larger programs
+skip that pass. Scalar recursion helpers and bounded partial versions remain inlined,
+including with `PYSTACHY_JIT_INLINE=0`; entry guards do so only in programs excluded
+by the lifetime policy. The accounting helpers access the same mutable
+depth/limit state as the runtime's
+`sys.setrecursionlimit()` implementation and call the checked runtime entry only on the
+overflow path. The precompiled runtime is not inlined into JIT code.
+
+For program operations without exceptional successors, lowering emits
+`recursion.depth` and `recursion.restore` directly as a state load and store.
+`recursion.room` becomes a non-raising comparison of the requested frames against
+`limit - depth`. These remain typed runtime operations with their existing effects
+and depth/limit alias tags; check, enter and leave operations still use the module
+helpers. Runtime compilation retains the runtime implementations.
+
+Before LLVM lowering, `recursionleaf` replaces entry bookkeeping with a check alone
+for functions whose active depth cannot be observed by any normal, exceptional or
+cleanup path. Where all observers occur in a region that cannot return, functions
+without local handlers can instead publish depth on entry to that region. Recursive
+calls, callbacks and limit changes see the full active depth; generators keep their
+original accounting. `recursionregion` can check a loop-containing function's finite
+maximum call depth once and run an unchecked private call subgraph. Insufficient
+headroom runs the complete guarded body, preserving side effects and the original
+failing call. Callbacks, limit changes, generators, handlers and unknown calls remain
+boundaries; code-size limits bound cloning.
+
+Whole-function versioning gives only maximal selected regions a separate unchecked
+entry. If one selected region is inside another's proven call graph, its private
+copy remains an inlineable descendant and its ordinary entry retains its guards.
+Independent regions can share private descendants. Each maximal private entry is
+marked `noinline` and its LLVM definition is emitted before the original guarded
+wrapper; descendants remain eligible for ordinary inlining. This keeps the guarded
+loop out of the hot function and controls the hot function's placement. LLVM 18
+object-loop development controls motivated this layout, which restores the observed
+compact hot function, including short conditional branches. The full normal-driver
+elapsed-time result remains unresolved; the controls do not establish performance
+acceptance. The [measurement report](reports/recursion-guard-regions.md) records both
+series and the captured code. This layout choice leaves the depth proof and fallback
+behavior intact; it does not impose a new inlining boundary inside the unchecked graph.
+
+An original check-only leaf can share its existing full bounded private body (`@rf`),
+or its successful-child private body (`@rc`) when no full bounded clone exists.
+Its guarded entry checks the limit, then tail-forwards with the same signature and
+hidden identity arguments. The three-operation wrapper has no frame slots and
+lowers to `musttail`, so sharing adds no native stack frame. An `@rc` body retains
+the original one-frame terminal publication; the two-frame `@rp2` body is never a
+forwarding target. Tuple returns keep their existing fresh-return bodies. This
+sharing runs after region selection and uses an already budgeted private clone.
+
+A separate two-frame version can cover
+a mixed function's returning leaf paths. It publishes the active depth before an
+observer or guarded suffix and never resumes unchecked calls after that publication.
+This narrower path requires a useful leaf call in a returning block; it does not
+version arbitrary prefix scans or recursive loops. Both private layers are inlined,
+with each rewritten child callsite charged against the expansion budget.
+Equivalent terminal load/call/return blocks in a selected private root share one
+child expansion before inlining. Their preceding paths and the guarded fallback
+remain intact, and the original callsite charges still bound region selection.
+
+A further proof keeps a caller's ordinary frame published. Once a known counted
+child returns normally, the caller has at least one spare frame. Subsequent valid
+limit changes preserve that slot because `sys.setrecursionlimit()` rejects a limit
+at or below the active depth. Where every incoming path establishes this fact,
+later proven leaf calls can share a body without its entry check. Their arguments
+stay in place, and a terminal observer still publishes exactly the child's one
+frame. The caller's own entry does not establish spare room. Unknown or foreign
+effects and generator operations invalidate the fact; roots with local handlers
+or generators are excluded. This case requires repeated eligible leaf calls in a
+loop and has separate root and clone-size budgets, detailed in the IR pass contract.
+
+Programs with unmanaged native files or weak references keep all
+original bookkeeping: even removing scalar instructions can change stale conservative
+roots in a caller's native frame, altering file closure or weak-reference observations.
+Files opened directly in `with` blocks can qualify when every open is immediately
+registered as an existing unwind root outside a generator. Those roots keep the file
+alive until deterministic close, so the optimization does not change GC policy.
+Standard streams alone do not impose this restriction. The check can still raise before
+the body executes; its ordinary raising/state effects remain intact. State accesses
+carry separate depth/limit TBAA tags under the existing object-field root, so field
+stores cannot alias that state.
+The overflow edge has cold branch weights. These metadata facts support LLVM's own
+optimization; they do not authorize moving an error before source side effects.
+See the [IR pass contract](typed-ir.md#optimizations) and use
+`PYSTACHY_OPT=-recursionleaf,-recursionregion` to retain the original bookkeeping for comparisons.
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
@@ -461,7 +549,7 @@ provide the broader behavior check. See [testing](testing.md) for the commands.
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
-| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT inlining; `0` disables it |
+| `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining; `0` disables it (scalar recursion helpers and bounded partial versions remain inlined; guard helpers also stay inlined in lifetime-excluded programs) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
 | `PYSTACHY_GC_STRESS_PROGRAM=N` | Apply the stress interval to the program run by JIT or the test runner, separately from its compiler |

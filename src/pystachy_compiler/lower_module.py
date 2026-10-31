@@ -8,7 +8,7 @@ from src.pystachy_compiler.diagnostics import fail, dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_FIELDS, TBAA_LEN, TBAA_NAMES, TBAA_SIZES
+from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_LIMIT, TBAA_NAMES, TBAA_SIZES
 from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
@@ -40,6 +40,92 @@ def struct_types(ci: ClassInfo) -> list[str]:
     # the LLVM types of the members of class ci's struct, %C.<name>: its fields', then its "is
     # assigned" flags and numeric identity companions
     return [lt(ci.ftypes[x]) for x in ci.fields] + ["i1" for _ in range(ci.nflag)] + ["ptr" for _ in range(ci.nbox)]
+
+
+def recursion_ir(keys: list[str], root: int, fields: bool, inline_guards: bool) -> list[str]:
+    # The mutable native ABI is runtime.c's two I words: active depth, configured
+    # limit. Keep the C RecursionError as the cold path, but make ordinary accounting
+    # visible to LLVM even when JIT uses a separately compiled shared runtime.
+    # Scalar helpers stay mandatory-inline. Check/enter use ordinary inlining
+    # unless lifetime observers require the prior mandatory-inlining policy.
+    if not any(key in keys for key in ["recursion.check", "recursion.room", "recursion.enter", "recursion.leave", "recursion.depth", "recursion.restore"]):
+        return []
+    out = ["@pys_recursion_state = external global [2 x i64]"]
+    guard_attrs = " alwaysinline" if inline_guards else ""
+    for key in ["recursion.check", "recursion.enter"]:
+        if key not in keys:
+            continue
+        check = key == "recursion.check"
+        out.extend([
+            f"define internal {'void' if check else 'i64'} @pys.{key}(){guard_attrs} {{",
+            "entry:",
+            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+            "  %limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1",
+            f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
+            "  %full = icmp sge i64 %depth, %limit",
+            f"  br i1 %full, label %overflow, label %entered, !prof !{RECURSION_BRANCH}",
+            "overflow:",
+            "  call void @pys_recursion_error() noreturn cold",
+            "  unreachable",
+            "entered:",
+        ])
+        if check:
+            out.append("  ret void")
+        else:
+            out.extend([
+                "  %next = add i64 %depth, 1",
+                f"  store i64 %next, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+                "  ret i64 %next",
+            ])
+        out.append("}")
+    if "recursion.room" in keys:
+        out.extend([
+            "define internal i64 @pys.recursion.room(i64 %needed) alwaysinline nounwind {",
+            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+            "  %limit.addr = getelementptr [2 x i64], ptr @pys_recursion_state, i64 0, i64 1",
+            f"  %limit = load i64, ptr %limit.addr, !tbaa !{TBAA_LIMIT}",
+            "  %remaining = sub i64 %limit, %depth",
+            "  %enough = icmp sge i64 %remaining, %needed",
+            "  %result = zext i1 %enough to i64",
+            "  ret i64 %result",
+            "}",
+        ])
+    if "recursion.leave" in keys:
+        out.extend([
+            "define internal void @pys.recursion.leave() alwaysinline nounwind {",
+            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+            "  %next = sub i64 %depth, 1",
+            f"  store i64 %next, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+            "  ret void",
+            "}",
+        ])
+    if "recursion.depth" in keys:
+        out.extend([
+            "define internal i64 @pys.recursion.depth() alwaysinline nounwind {",
+            f"  %depth = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+            "  ret i64 %depth",
+            "}",
+        ])
+    if "recursion.restore" in keys:
+        out.extend([
+            "define internal void @pys.recursion.restore(i64 %depth) alwaysinline nounwind {",
+            f"  store i64 %depth, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}",
+            "  ret void",
+            "}",
+        ])
+    # These state words cannot alias source object fields. A separate TBAA root
+    # would make that relation unknown, so reuse exactly the fields' root. The
+    # scalar tags are separate from each other and from every source-field type.
+    if not fields:
+        out.append(f'!{root} = !{{!"pystachy fields"}}')
+    out.extend([
+        f'!9 = !{{!"recursion depth", !{root}, i64 0}}',
+        f'!10 = !{{!"recursion limit", !{root}, i64 0}}',
+        f"!{TBAA_DEPTH} = !{{!9, !9, i64 0}}",
+        f"!{TBAA_LIMIT} = !{{!10, !10, i64 0}}",
+        f'!{RECURSION_BRANCH} = !{{!"branch_weights", i32 1, i32 1048575}}',
+    ])
+    return out
 
 
 def gen_tbaa_nodes(self) -> list[str]:
@@ -294,13 +380,14 @@ def gen_pyext(self) -> list[str]:
     # frames) and its Exc is stored in *err. pyx_exports lists them: name, signature (result,
     # then each parameter: i int, f float, b bool, s str, n None), wrapper
     o: list[str] = []
-    for k in ["eh_on", "try_mark", "exc.handled", "exc.restore", "exc.begin", "personality", "init_lib"]:
+    for k in ["eh_on", "try_mark", "exc.handled", "exc.restore", "exc.begin", "personality", "init_lib", "recursion.depth", "recursion.restore"]:
         if k not in self.rtfns:
             o.append(runtime_decl(k))
     pad = ["lp:", "  %x = landingpad { ptr, i32 } catch ptr null", "  %ue = extractvalue { ptr, i32 } %x, 0",
+           "  call void @pys.recursion.restore(i64 %depth)",
            "  %e = call ptr @pys_exc_begin(ptr %ue, i64 %mark)", "  call void @pys_exc_restore(ptr %prev)"]
     o.extend(["declare void @pyx_argv()", "declare ptr @pyx_call(i64, ptr, i64, ptr)", "define ptr @pyx_init() personality ptr @pys_personality {",
-              f"  call void @pys_init_lib(ptr @pys.roots, i64 {len(self.gcroots)})", "  call void @pyx_argv()", "  call void @pys_eh_on()", "  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()",
+              f"  call void @pys_init_lib(ptr @pys.roots, i64 {len(self.gcroots)})", "  call void @pyx_argv()", "  call void @pys_eh_on()", "  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()", "  %depth = call i64 @pys.recursion.depth()",
               "  invoke void @main.init() to label %ok unwind label %lp", "ok:", "  ret ptr null"] + pad + ["  ret ptr %e", "}"])
     tab: list[str] = []
     letter = {"int": "i", "float": "f", "bool": "b", "str": "s", "None": "n"}
@@ -320,7 +407,7 @@ def gen_pyext(self) -> list[str]:
                 self.err(f"{f.name}() cannot be called from CPython: it takes or returns {typestr(t) if t != '' else 'an untyped value'} (an extension module's function takes int, float, bool or str and returns one or None); name it _{f.name} to keep it private")
         sig = "".join([letter[t] for t in [f.ret] + f.ptypes])
         o.extend([f"define internal i64 @pyx.f.{f.name}(ptr %a, ptr %err) personality ptr @pys_personality {{", "entry:",
-                  "  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()"])
+                  "  %mark = call i64 @pys_try_mark()", "  %prev = call ptr @pys_exc_handled()", "  %depth = call i64 @pys.recursion.depth()"])
         args: list[str] = []
         for j in range(len(f.ptypes)):
             t = lt(f.ptypes[j])
@@ -429,7 +516,7 @@ def gen_gen_module(self) -> list[str]:
     if not self.gendrops:
         return o
     return o + [
-        "define internal void @pys.gen.drop(ptr %h) {",
+        "define internal void @pys.gen.drop(ptr %h) personality ptr @pys_personality {",
         "entry:",
         "  %p = call ptr @llvm.coro.promise(ptr %h, i32 8, i1 false)",
         f"  %sa = getelementptr i64, ptr %p, i64 {GENSTATE}",
@@ -437,11 +524,17 @@ def gen_gen_module(self) -> list[str]:
         f"  %c = icmp eq i64 %s, {GENCLEAN}",
         "  br i1 %c, label %close, label %done",
         "close:",
+        "  %base = call i64 @pys.recursion.depth()",
+        "  %mark = call i64 @pys_try_mark()",
+        "  %x = call ptr @pys_exc_handled()",
         f"  %ca = getelementptr i64, ptr %p, i64 {GENCMD}",
         "  store i64 1, ptr %ca",
+        "  %depth = invoke i64 @pys.recursion.enter() to label %resume unwind label %failed",
+        "resume:",
         f"  store i64 {GENRUN}, ptr %sa",
-        "  %x = call ptr @pys_exc_handled()",
-        "  call void @llvm.coro.resume(ptr %h)",
+        "  invoke void @llvm.coro.resume(ptr %h) to label %resumed unwind label %failed",
+        "resumed:",
+        "  call void @pys.recursion.leave()",
         "  call void @pys_exc_restore(ptr %x)",
         "  %s2 = load i64, ptr %sa",
         f"  %ok = icmp eq i64 %s2, {GENDONE}",
@@ -451,13 +544,25 @@ def gen_gen_module(self) -> list[str]:
         "  %n = load ptr, ptr %na",
         "  call void @pys_gen_ignored(ptr %n, ptr %p)",
         "  br label %done",
+        "failed:",
+        "  %lp = landingpad { ptr, i32 } catch ptr null",
+        "  %ue = extractvalue { ptr, i32 } %lp, 0",
+        "  call void @pys.recursion.restore(i64 %base)",
+        "  %e = call ptr @pys_exc_begin(ptr %ue, i64 %mark)",
+        f"  %ena = getelementptr i64, ptr %p, i64 {GENNAME}",
+        "  %ename = load ptr, ptr %ena",
+        "  call void @pys_gen_unraisable(ptr %e, ptr %ename, ptr %p)",
+        "  call void @pys_exc_restore(ptr %x)",
+        "  br label %done",
         "done:",  # (finished, as close() leaves it, for a yield from's consumer that holds it too)
         f"  store i64 {GENDONE}, ptr %sa",
         "  call void @llvm.coro.destroy(ptr %h)",
         "  ret void",
         "}"]
 
-def gen_lower_module(self) -> str:
+def gen_lower_module(self, inline_recursion_guards: bool) -> str:
+    if not self.rtmode and ("recursion.enter" in self.rtfns or "recursion.check" in self.rtfns):
+        self.runtime("pys_recursion_error")
     hdr: list[str] = ["; generated by pystachy"]
     for ci in self.classes.values():
         if ci.name in self.tmpl:
@@ -497,6 +602,11 @@ def gen_lower_module(self) -> str:
         hdr.append(f"!{TBAA_BYTES} = !{{!{TBAA_LEN - 1}, !{TBAA_LEN - 1}, i64 0}}")
         hdr.append(f"!{STRLEN_RANGE} = !{{i64 0, i64 9223372036854775791}}")
         return "\n".join(hdr) + "\n"
+    recursion = [key for key in self.rtfns if key.startswith("recursion.")]
+    for key in ["recursion.depth", "recursion.restore"] if self.ext != "" else []:
+        if key not in recursion:
+            recursion.append(key)
+    hdr.extend(recursion_ir(recursion, TBAA_FIELDS + len(self.tbaa), len(self.tbaa) > 0, inline_recursion_guards))
     if self.ext != "":
         return "\n".join(hdr + self.pyext()) + "\n"
     # pys_init gets the GC roots: main's frame address bounds the stack scan (it also

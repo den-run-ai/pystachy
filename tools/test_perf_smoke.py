@@ -2,9 +2,14 @@
 from pathlib import Path
 import contextlib
 import io
+import json
 import os
 import runpy
+import signal
+import subprocess
 import sys
+import tempfile
+import textwrap
 import unittest
 from unittest import mock
 
@@ -210,6 +215,170 @@ class BatchTests(unittest.TestCase):
                                   {"base": {}, "head": {}}, Path("/tmp/perf"), set())
         self.assertEqual(result["loop_clock"], "process_time_ns")
         self.assertEqual(set(result["comparison"]), set(perf.METRICS))
+
+
+class ReportTests(unittest.TestCase):
+    def result(self, name):
+        return {"name": name, "samples": {"base": [0.1, 0.2, 0.3]},
+                "confirmation": {"head": [0.4, 0.5, 0.6]}, "comparison": {}}
+
+    @contextlib.contextmanager
+    def main_context(self, path, measure=None, execute=None):
+        record = {"stdout": "revision\n", "stderr": "", "wall_s": 1.0, "returncode": 0}
+        env = {key: value for key, value in os.environ.items() if key != "GITHUB_STEP_SUMMARY"}
+        with mock.patch.object(sys, "argv", ["perf_smoke.py", "--base", str(path.parent), "--json", str(path)]), \
+                mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(perf, "CASES", {"first": None, "second": None}), \
+                mock.patch.object(perf, "execute", side_effect=execute, return_value=record), \
+                mock.patch.object(perf, "measure", side_effect=measure or (lambda name, *args: self.result(name))), \
+                mock.patch.object(perf.os, "sched_getaffinity", return_value={0, 1}), \
+                mock.patch.object(perf.os, "sched_setaffinity"), \
+                contextlib.redirect_stdout(io.StringIO()):
+            yield
+
+    def test_complete_report_preserves_finished_workload_checkpoints(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            finished = []
+
+            def measure(name, *args):
+                checkpoint = json.loads(path.read_text())
+                self.assertEqual(checkpoint["status"], "incomplete")
+                self.assertEqual(checkpoint["phase"], f"measure:{name}")
+                self.assertEqual(checkpoint["results"], finished)
+                self.assertEqual(set(checkpoint["bootstrap"]), {"base", "head"})
+                finished.append(self.result(name))
+                return finished[-1]
+
+            with self.main_context(path, measure):
+                perf.main()
+            report = json.loads(path.read_text())
+            self.assertEqual(report["schema"], 2)
+            self.assertEqual((report["status"], report["phase"]), ("complete", "complete"))
+            self.assertEqual(report["results"], finished)
+            self.assertEqual(len(finished), 2)
+            self.assertNotIn("error", report)
+
+    def test_bootstrap_failure_retains_the_completed_bootstrap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            builds = 0
+
+            def execute(command, env, timeout):
+                nonlocal builds
+                checkpoint = json.loads(path.read_text())
+                self.assertEqual(checkpoint["status"], "incomplete")
+                if "build" in command:
+                    builds += 1
+                    if builds == 2:
+                        self.assertEqual(set(checkpoint["bootstrap"]), {"base"})
+                        raise RuntimeError("head bootstrap failed")
+                return {"stdout": "revision\n", "wall_s": 1.0}
+
+            with self.main_context(path, execute=execute), self.assertRaisesRegex(RuntimeError, "head bootstrap failed"):
+                perf.main()
+            report = json.loads(path.read_text())
+            self.assertEqual((report["status"], report["phase"]), ("error", "bootstrap:head"))
+            self.assertEqual(report["error"], "head bootstrap failed")
+            self.assertEqual(report["error_type"], "RuntimeError")
+            self.assertEqual(set(report["bootstrap"]), {"base"})
+            self.assertEqual(report["results"], [])
+
+    def test_setup_failure_writes_an_error_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            with self.main_context(path), \
+                    mock.patch.object(perf.os, "sched_getaffinity", side_effect=OSError("affinity unavailable")), \
+                    self.assertRaisesRegex(OSError, "affinity unavailable"):
+                perf.main()
+            report = json.loads(path.read_text())
+            self.assertEqual((report["status"], report["phase"]), ("error", "setup"))
+            self.assertEqual(report["results"], [])
+
+    def test_workload_errors_and_interrupts_keep_completed_samples(self):
+        for failure in (ValueError("output differs"), KeyboardInterrupt()):
+            with self.subTest(failure=type(failure).__name__), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "report.json"
+                first = self.result("first")
+                with self.main_context(path, measure=[first, failure]), self.assertRaises(type(failure)):
+                    perf.main()
+                report = json.loads(path.read_text())
+                self.assertEqual((report["status"], report["phase"]), ("error", "measure:second"))
+                self.assertEqual(report["error"], str(failure))
+                self.assertEqual(report["error_type"], type(failure).__name__)
+                self.assertEqual(report["results"], [first])
+
+    def test_summary_failure_does_not_publish_complete_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            with self.main_context(path), mock.patch.object(perf, "summary", side_effect=ValueError("summary failed")), \
+                    self.assertRaisesRegex(ValueError, "summary failed"):
+                perf.main()
+            report = json.loads(path.read_text())
+            self.assertEqual((report["status"], report["phase"]), ("error", "summary"))
+            self.assertEqual(report["results"], [self.result("first"), self.result("second")])
+
+    def test_checkpoint_failure_still_restores_cpu_affinity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            original_write = perf.write_report
+
+            def write_report(path, report):
+                if "affinity" in report:
+                    raise OSError("checkpoint write failed")
+                original_write(path, report)
+
+            with self.main_context(path), mock.patch.object(perf, "write_report", side_effect=write_report), \
+                    mock.patch.object(perf.os, "sched_setaffinity") as affinity, \
+                    self.assertRaisesRegex(OSError, "checkpoint write failed"):
+                perf.main()
+            self.assertEqual(affinity.call_args_list, [mock.call(0, {0}), mock.call(0, [0, 1])])
+            self.assertEqual(json.loads(path.read_text())["status"], "incomplete")
+
+    def test_sigterm_leaves_a_valid_incomplete_checkpoint_without_finally(self):
+        code = textwrap.dedent("""
+            import os
+            import signal
+            from unittest import mock
+            import perf_smoke as perf
+
+            def measure(name, *args):
+                if name == "second":
+                    os.kill(os.getpid(), signal.SIGTERM)
+                return {"name": name, "samples": {"base": [1, 2, 3]},
+                        "confirmation": {"head": [4, 5, 6]}, "comparison": {}}
+
+            with mock.patch.object(perf, "CASES", {"first": None, "second": None}), \\
+                    mock.patch.object(perf, "execute", return_value={"stdout": "revision", "wall_s": 1}), \\
+                    mock.patch.object(perf, "measure", side_effect=measure):
+                perf.main()
+        """)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            env = dict(os.environ, PYTHONPATH=str(Path(perf.__file__).parent), TMPDIR=directory)
+            process = subprocess.run([sys.executable, "-c", code, "--base", directory, "--json", str(path)],
+                                     env=env, capture_output=True, text=True, timeout=10)
+            self.assertEqual(process.returncode, -signal.SIGTERM, process.stderr)
+            report = json.loads(path.read_text())
+            self.assertEqual((report["status"], report["phase"]), ("incomplete", "measure:second"))
+            self.assertEqual(len(report["results"]), 1)
+            self.assertEqual(report["results"][0]["samples"], {"base": [1, 2, 3]})
+            self.assertEqual(report["results"][0]["confirmation"], {"head": [4, 5, 6]})
+            self.assertNotIn("error", report)
+
+    def test_replacement_keeps_existing_readers_and_failed_writes_intact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            previous = {"status": "incomplete", "results": [self.result("first")]}
+            complete = {"status": "complete", "results": [self.result("first"), self.result("second")]}
+            perf.write_report(path, previous)
+            with path.open() as reader:
+                perf.write_report(path, complete)
+                self.assertEqual(json.load(reader), previous)
+            self.assertEqual(json.loads(path.read_text()), complete)
+            with self.assertRaises(TypeError):
+                perf.write_report(path, {"status": "error", "unserializable": object()})
+            self.assertEqual(json.loads(path.read_text()), complete)
 
 
 if __name__ == "__main__":

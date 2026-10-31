@@ -124,7 +124,7 @@ else
       rm -f "$T/so/$n.py"
       if $PYS ext "$f" --abi $abi -o "$T/so/$n.$abi.so" 2> "$T/ext.$n.err"; then ok; else bad "pystachy ext $f"; head -5 "$T/ext.$n.err"; fi
     done
-    for c in client.py client2.py avclient.py reclient.py pk3.py use3.py rdclient.py memclient.py wrclient.py fmclient.py bxclient.py pwclient.py aioclient.py; do
+    for c in client.py client2.py avclient.py reclient.py recguardclient.py pk3.py use3.py rdclient.py memclient.py wrclient.py fmclient.py bxclient.py pwclient.py aioclient.py; do
       st=1; [ "$c" = memclient.py ] && st=0
       for d in src so; do
         tw=; [ $d = src ] && tw=$TW

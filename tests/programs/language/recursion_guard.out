@@ -1,0 +1,13 @@
+default caught
+60
+direct caught
+direct finally
+tail caught
+mutual caught
+method caught
+callback caught
+callback caught
+4 7 True False 4
+600
+True
+[exit 0]

@@ -6190,13 +6190,44 @@ _Noreturn void pys_execv(Str *path, List *args) {   /* os.execv: the process bec
   ioerr(errno);
 }
 I pys_getpid(void) { return getpid(); }
-static I recursion_limit = 1000;       /* sys.setrecursionlimit: only recorded, the native stack bounds recursion */
+/* Native source-function depth, with one outer module frame, including an active generator
+   resume (not its suspended frame). Generated entries and normal returns balance enter/leave;
+   each exception landing restores the depth saved by its function's entry, since the unwinder
+   has skipped the returns of callees. A failed entry does not change the depth. Like the rest
+   of the runtime this state belongs to its one execution thread (pyext.c enforces that for extensions).
+   It is a logical limit, not a native-stack-size guarantee: raising it too far can still
+   exhaust the process's stack before this guard, as can an unusually large native frame.
+   Mutable ABI shared with the program's inlined guards (lower_module): two i64 words,
+   active depth then requested limit. Both JIT and AOT guards use this same storage. */
+I pys_recursion_state[2] = {1, 1000};
+_Static_assert(sizeof(I) == 8 && sizeof(pys_recursion_state) == 16,
+               "Recursion ABI: two i64 words, active depth then requested limit");
+_Noreturn void pys_recursion_error(void) { pys_fail("RecursionError: maximum recursion depth exceeded"); }
+void pys_recursion_check(void) {
+  if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
+}
+I pys_recursion_room(I needed) {
+  /* Compiler-proven bounded regions use a non-raising selector. Both state
+     words are nonnegative and bounded by INT32_MAX; subtract, do not add an
+     unchecked budget to the active depth. Failure runs the original code. */
+  return needed <= pys_recursion_state[1] - pys_recursion_state[0];
+}
+I pys_recursion_enter(void) {
+  if (pys_recursion_state[0] >= pys_recursion_state[1]) pys_recursion_error();
+  return ++pys_recursion_state[0];
+}
+void pys_recursion_leave(void) { pys_recursion_state[0]--; }
+I pys_recursion_depth(void) { return pys_recursion_state[0]; }
+void pys_recursion_restore(I depth) { pys_recursion_state[0] = depth; }
 void pys_setrecursionlimit(I n) {
   if (n > INT32_MAX || n < INT32_MIN) pys_fail("OverflowError: Python int too large to convert to C int");
   if (n < 1) pys_fail("ValueError: recursion limit must be greater or equal than 1");
-  recursion_limit = n;
+  if (n <= pys_recursion_state[0])
+    failf("RecursionError: cannot set the recursion limit to %lld at the recursion depth %lld: the limit is too low",
+          (long long)n, (long long)pys_recursion_state[0]);
+  pys_recursion_state[1] = n;
 }
-I pys_getrecursionlimit(void) { return recursion_limit; }
+I pys_getrecursionlimit(void) { return pys_recursion_state[1]; }
 Str *pys_platform(void) {              /* sys.platform */
 #if defined(__linux__)
   return cstr("linux");

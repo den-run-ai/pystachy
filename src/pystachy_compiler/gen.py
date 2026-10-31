@@ -1004,6 +1004,8 @@ from src.pystachy_compiler.optimizations import (
     gen_optimize as optimizations_optimize,
     gen_preds as optimizations_preds,
     gen_reaching as optimizations_reaching,
+    gen_recursionleaf as optimizations_recursionleaf,
+    gen_recursionregion as optimizations_recursionregion,
     gen_same as optimizations_same,
     gen_tag_read as optimizations_tag_read,
     gen_ufresh as optimizations_ufresh,
@@ -3403,8 +3405,8 @@ class Gen:
     def extern_decl(self, f: FnInfo) -> None:
         return lower_module_extern_decl(self, f)
 
-    def lower_module(self) -> str:
-        return lower_module_lower_module(self)
+    def lower_module(self, inline_recursion_guards: bool) -> str:
+        return lower_module_lower_module(self, inline_recursion_guards)
 
     def gen_module(self) -> list[str]:
         return lower_module_gen_module(self)
@@ -3447,6 +3449,12 @@ class Gen:
 
     def optimize(self, fn: IFn, on: dict[str, bool]) -> int:
         return optimizations_optimize(self, fn, on)
+
+    def recursionleaf(self) -> int:
+        return optimizations_recursionleaf(self)
+
+    def recursionregion(self) -> int:
+        return optimizations_recursionregion(self)
 
     def preds(self, fn: IFn) -> dict[str, list[int]]:
         return optimizations_preds(self, fn)
