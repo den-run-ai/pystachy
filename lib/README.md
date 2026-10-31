@@ -26,7 +26,7 @@ Imports search builtin modules first, then the program's directory,
 | `stat`, `posixpath`, `genericpath` | Unchanged CPython | Mode tests and string path operations | Partial API coverage |
 | `operator` | Adapted CPython | Operator functions, `itemgetter`, `attrgetter`, `methodcaller` | Getters specialize on literal items and names |
 | `html`, `html.entities` | Adapted CPython | `escape`, `unescape`, HTML4 and HTML5 entity tables | No configurable integer digit limit |
-| `html.parser` | Adapted CPython | Incremental HTMLParser with typed subclass callbacks | ASCII name case conversion; see [probe](../docs/html-parser-probe.md) |
+| `html.parser` | Adapted CPython | Incremental HTMLParser with typed subclass callbacks | ASCII name case conversion; see [API scope](compatibility.md#html) |
 | `difflib` | Adapted CPython | `SequenceMatcher` (also the generator `get_grouped_opcodes()`), `unified_diff()`, `context_diff()`, `restore()`, `get_close_matches`, junk predicates and `Match` | String items; `ndiff()` and `Differ` need the yield type of a recursive generator, and `HtmlDiff` its class attributes' types |
 | `getopt` | Adapted CPython | `getopt`, `gnu_getopt`, `GetoptError` | `longopts` must be `list[str]`; untranslated messages |
 | `gettext` | Adapted CPython | `NullTranslations`, `textdomain`, `bindtextdomain`; the module imports, as `argparse` needs | Catalog lookups (`gettext()`, `translation()`, `install()`) do not compile: they import `locale` and key their cache by a class (#7); no subclass of `NullTranslations`; see [limits](compatibility.md#gettext) |
@@ -38,7 +38,7 @@ Imports search builtin modules first, then the program's directory,
 | `shlex` | Adapted CPython | `split`, `quote`, `join`, lexer options and source stacking | Files are read eagerly; punctuation field is writable |
 | `io`, `_io` | Subset implementation; `_io` (`_pystachy__io`) gives its names under the C module's | `StringIO` and `BytesIO` (also in `with`), seek constants and `TextIOWrapper` over binary buffer objects, with CPython's chunked reads and writes; `IncrementalNewlineDecoder` of `str` input, `text_encoding()`, `open`, `BlockingIOError` and `DEFAULT_BUFFER_SIZE` | Lazy line iteration; no `getbuffer()` or `readinto()`; `TextIOWrapper` of UTF-8, Latin-1 and ASCII, without `seek`/`tell`/`detach`/`reconfigure`; no binary files, so no `FileIO`, `Buffered*` classes or `open_code()` |
 | `csv` | Subset implementation | Reader/writer, dict reader/writer, dialects and registry | Eager reading; reader fields are strings; no `Sniffer` |
-| `json` | Native recursive-value prototype | `loads(str)`, `dumps(JSONValue)`, default `JSONDecoder.decode/raw_decode`, `JSONDecodeError`; Unicode, mixed arrays/objects, sorting and separators; in modules that opt in to dynamic `Any`, `loads()` into `Any` storage and `dumps()` of `Any` values (tuples, non-`str` keys, `skipkeys`, `check_circular`, `default`) | Signed 64-bit integers, 256-container depth, string keys for `JSONValue`; no hooks, indentation or file APIs; see [scope](../docs/json-prototype.md) |
+| `json` | Native recursive-value prototype | `loads(str)`, `dumps(JSONValue)`, default `JSONDecoder.decode/raw_decode`, `JSONDecodeError`; Unicode, mixed arrays/objects, sorting and separators; in modules that opt in to dynamic `Any`, `loads()` into `Any` storage and `dumps()` of `Any` values (tuples, non-`str` keys, `skipkeys`, `check_circular`, `default`) | Signed 64-bit integers, 256-container depth, string keys for `JSONValue`; no hooks, indentation or file APIs; see [scope](../docs/json.md) |
 | `tomllib` | Adapted CPython, compiled with [dynamic `Any`](../docs/dynamic-any.md) | `loads()` (also with `parse_float`) and `TOMLDecodeError`, with CPython's results and messages: tables, arrays, strings, numbers, booleans and datetimes, as dynamic values that a program narrows with `isinstance()` or annotations | No `load()`, which reads a binary file; see [limits](compatibility.md#tomllib) |
 | `re` | Subset port of parser/compiler and C engine; optional matchers generated for a program's own patterns ([prototype](../docs/re-specialization.md)) | String regex syntax and matching, substitution, caches, runtime-length `Match.groups()` | Selected variable-length result APIs unavailable |
 | `fnmatch` | Adapted CPython | `fnmatch`, `fnmatchcase`, `filter`, `translate` | String patterns; POSIX case handling |
@@ -61,7 +61,7 @@ Imports search builtin modules first, then the program's directory,
 | `mpz` | Experimental subset wrapper over a compact MicroPython-derived C core | Explicit arbitrary-precision arithmetic, comparisons, decimal text, hashing and typed containers | Ordinary `int` remains checked 64-bit; see [API and limits](../docs/mpz.md) |
 | `pyobj` | Subset implementation over CPython's stable ABI (`@ffi.extern`), with its twin in `tools/rt_cpython` | Python objects through an embedded CPython, or an extension module's host: `Object`, `import_module`, `of_int`, `of_float`, `of_str`, `of_list` | Needs `PYSTACHY_LIBPYTHON` (CPython 3.12+); scalar conversions only; see [FFI](../docs/ffi.md#calling-cpython) |
 | `datetime` | Adapted CPython (`_pydatetime`, following `_datetime`) | `timedelta`, `date`, `time`, `datetime`, fixed-offset `timezone`, `tzinfo` subclasses, ISO 8601, `strftime()` | No local time zone; no `strptime()` or pickling |
-| `_weakref` | Experimental collector-backed subset (`_pystachy_weakref`) | `ref`/`ReferenceType` of ordinary class instances: call, `==`, `!=`, `hash()`, `repr()` and callbacks as CPython's, though referents die at collection rather than at the last reference, and callbacks run after it | No `__callback__`, proxies, reference counts or weak containers; see [contract](../docs/prototypes/weakref.md) |
+| `_weakref` | Experimental collector-backed subset (`_pystachy_weakref`) | `ref`/`ReferenceType` of ordinary class instances: call, `==`, `!=`, `hash()`, `repr()` and callbacks as CPython's, though referents die at collection rather than at the last reference, and callbacks run after it | No `__callback__`, proxies, reference counts or weak containers; see [contract](../docs/weakref.md) |
 | `weakref` | Adapted CPython, on `_weakref` | `ref` and `ReferenceType`, also by from-imports and `import *` | `WeakSet`, `WeakValueDictionary`, `WeakKeyDictionary` and `WeakMethod` are compile-time errors where used; no `finalize`, proxies, `getweakrefcount()` or `getweakrefs()`; see [limits](compatibility.md#_weakref-prototype) |
 
 CPython VM adapters `opcode`, `_opcode`, `_imp` and `_ast` are not shipped; see the
@@ -74,7 +74,7 @@ The [porting checklist](../docs/porting.md) describes compiled upstream test
 coverage and the pinned `make port-check` checks for fnmatch and textwrap.
 Builtin modules such as `sys`, `os` and `math` are documented in the
 [language guide](../docs/language.md#builtins-and-library-modules).
-The [POSIX select prototype](../docs/prototypes/select.md) provides
+The [POSIX select guide](../docs/select.md) describes
 `select.select` on integer descriptor lists, which a file's `fileno()` gives;
 other select APIs remain unsupported.
 

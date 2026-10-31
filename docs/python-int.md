@@ -588,7 +588,7 @@ the first measurements, before the inline paths, in
   comment, against a fresh pinned CPython recording, in both JIT and AOT. CI requires three
   complete shards. The reviewed manifest permits only exact compiler rejections, classified
   and linked to their remaining limitation; crashes, runtime errors, changed output, changed
-  diagnostics and obsolete exceptions fail. See the [baseline review](reports/python-int-compatibility-2026-10-28.md)
+  diagnostics and obsolete exceptions fail. See the [baseline review](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/python-int-compatibility-2026-10-28.md)
   and [gate contract](testing.md#make-verify). This checks the supported experimental surface;
   it does not establish compatibility for the known rejected programs.
 - `make python-int-optin` retains the exploratory sweep and comparison with an earlier report.

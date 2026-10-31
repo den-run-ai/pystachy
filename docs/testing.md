@@ -188,7 +188,7 @@ python3 -I tools/syntax_sweep.py --compiler ./pystachy /usr/lib/python3.13
 
 It reports diagnostic differences separately from valid Python that Pystachy cannot parse.
 Current boundaries are in [syntax checks](language/semantics.md#syntax-errors). Earlier test
-counts and syntax-survey results are retained as [historical snapshots](archive/verification-snapshots.md).
+counts and syntax-survey results are retained as [historical snapshots](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/verification-snapshots.md).
 
 ## Compiler coverage
 

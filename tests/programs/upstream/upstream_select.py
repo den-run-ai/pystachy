@@ -13,7 +13,7 @@
 #   tests/errors/library/lib_select_objects.py and tests/errors/library/lib_select_optional.py show for such calls
 # - test_select (subprocess and a pipe object in the list), test_select_mutated (objects whose
 #   fileno() mutates the list) and test_disallow_instantiation (select.poll): objects in the lists,
-#   subprocess and poll are not supported (docs/prototypes/select.md)
+#   subprocess and poll are not supported (docs/select.md)
 import errno
 import os
 import select
