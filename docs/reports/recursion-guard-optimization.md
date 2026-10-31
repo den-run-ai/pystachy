@@ -17,16 +17,30 @@ speedup. No acceptance threshold has been approved, and #996 remains draft.
 ## Measured sources
 
 Three independently built variants use the same input programs and pinned
-toolchain. The local checkouts reproduce the source trees below exactly. The
-optimized revision has the same tree as the locally measured compiler snapshot;
-subsequent commits add tests, IR expectations, this report and benchmark inputs,
-without changing the measured compiler or runtime.
+toolchain. The local checkouts reproduce the source trees below exactly. These
+are the sources of the original elapsed-time and instruction-count series.
 
 | Variant | Source revision | Git tree |
 |---|---|---|
 | Main, including #997 | [`06e3ad5d08514ba31fb231fe4636a962fe6578e3`](https://github.com/den-run-ai/pystachy/commit/06e3ad5d08514ba31fb231fe4636a962fe6578e3) | `db120afecf27ff03b08c25624dc64be8b06bac3b` |
 | Main plus original guards and regex fallback repair | [`0166fbb556754b3d23ac68647baf458a55bd74cb`](https://github.com/den-run-ai/pystachy/commit/0166fbb556754b3d23ac68647baf458a55bd74cb) | `c2c4ffe9efdb1c9dfe9511e320cedc78ff675fac` |
 | Optimized guards | [`14332cb4a658b7be33edf4f25da910e7ed4ffcb5`](https://github.com/den-run-ai/pystachy/commit/14332cb4a658b7be33edf4f25da910e7ed4ffcb5) | `7e651ca97776abe89e2919c7e2d02cddd96271b7` |
+
+The corrected compiler is
+[`3b2a66bdc6a8662beb0b4dc984bf83a65374480b`](https://github.com/den-run-ai/pystachy/commit/3b2a66bdc6a8662beb0b4dc984bf83a65374480b),
+tree `b7780adc751f8ce8a840a6ea42ac6d8434f037a6`. It adds the conservative file/weakref
+boundary described below and spells integer mask updates as scalar assignments
+for the ownership inventory. Only `optimizations.py` changed among the 131
+compiler/runtime/library/build inputs of the measured optimized variant.
+
+A follow-up equivalence audit checked seven complete raw LLVM modules, replayed
+the unchanged JIT pipeline for both sets of modules using the same stdin module
+identity, and rebuilt five AOT executables. All raw IR, all seven resulting JIT
+modules, all five complete executables and the subset runtime IR were byte-identical
+to their corresponding references. Raw program IR was not normalized. Executable
+checksums also passed. This establishes continuity of the native benchmark
+programs; it is not a new elapsed-time or instruction-count measurement. The
+compilation-cost section was remeasured using the corrected compiler.
 
 All three checkouts were clean. Hashes of 131 compiler, runtime, library and
 build inputs per variant were checked before and after measurement and remained
@@ -82,6 +96,30 @@ object-field TBAA root, and the overflow call is explicitly cold. The shared roo
 lets LLVM distinguish recursion state from object fields. Metadata helps load
 motion; it does not by itself remove the depth increments and restores. Recursive
 paths and other observation boundaries retain their required accounting.
+
+### Observable finalization boundary
+
+The first full optimized CI run exposed a real JIT regression in the existing
+`rt_list_vacated` fixture: reopening a discarded list item's buffered writer read
+an empty string instead of its buffered text. Main, original guards and the same
+optimized compiler with `-recursionleaf` passed; optimized AOT also passed. The
+one constructor's removed bookkeeping changed the caller's native register/stack
+layout enough to retain a discarded owner as a conservative GC root.
+
+The corrected compiler therefore keeps all bookkeeping in programs that register
+native `open` or any `weakref.*` operation. An unrelated leaf can change a caller's
+spills too, so a constructor-only or file-operation-only restriction is insufficient.
+The frontend has these registrations before the pass. Ordinary printing and
+standard streams remain eligible. Generator cleanup stays a function-level
+observer; collection does not close abandoned generators in the existing runtime.
+
+Contracts prove that file/weakref programs emit exactly the guarded IR from the
+same compiler with `-recursionleaf`. This preserves existing conservative-GC
+semantics, including possible delayed finalization; it does not establish
+CPython-style deterministic destruction. The restriction is material: an
+application that combines JSON parsing with native file opening retains the
+original bookkeeping cost. The pure computation kernels in this report remain
+eligible, as the byte-equivalence audit confirms.
 
 An intermediate leaf-only candidate, `3d1091ca`, measured 4.11% JSON JIT and 6.56%
 JSON AOT overhead in a separate, noisy short-input series. Those values motivated
@@ -193,22 +231,33 @@ this follow-up.
 
 ### Compilation cost and output size
 
-Each cell below is **one sample**, after runtime-cache warm-up. The frontend
-column measures the hosted `ir` command, including process startup. The AOT
-column measures the hosted `build` command, including frontend, LLVM work and
-linking. They are not isolated frontend/backend timings, and their difference
-should not be interpreted as a reliable backend cost. Units are seconds.
+The table below is a fresh batch using main, original guards and corrected
+compiler `3b2a66bd`, with three rotated samples for every input/variant/stage:
+72 samples in total. Each variant's private runtime cache was warmed first;
+processes were pinned to CPU 0. Every emitted IR module and executable remained
+byte-identical to its recorded reference. The one-minute host load was 0.35 at
+the start and 1.61 at the end; external load and frequency were uncontrolled.
+
+Cells give the median and full sample range in seconds. The hosted `ir` command
+includes process startup; `build` includes frontend, LLVM work and linking. These
+are not isolated frontend/backend timings, and subtraction does not provide a
+reliable backend cost. Three samples are descriptive, not a precision timing gate.
 
 | Input | Stage | Main | Original guards | Optimized guards |
 |---|---|---:|---:|---:|
-| JSON | IR command | 0.171 | 0.151 | 0.180 |
-| JSON | AOT build | 1.620 | 1.661 | 1.752 |
-| Object | IR command | 0.061 | 0.047 | 0.062 |
-| Object | AOT build | 0.328 | 0.334 | 0.336 |
-| Ordinary | IR command | 0.048 | 0.049 | 0.046 |
-| Ordinary | AOT build | 0.330 | 0.361 | 0.337 |
-| Longer JSON | IR command | 0.147 | 0.150 | 0.155 |
-| Longer JSON | AOT build | 1.777 | 1.875 | 1.731 |
+| JSON | IR command | 0.151 (0.150–0.161) | 0.157 (0.148–0.173) | 0.158 (0.157–0.175) |
+| JSON | AOT build | 1.755 (1.746–1.870) | 1.704 (1.640–1.821) | 1.717 (1.695–1.897) |
+| Object | IR command | 0.053 (0.050–0.060) | 0.056 (0.047–0.078) | 0.064 (0.051–0.065) |
+| Object | AOT build | 0.387 (0.343–0.428) | 0.351 (0.349–0.507) | 0.359 (0.333–0.422) |
+| Ordinary | IR command | 0.052 (0.048–0.058) | 0.055 (0.054–0.058) | 0.057 (0.049–0.062) |
+| Ordinary | AOT build | 0.349 (0.348–0.394) | 0.411 (0.403–0.434) | 0.416 (0.323–0.493) |
+| Longer JSON | IR command | 0.156 (0.148–0.177) | 0.142 (0.139–0.176) | 0.176 (0.145–0.185) |
+| Longer JSON | AOT build | 1.872 (1.761–1.901) | 1.794 (1.636–1.881) | 1.664 (1.653–1.667) |
+
+The ordinary AOT median rises from 0.349 to 0.416 seconds in this batch, with a
+wide optimized range. Small apparent build improvements in other rows are not
+established speedups. Earlier single-sample costs are historical: for example,
+short JSON was 1.620/1.661/1.752 seconds before this follow-up batch.
 
 | Input | Main / original / optimized emitted IR lines | Main / original / optimized AOT bytes |
 |---|---:|---:|
@@ -218,7 +267,7 @@ should not be interpreted as a reliable backend cost. Units are seconds.
 | Longer JSON | 4,176 / 4,297 / 4,311 | 153,688 / 153,856 / 153,808 |
 
 The build observations show the scale of compilation and code-size changes but
-are too sparse and noisy for a compilation-speed conclusion. JIT startup and
+are too sparse and noisy for a precise compilation-speed conclusion. JIT startup and
 compilation were excluded from the kernel timer and are not separately isolated
 by this report.
 
@@ -306,7 +355,7 @@ or a replacement callback therefore still propagates. The focused regression
 covers match/search at ordinary and lowered limits, deeper callers, capture
 variants and replacement-callback exceptions.
 
-The final compiler passed twelve focused recursion/regex fixtures in native
+The measured compiler passed twelve focused recursion/regex fixtures in native
 JIT and AOT using the hosted compiler: 24 executions. The same suite passed
 under program GC stress (24 executions), with all optimizer passes disabled
 (24 executions), and with JIT inlining disabled (12 JIT executions). These
@@ -319,17 +368,32 @@ control fail as expected.
 All 43 IR contract probes passed hosted generation and LLVM 18 assembly, and
 the runtime contract check passed 598 entries, 70 exception classes and 172
 subset functions. The local evidence is focused validation; it is not the full
-final-tree matrix. The final optimized self-hosting build and its native-compiler
-test pass are recorded separately in the PR when complete.
+final-tree matrix. That compiler also passed a 792,014-line self-hosting fixed
+point, an 18,805-line runtime fixed point, and all 24 focused executions using
+the resulting native compiler. A 3,913-case native compilation comparison found
+no changed statuses or new rejections, but preceded the finalizer safeguard.
+
+The corrected compiler passed 20 recursion proof/CFG contracts and the unchanged
+file-finalization fixture plus weakref transition/callback fixtures in JIT/AOT,
+normally and with program GC stress: 12 executions. File and weakref IR-equality
+contracts and a positive stdout-only leaf control cover the new boundary.
+Mypy passed all 48 source files. The corrected self-hosting, complete local
+comparison and CI results are recorded separately in the PR when complete.
 
 The upstream original-guard head `0166fbb5` completed 59 successful checks with
 two expected skips and no failures. Its
 [CI run](https://github.com/den-run-ai/pystachy/actions/runs/41153334248) and
 [coverage run](https://github.com/den-run-ai/pystachy/actions/runs/41153334286)
 include the regex fallback repair. They precede this optimization and do not
-validate the new compiler snapshot. At this report's measurement checkpoint,
-the optimized tree had not been pushed for new-head CI. Final combined-tree
-validation and fresh required CI remain pending before any merge-ready claim.
+validate the optimizer. The first optimized head, `e4a313db`, completed with 46
+successful checks, 11 failed checks and four skips. Its failures had three causes:
+the cache test's exhaustive disabled-pass list omitted `recursionleaf`; the
+ownership inventory treated integer augmented assignment as a container write;
+and the file-finalization mismatch above failed seven jobs. The combined gate
+also failed, and two coverage reports were blocked. The corrected source fixes
+all three causes without changing expected program output. Fresh combined-tree
+validation remains required before a merge-ready claim; see the PR for its latest
+completed checks.
 
 The remaining performance question is the nonzero instruction cost, including
 the unchanged ordinary JIT control. The measured scope is three kernels on one
