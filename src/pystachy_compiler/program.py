@@ -7,7 +7,7 @@ from src.pystachy_compiler.analysis import all_imports, collect, defines, module
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
-from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
+from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, IFn, NOLABELS, NONUMS, NOVALS
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import RENAMED, short
 from src.pystachy_compiler.specs import (
@@ -1194,7 +1194,19 @@ def gen_program(self, mods: list[Mod]) -> str:
             print(f"{fn.f.ll}: {fxs(fn.fx)}".rstrip(), file=sys.stderr)
     if "tupleret" in on:
         self.tuple_rets()  # (which functions return their tuples' slots by value: lowering reads it)
+    # Keep bounded hot entries separate from their guarded fallback and emit
+    # them first. Merging both versions enlarged hot-loop branches in LLVM 18;
+    # appending a separate entry after its fallback also hurt measured layout.
+    # Reorder emission only: fll and every analysis index still name self.fns.
+    emitted: list[IFn] = []
     for fn in self.fns:
+        if fn.f.ll.startswith("@rf.") and fn.f.name.endswith("$recursionentry"):
+            continue
+        fast = self.fll.get("@rf." + fn.f.ll[1:], -1)
+        if fast >= 0 and self.fns[fast].f.name.endswith("$recursionentry"):
+            emitted.append(self.fns[fast])
+        emitted.append(fn)
+    for fn in emitted:
         self.lower(fn)
         # its LLVM text is all that is left to print: its IR goes (its summary, IFn.fx, stays)
         fn.blocks = []

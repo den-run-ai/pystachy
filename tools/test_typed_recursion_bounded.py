@@ -79,6 +79,87 @@ print(helper(3))
         self.assertNotIn("@pys_recursion_error", helper)
         self.assertNotIn("store ", helper)
 
+    def test_maximal_entry_stays_separate_and_precedes_its_guarded_wrapper(self):
+        ir, _ = compile_source(ORDINARY)
+        definitions = [line for line in ir.splitlines() if line.startswith("define ")]
+        fast = next(line for line in definitions if "@rf.f.kernel(" in line)
+        original = next(line for line in definitions if "@f.kernel(" in line)
+        child = next(line for line in definitions if "@rf.f.step(" in line)
+        self.assertIn(" noinline", fast)
+        self.assertNotIn("noinline", child)
+        self.assertLess(definitions.index(fast), definitions.index(original))
+        symbols = [re.search(r"@([^ (]+)\(", line)[1] for line in definitions]
+        self.assertEqual(len(symbols), len(set(symbols)))
+
+    def test_nested_roots_through_an_intermediate_keep_private_calls_inlineable(self):
+        ir, functions = compile_source('''
+def leaf(n: int) -> int:
+    return n + 1
+
+def inner(n: int) -> int:
+    result = 0
+    for i in range(n):
+        result += leaf(i)
+    return result
+
+def bridge(n: int) -> int:
+    return inner(n)
+
+def outer(n: int) -> int:
+    result = 0
+    for i in range(n):
+        result += bridge(i)
+    return result
+
+print(outer(3), inner(2))
+''')
+        for name in ("inner", "bridge"):
+            self.assertFalse(any(op[:2] == ("rt", "recursion.room")
+                                 for op in operations(functions["@f." + name])))
+        self.assertTrue(any(op[:2] == ("rt", "recursion.enter")
+                            for op in operations(functions["@f.inner"])))
+        self.assertTrue(any(op[:2] == ("call", "@f.leaf")
+                            for op in operations(functions["@f.inner"])))
+        self.assertTrue(any(op[:2] == ("rt", "recursion.room")
+                            for op in operations(functions["@f.outer"])))
+        for caller, child in (("outer", "bridge"), ("bridge", "inner"), ("inner", "leaf")):
+            self.assertTrue(any(op[:2] == ("call", "@rf.f." + child)
+                                for op in operations(functions["@rf.f." + caller])))
+        for line in ir.splitlines():
+            if line.startswith("define ") and "@rf.f." in line:
+                self.assertEqual(" noinline" in line, "@rf.f.outer(" in line)
+
+    def test_independent_entries_share_one_inlineable_descendant(self):
+        ir, functions = compile_source('''
+def leaf(n: int) -> int:
+    return n + 1
+
+def left(n: int) -> int:
+    result = 0
+    for i in range(n):
+        result += leaf(i)
+    return result
+
+def right(n: int) -> int:
+    result = 1
+    for i in range(n):
+        result += leaf(i)
+    return result
+
+print(left(3), right(3))
+''')
+        definitions = [line for line in ir.splitlines() if line.startswith("define ")]
+        for name in ("left", "right"):
+            self.assertTrue(any(op[:2] == ("rt", "recursion.room")
+                                for op in operations(functions["@f." + name])))
+            fast = next(line for line in definitions if "@rf.f." + name + "(" in line)
+            original = next(line for line in definitions if "@f." + name + "(" in line)
+            self.assertIn(" noinline", fast)
+            self.assertLess(definitions.index(fast), definitions.index(original))
+        shared = [line for line in definitions if "@rf.f.leaf(" in line]
+        self.assertEqual(len(shared), 1)
+        self.assertNotIn("noinline", shared[0])
+
     def test_disable_restores_the_previous_guarded_shape(self):
         ir, functions = compile_source(ORDINARY, opt="-recursionregion")
         self.assertNotIn("@rf.", ir)

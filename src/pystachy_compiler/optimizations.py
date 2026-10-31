@@ -48,11 +48,11 @@ def recursion_copy(i: Ins) -> Ins:
     return out
 
 
-def recursion_fast(fn: IFn, skip: int, base: str, names: dict[str, str]) -> IFn:
+def recursion_fast(fn: IFn, skip: int, base: str, names: dict[str, str], entry: bool) -> IFn:
     # This runs after ordinary typed optimizations. Copy only their final IR and
     # the signature/lowering metadata it uses; never mutate the source FnInfo.
     old = fn.f
-    f = FnInfo(old.name + "$recursionfast", names[old.ll], old.node, old.cls)
+    f = FnInfo(old.name + ("$recursionentry" if entry else "$recursionfast"), names[old.ll], old.node, old.cls)
     f.params = [p for p in old.params]
     f.ptypes = [t for t in old.ptypes]
     f.ret = old.ret
@@ -265,6 +265,13 @@ def recursion_bounded(self) -> int:
         total += extra
     if len(roots) == 0:
         return 0
+    # Only maximal regions need an entry wrapper. A nested root remains an
+    # unchecked descendant of its selected ancestor; retaining its original
+    # guarded entry avoids another wrapper and keeps the private descendant
+    # inlineable. The complete needed DAG includes uncounted/intermediate
+    # adapters, so an incoming edge catches transitive nesting too.
+    roots = [j for j in roots if not any(parent in needed for parent in back[j])]
+    entries = {j: True for j in roots}
     names: dict[str, str] = {}
     for j in needed:
         name = self.fns[j].f.ll
@@ -272,7 +279,7 @@ def recursion_bounded(self) -> int:
     # Clone before changing any original entry. Shared descendants get one
     # private clone regardless of how many bounded roots call them.
     for j in needed:
-        fast = recursion_fast(self.fns[j], skips[j], bases[j], names)
+        fast = recursion_fast(self.fns[j], skips[j], bases[j], names, j in entries)
         self.fll[fast.f.ll] = len(self.fns)
         self.fns.append(fast)
     self.runtime("pys_recursion_room")
