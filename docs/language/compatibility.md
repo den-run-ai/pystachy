@@ -401,8 +401,8 @@ above apply to well-formed text (with the surrogate exception described above).
 
 - In a module whose leading comments hold `# pystachy: python-int`, ints promote past 64 bits
   ([promoting ints](../python-int.md)) in variables, arguments, returns, fields, module
-  variables, closures, tuples, `int | None` and the values generators yield and return, and, in a
-  program where no module opts in to dynamic `Any`, in lists of ints and of tuples of ints, the
+  variables, closures, tuples, `int | None` and the values generators yield and return, and in
+  lists of ints and of tuples of ints, the
   keys and values of dicts of ints and of tuples of ints (also in the tuples of their `items()`
   and the pairs that `dict()` takes), sets of ints and of tuples of ints, the iterators that
   `iter()` makes of them, the lists that `heapq` and `bisect` change, the counts of
@@ -417,9 +417,12 @@ above apply to well-formed text (with the surrogate exception described above).
   keep 64-bit ints: a value past 64 bits raises `OverflowError` there, where CPython goes on
   (`tests/deviations/python_int_limits.py`).
   A tuple of 64-bit ints that holds -2\*\*63 becomes a new tuple where a tuple of promoting ints
-  is expected, which `is` tells apart. Such a module rejects `is` between ints
-  (`tests/errors/numbers/python_int_is.py`), and cannot also opt in to dynamic `Any`
-  (`tests/errors/numbers/python_int_dynamic_any.py`).
+  is expected, which `is` tells apart. Such a module rejects `is` between typed ints
+  (`tests/errors/numbers/python_int_is.py`). It may also opt in to dynamic `Any`: wide ints
+  cross that boundary without narrowing, and boxed arithmetic in the combined module promotes.
+  Numeric object identity is retained in the supported bindings and typed numeric lists;
+  the remaining typed-container and generator identity gaps are described in
+  [dynamic `Any`](../dynamic-any.md#deviations).
 
 ## Rejected rather than miscompiled
 

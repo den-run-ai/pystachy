@@ -12,7 +12,15 @@
 #include "../runtime.c"
 
 I pys_obj_eq(I c, I a, I b) { (void)c; return a == b; }
-I pys_obj_cmp(I c, I op, I a, I b) { (void)c; (void)op; return a < b ? -1 : a > b; }
+enum { RAW_STORE_CLASS = 73 };
+I pys_obj_cmp(I c, I op, I a, I b) {
+  if (c == -1 - RAW_STORE_CLASS && op == 1) {
+    Dyn *item = (Dyn *)b;
+    if (DKIND(item) == DK_INT && item->v == 1) { pys_list_set((List *)a, 1, 9); return 0; }
+    return DKIND(item) == DK_INT && item->v == 9;
+  }
+  return a < b ? -1 : a > b;
+}
 Str *pys_obj_repr(I c, I a, I b) { (void)c; (void)a; (void)b; return cstr("<object>"); }
 
 static List *buffers;
@@ -339,6 +347,81 @@ static void identities(void) {
   pys_list_append(native, 1000); identity_slots(native);
   if (pys_list_get_identity(native, 1, 1) == old) bad("raw numeric write reused an equal object's identity");
 }
+/* Promoting storage and numeric identity share a scanned companion. The first
+   observation upgrades Mpz entries to boxes; every list move must preserve them. */
+static void wide_identities(void) {
+  Mpz *bigint = pys_mpz_from_str(cstr("1180591620717411303424"), 10);
+  Mpz *negative = pys_mpz_unary(bigint, 0);
+  Dyn *a = pys_dyn_big(0, bigint), *b = pys_dyn_big(0, bigint);
+  List *l = pys_list_new_atomic(0);
+  buffers = pys_list_new(0); pys_list_append(buffers, (I)l);
+  pys_list_append(l, INT64_MIN);
+  pys_list_append_big(l, bigint);
+  pys_list_append(l, 1000);
+  if (!big_list(l) || lbig(l, 0) || lbig(l, 1) != bigint) bad("initial promoting list storage");
+  pys_list_identity(l, 1);
+  if (big_list(l) || lbig(l, 0) || lbig(l, 1) != bigint || atomic(l->a) != 1 || atomic(l->ids)) bad("promoting identity upgrade");
+  Dyn *first = pys_list_get_identity(l, 1, 1);
+  if (pys_dyn_big_ptr(first) != bigint) bad("wide list read identity");
+  pys_list_set_identity(l, 1, INT64_MIN, a, 1);
+  pys_list_append_identity(l, INT64_MIN, b, 1);
+  pys_list_append_identity(l, INT64_MIN, a, 1);
+  if (a == b || pys_list_get_identity(l, 1, 1) != a || pys_list_get_identity(l, 3, 1) != b) bad("equal wide identities collapsed");
+  List *copy = pys_list_copy(l); pys_list_append(buffers, (I)copy);
+  List *slice = pys_list_slice_step(l, NONE, NONE, -1); pys_list_append(buffers, (I)slice);
+  if (copy->ids[2] != (I)a || slice->ids[1] != (I)a || slice->ids[2] != (I)b) bad("wide copy/slice identity");
+  pys_list_reverse(copy);
+  if (copy->ids[1] != (I)a || copy->ids[2] != (I)b) bad("wide reverse identity");
+  List *plain = pys_list_new_atomic(0);
+  pys_list_append_big(plain, negative);
+  pys_list_extend(plain, l);
+  if (big_list(plain) || lbig(plain, 0) != negative || plain->ids[3] != (I)a) bad("raw/identity extend upgrade");
+  pys_list_set_slice(plain, 0, 2, 1, copy);
+  if (plain->ids[1] != (I)a || plain->ids[2] != (I)b) bad("wide slice assignment identity");
+  pys_list_extend(l, l);
+  pys_list_imul(l, 2);
+  if (l->len != 20 || l->ids[2] != (I)a || l->ids[4] != (I)b || l->ids[17] != (I)a) bad("wide repeated identity");
+  pys_list_sort(l, cstr("i"));
+  for (I i = 1; i < l->len; i++) {
+    Big x = litem(l, i - 1), y = litem(l, i);
+    if (pys_big_cmp(x.lo, x.hi, y.lo, y.hi) > 0) bad("wide identity sort order");
+  }
+  if (l->ids[9] != (I)a || l->ids[10] != (I)b || l->ids[11] != (I)a) bad("wide identity stable sort");
+  if (pys_list_minmax_identity(l, cstr("i"), 1, 1) != a) bad("wide max preserves first equal identity");
+  if (pys_list_find_identity(l, INT64_MIN, pys_dyn_int(INT64_MIN), cstr("i"), cstr("i"), 1) != 0) bad("wide items mistaken for INT64_MIN");
+  Dyn *floatbig = pys_dyn_float(1180591620717411303424.0);
+  if (pys_list_count_identity(l, floatbig->v, floatbig, cstr("i"), cstr("f"), 1) != 12) bad("wide identity float search");
+  Big sum = pys_big_sum(copy, 0, NULL);
+  if (strcmp(pys_big_str(sum.lo, sum.hi)->s, "3532551490115379135464")) bad("wide identity sum");
+  Dict *keys = pys_dict_fromkeys(0, copy, 7);
+  if (keys->len != 3 || pys_dict_big_find(keys, 0, bigint) < 0) bad("wide identity dict.fromkeys");
+  if (pys_list_pop_identity(copy, 0, 1) != a) bad("wide pop identity");
+  pys_list_insert_big(copy, 0, negative);
+  if (lbig(copy, 0) != negative || !pys_dyn_big_ptr(pys_list_get_identity(copy, 0, 1))) bad("wide raw insertion into identity list");
+  pys_list_set_big(copy, 0, bigint);
+  if (lbig(copy, 0) != bigint) bad("wide raw replacement into identity list");
+  pys_list_append_big(copy, negative);
+  if (lbig(copy, copy->len - 1) != negative) bad("wide raw append into identity list");
+  scrub_collect();
+  if (pys_mpz_cmp(lbig(copy, 0), bigint) || l->ids[9] != (I)a) bad("wide companion survives collection");
+  pys_list_clear(copy); check_empty(copy);
+  pys_list_append_big(copy, bigint);
+  if (lbig(copy, 0) != bigint || big_list(copy)) bad("cleared identity list keeps wide representation");
+  List *empty_big = pys_list_new_atomic(0);
+  pys_list_append_big(empty_big, bigint); pys_list_clear(empty_big);
+  pys_list_identity(empty_big, 1);
+  if (empty_identity_big[0] != BIGIDS || empty_big->ids != empty_identity_int) bad("empty upgrade mutated shared sentinel");
+}
+static void query_mutation(void) {
+  /* A comparison can call code using the raw numeric ABI. The next item needs
+     its newly stored value's box, not the old box or a pending null companion. */
+  List *l = pys_list_new_atomic(0);
+  pys_list_append(l, 1); pys_list_append(l, 2);
+  DynType type = {DK_OBJ, cstr("O73"), cstr("RawStore"), RAW_STORE_CLASS, 0, DF_X, 0, 0, 0};
+  Dyn *query = pys_dyn_ref(&type, l);
+  if (pys_list_find_identity(l, (I)query, query, cstr("i"), cstr("A"), 1) != 1)
+    bad("dynamic query does not observe callback raw store");
+}
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 1);
   budget_candidates();
@@ -351,7 +434,9 @@ int main(void) {
   ranges();
   numeric();
   identities();
+  wide_identities();
+  query_mutation();
   budgets();
-  puts("listprobe: empty-list reuse, range-list storage/mutation, pointer-free list kinds, numeric identity and large-object collections passed");
+  puts("listprobe: empty-list reuse, range-list storage/mutation, pointer-free list kinds, numeric identity, promoting storage and large-object collections passed");
   return 0;
 }

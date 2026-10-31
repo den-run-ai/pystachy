@@ -9,7 +9,7 @@ internal constant global (Data "classrec", lowered in lower_module.py) emitted o
 that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop otherwise.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import dynamic_program, shown
+from src.pystachy_compiler.diagnostics import dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Loop, Val
 from src.pystachy_compiler.names import short
@@ -313,7 +313,7 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
                 self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
             ts.append("null")
     neg = n.s == "is not" or n.s == "!="
-    if not ts[0].startswith("%") or not ts[1].startswith("%"):
+    if (not int_program() or "@pys_dyntype_int" not in ts) and (not ts[0].startswith("%") or not ts[1].startswith("%")):
         # (a type named, or one no box holds, is no function's: its DynType is the only one)
         return self.ptr_cmp("!=" if neg else "==", Val(ts[0], "dyntype"), Val(ts[1], "dyntype"))
     r = self.rt("pys_dyn_same_type", "i64", [f"ptr {ts[0]}", f"ptr {ts[1]}"])

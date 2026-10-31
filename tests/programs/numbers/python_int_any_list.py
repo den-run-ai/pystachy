@@ -1,8 +1,6 @@
 # pystachy: dynamic-any
-# docs/python-int.md#64-bit-boundaries: imported promoting values remain typed, but a
-# dynamic list display converts its items to Any and rejects values outside int64.
-# CPython instead builds both wide lists; the exception belongs to the display.
-from devmods.python_int_any_list import factorial
+# A dynamic list display boxes imported promoting values without narrowing them.
+from any_list_producer import factorial
 
 fits = factorial(0) * 9223372036854775807
 print("fits", [fits, -fits - 1])

@@ -183,6 +183,12 @@ def lower_data(d: Data) -> str:
         # a constant dynamic value (dynamic.py): its DynType and, as its payload, the address of its
         # last ref: a def's own DynType, or a str constant
         return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 ptrtoint (ptr {d.refs[-1]} to i64)}}, align 8"
+    if d.kind == "mpz":
+        # A wide integer literal's immutable magnitude, matching mpz/mpz.c: signed
+        # limb count followed by base-2**30 uint32_t digits, least significant first.
+        n = len(d.items)
+        limbs = ", ".join(["i32 " + x.v for x in d.items])
+        return f"{d.name} = internal constant {{i64, [{n} x i32]}} {{i64 {d.text}, [{n} x i32] [{limbs}]}}, align 8"
     if d.kind == "dynint":
         # an int literal's dynamic value (dynamic.py): int's DynType and the value. Internal, and
         # its address is the value's identity: never merged

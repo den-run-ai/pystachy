@@ -928,6 +928,11 @@ def gen_stmt_main(self, n: Node) -> None:
                 # where pys_dict_pop reads a 64-bit one (NARROWED)
                 kt = targs(unopt(o.t))[0]
                 kval = self.expr(dt.kids[1], kt)
+                if kt == "int" and kval.t == "dyn":
+                    d = self.unwrap(o, nodel)
+                    e = self.int_key_entry(d, kval, True)
+                    self.rt("pys_dict_entry_del", "void", [f"ptr {d.v}", f"i64 {e}"])
+                    continue
                 if (kval.t == BIG or kval.t == BIGOPT) and self.dict_bigkey(unopt(o.t)):
                     # (a key past 64 bits: bigints.py)
                     d = self.unwrap(o, nodel)
@@ -1289,6 +1294,8 @@ def gen_augassign(self, n: Node) -> None:
             # program: where it deletes k, CPython adds k as the bool it is (store_key rejects it)
             kv = targs(unopt(o.t))
             kval = self.expr(t.kids[1], kv[0])
+            if kv[0] == "int" and kval.t == "dyn":
+                kval = self.key_coerce(kval, "int")
             if (kval.t == BIG or kval.t == BIGOPT) and self.dict_bigkey(unopt(o.t)):
                 # a key past 64 bits (bigints.py): its entry for d[k], and again for the store, which
                 # the right operand may have moved or deleted

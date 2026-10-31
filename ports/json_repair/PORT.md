@@ -77,15 +77,17 @@ the complete upstream suite. The checker retains all cases and fails on every
 mismatch; it does not silently waive known limitations.
 
 On CPython 3.13.16, pristine upstream and adapted sources match **645/645**.
-Native JIT, AOT and both modes with collection at every allocation match
-**644/645**. The remaining case contains integer `12345678901234567890`, beyond
-Pystachy's signed 64-bit range; native parsing raises `OverflowError`. This is a
-known runtime limit, not exact full-package parity.
+Native JIT, AOT and both modes with collection at every allocation now match
+**645/645**. The number parser combines dynamic `Any` with promoting integers.
+The native JSON codec still rejects integer tokens outside signed 64-bit range;
+the facade and valid-suffix fast path catch that specific overflow and retry
+through the repair parser. This preserves integer `12345678901234567890` in
+case 59, which previously failed, without converting it to a float or string.
 
 The existing native JSON codec also limits nesting to 256 containers. Unlimited
-integers/depth, schema APIs and Python's exact resource-exhaustion behavior are
-not established by these tests. Arbitrary-precision integers require a general
-runtime representation; converting this value to a float or string would lose parity.
+depth, schema APIs and Python's exact resource-exhaustion behavior are not
+established by these tests. Integer text conversions retain the runtime's
+digit limit. The replay establishes these 645 cases, not full-package parity.
 
 The small [native regression](../../tests/programs/apps/port_json_repair.py)
 checks mutable `Any` results, repair behavior, Unicode and the fast path. Run:

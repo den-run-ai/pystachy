@@ -16,11 +16,12 @@ the program's classes, functions the compiler writes once every class that is bo
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, Rejoin, dynamic_file, dynamic_program
+from src.pystachy_compiler.bigints import held
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import owner, retoken, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
+from src.pystachy_compiler.specs import BIG, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, mk
 from src.pystachy_compiler.utils import builtin_key, disjoint_sets, elem, gelem, holds_dyn, identity_abi, is_callable, is_dict, is_fn, is_gen, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -322,6 +323,8 @@ def gen_dyn_boxable(self, t: str) -> str:
 
 def gen_dyn_type(self, t: str) -> str:
     # the DynType operand of payloads of static type t (a class's: its own, dyn_class_type)
+    if t == BIG:
+        return self.rtdata("pys_dyntype_int")
     if t in BUILTIN:
         return self.rtdata(BUILTIN[t])
     if is_gen(t):
@@ -889,6 +892,8 @@ def comparison_read_walk(n: Node, aliases: list[str], missing: list[str]) -> boo
 
 def comparison_builtin(t: str) -> str:
     # These are exact native builtin layouts, never user-defined subclasses.
+    if t == BIG:
+        return "int"
     if t in ["None", "bool", "int", "float", "str", "bytes"] or is_list(t) or is_dict(t) or is_tuple(t) or is_vtuple(t) or is_set(t):
         return tname(t)
     return ""
@@ -987,7 +992,7 @@ def comparison_value(n: Node, receiver: str, aliases: list[str], own: dict[str, 
         index = comparison_value(n.kids[1], receiver, aliases, own, peer, classes, length)
         if t == "!raises" or (t != "" and index == "!raises") or (t != "" and index != "" and comparison_invalid("[]", t, index) != ""):
             return "!raises"
-        if index in ["int", "bool"]:
+        if index in ["int", "bool", BIG]:
             if is_list(t):
                 return elem(t)
             if is_vtuple(t):
@@ -999,19 +1004,19 @@ def comparison_value(n: Node, receiver: str, aliases: list[str], own: dict[str, 
                 ts = targs(t)
                 if 0 <= i < len(ts):
                     return ts[i]
-        if is_dict(t) and index == targs(t)[0]:
+        if is_dict(t) and (index == targs(t)[0] or (index in ["int", BIG] and targs(t)[0] in ["int", BIG])):
             return targs(t)[1]
     if n.kind == "unary" and n.s in ["+", "-", "~"]:
         t = comparison_value(n.kids[0], receiver, aliases, own, peer, classes, length)
         if t == "!raises" or comparison_invalid("unary" + n.s, t) != "":
             return "!raises"
-        return "int" if t == "bool" else t if t in ["int", "float"] else ""
+        return "int" if t == "bool" else t if t in ["int", "float", BIG] else ""
     if n.kind == "binop" and n.s in ["+", "-", "*", "/", "//", "%", "**", "<<", ">>", "&", "|", "^"]:
         ts = [comparison_value(kid, receiver, aliases, own, peer, classes, length) for kid in n.kids]
         if ts[0] == "!raises" or (ts[0] != "" and ts[1] == "!raises") or comparison_invalid(n.s, ts[0], ts[1]) != "":
             return "!raises"
-        if all(t in ["int", "float", "bool"] for t in ts) and (n.s not in ["<<", ">>", "&", "|", "^"] or "float" not in ts):
-            return "float" if n.s == "/" or "float" in ts else "int"
+        if all(t in ["int", "float", "bool", BIG] for t in ts) and (n.s not in ["<<", ">>", "&", "|", "^"] or "float" not in ts):
+            return "float" if n.s == "/" or "float" in ts else BIG if BIG in ts else "int"
         if n.s == "+" and all(is_list(t) for t in ts):
             if ts[0] == ts[1]:
                 return ts[0]
@@ -1020,9 +1025,9 @@ def comparison_value(n: Node, receiver: str, aliases: list[str], own: dict[str, 
         if n.s == "+" and all(is_tuple(t) for t in ts):
             return "tuple[" + ",".join(targs(ts[0]) + targs(ts[1])) + "]"
         if n.s == "*":
-            if is_list(ts[0]) and ts[1] in ["int", "bool"]:
+            if is_list(ts[0]) and ts[1] in ["int", "bool", BIG]:
                 return ts[0]
-            if is_list(ts[1]) and ts[0] in ["int", "bool"]:
+            if is_list(ts[1]) and ts[0] in ["int", "bool", BIG]:
                 return ts[1]
     return ""
 
@@ -1030,7 +1035,7 @@ def comparison_value(n: Node, receiver: str, aliases: list[str], own: dict[str, 
 def comparison_boxable(t: str, classes: dict[str, ClassInfo]) -> bool:
     # The subset whose fresh concatenated items can become Any without copying
     # mutable storage or converting typed variable-length tuples.
-    if t in BUILTIN or t == DYN:
+    if t in BUILTIN or t == DYN or t == BIG:
         return True
     if t in classes:
         return classes[t].exc == ""
@@ -1055,7 +1060,7 @@ def comparison_walkable(t: str, classes: dict[str, ClassInfo]) -> bool:
     t = unopt(t)
     if t in classes:
         return classes[t].exc == "" and "__getattribute__" not in classes[t].methods
-    if t in ["None", "int", "float", "bool", "str"]:
+    if t in ["None", "int", "float", "bool", "str", BIG]:
         return True
     if is_union(t):
         return all(comparison_walkable(m, classes) for m in umembers(t))
@@ -1097,7 +1102,7 @@ def comparison_pair(a: str, b: str, op: str, classes: dict[str, ClassInfo], name
         if holds_dyn(a) or holds_dyn(b):
             return a == b  # mixed boxed/typed container equality needs its own path
         return (not is_set(a) and not is_set(b)) or comparison_sets(a, b)
-    return op in ["<", "<=", ">", ">="] and a in ["int", "float", "bool"] and b in ["int", "float", "bool"]
+    return op in ["<", "<=", ">", ">="] and a in ["int", "float", "bool", BIG] and b in ["int", "float", "bool", BIG]
 
 
 def comparison_container_pair(a: str, b: str, classes: dict[str, ClassInfo], named: dict[str, bool]) -> bool:
@@ -1128,7 +1133,7 @@ def comparison_item_pair(a: str, b: str, classes: dict[str, ClassInfo], named: d
 def comparison_list_pair(a: str, b: str, classes: dict[str, ClassInfo], named: dict[str, bool]) -> bool:
     # Match the direct-item loop's domain. Declared Any/exact-class methods
     # have one checked body; generic methods could fail separately per peer.
-    if any(t not in classes and t not in [DYN, "int", "float", "bool", "str", "bytes", "None"] for t in [a, b]):
+    if any(t not in classes and t not in [DYN, BIG, "int", "float", "bool", "str", "bytes", "None"] for t in [a, b]):
         return False
     if a in named or b in named:
         return False  # NamedTuple equality is tuple value equality, not object identity
@@ -1387,9 +1392,7 @@ def gen_dyn_box(self, v: Val) -> Val:
     # v as a dyn value (dyn_boxable says which values can be)
     t = self.rec_type(v.t)
     if t == BIG:
-        return self.dyn_box(self.big_narrow(v))
-    if t == BIGOPT:
-        return self.dyn_box(self.big_opt_narrow(v))
+        return box_big(self, v)
     if t == DYN:
         return v
     if len(self.idoff) > 0:
@@ -1529,39 +1532,64 @@ def gen_dyn_box(self, v: Val) -> Val:
     return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.dyn_type(t)}", f"ptr {v.v}"]), DYN)
 
 
-def gen_dyn_id_box(self, v: Val) -> Val:
-    # A numeric binding's companion is its Any box while representable, else null.
-    # Unlike a crossing into Any (dyn_box), bookkeeping must never narrow or raise.
-    # An out-of-range promoting integer is still a valid typed value.
-    if v.t != BIG and v.t != BIGOPT:
-        return self.dyn_box(v)
+def box_big(self, v: Val) -> Val:
+    # Both representations use the binding's original Any box. Small integers
+    # retain their cache/literal path; wide integers keep a scanned Mpz payload.
     if v.idfrom != "":
         return Val(v.idfrom, DYN)
-    if v.t == BIGOPT:
-        if v.v == "null":
-            return Val(self.rtdata("pys_dyn_none_box"), DYN)
-        some = self.label()
-        end = self.label()
-        ph = Ins("phi", DYN, "")
-        self.incoming(ph, self.rtdata("pys_dyn_none_box"), self.cur)
-        self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, some)
-        self.place(some)
-        b = self.dyn_id_box(self.big_unbox(v))
-        self.incoming(ph, b.v, self.cur)
-        self.br(end)
-        self.place(end)
-        return Val(self.phi(ph), DYN)
-    fits = self.label()
+    small = self.label()
+    wide = self.label()
     end = self.label()
     ph = Ins("phi", DYN, "")
-    self.incoming(ph, "null", self.cur)
-    self.cbr(self.big_fits([v]), fits, end)
-    self.place(fits)
+    self.cbr(self.big_fits([v]), small, wide)
+    self.place(small)
     b = self.dyn_box(self.big_lo(v).identity(v))
     self.incoming(ph, b.v, self.cur)
     self.br(end)
+    self.place(wide)
+    if v.idslot == "":
+        box = self.rt("pys_dyn_big", "ptr", ["i64 0", f"ptr {self.big_hi(v).v}"])
+    else:
+        held = self.dyn_id_held(v)
+        check = self.label()
+        hit = self.label()
+        miss = self.label()
+        done = self.label()
+        wp = Ins("phi", DYN, "")
+        # The companion is an object's provenance, not a value cache. A delayed
+        # read can reuse only its snapshot or a still-live binding's new box.
+        self.cbr(self.ptr_cmp("!=", held, Val("null", DYN)).v, check, miss)
+        self.place(check)
+        kind = self.ptr_cmp("==", Val(self.dyn_typeof(held), "dyntype"), Val(self.rtdata("pys_dyntype_bigint"), "dyntype"))
+        payload = self.num_cmp("==", self.dyn_payload(held, "int"), Val(self.scalar_cast("ptrtoint", self.big_hi(v), "int"), "int"))
+        self.cbr(self.scalar("and", [kind, payload]), hit, miss)
+        self.place(hit)
+        self.incoming(wp, held.v, self.cur)
+        self.br(done)
+        self.place(miss)
+        made = self.rt("pys_dyn_big", "ptr", ["i64 0", f"ptr {self.big_hi(v).v}"])
+        self.incoming(wp, made, self.cur)
+        live = "true" if self.idstores.get(v.idslot, 0) == v.idgen else "false"
+        if live == "false" and v.idcounter != "":
+            live = self.num_cmp("==", self.mem_load(Val(v.idcounter, "*int")), Val(v.idversion, "int")).v
+        if live != "false":
+            keep = self.label()
+            self.cbr(live, keep, done)
+            self.place(keep)
+            self.mem_store(Val(v.idslot, "*" + DYN), Val(made, DYN))
+            self.incoming(wp, made, self.cur)
+        self.br(done)
+        self.place(done)
+        box = self.phi(wp)
+    self.incoming(ph, box, self.cur)
+    self.br(end)
     self.place(end)
     return Val(self.phi(ph), DYN)
+
+
+def gen_dyn_id_box(self, v: Val) -> Val:
+    # Bookkeeping and explicit crossings share the same object at every width.
+    return self.dyn_box(v)
 
 
 def gen_dyn_id_store(self, slot: str, v: Val, t: str) -> None:
@@ -1661,8 +1689,11 @@ def gen_dyn_id_read(self, v: Val, slot: str) -> None:
         # store_name pairs every numeric global store with dyn_id_store: its box is
         # either null or exactly this binding's type and payload. Unlike a delayed
         # local read, it needs neither dyn_box's stale-value checks nor a slot reload.
-        if v.t == "int" or v.t == "float":
-            box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {v.idheld}"]) if v.t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {v.idheld}"])
+        if v.t == "int" or v.t == BIG or v.t == "float":
+            if v.t == BIG:
+                box = self.rt("pys_dyn_big_box", "ptr", [f"i64 {self.big_lo(v).v}", f"ptr {self.big_hi(v).v}", f"ptr {v.idheld}"])
+            else:
+                box = self.rt("pys_dyn_int_box", "ptr", [f"i64 {v.v}", f"ptr {v.idheld}"]) if v.t == "int" else self.rt("pys_dyn_float_box", "ptr", [f"double {v.v}", f"ptr {v.idheld}"])
             self.mem_store(Val(slot, "*" + DYN), Val(box, DYN))
             v.idfrom = box
             v.idslot = ""
@@ -2228,6 +2259,10 @@ def gen_dyn_typeof(self, v: Val) -> str:
 
 def gen_dyn_payload(self, v: Val, t: str) -> Val:
     # the payload of box v, which a test proved to be of static type t
+    if t == BIG:
+        r = Val(self.rt("pys_dyn_big_unbox", "{i64, ptr}", [f"ptr {v.v}"]), BIG)
+        r.idfrom = v.v
+        return r
     if t == "None" or t == NONEVAR:
         return Val("null", "None")
     i = Ins("dyn.payload", "%slot", t)
@@ -2243,6 +2278,8 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
     # takes None too, and a union one of its members' values
     if t == DYN:
         return v
+    if t == BIG:
+        return self.dyn_payload(v, BIG)
     if t == "None":
         self.dyn_check(v, ["None"], "None")
         return Val("null", "None")
@@ -2301,7 +2338,7 @@ def gen_dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
 def gen_dyn_unboxable(self, t: str) -> bool:
     # can an Any value have static type t: does dyn_unbox compile for it (not for a list[int],
     # whose items an Any list does not type, nor for a function)
-    if t == DYN or t == "None" or t in BUILTIN:
+    if t == DYN or t == "None" or t == BIG or t in BUILTIN:
         return True
     if is_opt(t) and t != NONEVAR:
         return self.dyn_unboxable(unopt(t))
@@ -2325,7 +2362,7 @@ def gen_dyn_isa(self, v: Val, t: str) -> str:
     if is_opt(t) and t != NONEVAR:
         r = self.dyn_isa(v, unopt(t))
         return "" if r == "" else self.scalar("or", [Val(self.dyn_test(v, ["None"]), "bool"), Val(r, "bool")])
-    if t in BUILTIN:
+    if t == BIG or t in BUILTIN:
         return self.dyn_test(v, [t])
     if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
         # (an object of t or a subclass, or None, as pys_dyn_unbox walks the box's bases: also of
@@ -2368,7 +2405,7 @@ def gen_dyn_select(self, v: Val, ts: list[str], t: str) -> Val:
         nxt = self.label()
         self.cbr(self.dyn_test(v, [m]), hit, nxt)
         self.place(hit)
-        x = self.coerce(self.dyn_payload(v, m), t)
+        x = self.coerce(self.dyn_unbox(v, m) if m == "int" and int_program() else self.dyn_payload(v, m), t)
         self.incoming(ph, x.v, self.cur)
         self.br(end)
         self.place(nxt)
@@ -2396,6 +2433,8 @@ def gen_dyn_test(self, v: Val, ts: list[str]) -> str:
 def gen_dyn_types_of(self, t: str) -> list[str]:
     # the DynTypes of the boxes that hold values of static type t: a class's and its subclasses'
     # of those boxed (a subclass boxed later is a case the program tests too: see dyn_dispatchers)
+    if (t == "int" or t == BIG) and int_program():
+        return [self.rtdata("pys_dyntype_int"), self.rtdata("pys_dyntype_bigint")]
     if t in BUILTIN:
         return [self.dyn_type(t)]
     if t in self.classes:
@@ -2462,7 +2501,7 @@ def gen_dyn_narrowed(self, v: Val, nt: str) -> Val:
     if nt == DYNINT:
         self.dynints[v.v] = True
         return v
-    x = self.dyn_payload(v, nt)
+    x = self.dyn_unbox(v, nt) if nt == "int" and int_program() else self.dyn_payload(v, nt)
     if nt == "float":
         x.idfrom = v.v  # (its object, as an Any value again: dyn_box)
     return x
@@ -2474,7 +2513,7 @@ def gen_dyn_proven_int(self, v: Val) -> Val:
     # Val("", "") for any other value
     if v.t == "int" or v.t == "bool":
         return self.as_int(v)
-    if v.t == DYN and v.v in self.dynints:
+    if v.t == DYN and v.v in self.dynints and not int_program():
         return self.dyn_payload(v, "int")
     return Val("", "")
 
@@ -2749,7 +2788,8 @@ def gen_dyn_arith(self, op: str, a: Val, b: Val, inplace: bool = False) -> Val:
         return self.arith(op, pa, pb)
     x = self.dyn_box(a)
     y = self.dyn_box(b)
-    f = self.dyn_dispatcher(("i" if inplace else "") + "op" + str(BINOPS[op]), [DYN, DYN], DYN, BINDUNDERS[op])
+    suffix = ".promote" if self.int_policy(self.line) else ""
+    f = self.dyn_dispatcher(("i" if inplace else "") + "op" + str(BINOPS[op]) + suffix, [DYN, DYN], DYN, BINDUNDERS[op])
     return self.dyn_call(f, [x, y])
 
 
@@ -2758,7 +2798,8 @@ def gen_dyn_unary(self, op: str, v: Val) -> Val:
     if p.t != "":
         # (an int or a bool: -x, +x and ~x are ints)
         return p if op == "+" else self.arith("-", Val("0", "int"), p) if op == "-" else self.arith("^", p, Val("-1", "int"))
-    f = self.dyn_dispatcher("un" + str(UNOPS[op]), [DYN], DYN, {"-": "__neg__", "+": "__pos__", "~": "__invert__"}[op])
+    suffix = ".promote" if self.int_policy(self.line) else ""
+    f = self.dyn_dispatcher("un" + str(UNOPS[op]) + suffix, [DYN], DYN, {"-": "__neg__", "+": "__pos__", "~": "__invert__"}[op])
     return self.dyn_call(f, [v])
 
 
@@ -2870,6 +2911,9 @@ def gen_dyn_contains(self, o: Val, k: Val) -> Val:
 
 
 def gen_dyn_int(self, v: Val) -> Val:
+    if self.int_policy(self.line):
+        boxed = self.dyn_call(self.dyn_dispatcher("int.promote", [DYN], DYN, "__int__"), [v])
+        return self.dyn_unbox(boxed, BIG)
     return self.dyn_call(self.dyn_dispatcher("int", [DYN], "int", "__int__"), [v])
 
 
@@ -2887,6 +2931,7 @@ def numeric_result(self, r: Val, method: str, owner: str) -> Val:
     # Protocol results are checked, not converted: __float__ returning an int is
     # an error, and __int__/__index__ must not recursively convert another object.
     want = "float" if method == "__float__" else "int"
+    result_type = BIG if want == "int" and int_program() else want
     name = short(owner) + "." + method if method == "__float__" else method
     allowed = ["float"] if want == "float" else ["int", "bool"]
     r = self.unwrap(r, f"TypeError: {name} returned non-{want} (type NoneType)")
@@ -2897,7 +2942,7 @@ def numeric_result(self, r: Val, method: str, owner: str) -> Val:
         if len([m for m in ms if m in self.classes]) > 0:
             self.guard(self.ptr_cmp("==", r, Val("null", "None")).v, f"TypeError: {name} returned non-{want} (type NoneType)")
         end = self.label()
-        ph = Ins("phi", want, "")
+        ph = Ins("phi", result_type, "")
         for j in range(len(ms)):
             hit = self.label()
             miss = self.label() if j + 1 < len(ms) else ""
@@ -2913,9 +2958,9 @@ def numeric_result(self, r: Val, method: str, owner: str) -> Val:
             if miss != "":
                 self.place(miss)
         if len(ph.a) == 0:
-            return Val("undef", want)
+            return Val("undef", result_type)
         self.place(end)
-        return Val(self.phi(ph), want)
+        return Val(self.phi(ph), result_type)
     if r.t == DYN:
         good = self.label()
         bad = self.label()
@@ -2924,16 +2969,17 @@ def numeric_result(self, r: Val, method: str, owner: str) -> Val:
         msg = self.concat([Val(self.sconst(f"{name} returned non-{want} (type "), "str"), self.dyn_type_name(r), Val(self.sconst(")"), "str")])
         self.raise_("TypeError", msg.v)
         self.place(good)
+        if result_type == BIG:
+            box = Val(self.rt("pys_dyn_int_box_of", "ptr", [f"ptr {r.v}"]), DYN)
+            return self.dyn_unbox(box, BIG)
         return self.dyn_payload(r, want)
     if want == "int" and r.t == BIG:
-        # An imported promoting-int method meets the existing 64-bit Any
-        # boundary here, just as an int+ flowing into dynamic storage does.
-        return self.as_int(r)
+        return r
     if r.t not in allowed:
         self.notnone(r, f"TypeError: {name} returned non-{want} (type NoneType)")
         self.raise_("TypeError", self.sconst(f"{name} returned non-{want} (type {tname(r.t)})"))
-        return Val("0.0" if want == "float" else "0", want)
-    return r if want == "float" else self.as_int(r)
+        return Val("undef", result_type)
+    return r if want == "float" else self.to_big(r) if result_type == BIG else self.as_int(r)
 
 
 def sequence_index(self, o: Val, k: Val) -> Val:
@@ -2969,6 +3015,8 @@ def index_bound(self, v: Val, bound: bool) -> str:
     none = self.dyn_test(v, ["None"])
     ok = self.scalar("or", [Val(none, "bool"), Val(self.dyn_test(v, ["int", "bool"]), "bool")])
     self.guard(self.scalar("xor", [Val(ok, "bool"), Val("true", "bool")]), "TypeError: slice indices must be integers or None or have an __index__ method")
+    if int_program():
+        return self.rt("pys_dyn_index_bound", "i64", [f"ptr {v.v}", f"i64 {1 if bound else 0}"])
     x = Val(self.to_slot(self.dyn_payload(v, "int")), "int")
     if bound:
         x = Val(self.select(self.num_cmp("==", x, Val("-9223372036854775808", "int")).v, Val("-9223372036854775807", "int"), x), "int")
@@ -3035,14 +3083,15 @@ def gen_dyn_body(self, key: str) -> None:
     o = ps[0]
     dunder = self.dynkeys[key]
     if key.startswith("pairkey."):
-        # Raw-slot ABI for the runtime's cross-layout dictionary lookup. The
-        # callback receives the stored target key first, as dict equality does.
+        # Each raw key slot travels with its wide-int companion. The callback
+        # receives the stored target key first, as dict equality does, and keeps
+        # a source key alive if a user comparison clears its dictionary.
         ts = dunder.split("|")
-        a = self.from_slot(ps[0].v, ts[0])
-        b = self.from_slot(ps[1].v, ts[1])
+        a = self.big(ps[0], self.scalar_cast("inttoptr", ps[1], "%ptr")) if ts[0] == "int" and int_lists() else self.from_slot(ps[0].v, held(ts[0]))
+        b = self.big(ps[2], self.scalar_cast("inttoptr", ps[3], "%ptr")) if ts[1] == "int" and int_lists() else self.from_slot(ps[2].v, held(ts[1]))
         identity = self.label()
         compare = self.label()
-        self.cbr(self.num_cmp("==", ps[2], Val("0", "int")).v, identity, compare)
+        self.cbr(self.num_cmp("==", ps[4], Val("0", "int")).v, identity, compare)
         self.place(identity)
         # Dictionary lookups find the identical key before comparing hashes.
         # A dynamic box and a native slot can name the same Python object.
@@ -3093,7 +3142,7 @@ def gen_dyn_body(self, key: str) -> None:
                 ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyntypes[s], "dyntype"))])
             if dunder == "__mod__":
                 ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyn_type("str"), "dyntype"))])
-            if key == "iop10":
+            if key == "iop10" or key == "iop10.promote":
                 # dict.__ior__ updates or raises: it never declines to the right's __ror__.
                 ok = self.scalar("and", [Val(ok, "bool"), self.ptr_cmp("!=", t, Val(self.dyn_type("dict[dyn,dyn]"), "dyntype"))])
             self.dyn_reflected(f, c, r, o, ps[1], ok)
@@ -3167,6 +3216,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
     # does class c have a case in dispatcher key: it defines the dunder (or the attribute, or the
     # method, whatever the arguments: a call that does not fit raises its TypeError) the
     # operation runs
+    if key.endswith(".promote"):
+        key = key[:-8]
     ci = self.classes[c]
     if key.startswith("cmp."):
         own = self.dynfns[key].ptypes[1]
@@ -3198,7 +3249,10 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
                        (self.ueq_type(actual[a]) and self.ueq_type(expected[a])) or
                        (comparison_walkable(actual[a], self.classes) and comparison_walkable(expected[a], self.classes)) or
                        comparison_sets(actual[a], expected[a]))]
-        different = [a for a in compatible if actual[a] != expected[a]]
+        # Small and promoting integer fields have the same Python operations.
+        # Their concrete adapter still reads and writes each original layout,
+        # using normal coercion and field widening where an operation needs it.
+        different = [a for a in compatible if actual[a] != expected[a] and not (actual[a] in ["int", BIG] and expected[a] in ["int", BIG])]
         if len(different) > 0:
             receiver = comparison_layout(self.classes[own])
             for field in fields:
@@ -3309,6 +3363,8 @@ def gen_dyn_call_args(self, key: str, args: list[Val]) -> list[Node]:
 
 def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val]) -> None:
     # class x.t's case of dispatcher key: its own operation on the object x, then return
+    if key.endswith(".promote"):
+        key = key[:-8]
     if key in ["iter", "next", "nextvalue", "reversed"]:
         protocol_method = "__iter__" if key == "iter" else "__reversed__" if key == "reversed" else "__next__"
         attempt = f"protocol:{x.t}.{protocol_method}"
@@ -3532,7 +3588,7 @@ def dyn_hint_result(self, value: Val, index: bool) -> Val:
         return self.dyn_call(self.dyn_dispatcher("hintindex", [DYN], "int", "__index__"), [value])
     if value.t == DYN:
         self.guard(self.scalar("xor", [Val(self.dyn_test(value, ["int", "bool"]), "bool"), Val("true", "bool")]), "TypeError: length is not an integer")
-        value = self.dyn_payload(value, "int")
+        value = Val(self.rt("pys_dyn_big_of", "{i64, ptr}", [f"ptr {value.v}"]), BIG) if int_program() else self.dyn_payload(value, "int")
     if index and value.t in self.classes and "__index__" in self.classes[value.t].methods:
         self.notnone(value, "TypeError: length is not an integer")
         fm = self.classes[value.t].methods["__index__"]
@@ -3581,7 +3637,8 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
             continue
         hit = self.label()
         nxt = self.label()
-        self.cbr(self.ptr_cmp("==", t, Val(self.dyn_type(bt), "dyntype")).v, hit, nxt)
+        test = self.dyn_test(o, ["int"]) if bt == "int" and int_program() else self.ptr_cmp("==", t, Val(self.dyn_type(bt), "dyntype")).v
+        self.cbr(test, hit, nxt)
         self.place(hit)
         if key.startswith("has."):
             self.ret_(Val("null", DYN))  # (a method, which call.<m>.<shape> calls)
@@ -3608,7 +3665,7 @@ def gen_dyn_builtin_methods(self, f: FnInfo, key: str, o: Val, args: list[Val]) 
         elif not self.dyn_builtin_takes(bt, m, n):
             self.raise_("TypeError", self.sconst(builtin_arity(bt, m, n)))
         else:
-            x = self.dyn_payload(o, "int" if bt == "bool" else bt)
+            x = self.dyn_payload(o, BIG if bt == "int" and int_program() else "int" if bt == "bool" else bt)
             r = self.expr(mk("call", "", line, [mk("attr", m, line, [self.vnode(x)])] + self.dyn_call_args(key, args)), "")
             self.dyn_return(f, self.dyn_fresh(r))
         self.place(nxt)
@@ -3674,6 +3731,9 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     # what dispatcher key does for the builtin types: runtime.c's helper, or an AttributeError
     if self.term:
         return
+    promote = key.endswith(".promote")
+    if promote:
+        key = key[:-8]
     if key.startswith("cmp."):
         self.ret_(Val("3", "int"))
         return
@@ -3681,9 +3741,11 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     if key.startswith("op") or key.startswith("iop"):
         n = key[2:] if key.startswith("op") else key[3:]
         fn = "pys_dyn_binop" if key.startswith("op") else "pys_dyn_inplace"
+        if promote:
+            fn = "pys_dyn_binop_promote" if key.startswith("op") else "pys_dyn_inplace_promote"
         self.ret_(Val(self.rt(fn, "ptr", [f"ptr {o.v}", f"ptr {ps[1].v}", f"i64 {n}"]), DYN))
     elif key.startswith("un"):
-        self.ret_(Val(self.rt("pys_dyn_unary", "ptr", [f"ptr {o.v}", f"i64 {key[2:]}"]), DYN))
+        self.ret_(Val(self.rt("pys_dyn_unary_promote" if promote else "pys_dyn_unary", "ptr", [f"ptr {o.v}", f"i64 {key[2:]}"]), DYN))
     elif key == "iter":
         self.ret_(Val(self.rt("pys_dyn_iter_box", "ptr", [f"ptr {o.v}"]), DYN))
     elif key == "reversed":
@@ -3709,7 +3771,7 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
     elif key == "lengthhint":
         self.ret_(Val("-1", "int"))
     elif key == "int":
-        self.ret_(Val(self.rt("pys_dyn_int_of", "i64", [f"ptr {o.v}"]), "int"))
+        self.ret_(Val(self.rt("pys_dyn_int_box_of", "ptr", [f"ptr {o.v}"]), DYN) if promote else Val(self.rt("pys_dyn_int_of", "i64", [f"ptr {o.v}"]), "int"))
     elif key == "float":
         self.ret_(Val(self.rt("pys_dyn_float_of", "double", [f"ptr {o.v}"]), "float"))
     elif key == "index":
@@ -3778,9 +3840,9 @@ def gen_dyn_dispatchers(self) -> bool:
     # program calls this until it is False
     # Runtime consumers need callbacks even without an explicit iter()/next().
     # Resolve these after the main walk, using only existing program registries.
-    iterate = any(k in self.rtfns for k in ["dyn.iter", "dyn.list", "dyn.strs", "dyn.unpack", "dyn.update", "dyn.inplace", "dyn.contains"]) or "iter" in self.dynfns
+    iterate = any(k in self.rtfns for k in ["dyn.iter", "dyn.list", "dyn.strs", "dyn.unpack", "dyn.update", "dyn.inplace", "dyn.inplace_promote", "dyn.contains"]) or "iter" in self.dynfns
     advance = iterate or "next" in self.dynfns or "nextvalue" in self.dynfns
-    length = any(k in self.rtfns for k in ["dyn.list", "dyn.strs", "dyn.update", "dyn.inplace"])
+    length = any(k in self.rtfns for k in ["dyn.list", "dyn.strs", "dyn.update", "dyn.inplace", "dyn.inplace_promote"])
     for c in self.dynclasses:
         ms = self.classes[c].methods
         for key in ["iter", "next", "lengthhint"]:
@@ -3820,7 +3882,8 @@ def gen_dyn_builtin(self, name: str, v: Val) -> Val:
     if name == "id":
         return Val(self.rt("pys_dyn_id", "i64", [f"ptr {v.v}"]), "int")
     if name == "abs":
-        return self.dyn_call(self.dyn_dispatcher("un3", [DYN], DYN, "__abs__"), [v])
+        suffix = ".promote" if self.int_policy(self.line) else ""
+        return self.dyn_call(self.dyn_dispatcher("un3" + suffix, [DYN], DYN, "__abs__"), [v])
     return Val(self.dyn_truth(v), "bool")
 
 

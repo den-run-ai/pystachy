@@ -31,9 +31,10 @@ astral character indistinguishable. The native runner emits round-trip float
 representations, which the host checker converts to exact `float.hex()` values,
 including negative zero. Error classes and exact messages are also compared.
 
-**Case 59 exceeds Pystachy's signed 64-bit integer range.** It stays in the
-corpus and the checker fails on it. Report the actual matched count and this
-limitation; there is no silent exclusion or automatic known-failure allowance.
+**Case 59 exceeds signed 64-bit integer range.** It stays in the corpus and now
+passes through the port's promoting number parser. Native JIT, AOT and both
+modes with collection at every allocation match **645/645**. There is no silent
+exclusion or automatic known-failure allowance.
 
 ## Replay
 

@@ -755,7 +755,7 @@ class ComparisonEqualitiesTests(unittest.TestCase):
 class ComparisonInvalidOperationTests(unittest.TestCase):
     def test_classified_errors_match_cpython(self):
         import operator
-        values = [("None", None), ("bool", True), ("int", 2), ("float", 1.5), ("str", "x"),
+        values = [("None", None), ("bool", True), ("int", 2), ("int+", 2 ** 70 + 1), ("float", 1.5), ("str", "x"),
                   ("bytes", b"x"), ("list[int]", [1]), ("tuple[int]", (1,)),
                   ("vtuple[int]", (1,)), ("dict[int,int]", {1: 1}), ("set[int]", {1}),
                   ("frozenset[int]", frozenset({1}))]

@@ -770,10 +770,15 @@ RUNTIME: dict[str, str] = {
     # -5..256 are constants
     "dyn.int": "%ptr:int|A|", "dyn.float": "%ptr:float|A|", "dyn.ref": "%ptr:%ptr,%ptr|A|",
     "dyn.int_box": "%ptr:int,%ptr|A|", "dyn.float_box": "%ptr:float,%ptr|A|",
+    "dyn.big": "%ptr:int,%ptr|A|", "dyn.big_box": "%ptr:int,%ptr,%ptr|A|",
+    "dyn.big_unbox": "int+:%ptr|R|", "dyn.big_of": "int+:%ptr|R A|",
+    "dyn.int_box_of": "%ptr:%ptr|R A|",
+    "dyn.index_bound": "int:%ptr,int|R|",
     "dyn.unbox": "int:%ptr,%ptr|R|", "dyn.isa": "bool:%ptr,%ptr||", "dyn.same_type": "bool:%ptr,%ptr||", "dyn.truth": "bool:%ptr|rL rD|",
     "dyn.repr": "str:%ptr|R A I U|", "dyn.str": "str:%ptr|R A I U|",
     "dyn.eq": "bool:%ptr,%ptr|R A I U|", "dyn.ne": "bool:%ptr,%ptr|R A I U|", "dyn.cmp": "bool:%ptr,%ptr,int|R A I U|", "dyn.hash": "int:%ptr|R A I U|",
     "dyn.binop": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary": "%ptr:%ptr,int|R A|",
+    "dyn.binop_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.inplace_promote": "%ptr:%ptr,%ptr,int|R A I U|", "dyn.unary_promote": "%ptr:%ptr,int|R A|",
     "dyn.len": "int:%ptr|R rL rD|", "dyn.getitem": "%ptr:%ptr,%ptr|R A I U|", "dyn.setitem": "None:%ptr,%ptr,%ptr|R A I U|",
     "dyn.delitem": "None:%ptr,%ptr|R A I U|", "dyn.contains": "bool:%ptr,%ptr|R A I U|",
     "dyn.iter": "%ptr:%ptr|R A I U rL rD|", "dyn.next": "%ptr:%ptr|R A I U rL rD|",
@@ -856,6 +861,7 @@ RUNTIME: dict[str, str] = {
     "dict.bkey_big_pop": "int+:S,int,%ptr,bool,int,%ptr|R A I rD wD U?|",
     "dict.bkey_big_setdefault": "int+:S,int,%ptr,int,%ptr|R? A rD wD U?|",
     "dict.find_int_nobox": "int:S,int|rD|",
+    "dict.int_find_any": "int:S,%ptr|R A I rD wD U|", "dict.entry_del": "None:S,int|rD wD|",
     "dict.update": "None:S,S|R A rD wD U?|", "dict.update_pairs": "None:S,list[T]|R? A rL rD wD U?|",
     "dict.fromkeys": "dict[K,V]:int,list[T],*V|R? A rL U?|", "dict.fromkeys_dict": "dict[K,V]:S,*V|R? A rD U?|",
     # sets and frozensets (CPython's tables; Set.kind as Dict.kind): their elements are a dict's
@@ -864,6 +870,7 @@ RUNTIME: dict[str, str] = {
     # operation makes, it alone has seen
     "set.new": "set[T]:int|A|", "set.add": "None:S,*T|R? A rD wD U?|", "set.has": "bool:S,*T|R? rD U?|", "set.discard": "None:S,*T|R? rD wD U?|",
     "set.remove": "None:S,*T|R A I rD wD U?|", "set.pop": "*T:S|R rD wD|", "set.clear": "None:S|A wD|", "set.copy": "S:S|A rD|",
+    "set.int_find_any": "int:S,%ptr|R A I rD wD U|", "set.slot_del": "None:S,int|rD wD|",
     "set.update": "None:S,S|R? A rD wD U?|", "set.update_list": "None:S,list[T]|R? A rL rD wD U?|", "set.update_dict": "None:S,dict[T,V]|R? A rD wD U?|",
     "set.union_more": "None:S,S,S|R? A rD wD U?|", "set.or": "S:S,S|R? A rD U?|", "set.and": "S:S,S|R? A rD U?|", "set.and_list": "S:S,list[T]|R? A rL rD U?|",
     "set.assign": "None:S,S|rD wD|", "set.isub": "None:S,S|R? A rD wD U?|", "set.isub_list": "None:S,list[T]|R? A rL rD wD U?|",
@@ -1015,7 +1022,7 @@ RUNTIME: dict[str, str] = {
 # it uses (Gen.rtdata), and tools/check_runtime.py checks that runtime.c defines them
 DYNTYPE_LL = "{i64, ptr, ptr, i64, ptr, i64, ptr, ptr, ptr}"
 RTDATA: dict[str, str] = {"pys_dyn_none_box": "{ptr, i64}", "pys_dyn_true_box": "{ptr, i64}", "pys_dyn_false_box": "{ptr, i64}"}
-for _k in "none bool int float str list dict tuple".split():
+for _k in "none bool int bigint float str list dict tuple".split():
     RTDATA["pys_dyntype_" + _k] = DYNTYPE_LL
 RTSYM: dict[str, str] = {}
 for _k in RUNTIME:

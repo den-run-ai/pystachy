@@ -676,9 +676,9 @@ class PromotingIntegerIdentityTests(unittest.TestCase):
         self.assertEqual(boxes[0], boxes[1])
         self.assertNotEqual(boxes[0], "null")
 
-    def test_actual_any_crossing_retains_narrowing_error(self):
+    def test_actual_any_crossing_preserves_wide_value(self):
         ir = self.compile("large = int('1180591620717411303424')\nobserver.observe(large)\n")
-        self.assertIn("Python int too large to convert to C long", ir)
+        self.assertNotIn("Python int too large to convert to C long", ir)
 
     def test_promoting_literal_retains_constant_pool_identity(self):
         ir = self.compile("def carry(value: int) -> int:\n    return value\n"
