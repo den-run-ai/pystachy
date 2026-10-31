@@ -1,6 +1,6 @@
 # Recursion guard tail-sharing follow-up
 
-Status: validation and measurements in progress; performance acceptance remains open.
+Status: all current-head CI passed; fresh local measurements and full comparison are in progress. Performance acceptance remains open.
 
 The reviewed implementation is PR #996 head `aaec00cc81a862a2b29c117003e7c9cc73e1a3c1`, tree `2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1`, based on main `06e3ad5d08514ba31fb231fe4636a962fe6578e3`. This evidence branch preserves checkpoints without changing the reviewed PR source.
 
@@ -28,4 +28,10 @@ Current-head CI performance smoke completed successfully with all 11 workloads, 
 - [Verified complete artifact](https://github.com/den-run-ai/pystachy/actions/runs/41214277702/artifacts/13047717899), ZIP SHA256 `59f096079b53c0ca9184988c83ea80208ca165f349cfb08b1c571aabe845a222`.
 - JSON SHA256 `936d3705f5847c98cf59cb0978c3fa04576d9dface9d5d51464a8e2e8cdb477d`.
 
-Fresh local startup/kernel/count/compilation measurements, focused native fixtures and a complete 3,918-case compilation comparison are still pending. The full current-head correctness workflow is also pending at this checkpoint. PR #996 remains draft and unmerged.
+Fresh local startup/kernel/count/compilation measurements, focused native fixtures and a complete 3,918-case compilation comparison are still pending. All applicable current-head CI checks have now completed: **59 successful and two expected skips**, with no failures or pending jobs. The correctness workflow completed 34/34 jobs and 54/54 aggregate verification steps across 31 groups. Coverage completed 19 successful jobs and its expected main-only badge skip. Lint, installation, packaging and smoke passed. The skips are main-only coverage publication and fork-only DCO. PR #996 remains draft and unmerged.
+
+## Exact CI accounting
+
+The two adjacent `tail-ci-correctness-aaec00cc.json` and `tail-ci-coverage-lint-aaec00cc.json` datasets preserve source/merge/tree identities, all expected jobs, aggregate artifact IDs/digests and raw-log hashes. Native, optimization-disabled and Python-free modes each passed 6,134 executions; UBSan passed 8,162; GC JIT and GC AOT each passed 4,081 including their stressed compiler samples; runtime-cache passed 134. The IR contract checked 2,134 programs; GC IR comparison covered 3,837 cases plus 250 parser checks. These are mode/check counts, not unique programs. Typed IR passed 198 tests, function summaries 7, compiler state 107, and smoke harness 24. Mypy checked 48 source files; 1,943 CPython recordings had no failures.
+
+The CI compiler and runtime IR hashes equal the fresh local fixed points listed above. CI uses synthetic merge `664c6c5d23f431a01c719f021d93027f09f09ffb`, whose tree exactly equals the published head and whose parents are main and aaec. The different local/CI native binary toolchain provenance is retained.

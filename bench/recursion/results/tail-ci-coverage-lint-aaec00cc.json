@@ -1,0 +1,460 @@
+{
+  "schema_version": 1,
+  "scope": "Completed Coverage and Lint workflows only; this file makes no claim about other workflow gates.",
+  "status": "passed",
+  "published_head": "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1",
+  "published_tree": "2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1",
+  "synthetic_merge": "664c6c5d23f431a01c719f021d93027f09f09ffb",
+  "synthetic_merge_tree": "2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1",
+  "main_parent": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+  "workflows": [
+    {
+      "id": 41214277734,
+      "name": "Coverage",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734",
+      "head_sha": "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1",
+      "job_count": 20,
+      "success_count": 19,
+      "skip_count": 1,
+      "all_job_pages_checked": true,
+      "per_page": 100,
+      "jobs": [
+        {
+          "id": 124575434333,
+          "name": "native runtime coverage (corpus 4 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434333"
+        },
+        {
+          "id": 124575434396,
+          "name": "native runtime coverage (corpus 1 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434396"
+        },
+        {
+          "id": 124575434407,
+          "name": "hosted compiler coverage (cache, unit)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434407"
+        },
+        {
+          "id": 124575434408,
+          "name": "native runtime coverage (ffi)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434408"
+        },
+        {
+          "id": 124575434414,
+          "name": "native runtime coverage (corpus 2 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434414"
+        },
+        {
+          "id": 124575434433,
+          "name": "hosted compiler coverage (ffi, ir)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434433"
+        },
+        {
+          "id": 124575434438,
+          "name": "hosted compiler coverage (corpus 0 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434438"
+        },
+        {
+          "id": 124575434450,
+          "name": "native runtime coverage (corpus 3 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434450"
+        },
+        {
+          "id": 124575434452,
+          "name": "native runtime coverage (corpus 0 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434452"
+        },
+        {
+          "id": 124575434481,
+          "name": "hosted compiler coverage (corpus 1 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434481"
+        },
+        {
+          "id": 124575434501,
+          "name": "native runtime coverage (corpus 5 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434501"
+        },
+        {
+          "id": 124575434505,
+          "name": "hosted compiler coverage (corpus 7 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434505"
+        },
+        {
+          "id": 124575434532,
+          "name": "hosted compiler coverage (corpus 4 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434532"
+        },
+        {
+          "id": 124575434536,
+          "name": "hosted compiler coverage (corpus 2 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434536"
+        },
+        {
+          "id": 124575434547,
+          "name": "hosted compiler coverage (corpus 3 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434547"
+        },
+        {
+          "id": 124575434555,
+          "name": "hosted compiler coverage (corpus 5 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434555"
+        },
+        {
+          "id": 124575434583,
+          "name": "hosted compiler coverage (corpus 6 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124575434583"
+        },
+        {
+          "id": 124577588179,
+          "name": "hosted compiler coverage (report)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124577588179"
+        },
+        {
+          "id": 124577681705,
+          "name": "native runtime coverage (report)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124577681705"
+        },
+        {
+          "id": 124577875799,
+          "name": "publish main's coverage to the badges branch",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277734/job/124577875799"
+        }
+      ]
+    },
+    {
+      "id": 41214277764,
+      "name": "Lint",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277764",
+      "head_sha": "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1",
+      "job_count": 1,
+      "success_count": 1,
+      "skip_count": 0,
+      "all_job_pages_checked": true,
+      "per_page": 100,
+      "jobs": [
+        {
+          "id": 124575434084,
+          "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277764/job/124575434084"
+        }
+      ]
+    }
+  ],
+  "corpus_shards": {
+    "native": [
+      {
+        "shard": 0,
+        "of": 6,
+        "passed": 1021,
+        "failed": 0,
+        "job_id": 124575434452
+      },
+      {
+        "shard": 1,
+        "of": 6,
+        "passed": 1020,
+        "failed": 0,
+        "job_id": 124575434396
+      },
+      {
+        "shard": 2,
+        "of": 6,
+        "passed": 1025,
+        "failed": 0,
+        "job_id": 124575434414
+      },
+      {
+        "shard": 3,
+        "of": 6,
+        "passed": 1021,
+        "failed": 0,
+        "job_id": 124575434450
+      },
+      {
+        "shard": 4,
+        "of": 6,
+        "passed": 1024,
+        "failed": 0,
+        "job_id": 124575434333
+      },
+      {
+        "shard": 5,
+        "of": 6,
+        "passed": 1023,
+        "failed": 0,
+        "job_id": 124575434501
+      }
+    ],
+    "hosted": [
+      {
+        "shard": 0,
+        "of": 8,
+        "passed": 767,
+        "failed": 0,
+        "job_id": 124575434438
+      },
+      {
+        "shard": 1,
+        "of": 8,
+        "passed": 765,
+        "failed": 0,
+        "job_id": 124575434481
+      },
+      {
+        "shard": 2,
+        "of": 8,
+        "passed": 767,
+        "failed": 0,
+        "job_id": 124575434536
+      },
+      {
+        "shard": 3,
+        "of": 8,
+        "passed": 764,
+        "failed": 0,
+        "job_id": 124575434547
+      },
+      {
+        "shard": 4,
+        "of": 8,
+        "passed": 768,
+        "failed": 0,
+        "job_id": 124575434532
+      },
+      {
+        "shard": 5,
+        "of": 8,
+        "passed": 769,
+        "failed": 0,
+        "job_id": 124575434555
+      },
+      {
+        "shard": 6,
+        "of": 8,
+        "passed": 768,
+        "failed": 0,
+        "job_id": 124575434583
+      },
+      {
+        "shard": 7,
+        "of": 8,
+        "passed": 766,
+        "failed": 0,
+        "job_id": 124575434505
+      }
+    ]
+  },
+  "verified_counts": {
+    "native_corpus_passed": 6134,
+    "native_corpus_failed": 0,
+    "hosted_corpus_passed": 6134,
+    "hosted_corpus_failed": 0,
+    "native_ffi": 110,
+    "hosted_ffi": 145,
+    "hosted_cache": 68,
+    "typed_ir": 198,
+    "function_summaries": 7,
+    "compiler_state": 107,
+    "perf_smoke_unit": 24,
+    "hosted_ir_and_llvm_as_programs": 81,
+    "cpython_recordings": 1943,
+    "documented_deviations_checked": 110,
+    "lib_files_checked": 11,
+    "recording_failures": 0,
+    "mypy_source_files": 48
+  },
+  "documented_conditional_skips": {
+    "hosted_ffi": "py_coerce: the CPython-hosted compiler own locale coercion reaches the program",
+    "coverage_badge": "main-only publication excluded on pull_request"
+  },
+  "coverage": {
+    "hosted": {
+      "statements_hit": 41839,
+      "statements_total": 43560,
+      "statements_percent": 96.0,
+      "branches_hit": 21941,
+      "branches_total": 23696,
+      "branches_percent": 92.6,
+      "measured_processes": 6390
+    },
+    "native": {
+      "lines_hit": 6247,
+      "lines_total": 6544,
+      "lines_percent": 95.5,
+      "branches_hit": 6863,
+      "branches_total": 7842,
+      "branches_percent": 87.5,
+      "functions_percent": 96.0,
+      "regions_percent": 92.8,
+      "pys_init_runs": 4130
+    }
+  },
+  "raw_logs": {
+    "124575434333": {
+      "filename": "job-124575434333.log",
+      "sha256": "20cd4e8bc417ac59578c0c5716557e92a8f03ac8e466115c9877204a8b46cc48",
+      "bytes": 32121,
+      "name": "native runtime coverage (corpus 4 of 6)"
+    },
+    "124575434396": {
+      "filename": "job-124575434396.log",
+      "sha256": "23c75ecc3ec144d845afab263d206df6fcdcf77d22689d8f729c4a4d23ddbb75",
+      "bytes": 32119,
+      "name": "native runtime coverage (corpus 1 of 6)"
+    },
+    "124575434407": {
+      "filename": "job-124575434407.log",
+      "sha256": "a3b63b74dfb2d886cead65513644525d12a48e5fb6e9033923f3a6d5bef97508",
+      "bytes": 30044,
+      "name": "hosted compiler coverage (cache, unit)"
+    },
+    "124575434408": {
+      "filename": "job-124575434408.log",
+      "sha256": "5e01fcc5e090873f265127ff9cb68665a25b5000a967a63d865d81742fba7110",
+      "bytes": 32053,
+      "name": "native runtime coverage (ffi)"
+    },
+    "124575434414": {
+      "filename": "job-124575434414.log",
+      "sha256": "38cf8924b28fc8fa82e4461fceb1c1751d9f1df4a2b026bfb40fcb0df2865679",
+      "bytes": 32125,
+      "name": "native runtime coverage (corpus 2 of 6)"
+    },
+    "124575434433": {
+      "filename": "job-124575434433.log",
+      "sha256": "e04e8cf6a6f0e3895f122a105da153ef0f0c03e8341d5a6698bd2a09e34ce753",
+      "bytes": 29556,
+      "name": "hosted compiler coverage (ffi, ir)"
+    },
+    "124575434438": {
+      "filename": "job-124575434438.log",
+      "sha256": "fa6c341baa2390ef93a4cca156b8ddbde76d566e813bbe2eb6fb87e38c6928cd",
+      "bytes": 29226,
+      "name": "hosted compiler coverage (corpus 0 of 8)"
+    },
+    "124575434450": {
+      "filename": "job-124575434450.log",
+      "sha256": "4649a71bfa46bd3d43208bebe4789f8e527ad3087beec873fda03b8c5e428117",
+      "bytes": 32119,
+      "name": "native runtime coverage (corpus 3 of 6)"
+    },
+    "124575434452": {
+      "filename": "job-124575434452.log",
+      "sha256": "b73292682c1f9bda0873e9e4a91e045e8be0a436271fe25c930bc9e6ffefc6fe",
+      "bytes": 32119,
+      "name": "native runtime coverage (corpus 0 of 6)"
+    },
+    "124575434481": {
+      "filename": "job-124575434481.log",
+      "sha256": "14b02da3543c9fc025ca58e27a96fb9c914415413dfb4a3330ac5d02c9b1ebff",
+      "bytes": 29230,
+      "name": "hosted compiler coverage (corpus 1 of 8)"
+    },
+    "124575434501": {
+      "filename": "job-124575434501.log",
+      "sha256": "c28cf4872f7a19ac5838ad67bb1d5e3ffd33f6680911c4cfdf66f2325ce59d5c",
+      "bytes": 32121,
+      "name": "native runtime coverage (corpus 5 of 6)"
+    },
+    "124575434505": {
+      "filename": "job-124575434505.log",
+      "sha256": "77c3f3e3765e2fa87aee6f5413a7e406c3eb79950cf4a4edb821a8f8f77f6c38",
+      "bytes": 29230,
+      "name": "hosted compiler coverage (corpus 7 of 8)"
+    },
+    "124575434532": {
+      "filename": "job-124575434532.log",
+      "sha256": "7764e905d3ff48c9160c217745b6cf809099313a513a25db1fd364fab84b6e6d",
+      "bytes": 29228,
+      "name": "hosted compiler coverage (corpus 4 of 8)"
+    },
+    "124575434536": {
+      "filename": "job-124575434536.log",
+      "sha256": "c0389df4e39768b66028aa8adfdd9c1c5a297a3efd895ffbad8d27df867a5494",
+      "bytes": 29234,
+      "name": "hosted compiler coverage (corpus 2 of 8)"
+    },
+    "124575434547": {
+      "filename": "job-124575434547.log",
+      "sha256": "2df5d64b5591982254c0fd079e4be456fd9f012b8e6666e4183a7e7a0fb77193",
+      "bytes": 29223,
+      "name": "hosted compiler coverage (corpus 3 of 8)"
+    },
+    "124575434555": {
+      "filename": "job-124575434555.log",
+      "sha256": "178677eb68829ef349c11031f76975c487672362c3459a2b2c4ad03a4878b61a",
+      "bytes": 29223,
+      "name": "hosted compiler coverage (corpus 5 of 8)"
+    },
+    "124575434583": {
+      "filename": "job-124575434583.log",
+      "sha256": "3e232573f06ba81ca8cc0ae3cd22697c8301be9c3fc0a1f9e3b55064a7c093da",
+      "bytes": 27529,
+      "name": "hosted compiler coverage (corpus 6 of 8)"
+    },
+    "124577588179": {
+      "filename": "job-124577588179.log",
+      "sha256": "f81fb0e9eba1052363f23fe4af8e90aae0a022a533545956a8ea59dcc8412037",
+      "bytes": 71629,
+      "name": "hosted compiler coverage (report)"
+    },
+    "124577681705": {
+      "filename": "job-124577681705.log",
+      "sha256": "6f4694e26e715d582a37520dcbbfdba7a9ce6db8ed1c849b1494b64156c12881",
+      "bytes": 64749,
+      "name": "native runtime coverage (report)"
+    },
+    "124575434084": {
+      "filename": "job-124575434084.log",
+      "sha256": "f6db88a38410420c9d733404d4821690959054880e4b50ec9def9d43336746d5",
+      "bytes": 64242,
+      "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)"
+    }
+  }
+}

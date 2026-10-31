@@ -1,0 +1,377 @@
+{
+  "schema": "pystachy-recursion-ci-evidence-v1",
+  "verified_at_utc": "2026-10-31T15:43:25.788Z",
+  "scope": "Completed correctness CI for the frozen tail-sharing source; fresh local post-cleanup fixtures/comparison are separately pending.",
+  "source": {
+    "head_sha": "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1",
+    "head_tree": "2dd336a2a8f71d9a2c36d1fd233af24fee81c2a1",
+    "synthetic_merge_sha": "664c6c5d23f431a01c719f021d93027f09f09ffb",
+    "synthetic_merge_parents": [
+      "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+      "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1"
+    ],
+    "merge_tree_equals_head": true,
+    "aggregate_git_dirty": false
+  },
+  "workflow": {
+    "id": 41214277493,
+    "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493",
+    "status": "completed",
+    "conclusion": "success",
+    "updated_at": "2026-10-31T15:37:02Z",
+    "jobs_total": 34,
+    "jobs_success": 34,
+    "jobs": [
+      {
+        "id": 124575433946,
+        "name": "verify (bootstrap)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124575433946"
+      },
+      {
+        "id": 124575434210,
+        "name": "upstream port preservation (CPython)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124575434210"
+      },
+      {
+        "id": 124575434218,
+        "name": "upstream large regex (JIT and AOT, normal GC)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124575434218"
+      },
+      {
+        "id": 124576464528,
+        "name": "verify (python-free-2)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464528"
+      },
+      {
+        "id": 124576464530,
+        "name": "verify (opt-off-1)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464530"
+      },
+      {
+        "id": 124576464531,
+        "name": "verify (gc-aot-0)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464531"
+      },
+      {
+        "id": 124576464536,
+        "name": "verify (ubsan-2)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464536"
+      },
+      {
+        "id": 124576464539,
+        "name": "verify (ubsan-3)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464539"
+      },
+      {
+        "id": 124576464540,
+        "name": "verify (python-free-0)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464540"
+      },
+      {
+        "id": 124576464545,
+        "name": "verify (hosted)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464545"
+      },
+      {
+        "id": 124576464548,
+        "name": "verify (gc-jit-1)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464548"
+      },
+      {
+        "id": 124576464553,
+        "name": "verify (ubsan-0)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464553"
+      },
+      {
+        "id": 124576464555,
+        "name": "verify (gc-jit-0)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464555"
+      },
+      {
+        "id": 124576464559,
+        "name": "verify (native-2)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464559"
+      },
+      {
+        "id": 124576464561,
+        "name": "verify (gc-aot-1)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464561"
+      },
+      {
+        "id": 124576464568,
+        "name": "verify (python-int-optin-1)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464568"
+      },
+      {
+        "id": 124576464578,
+        "name": "verify (benchmarks)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464578"
+      },
+      {
+        "id": 124576464579,
+        "name": "verify (dynany-optin-2)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464579"
+      },
+      {
+        "id": 124576464583,
+        "name": "verify (ubsan-1)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464583"
+      },
+      {
+        "id": 124576464584,
+        "name": "verify (runtime-cache)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464584"
+      },
+      {
+        "id": 124576464590,
+        "name": "verify (opt-off-0)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464590"
+      },
+      {
+        "id": 124576464591,
+        "name": "verify (opt-off-2)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464591"
+      },
+      {
+        "id": 124576464611,
+        "name": "verify (python-int-optin-2)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464611"
+      },
+      {
+        "id": 124576464622,
+        "name": "verify (python-int-optin-0)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464622"
+      },
+      {
+        "id": 124576464624,
+        "name": "verify (dynany-optin-0)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464624"
+      },
+      {
+        "id": 124576464626,
+        "name": "verify (native-1)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464626"
+      },
+      {
+        "id": 124576464631,
+        "name": "verify (gc-aot-2)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464631"
+      },
+      {
+        "id": 124576464637,
+        "name": "verify (dynany-optin-1)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464637"
+      },
+      {
+        "id": 124576464641,
+        "name": "verify (gc-self)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464641"
+      },
+      {
+        "id": 124576464659,
+        "name": "verify (python-free-1)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464659"
+      },
+      {
+        "id": 124576464662,
+        "name": "verify (native-0)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464662"
+      },
+      {
+        "id": 124576464668,
+        "name": "verify (scaling)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464668"
+      },
+      {
+        "id": 124576464741,
+        "name": "verify (contracts)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124576464741"
+      },
+      {
+        "id": 124579545628,
+        "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+        "conclusion": "success",
+        "url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/job/124579545628"
+      }
+    ]
+  },
+  "aggregate": {
+    "steps": 54,
+    "passed": 54,
+    "failed": 0,
+    "groups": 31,
+    "group_names": [
+      "benchmarks",
+      "bootstrap",
+      "contracts",
+      "dynany-optin-0",
+      "dynany-optin-1",
+      "dynany-optin-2",
+      "gc-aot-0",
+      "gc-aot-1",
+      "gc-aot-2",
+      "gc-jit-0",
+      "gc-jit-1",
+      "gc-self",
+      "hosted",
+      "native-0",
+      "native-1",
+      "native-2",
+      "opt-off-0",
+      "opt-off-1",
+      "opt-off-2",
+      "python-free-0",
+      "python-free-1",
+      "python-free-2",
+      "python-int-optin-0",
+      "python-int-optin-1",
+      "python-int-optin-2",
+      "runtime-cache",
+      "scaling",
+      "ubsan-0",
+      "ubsan-1",
+      "ubsan-2",
+      "ubsan-3"
+    ],
+    "all_step_results_verified_pass": true,
+    "artifact_id": 13048151207,
+    "artifact_url": "https://github.com/den-run-ai/pystachy/actions/runs/41214277493/artifacts/13048151207",
+    "archive_sha256": "a4fb55aae98d0746ee571350c3efc221537756428c9cbf8c8addadd5ea7797eb",
+    "archive_bytes": 98810,
+    "json_sha256": "eaf8acb75b45fb99bc9342d0711fda81f44b5db8665a7ef3e4bf829512fe6477"
+  },
+  "count_unit_note": "Mode/check execution totals, not unique program counts. Programs can appear in multiple modes and compiler-stress samples.",
+  "execution_counts": {
+    "native": {
+      "passed": 6134,
+      "failed": 0,
+      "expected": 6134,
+      "shards": 3
+    },
+    "all_optimizations_disabled": {
+      "passed": 6134,
+      "failed": 0,
+      "expected": 6134,
+      "shards": 3
+    },
+    "python_free": {
+      "passed": 6134,
+      "failed": 0,
+      "expected": 6134,
+      "shards": 3
+    },
+    "ubsan": {
+      "passed": 8162,
+      "failed": 0,
+      "expected": 8162,
+      "shards": 4
+    },
+    "gc_jit": {
+      "regular": 3826,
+      "compiler_stressed_sample": 255,
+      "total": 4081,
+      "failed": 0,
+      "program_gc_interval": 1,
+      "sampled_compiler_gc_interval": 1000
+    },
+    "gc_aot": {
+      "regular": 3828,
+      "compiler_stressed_sample": 253,
+      "total": 4081,
+      "failed": 0,
+      "program_gc_interval": 1,
+      "sampled_compiler_gc_interval": 1000
+    },
+    "runtime_cache": {
+      "passed": 134,
+      "failed": 0,
+      "expected": 134,
+      "compilers": [
+        "stage2",
+        "CPython-hosted"
+      ]
+    },
+    "ffi": {
+      "passed": 147,
+      "failed": 0
+    },
+    "runtime_checks": {
+      "cases": 569601,
+      "failed": 0
+    },
+    "regex_fuzz": {
+      "cases": 1624326,
+      "failed": 0
+    },
+    "dynamic_any_fuzz": {
+      "cases": 540,
+      "result": "pass"
+    }
+  },
+  "ir_checks": {
+    "native_verifier_and_llvm_as_programs": 2134,
+    "hosted_vs_native_ir_cases": 3837,
+    "hosted_vs_native_parse_checks": 250,
+    "hosted_vs_native_identical": true,
+    "gc_ir_cases": 3837,
+    "gc_parse_checks": 250,
+    "gc_ir_and_parse_identical": true,
+    "gc_self_ir_identical": true
+  },
+  "bootstrap": {
+    "compiler_ir_lines": 805028,
+    "compiler_ir_sha256": "f918a33a73bb3f8164b986089534fa1370c91272649017db54a41527a4f56409",
+    "runtime_ir_lines": 18805,
+    "runtime_ir_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+    "three_stages_identical": true,
+    "ci_native_bytes": 5078904,
+    "ci_native_sha256": "53b2191ec3a39297a677f4e66efcffe957f32319639d5dd7121ddbb13d69df6e",
+    "local_compiler_and_runtime_ir_hashes_identical": true,
+    "local_native_sha256": "066ca28a41256c32bb4962b6dfd82a4a8ce883e963ce4557a4be6aca9ad935e3",
+    "native_binaries_have_separate_provenance": true,
+    "artifact_id": 13047094622,
+    "archive_sha256": "f2237fc3eed04e0da17b59277f3cce0b796d3755483ab0407cfe96873dc7afae",
+    "all_archive_member_hashes_match_manifest": true
+  },
+  "provenance": {
+    "aggregate_download_and_digest_verified": true,
+    "bootstrap_download_and_member_digests_verified": true,
+    "synthetic_merge_tree_verified_via_github_git_commit_api": true,
+    "prior_eca_evidence_is_separate": true,
+    "lost_local_raw_records_not_reconstructed": true
+  }
+}
+
