@@ -1,0 +1,1137 @@
+{
+  "aggregate": {
+    "all_step_results_verified_pass": true,
+    "archive_bytes": 98860,
+    "archive_sha256": "dcf492f8000e0cd7a8c373d6306bdafd3769f861942a122a2e747078fd0b9623",
+    "artifact_id": 13050197835,
+    "artifact_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050197835",
+    "failed": 0,
+    "group_names": [
+      "benchmarks",
+      "bootstrap",
+      "contracts",
+      "dynany-optin-0",
+      "dynany-optin-1",
+      "dynany-optin-2",
+      "gc-aot-0",
+      "gc-aot-1",
+      "gc-aot-2",
+      "gc-jit-0",
+      "gc-jit-1",
+      "gc-self",
+      "hosted",
+      "native-0",
+      "native-1",
+      "native-2",
+      "opt-off-0",
+      "opt-off-1",
+      "opt-off-2",
+      "python-free-0",
+      "python-free-1",
+      "python-free-2",
+      "python-int-optin-0",
+      "python-int-optin-1",
+      "python-int-optin-2",
+      "runtime-cache",
+      "scaling",
+      "ubsan-0",
+      "ubsan-1",
+      "ubsan-2",
+      "ubsan-3"
+    ],
+    "groups": 31,
+    "json_sha256": "7614335c2f51d1b7da75b28eeb89309829c3e4f7b51f2488aca4c560565edca9",
+    "passed": 54,
+    "steps": 54
+  },
+  "artifact_inventory": [
+    {
+      "digest": "sha256:eb4c819207b13ab6f79fad6ac984fd59d742b4510a24603e4e42180b3ffed8d4",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050710266,
+      "name": "verification-python-int-optin-1",
+      "size_in_bytes": 3559353,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050710266"
+    },
+    {
+      "digest": "sha256:6ea43a45dc04e5e0bd85d2c2a76ecae7f962f28e107db0d6b45a93c3f66ea603",
+      "download_digest_verified": true,
+      "expired": false,
+      "id": 13050655342,
+      "name": "verification-gc-self",
+      "retained_archive": "verification-gc-self.zip",
+      "size_in_bytes": 4694,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050655342"
+    },
+    {
+      "digest": "sha256:33757094c79c768dc57815b5b1a126398ac56b3d3ab069f104b0421603003b69",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050645095,
+      "name": "verification-scaling",
+      "size_in_bytes": 5775,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050645095"
+    },
+    {
+      "digest": "sha256:aae705ad0e6269ac935502ae153cf46be03cd2c1e8ddf5aefeaf58c32b6d285d",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050630690,
+      "name": "verification-dynany-optin-0",
+      "size_in_bytes": 3127972,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050630690"
+    },
+    {
+      "digest": "sha256:d3d37de68aeccef1e2be90df9957b91fecb6cf0cca6bfcb72f32f17e2b0acf44",
+      "download_digest_verified": true,
+      "expired": false,
+      "id": 13050610662,
+      "name": "verification-contracts",
+      "retained_archive": "verification-contracts.zip",
+      "size_in_bytes": 32780,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050610662"
+    },
+    {
+      "digest": "sha256:02ea219bc96c0d42c7356e837981a100cd2a4b3d05321ef344aa8f7e41af6031",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050600283,
+      "name": "verification-python-free-2",
+      "size_in_bytes": 16036,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050600283"
+    },
+    {
+      "digest": "sha256:4d39cea972ea840c7fdc7b7306a9c516a1f33565319e8fa8f865ad560ead759d",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050540987,
+      "name": "verification-python-free-0",
+      "size_in_bytes": 16005,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050540987"
+    },
+    {
+      "digest": "sha256:7f039a1665cfb623ac8f4247f55ad4aa38e3fc5bdb9f4b024e8664194260189e",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050435929,
+      "name": "verification-ubsan-1",
+      "size_in_bytes": 33368,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050435929"
+    },
+    {
+      "digest": "sha256:d78f89e3fc9a9545369dfa3bf96ac2eeea78f43d6b039c9d603df7d3f48892ec",
+      "download_digest_verified": true,
+      "expired": false,
+      "id": 13050416152,
+      "name": "verification-gc-aot-2",
+      "retained_archive": "verification-gc-aot-2.zip",
+      "size_in_bytes": 26678,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050416152"
+    },
+    {
+      "digest": "sha256:bca5d77ff27b873ad49c718305faba460eedddefb0a40db6f75e9bd2270cf535",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050371664,
+      "name": "verification-ubsan-2",
+      "size_in_bytes": 33593,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050371664"
+    },
+    {
+      "digest": "sha256:866b7df328f2fee6a269bdb5c1103fc52ca771ceb1de7149258ea3ab1b93dcae",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050331660,
+      "name": "verification-dynany-optin-2",
+      "size_in_bytes": 3123065,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050331660"
+    },
+    {
+      "digest": "sha256:f18e45015bb17e94f8f071fd701ede9c40bc49cf689ebbe4e78596c2b78dbe28",
+      "download_digest_verified": true,
+      "expired": false,
+      "id": 13050331394,
+      "name": "verification-runtime-cache",
+      "retained_archive": "verification-runtime-cache.zip",
+      "size_in_bytes": 7396,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050331394"
+    },
+    {
+      "digest": "sha256:bbcdd830b81c931313c0494c1f155b145e4450a9c98bd18a4efd7bab3cb2be10",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050306367,
+      "name": "verification-python-int-optin-0",
+      "size_in_bytes": 3570719,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050306367"
+    },
+    {
+      "digest": "sha256:33648fc4ea2facf49e06fe3ee0ddc2022ea50d3b1b379b1374c1f2e9161d83e3",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050256496,
+      "name": "verification-native-0",
+      "size_in_bytes": 28056,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050256496"
+    },
+    {
+      "digest": "sha256:a8da688d491a10b61177b998971b04c5c5c75d50c8ee04d800d5eb7d958f3cf9",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050251464,
+      "name": "verification-ubsan-3",
+      "size_in_bytes": 33309,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050251464"
+    },
+    {
+      "digest": "sha256:dcf492f8000e0cd7a8c373d6306bdafd3769f861942a122a2e747078fd0b9623",
+      "download_digest_verified": true,
+      "expired": false,
+      "id": 13050197835,
+      "name": "verification",
+      "retained_archive": "correctness-verification.zip",
+      "size_in_bytes": 98860,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050197835"
+    },
+    {
+      "digest": "sha256:672021a1a9f46815455c9ff9acbdb06672c1ed3278e3235221a450ccb90b27cc",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050147917,
+      "name": "verification-gc-aot-1",
+      "size_in_bytes": 26461,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050147917"
+    },
+    {
+      "digest": "sha256:e097b96ec00634c6c875817bcfbb36c9e9a0ce97ee825392e4df21921719a1f2",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050072361,
+      "name": "verification-ubsan-0",
+      "size_in_bytes": 33722,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050072361"
+    },
+    {
+      "digest": "sha256:6f6dca9339ffc1f36ce5ba090d76092638bad13cb0577c859acadb11608cafbe",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050042276,
+      "name": "verification-opt-off-1",
+      "size_in_bytes": 28192,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050042276"
+    },
+    {
+      "digest": "sha256:eff724ab26c9b486e58f4dc1129e58b0cccdb7d9f5a400953167e06378fe9c48",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13050032457,
+      "name": "verification-python-free-1",
+      "size_in_bytes": 15949,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13050032457"
+    },
+    {
+      "digest": "sha256:976587eb249e9f9019d605af6138d31a2af1d88bd8999dc79cb06c8a5f85161a",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049928991,
+      "name": "verification-opt-off-0",
+      "size_in_bytes": 28394,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049928991"
+    },
+    {
+      "digest": "sha256:226c6450656abacb734d4a6a9d128506450c6cd616512eb9278c9ee2f0b09dde",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049854002,
+      "name": "verification-native-2",
+      "size_in_bytes": 28179,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049854002"
+    },
+    {
+      "digest": "sha256:8a4811f776fb9f3183a8d3368c032cecd011db9977123a27cba405dc7ac8fc62",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049827840,
+      "name": "verification-dynany-optin-1",
+      "size_in_bytes": 3122777,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049827840"
+    },
+    {
+      "digest": "sha256:74d491c07c0c3b786ab0b4bd166bd0a69ec54fe6204767b6382fbd493e708f48",
+      "download_digest_verified": true,
+      "expired": false,
+      "id": 13049802648,
+      "name": "verification-native-1",
+      "retained_archive": "verification-native-1.zip",
+      "size_in_bytes": 27877,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049802648"
+    },
+    {
+      "digest": "sha256:3f9812536ab67628a61b31653648e0704809228c5e1457a605f6e91941343f42",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049789535,
+      "name": "verification-python-int-optin-2",
+      "size_in_bytes": 3536583,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049789535"
+    },
+    {
+      "digest": "sha256:fdaa159e18126502b118d73182cec6f6b26c7f0255579a21c0c8362d9abc0760",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049763001,
+      "name": "verification-hosted",
+      "size_in_bytes": 35764,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049763001"
+    },
+    {
+      "digest": "sha256:f5780e79fdca325aea94e0ca0b9df400c10ec00ebaab61a3b47e1eb37fc2363b",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049754540,
+      "name": "verification-opt-off-2",
+      "size_in_bytes": 28309,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049754540"
+    },
+    {
+      "digest": "sha256:fd274392fc901211ab57d1acc218d77d2965f9e5f757f62f35c3f998b45d0bf9",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049658694,
+      "name": "verification-gc-jit-0",
+      "size_in_bytes": 52525,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049658694"
+    },
+    {
+      "digest": "sha256:14add495173f742c3954d8451399cac4ca5427a20bfc7e89735d9500a06cea85",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049638454,
+      "name": "verification-bootstrap",
+      "size_in_bytes": 3545,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049638454"
+    },
+    {
+      "digest": "sha256:a159cb5b0f4b661525a8f11dc04ddb3e41e82357bc9724da852e7e91e9188270",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049559906,
+      "name": "verification-gc-aot-0",
+      "size_in_bytes": 26616,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049559906"
+    },
+    {
+      "digest": "sha256:0b7c75d8e6a0b406b71e62cdaaad2639c783c8d73d4c3aa410b888f8be13a5b7",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049498672,
+      "name": "verification-gc-jit-1",
+      "size_in_bytes": 52237,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049498672"
+    },
+    {
+      "digest": "sha256:8a104fabaeda9a8f39e8754c27fc14447cd96f6c8826a67312ddc8c47674c1cb",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049449626,
+      "name": "verification-benchmarks",
+      "size_in_bytes": 22910,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049449626"
+    },
+    {
+      "digest": "sha256:52ae882449245500badb4119ea2bc30f9f0fa16a0b0671a41d1e59e9391d8a12",
+      "download_digest_verified": true,
+      "expired": false,
+      "id": 13049439548,
+      "name": "verified-bootstrap",
+      "retained_archive": "verified-bootstrap.zip",
+      "size_in_bytes": 7377952,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049439548"
+    },
+    {
+      "digest": "sha256:283fa07c8ca17e53bf8aeb724a91bc4d6f44026fd7bd22e3394e7f5e4eeee4f1",
+      "download_digest_verified": false,
+      "expired": false,
+      "id": 13049289380,
+      "name": "port-check",
+      "size_in_bytes": 451,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/artifacts/13049289380"
+    }
+  ],
+  "bootstrap": {
+    "all_archive_member_hashes_match_manifest": true,
+    "archive_sha256": "52ae882449245500badb4119ea2bc30f9f0fa16a0b0671a41d1e59e9391d8a12",
+    "artifact_id": 13049439548,
+    "ci_native_bytes": 5078824,
+    "ci_native_sha256": "b1833869a6f4261133ebd16b7331a15d73a4cb989ab19ae5a0c77e8bce328174",
+    "compiler_ir_lines": 805049,
+    "compiler_ir_sha256": "ed51d1f07ca2e47eb53646e57a0543bcbe41bd121abbf6b1eab3a0ddca74b709",
+    "local_bootstrap_report_sha256": "043fa1d1b5797a832deffd7b6a1841fff8982558cd4d07cb693021ca31b3c0cf",
+    "local_compiler_and_runtime_ir_hashes_identical": true,
+    "local_native_sha256": "8ee9b55b99c85a1406198643a5405d6e58ef566ec5896f6af3b03daf478b3f75",
+    "native_binaries_have_separate_provenance": true,
+    "runtime_ir_lines": 18805,
+    "runtime_ir_sha256": "940a694da5ea93214d1308a8eb635b47d8d0a9d4256c63d084c24f5099f8aa5f",
+    "three_stages_identical": true,
+    "tracked_sources_sha256": "04cf28c04e5f32a6f4f552f1f88d86d685cd159a4e17e1ebcfe99b267c4cf0e2"
+  },
+  "count_unit_note": "Matrix passed/expected totals are mode/check executions, not unique program counts. Shared bootstrap restores are consolidated in the 54-step aggregate.",
+  "execution_counts": {
+    "all_optimizations_disabled": {
+      "expected": 6134,
+      "failed": 0,
+      "passed": 6134,
+      "shards": 3
+    },
+    "dynamic_any_fuzz": {
+      "cases": 540,
+      "result": "pass"
+    },
+    "dynamic_any_opt_in": {
+      "completed_checks": 3886,
+      "expected_checks": 3886,
+      "expected_failures": 8,
+      "native_ir_checks": 505,
+      "passed_checks": 3373,
+      "shards": 3,
+      "unexpected_failures": 0
+    },
+    "ffi": {
+      "failed": 0,
+      "passed": 147
+    },
+    "gc_aot": {
+      "compiler_stressed_sample": 253,
+      "failed": 0,
+      "program_gc_interval": 1,
+      "regular": 3828,
+      "sampled_compiler_gc_interval": 1000,
+      "shards": 3,
+      "total": 4081
+    },
+    "gc_jit": {
+      "compiler_stressed_sample": 255,
+      "failed": 0,
+      "program_gc_interval": 1,
+      "regular": 3826,
+      "sampled_compiler_gc_interval": 1000,
+      "shards": 2,
+      "total": 4081
+    },
+    "native": {
+      "expected": 6134,
+      "failed": 0,
+      "passed": 6134,
+      "shards": 3
+    },
+    "python_free": {
+      "expected": 6134,
+      "failed": 0,
+      "passed": 6134,
+      "shards": 3
+    },
+    "python_int_opt_in": {
+      "completed_checks": 3886,
+      "expected_checks": 3886,
+      "expected_failures": 70,
+      "native_ir_checks": 563,
+      "passed_checks": 3253,
+      "shards": 3,
+      "unexpected_failures": 0
+    },
+    "regex_fuzz": {
+      "cases": 1624326,
+      "result": "pass"
+    },
+    "runtime_cache": {
+      "expected": 134,
+      "failed": 0,
+      "hosted": 68,
+      "native": 66,
+      "passed": 134
+    },
+    "runtime_checks": {
+      "cases": 569601,
+      "result": "pass"
+    },
+    "ubsan": {
+      "expected": 8162,
+      "failed": 0,
+      "passed": 8162,
+      "shards": 4
+    }
+  },
+  "ir_checks": {
+    "gc_ir_and_parse_identical": true,
+    "gc_ir_cases": 3837,
+    "gc_parse_checks": 250,
+    "gc_self_compiler_interval": 5000,
+    "gc_self_ir_identical": true,
+    "hosted_vs_native_identical": true,
+    "hosted_vs_native_ir_cases": 3837,
+    "hosted_vs_native_parse_checks": 250,
+    "native_verifier_and_llvm_as_programs": 2134
+  },
+  "provenance": {
+    "aggregate_download_and_digest_verified": true,
+    "bootstrap_download_and_member_digests_verified": true,
+    "curator_sha256": "a28cd857f1ff5d2be2685a6fca391c3657378b720fa13bf8e6eeae09f3cfd13a",
+    "download_retry_record": "correctness-download.json",
+    "lost_local_raw_records_not_reconstructed": true,
+    "prior_aaec_and_eca_evidence_is_separate": true,
+    "synthetic_merge_tree_verified_via_github_git_commit_api": true
+  },
+  "regex_upstream": {
+    "cpython_native_jit_native_aot_agree": true,
+    "job_id": 124594252193,
+    "methods": 4,
+    "native_stage2_bootstrap_in_job_log": true
+  },
+  "retained_raw_log_sha256": {
+    "aggregate-job.log": {
+      "bytes": 50539,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "6139166e09184d8fbc8429a0445a5e70a67022f2f55ec7d5c1b8fcc79005ba1c"
+    },
+    "bootstrap-job.log": {
+      "bytes": 27105,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "382e40c9e2074a26b4a0d7cf4163582d384a52ac423caaa818377449a3bb2b20"
+    },
+    "bootstrap/bootstrap.log": {
+      "bytes": 123,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "62f974274f154b8d2e23d381941a24f323f4f2224a966caac526f11c6b04908f"
+    },
+    "contracts-job.log": {
+      "bytes": 29270,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "80549502ffda47660dc3ad317c27cf0810227d0cf028ff49fc8aeab6e6ecab34"
+    },
+    "gc-aot-2-job.log": {
+      "bytes": 27478,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "f3d5edb9001ba33352ee9254b719f1e6be959c282aa83902bd8b19aa8f9c6c0e"
+    },
+    "gc-jit-0-job.log": {
+      "bytes": 27564,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "bd876670f574db7952dea411a4ba56e323255455b7ef81c7905ea8ef30d2b3b3"
+    },
+    "gc-jit-1-job.log": {
+      "bytes": 27564,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "56611335641552eb8b881bcae9b1d4477c3e22d7ff7d4ee6479d67ff04a9f4ac"
+    },
+    "gc-self-job.log": {
+      "bytes": 27564,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "4cf126c87e050e2c37a8bf46617b0717405aba1b6b99697ded25332678a354c5"
+    },
+    "native-1-job.log": {
+      "bytes": 27489,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "5bd1118d56b6244111d5515ded885d22edd16c17a5d81077e96dbb7c881cb1de"
+    },
+    "regex-job.log": {
+      "bytes": 22599,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "2e05805e81cce52b80ea5832d2c9a2c1b7b99a6c727fe4812e03ba9d44b918d5"
+    },
+    "runtime-cache-job.log": {
+      "bytes": 27515,
+      "origin": "retained UTF-8 decoded GitHub job-log response",
+      "sha256": "d9fdcdb2321e036b971765689403a11b94830eb80c048dc558419962f6a7e33e"
+    },
+    "verification-contracts/verify/aot-dead-code.log": {
+      "bytes": 310,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "5890237b73345e9b6b4ab9e38549e512c3080773c29a73931a96abde1e0e1fc5"
+    },
+    "verification-contracts/verify/bootstrap-restore.log": {
+      "bytes": 501,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "5c23be90483b077beb88cb1aee0ec4d1a9e9bd480d068f4c8b739ae2dc299425"
+    },
+    "verification-contracts/verify/bootstrap.log": {
+      "bytes": 123,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "62f974274f154b8d2e23d381941a24f323f4f2224a966caac526f11c6b04908f"
+    },
+    "verification-contracts/verify/box-slots.log": {
+      "bytes": 222,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "7899989efd862a157b059bb15f21fc9ae6de8511d8cf57336aada05c287dd19e"
+    },
+    "verification-contracts/verify/check-ir.log": {
+      "bytes": 56,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "447d9d87f4d7b0f1c894208a87e867e09135b66ce294dbceaef125a79b74a6c5"
+    },
+    "verification-contracts/verify/compile-limits.log": {
+      "bytes": 82,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "127fad952280c6464f8eff150abeaa649ea6f74a2c4077a058ad5595343f2cab"
+    },
+    "verification-contracts/verify/container-eq.log": {
+      "bytes": 290,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "399a5bea59d8ac7274a93e8f26de691e720d6090ac5763fd06b7b02ff7826f26"
+    },
+    "verification-contracts/verify/contracts-lane-a.log": {
+      "bytes": 0,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verification-contracts/verify/contracts-lane-b.log": {
+      "bytes": 0,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verification-contracts/verify/contracts-lane-c.log": {
+      "bytes": 0,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verification-contracts/verify/contracts-lane-limits.log": {
+      "bytes": 0,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verification-contracts/verify/contracts-warm.log": {
+      "bytes": 15,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "6f26345361de860a0428b5909bb53adda836586545c3a045b5fbd3e2379b56c8"
+    },
+    "verification-contracts/verify/dict-probes.log": {
+      "bytes": 6619,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "9602b0a465a400c58acbcb2ba7ea19d0dd1d213351511fee4f81be7fad0a3fef"
+    },
+    "verification-contracts/verify/dynany-fuzz.log": {
+      "bytes": 80,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "79b03c64a5799ee389fb8bc9471513fce5d8bdad009a0dfb6a4dd0952bf7f189"
+    },
+    "verification-contracts/verify/ffi.log": {
+      "bytes": 21,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "0d5301e8090dcdab44e408918f70d0834aae808283b2bab48afc7733bf3c0f72"
+    },
+    "verification-contracts/verify/file-buffers.log": {
+      "bytes": 616,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "5da0e1fb015cb71bbd3091aac4b668aa703c73251cc9e00e71378338ba4ffea9"
+    },
+    "verification-contracts/verify/inherited-ast.log": {
+      "bytes": 578,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "7e82987b8eef954ff364f53c701b9048eb3dba47350e6ab879842350a435ebad"
+    },
+    "verification-contracts/verify/jit-dead-code.log": {
+      "bytes": 618,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "caa061043449a749277ca914c44ca9c0a7b8714607a2c7ae24a0bda849f159e8"
+    },
+    "verification-contracts/verify/list-storage.log": {
+      "bytes": 310,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "3608a6cbc443493623f6467fe6060e1ed5ff9827cf65c5ae32394773c8f24b3a"
+    },
+    "verification-contracts/verify/re-fuzz.log": {
+      "bytes": 74,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "35fb99c31c7b297325200db93225136849c2c361d8693dc7a47435a8731c3dee"
+    },
+    "verification-contracts/verify/re-probe.log": {
+      "bytes": 1037,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "c0a75c94f5b3fff061e4822f5036bedd454dffa3f03cf81b57366ad169df2e98"
+    },
+    "verification-contracts/verify/rt-abi.log": {
+      "bytes": 180,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "f7bcf403bccdab04605f8c763b6f9b0329c1c32f5d274f120501be110adf2f60"
+    },
+    "verification-contracts/verify/rtcheck.log": {
+      "bytes": 23,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "06b2b0b297af72eb67a377d98cdda9a6a3d98e7d06201e510f46a56af13d106d"
+    },
+    "verification-contracts/verify/runtime-table.log": {
+      "bytes": 220,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "f43d681e9a6f2b34aa7eb6aa34773953f0bdac05d18a10aed67a0409593f0984"
+    },
+    "verification-contracts/verify/select-io.log": {
+      "bytes": 298,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "59e05d06622487789afc5a45b36f18f56707a34696fbed86f1772b637d661ffe"
+    },
+    "verification-contracts/verify/streaming.log": {
+      "bytes": 84,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "df375647cceedafdeb4ee3c0b2bb0c9596d3b58b59b8175cc7221ef8283729ca"
+    },
+    "verification-contracts/verify/unicode-audit.log": {
+      "bytes": 423,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "cc8840ed6bca291e607db467f0b1cd857591ac51e0a0871ea81a59112bd4d30b"
+    },
+    "verification-contracts/verify/weakrefs.log": {
+      "bytes": 270,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "e0a70a9a0a7a5fc788636305cf1761e87dc4bf731f94077490a79d29f0a7bf2c"
+    },
+    "verification-gc-aot-2/verify/bootstrap-restore.log": {
+      "bytes": 501,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "5c23be90483b077beb88cb1aee0ec4d1a9e9bd480d068f4c8b739ae2dc299425"
+    },
+    "verification-gc-aot-2/verify/bootstrap.log": {
+      "bytes": 123,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "62f974274f154b8d2e23d381941a24f323f4f2224a966caac526f11c6b04908f"
+    },
+    "verification-gc-aot-2/verify/gc-aot-2-cases.log": {
+      "bytes": 57479,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "3dde89fba523c9352965e053e6e9276a137f28391ca544063b16da335151774f"
+    },
+    "verification-gc-aot-2/verify/gc-aot-2-sample-cases.log": {
+      "bytes": 3717,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "6b2e9cf82d3a9aa0d3068d12f54d266a6e60cb52c5c5055ee3785b257cc80168"
+    },
+    "verification-gc-aot-2/verify/gc-aot-2-sample.log": {
+      "bytes": 38,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "7c3d84becd7d726cd48a4c29c382a9ee7d36733067a1dafcd0cc429f010f6fe8"
+    },
+    "verification-gc-aot-2/verify/gc-aot-2-shard.log": {
+      "bytes": 61196,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "eb3dd4fafeb51a453e37b04364ec22ff5b42d44fa2a968a8be6c8539485285c5"
+    },
+    "verification-gc-aot-2/verify/gc-aot-2-suite.log": {
+      "bytes": 42,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "445faf9409eea96ac9d4bbcd9c5bafc490216a414013378f76c2454a794261a8"
+    },
+    "verification-gc-aot-2/verify/gc-aot-2.log": {
+      "bytes": 264,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "d4ca01a8a3ac831abae5f19df62476ad40011a03d419e6cb3fb78331af4a63cd"
+    },
+    "verification-gc-self/verify/bootstrap-restore.log": {
+      "bytes": 501,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "5c23be90483b077beb88cb1aee0ec4d1a9e9bd480d068f4c8b739ae2dc299425"
+    },
+    "verification-gc-self/verify/bootstrap.log": {
+      "bytes": 123,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "62f974274f154b8d2e23d381941a24f323f4f2224a966caac526f11c6b04908f"
+    },
+    "verification-gc-self/verify/gc-self-check.log": {
+      "bytes": 316,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "9cfb5068bed32ec2d236d9eb886141833d66b5d66c181db895519110afb0b745"
+    },
+    "verification-gc-self/verify/gc-self.log": {
+      "bytes": 169,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "5e774e4ed96e23dcf30457d8e6db825e925c33c47df0a58e1d4d3b9a008f10b6"
+    },
+    "verification-native-1/verify/bootstrap-restore.log": {
+      "bytes": 501,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "5c23be90483b077beb88cb1aee0ec4d1a9e9bd480d068f4c8b739ae2dc299425"
+    },
+    "verification-native-1/verify/bootstrap.log": {
+      "bytes": 123,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "62f974274f154b8d2e23d381941a24f323f4f2224a966caac526f11c6b04908f"
+    },
+    "verification-native-1/verify/tests-native-1-cases.log": {
+      "bytes": 61262,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "41d718d6dc7a44f29fb6daf86641f140b4176a11f07e9d31ac3ba1d0e93fe94a"
+    },
+    "verification-native-1/verify/tests-native-1-times.log": {
+      "bytes": 65655,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "ba710964e0f773a37e0157bed1fe697c88848c69814420f7d95f0df1c028ebc0"
+    },
+    "verification-native-1/verify/tests-native-1.log": {
+      "bytes": 42,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "e393d1e8b3e10ce798876043403ff63502eae7b750947cc95a403d3713cf13f5"
+    },
+    "verification-runtime-cache/verify/bootstrap-restore.log": {
+      "bytes": 501,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "5c23be90483b077beb88cb1aee0ec4d1a9e9bd480d068f4c8b739ae2dc299425"
+    },
+    "verification-runtime-cache/verify/bootstrap.log": {
+      "bytes": 123,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "62f974274f154b8d2e23d381941a24f323f4f2224a966caac526f11c6b04908f"
+    },
+    "verification-runtime-cache/verify/cache-cpython.log": {
+      "bytes": 3005,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "a8b0707246cddbe9471e480db7e623ba96299d68c8200a7bf5e592779ce4a9b8"
+    },
+    "verification-runtime-cache/verify/cache-native.log": {
+      "bytes": 2953,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "f012fed606fd238c664ee903d544422b29c55415307d151e1a64acb391e05ba8"
+    },
+    "verification-runtime-cache/verify/runtime-cache.log": {
+      "bytes": 5979,
+      "origin": "exact member bytes from digest-verified artifact ZIP",
+      "sha256": "3201032e7f054afd179bfcb584cf437829b30470083c296d306c25f3e4d4bd1c"
+    }
+  },
+  "schema": "pystachy-recursion-ci-evidence-v2",
+  "scope": "Correctness workflow and its aggregate only; Coverage/Lint evidence is separate.",
+  "source": {
+    "aggregate_checkout_clean": true,
+    "head": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+    "head_and_merge_trees_identical": true,
+    "merge_parents": [
+      "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+      "da84d382ff83f09e46d4ef104e62e6f64e9c37c1"
+    ],
+    "tested_merge": "093436389af8356bb110b6b0b49e33d6b6c3d189",
+    "tree": "903a72dce156018f83f69f1e8b4d74a6f14e99dd"
+  },
+  "status": "passed",
+  "verified_at_utc": "2026-10-31T17:06:11.241613+00:00",
+  "workflow": {
+    "completed_at": "2026-10-31T16:56:51Z",
+    "conclusion": "success",
+    "id": 41220634706,
+    "job_records": [
+      {
+        "completed_at": "2026-10-31T16:41:44Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124594251962",
+        "id": 124594251962,
+        "name": "verify (bootstrap)",
+        "started_at": "2026-10-31T16:38:15Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:42:30Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124594252193",
+        "id": 124594252193,
+        "name": "upstream large regex (JIT and AOT, normal GC)",
+        "started_at": "2026-10-31T16:38:15Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:38:33Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124594252194",
+        "id": 124594252194,
+        "name": "upstream port preservation (CPython)",
+        "started_at": "2026-10-31T16:38:16Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:49:20Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080700",
+        "id": 124595080700,
+        "name": "verify (native-0)",
+        "started_at": "2026-10-31T16:41:47Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:48:12Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080708",
+        "id": 124595080708,
+        "name": "verify (ubsan-1)",
+        "started_at": "2026-10-31T16:41:47Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:48:22Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080711",
+        "id": 124595080711,
+        "name": "verify (gc-self)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:49:09Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080726",
+        "id": 124595080726,
+        "name": "verify (native-2)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:47:30Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080730",
+        "id": 124595080730,
+        "name": "verify (native-1)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:48Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080734",
+        "id": 124595080734,
+        "name": "verify (python-free-1)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:47Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080741",
+        "id": 124595080741,
+        "name": "verify (python-free-2)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:53Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080751",
+        "id": 124595080751,
+        "name": "verify (ubsan-0)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:48:51Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080752",
+        "id": 124595080752,
+        "name": "verify (ubsan-3)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:09Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080756",
+        "id": 124595080756,
+        "name": "verify (dynany-optin-0)",
+        "started_at": "2026-10-31T16:41:47Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:51:03Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080757",
+        "id": 124595080757,
+        "name": "verify (python-int-optin-2)",
+        "started_at": "2026-10-31T16:41:47Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:34Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080758",
+        "id": 124595080758,
+        "name": "verify (gc-aot-0)",
+        "started_at": "2026-10-31T16:42:33Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:49:35Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080760",
+        "id": 124595080760,
+        "name": "verify (opt-off-0)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:19Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080768",
+        "id": 124595080768,
+        "name": "verify (python-int-optin-1)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:58Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080769",
+        "id": 124595080769,
+        "name": "verify (python-free-0)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:49:03Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080784",
+        "id": 124595080784,
+        "name": "verify (opt-off-1)",
+        "started_at": "2026-10-31T16:43:19Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:48:43Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080788",
+        "id": 124595080788,
+        "name": "verify (python-int-optin-0)",
+        "started_at": "2026-10-31T16:43:15Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:49:07Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080790",
+        "id": 124595080790,
+        "name": "verify (gc-aot-2)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:52:43Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080801",
+        "id": 124595080801,
+        "name": "verify (gc-jit-1)",
+        "started_at": "2026-10-31T16:41:48Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:48Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080803",
+        "id": 124595080803,
+        "name": "verify (dynany-optin-1)",
+        "started_at": "2026-10-31T16:43:23Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:51:21Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080809",
+        "id": 124595080809,
+        "name": "verify (gc-aot-1)",
+        "started_at": "2026-10-31T16:44:30Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:56:22Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080814",
+        "id": 124595080814,
+        "name": "verify (gc-jit-0)",
+        "started_at": "2026-10-31T16:43:40Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:33Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080816",
+        "id": 124595080816,
+        "name": "verify (dynany-optin-2)",
+        "started_at": "2026-10-31T16:43:42Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:44:54Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080822",
+        "id": 124595080822,
+        "name": "verify (benchmarks)",
+        "started_at": "2026-10-31T16:42:19Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:50:15Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080828",
+        "id": 124595080828,
+        "name": "verify (hosted)",
+        "started_at": "2026-10-31T16:43:34Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:51:26Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080896",
+        "id": 124595080896,
+        "name": "verify (opt-off-2)",
+        "started_at": "2026-10-31T16:44:57Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:52:36Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080901",
+        "id": 124595080901,
+        "name": "verify (ubsan-2)",
+        "started_at": "2026-10-31T16:44:10Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:49:55Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080906",
+        "id": 124595080906,
+        "name": "verify (contracts)",
+        "started_at": "2026-10-31T16:44:18Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:46:29Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080918",
+        "id": 124595080918,
+        "name": "verify (scaling)",
+        "started_at": "2026-10-31T16:43:59Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:48:41Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124595080949",
+        "id": 124595080949,
+        "name": "verify (runtime-cache)",
+        "started_at": "2026-10-31T16:44:34Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-10-31T16:56:50Z",
+        "conclusion": "success",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706/job/124598523183",
+        "id": 124598523183,
+        "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+        "started_at": "2026-10-31T16:56:25Z",
+        "status": "completed"
+      }
+    ],
+    "jobs": 34,
+    "pagination": {
+      "loaded_artifacts": 34,
+      "loaded_jobs": 34,
+      "per_page": 100,
+      "reported_artifacts": 34,
+      "reported_jobs": 34
+    },
+    "status": "completed",
+    "successful_jobs": 34,
+    "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634706"
+  }
+}

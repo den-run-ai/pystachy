@@ -1,0 +1,2514 @@
+{
+  "schema_version": 1,
+  "scope": "Completed Coverage and Lint workflows only; no claim about other workflow gates.",
+  "status": "passed",
+  "published_head": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+  "published_tree": "903a72dce156018f83f69f1e8b4d74a6f14e99dd",
+  "synthetic_merge": "093436389af8356bb110b6b0b49e33d6b6c3d189",
+  "synthetic_merge_tree": "903a72dce156018f83f69f1e8b4d74a6f14e99dd",
+  "main_parent": "06e3ad5d08514ba31fb231fe4636a962fe6578e3",
+  "workflows": [
+    {
+      "id": 41220634746,
+      "name": "Coverage",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746",
+      "head_sha": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "run_attempt": 1,
+      "job_count": 20,
+      "success_count": 19,
+      "skip_count": 1,
+      "all_job_pages_checked": true,
+      "per_page": 100,
+      "jobs": [
+        {
+          "id": 124594252043,
+          "name": "native runtime coverage (corpus 5 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252043",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:27Z"
+            },
+            {
+              "name": "LLVM 18 toolchain and clang's profile runtime",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:27Z",
+              "completed_at": "2026-10-31T16:38:37Z"
+            },
+            {
+              "name": "The native compiler (make)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:37Z",
+              "completed_at": "2026-10-31T16:42:18Z"
+            },
+            {
+              "name": "tools/runtime_coverage.sh (a part of make runtime-coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:42:18Z",
+              "completed_at": "2026-10-31T16:46:55Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:46:55Z",
+              "completed_at": "2026-10-31T16:46:56Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:46:56Z",
+              "completed_at": "2026-10-31T16:46:56Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:46:56Z",
+              "completed_at": "2026-10-31T16:46:56Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:46:56Z",
+              "completed_at": "2026-10-31T16:46:57Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252163,
+          "name": "hosted compiler coverage (corpus 3 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252163",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:26Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:26Z",
+              "completed_at": "2026-10-31T16:38:28Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:28Z",
+              "completed_at": "2026-10-31T16:38:35Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:35Z",
+              "completed_at": "2026-10-31T16:44:23Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:44:23Z",
+              "completed_at": "2026-10-31T16:44:25Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:44:25Z",
+              "completed_at": "2026-10-31T16:44:25Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:44:25Z",
+              "completed_at": "2026-10-31T16:44:25Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:44:25Z",
+              "completed_at": "2026-10-31T16:44:25Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252207,
+          "name": "hosted compiler coverage (cache, unit)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252207",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:18Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:18Z",
+              "completed_at": "2026-10-31T16:38:20Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:20Z",
+              "completed_at": "2026-10-31T16:38:27Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:27Z",
+              "completed_at": "2026-10-31T16:38:34Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:34Z",
+              "completed_at": "2026-10-31T16:38:38Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:38Z",
+              "completed_at": "2026-10-31T16:44:02Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:44:02Z",
+              "completed_at": "2026-10-31T16:44:04Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:44:04Z",
+              "completed_at": "2026-10-31T16:44:04Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:44:04Z",
+              "completed_at": "2026-10-31T16:44:04Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:44:04Z",
+              "completed_at": "2026-10-31T16:44:04Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252216,
+          "name": "native runtime coverage (corpus 2 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252216",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:26Z"
+            },
+            {
+              "name": "LLVM 18 toolchain and clang's profile runtime",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:26Z",
+              "completed_at": "2026-10-31T16:38:47Z"
+            },
+            {
+              "name": "The native compiler (make)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:47Z",
+              "completed_at": "2026-10-31T16:42:15Z"
+            },
+            {
+              "name": "tools/runtime_coverage.sh (a part of make runtime-coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:42:15Z",
+              "completed_at": "2026-10-31T16:46:16Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:46:16Z",
+              "completed_at": "2026-10-31T16:46:18Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:46:18Z",
+              "completed_at": "2026-10-31T16:46:18Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:46:18Z",
+              "completed_at": "2026-10-31T16:46:18Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:46:18Z",
+              "completed_at": "2026-10-31T16:46:18Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252224,
+          "name": "hosted compiler coverage (corpus 7 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252224",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:27Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:27Z",
+              "completed_at": "2026-10-31T16:38:30Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:30Z",
+              "completed_at": "2026-10-31T16:38:35Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:35Z",
+              "completed_at": "2026-10-31T16:46:39Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:46:39Z",
+              "completed_at": "2026-10-31T16:46:40Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:46:40Z",
+              "completed_at": "2026-10-31T16:46:41Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:46:41Z",
+              "completed_at": "2026-10-31T16:46:41Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:46:41Z",
+              "completed_at": "2026-10-31T16:46:41Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252225,
+          "name": "native runtime coverage (ffi)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252225",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:26Z"
+            },
+            {
+              "name": "LLVM 18 toolchain and clang's profile runtime",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:26Z",
+              "completed_at": "2026-10-31T16:38:39Z"
+            },
+            {
+              "name": "The native compiler (make)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:39Z",
+              "completed_at": "2026-10-31T16:42:25Z"
+            },
+            {
+              "name": "tools/runtime_coverage.sh (a part of make runtime-coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:42:25Z",
+              "completed_at": "2026-10-31T16:43:53Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:43:53Z",
+              "completed_at": "2026-10-31T16:43:54Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:43:54Z",
+              "completed_at": "2026-10-31T16:43:54Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:43:54Z",
+              "completed_at": "2026-10-31T16:43:55Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:43:55Z",
+              "completed_at": "2026-10-31T16:43:55Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252249,
+          "name": "hosted compiler coverage (corpus 2 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252249",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:26Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:26Z",
+              "completed_at": "2026-10-31T16:38:28Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:28Z",
+              "completed_at": "2026-10-31T16:38:32Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:32Z",
+              "completed_at": "2026-10-31T16:47:01Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:47:01Z",
+              "completed_at": "2026-10-31T16:47:02Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:47:02Z",
+              "completed_at": "2026-10-31T16:47:02Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:47:02Z",
+              "completed_at": "2026-10-31T16:47:02Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:47:02Z",
+              "completed_at": "2026-10-31T16:47:02Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252251,
+          "name": "native runtime coverage (corpus 4 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252251",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:16Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:25Z"
+            },
+            {
+              "name": "LLVM 18 toolchain and clang's profile runtime",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:25Z",
+              "completed_at": "2026-10-31T16:38:36Z"
+            },
+            {
+              "name": "The native compiler (make)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:36Z",
+              "completed_at": "2026-10-31T16:41:14Z"
+            },
+            {
+              "name": "tools/runtime_coverage.sh (a part of make runtime-coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:41:14Z",
+              "completed_at": "2026-10-31T16:44:12Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:44:12Z",
+              "completed_at": "2026-10-31T16:44:13Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:44:13Z",
+              "completed_at": "2026-10-31T16:44:13Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:44:13Z",
+              "completed_at": "2026-10-31T16:44:13Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:44:13Z",
+              "completed_at": "2026-10-31T16:44:13Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252252,
+          "name": "native runtime coverage (corpus 3 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252252",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:20Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:20Z",
+              "completed_at": "2026-10-31T16:38:27Z"
+            },
+            {
+              "name": "LLVM 18 toolchain and clang's profile runtime",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:27Z",
+              "completed_at": "2026-10-31T16:38:40Z"
+            },
+            {
+              "name": "The native compiler (make)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:40Z",
+              "completed_at": "2026-10-31T16:42:24Z"
+            },
+            {
+              "name": "tools/runtime_coverage.sh (a part of make runtime-coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:42:24Z",
+              "completed_at": "2026-10-31T16:46:53Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:46:53Z",
+              "completed_at": "2026-10-31T16:46:54Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:46:54Z",
+              "completed_at": "2026-10-31T16:46:54Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:46:54Z",
+              "completed_at": "2026-10-31T16:46:55Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:46:55Z",
+              "completed_at": "2026-10-31T16:46:55Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252255,
+          "name": "hosted compiler coverage (ffi, ir)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252255",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:26Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:26Z",
+              "completed_at": "2026-10-31T16:38:31Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:31Z",
+              "completed_at": "2026-10-31T16:38:35Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:35Z",
+              "completed_at": "2026-10-31T16:43:34Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:43:34Z",
+              "completed_at": "2026-10-31T16:43:35Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:43:35Z",
+              "completed_at": "2026-10-31T16:43:35Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:43:35Z",
+              "completed_at": "2026-10-31T16:43:35Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:43:35Z",
+              "completed_at": "2026-10-31T16:43:35Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252261,
+          "name": "hosted compiler coverage (corpus 6 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252261",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:18Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:18Z",
+              "completed_at": "2026-10-31T16:38:25Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:25Z",
+              "completed_at": "2026-10-31T16:38:27Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:27Z",
+              "completed_at": "2026-10-31T16:38:30Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:30Z",
+              "completed_at": "2026-10-31T16:43:27Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:43:27Z",
+              "completed_at": "2026-10-31T16:43:28Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:43:28Z",
+              "completed_at": "2026-10-31T16:43:29Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:43:29Z",
+              "completed_at": "2026-10-31T16:43:29Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:43:29Z",
+              "completed_at": "2026-10-31T16:43:29Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252272,
+          "name": "hosted compiler coverage (corpus 4 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252272",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:16Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:18Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:18Z",
+              "completed_at": "2026-10-31T16:38:25Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:25Z",
+              "completed_at": "2026-10-31T16:38:26Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:26Z",
+              "completed_at": "2026-10-31T16:38:30Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:30Z",
+              "completed_at": "2026-10-31T16:43:09Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:43:09Z",
+              "completed_at": "2026-10-31T16:43:10Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:43:10Z",
+              "completed_at": "2026-10-31T16:43:10Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:43:10Z",
+              "completed_at": "2026-10-31T16:43:10Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:43:10Z",
+              "completed_at": "2026-10-31T16:43:10Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252282,
+          "name": "hosted compiler coverage (corpus 5 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252282",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:27Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:27Z",
+              "completed_at": "2026-10-31T16:38:28Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:28Z",
+              "completed_at": "2026-10-31T16:38:32Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:32Z",
+              "completed_at": "2026-10-31T16:44:27Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:44:27Z",
+              "completed_at": "2026-10-31T16:44:28Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:44:28Z",
+              "completed_at": "2026-10-31T16:44:28Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:44:28Z",
+              "completed_at": "2026-10-31T16:44:29Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:44:29Z",
+              "completed_at": "2026-10-31T16:44:29Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252322,
+          "name": "hosted compiler coverage (corpus 1 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252322",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:20Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:20Z",
+              "completed_at": "2026-10-31T16:38:27Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:27Z",
+              "completed_at": "2026-10-31T16:38:29Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:29Z",
+              "completed_at": "2026-10-31T16:38:34Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:34Z",
+              "completed_at": "2026-10-31T16:45:07Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:45:07Z",
+              "completed_at": "2026-10-31T16:45:09Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:45:09Z",
+              "completed_at": "2026-10-31T16:45:09Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:45:09Z",
+              "completed_at": "2026-10-31T16:45:09Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:45:09Z",
+              "completed_at": "2026-10-31T16:45:09Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252363,
+          "name": "hosted compiler coverage (corpus 0 of 8)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252363",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:26Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:26Z",
+              "completed_at": "2026-10-31T16:38:28Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:28Z",
+              "completed_at": "2026-10-31T16:38:32Z"
+            },
+            {
+              "name": "tools/coverage.sh (a part of make coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:32Z",
+              "completed_at": "2026-10-31T16:47:15Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:47:15Z",
+              "completed_at": "2026-10-31T16:47:16Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:47:16Z",
+              "completed_at": "2026-10-31T16:47:17Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:47:17Z",
+              "completed_at": "2026-10-31T16:47:17Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:47:17Z",
+              "completed_at": "2026-10-31T16:47:17Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252376,
+          "name": "native runtime coverage (corpus 0 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252376",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:26Z"
+            },
+            {
+              "name": "LLVM 18 toolchain and clang's profile runtime",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:26Z",
+              "completed_at": "2026-10-31T16:38:37Z"
+            },
+            {
+              "name": "The native compiler (make)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:37Z",
+              "completed_at": "2026-10-31T16:42:18Z"
+            },
+            {
+              "name": "tools/runtime_coverage.sh (a part of make runtime-coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:42:18Z",
+              "completed_at": "2026-10-31T16:46:52Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:46:52Z",
+              "completed_at": "2026-10-31T16:46:53Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:46:53Z",
+              "completed_at": "2026-10-31T16:46:54Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:46:54Z",
+              "completed_at": "2026-10-31T16:46:54Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:46:54Z",
+              "completed_at": "2026-10-31T16:46:54Z"
+            }
+          ]
+        },
+        {
+          "id": 124594252422,
+          "name": "native runtime coverage (corpus 1 of 6)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124594252422",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:18Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:18Z",
+              "completed_at": "2026-10-31T16:38:20Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:20Z",
+              "completed_at": "2026-10-31T16:38:27Z"
+            },
+            {
+              "name": "LLVM 18 toolchain and clang's profile runtime",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:27Z",
+              "completed_at": "2026-10-31T16:38:41Z"
+            },
+            {
+              "name": "The native compiler (make)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:41Z",
+              "completed_at": "2026-10-31T16:42:28Z"
+            },
+            {
+              "name": "tools/runtime_coverage.sh (a part of make runtime-coverage)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:42:28Z",
+              "completed_at": "2026-10-31T16:47:07Z"
+            },
+            {
+              "name": "Upload the part",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:47:07Z",
+              "completed_at": "2026-10-31T16:47:08Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:47:08Z",
+              "completed_at": "2026-10-31T16:47:08Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:47:08Z",
+              "completed_at": "2026-10-31T16:47:09Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:47:09Z",
+              "completed_at": "2026-10-31T16:47:09Z"
+            }
+          ]
+        },
+        {
+          "id": 124596370163,
+          "name": "native runtime coverage (report)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124596370163",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:47:16Z",
+              "completed_at": "2026-10-31T16:47:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:47:17Z",
+              "completed_at": "2026-10-31T16:47:22Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:47:22Z",
+              "completed_at": "2026-10-31T16:47:29Z"
+            },
+            {
+              "name": "LLVM 18 toolchain",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:47:29Z",
+              "completed_at": "2026-10-31T16:47:35Z"
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:47:35Z",
+              "completed_at": "2026-10-31T16:47:36Z"
+            },
+            {
+              "name": "tools/runtime_coverage.sh --report (the parts combined)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:47:36Z",
+              "completed_at": "2026-10-31T16:47:46Z"
+            },
+            {
+              "name": "Job summary",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:47:46Z",
+              "completed_at": "2026-10-31T16:47:46Z"
+            },
+            {
+              "name": "Upload the report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-10-31T16:47:46Z",
+              "completed_at": "2026-10-31T16:47:48Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:47:48Z",
+              "completed_at": "2026-10-31T16:47:48Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-10-31T16:47:48Z",
+              "completed_at": "2026-10-31T16:47:48Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-10-31T16:47:48Z",
+              "completed_at": "2026-10-31T16:47:48Z"
+            }
+          ]
+        },
+        {
+          "id": 124596396955,
+          "name": "hosted compiler coverage (report)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124596396955",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:47:23Z",
+              "completed_at": "2026-10-31T16:47:24Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:47:24Z",
+              "completed_at": "2026-10-31T16:47:30Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:47:30Z",
+              "completed_at": "2026-10-31T16:47:38Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:47:38Z",
+              "completed_at": "2026-10-31T16:47:42Z"
+            },
+            {
+              "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:47:42Z",
+              "completed_at": "2026-10-31T16:47:43Z"
+            },
+            {
+              "name": "tools/coverage_report.py (the parts combined)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:47:43Z",
+              "completed_at": "2026-10-31T16:48:28Z"
+            },
+            {
+              "name": "Job summary",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:48:28Z",
+              "completed_at": "2026-10-31T16:48:28Z"
+            },
+            {
+              "name": "Upload the report",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-10-31T16:48:28Z",
+              "completed_at": "2026-10-31T16:48:31Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:48:31Z",
+              "completed_at": "2026-10-31T16:48:31Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-10-31T16:48:31Z",
+              "completed_at": "2026-10-31T16:48:31Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-10-31T16:48:31Z",
+              "completed_at": "2026-10-31T16:48:31Z"
+            }
+          ]
+        },
+        {
+          "id": 124596690205,
+          "name": "publish main's coverage to the badges branch",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634746/job/124596690205",
+          "steps": []
+        }
+      ]
+    },
+    {
+      "id": 41220634702,
+      "name": "Lint",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634702",
+      "head_sha": "da84d382ff83f09e46d4ef104e62e6f64e9c37c1",
+      "run_attempt": 1,
+      "job_count": 1,
+      "success_count": 1,
+      "skip_count": 0,
+      "all_job_pages_checked": true,
+      "per_page": 100,
+      "jobs": [
+        {
+          "id": 124594251679,
+          "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/41220634702/job/124594251679",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-31T16:38:16Z",
+              "completed_at": "2026-10-31T16:38:17Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-31T16:38:17Z",
+              "completed_at": "2026-10-31T16:38:19Z"
+            },
+            {
+              "name": "Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-31T16:38:19Z",
+              "completed_at": "2026-10-31T16:38:26Z"
+            },
+            {
+              "name": "Run python3 -m pip install -r tools/requirements-dev.txt",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-31T16:38:26Z",
+              "completed_at": "2026-10-31T16:38:28Z"
+            },
+            {
+              "name": "Validate GitHub Actions workflows (actionlint)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-31T16:38:28Z",
+              "completed_at": "2026-10-31T16:38:29Z"
+            },
+            {
+              "name": "Fast hosted checks and full lint",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-31T16:38:29Z",
+              "completed_at": "2026-10-31T16:38:49Z"
+            },
+            {
+              "name": "CI verification harness and report gate tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-31T16:38:49Z",
+              "completed_at": "2026-10-31T16:40:24Z"
+            },
+            {
+              "name": "Router benchmark validation tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-10-31T16:40:24Z",
+              "completed_at": "2026-10-31T16:40:25Z"
+            },
+            {
+              "name": "Install sanitizer runtime for generated-code controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-10-31T16:40:25Z",
+              "completed_at": "2026-10-31T16:40:28Z"
+            },
+            {
+              "name": "Runtime ABI, ASan and GC root checker controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-10-31T16:40:28Z",
+              "completed_at": "2026-10-31T16:41:22Z"
+            },
+            {
+              "name": "pyperformance runner and port record tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-10-31T16:41:22Z",
+              "completed_at": "2026-10-31T16:41:26Z"
+            },
+            {
+              "name": "Performance smoke comparison tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-10-31T16:41:26Z",
+              "completed_at": "2026-10-31T16:41:26Z"
+            },
+            {
+              "name": "nanoGPT parity checker contract tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-31T16:41:26Z",
+              "completed_at": "2026-10-31T16:41:26Z"
+            },
+            {
+              "name": "Import sweep provenance and argument tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-31T16:41:26Z",
+              "completed_at": "2026-10-31T16:41:27Z"
+            },
+            {
+              "name": "Dynamic Any fuzzer generator and comparison tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-31T16:41:27Z",
+              "completed_at": "2026-10-31T16:41:27Z"
+            },
+            {
+              "name": "Dynamic Any builtin call binding tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-10-31T16:41:27Z",
+              "completed_at": "2026-10-31T16:41:27Z"
+            },
+            {
+              "name": "Dynamic Any corpus sweep controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-10-31T16:41:27Z",
+              "completed_at": "2026-10-31T16:41:28Z"
+            },
+            {
+              "name": "Promoting int tooling and retry controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18,
+              "started_at": "2026-10-31T16:41:28Z",
+              "completed_at": "2026-10-31T16:41:28Z"
+            },
+            {
+              "name": "microGPT graph parity and benchmark contract tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19,
+              "started_at": "2026-10-31T16:41:28Z",
+              "completed_at": "2026-10-31T16:41:29Z"
+            },
+            {
+              "name": "Integer benchmark checksum agreement tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20,
+              "started_at": "2026-10-31T16:41:29Z",
+              "completed_at": "2026-10-31T16:41:29Z"
+            },
+            {
+              "name": "Compiler function-state lists (Gen, Frame, gen_save, gen_restore, gen_enter)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-10-31T16:41:29Z",
+              "completed_at": "2026-10-31T16:41:32Z"
+            },
+            {
+              "name": "Compiler state contract controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 22,
+              "started_at": "2026-10-31T16:41:32Z",
+              "completed_at": "2026-10-31T16:42:35Z"
+            },
+            {
+              "name": "JSON benchmark evidence tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-10-31T16:42:35Z",
+              "completed_at": "2026-10-31T16:42:35Z"
+            },
+            {
+              "name": "LLVM IR diagnostic inventory tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24,
+              "started_at": "2026-10-31T16:42:35Z",
+              "completed_at": "2026-10-31T16:42:35Z"
+            },
+            {
+              "name": "DCO certification check tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25,
+              "started_at": "2026-10-31T16:42:35Z",
+              "completed_at": "2026-10-31T16:42:35Z"
+            },
+            {
+              "name": "Coverage report checks tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 26,
+              "started_at": "2026-10-31T16:42:35Z",
+              "completed_at": "2026-10-31T16:42:35Z"
+            },
+            {
+              "name": "Workflow job time limits (at most 15 minutes)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27,
+              "started_at": "2026-10-31T16:42:35Z",
+              "completed_at": "2026-10-31T16:42:35Z"
+            },
+            {
+              "name": "Generated regex matcher tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 28,
+              "started_at": "2026-10-31T16:42:35Z",
+              "completed_at": "2026-10-31T16:42:37Z"
+            },
+            {
+              "name": "Concurrency contract probes (docs/concurrency.md)",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 29,
+              "started_at": "2026-10-31T16:42:37Z",
+              "completed_at": "2026-10-31T16:42:37Z"
+            },
+            {
+              "name": "Run make check-recordings",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 30,
+              "started_at": "2026-10-31T16:42:37Z",
+              "completed_at": "2026-10-31T16:43:16Z"
+            },
+            {
+              "name": "Post Run actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 59,
+              "started_at": "2026-10-31T16:43:16Z",
+              "completed_at": "2026-10-31T16:43:16Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 60,
+              "started_at": "2026-10-31T16:43:16Z",
+              "completed_at": "2026-10-31T16:43:16Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 61,
+              "started_at": "2026-10-31T16:43:16Z",
+              "completed_at": "2026-10-31T16:43:16Z"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "corpus_shards": {
+    "native": [
+      {
+        "shard": 0,
+        "of": 6,
+        "passed": 1021,
+        "failed": 0,
+        "job_id": 124594252376
+      },
+      {
+        "shard": 1,
+        "of": 6,
+        "passed": 1020,
+        "failed": 0,
+        "job_id": 124594252422
+      },
+      {
+        "shard": 2,
+        "of": 6,
+        "passed": 1025,
+        "failed": 0,
+        "job_id": 124594252216
+      },
+      {
+        "shard": 3,
+        "of": 6,
+        "passed": 1021,
+        "failed": 0,
+        "job_id": 124594252252
+      },
+      {
+        "shard": 4,
+        "of": 6,
+        "passed": 1024,
+        "failed": 0,
+        "job_id": 124594252251
+      },
+      {
+        "shard": 5,
+        "of": 6,
+        "passed": 1023,
+        "failed": 0,
+        "job_id": 124594252043
+      }
+    ],
+    "hosted": [
+      {
+        "shard": 0,
+        "of": 8,
+        "passed": 767,
+        "failed": 0,
+        "job_id": 124594252363
+      },
+      {
+        "shard": 1,
+        "of": 8,
+        "passed": 765,
+        "failed": 0,
+        "job_id": 124594252322
+      },
+      {
+        "shard": 2,
+        "of": 8,
+        "passed": 767,
+        "failed": 0,
+        "job_id": 124594252249
+      },
+      {
+        "shard": 3,
+        "of": 8,
+        "passed": 764,
+        "failed": 0,
+        "job_id": 124594252163
+      },
+      {
+        "shard": 4,
+        "of": 8,
+        "passed": 768,
+        "failed": 0,
+        "job_id": 124594252272
+      },
+      {
+        "shard": 5,
+        "of": 8,
+        "passed": 769,
+        "failed": 0,
+        "job_id": 124594252282
+      },
+      {
+        "shard": 6,
+        "of": 8,
+        "passed": 768,
+        "failed": 0,
+        "job_id": 124594252261
+      },
+      {
+        "shard": 7,
+        "of": 8,
+        "passed": 766,
+        "failed": 0,
+        "job_id": 124594252224
+      }
+    ]
+  },
+  "verified_counts": {
+    "native_corpus_passed": 6134,
+    "native_corpus_failed": 0,
+    "hosted_corpus_passed": 6134,
+    "hosted_corpus_failed": 0,
+    "native_ffi": 110,
+    "hosted_ffi": 145,
+    "hosted_cache": 68,
+    "typed_ir": 198,
+    "function_summaries": 7,
+    "compiler_state": 107,
+    "perf_smoke_unit": 24,
+    "hosted_ir_and_llvm_as_programs": 81,
+    "cpython_version": "3.13.16",
+    "cpython_recordings": 1943,
+    "documented_deviations_checked": 110,
+    "lib_files_checked": 11,
+    "recording_failures": 0,
+    "mypy_source_files": 48
+  },
+  "all_lint_unittest_counts": {
+    "test_repository_hygiene.py": 11,
+    "test_function_summaries.py": 7,
+    "test_typed*.py": 198,
+    "test_json*.py": 29,
+    "test_numeric_identity.py": 56,
+    "test_identity_scope.py": 17,
+    "test_dynany_comparisons.py": 50,
+    "test_dynany_dict_kinds.py": 3,
+    "test_*verif*.py": 93,
+    "test_route_bench.py": 9,
+    "test_runtime_*.py": 43,
+    "test_bench_pyperformance.py": 21,
+    "test_perf_smoke.py": 24,
+    "test_check_nanogpt.py": 8,
+    "test_import_sweep.py": 10,
+    "test_dynany_fuzz.py": 22,
+    "test_dynany_calls.py": 4,
+    "test_dynany_optin.py": 28,
+    "test_python_int*.py": 43,
+    "test_bench_microgpt.py": 3,
+    "test_bench_integers.py": 4,
+    "test_frame_fields.py": 18,
+    "test_compiler_state*.py": 107,
+    "test_bench_json.py": 11,
+    "test_ir_cost_report.py": 7,
+    "test_dco_check.py": 9,
+    "test_coverage_report.py": 16,
+    "test_workflow_limits.py": 4,
+    "test_re_specialize.py": 15,
+    "test_concurrency_contract.py": 5
+  },
+  "coverage": {
+    "hosted": {
+      "statements_percent": 96.0,
+      "statements_hit": 41839,
+      "statements_total": 43560,
+      "branches_percent": 92.6,
+      "branches_hit": 21941,
+      "branches_total": 23696,
+      "measured_processes": 6390
+    },
+    "native": {
+      "lines_percent": 95.5,
+      "lines_hit": 6247,
+      "lines_total": 6544,
+      "branches_percent": 87.5,
+      "branches_hit": 6863,
+      "branches_total": 7842,
+      "functions_percent": 96.0,
+      "regions_percent": 92.8,
+      "pys_init_runs": 4130
+    }
+  },
+  "documented_conditional_skips": {
+    "hosted_ffi": "py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)",
+    "coverage_badge": "main-only publication excluded on pull_request"
+  },
+  "prior_head_comparison": {
+    "published_head": "aaec00cc81a862a2b29c117003e7c9cc73e1a3c1",
+    "evidence_sha256": "f1c935ce524a9f65f6a4c999da2233033cefc31bfa9cc1345ae5964fb15dadbf",
+    "count_deltas": {
+      "native_corpus_passed": 0,
+      "native_corpus_failed": 0,
+      "hosted_corpus_passed": 0,
+      "hosted_corpus_failed": 0,
+      "native_ffi": 0,
+      "hosted_ffi": 0,
+      "hosted_cache": 0,
+      "typed_ir": 0,
+      "function_summaries": 0,
+      "compiler_state": 0,
+      "perf_smoke_unit": 0,
+      "hosted_ir_and_llvm_as_programs": 0,
+      "cpython_recordings": 0,
+      "documented_deviations_checked": 0,
+      "lib_files_checked": 0,
+      "recording_failures": 0,
+      "mypy_source_files": 0
+    },
+    "coverage_deltas": {
+      "hosted": {
+        "statements_percent": 0.0,
+        "statements_hit": 0,
+        "statements_total": 0,
+        "branches_percent": 0.0,
+        "branches_hit": 0,
+        "branches_total": 0,
+        "measured_processes": 0
+      },
+      "native": {
+        "lines_percent": 0.0,
+        "lines_hit": 0,
+        "lines_total": 0,
+        "branches_percent": 0.0,
+        "branches_hit": 0,
+        "branches_total": 0,
+        "functions_percent": 0.0,
+        "regions_percent": 0.0,
+        "pys_init_runs": 0
+      }
+    },
+    "scope": "Report values and changed-code line coordinates; coverage reports are report-only, not acceptance thresholds."
+  },
+  "coverage_gaps": {
+    "hosted": {
+      "changes_since_main_summary": [
+        "Changed statements: 892 of 906 run (98.5%); their branches: 495 of 516 taken (95.9%)."
+      ],
+      "reported_uncovered_changed_code": {
+        "src/pystachy_compiler/exceptions.py": {
+          "statements_not_run": "-",
+          "branches_not_taken": "453->456"
+        },
+        "src/pystachy_compiler/lower_module.py": {
+          "statements_not_run": "51",
+          "branches_not_taken": "50->51, 100->107"
+        },
+        "src/pystachy_compiler/optimizations.py": {
+          "statements_not_run": "82-84, 110, 376, 382, 409, 415, 503, 635, 806, 867, 877",
+          "branches_not_taken": "81->82, 109->110, 167->176, 375->376, 381->382, 408->409, 414->415, 497->499, 500->502, 502->503, 634->635, 674->671, 695->692, 789->791, 805->806, 866->867, 876->877, 952->951"
+        }
+      },
+      "comparison_to_prior_head": {
+        "src/pystachy_compiler/exceptions.py": {
+          "before": {
+            "statements_not_run": "-",
+            "branches_not_taken": "453->456"
+          },
+          "after": {
+            "statements_not_run": "-",
+            "branches_not_taken": "453->456"
+          },
+          "newly_listed_uncovered_lines": [],
+          "no_longer_listed_uncovered_lines": [],
+          "newly_listed_uncovered_branches": [],
+          "no_longer_listed_uncovered_branches": []
+        },
+        "src/pystachy_compiler/lower_module.py": {
+          "before": {
+            "statements_not_run": "51",
+            "branches_not_taken": "50->51, 100->107"
+          },
+          "after": {
+            "statements_not_run": "51",
+            "branches_not_taken": "50->51, 100->107"
+          },
+          "newly_listed_uncovered_lines": [],
+          "no_longer_listed_uncovered_lines": [],
+          "newly_listed_uncovered_branches": [],
+          "no_longer_listed_uncovered_branches": []
+        },
+        "src/pystachy_compiler/optimizations.py": {
+          "before": {
+            "statements_not_run": "82-84, 110, 376, 382, 409, 415, 503, 635, 806, 867, 877",
+            "branches_not_taken": "81->82, 109->110, 167->176, 375->376, 381->382, 408->409, 414->415, 497->499, 500->502, 502->503, 634->635, 674->671, 695->692, 789->791, 805->806, 866->867, 876->877, 952->951"
+          },
+          "after": {
+            "statements_not_run": "82-84, 110, 376, 382, 409, 415, 503, 635, 806, 867, 877",
+            "branches_not_taken": "81->82, 109->110, 167->176, 375->376, 381->382, 408->409, 414->415, 497->499, 500->502, 502->503, 634->635, 674->671, 695->692, 789->791, 805->806, 866->867, 876->877, 952->951"
+          },
+          "newly_listed_uncovered_lines": [],
+          "no_longer_listed_uncovered_lines": [],
+          "newly_listed_uncovered_branches": [],
+          "no_longer_listed_uncovered_branches": []
+        }
+      }
+    },
+    "native": {
+      "changes_since_main_summary": [
+        "Changed lines of code: 6 of 19 run (31.6%); their branches: 2 of 6 taken (33.3%)."
+      ],
+      "reported_uncovered_changed_code": {
+        "runtime.c": {
+          "statements_not_run": "6206-6209, 6213-6221",
+          "branches_not_taken": "6207 (2 of 2), 6216 (2 of 2)"
+        }
+      },
+      "comparison_to_prior_head": {
+        "runtime.c": {
+          "before": {
+            "statements_not_run": "6206-6209, 6213-6221",
+            "branches_not_taken": "6207 (2 of 2), 6216 (2 of 2)"
+          },
+          "after": {
+            "statements_not_run": "6206-6209, 6213-6221",
+            "branches_not_taken": "6207 (2 of 2), 6216 (2 of 2)"
+          },
+          "newly_listed_uncovered_lines": [],
+          "no_longer_listed_uncovered_lines": [],
+          "newly_listed_uncovered_branches": [],
+          "no_longer_listed_uncovered_branches": []
+        }
+      }
+    }
+  },
+  "raw_logs": {
+    "124594252043": {
+      "filename": "job-124594252043.log",
+      "sha256": "d3756caa9433000bff2a15c6a074c7fd6170e506f27cc4016d2478df82c2e583",
+      "bytes": 32121,
+      "job_name": "native runtime coverage (corpus 5 of 6)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252163": {
+      "filename": "job-124594252163.log",
+      "sha256": "b9b34ccbcf9e9776d797d6d1536fac9c14cc3ed05c10e6a22aed4795a1cb176c",
+      "bytes": 29223,
+      "job_name": "hosted compiler coverage (corpus 3 of 8)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252207": {
+      "filename": "job-124594252207.log",
+      "sha256": "5a36d8c29a917ee695482a6ab3b2f6ce15a826f14ec5852b2d44388e3996fff4",
+      "bytes": 30044,
+      "job_name": "hosted compiler coverage (cache, unit)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252216": {
+      "filename": "job-124594252216.log",
+      "sha256": "14dc76b1d635bff2d9606c182315a9e2c13ca901b3f339d8398ffa01f8a850b7",
+      "bytes": 32126,
+      "job_name": "native runtime coverage (corpus 2 of 6)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252224": {
+      "filename": "job-124594252224.log",
+      "sha256": "3a0487e1735658522927368c7a7021b77e22b71b733e566088babe0760218fc7",
+      "bytes": 29233,
+      "job_name": "hosted compiler coverage (corpus 7 of 8)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252225": {
+      "filename": "job-124594252225.log",
+      "sha256": "f6991a04155b9698dc129d5f9b848e0853bb6dc39122890a0006be05d735424b",
+      "bytes": 32053,
+      "job_name": "native runtime coverage (ffi)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252249": {
+      "filename": "job-124594252249.log",
+      "sha256": "0fbf647fdf19a3d4a8feb891fd54849f6224da49ecfe3b79663a7043511e8228",
+      "bytes": 29226,
+      "job_name": "hosted compiler coverage (corpus 2 of 8)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252251": {
+      "filename": "job-124594252251.log",
+      "sha256": "0409c4309bb93b3db3f947a15976d264e95631f9db493b82d67a1c9d49bd6993",
+      "bytes": 32125,
+      "job_name": "native runtime coverage (corpus 4 of 6)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252252": {
+      "filename": "job-124594252252.log",
+      "sha256": "c920d49fe563281e1a9ffdcb2893ddf777b2314d9dabdfe864402e5de7e41a4e",
+      "bytes": 32119,
+      "job_name": "native runtime coverage (corpus 3 of 6)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252255": {
+      "filename": "job-124594252255.log",
+      "sha256": "607d668ddf8a98dda21d731e6933313c04ad71bc6d78bc43e77e28a0c062c751",
+      "bytes": 29561,
+      "job_name": "hosted compiler coverage (ffi, ir)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252261": {
+      "filename": "job-124594252261.log",
+      "sha256": "80881e59d29d237767834b366369c9bc46eac96f60c8a2fcacffe89c5d84391c",
+      "bytes": 29228,
+      "job_name": "hosted compiler coverage (corpus 6 of 8)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252272": {
+      "filename": "job-124594252272.log",
+      "sha256": "a076715c09bbdb14e9c54c6864893cecc5d3c8b034912b54570c350ff84d7c1f",
+      "bytes": 29227,
+      "job_name": "hosted compiler coverage (corpus 4 of 8)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252282": {
+      "filename": "job-124594252282.log",
+      "sha256": "da4801fd56cdd837c17929c7158c5b019880ffe0bce3b0e9b0fa9aa3a81f83a7",
+      "bytes": 29234,
+      "job_name": "hosted compiler coverage (corpus 5 of 8)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252322": {
+      "filename": "job-124594252322.log",
+      "sha256": "a2453ca8ac8b18e99b90c0e8676adf844fbaafa407c6f6606c275e3262d70163",
+      "bytes": 29226,
+      "job_name": "hosted compiler coverage (corpus 1 of 8)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252363": {
+      "filename": "job-124594252363.log",
+      "sha256": "f94f63fc33a37081008a9cd710d31d0eedac264ec9704e659954ec815541f191",
+      "bytes": 29236,
+      "job_name": "hosted compiler coverage (corpus 0 of 8)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252376": {
+      "filename": "job-124594252376.log",
+      "sha256": "2e10899fd99746511bc15820fc64d0a11604db461b73088707ab6e496727e99b",
+      "bytes": 32122,
+      "job_name": "native runtime coverage (corpus 0 of 6)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594252422": {
+      "filename": "job-124594252422.log",
+      "sha256": "95dcf774786d6c3049896d279432e039d1280f6124c9d5461f8ee62ef5377bc0",
+      "bytes": 32119,
+      "job_name": "native runtime coverage (corpus 1 of 6)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124596370163": {
+      "filename": "job-124596370163.log",
+      "sha256": "7f9f5aa8101c5a8d5b118848f2c95e597cbd340fbb082fa0949ac7c8cbf20fc3",
+      "bytes": 64893,
+      "job_name": "native runtime coverage (report)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124596396955": {
+      "filename": "job-124596396955.log",
+      "sha256": "9249309e37a0eaf70567c70eb72f0a5ba8b45484fba949b758258bdbfa0a6122",
+      "bytes": 71765,
+      "job_name": "hosted compiler coverage (report)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    },
+    "124594251679": {
+      "filename": "job-124594251679.log",
+      "sha256": "cb73f426503693755fd46c96790fc1468bf222d59beb4d1a1afc9dfa92d68c9b",
+      "bytes": 64322,
+      "job_name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+      "verified_checkout_commit": "093436389af8356bb110b6b0b49e33d6b6c3d189"
+    }
+  },
+  "api_record_sha256": {
+    "artifacts-41220634702.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "artifacts-41220634746.json": "a1209b8467b68c16589c2ee059cae15ac63ed3ce6c70989869412fede971fdd9",
+    "bootstrap-verified.json": "eb7bbe81772834b342dcf0df8565a62bbf79303f14d73564b36a1fbc261b4d81",
+    "head-commit.json": "9e5dd4be5f6ab86d6db87e5cb89f0111843215ae5b184109ac8e112263bf7680",
+    "jobs-41220634702.json": "8795c3d8ae5682769f537770f1483cbd237946235c593acde441bc3f7966c914",
+    "jobs-41220634746.json": "7d2cdaf84f6b4f97947644b2f7c04c81e70cafe70cfdb6c59032224c09f1f18e",
+    "local-bootstrap-equivalence.json": "43ca0777afbba59beb47ea304b91966f6b4bed41a89cda9978be1d4642e361fd",
+    "merge-commit.json": "faeb554a3f3812025b17d05c3ee3f47223b0157dbece76a0ded501f64d4c5482",
+    "perf-smoke.json": "401deeac72292dbc79b447f5b51fad7141009a33c2b6442156d15e14ef454391",
+    "run-41220634702.json": "e6842c22ccae837e14c32567951b1c5d115511ee9fba2d0605ddc0999744bfd5",
+    "run-41220634746.json": "c8ceb96b2be9c68cb5a25450da3c2d85e42af2ea238fa5d3bfb04e5a0a874991",
+    "snapshot-1.json": "0efd7299d9c45c8c279883429684b105f72935a29a790c13d28b3d10f00e4f84",
+    "snapshot-2.json": "ffc62f34218f105e405a5b474335c724d666526088bc3191b902f97b9c80d6ab",
+    "snapshot-3.json": "3a859ec297f2b860b741cd09e23e1632cca6bb1ce6a06013b0efbb03d2d6e57a",
+    "snapshot-4.json": "dbf1fb47360c153f331963b51a470ea24548828e586b904a07c3343ffa652d27",
+    "snapshot-5.json": "3a923870c162d7c4362427474f467acb68671d984032a3996bfbcea0ce928409",
+    "snapshot-6.json": "e5241106016904ec1cf460e3c7b20d7038503a6a4252506860be3757f64b0491"
+  },
+  "summary_script_sha256": "d73f0c4b00c4ddb5b97c1e56aa55da289cced92a0b38978d0d01b48795d9d1cf"
+}
